@@ -3,9 +3,9 @@ import './globals.css'
 import '../lib/chart-registration.ts'
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.dev',
+  title: 'chart development',
+  description: 'Created by Hari',
+  generator: 'v0',
 }
 
 export default function RootLayout({
