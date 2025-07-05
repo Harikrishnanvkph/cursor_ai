@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useChartStore } from "@/lib/chart-store"
 import { AxisSettings } from "./axis-settings"
+import { RadialAxisSettings } from "./radial-axis-settings"
 
 export function AxesPanel() {
   const { chartConfig, updateChartConfig, chartType } = useChartStore()
@@ -22,8 +23,8 @@ export function AxesPanel() {
     updateChartConfig(newConfig)
   }
 
-  // Handle special chart types
-  if (['radar', 'polarArea', 'pie', 'doughnut'].includes(chartType)) {
+  // Handle pie and doughnut charts (no axes)
+  if (['pie', 'doughnut'].includes(chartType)) {
     return (
       <Card>
         <CardHeader>
@@ -38,6 +39,24 @@ export function AxesPanel() {
     )
   }
 
+  // Handle radar and polar area charts (radial axes)
+  if (['radar', 'polarArea'].includes(chartType)) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Radial Axis Configuration</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RadialAxisSettings
+            config={chartConfig.scales?.r || {}}
+            onUpdate={handleConfigUpdate}
+          />
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Handle Cartesian charts (X and Y axes)
   return (
     <Tabs defaultValue="x" className="w-full">
       <TabsList className="grid w-full grid-cols-2">
