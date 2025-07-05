@@ -9,9 +9,20 @@ import {
   LineElement,
   PointElement,
   ArcElement,
+  // Controllers
+  BarController,
+  LineController,
+  PieController,
+  DoughnutController,
+  PolarAreaController,
+  RadarController,
   Title,
   Tooltip,
   Legend,
+  Filler,
+  ScatterController,
+  BubbleController,
+  TimeScale
 } from "chart.js"
 import { Chart } from "react-chartjs-2"
 import { useChartStore } from "@/lib/chart-store"
@@ -19,7 +30,27 @@ import { Button } from "@/components/ui/button"
 import { Download, RefreshCw } from "lucide-react"
 import { BarChart3 } from "lucide-react"
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Title, Tooltip, Legend)
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+  ScatterController,
+  BubbleController,
+  TimeScale,
+  BarController,
+  LineController,
+  PieController,
+  DoughnutController,
+  PolarAreaController,
+  RadarController,
+)
 
 export function PreviewPanel() {
   const { chartConfig, chartData, chartType } = useChartStore()
