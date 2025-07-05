@@ -19,6 +19,7 @@ import {
   BubbleController,
   TimeScale
 } from "chart.js"
+import { BarController, LineController, PieController, DoughnutController, PolarAreaController, RadarController } from "chart.js"
 import { Chart } from "react-chartjs-2"
 import { useChartStore, universalImagePlugin } from "@/lib/chart-store"
 import exportPlugin from "@/lib/export-plugin"
@@ -42,6 +43,12 @@ ChartJS.register(
   Tooltip,
   Legend,
   RadialLinearScale,
+  BarController,
+  LineController,
+  PieController,
+  DoughnutController,
+  PolarAreaController,
+  RadarController,
   Filler,
   ScatterController,  // Required for scatter charts
   BubbleController,   // Required for bubble charts
