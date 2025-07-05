@@ -1490,6 +1490,12 @@ export const useChartStore = create<ChartStore>()(
           }
         }
 
+        // Auto-switch to uniform mode if changing to a chart type that doesn't support mixed mode
+        const nonMixedModeCharts = ['pie', 'doughnut', 'radar', 'polarArea', 'scatter', 'bubble'];
+        const shouldSwitchToUniform = state.chartMode === 'grouped' && 
+          state.uniformityMode === 'mixed' && 
+          nonMixedModeCharts.includes(type);
+
         return {
           chartType: type,
           chartData: {
@@ -1497,6 +1503,7 @@ export const useChartStore = create<ChartStore>()(
             datasets: newDatasets,
           },
           chartConfig: newConfig,
+          ...(shouldSwitchToUniform && { uniformityMode: 'uniform' as const }),
         };
       }),
       addDataset: (dataset) => set((state) => {

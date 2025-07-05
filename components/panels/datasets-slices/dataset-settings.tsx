@@ -123,14 +123,14 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     
     // For grouped mode, only allow certain chart types
     if (uniformityMode === 'mixed') {
-      // Mixed mode: only allow bar, line, area, scatter for grouped datasets
+      // Mixed mode: only allow bar, line, area for grouped datasets
       return supportedChartTypes.filter(type => 
-        ['bar', 'line', 'area', 'scatter'].includes(type.value)
+        ['bar', 'line', 'area'].includes(type.value)
       );
     } else {
-      // Uniform mode: show all chart types except pie, doughnut, radar, polarArea
+      // Uniform mode: show all chart types except pie, doughnut
       return supportedChartTypes.filter(type => 
-        !['pie', 'doughnut', 'radar', 'polarArea'].includes(type.value)
+        !['pie', 'doughnut'].includes(type.value)
       );
     }
   }
@@ -312,7 +312,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
 
   // Auto-switch to uniform mode for incompatible chart types in grouped mode
   useEffect(() => {
-    if (chartMode === 'grouped' && ['pie', 'doughnut', 'radar', 'polarArea'].includes(chartType as any) && uniformityMode === 'mixed') {
+    if (chartMode === 'grouped' && ['pie', 'doughnut', 'radar', 'polarArea', 'scatter', 'bubble'].includes(chartType as any) && uniformityMode === 'mixed') {
       setUniformityMode('uniform');
     }
   }, [chartType, chartMode, uniformityMode, setUniformityMode]);
@@ -391,20 +391,20 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
               <BarChart2 className="h-4 w-4" />
               Uniform
             </label>
-            <label className={`flex items-center gap-2 cursor-pointer transition-colors text-sm ${uniformityMode === 'mixed' ? 'text-purple-700 font-bold' : 'text-gray-500'} ${['pie', 'doughnut', 'radar', 'polarArea'].includes(chartType as any) ? 'opacity-50 cursor-not-allowed' : ''}`}> 
+            <label className={`flex items-center gap-2 cursor-pointer transition-colors text-sm ${uniformityMode === 'mixed' ? 'text-purple-700 font-bold' : 'text-gray-500'} ${['pie', 'doughnut', 'radar', 'polarArea', 'scatter', 'bubble'].includes(chartType as any) ? 'opacity-50 cursor-not-allowed' : ''}`}> 
               <input
                 type="radio"
                 className="accent-purple-600"
                 checked={uniformityMode === 'mixed'}
                 onChange={() => setUniformityMode('mixed')}
-                disabled={['pie', 'doughnut', 'radar', 'polarArea'].includes(chartType as any)}
+                disabled={['pie', 'doughnut', 'radar', 'polarArea', 'scatter', 'bubble'].includes(chartType as any)}
               />
               <Layers className="h-4 w-4" />
               Mixed
             </label>
           </div>
           <p className="text-xs text-gray-600 mt-2">
-            {['pie', 'doughnut', 'radar', 'polarArea'].includes(chartType as any) ? (
+            {['pie', 'doughnut', 'radar', 'polarArea', 'scatter', 'bubble'].includes(chartType as any) ? (
               <span className="text-orange-600 font-medium">
                 Mixed mode is not available for {chartType} charts. Only uniform mode is supported.
               </span>

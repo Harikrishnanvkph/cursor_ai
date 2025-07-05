@@ -64,7 +64,9 @@ export function ConfigSidebar() {
     { value: 'pie', label: 'Pie' },
     { value: 'doughnut', label: 'Doughnut' },
     { value: 'radar', label: 'Radar' },
+    { value: 'polarArea', label: 'Polar Area' },
     { value: 'scatter', label: 'Scatter' },
+    { value: 'bubble', label: 'Bubble' },
   ]
 
   return (
