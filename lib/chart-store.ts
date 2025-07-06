@@ -341,7 +341,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ChartOptions 
     },
     interaction: {
       intersect: true,
-      mode: "nearest" as const,
+      mode: "point" as const,
     },
   }
 

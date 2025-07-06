@@ -746,8 +746,11 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                     maintainAspectRatio: false,
                     hover: {
                       intersect: chartConfig.hover?.intersect ?? false,
-                      mode: chartConfig.hover?.mode ?? 'nearest',
                       animationDuration: chartConfig.hover?.animationDuration ?? 400,
+                    },
+                    interaction: {
+                      intersect: chartConfig.interaction?.intersect ?? true,
+                      mode: chartConfig.interaction?.mode ?? 'point',
                     },
                     onHover: (event: any, elements: any[]) => {
                       if (chartMode === 'grouped' && elements && elements.length > 0) {
