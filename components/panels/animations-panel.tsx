@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
 import { useChartStore } from "@/lib/chart-store"
 import { useState } from "react"
+import { Input } from "@/components/ui/input"
 
 const allowedEasings = [
   "linear",
@@ -26,6 +27,8 @@ export function AnimationsPanel() {
   const [generalDropdownOpen, setGeneralDropdownOpen] = useState(false)
   const [hoverDropdownOpen, setHoverDropdownOpen] = useState(false)
   const [responsiveDropdownOpen, setResponsiveDropdownOpen] = useState(false)
+  const [hoverOpen, setHoverOpen] = useState(true)
+  const [hoverEnabled, setHoverEnabled] = useState(chartConfig.interaction?.mode !== undefined && chartConfig.interaction?.mode !== false)
 
   const handleConfigUpdate = (path: string, value: any) => {
     const keys = path.split(".")
@@ -39,6 +42,11 @@ export function AnimationsPanel() {
 
     current[keys[keys.length - 1]] = value
     updateChartConfig(newConfig)
+  }
+
+  const handleHoverEnabledChange = (checked: boolean) => {
+    setHoverEnabled(checked)
+    handleConfigUpdate('interaction.mode', checked ? (typeof chartConfig.interaction?.mode === 'string' ? chartConfig.interaction.mode : 'point') : undefined)
   }
 
   // Ensure the value is always one of the allowed options
@@ -151,91 +159,6 @@ export function AnimationsPanel() {
         </div>
       </div>
 
-      {/* Hover Animations Section */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 pb-1 border-b">
-          <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
-          <h3 className="text-sm font-semibold text-gray-900">Hover Animations</h3>
-          <button
-            onClick={() => setHoverDropdownOpen(!hoverDropdownOpen)}
-            className="ml-auto p-1 hover:bg-gray-100 rounded transition-colors"
-          >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              width="16" 
-              height="16" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
-              strokeLinejoin="round"
-              className={`transform transition-transform ${hoverDropdownOpen ? 'rotate-180' : ''}`}
-            >
-              <path d="M6 9L12 15L18 9"/>
-            </svg>
-          </button>
-          </div>
-
-        <div className="bg-purple-50 rounded-lg p-3 space-y-3">
-          {/* Hover Mode */}
-          <div className="space-y-1">
-            <Label className="text-xs font-medium">Hover Mode</Label>
-            <Select
-              value={chartConfig.interaction?.mode || "point"}
-              onValueChange={(value) => handleConfigUpdate("interaction.mode", value)}
-            >
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="nearest">Nearest</SelectItem>
-                <SelectItem value="point">Point</SelectItem>
-                <SelectItem value="index">Index</SelectItem>
-                <SelectItem value="dataset">Dataset</SelectItem>
-                <SelectItem value="x">X-Axis</SelectItem>
-                <SelectItem value="y">Y-Axis</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-
-          
-          {/* Dropdown Content */}
-          {hoverDropdownOpen && (
-            <div className="space-y-3 pt-2 border-t border-purple-200">
-              {/* Hover Animation Duration */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium">Animation Duration</Label>
-                  <span className="text-xs text-gray-500">{chartConfig.hover?.animationDuration || 400}ms</span>
-                </div>
-                <Slider
-                  value={[chartConfig.hover?.animationDuration || 400]}
-                  onValueChange={([value]) => handleConfigUpdate("hover.animationDuration", value)}
-                  max={1000}
-                  min={0}
-                  step={50}
-                  className="mt-1"
-                />
-              </div>
-
-              {/* Hover Fade Effect */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium">Fade Effect</Label>
-            <Switch
-              checked={chartConfig.hoverFadeEffect !== false}
-              onCheckedChange={(checked) => handleConfigUpdate("hoverFadeEffect", checked)}
-                    className="data-[state=checked]:bg-purple-600"
-            />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Responsive Animations Section */}
       <div className="space-y-3">
         <div className="flex items-center gap-2 pb-1 border-b">
@@ -309,6 +232,62 @@ export function AnimationsPanel() {
           )}
           </div>
           </div>
+
+      {/* Hover Animation Section */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 pb-1 border-b">
+          <div className="w-2 h-2 bg-pink-600 rounded-full"></div>
+          <h3 className="text-sm font-semibold text-gray-900 flex-1">Hover Animation</h3>
+          <Switch
+            checked={hoverEnabled}
+            onCheckedChange={handleHoverEnabledChange}
+            className="data-[state=checked]:bg-pink-600"
+          />
+          <button
+            onClick={() => setHoverOpen(!hoverOpen)}
+            className="ml-2 p-1 hover:bg-gray-100 rounded transition-colors"
+            aria-label="Toggle Hover Animation"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transform transition-transform ${hoverOpen ? 'rotate-180' : ''}`}> <path d="M6 9L12 15L18 9"/> </svg>
+          </button>
+        </div>
+        {/* Single container for summary and expanded content */}
+        <div className="bg-pink-50 rounded-lg">
+          <div className="flex items-center justify-between px-3 py-2">
+            <span className="text-xs font-medium text-black">Hover Mode</span>
+            <Select
+              value={chartConfig.interaction?.mode === 'nearest' ? 'nearest' : 'point'}
+              onValueChange={value => handleConfigUpdate('interaction.mode', value)}
+              disabled={!hoverEnabled}
+            >
+              <SelectTrigger className="h-8 text-xs w-28">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="point">Point</SelectItem>
+                <SelectItem value="nearest">Nearest</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {hoverOpen && (
+            <div className={`px-3 pb-3 ${!hoverEnabled ? 'opacity-50 pointer-events-none' : ''}`}> 
+              <div className="flex items-center justify-between gap-2">
+                <Label className="text-xs font-medium">Animation Duration (ms)</Label>
+                <div className="relative w-24">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={chartConfig.hover?.animationDuration ?? 400}
+                    onChange={e => handleConfigUpdate('hover.animationDuration', e.target.value ? Number(e.target.value) : 400)}
+                    className="h-8 text-xs pr-8 w-full"
+                  />
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 pointer-events-none">ms</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

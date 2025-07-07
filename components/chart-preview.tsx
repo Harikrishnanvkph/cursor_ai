@@ -753,6 +753,11 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                       mode: chartConfig.interaction?.mode ?? 'point',
                     },
                     onHover: (event: any, elements: any[]) => {
+                      // Disable hover effect if interaction.mode is undefined or false
+                      if (!chartConfig.interaction?.mode) {
+                        setHoveredDatasetIndex(null);
+                        return;
+                      }
                       if (chartMode === 'grouped' && elements && elements.length > 0) {
                         setHoveredDatasetIndex(elements[0].datasetIndex);
                       } else {
@@ -820,6 +825,65 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                         },
                         onHover: () => {},
                         onLeave: () => {},
+                      },
+                      tooltip: {
+                        ...((chartConfig.plugins as any)?.tooltip),
+                        callbacks: {
+                          ...((chartConfig.plugins as any)?.tooltip?.callbacks),
+                          label: function(context: any) {
+                            const mode = (chartConfig.plugins as any)?.tooltip?.customDisplayMode || 'slice';
+                            const chart = context.chart;
+                            const data = chart.data;
+                            const datasetIndex = context.datasetIndex;
+                            const dataIndex = context.dataIndex;
+                            const dataset = data.datasets[datasetIndex];
+                            const label = data.labels?.[dataIndex];
+                            const value = dataset.data[dataIndex];
+                            const datasetLabel = dataset.label || `Dataset ${datasetIndex + 1}`;
+                            const datasetColor = Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor[dataIndex] : dataset.backgroundColor;
+                            // Slice mode: default
+                            if (mode === 'slice') {
+                              return `${label}: ${value}`;
+                            }
+                            // Dataset mode
+                            if (mode === 'dataset') {
+                              let lines = [`%c${datasetLabel}`, ...dataset.data.map((v: any, i: number) => {
+                                const sliceLabel = data.labels?.[i] || `Slice ${i + 1}`;
+                                const sliceColor = Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor[i] : dataset.backgroundColor;
+                                return `%c${sliceLabel}: ${v}`;
+                              })];
+                              return lines;
+                            }
+                            // X axis mode
+                            if (mode === 'xaxis') {
+                              // For the hovered x label, show all dataset names and values
+                              let lines = [`${label}`];
+                              data.datasets.forEach((ds: any, i: number) => {
+                                const dsLabel = ds.label || `Dataset ${i + 1}`;
+                                const dsColor = Array.isArray(ds.backgroundColor) ? ds.backgroundColor[dataIndex] : ds.backgroundColor;
+                                lines.push(`${dsLabel}: ${ds.data[dataIndex]}`);
+                              });
+                              return lines;
+                            }
+                            // Y axis mode
+                            if (mode === 'yaxis') {
+                              // Show all values for the hovered y value
+                              let lines: string[] = [];
+                              data.datasets.forEach((ds: any, i: number) => {
+                                ds.data.forEach((v: any, j: number) => {
+                                  if (v === value) {
+                                    const dsLabel = ds.label || `Dataset ${i + 1}`;
+                                    const sliceLabel = data.labels?.[j] || `Slice ${j + 1}`;
+                                    lines.push(`${dsLabel} - ${sliceLabel}: ${v}`);
+                                  }
+                                });
+                              });
+                              return lines.length ? lines : [`${label}: ${value}`];
+                            }
+                            // Default fallback
+                            return `${label}: ${value}`;
+                          }
+                        }
                       },
                     } as any),
                   }}
