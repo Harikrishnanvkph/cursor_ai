@@ -84,7 +84,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
   const [colorsDropdownOpen, setColorsDropdownOpen] = useState(false)
   const [imagesDropdownOpen, setImagesDropdownOpen] = useState(false)
   const [advancedDropdownOpen, setAdvancedDropdownOpen] = useState(false)
-  const [selectedImageType, setSelectedImageType] = useState('icon')
+  const [selectedImageType, setSelectedImageType] = useState('circle')
   const [imageUploadUrl, setImageUploadUrl] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [showAddDatasetModal, setShowAddDatasetModal] = useState(false)
@@ -1382,34 +1382,65 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
         <div className="space-y-3">
           <div className="flex items-center gap-2 pb-1 border-b">
             <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
-            <h3 className="text-sm font-semibold text-gray-900">Image Management</h3>
-            <button
-              onClick={() => setImagesDropdownOpen(!imagesDropdownOpen)}
-              className="ml-auto p-1 hover:bg-gray-100 rounded transition-colors"
-            >
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                width="16" 
-                height="16" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                strokeWidth="2" 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
-                className={`transform transition-transform ${imagesDropdownOpen ? 'rotate-180' : ''}`}
-              >
-                <path d="M6 9L12 15L18 9"/>
-              </svg>
-            </button>
+            <h3 className="text-sm font-semibold text-gray-900">Global Settings</h3>
           </div>
           
           <div className="bg-purple-50 rounded-lg p-3 space-y-3">
             {/* Global Image Settings - Always Visible */}
+            <div className="flex gap-2">
+                <div className="flex-1">
+                  <Label className="text-xs font-medium text-purple-800">Image URL</Label>
+                  <Input
+                    value={imageUploadUrl}
+                    onChange={(e) => setImageUploadUrl(e.target.value)}
+                    placeholder="https://example.com/image.png"
+                    className="h-8 text-xs mt-1"
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  className="h-8 px-2 text-xs bg-purple-600 hover:bg-purple-700 mt-5"
+                  onClick={() => {
+                    if (chartMode === 'single' && activeDatasetIndex !== -1) {
+                      chartData.datasets[activeDatasetIndex].data.forEach((_: any, pointIndex: number) => {
+                        handleUrlSubmit(activeDatasetIndex, pointIndex);
+                      });
+                    }
+                  }}
+                  disabled={!imageUploadUrl.trim()}
+                >
+                  <ExternalLink className="h-3 w-3" />
+                </Button>
+            </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  className="flex-1 h-8 text-xs bg-purple-600 hover:bg-purple-700"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload className="h-3 w-3 mr-1" />
+                  Upload Image
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file && chartMode === 'single' && activeDatasetIndex !== -1) {
+                      chartData.datasets[activeDatasetIndex].data.forEach((_: any, pointIndex: number) => {
+                        handleImageUpload(file, activeDatasetIndex, pointIndex);
+                      });
+                    }
+                  }}
+                />
+              </div>
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs font-medium text-purple-800">Image Type</Label>
+                  <Label className="text-xs font-medium text-purple-800">Image Shape</Label>
                   <Select value={selectedImageType} onValueChange={(value) => {
                     setSelectedImageType(value);
                     handleGlobalImageConfigChange('type', value);
@@ -1467,36 +1498,60 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
               </div>
 
               {imageOptions.supportsArrow && (
+                <div className="space-y-3">
+                <Label className="text-xs font-medium text-purple-800">Arrow/Callout Settings</Label>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-medium text-purple-800">Arrow</Label>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Enable Arrow</Label>
                     <Switch
                       defaultChecked={false}
                       onCheckedChange={(checked) => handleGlobalImageConfigChange('arrow', checked)}
-                      className="data-[state=checked]:bg-purple-600"
+                      className="data-[state=checked]:bg-purple-600 block "
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Arrow Color</Label>
+                    <Input
+                      type="color"
+                      defaultValue="#666666"
+                      className="h-8 w-full"
+                      onChange={(e) => handleGlobalImageConfigChange('arrowColor', e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Border Width</Label>
+                    <Input
+                      type="number"
+                      defaultValue="3"
+                      className="h-8 text-xs"
+                      placeholder="3"
+                      min={0}
+                      max={10}
+                      step={1}
+                      onChange={(e) => handleGlobalImageConfigChange('borderWidth', parseInt(e.target.value))}
                     />
                   </div>
                   
                   <div className="space-y-1">
-                    <Label className="text-xs font-medium text-purple-800">Offset</Label>
+                    <Label className="text-xs font-medium text-purple-800">Border Color</Label>
                     <Input
-                      type="number"
-                      defaultValue="40"
-                      className="h-8 text-xs"
-                      placeholder="40"
-                      min={10}
-                      max={100}
-                      step={5}
-                      onChange={(e) => handleGlobalImageConfigChange('offset', parseInt(e.target.value))}
+                      type="color"
+                      defaultValue="#ffffff"
+                      className="h-8 w-full"
+                      onChange={(e) => handleGlobalImageConfigChange('borderColor', e.target.value)}
                     />
                   </div>
                 </div>
+              </div>
               )}
 
               {imageOptions.supportsFill && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs font-medium text-purple-800">Fill Bar</Label>
+                    <Label className="text-xs font-medium text-purple-800">Fill Slice</Label>
                     <Switch
                       defaultChecked={false}
                       onCheckedChange={(checked) => handleGlobalImageConfigChange('fillBar', checked)}
@@ -1538,220 +1593,8 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                   </div>
                 </div>
               )}
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium text-purple-800">Border Width</Label>
-                  <Input
-                    type="number"
-                    defaultValue="3"
-                    className="h-8 text-xs"
-                    placeholder="3"
-                    min={0}
-                    max={10}
-                    step={1}
-                    onChange={(e) => handleGlobalImageConfigChange('borderWidth', parseInt(e.target.value))}
-                  />
-                </div>
-                
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium text-purple-800">Border Color</Label>
-                  <Input
-                    type="color"
-                    defaultValue="#ffffff"
-                    className="h-8 w-full"
-                    onChange={(e) => handleGlobalImageConfigChange('borderColor', e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <Label className="text-xs font-medium text-purple-800">Image URL</Label>
-                  <Input
-                    value={imageUploadUrl}
-                    onChange={(e) => setImageUploadUrl(e.target.value)}
-                    placeholder="https://example.com/image.png"
-                    className="h-8 text-xs mt-1"
-                  />
-                </div>
-                <Button
-                  size="sm"
-                  className="h-8 px-2 text-xs bg-purple-600 hover:bg-purple-700 mt-5"
-                  onClick={() => {
-                    if (chartMode === 'single' && activeDatasetIndex !== -1) {
-                      chartData.datasets[activeDatasetIndex].data.forEach((_: any, pointIndex: number) => {
-                        handleUrlSubmit(activeDatasetIndex, pointIndex);
-                      });
-                    }
-                  }}
-                  disabled={!imageUploadUrl.trim()}
-                >
-                  <ExternalLink className="h-3 w-3" />
-                </Button>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  className="flex-1 h-8 text-xs bg-purple-600 hover:bg-purple-700"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="h-3 w-3 mr-1" />
-                  Upload Image
-                </Button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file && chartMode === 'single' && activeDatasetIndex !== -1) {
-                      chartData.datasets[activeDatasetIndex].data.forEach((_: any, pointIndex: number) => {
-                        handleImageUpload(file, activeDatasetIndex, pointIndex);
-                      });
-                    }
-                  }}
-                />
-              </div>
             </div>
-            
-            {imagesDropdownOpen && (
-              <div className="space-y-4 pt-3 border-t border-purple-200">
-                {/* Image Positioning */}
-                <div className="space-y-2">
-                  <Label className="text-xs font-medium text-purple-800">Image Position</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {imageOptions.positions.map((position) => {
-                      const PositionIcon = getPositionIcon(position.value);
-                      return (
-                        <Button
-                          key={position.value}
-                          variant="outline"
-                          size="sm"
-                          className="h-8 text-xs"
-                          onClick={() => handleGlobalImageConfigChange('position', position.value)}
-                        >
-                          <PositionIcon className="h-3 w-3 mr-1" />
-                          {position.label}
-                        </Button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Image Sizing Options */}
-                {imageOptions.supportsFill && (
-                  <div className="space-y-2">
-                    <Label className="text-xs font-medium text-purple-800">Fill Bar with Image</Label>
-                    <div className="flex items-center justify-between">
-                      <Label className="text-xs font-medium">Enable Fill Bar</Label>
-                      <Switch
-                        defaultChecked={false}
-                        onCheckedChange={(checked) => handleGlobalImageConfigChange('fillBar', checked)}
-                        className="data-[state=checked]:bg-purple-600"
-                      />
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="h-8 text-xs"
-                        onClick={() => handleGlobalImageConfigChange('imageFit', 'fill')}
-                      >
-                        <Maximize2 className="h-3 w-3 mr-1" />
-                        Fill
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="h-8 text-xs"
-                        onClick={() => handleGlobalImageConfigChange('imageFit', 'cover')}
-                      >
-                        <Crop className="h-3 w-3 mr-1" />
-                        Cover
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="h-8 text-xs"
-                        onClick={() => handleGlobalImageConfigChange('imageFit', 'contain')}
-                      >
-                        <Grid className="h-3 w-3 mr-1" />
-                        Contain
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Arrow Configuration */}
-                {imageOptions.supportsArrow && (
-                  <div className="space-y-3">
-                    <Label className="text-xs font-medium text-purple-800">Arrow/Callout Settings</Label>
-                    <div className="flex items-center justify-between">
-                      <Label className="text-xs font-medium">Enable Arrow</Label>
-                      <Switch
-                        defaultChecked={false}
-                        onCheckedChange={(checked) => handleGlobalImageConfigChange('arrow', checked)}
-                        className="data-[state=checked]:bg-purple-600"
-                      />
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-xs font-medium">Arrow Color</Label>
-                        <Input
-                          type="color"
-                          defaultValue="#666666"
-                          className="h-8 w-full"
-                          onChange={(e) => handleGlobalImageConfigChange('arrowColor', e.target.value)}
-                        />
-                      </div>
-                      
-                      <div className="space-y-1">
-                        <Label className="text-xs font-medium">Callout Offset</Label>
-                        <Input
-                          type="number"
-                          defaultValue="40"
-                          className="h-8 text-xs"
-                          placeholder="40"
-                          min={10}
-                          max={100}
-                          step={5}
-                          onChange={(e) => handleGlobalImageConfigChange('offset', parseInt(e.target.value))}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-xs font-medium">Border Width</Label>
-                        <Input
-                          type="number"
-                          defaultValue="3"
-                          className="h-8 text-xs"
-                          placeholder="3"
-                          min={0}
-                          max={10}
-                          step={1}
-                          onChange={(e) => handleGlobalImageConfigChange('borderWidth', parseInt(e.target.value))}
-                        />
-                      </div>
-                      
-                      <div className="space-y-1">
-                        <Label className="text-xs font-medium text-purple-800">Border Color</Label>
-                        <Input
-                          type="color"
-                          defaultValue="#ffffff"
-                          className="h-8 w-full"
-                          onChange={(e) => handleGlobalImageConfigChange('borderColor', e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
+            <div className="space-y-4 pt-3 border-t border-purple-200">
                 {/* Per-Point Image Configuration */}
                 {chartMode === 'single' && activeDatasetIndex !== -1 && (
                   <div className="space-y-3">
@@ -1847,7 +1690,6 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                   </div>
                 </div>
               </div>
-            )}
           </div>
         </div>
       </div>

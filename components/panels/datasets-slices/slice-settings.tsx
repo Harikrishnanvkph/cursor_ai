@@ -489,60 +489,8 @@ export function SliceSettings({ className }: SliceSettingsProps) {
     return (
       <div className="space-y-4">
         {/* Images Section */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 pb-1 border-b">
-            <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-            <h3 className="text-sm font-semibold text-gray-900">Point Images</h3>
-            <button
-              onClick={() => setImagesDropdownOpen(!imagesDropdownOpen)}
-              className="ml-auto p-1 hover:bg-gray-100 rounded transition-colors"
-            >
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                width="16" 
-                height="16" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                strokeWidth="2" 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
-                className={`transform transition-transform ${imagesDropdownOpen ? 'rotate-180' : ''}`}
-              >
-                <path d="M6 9L12 15L18 9"/>
-              </svg>
-            </button>
-          </div>
-          
-          <div className="bg-green-50 rounded-lg p-3 space-y-3">
-            {/* Global URL Input */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-green-800">Global Image URL</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={imageUploadUrl}
-                  onChange={(e) => setImageUploadUrl(e.target.value)}
-                  placeholder="https://example.com/image.png"
-                  className="h-8 text-sm flex-1"
-                />
-                <Button
-                  size="sm"
-                  className="h-8 px-2 text-xs bg-green-600 hover:bg-green-700"
-                  onClick={() => {
-                    if (imageUploadUrl.trim()) {
-                      currentDataset.data.forEach((_: any, pointIndex: number) => {
-                        handleImageUrlChange(pointIndex, imageUploadUrl.trim());
-                      });
-                      setImageUploadUrl('');
-                    }
-                  }}
-                  disabled={!imageUploadUrl.trim()}
-                >
-                  Apply All
-                </Button>
-              </div>
-            </div>
-            
+        <div className="space-y-3">          
+          <div className="bg-green-50 rounded-lg p-3 space-y-3">            
             <div className="flex items-center justify-between">
               <Label className="text-sm font-medium">Individual Point Images</Label>
               <Button
@@ -560,8 +508,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
               </Button>
             </div>
             
-            {imagesDropdownOpen && (
-              <div className="space-y-3 pt-2 border-t border-green-200 max-h-96 overflow-y-auto">
+            <div className="space-y-3 pt-2 border-t border-green-200 max-h-96">
                 {currentDataset.data.map((_, pointIndex) => {
                   const hasImage = currentDataset.pointImages?.[pointIndex]
                   const imageConfig = currentDataset.pointImageConfig?.[pointIndex] || getDefaultImageConfig(chartType)
@@ -699,29 +646,25 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                         </div>
 
                         {imageOptions.supportsArrow && (
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-xs font-medium">Arrow</Label>
-                              <Switch
-                                checked={imageConfig.arrow || false}
-                                onCheckedChange={(checked) => handleImageConfigChange(pointIndex, 'arrow', checked)}
-                                className="data-[state=checked]:bg-green-600"
-                              />
-                            </div>
-                            
-                            <div className="space-y-1">
-                              <Label className="text-xs font-medium">Offset</Label>
-                              <Input
-                                type="number"
-                                value={imageConfig.offset || 40}
-                                className="h-7 text-xs"
-                                placeholder="40"
-                                min={10}
-                                max={100}
-                                onChange={(e) => handleImageConfigChange(pointIndex, 'offset', parseInt(e.target.value))}
-                              />
-                            </div>
+                          <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs font-medium">Enable Arrow</Label>
+                            <Switch
+                              defaultChecked={false}
+                              onCheckedChange={(checked) => handleImageConfigChange(pointIndex, 'arrow', checked)}
+                              className="data-[state=checked]:bg-green-600 block "
+                            />
                           </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs font-medium">Arrow Color</Label>
+                            <Input
+                              type="color"
+                              defaultValue="#666666"
+                              className="h-8 w-full"
+                              onChange={(e) => handleImageConfigChange(pointIndex, 'arrowColor', e.target.value)}
+                            />
+                          </div>
+                        </div>
                         )}
 
                         {imageOptions.supportsFill && (
@@ -798,7 +741,6 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                   )
                 })}
               </div>
-            )}
           </div>
         </div>
       </div>

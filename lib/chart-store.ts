@@ -673,7 +673,7 @@ const universalImagePlugin = {
               chartType === "bubble" ||
               chartType === "radar"
             ) {
-              renderPointImage(ctx, x, y, img, imageConfig)
+              renderPointImage(ctx, element, img, imageConfig)
             }
 
             ctx.restore()
@@ -884,13 +884,25 @@ function renderBarImageVertical(ctx: any, element: any, img: any, config: any) {
 
   // Original positioning logic for non-fill mode
   switch (config.position) {
+    case "center":
+      // Center of the bar: halfway between top (element.y) and base (element.base)
+      y = ((element.y ?? 0) + (element.base ?? 0)) / 2;
+      break
     case "above":
-      y = element.y - size / 2 - 10
+      // Just above the bar
+      y = (element.y ?? 0) - size / 2 - 8;
       break
     case "below":
-      y = element.base + size / 2 + 10
+      // Just inside the bottom of the bar
+      y = (element.base ?? 0) - size / 2 - 8;
       break
-    case "center":
+    case "callout":
+      // Callout position - handled separately
+      const chart = element.chart;
+      const datasetIndex = element._datasetIndex || 0;
+      const pointIndex = element._index || 0;
+      renderCalloutImage(ctx, element.x, element.y, img, config, datasetIndex, pointIndex, chart)
+      return
     default:
       y = element.y - size / 2 - 5
       break
@@ -991,13 +1003,26 @@ function renderBarImageHorizontal(ctx: any, element: any, img: any, config: any)
 
   // Original positioning logic for non-fill mode
   switch (config.position) {
-    case "top":
-      x = element.x + size / 2 + 10
-      break
-    case "bottom":
-      x = element.base - size / 2 - 10
-      break
     case "center":
+      // Center of the bar: halfway between left (element.base) and right (element.x)
+      x = ((element.x ?? 0) + (element.base ?? 0)) / 2;
+      break
+    case "above":
+      // Right end of the bar
+      x = (element.x ?? 0) + size / 2 + 8;
+      break
+    case "below":
+      // Just inside the left end of the bar
+      const barStart = Math.min(element.x ?? 0, element.base ?? 0);
+      x = barStart + size / 2 + 8;
+      break
+    case "callout":
+      // Callout position - handled separately
+      const chart = element.chart;
+      const datasetIndex = element._datasetIndex || 0;
+      const pointIndex = element._index || 0;
+      renderCalloutImage(ctx, element.x, element.y, img, config, datasetIndex, pointIndex, chart)
+      return
     default:
       x = element.x + (element.base - element.x) / 2
       break
@@ -1007,25 +1032,30 @@ function renderBarImageHorizontal(ctx: any, element: any, img: any, config: any)
 }
 
 // Render image for point-based charts with proper positioning
-function renderPointImage(ctx: any, pointX: any, pointY: any, img: any, config: any) {
+function renderPointImage(ctx: any, element: any, img: any, config: any) {
   const size = config.size || 25
-  let x = pointX
-  let y = pointY
+  let x = element.x
+  let y = element.y
 
   switch (config.position) {
+    case "center":
+      // Center on the point
+      break
     case "above":
-      y = pointY - size / 2 - 15
+      // Above the point
+      y = (element.y ?? 0) - size / 2 - 12;
       break
     case "below":
-      y = pointY + size / 2 + 15
+      // Below the point
+      y = (element.y ?? 0) + size / 2 + 12;
       break
-    case "left":
-      x = pointX - size / 2 - 15
-      break
-    case "right":
-      x = pointX + size / 2 + 15
-      break
-    case "center":
+    case "callout":
+      // Callout position - handled separately
+      const chart = element.chart;
+      const datasetIndex = element._datasetIndex || 0;
+      const pointIndex = element._index || 0;
+      renderCalloutImage(ctx, element.x, element.y, img, config, datasetIndex, pointIndex, chart)
+      return
     default:
       break
   }
@@ -1216,28 +1246,30 @@ function renderSliceImage(ctx: any, element: any, img: any, config: any) {
   const innerRadius = element.innerRadius || 0
   const outerRadius = element.outerRadius || Math.min(chartArea.width, chartArea.height) / 2
 
-  // Centroid radius for a sector: r = 2/3 * (r2^3 - r1^3) / (r2^2 - r1^2)
-  let centroidRadius = (2/3) * (Math.pow(outerRadius, 3) - Math.pow(innerRadius, 3)) / (Math.pow(outerRadius, 2) - Math.pow(innerRadius, 2) || 1)
-
   let x, y
   switch (config.position) {
-    case "inside":
-      x = centerX + Math.cos(midAngle) * (outerRadius * 0.5)
-      y = centerY + Math.sin(midAngle) * (outerRadius * 0.5)
-      break
-    case "outside":
-      x = centerX + Math.cos(midAngle) * (outerRadius * 1.2)
-      y = centerY + Math.sin(midAngle) * (outerRadius * 1.2)
-      break
-    case "line":
-      x = centerX + Math.cos(midAngle) * outerRadius
-      y = centerY + Math.sin(midAngle) * outerRadius
-      break
-    case "middle":
     case "center":
-      x = centerX + Math.cos(midAngle) * centroidRadius
-      y = centerY + Math.sin(midAngle) * centroidRadius
+      // Center of the slice: halfway between inner and outer radius
+      const r = innerRadius + (outerRadius - innerRadius) * 0.5;
+      x = centerX + Math.cos(midAngle) * r;
+      y = centerY + Math.sin(midAngle) * r;
       break
+    case "above":
+      // Above the slice: outside the outer radius
+      const rAbove = outerRadius + size * 0.7;
+      x = centerX + Math.cos(midAngle) * rAbove;
+      y = centerY + Math.sin(midAngle) * rAbove;
+      break
+    case "below":
+      // Below the slice: closer to inner radius
+      const rBelow = innerRadius + (outerRadius - innerRadius) * 0.2;
+      x = centerX + Math.cos(midAngle) * rBelow;
+      y = centerY + Math.sin(midAngle) * rBelow;
+      break
+    case "callout":
+      // Callout position - handled separately
+      renderCalloutImage(ctx, element.x, element.y, img, config, element._datasetIndex, element._index, chart)
+      return
     default:
       x = element.x
       y = element.y
@@ -1245,10 +1277,6 @@ function renderSliceImage(ctx: any, element: any, img: any, config: any) {
   }
 
   drawImageWithClipping(ctx, x - size / 2, y - size / 2, size, size, img, config.type)
-
-  if (config.position === "callout") {
-    renderCalloutImage(ctx, element.x, element.y, img, config, element._datasetIndex, element._index, chart)
-  }
 }
 
 // Define the return type for getImageOptionsForChartType
@@ -1271,9 +1299,9 @@ export const getImageOptionsForChartType = (chartType: SupportedChartType): Imag
           { value: 'circle', label: 'Circle' },
         ],
         positions: [
-          { value: 'center', label: 'On Bar' },
-          { value: 'above', label: 'Above Bar' },
-          { value: 'below', label: 'Below Bar' },
+          { value: 'center', label: 'Center' },
+          { value: 'above', label: 'Above' },
+          { value: 'below', label: 'Bottom' },
           { value: 'callout', label: 'Callout with Arrow' },
         ],
         supportsArrow: true,
@@ -1287,11 +1315,9 @@ export const getImageOptionsForChartType = (chartType: SupportedChartType): Imag
           { value: "square", label: "Square" },
         ],
         positions: [
-          { value: "center", label: "On Point" },
-          { value: "above", label: "Above Point" },
-          { value: "below", label: "Below Point" },
-          { value: "left", label: "Left of Point" },
-          { value: "right", label: "Right of Point" },
+          { value: "center", label: "Center" },
+          { value: "above", label: "Above" },
+          { value: "below", label: "Bottom" },
           { value: "callout", label: "Callout with Arrow" },
         ],
         supportsArrow: true,
@@ -1303,8 +1329,8 @@ export const getImageOptionsForChartType = (chartType: SupportedChartType): Imag
           { value: "square", label: "Square" },
         ],
         positions: [
-          { value: "center", label: "Inside Bubble" },
-          { value: "above", label: "Above Bubble" },
+          { value: "center", label: "Center" },
+          { value: "above", label: "Above" },
           { value: "callout", label: "Callout with Arrow" },
         ],
         supportsArrow: true,
@@ -1316,7 +1342,22 @@ export const getImageOptionsForChartType = (chartType: SupportedChartType): Imag
           { value: "square", label: "Square" },
         ],
         positions: [
-          { value: "center", label: "On Point" },
+          { value: "center", label: "Center" },
+          { value: "above", label: "Above" },
+          { value: "below", label: "Bottom" },
+          { value: "callout", label: "Callout with Arrow" },
+        ],
+        supportsArrow: true,
+      }
+    case 'pie':
+    case 'doughnut':
+    case 'polarArea':
+      return {
+        types: [{ value: "circle", label: "Circle" }],
+        positions: [
+          { value: "center", label: "Center" },
+          { value: "above", label: "Above" },
+          { value: "below", label: "Bottom" },
           { value: "callout", label: "Callout with Arrow" },
         ],
         supportsArrow: true,
