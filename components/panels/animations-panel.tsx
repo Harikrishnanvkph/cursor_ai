@@ -79,14 +79,14 @@ export function AnimationsPanel() {
           <div className="space-y-1">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-medium">Enable Animations</Label>
-              <Switch
-                checked={chartConfig.animation !== false}
-                onCheckedChange={(checked) => handleConfigUpdate("animation", checked ? {} : false)}
+            <Switch
+              checked={chartConfig.animation !== false}
+              onCheckedChange={(checked) => handleConfigUpdate("animation", checked ? {} : false)}
                 className="data-[state=checked]:bg-blue-600"
-              />
+            />
             </div>
           </div>
-          
+
           {/* Dropdown Content */}
           {generalDropdownOpen && chartConfig.animation !== false && (
             <div className="space-y-3 pt-2 border-t border-blue-200">
@@ -175,8 +175,8 @@ export function AnimationsPanel() {
               <path d="M6 9L12 15L18 9"/>
             </svg>
           </button>
-        </div>
-        
+          </div>
+
         <div className="bg-purple-50 rounded-lg p-3 space-y-3">
           {/* Hover Mode */}
           <div className="space-y-1">
@@ -224,11 +224,11 @@ export function AnimationsPanel() {
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-medium">Fade Effect</Label>
-                  <Switch
-                    checked={chartConfig.hoverFadeEffect !== false}
-                    onCheckedChange={(checked) => handleConfigUpdate("hoverFadeEffect", checked)}
+            <Switch
+              checked={chartConfig.hoverFadeEffect !== false}
+              onCheckedChange={(checked) => handleConfigUpdate("hoverFadeEffect", checked)}
                     className="data-[state=checked]:bg-purple-600"
-                  />
+            />
                 </div>
               </div>
             </div>
@@ -296,19 +296,19 @@ export function AnimationsPanel() {
                   <Label className="text-xs font-medium">Resize Animation</Label>
                   <span className="text-xs text-gray-500">{chartConfig.responsive?.animationDuration || 0}ms</span>
                 </div>
-                <Slider
-                  value={[chartConfig.responsive?.animationDuration || 0]}
-                  onValueChange={([value]) => handleConfigUpdate("responsive.animationDuration", value)}
-                  max={1000}
-                  min={0}
-                  step={50}
+            <Slider
+              value={[chartConfig.responsive?.animationDuration || 0]}
+              onValueChange={([value]) => handleConfigUpdate("responsive.animationDuration", value)}
+              max={1000}
+              min={0}
+              step={50}
                   className="mt-1"
-                />
+            />
               </div>
             </div>
           )}
-        </div>
-      </div>
+          </div>
+          </div>
     </div>
   )
 }
