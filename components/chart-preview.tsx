@@ -279,6 +279,15 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
         borderRadius: customLabelsConfig.shape === 'none' ? 0 : (customLabelsConfig.borderRadius ?? 6),
         padding: customLabelsConfig.shape === 'none' ? 0 : (customLabelsConfig.padding ?? 6),
         font: `${customLabelsConfig.fontWeight || 'bold'} ${customLabelsConfig.fontSize || 14}px ${customLabelsConfig.fontFamily || 'Arial'}`,
+        // Enhanced callout properties
+        callout: customLabelsConfig.anchor === 'callout',
+        calloutColor: customLabelsConfig.calloutColor || '#333',
+        draggable: customLabelsConfig.anchor === 'callout',
+        arrowLine: customLabelsConfig.arrowLine !== false,
+        arrowHead: customLabelsConfig.arrowHead !== false,
+        arrowColor: customLabelsConfig.arrowColor || customLabelsConfig.calloutColor || '#333',
+        calloutOffset: customLabelsConfig.calloutOffset || 48,
+        arrowEndGap: customLabelsConfig.arrowEndGap || 0,
       };
     })
   );
@@ -654,7 +663,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       <div className="mb-4 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="min-w-0 flex-1">
-            <h1 className="text-lg font-semibold text-gray-900 truncate">Chart Preview</h1>
+            <h1 className="text-lg font-bold text-gray-900 truncate">Chart Preview</h1>
             <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
               <BarChart3 className="h-4 w-4 mr-1" />
               <span>{getChartDisplayName()}</span>

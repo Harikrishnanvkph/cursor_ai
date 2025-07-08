@@ -96,6 +96,75 @@ export function LabelsPanel() {
                 </Select>
               </div>
 
+              {/* Callout Arrow Options - Only show when callout is selected */}
+              {customLabelsConfig.anchor === 'callout' && (
+                <div className="space-y-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg className="h-4 w-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    </svg>
+                    <p className="text-sm text-blue-700 font-semibold">Callout Arrow Settings</p>
+                  </div>
+                  
+                  <div className="flex items-center space-x-3">
+                    <Switch
+                      checked={customLabelsConfig.arrowLine !== false}
+                      onCheckedChange={(checked) => handleCustomLabelConfigUpdate("arrowLine", checked)}
+                    />
+                    <Label className="text-xs font-medium">Show Arrow Line</Label>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Switch
+                      checked={customLabelsConfig.arrowHead !== false}
+                      onCheckedChange={(checked) => handleCustomLabelConfigUpdate("arrowHead", checked)}
+                    />
+                    <Label className="text-xs font-medium">Show Arrow Head</Label>
+                  </div>
+
+                  {/* Arrow End Gap Slider - only show if line or head is enabled */}
+                  {(customLabelsConfig.arrowLine !== false || customLabelsConfig.arrowHead !== false) && (
+                    <div>
+                      <Label className="text-xs font-medium">Arrow End Distance from Label</Label>
+                      <Slider
+                        value={[customLabelsConfig.arrowEndGap ?? 8]}
+                        onValueChange={([value]) => handleCustomLabelConfigUpdate("arrowEndGap", value)}
+                        max={30}
+                        min={0}
+                        step={1}
+                      />
+                      <div className="text-xs text-gray-500 mt-1">{customLabelsConfig.arrowEndGap ?? 8}px</div>
+                    </div>
+                  )}
+
+                  <div>
+                    <Label className="text-xs font-medium">Arrow Color</Label>
+                    <div className="flex gap-2 mt-1">
+                      <input
+                        type="color"
+                        value={customLabelsConfig.arrowColor || customLabelsConfig.calloutColor || "#333333"}
+                        onChange={(e) => handleCustomLabelConfigUpdate("arrowColor", e.target.value)}
+                        className="w-8 h-6 rounded border"
+                        disabled={customLabelsConfig.arrowLine === false && customLabelsConfig.arrowHead === false}
+                      />
+                      <Input
+                        value={customLabelsConfig.arrowColor || customLabelsConfig.calloutColor || "#333333"}
+                        onChange={(e) => handleCustomLabelConfigUpdate("arrowColor", e.target.value)}
+                        className="flex-1 h-6 text-xs"
+                        placeholder="#333333"
+                        disabled={customLabelsConfig.arrowLine === false && customLabelsConfig.arrowHead === false}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-blue-100 rounded border border-blue-300">
+                    <p className="text-xs text-blue-800 leading-relaxed">
+                      🎯 <strong>Interactive Callout:</strong> When enabled, you can click and drag the label in the chart to reposition it!
+                      <br />🔄 The arrow will automatically adjust as you drag.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <Label>Shape</Label>
                 <Select

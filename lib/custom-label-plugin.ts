@@ -23,6 +23,12 @@ export interface CustomLabel {
   draggable?: boolean;
   calloutX?: number;
   calloutY?: number;
+  // Enhanced arrow options
+  arrowLine?: boolean; // Show/hide the arrow line
+  arrowHead?: boolean; // Show/hide the arrow head
+  arrowColor?: string;
+  calloutOffset?: number;
+  arrowEndGap?: number; // Distance from label center to stop arrow
 }
 
 export interface CustomLabelPluginOptions {
@@ -60,8 +66,9 @@ export const customLabelPlugin: Plugin = {
             y = dragState[dragKey].y;
           } else if (x == null || y == null) {
             // Default callout position: offset from element
-            x = (element.x ?? 0) + shapeSize * 1.5;
-            y = (element.y ?? 0) - shapeSize * 1.5;
+            const offset = label.calloutOffset || shapeSize * 1.5;
+            x = (element.x ?? 0) + offset;
+            y = (element.y ?? 0) - offset;
           }
         }
         // If not absolute, calculate based on anchor
@@ -90,8 +97,9 @@ export const customLabelPlugin: Plugin = {
               x = centerX + Math.cos(midAngle) * r;
               y = centerY + Math.sin(midAngle) * r;
             } else if (anchor === 'callout') {
-              x = (element.x ?? 0) + shapeSize * 1.5;
-              y = (element.y ?? 0) - shapeSize * 1.5;
+              const offset = label.calloutOffset || shapeSize * 1.5;
+              x = (element.x ?? 0) + offset;
+              y = (element.y ?? 0) - offset;
             }
           } else if (chartType === 'bar' || chartType === 'horizontalBar') {
             // Robust horizontal bar detection: indexAxis === 'y' means horizontal
@@ -111,8 +119,9 @@ export const customLabelPlugin: Plugin = {
                 x = barStart + 8; // 8px inside the bar
                 y = element.y ?? 0;
               } else if (anchor === 'callout') {
-                x = (element.x ?? 0) + shapeSize * 1.5;
-                y = (element.y ?? 0) - shapeSize * 1.5;
+                const offset = label.calloutOffset || shapeSize * 1.5;
+                x = (element.x ?? 0) + offset;
+                y = (element.y ?? 0) - offset;
               }
             } else {
               if (anchor === 'center') {
@@ -128,8 +137,9 @@ export const customLabelPlugin: Plugin = {
                 // Just inside the bottom of the bar
                 y = (element.base ?? 0) - 8;
               } else if (anchor === 'callout') {
-                x = (element.x ?? 0) + shapeSize * 1.5;
-                y = (element.y ?? 0) - shapeSize * 1.5;
+                const offset = label.calloutOffset || shapeSize * 1.5;
+                x = (element.x ?? 0) + offset;
+                y = (element.y ?? 0) - offset;
               }
             }
           } else if (chartType === 'line' || chartType === 'area' || chartType === 'scatter' || chartType === 'bubble') {
@@ -142,8 +152,9 @@ export const customLabelPlugin: Plugin = {
             } else if (anchor === 'bottom') {
               y = (element.y ?? 0) + 12;
             } else if (anchor === 'callout') {
-              x = (element.x ?? 0) + shapeSize * 1.5;
-              y = (element.y ?? 0) - shapeSize * 1.5;
+              const offset = label.calloutOffset || shapeSize * 1.5;
+              x = (element.x ?? 0) + offset;
+              y = (element.y ?? 0) - offset;
             }
           } else if (chartType === 'radar') {
             // Radar chart
@@ -155,8 +166,9 @@ export const customLabelPlugin: Plugin = {
             } else if (anchor === 'bottom') {
               y = (element.y ?? 0) + 12;
             } else if (anchor === 'callout') {
-              x = (element.x ?? 0) + shapeSize * 1.5;
-              y = (element.y ?? 0) - shapeSize * 1.5;
+              const offset = label.calloutOffset || shapeSize * 1.5;
+              x = (element.x ?? 0) + offset;
+              y = (element.y ?? 0) - offset;
             }
           } else {
             // Line, scatter, etc.
@@ -164,17 +176,76 @@ export const customLabelPlugin: Plugin = {
             y = element.y ?? 0;
           }
         }
-        // --- Draw callout arrow if needed ---
-        if (anchor === 'callout' && label.callout) {
+        
+        // --- Draw enhanced callout arrow if needed ---
+        if (anchor === 'callout' && label.callout && (label.arrowLine || label.arrowHead)) {
           ctx.save();
-          ctx.strokeStyle = label.calloutColor || '#333';
+          ctx.strokeStyle = label.arrowColor || label.calloutColor || '#333';
           ctx.lineWidth = 2;
+          ctx.setLineDash([]);
+
+          // Calculate arrow path based on chart type
+          const chartType = (chart.config as any).type as string;
+          let startX = element.x ?? 0;
+          let startY = element.y ?? 0;
+
+          // Adjust start point for different chart types
+          if (chartType === "pie" || chartType === "doughnut" || chartType === "polarArea") {
+            const chartArea = chart.chartArea;
+            const centerX = chartArea.left + chartArea.width / 2;
+            const centerY = chartArea.top + chartArea.height / 2;
+            const angle = Math.atan2(startY - centerY, startX - centerX);
+            const radius = Math.min(chartArea.width, chartArea.height) / 2;
+            startX = centerX + Math.cos(angle) * radius;
+            startY = centerY + Math.sin(angle) * radius;
+          } else if (chartType === "bar") {
+            if (chart.options.indexAxis === "y") {
+              startX = element.x ?? 0;
+              startY = element.y ?? 0;
+            } else {
+              startX = element.x ?? 0;
+              startY = element.y ?? 0;
+            }
+          }
+
+          // Calculate the end point (label center) and apply arrowEndGap
+          let endX = x ?? 0;
+          let endY = y ?? 0;
+          const gap = label.arrowEndGap || 0;
+          if (gap > 0) {
+            const angle = Math.atan2(endY - startY, endX - startX);
+            endX = endX - gap * Math.cos(angle);
+            endY = endY - gap * Math.sin(angle);
+          }
+
+          // Draw the arrow line if enabled
+          if (label.arrowLine) {
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+          }
+
+          // Draw arrow head if enabled
+          if (label.arrowHead) {
+            const angle = Math.atan2((endY) - startY, (endX) - startX);
+            const arrowLength = 12;
           ctx.beginPath();
-          ctx.moveTo(element.x ?? 0, element.y ?? 0);
-          ctx.lineTo(x ?? 0, y ?? 0);
+            ctx.moveTo(endX, endY);
+            ctx.lineTo(
+              endX - arrowLength * Math.cos(angle - Math.PI / 6),
+              endY - arrowLength * Math.sin(angle - Math.PI / 6),
+            );
+            ctx.moveTo(endX, endY);
+            ctx.lineTo(
+              endX - arrowLength * Math.cos(angle + Math.PI / 6),
+              endY - arrowLength * Math.sin(angle + Math.PI / 6),
+            );
           ctx.stroke();
+          }
           ctx.restore();
         }
+        
         // --- Draw shape/background ---
         if (label.shape !== 'none' && label.shape !== undefined) {
           ctx.save();
@@ -255,8 +326,9 @@ export const customLabelPlugin: Plugin = {
           } else {
             const meta = chart.getDatasetMeta(datasetIdx);
             const element = meta.data[pointIdx];
-            lx = (element.x ?? 0) + shapeSize * 1.5;
-            ly = (element.y ?? 0) - shapeSize * 1.5;
+            const offset = label.calloutOffset || shapeSize * 1.5;
+            lx = (element.x ?? 0) + offset;
+            ly = (element.y ?? 0) - offset;
           }
           // Hit test (circle)
           if (Math.hypot(x - lx, y - ly) < shapeSize / 1.5) {

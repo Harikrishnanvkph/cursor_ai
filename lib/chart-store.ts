@@ -75,7 +75,8 @@ interface PointImageConfig {
   borderWidth?: number            // Border width around image (callout mode)
   borderColor?: string            // Border color around image (callout mode)
   fillBar?: boolean               // Fill entire bar with image (bar charts only)
-  imageFit?: string               // 'fill' | 'cover' | 'contain' (for fillBar mode)
+  fillSlice?: boolean             // Fill entire slice with image (pie/doughnut/polar charts only)
+  imageFit?: string               // 'fill' | 'cover' | 'contain' (for fillBar/fillSlice mode)
   calloutX?: number               // Stored X position for callout dragging
   calloutY?: number               // Stored Y position for callout dragging
   offset?: number                 // Default offset for callout positioning
@@ -117,7 +118,7 @@ export interface ExtendedChartData extends Omit<ChartData, "datasets"> {
 type CustomChartType = 'stackedBar' | 'area';
 
 // Define supported chart types as a union of Chart.js types and our custom types
-type ChartType = 
+type SupportedChartTypeLocal = 
   | 'bar' 
   | 'line' 
   | 'scatter' 
@@ -128,10 +129,10 @@ type ChartType =
   | 'radar' 
   | 'horizontalBar';
 
-export type SupportedChartType = ChartType | CustomChartType;
+export type SupportedChartType = SupportedChartTypeLocal | CustomChartType;
 
 // Create a mapping from our chart types to Chart.js chart types
-export const chartTypeMapping: Record<SupportedChartType, ChartType> = {
+export const chartTypeMapping: Record<SupportedChartType, keyof ChartTypeRegistry> = {
   bar: 'bar',
   line: 'line',
   scatter: 'scatter',
@@ -1085,8 +1086,12 @@ function renderCalloutImage(
   if (config.calloutX === undefined) config.calloutX = calloutX
   if (config.calloutY === undefined) config.calloutY = calloutY
 
-  // Draw arrow line if enabled
-  if (config.arrow) {
+  // Draw arrow line and head if enabled
+  const arrowLine = config.arrowLine !== false
+  const arrowHead = config.arrowHead !== false
+  const gap = config.arrowEndGap ?? 8
+
+  if (arrowLine || arrowHead) {
     ctx.strokeStyle = config.arrowColor || "#666"
     ctx.lineWidth = 2
     ctx.setLineDash([])
@@ -1098,14 +1103,12 @@ function renderCalloutImage(
 
     // Adjust start point for different chart types
     if (chartType === "pie" || chartType === "doughnut" || chartType === "polarArea") {
-      // For circular charts, start from the edge of the slice
       const angle = Math.atan2(pointY - chart.chartArea.top - chart.chartArea.height / 2, 
                              pointX - chart.chartArea.left - chart.chartArea.width / 2)
       const radius = Math.min(chart.chartArea.width, chart.chartArea.height) / 2
       startX = chart.chartArea.left + chart.chartArea.width / 2 + Math.cos(angle) * radius
       startY = chart.chartArea.top + chart.chartArea.height / 2 + Math.sin(angle) * radius
     } else if (chartType === "bar") {
-      // For bar charts, start from the top of the bar
       if (chart.config.options?.indexAxis === "y") {
         startX = pointX
         startY = pointY
@@ -1115,27 +1118,40 @@ function renderCalloutImage(
       }
     }
 
+    // Calculate the end point (image center) and apply arrowEndGap
+    let endX = calloutX
+    let endY = calloutY
+    if (gap > 0) {
+      const angle = Math.atan2(endY - startY, endX - startX)
+      endX = endX - gap * Math.cos(angle)
+      endY = endY - gap * Math.sin(angle)
+    }
+
+    // Draw the arrow line if enabled
+    if (arrowLine) {
     ctx.beginPath()
     ctx.moveTo(startX, startY)
-    ctx.lineTo(calloutX, calloutY)
+      ctx.lineTo(endX, endY)
     ctx.stroke()
+    }
 
-    // Draw arrow head
-    const angle = Math.atan2(calloutY - startY, calloutX - startX)
+    // Draw arrow head if enabled
+    if (arrowHead) {
+      const angle = Math.atan2(endY - startY, endX - startX)
     const arrowLength = 12
-
     ctx.beginPath()
-    ctx.moveTo(calloutX, calloutY)
+      ctx.moveTo(endX, endY)
     ctx.lineTo(
-      calloutX - arrowLength * Math.cos(angle - Math.PI / 6),
-      calloutY - arrowLength * Math.sin(angle - Math.PI / 6),
+        endX - arrowLength * Math.cos(angle - Math.PI / 6),
+        endY - arrowLength * Math.sin(angle - Math.PI / 6),
     )
-    ctx.moveTo(calloutX, calloutY)
+      ctx.moveTo(endX, endY)
     ctx.lineTo(
-      calloutX - arrowLength * Math.cos(angle + Math.PI / 6),
-      calloutY - arrowLength * Math.sin(angle + Math.PI / 6),
+        endX - arrowLength * Math.cos(angle + Math.PI / 6),
+        endY - arrowLength * Math.sin(angle + Math.PI / 6),
     )
     ctx.stroke()
+    }
   }
 
   // Get image type/shape from config (default to circle)
@@ -1233,6 +1249,12 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: n
 
 // Render image for pie/doughnut/polarArea charts
 function renderSliceImage(ctx: any, element: any, img: any, config: any) {
+  // Check if this is a fill slice request
+  if (config.fillSlice) {
+    renderSliceFillImage(ctx, element, img, config);
+    return;
+  }
+
   const size = config.size || 30
   const chart = element._chart || element.chart
   const chartArea = chart.chartArea
@@ -1277,6 +1299,160 @@ function renderSliceImage(ctx: any, element: any, img: any, config: any) {
   }
 
   drawImageWithClipping(ctx, x - size / 2, y - size / 2, size, size, img, config.type)
+}
+
+function renderSliceFillImage(ctx: any, element: any, img: any, config: any) {
+  const chart = element._chart || element.chart
+  const chartArea = chart.chartArea
+  const centerX = chartArea.left + chartArea.width / 2
+  const centerY = chartArea.top + chartArea.height / 2
+
+  // Get slice geometry
+  const startAngle = element.startAngle || 0
+  const endAngle = element.endAngle || 0
+  const innerRadius = element.innerRadius || 0
+  const outerRadius = element.outerRadius || Math.min(chartArea.width, chartArea.height) / 2
+
+  // Save context for clipping
+  ctx.save()
+
+  // Create clipping path for the slice
+  ctx.beginPath()
+  if (innerRadius > 0) {
+    ctx.arc(centerX, centerY, outerRadius, startAngle, endAngle)
+    ctx.lineTo(centerX + Math.cos(endAngle) * innerRadius, centerY + Math.sin(endAngle) * innerRadius)
+    ctx.arc(centerX, centerY, innerRadius, endAngle, startAngle, true)
+    ctx.closePath()
+  } else {
+    ctx.moveTo(centerX, centerY)
+    ctx.arc(centerX, centerY, outerRadius, startAngle, endAngle)
+    ctx.closePath()
+  }
+  ctx.clip()
+
+  const imageFit = config.imageFit || 'cover'
+  if (imageFit === 'contain') {
+    // --- Mathematically correct: largest rectangle fully inside the sector ---
+    const sliceAngle = Math.abs(endAngle - startAngle)
+    const imgAspect = img.width / img.height
+    let best = { area: 0, x: 0, y: 0, w: 0, h: 0 }
+    const angleSteps = 30
+    const radiusSteps = 30
+    for (let ai = 0; ai <= angleSteps; ai++) {
+      const fracA = ai / angleSteps
+      const theta = startAngle + fracA * (endAngle - startAngle)
+      for (let ri = 0; ri <= radiusSteps; ri++) {
+        const fracR = ri / radiusSteps
+        const r = innerRadius + fracR * (outerRadius - innerRadius)
+        // Binary search for max width
+        let low = 0, high = outerRadius - innerRadius, maxW = 0, maxH = 0
+        for (let iter = 0; iter < 10; iter++) {
+          const mid = (low + high) / 2
+          let w, h
+          if (imgAspect > 1) {
+            w = mid
+            h = w / imgAspect
+          } else {
+            h = mid
+            w = h * imgAspect
+          }
+          // Rectangle corners in cartesian
+          const corners = [
+            { dx: -w/2, dy: -h/2 },
+            { dx: w/2, dy: -h/2 },
+            { dx: w/2, dy: h/2 },
+            { dx: -w/2, dy: h/2 },
+          ].map(({dx,dy}) => {
+            // Place center at (cx,cy)
+            const cx = centerX + Math.cos(theta) * r
+            const cy = centerY + Math.sin(theta) * r
+            return { x: cx + dx, y: cy + dy }
+          })
+          // Check all corners are inside the sector
+          const allInside = corners.every(({x, y}) => {
+            const relX = x - centerX
+            const relY = y - centerY
+            const rad = Math.sqrt(relX*relX + relY*relY)
+            let ang = Math.atan2(relY, relX)
+            if (ang < 0) ang += 2 * Math.PI
+            let sA = startAngle, eA = endAngle
+            if (sA < 0) sA += 2 * Math.PI
+            if (eA < 0) eA += 2 * Math.PI
+            if (eA < sA) eA += 2 * Math.PI
+            if (ang < sA) ang += 2 * Math.PI
+            return (
+              rad >= innerRadius - 0.5 && rad <= outerRadius + 0.5 &&
+              ang >= sA - 1e-6 && ang <= eA + 1e-6
+            )
+          })
+          if (allInside) {
+            maxW = w; maxH = h; low = mid
+          } else {
+            high = mid
+          }
+        }
+        if (maxW > 0 && maxH > 0 && maxW * maxH > best.area) {
+          // Place center at (cx,cy)
+          const cx = centerX + Math.cos(theta) * r
+          const cy = centerY + Math.sin(theta) * r
+          best = { area: maxW * maxH, x: cx - maxW/2, y: cy - maxH/2, w: maxW, h: maxH }
+        }
+      }
+    }
+    if (best.area > 0) {
+      ctx.drawImage(img, best.x, best.y, best.w, best.h)
+    }
+  } else {
+    // --- Calculate the bounding box for the current slice only ---
+    const points = []
+    const steps = 100 // More steps = more accurate bounding box
+    for (let i = 0; i <= steps; i++) {
+      const angle = startAngle + (endAngle - startAngle) * (i / steps)
+      points.push([
+        centerX + Math.cos(angle) * outerRadius,
+        centerY + Math.sin(angle) * outerRadius
+      ])
+      if (innerRadius > 0) {
+        points.push([
+          centerX + Math.cos(angle) * innerRadius,
+          centerY + Math.sin(angle) * innerRadius
+        ])
+      }
+    }
+    const xs = points.map(p => p[0])
+    const ys = points.map(p => p[1])
+    const minX = Math.min(...xs)
+    const maxX = Math.max(...xs)
+    const minY = Math.min(...ys)
+    const maxY = Math.max(...ys)
+    const sliceWidth = maxX - minX
+    const sliceHeight = maxY - minY
+    let drawX = minX
+    let drawY = minY
+    let drawWidth = sliceWidth
+    let drawHeight = sliceHeight
+    if (imageFit === 'fill') {
+      drawX = minX
+      drawY = minY
+      drawWidth = sliceWidth
+      drawHeight = sliceHeight
+    } else {
+      // cover (default)
+      const imgAspect = img.width / img.height
+      const sliceAspect = sliceWidth / sliceHeight
+      if (imgAspect > sliceAspect) {
+        drawHeight = sliceHeight
+        drawWidth = sliceHeight * imgAspect
+        drawX = minX + (sliceWidth - drawWidth) / 2
+      } else {
+        drawWidth = sliceWidth
+        drawHeight = sliceWidth / imgAspect
+        drawY = minY + (sliceHeight - drawHeight) / 2
+      }
+    }
+    ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight)
+  }
+  ctx.restore()
 }
 
 // Define the return type for getImageOptionsForChartType
@@ -1353,7 +1529,10 @@ export const getImageOptionsForChartType = (chartType: SupportedChartType): Imag
     case 'doughnut':
     case 'polarArea':
       return {
-        types: [{ value: "circle", label: "Circle" }],
+        types: [
+          { value: "circle", label: "Circle" },
+          { value: "square", label: "Square" },
+        ],
         positions: [
           { value: "center", label: "Center" },
           { value: "above", label: "Above" },
@@ -1361,6 +1540,7 @@ export const getImageOptionsForChartType = (chartType: SupportedChartType): Imag
           { value: "callout", label: "Callout with Arrow" },
         ],
         supportsArrow: true,
+        supportsFill: true,
       }
     default:
       return {
@@ -1418,6 +1598,9 @@ export const getDefaultImageConfig = (chartType: SupportedChartType): PointImage
     borderWidth: 3,
     borderColor: "#ffffff",
     offset: 40,
+    fillSlice: false,
+    fillBar: false,
+    imageFit: 'cover',
   }
 }
 
@@ -1460,8 +1643,10 @@ export const useChartStore = create<ChartStore>()(
             newDataset.type = 'bar';
           } else if (type === ('area' as CustomChartType)) {
             newDataset.type = 'line'; // 'area' is a 'line' chart for Chart.js
+          } else if (type === 'stackedBar') {
+            newDataset.type = 'bar'; // 'stackedBar' is a 'bar' chart for Chart.js
           } else {
-            newDataset.type = type; // Covers 'line', 'scatter', 'bubble', 'pie', etc.
+            newDataset.type = type as keyof ChartTypeRegistry; // Covers 'line', 'scatter', 'bubble', 'pie', etc.
           }
 
           // Set the fill property based on the original requested type

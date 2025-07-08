@@ -163,7 +163,13 @@ export function SliceSettings({ className }: SliceSettingsProps) {
     
     const currentConfig = currentDataset.pointImageConfig?.[pointIndex] || getDefaultImageConfig(chartType)
     const imageUrl = currentDataset.pointImages?.[pointIndex] || null
-    updatePointImage(datasetIndex, pointIndex, imageUrl, { ...currentConfig, [key]: value })
+    
+    // If arrowLine is being unchecked, also uncheck arrowHead
+    if (key === 'arrowLine' && value === false) {
+      updatePointImage(datasetIndex, pointIndex, imageUrl, { ...currentConfig, [key]: value, arrowHead: false })
+    } else {
+      updatePointImage(datasetIndex, pointIndex, imageUrl, { ...currentConfig, [key]: value })
+    }
   }
 
   const openImageModal = (sliceIndex: number) => {
@@ -256,7 +262,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
     return (
       <div className="flex items-center justify-center p-8 text-center">
         <div className="space-y-2">
-          <p className="text-sm font-medium text-gray-900">No Dataset Available</p>
+          <p className="text-[0.80rem] font-medium text-gray-900">No Dataset Available</p>
           <p className="text-xs text-gray-500">Please add a dataset first to manage slices.</p>
         </div>
       </div>
@@ -269,7 +275,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
       <div className="space-y-3">
         <div className="flex items-center gap-2 pb-1 border-b">
           <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-          <h3 className="text-sm font-semibold text-gray-900">Data & Labels</h3>
+          <h3 className="text-[0.80rem] font-semibold text-gray-900">Data & Labels</h3>
           <button
             onClick={() => setDataDropdownOpen(!dataDropdownOpen)}
             className="ml-auto p-1 hover:bg-gray-100 rounded transition-colors"
@@ -293,7 +299,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
         
         <div className="bg-blue-50 rounded-lg p-3 space-y-3">
           <div className="flex items-center justify-between">
-            <Label className="text-sm font-medium text-blue-900">
+            <Label className="text-[0.80rem] font-medium text-blue-900">
               {currentDataset.data.length} Data Point{currentDataset.data.length !== 1 ? 's' : ''}
             </Label>
             <Button 
@@ -348,7 +354,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                         value={currentSliceLabels[pointIndex] || ''}
                         onChange={(e) => handleLabelChange(pointIndex, e.target.value)}
                         disabled={chartMode === 'grouped'}
-                        className="w-full h-10 px-3 rounded border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-sm font-normal transition disabled:bg-gray-100 disabled:text-gray-500"
+                        className="w-full h-10 px-3 rounded border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-[0.80rem] font-normal transition disabled:bg-gray-100 disabled:text-gray-500"
                         placeholder={`Name ${pointIndex + 1}`}
                       />
                     </div>
@@ -360,14 +366,14 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                             type="number"
                             value={typeof dataPoint === 'object' && dataPoint?.x !== undefined ? dataPoint.x : ''}
                             onChange={(e) => handleDataPointUpdate(pointIndex, e.target.value, 'x')}
-                            className="w-1/2 h-10 px-3 rounded border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-sm font-normal transition"
+                            className="w-1/2 h-10 px-3 rounded border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-[0.80rem] font-normal transition"
                             placeholder="X"
                           />
                           <input
                             type="number"
                             value={typeof dataPoint === 'object' && dataPoint?.y !== undefined ? dataPoint.y : typeof dataPoint === 'number' ? dataPoint : ''}
                             onChange={(e) => handleDataPointUpdate(pointIndex, e.target.value, 'y')}
-                            className="w-1/2 h-10 px-3 rounded border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-sm font-normal transition"
+                            className="w-1/2 h-10 px-3 rounded border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-[0.80rem] font-normal transition"
                             placeholder="Y"
                           />
                         </div>
@@ -376,7 +382,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                           type="number"
                           value={typeof dataPoint === 'number' ? dataPoint : ''}
                           onChange={(e) => handleDataPointUpdate(pointIndex, e.target.value)}
-                          className="w-full h-10 px-3 rounded border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-sm font-normal transition"
+                          className="w-full h-10 px-3 rounded border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-[0.80rem] font-normal transition"
                           placeholder="Value"
                         />
                       )}
@@ -397,7 +403,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
       <div className="space-y-3">
         <div className="flex items-center gap-2 pb-1 border-b">
           <div className="w-2 h-2 bg-pink-600 rounded-full"></div>
-          <h3 className="text-sm font-semibold text-gray-900">Individual Colors</h3>
+          <h3 className="text-[0.80rem] font-semibold text-gray-900">Individual Colors</h3>
           <button
             onClick={() => setColorsDropdownOpen(!colorsDropdownOpen)}
             className="ml-auto p-1 hover:bg-gray-100 rounded transition-colors"
@@ -421,7 +427,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
         
         <div className="bg-pink-50 rounded-lg p-3 space-y-3">
           <div className="flex items-center justify-between">
-            <Label className="text-sm font-medium">Slice Colors</Label>
+            <Label className="text-[0.80rem] font-medium">Slice Colors</Label>
             <Button size="sm" className="h-7 text-xs bg-pink-600 hover:bg-pink-700">
               <Palette className="h-3 w-3 mr-1" />
               Randomize
@@ -492,7 +498,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
         <div className="space-y-3">          
           <div className="bg-green-50 rounded-lg p-3 space-y-3">            
             <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">Individual Point Images</Label>
+              <Label className="text-[0.80rem] font-medium">Individual Point Images</Label>
               <Button
                 size="sm"
                 variant="outline"
@@ -645,35 +651,74 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                           </Select>
                         </div>
 
-                        {imageOptions.supportsArrow && (
-                          <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1">
-                            <Label className="text-xs font-medium">Enable Arrow</Label>
-                            <Switch
-                              defaultChecked={false}
-                              onCheckedChange={(checked) => handleImageConfigChange(pointIndex, 'arrow', checked)}
-                              className="data-[state=checked]:bg-green-600 block "
-                            />
+                        {/* Callout Arrow Controls */}
+                        {imageOptions.supportsArrow && imageConfig.position === 'callout' && (
+                          <div className="space-y-2 p-2 bg-blue-50 rounded border border-blue-200 mt-2">
+                            <Label className="text-xs font-medium text-green-800">Arrow/Callout Settings</Label>
+                            <div className="flex items-center space-x-3">
+                              <Switch
+                                checked={imageConfig.arrowLine !== false}
+                                onCheckedChange={(checked) => handleImageConfigChange(pointIndex, 'arrowLine', checked)}
+                              />
+                              <Label className="text-xs font-medium">Arrow Line</Label>
+                            </div>
+                            <div className="flex items-center space-x-3">
+                              <Switch
+                                checked={imageConfig.arrowHead !== false}
+                                onCheckedChange={(checked) => handleImageConfigChange(pointIndex, 'arrowHead', checked)}
+                                disabled={imageConfig.arrowLine === false}
+                              />
+                              <Label className="text-xs font-medium">Arrow Head</Label>
+                            </div>
+                            {(imageConfig.arrowLine !== false || imageConfig.arrowHead !== false) && (
+                              <div>
+                                <Label className="text-xs font-medium">Arrow End Distance from Image</Label>
+                                <div className="flex gap-2 mt-1">
+                                  <Input
+                                    type="number"
+                                    value={imageConfig.arrowEndGap ?? 8}
+                                    className="h-7 text-xs flex-1"
+                                    placeholder="8"
+                                    min={0}
+                                    max={30}
+                                    step={1}
+                                    onChange={(e) => handleImageConfigChange(pointIndex, 'arrowEndGap', parseInt(e.target.value))}
+                                  />
+                                  <span className="text-xs text-gray-500 self-center">px</span>
+                                </div>
+                              </div>
+                            )}
+                            {imageConfig.arrowLine !== false && (
+                              <div className="space-y-1">
+                                <Label className="text-xs font-medium">Arrow Color</Label>
+                                <Input
+                                  type="color"
+                                  value={imageConfig.arrowColor || '#666666'}
+                                  className="h-7 w-full"
+                                  onChange={(e) => handleImageConfigChange(pointIndex, 'arrowColor', e.target.value)}
+                                />
+                              </div>
+                            )}
                           </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs font-medium">Arrow Color</Label>
-                            <Input
-                              type="color"
-                              defaultValue="#666666"
-                              className="h-8 w-full"
-                              onChange={(e) => handleImageConfigChange(pointIndex, 'arrowColor', e.target.value)}
-                            />
-                          </div>
-                        </div>
                         )}
 
                         {imageOptions.supportsFill && (
                           <>
                             <div className="flex items-center justify-between">
-                              <Label className="text-xs font-medium">Fill Bar</Label>
+                              <Label className="text-xs font-medium">
+                                {['pie', 'doughnut', 'polarArea'].includes(chartType) ? 'Fill Slice' : 'Fill Bar'}
+                              </Label>
                               <Switch
-                                checked={imageConfig.fillBar || false}
-                                onCheckedChange={(checked) => handleImageConfigChange(pointIndex, 'fillBar', checked)}
+                                checked={['pie', 'doughnut', 'polarArea'].includes(chartType) 
+                                  ? (imageConfig.fillSlice || false) 
+                                  : (imageConfig.fillBar || false)}
+                                onCheckedChange={(checked) => {
+                                  if (['pie', 'doughnut', 'polarArea'].includes(chartType)) {
+                                    handleImageConfigChange(pointIndex, 'fillSlice', checked)
+                                  } else {
+                                    handleImageConfigChange(pointIndex, 'fillBar', checked)
+                                  }
+                                }}
                                 className="data-[state=checked]:bg-green-600"
                               />
                             </div>
@@ -685,6 +730,9 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                                   size="sm"
                                   className={`h-7 text-xs ${imageConfig.imageFit === 'fill' ? 'bg-green-100 border-green-400' : ''}`}
                                   onClick={() => handleImageConfigChange(pointIndex, 'imageFit', 'fill')}
+                                  disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ? 
+                                    imageConfig.fillSlice : 
+                                    imageConfig.fillBar)}
                                 >
                                   <Maximize2 className="h-3 w-3 mr-1" />
                                   Fill
@@ -694,6 +742,9 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                                   size="sm"
                                   className={`h-7 text-xs ${imageConfig.imageFit === 'cover' ? 'bg-green-100 border-green-400' : ''}`}
                                   onClick={() => handleImageConfigChange(pointIndex, 'imageFit', 'cover')}
+                                  disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ? 
+                                    imageConfig.fillSlice : 
+                                    imageConfig.fillBar)}
                                 >
                                   <Crop className="h-3 w-3 mr-1" />
                                   Cover
@@ -703,6 +754,9 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                                   size="sm"
                                   className={`h-7 text-xs ${imageConfig.imageFit === 'contain' ? 'bg-green-100 border-green-400' : ''}`}
                                   onClick={() => handleImageConfigChange(pointIndex, 'imageFit', 'contain')}
+                                  disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ? 
+                                    imageConfig.fillSlice : 
+                                    imageConfig.fillBar)}
                                 >
                                   <Grid className="h-3 w-3 mr-1" />
                                   Contain
@@ -764,7 +818,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
     <div className="space-y-4">
       {/* Dataset Selection */}
       <div className="space-y-2">
-        <Label className="text-sm font-medium">Select Dataset to Edit</Label>
+        <Label className="text-[0.80rem] font-medium">Select Dataset to Edit</Label>
         <Select value={String(selectedDatasetIndex)} onValueChange={(value) => handleDatasetChange(Number(value))}>
           <SelectTrigger className="h-9">
             <SelectValue />
@@ -801,7 +855,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            className={`px-4 py-2 text-[0.80rem] font-medium border-b-2 transition-colors ${
               activeTab === tab.id
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -824,7 +878,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
             <DialogTitle>Configure Point Image</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-sm text-gray-600">
+            <p className="text-[0.80rem] text-gray-600">
               Advanced image configuration options for point #{selectedSliceIndex !== null ? selectedSliceIndex + 1 : 0} will be available here.
             </p>
           </div>
@@ -846,7 +900,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
               <input
                 value={newPointName}
                 onChange={e => setNewPointName(e.target.value)}
-                className="w-full h-9 px-3 rounded border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-sm font-normal transition"
+                className="w-full h-9 px-3 rounded border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-[0.80rem] font-normal transition"
                 placeholder="Name"
               />
             </div>
@@ -856,7 +910,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                 type="number"
                 value={newPointValue}
                 onChange={e => setNewPointValue(e.target.value)}
-                className="w-full h-9 px-3 rounded border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-sm font-normal transition"
+                className="w-full h-9 px-3 rounded border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-[0.80rem] font-normal transition"
                 placeholder="Value"
               />
             </div>

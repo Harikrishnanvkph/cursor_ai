@@ -54,6 +54,7 @@ import {
   ArrowRight,
 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogClose } from "@/components/ui/dialog"
+import { Slider } from "@/components/ui/slider"
 
 interface DatasetSettingsProps {
   className?: string
@@ -80,8 +81,8 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
   
   const [activeTab, setActiveTab] = useState<DatasetTab>('general')
   const [datasetsDropdownOpen, setDatasetsDropdownOpen] = useState(false)
-  const [stylingDropdownOpen, setStylingDropdownOpen] = useState(false)
-  const [colorsDropdownOpen, setColorsDropdownOpen] = useState(false)
+  const [stylingDropdownOpen, setStylingDropdownOpen] = useState(true)
+  const [colorsDropdownOpen, setColorsDropdownOpen] = useState(true)
   const [imagesDropdownOpen, setImagesDropdownOpen] = useState(false)
   const [advancedDropdownOpen, setAdvancedDropdownOpen] = useState(false)
   const [selectedImageType, setSelectedImageType] = useState('circle')
@@ -101,7 +102,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
   const [newDatasetChartType, setNewDatasetChartType] = useState('bar')
   const [colorMode, setColorMode] = useState<'slice' | 'dataset'>('slice');
 
-  const supportedChartTypes = [
+  const supportedChartTypes: { value: import("@/lib/chart-store").SupportedChartType; label: string }[] = [
     { value: 'bar', label: 'Bar' },
     { value: 'line', label: 'Line' },
     { value: 'scatter', label: 'Scatter' },
@@ -351,9 +352,9 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     <div className="space-y-4">
       {/* Chart Mode Section */}
       <div className="mb-4">
-        <div className="font-semibold text-sm mb-2">Chart Mode</div>
+        <div className="font-semibold text-[0.80rem] mb-2">Chart Mode</div>
         <div className="flex items-center gap-6 bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 shadow-sm">
-          <label className={`flex items-center gap-2 cursor-pointer transition-colors text-sm ${chartMode === 'single' ? 'text-blue-700 font-bold' : 'text-gray-500'}`}> 
+                      <label className={`flex items-center gap-2 cursor-pointer transition-colors text-[0.80rem] ${chartMode === 'single' ? 'text-blue-700 font-bold' : 'text-gray-500'}`}> 
             <input
               type="radio"
               className="accent-blue-600"
@@ -363,7 +364,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
             <BarChart2 className="h-4 w-4" />
             Single
           </label>
-          <label className={`flex items-center gap-2 cursor-pointer transition-colors text-sm ${chartMode === 'grouped' ? 'text-blue-700 font-bold' : 'text-gray-500'}`}> 
+          <label className={`flex items-center gap-2 cursor-pointer transition-colors text-[0.80rem] ${chartMode === 'grouped' ? 'text-blue-700 font-bold' : 'text-gray-500'}`}> 
             <input
               type="radio"
               className="accent-blue-600"
@@ -379,9 +380,9 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
       {/* Uniformity Mode Section - Only for Grouped Mode */}
       {chartMode === 'grouped' && (
         <div className="mb-4">
-          <div className="font-semibold text-sm mb-2">Uniformity</div>
+          <div className="font-semibold text-[0.80rem] mb-2">Uniformity</div>
           <div className="flex items-center gap-6 bg-purple-50 border border-purple-100 rounded-lg px-4 py-3 shadow-sm">
-            <label className={`flex items-center gap-2 cursor-pointer transition-colors text-sm ${uniformityMode === 'uniform' ? 'text-purple-700 font-bold' : 'text-gray-500'}`}> 
+            <label className={`flex items-center gap-2 cursor-pointer transition-colors text-[0.80rem] ${uniformityMode === 'uniform' ? 'text-purple-700 font-bold' : 'text-gray-500'}`}> 
               <input
                 type="radio"
                 className="accent-purple-600"
@@ -391,7 +392,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
               <BarChart2 className="h-4 w-4" />
               Uniform
             </label>
-            <label className={`flex items-center gap-2 cursor-pointer transition-colors text-sm ${uniformityMode === 'mixed' ? 'text-purple-700 font-bold' : 'text-gray-500'} ${['pie', 'doughnut', 'radar', 'polarArea', 'scatter', 'bubble'].includes(chartType as any) ? 'opacity-50 cursor-not-allowed' : ''}`}> 
+            <label className={`flex items-center gap-2 cursor-pointer transition-colors text-[0.80rem] ${uniformityMode === 'mixed' ? 'text-purple-700 font-bold' : 'text-gray-500'} ${['pie', 'doughnut', 'radar', 'polarArea', 'scatter', 'bubble'].includes(chartType as any) ? 'opacity-50 cursor-not-allowed' : ''}`}> 
               <input
                 type="radio"
                 className="accent-purple-600"
@@ -418,7 +419,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
 
       {chartMode === 'single' && filteredDatasets.length > 0 && (
         <div className="space-y-2">
-          <Label className="text-sm font-medium">Active Dataset</Label>
+          <Label className="text-[0.80rem] font-medium">Active Dataset</Label>
           <Select value={String(activeDatasetIndex)} onValueChange={(value) => handleActiveDatasetChange(Number(value))}>
             <SelectTrigger className="h-9">
               <SelectValue />
@@ -438,7 +439,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
       <div className="space-y-3">
         <div className="flex items-center gap-2 pb-1 border-b">
           <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-          <h3 className="text-sm font-semibold text-gray-900">Datasets Management</h3>
+          <h3 className="text-[0.80rem] font-semibold text-gray-900">Datasets Management</h3>
           <button
             onClick={() => setDatasetsDropdownOpen(!datasetsDropdownOpen)}
             className="ml-auto p-1 hover:bg-gray-100 rounded transition-colors"
@@ -462,7 +463,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
         
         <div className="bg-green-50 rounded-lg p-3 space-y-3">
           <div className="flex items-center justify-between">
-            <Label className="text-sm font-medium text-green-900">
+            <Label className="text-[0.80rem] font-medium text-green-900">
               {filteredDatasets.length} Dataset{filteredDatasets.length !== 1 ? 's' : ''}
             </Label>
             <Button size="sm" onClick={() => handleOpenAddDatasetModal()} className="h-7 text-xs bg-green-600 hover:bg-green-700">
@@ -538,9 +539,9 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
             {/* Dataset Basic Info */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-gray-600 mb-1 block">Chart Type</label>
+                <label className="text-[0.80rem] font-medium text-gray-600 mb-1 block">Chart Type</label>
                 {chartMode === 'grouped' && uniformityMode === 'uniform' ? (
-                  <div className="w-full h-9 px-3 rounded border border-gray-200 bg-gray-50 flex items-center text-sm">
+                  <div className="w-full h-9 px-3 rounded border border-gray-200 bg-gray-50 flex items-center text-[0.80rem]">
                     <span className="text-gray-700">{chartType.charAt(0).toUpperCase() + chartType.slice(1)}</span>
                     <span className="text-xs text-gray-500 ml-2">(from Types & Toggles)</span>
                   </div>
@@ -558,11 +559,11 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                 )}
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-600 mb-1 block">Dataset Name <span className="text-red-500">*</span></label>
+                <label className="text-[0.80rem] font-medium text-gray-600 mb-1 block">Dataset Name <span className="text-red-500">*</span></label>
                 <input
                   value={newDatasetName}
                   onChange={e => setNewDatasetName(e.target.value)}
-                  className="w-full h-9 px-3 rounded border border-gray-200 focus:border-green-400 focus:ring-2 focus:ring-green-100 text-sm font-normal transition"
+                  className="w-full h-9 px-3 rounded border border-gray-200 focus:border-green-400 focus:ring-2 focus:ring-green-100 text-[0.80rem] font-normal transition"
                   placeholder="Enter dataset name"
                 />
                 {chartMode === 'grouped' && filteredDatasets.length > 0 && (
@@ -570,9 +571,9 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                 )}
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-600 mb-1 block">Mode</label>
+                <label className="text-[0.80rem] font-medium text-gray-600 mb-1 block">Mode</label>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-sm font-medium px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                  <span className="text-[0.80rem] font-medium px-2 py-1 bg-blue-100 text-blue-800 rounded">
                     {chartMode === 'single' ? 'Single' : 'Grouped'}
                   </span>
                 </div>
@@ -582,7 +583,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
             {/* Slices Management */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-gray-700">Slices ({newDatasetSlices.length})</label>
+                <label className="text-[0.80rem] font-medium text-gray-700">Slices ({newDatasetSlices.length})</label>
                 <div className="flex gap-2">
                   <Button 
                     size="sm" 
@@ -736,7 +737,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
       <div className="space-y-3">
         <div className="flex items-center gap-2 pb-1 border-b">
           <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
-          <h3 className="text-sm font-semibold text-gray-900">Border Styling</h3>
+          <h3 className="text-[0.80rem] font-semibold text-gray-900">Border Styling</h3>
           <button
             onClick={() => setStylingDropdownOpen(!stylingDropdownOpen)}
             className="ml-auto p-1 hover:bg-gray-100 rounded transition-colors"
@@ -977,7 +978,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
         <div className="space-y-3">
           <div className="flex items-center gap-2 pb-1 border-b">
             <div className="w-2 h-2 bg-pink-600 rounded-full"></div>
-            <h3 className="text-sm font-semibold text-gray-900">Color Palettes</h3>
+            <h3 className="text-[0.80rem] font-semibold text-gray-900">Color Palettes</h3>
             <button
               onClick={() => setColorsDropdownOpen(!colorsDropdownOpen)}
               className="ml-auto p-1 hover:bg-gray-100 rounded transition-colors"
@@ -1130,7 +1131,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
       <div className="space-y-3">
         <div className="flex items-center gap-2 pb-1 border-b">
           <div className="w-2 h-2 bg-orange-600 rounded-full"></div>
-          <h3 className="text-sm font-semibold text-gray-900">Animations</h3>
+          <h3 className="text-[0.80rem] font-semibold text-gray-900">Animations</h3>
           <button
             onClick={() => setAdvancedDropdownOpen(!advancedDropdownOpen)}
             className="ml-auto p-1 hover:bg-gray-100 rounded transition-colors"
@@ -1382,7 +1383,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
         <div className="space-y-3">
           <div className="flex items-center gap-2 pb-1 border-b">
             <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
-            <h3 className="text-sm font-semibold text-gray-900">Global Settings</h3>
+            <h3 className="text-[0.80rem] font-semibold text-gray-900">Global Settings</h3>
           </div>
           
           <div className="bg-purple-50 rounded-lg p-3 space-y-3">
@@ -1391,7 +1392,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                 <div className="flex-1">
                   <Label className="text-xs font-medium text-purple-800">Image URL</Label>
                   <Input
-                    value={imageUploadUrl}
+                    value={imageUploadUrl || ''}
                     onChange={(e) => setImageUploadUrl(e.target.value)}
                     placeholder="https://example.com/image.png"
                     className="h-8 text-xs mt-1"
@@ -1497,64 +1498,98 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                 </Select>
               </div>
 
-              {imageOptions.supportsArrow && (
+              {imageOptions.supportsArrow && chartData.datasets[activeDatasetIndex]?.pointImageConfig?.[0]?.position === 'callout' && (
                 <div className="space-y-3">
+                    {/* Arrow/Callout Settings */}
                 <Label className="text-xs font-medium text-purple-800">Arrow/Callout Settings</Label>
+                    {/* Border controls */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-xs font-medium">Enable Arrow</Label>
+                        <Label className="text-xs font-medium">Border Width</Label>
+                        <Input
+                          type="number"
+                          value={chartData.datasets[activeDatasetIndex]?.pointImageConfig?.[0]?.borderWidth || 3}
+                          className="h-8 text-xs"
+                          placeholder="3"
+                          min={0}
+                          max={10}
+                          step={1}
+                          onChange={(e) => handleGlobalImageConfigChange('borderWidth', parseInt(e.target.value))}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs font-medium">Border Color</Label>
+                        <Input
+                          type="color"
+                          value={chartData.datasets[activeDatasetIndex]?.pointImageConfig?.[0]?.borderColor || '#ffffff'}
+                          className="h-8 w-full"
+                          onChange={(e) => handleGlobalImageConfigChange('borderColor', e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    {/* Arrow toggles side by side */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex items-center space-x-2">
                     <Switch
-                      defaultChecked={false}
-                      onCheckedChange={(checked) => handleGlobalImageConfigChange('arrow', checked)}
-                      className="data-[state=checked]:bg-purple-600 block "
+                          checked={chartData.datasets[activeDatasetIndex]?.pointImageConfig?.[0]?.arrowLine !== false}
+                          onCheckedChange={(checked) => handleGlobalImageConfigChange('arrowLine', checked)}
                     />
+                        <Label className="text-xs font-medium">Show Arrow Line</Label>
                   </div>
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          checked={chartData.datasets[activeDatasetIndex]?.pointImageConfig?.[0]?.arrowHead !== false}
+                          onCheckedChange={(checked) => handleGlobalImageConfigChange('arrowHead', checked)}
+                          disabled={chartData.datasets[activeDatasetIndex]?.pointImageConfig?.[0]?.arrowLine === false}
+                        />
+                        <Label className="text-xs font-medium">Show Arrow Head</Label>
+                      </div>
+                    </div>
+                    {/* Arrow Color and Arrow to Image - only shown when Show Arrow Line is checked */}
+                    {chartData.datasets[activeDatasetIndex]?.pointImageConfig?.[0]?.arrowLine !== false && (
+                      <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs font-medium">Arrow Color</Label>
                     <Input
                       type="color"
-                      defaultValue="#666666"
+                            value={chartData.datasets[activeDatasetIndex]?.pointImageConfig?.[0]?.arrowColor || '#666666'}
                       className="h-8 w-full"
                       onChange={(e) => handleGlobalImageConfigChange('arrowColor', e.target.value)}
                     />
                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-xs font-medium">Border Width</Label>
+                          <Label className="text-xs font-medium">Arrow to Image</Label>
                     <Input
                       type="number"
-                      defaultValue="3"
+                            value={chartData.datasets[activeDatasetIndex]?.pointImageConfig?.[0]?.arrowEndGap ?? 8}
                       className="h-8 text-xs"
-                      placeholder="3"
+                            placeholder="8"
                       min={0}
-                      max={10}
+                            max={30}
                       step={1}
-                      onChange={(e) => handleGlobalImageConfigChange('borderWidth', parseInt(e.target.value))}
+                            onChange={(e) => handleGlobalImageConfigChange('arrowEndGap', parseInt(e.target.value))}
                     />
                   </div>
-                  
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium text-purple-800">Border Color</Label>
-                    <Input
-                      type="color"
-                      defaultValue="#ffffff"
-                      className="h-8 w-full"
-                      onChange={(e) => handleGlobalImageConfigChange('borderColor', e.target.value)}
-                    />
                   </div>
-                </div>
+                    )}
               </div>
               )}
 
               {imageOptions.supportsFill && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs font-medium text-purple-800">Fill Slice</Label>
+                    <Label className="text-xs font-medium text-purple-800">
+                      {['pie', 'doughnut', 'polarArea'].includes(chartType) ? 'Fill Slice' : 'Fill Bar'}
+                    </Label>
                     <Switch
                       defaultChecked={false}
-                      onCheckedChange={(checked) => handleGlobalImageConfigChange('fillBar', checked)}
+                      onCheckedChange={(checked) => {
+                        if (['pie', 'doughnut', 'polarArea'].includes(chartType)) {
+                          handleGlobalImageConfigChange('fillSlice', checked)
+                        } else {
+                          handleGlobalImageConfigChange('fillBar', checked)
+                        }
+                      }}
                       className="data-[state=checked]:bg-purple-600"
                     />
                   </div>
@@ -1567,6 +1602,9 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                         size="sm" 
                         className="h-8 text-xs"
                         onClick={() => handleGlobalImageConfigChange('imageFit', 'fill')}
+                        disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ? 
+                          chartData.datasets[activeDatasetIndex]?.pointImageConfig?.[0]?.fillSlice : 
+                          chartData.datasets[activeDatasetIndex]?.pointImageConfig?.[0]?.fillBar)}
                       >
                         <Maximize2 className="h-3 w-3 mr-1" />
                         Fill
@@ -1576,6 +1614,9 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                         size="sm" 
                         className="h-8 text-xs"
                         onClick={() => handleGlobalImageConfigChange('imageFit', 'cover')}
+                        disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ? 
+                          chartData.datasets[activeDatasetIndex]?.pointImageConfig?.[0]?.fillSlice : 
+                          chartData.datasets[activeDatasetIndex]?.pointImageConfig?.[0]?.fillBar)}
                       >
                         <Crop className="h-3 w-3 mr-1" />
                         Cover
@@ -1585,6 +1626,9 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                         size="sm" 
                         className="h-8 text-xs"
                         onClick={() => handleGlobalImageConfigChange('imageFit', 'contain')}
+                        disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ? 
+                          chartData.datasets[activeDatasetIndex]?.pointImageConfig?.[0]?.fillSlice : 
+                          chartData.datasets[activeDatasetIndex]?.pointImageConfig?.[0]?.fillBar)}
                       >
                         <Grid className="h-3 w-3 mr-1" />
                         Contain
@@ -1595,75 +1639,6 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
               )}
             </div>
             <div className="space-y-4 pt-3 border-t border-purple-200">
-                {/* Per-Point Image Configuration */}
-                {chartMode === 'single' && activeDatasetIndex !== -1 && (
-                  <div className="space-y-3">
-                    <Label className="text-xs font-medium text-purple-800">Individual Point Images</Label>
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {chartData.datasets[activeDatasetIndex].data.map((_, pointIndex) => (
-                        <div key={pointIndex} className="p-2 bg-white rounded border">
-                          <div className="flex items-center justify-between mb-2">
-                            <Label className="text-xs font-medium">Point {pointIndex + 1}</Label>
-                            <div className="flex gap-1">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-6 w-6 p-0"
-                                onClick={() => fileInputRef.current?.click()}
-                              >
-                                <Upload className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-6 w-6 p-0"
-                                onClick={() => updatePointImage(activeDatasetIndex, pointIndex, '', getDefaultImageConfigFromStore(chartType))}
-                              >
-                                <X className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-2 gap-2 mb-2">
-                            <Select
-                              value={chartData.datasets[activeDatasetIndex]?.pointImageConfig?.[pointIndex]?.position || 'center'}
-                              onValueChange={(value) => handleImageConfigChange(activeDatasetIndex, pointIndex, 'position', value)}
-                            >
-                              <SelectTrigger className="h-6 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {imageOptions.positions.map((position) => (
-                                  <SelectItem key={position.value} value={position.value}>
-                                    {position.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            
-                            <Input
-                              type="number"
-                              value={chartData.datasets[activeDatasetIndex]?.pointImageConfig?.[pointIndex]?.size || getDefaultImageSize(chartType)}
-                              className="h-6 text-xs"
-                              placeholder="Size"
-                              min={5}
-                              max={100}
-                              onChange={(e) => handleImageConfigChange(activeDatasetIndex, pointIndex, 'size', parseInt(e.target.value))}
-                            />
-                          </div>
-                          
-                          {chartData.datasets[activeDatasetIndex]?.pointImages?.[pointIndex] && (
-                            <div className="w-full h-8 bg-gray-100 rounded flex items-center justify-center">
-                              <ImageIcon className="h-4 w-4 text-gray-400" />
-                              <span className="text-xs text-gray-500 ml-1">Image Set</span>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
                 {/* Actions */}
                 <div className="space-y-2">
                   <Label className="text-xs font-medium text-purple-800">Quick Actions</Label>
@@ -1727,7 +1702,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            className={`px-4 py-2 text-[0.80rem] font-medium border-b-2 transition-colors ${
               activeTab === tab.id
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700'

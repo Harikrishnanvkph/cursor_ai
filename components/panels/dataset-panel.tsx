@@ -549,6 +549,34 @@ export function DatasetPanel() {
 
                                     <div className="flex items-center space-x-3">
                                       <Switch
+                                        checked={dataset.pointImageConfig?.[pointIndex]?.arrowLine !== false}
+                                        onCheckedChange={(checked) => handleImageConfigChange(datasetIndex, pointIndex, "arrowLine", checked)}
+                                      />
+                                      <Label className="text-xs font-medium">Show Arrow Line</Label>
+                                    </div>
+                                    <div className="flex items-center space-x-3">
+                                      <Switch
+                                        checked={dataset.pointImageConfig?.[pointIndex]?.arrowHead !== false}
+                                        onCheckedChange={(checked) => handleImageConfigChange(datasetIndex, pointIndex, "arrowHead", checked)}
+                                      />
+                                      <Label className="text-xs font-medium">Show Arrow Head</Label>
+                                    </div>
+                                    {(dataset.pointImageConfig?.[pointIndex]?.arrowLine !== false || dataset.pointImageConfig?.[pointIndex]?.arrowHead !== false) && (
+                                      <div>
+                                        <Label className="text-xs font-medium">Arrow End Distance from Image</Label>
+                                        <Slider
+                                          value={[dataset.pointImageConfig?.[pointIndex]?.arrowEndGap ?? 8]}
+                                          onValueChange={([value]) => handleImageConfigChange(datasetIndex, pointIndex, "arrowEndGap", value)}
+                                          max={30}
+                                          min={0}
+                                          step={1}
+                                        />
+                                        <div className="text-xs text-gray-500 mt-1">{dataset.pointImageConfig?.[pointIndex]?.arrowEndGap ?? 8}px</div>
+                                      </div>
+                                    )}
+
+                                    <div className="flex items-center space-x-3">
+                                      <Switch
                                         checked={dataset.pointImageConfig?.[pointIndex]?.arrow || false}
                                         onCheckedChange={(checked) =>
                                           handleImageConfigChange(datasetIndex, pointIndex, "arrow", checked)
