@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIChartor - HTML Export Demo</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+    
+    <!-- Custom Plugins -->
+    <script>
+        // Custom Label Plugin for HTML Export
+        const customLabelPlugin = {
+          id: 'customLabels',
+          afterDraw(chart) {
+            const opts = {
+              "labels": [
+                [
+                  {
+                    "text": "Sample Label",
+                    "anchor": "top",
+                    "color": "#ff6b6b",
+                    "backgroundColor": "rgba(255, 107, 107, 0.1)",
+                    "borderColor": "#ff6b6b",
+                    "borderWidth": 2,
+                    "borderRadius": 8,
+                    "padding": 8
+                  }
+                ]
+              ],
+              "shapeSize": 32
+            };
+            if (!opts || !opts.labels) return;
+            
+            const ctx = chart.ctx;
+            const shapeSize = opts.shapeSize ?? 32;
+            
+            chart.data.datasets.forEach((dataset, datasetIdx) => {
+              const meta = chart.getDatasetMeta(datasetIdx);
+              if (!meta || !meta.data) return;
+              
+              const labelArr = opts.labels[datasetIdx] || [];
+              meta.data.forEach((element, pointIdx) => {
+                const label = labelArr[pointIdx];
+                if (!label || !label.text) return;
+                
+                // Position logic
+                let x = label.x;
+                let y = label.y;
+                let anchor = label.anchor || 'center';
+                
+                // Calculate position based on anchor if not absolute
+                if (x == null || y == null) {
+                  const chartType = chart.config.type;
+                  
+                  if (chartType === 'bar') {
+                    x = element.x ?? 0;
+                    y = (element.y ?? 0) - 8;
+                  } else {
+                    x = element.x ?? 0;
+                    y = (element.y ?? 0) - 12;
+                  }
+                }
+                
+                // Draw the label
+                ctx.save();
+                
+                // Set text properties
+                ctx.font = label.font || \`\${shapeSize * 0.4}px Arial\`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // Calculate text dimensions
+                const textMetrics = ctx.measureText(label.text);
+                const textWidth = textMetrics.width;
+                const textHeight = parseInt(ctx.font) * 0.8;
+                
+                // Draw background shape
+                const padding = label.padding || 8;
+                const bgWidth = textWidth + padding * 2;
+                const bgHeight = textHeight + padding * 2;
+                const bgX = x - bgWidth / 2;
+                const bgY = y - bgHeight / 2;
+                
+                if (label.backgroundColor || label.borderColor) {
+                  ctx.beginPath();
+                  const borderRadius = label.borderRadius || 4;
+                  roundRect(ctx, bgX, bgY, bgWidth, bgHeight, borderRadius);
+                  
+                  if (label.backgroundColor) {
+                    ctx.fillStyle = label.backgroundColor;
+                    ctx.fill();
+                  }
+                  
+                  if (label.borderColor && label.borderWidth) {
+                    ctx.strokeStyle = label.borderColor;
+                    ctx.lineWidth = label.borderWidth;
+                    ctx.stroke();
+                  }
+                }
+                
+                // Draw text
+                ctx.fillStyle = label.color || '#333';
+                ctx.fillText(label.text, x, y);
+                
+                ctx.restore();
+              });
+            });
+          }
+        };
+
+        // Helper function
+        function roundRect(ctx, x, y, w, h, r) {
+          ctx.beginPath();
+          ctx.moveTo(x + r, y);
+          ctx.lineTo(x + w - r, y);
+          ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+          ctx.lineTo(x + w, y + h - r);
+          ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+          ctx.lineTo(x + r, y + h);
+          ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+          ctx.lineTo(x, y + r);
+          ctx.quadraticCurveTo(x, y, x + r, y);
+          ctx.closePath();
+        }
+
+        // Register the plugin
+        Chart.register(customLabelPlugin);
+    </script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 100%;
+            width: 900px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .title {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #2d3748;
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #718096;
+            font-size: 16px;
+        }
+        
+        .chart-wrapper {
+            position: relative;
+            height: 500px;
+            margin: 0 auto;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #fafbfc;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 30px;
+        }
+        
+        .chart-canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        
+        .info-panel {
+            margin-top: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .info-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #4a5568;
+            font-size: 14px;
+        }
+        
+        .info-value {
+            font-weight: 600;
+            color: #2d3748;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .badge-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .badge-secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+        
+        .features {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .features h3 {
+            color: #2d3748;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        
+        .features ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .features li {
+            margin-bottom: 8px;
+            padding-left: 20px;
+            position: relative;
+            color: #4a5568;
+        }
+        
+        .features li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #48bb78;
+            font-weight: bold;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            .title {
+                font-size: 24px;
+            }
+            
+            .chart-wrapper {
+                height: 400px;
+            }
+            
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .title {
+                font-size: 20px;
+            }
+            
+            .chart-wrapper {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">AIChartor HTML Export Demo</h1>
+        <p class="subtitle">This is a demonstration of the HTML export functionality</p>
+        
+        <div class="chart-wrapper">
+            <canvas id="chartCanvas" class="chart-canvas"></canvas>
+        </div>
+        
+        <div class="info-panel">
+            <div class="info-title">
+                📊 Chart Information
+            </div>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span>Type:</span>
+                    <span class="info-value">Bar Chart</span>
+                </div>
+                <div class="info-item">
+                    <span>Data Points:</span>
+                    <span class="info-value">5</span>
+                </div>
+                <div class="info-item">
+                    <span>Datasets:</span>
+                    <span class="info-value">2</span>
+                </div>
+                <div class="info-item">
+                    <span>Generated:</span>
+                    <span class="info-value">2024-01-15 10:30:00</span>
+                </div>
+                <div class="info-item">
+                    <span>Dimensions:</span>
+                    <span class="info-value">900 × 500px</span>
+                </div>
+                <div class="info-item">
+                    <span>Features:</span>
+                    <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                        <span class="badge badge-primary">Animations</span>
+                        <span class="badge badge-secondary">Tooltips</span>
+                        <span class="badge badge-secondary">Legend</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="features">
+            <h3>🎯 HTML Export Features</h3>
+            <ul>
+                <li>Complete standalone HTML files with embedded Chart.js</li>
+                <li>Multiple template options (Modern, Dark, Minimal, Professional)</li>
+                <li>Responsive design that works on all devices</li>
+                <li>Customizable dimensions, colors, and styling</li>
+                <li>Interactive charts with tooltips and animations</li>
+                <li>Embedded chart data and configuration</li>
+                <li>Cross-browser compatibility</li>
+                <li>No external dependencies (except Chart.js CDN)</li>
+                <li>Export validation and error handling</li>
+                <li>Custom CSS and JavaScript injection support</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Sample chart data for demonstration
+        const chartData = {
+            labels: ['Q1 2024', 'Q2 2024', 'Q3 2024', 'Q4 2024', 'Q1 2025'],
+            datasets: [
+                {
+                    label: 'Revenue',
+                    data: [120000, 150000, 180000, 220000, 250000],
+                    backgroundColor: [
+                        'rgba(102, 126, 234, 0.8)',
+                        'rgba(118, 75, 162, 0.8)',
+                        'rgba(102, 126, 234, 0.8)',
+                        'rgba(118, 75, 162, 0.8)',
+                        'rgba(102, 126, 234, 0.8)'
+                    ],
+                    borderColor: [
+                        'rgba(102, 126, 234, 1)',
+                        'rgba(118, 75, 162, 1)',
+                        'rgba(102, 126, 234, 1)',
+                        'rgba(118, 75, 162, 1)',
+                        'rgba(102, 126, 234, 1)'
+                    ],
+                    borderWidth: 2
+                },
+                {
+                    label: 'Profit',
+                    data: [30000, 45000, 60000, 80000, 100000],
+                    backgroundColor: [
+                        'rgba(72, 187, 120, 0.8)',
+                        'rgba(72, 187, 120, 0.8)',
+                        'rgba(72, 187, 120, 0.8)',
+                        'rgba(72, 187, 120, 0.8)',
+                        'rgba(72, 187, 120, 0.8)'
+                    ],
+                    borderColor: [
+                        'rgba(72, 187, 120, 1)',
+                        'rgba(72, 187, 120, 1)',
+                        'rgba(72, 187, 120, 1)',
+                        'rgba(72, 187, 120, 1)',
+                        'rgba(72, 187, 120, 1)'
+                    ],
+                    borderWidth: 2
+                }
+            ]
+        };
+        
+        const chartConfig = {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+                duration: 1500,
+                easing: 'easeInOutQuart'
+            },
+            plugins: {
+                customLabels: {
+                    labels: [
+                        [
+                            {
+                                text: "High Growth",
+                                anchor: "top",
+                                color: "#ff6b6b",
+                                backgroundColor: "rgba(255, 107, 107, 0.1)",
+                                borderColor: "#ff6b6b",
+                                borderWidth: 2,
+                                borderRadius: 8,
+                                padding: 8
+                            },
+                            null,
+                            null,
+                            {
+                                text: "Peak Performance",
+                                anchor: "top",
+                                color: "#4ecdc4",
+                                backgroundColor: "rgba(78, 205, 196, 0.1)",
+                                borderColor: "#4ecdc4",
+                                borderWidth: 2,
+                                borderRadius: 8,
+                                padding: 8
+                            },
+                            null
+                        ],
+                        [
+                            null,
+                            null,
+                            {
+                                text: "Profit Surge",
+                                anchor: "bottom",
+                                color: "#45b7d1",
+                                backgroundColor: "rgba(69, 183, 209, 0.1)",
+                                borderColor: "#45b7d1",
+                                borderWidth: 2,
+                                borderRadius: 8,
+                                padding: 8
+                            },
+                            null,
+                            null
+                        ]
+                    ],
+                    shapeSize: 32
+                },
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 20,
+                        font: { size: 12, weight: '500' },
+                        color: '#4a5568'
+                    }
+                },
+                tooltip: {
+                    enabled: true,
+                    mode: 'index',
+                    intersect: false,
+                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                    borderWidth: 1,
+                    cornerRadius: 12,
+                    displayColors: true,
+                    padding: 16,
+                    titleFont: { size: 14, weight: '600' },
+                    bodyFont: { size: 13 }
+                },
+                title: {
+                    display: true,
+                    text: 'Quarterly Financial Performance',
+                    font: {
+                        size: 18,
+                        weight: '600'
+                    },
+                    color: '#2d3748',
+                    padding: 20
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.1)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: '#4a5568',
+                        font: {
+                            size: 12
+                        },
+                        callback: function(value) {
+                            return '$' + value.toLocaleString();
+                        }
+                    }
+                },
+                x: {
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.1)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: '#4a5568',
+                        font: {
+                            size: 12
+                        }
+                    }
+                }
+            }
+        };
+        
+        // Initialize chart
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('chartCanvas').getContext('2d');
+            
+            const chart = new Chart(ctx, {
+                type: 'bar',
+                data: chartData,
+                options: chartConfig
+            });
+            
+            // Add interactive features
+            chart.canvas.addEventListener('click', function(event) {
+                const points = chart.getElementsAtEventForMode(event, 'nearest', { intersect: true }, true);
+                if (points.length) {
+                    const firstPoint = points[0];
+                    const label = chart.data.labels[firstPoint.index];
+                    const value = chart.data.datasets[firstPoint.datasetIndex].data[firstPoint.index];
+                    console.log('Clicked on:', label, 'Value:', value);
+                }
+            });
+            
+            // Make chart globally accessible
+            window.chart = chart;
+            
+            console.log('Demo chart initialized successfully!');
+        });
+        
+        // Error handling
+        window.addEventListener('error', function(event) {
+            console.error('Chart error:', event.error);
+            document.querySelector('.container').innerHTML = 
+                '<div style="text-align: center; padding: 50px; color: #666;">' +
+                '<h3>❌ Error Loading Chart</h3>' +
+                '<p>There was an error loading the chart. Please check the console for details.</p>' +
+                '</div>';
+        });
+    </script>
+</body>
+</html> 

@@ -26,9 +26,10 @@ import exportPlugin from "@/lib/export-plugin"
 import { useChatStore } from "@/lib/chat-store"
 import { customLabelPlugin } from "@/lib/custom-label-plugin"
 import { Button } from "@/components/ui/button"
-import { Download, RefreshCw, Maximize2, Minimize2, RotateCcw, X, PanelLeft, PanelRight } from "lucide-react"
+import { Download, RefreshCw, Maximize2, Minimize2, RotateCcw, X, PanelLeft, PanelRight, FileCode } from "lucide-react"
 import { BarChart3, Database, Dot } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
+import { downloadChartAsHTML } from "@/lib/html-exporter"
 
 
 ChartJS.register(
@@ -371,6 +372,26 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       }
     } else {
       console.error('Chart ref is not available');
+    }
+  };
+
+  const handleExportHTML = () => {
+    const result = downloadChartAsHTML({
+      title: chartConfig.plugins?.title?.text || "Chart Export",
+      width: chartWidth || 800,
+      height: chartHeight || 600,
+      backgroundColor: getBackgroundConfig().color || "#ffffff",
+      includeResponsive: true,
+      includeAnimations: true,
+      includeTooltips: true,
+      includeLegend: true,
+      fileName: `chart-${chartType}-${new Date().toISOString().slice(0, 10)}.html`
+    });
+    
+    if (result.success) {
+      console.log(result.message);
+    } else {
+      console.error(result.error);
     }
   };
 
@@ -717,6 +738,10 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
             <Button size="sm" onClick={handleExport} title="Export as PNG">
               <Download className="h-4 w-4 mr-1" />
               PNG
+            </Button>
+            <Button size="sm" onClick={handleExportHTML} title="Export as HTML">
+              <FileCode className="h-4 w-4 mr-1" />
+              HTML
             </Button>
           </div>
         </div>
