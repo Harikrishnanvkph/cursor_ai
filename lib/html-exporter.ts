@@ -3,9 +3,81 @@ import { type ExtendedChartData, type SupportedChartType } from "./chart-store";
 import { chartTypeMapping } from "./chart-store";
 import { htmlTemplates, type HTMLTemplate } from "./html-templates";
 import { generateCompletePluginSystem } from "./html-plugins";
+import { getCurrentDragState } from "./custom-label-plugin";
+
+// Function to convert image URL to base64
+async function convertImageToBase64(imageUrl: string): Promise<string> {
+  try {
+    // Handle data URLs (already base64)
+    if (imageUrl.startsWith('data:')) {
+      return imageUrl;
+    }
+
+    // Handle blob URLs
+    if (imageUrl.startsWith('blob:')) {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    // Handle external URLs
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    // Handle relative URLs (try to fetch from current domain)
+    const response = await fetch(imageUrl);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.warn('Failed to convert image to base64:', imageUrl, error);
+    return imageUrl; // Return original URL as fallback
+  }
+}
+
+// Function to process chart data and convert images to base64
+async function processChartDataForExport(chartData: ExtendedChartData): Promise<ExtendedChartData> {
+  const processedData = { ...chartData };
+  
+  // Process datasets for images
+  if (processedData.datasets) {
+    for (const dataset of processedData.datasets) {
+      if (dataset.pointImages && dataset.pointImages.length > 0) {
+        const processedImages = await Promise.all(
+          dataset.pointImages.map(async (imageUrl) => {
+            if (imageUrl) {
+              return await convertImageToBase64(imageUrl);
+            }
+            return null;
+          })
+        );
+        dataset.pointImages = processedImages;
+      }
+    }
+  }
+  
+  return processedData;
+}
 
 // Shared function to generate custom labels
-function generateCustomLabelsFromConfig(chartConfig: any, chartData: any, legendFilter: any) {
+function generateCustomLabelsFromConfig(chartConfig: any, chartData: any, legendFilter: any, dragState: any = {}) {
   const customLabelsConfig = ((chartConfig.plugins as any)?.customLabelsConfig) || {};
   
   if (customLabelsConfig.display === false) {
@@ -49,6 +121,10 @@ function generateCustomLabelsFromConfig(chartConfig: any, chartData: any, legend
       let backgroundColor = customLabelsConfig.shape === 'none' ? undefined : (customLabelsConfig.backgroundColor || '#fff');
       let borderColor = customLabelsConfig.shape === 'none' ? undefined : (customLabelsConfig.borderColor || '#333');
       
+      // Check if this label has a stored drag position
+      const dragKey = `${datasetIdx}_${pointIdx}`;
+      const storedPosition = dragState[dragKey];
+      
       return {
         text,
         anchor: customLabelsConfig.anchor || 'center',
@@ -70,9 +146,27 @@ function generateCustomLabelsFromConfig(chartConfig: any, chartData: any, legend
         arrowColor: customLabelsConfig.arrowColor || customLabelsConfig.calloutColor || '#333',
         calloutOffset: customLabelsConfig.calloutOffset || 48,
         arrowEndGap: customLabelsConfig.arrowEndGap || 0,
+        // Include stored position if available
+        x: storedPosition?.x,
+        y: storedPosition?.y,
       };
     })
   );
+}
+
+// Sync image positions from drag state into chart data before export
+function syncImagePositionsToConfig(chartData, dragState) {
+  if (!dragState) return;
+  chartData.datasets.forEach((dataset, datasetIdx) => {
+    if (!dataset.pointImageConfig) return;
+    dataset.pointImageConfig.forEach((config, pointIdx) => {
+      const key = `${datasetIdx}_${pointIdx}`;
+      if (dragState[key]) {
+        config.calloutX = dragState[key].x;
+        config.calloutY = dragState[key].y;
+      }
+    });
+  });
 }
 
 export interface HTMLExportOptions {
@@ -88,12 +182,13 @@ export interface HTMLExportOptions {
   customJS?: string;
   fileName?: string;
   template?: string; // 'modern', 'dark', 'minimal', 'professional'
+  dragState?: any; // Current drag state for custom labels
 }
 
 /**
  * Generate a complete standalone HTML file with the chart
  */
-export function generateChartHTML(options: HTMLExportOptions = {}) {
+export async function generateChartHTML(options: HTMLExportOptions = {}) {
   const { 
     chartType, 
     chartData, 
@@ -104,10 +199,40 @@ export function generateChartHTML(options: HTMLExportOptions = {}) {
     legendFilter
   } = useChartStore.getState();
 
+  // Use provided drag state or try to capture current drag state from any active chart instance
+  let currentDragState = options.dragState || {};
+  if (!currentDragState || Object.keys(currentDragState).length === 0) {
+    try {
+      // Look for any chart instance in the DOM that might have drag state
+      const canvasElements = document.querySelectorAll('canvas');
+      for (const canvas of canvasElements) {
+        const chartInstance = (canvas as any).chart;
+        if (chartInstance) {
+          const dragState = getCurrentDragState(chartInstance);
+          if (Object.keys(dragState).length > 0) {
+            currentDragState = dragState;
+            break;
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Could not capture drag state for HTML export:', error);
+    }
+  }
+
+  // Deep copy chart data to avoid mutating state
+  const chartDataCopy = JSON.parse(JSON.stringify(chartData));
+  // Sync image positions
+  syncImagePositionsToConfig(chartDataCopy, currentDragState);
+
+  // Process chart data to convert images to base64
+  const processedChartData = await processChartDataForExport(chartDataCopy);
+
   // Generate custom labels and enhance chart config
-  const customLabels = generateCustomLabelsFromConfig(chartConfig, chartData, legendFilter);
+  const customLabels = generateCustomLabelsFromConfig(chartConfig, processedChartData, legendFilter, currentDragState);
   const enhancedChartConfig = {
     ...chartConfig,
+    data: processedChartData, // <-- FIX: Ensure data is present for plugin system
     plugins: {
       ...chartConfig.plugins,
       customLabels: customLabels.length > 0 ? { 
@@ -135,7 +260,7 @@ export function generateChartHTML(options: HTMLExportOptions = {}) {
   // Use template if specified
   if (template && htmlTemplates[template as keyof typeof htmlTemplates]) {
     const selectedTemplate = htmlTemplates[template as keyof typeof htmlTemplates];
-    const htmlContent = selectedTemplate.generate(chartData, enhancedChartConfig, chartType, options);
+    const htmlContent = selectedTemplate.generate(processedChartData, enhancedChartConfig, chartType, options);
     return {
       content: htmlContent,
       fileName,
@@ -273,8 +398,8 @@ export function generateChartHTML(options: HTMLExportOptions = {}) {
             <h3>Chart Information</h3>
             <ul>
                 <li><strong>Type:</strong> ${chartType.charAt(0).toUpperCase() + chartType.slice(1)} Chart</li>
-                <li><strong>Data Points:</strong> ${chartData.labels?.length || 0}</li>
-                <li><strong>Datasets:</strong> ${chartData.datasets.length}</li>
+                <li><strong>Data Points:</strong> ${processedChartData.labels?.length || 0}</li>
+                <li><strong>Datasets:</strong> ${processedChartData.datasets.length}</li>
                 <li><strong>Generated:</strong> ${new Date().toLocaleString()}</li>
                 <li><strong>Dimensions:</strong> ${width} × ${height}px</li>
             </ul>
@@ -284,7 +409,7 @@ export function generateChartHTML(options: HTMLExportOptions = {}) {
     <script>
         // Chart.js Configuration
         const chartConfig = ${JSON.stringify(enhancedChartConfig, null, 8)};
-        const chartData = ${JSON.stringify(chartData, null, 8)};
+        const chartData = ${JSON.stringify(processedChartData, null, 8)};
         const chartType = "${chartType}";
         
         // Enhanced configuration for standalone HTML
@@ -396,9 +521,9 @@ export function generateChartHTML(options: HTMLExportOptions = {}) {
 /**
  * Download the generated HTML file
  */
-export function downloadChartAsHTML(options: HTMLExportOptions = {}) {
+export async function downloadChartAsHTML(options: HTMLExportOptions = {}) {
   try {
-    const { content, fileName, size } = generateChartHTML(options);
+    const { content, fileName, size } = await generateChartHTML(options);
     
     // Create blob and download
     const blob = new Blob([content], { type: 'text/html;charset=utf-8' });
@@ -437,9 +562,13 @@ export function downloadChartAsHTML(options: HTMLExportOptions = {}) {
 /**
  * Generate HTML with custom template
  */
-export function generateCustomChartHTML(template: string, options: HTMLExportOptions = {}) {
+export async function generateCustomChartHTML(template: string, options: HTMLExportOptions = {}) {
   const { chartType, chartData, chartConfig, chartMode, activeDatasetIndex, uniformityMode, legendFilter } = useChartStore.getState();
-  const customLabels = generateCustomLabelsFromConfig(chartConfig, chartData, legendFilter);
+  
+  // Process chart data to convert images to base64
+  const processedChartData = await processChartDataForExport(chartData);
+  
+  const customLabels = generateCustomLabelsFromConfig(chartConfig, processedChartData, legendFilter, options.dragState);
   const enhancedChartConfig = {
     ...chartConfig,
     plugins: {
@@ -454,7 +583,7 @@ export function generateCustomChartHTML(template: string, options: HTMLExportOpt
   // Replace placeholders in template
   const htmlContent = template
     .replace(/\{\{chartType\}\}/g, chartType)
-    .replace(/\{\{chartData\}\}/g, JSON.stringify(chartData, null, 2))
+    .replace(/\{\{chartData\}\}/g, JSON.stringify(processedChartData, null, 2))
     .replace(/\{\{chartConfig\}\}/g, JSON.stringify(enhancedChartConfig, null, 2))
     .replace(/\{\{title\}\}/g, options.title || 'Chart Export')
     .replace(/\{\{width\}\}/g, String(options.width || 800))
@@ -475,7 +604,7 @@ export function generateCustomChartHTML(template: string, options: HTMLExportOpt
  */
 export function generateMinimalChartHTML(options: HTMLExportOptions = {}) {
   const { chartType, chartData, chartConfig, chartMode, activeDatasetIndex, uniformityMode, legendFilter } = useChartStore.getState();
-  const customLabels = generateCustomLabelsFromConfig(chartConfig, chartData, legendFilter);
+  const customLabels = generateCustomLabelsFromConfig(chartConfig, chartData, legendFilter, options.dragState);
   const enhancedChartConfig = {
     ...chartConfig,
     plugins: {

@@ -375,23 +375,40 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     }
   };
 
-  const handleExportHTML = () => {
-    const result = downloadChartAsHTML({
-      title: chartConfig.plugins?.title?.text || "Chart Export",
-      width: chartWidth || 800,
-      height: chartHeight || 600,
-      backgroundColor: getBackgroundConfig().color || "#ffffff",
-      includeResponsive: true,
-      includeAnimations: true,
-      includeTooltips: true,
-      includeLegend: true,
-      fileName: `chart-${chartType}-${new Date().toISOString().slice(0, 10)}.html`
-    });
-    
-    if (result.success) {
-      console.log(result.message);
-    } else {
-      console.error(result.error);
+  const handleExportHTML = async () => {
+    // Capture current drag state from the chart instance
+    let currentDragState = {};
+    if (chartRef.current) {
+      try {
+        const { getCurrentDragState } = require('@/lib/custom-label-plugin');
+        currentDragState = getCurrentDragState(chartRef.current);
+        console.log('Captured drag state for HTML export:', currentDragState);
+      } catch (error) {
+        console.warn('Could not capture drag state:', error);
+      }
+    }
+
+    try {
+      const result = await downloadChartAsHTML({
+        title: chartConfig.plugins?.title?.text || "Chart Export",
+        width: chartWidth || 800,
+        height: chartHeight || 600,
+        backgroundColor: getBackgroundConfig().color || "#ffffff",
+        includeResponsive: true,
+        includeAnimations: true,
+        includeTooltips: true,
+        includeLegend: true,
+        fileName: `chart-${chartType}-${new Date().toISOString().slice(0, 10)}.html`,
+        dragState: currentDragState // Pass the captured drag state
+      });
+      
+      if (result && result.success) {
+        console.log(result.message);
+      } else if (result) {
+        console.error(result.error);
+      }
+    } catch (error) {
+      console.error('Error exporting HTML:', error);
     }
   };
 

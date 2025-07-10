@@ -39,6 +39,16 @@ export interface CustomLabelPluginOptions {
 // Drag state (per chart instance)
 const dragStateMap = new WeakMap<any, any>();
 
+// Function to get current drag state for HTML export
+export function getCurrentDragState(chart: any): any {
+  return dragStateMap.get(chart) || {};
+}
+
+// Function to set drag state from HTML export
+export function setDragState(chart: any, state: any) {
+  dragStateMap.set(chart, state);
+}
+
 export const customLabelPlugin: Plugin = {
   id: 'customLabels',
   afterDraw(chart) {

@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test HTML Export with Drag State</title>
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .chart-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="chart-container">
+        <h1>Test HTML Export with Drag State</h1>
+        
+        <div class="info">
+            <h3>Test Instructions:</h3>
+            <ol>
+                <li>This chart has custom labels with callout arrows</li>
+                <li>The labels should appear in their dragged positions</li>
+                <li>If you see labels positioned correctly, the export is working!</li>
+            </ol>
+        </div>
+        
+        <canvas id="testChart" width="600" height="400"></canvas>
+    </div>
+
+    <script>
+        // Global drag state for HTML export
+        window.labelDragState = {
+            "0_0": { "x": 150, "y": 80 },
+            "0_1": { "x": 250, "y": 120 },
+            "0_2": { "x": 350, "y": 60 }
+        };
+
+        // Custom Label Plugin for HTML Export
+        const customLabelPlugin = {
+            id: 'customLabels',
+            afterDraw(chart) {
+                const opts = {
+                    shapeSize: 32,
+                    labels: [
+                        [
+                            {
+                                text: "Label 1",
+                                anchor: "callout",
+                                shape: "rectangle",
+                                color: "#333",
+                                backgroundColor: "#fff",
+                                borderColor: "#333",
+                                borderWidth: 2,
+                                borderRadius: 6,
+                                padding: 6,
+                                font: "bold 14px Arial",
+                                callout: true,
+                                calloutColor: "#333",
+                                draggable: true,
+                                arrowLine: true,
+                                arrowHead: true,
+                                arrowColor: "#333",
+                                calloutOffset: 48,
+                                arrowEndGap: 0,
+                                x: 150,
+                                y: 80
+                            },
+                            {
+                                text: "Label 2",
+                                anchor: "callout",
+                                shape: "rectangle",
+                                color: "#333",
+                                backgroundColor: "#fff",
+                                borderColor: "#333",
+                                borderWidth: 2,
+                                borderRadius: 6,
+                                padding: 6,
+                                font: "bold 14px Arial",
+                                callout: true,
+                                calloutColor: "#333",
+                                draggable: true,
+                                arrowLine: true,
+                                arrowHead: true,
+                                arrowColor: "#333",
+                                calloutOffset: 48,
+                                arrowEndGap: 0,
+                                x: 250,
+                                y: 120
+                            },
+                            {
+                                text: "Label 3",
+                                anchor: "callout",
+                                shape: "rectangle",
+                                color: "#333",
+                                backgroundColor: "#fff",
+                                borderColor: "#333",
+                                borderWidth: 2,
+                                borderRadius: 6,
+                                padding: 6,
+                                font: "bold 14px Arial",
+                                callout: true,
+                                calloutColor: "#333",
+                                draggable: true,
+                                arrowLine: true,
+                                arrowHead: true,
+                                arrowColor: "#333",
+                                calloutOffset: 48,
+                                arrowEndGap: 0,
+                                x: 350,
+                                y: 60
+                            }
+                        ]
+                    ]
+                };
+                
+                if (!opts || !opts.labels) return;
+                
+                const ctx = chart.ctx;
+                const shapeSize = opts.shapeSize ?? 32;
+                
+                chart.data.datasets.forEach((dataset, datasetIdx) => {
+                    const meta = chart.getDatasetMeta(datasetIdx);
+                    if (!meta || !meta.data) return;
+                    
+                    const labelArr = opts.labels[datasetIdx] || [];
+                    meta.data.forEach((element, pointIdx) => {
+                        const label = labelArr[pointIdx];
+                        if (!label || !label.text) return;
+                        
+                        // Position logic
+                        let x = label.x;
+                        let y = label.y;
+                        let anchor = label.anchor || 'center';
+                        
+                        // If callout and draggable, use stored position
+                        if (anchor === 'callout' && label.draggable) {
+                            const dragKey = `${datasetIdx}_${pointIdx}`;
+                            const storedPos = window.labelDragState?.[dragKey];
+                            if (storedPos) {
+                                x = storedPos.x;
+                                y = storedPos.y;
+                            } else if (x == null || y == null) {
+                                const offset = label.calloutOffset || shapeSize * 1.5;
+                                x = (element.x ?? 0) + offset;
+                                y = (element.y ?? 0) - offset;
+                            }
+                        }
+                        
+                        // If absolute positions are provided (from drag state), use them
+                        if (x != null && y != null) {
+                            // Use the provided absolute positions
+                        } else {
+                            // Calculate position based on anchor if not absolute
+                            const chartType = chart.config.type;
+                            
+                            if (chartType === 'bar') {
+                                x = element.x ?? 0;
+                                y = (element.y ?? 0) - 8;
+                            } else {
+                                x = element.x ?? 0;
+                                y = element.y ?? 0;
+                            }
+                        }
+                        
+                        // Draw callout arrow if needed
+                        if (anchor === 'callout' && label.callout && (label.arrowLine || label.arrowHead)) {
+                            ctx.save();
+                            ctx.strokeStyle = label.arrowColor || label.calloutColor || '#333';
+                            ctx.lineWidth = 2;
+                            ctx.setLineDash([]);
+                            
+                            let startX = element.x ?? 0;
+                            let startY = element.y ?? 0;
+                            
+                            const endGap = label.arrowEndGap || 10;
+                            const dx = x - startX;
+                            const dy = y - startY;
+                            const distance = Math.sqrt(dx * dx + dy * dy);
+                            
+                            if (distance > endGap) {
+                                const unitX = dx / distance;
+                                const unitY = dy / distance;
+                                const endX = x - unitX * endGap;
+                                const endY = y - unitY * endGap;
+                                
+                                if (label.arrowLine) {
+                                    ctx.beginPath();
+                                    ctx.moveTo(startX, startY);
+                                    ctx.lineTo(endX, endY);
+                                    ctx.stroke();
+                                }
+                                
+                                if (label.arrowHead) {
+                                    const headLength = 8;
+                                    const headAngle = Math.PI / 6;
+                                    
+                                    ctx.beginPath();
+                                    ctx.moveTo(endX, endY);
+                                    ctx.lineTo(
+                                        endX - headLength * Math.cos(Math.atan2(dy, dx) - headAngle),
+                                        endY - headLength * Math.sin(Math.atan2(dy, dx) - headAngle)
+                                    );
+                                    ctx.moveTo(endX, endY);
+                                    ctx.lineTo(
+                                        endX - headLength * Math.cos(Math.atan2(dy, dx) + headAngle),
+                                        endY - headLength * Math.sin(Math.atan2(dy, dx) + headAngle)
+                                    );
+                                    ctx.stroke();
+                                }
+                            }
+                            
+                            ctx.restore();
+                        }
+                        
+                        // Draw the label
+                        ctx.save();
+                        
+                        // Set text properties
+                        ctx.font = label.font || 'bold 14px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        
+                        // Calculate text dimensions
+                        const textMetrics = ctx.measureText(label.text);
+                        const textWidth = textMetrics.width;
+                        const textHeight = parseInt(ctx.font) * 0.8;
+                        
+                        // Draw background shape
+                        const padding = label.padding || 8;
+                        const bgWidth = textWidth + padding * 2;
+                        const bgHeight = textHeight + padding * 2;
+                        const bgX = x - bgWidth / 2;
+                        const bgY = y - bgHeight / 2;
+                        
+                        if (label.backgroundColor || label.borderColor) {
+                            ctx.beginPath();
+                            
+                            if (label.shape === 'circle') {
+                                const radius = Math.max(bgWidth, bgHeight) / 2;
+                                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                            } else {
+                                const borderRadius = label.borderRadius || 4;
+                                roundRect(ctx, bgX, bgY, bgWidth, bgHeight, borderRadius);
+                            }
+                            
+                            if (label.backgroundColor) {
+                                ctx.fillStyle = label.backgroundColor;
+                                ctx.fill();
+                            }
+                            
+                            if (label.borderColor && label.borderWidth) {
+                                ctx.strokeStyle = label.borderColor;
+                                ctx.lineWidth = label.borderWidth;
+                                ctx.stroke();
+                            }
+                        }
+                        
+                        // Draw text
+                        ctx.fillStyle = label.color || '#333';
+                        ctx.fillText(label.text, x, y);
+                        
+                        ctx.restore();
+                    });
+                });
+            }
+        };
+
+        // Helper function for rounded rectangles
+        function roundRect(ctx, x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+        }
+
+        // Register the plugin
+        Chart.register(customLabelPlugin);
+
+        // Create the chart
+        const ctx = document.getElementById('testChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['January', 'February', 'March'],
+                datasets: [{
+                    label: 'Sales',
+                    data: [12, 19, 3],
+                    backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56'],
+                    borderColor: ['#FF6384', '#36A2EB', '#FFCE56'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Test Chart with Custom Labels'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html> 
