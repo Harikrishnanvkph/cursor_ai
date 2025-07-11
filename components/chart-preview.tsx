@@ -691,6 +691,33 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     };
   }, []);
 
+  useEffect(() => {
+    if (!isResponsive && chartRef.current) {
+      const canvas = chartRef.current.canvas;
+      if (canvas) {
+        const dpr = window.devicePixelRatio || 1;
+        // Set canvas pixel size
+        canvas.width = chartWidth * dpr;
+        canvas.height = chartHeight * dpr;
+        // Set CSS size
+        canvas.style.width = chartWidth + 'px';
+        canvas.style.height = chartHeight + 'px';
+        // Scale context for high-DPI
+        const ctx = canvas.getContext('2d');
+        if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        chartRef.current.resize();
+      }
+    }
+  }, [isResponsive, chartWidth, chartHeight]);
+
+  // Force chart update on dimension/responsive change
+  useEffect(() => {
+    if (chartRef.current) {
+      chartRef.current.resize();
+      chartRef.current.update();
+    }
+  }, [chartWidth, chartHeight, isResponsive]);
+
   return (
     <div className="h-full flex flex-col overflow-hidden" ref={fullscreenContainerRef}>
       {/* Fullscreen overlay */}
@@ -786,7 +813,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                 onMouseLeave={() => setHoveredDatasetIndex(null)}
               >
                 <Chart
-                  key={`${chartType}-${chartTypeForChart}`} // Force re-mount on type change
+                  key={`${chartType}-${chartWidth}-${chartHeight}-${isResponsive}`}
                   ref={chartRef}
                   type={chartTypeForChart as any}
                   data={chartDataForChart}

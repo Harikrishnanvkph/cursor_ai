@@ -29,6 +29,11 @@ export function AnimationsPanel() {
   const [responsiveDropdownOpen, setResponsiveDropdownOpen] = useState(false)
   const [hoverOpen, setHoverOpen] = useState(true)
   const [hoverEnabled, setHoverEnabled] = useState(chartConfig.interaction?.mode !== undefined && chartConfig.interaction?.mode !== false)
+  const [widthUnit, setWidthUnit] = useState<'px' | '%'>('px');
+  const [heightUnit, setHeightUnit] = useState<'px' | '%'>('px');
+  const widthValue = chartConfig.width || 900;
+  const heightValue = chartConfig.height || 400;
+  const isResponsive = chartConfig.responsive !== false;
 
   const handleConfigUpdate = (path: string, value: any) => {
     const keys = path.split(".")
@@ -191,13 +196,12 @@ export function AnimationsPanel() {
             <div className="flex items-center justify-between">
               <Label className="text-xs font-medium">Responsive</Label>
               <Switch
-                checked={chartConfig.responsive !== false}
+                checked={isResponsive}
                 onCheckedChange={(checked) => handleConfigUpdate("responsive", checked)}
                 className="data-[state=checked]:bg-green-600"
               />
             </div>
           </div>
-
           {/* Maintain Aspect Ratio */}
           <div className="space-y-1">
             <div className="flex items-center justify-between">
@@ -209,29 +213,74 @@ export function AnimationsPanel() {
               />
             </div>
           </div>
-          
-          {/* Dropdown Content */}
-          {responsiveDropdownOpen && (
-            <div className="space-y-3 pt-2 border-t border-green-200">
-              {/* Resize Animation Duration */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium">Resize Animation</Label>
-                  <span className="text-xs text-gray-500">{chartConfig.responsive?.animationDuration || 0}ms</span>
-                </div>
-            <Slider
-              value={[chartConfig.responsive?.animationDuration || 0]}
-              onValueChange={([value]) => handleConfigUpdate("responsive.animationDuration", value)}
-              max={1000}
-              min={0}
-              step={50}
-                  className="mt-1"
-            />
+          {/* Width/Height Controls */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs font-medium">Width</Label>
+              <div className="flex gap-1 mt-1">
+                <Input
+                  type="number"
+                  min={widthUnit === 'px' ? 100 : 1}
+                  max={widthUnit === 'px' ? 2000 : 100}
+                  value={widthValue}
+                  disabled={isResponsive}
+                  onChange={e => handleConfigUpdate('width', e.target.value)}
+                  className="h-8 text-xs w-20"
+                />
+                <Select value={widthUnit} onValueChange={setWidthUnit} disabled={isResponsive}>
+                  <SelectTrigger className="h-8 w-16 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="px">px</SelectItem>
+                    <SelectItem value="%">%</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
+            <div>
+              <Label className="text-xs font-medium">Height</Label>
+              <div className="flex gap-1 mt-1">
+                <Input
+                  type="number"
+                  min={heightUnit === 'px' ? 100 : 1}
+                  max={heightUnit === 'px' ? 2000 : 100}
+                  value={heightValue}
+                  disabled={isResponsive}
+                  onChange={e => handleConfigUpdate('height', e.target.value)}
+                  className="h-8 text-xs w-20"
+                />
+                <Select value={heightUnit} onValueChange={setHeightUnit} disabled={isResponsive}>
+                  <SelectTrigger className="h-8 w-16 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="px">px</SelectItem>
+                    <SelectItem value="%">%</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          {/* Resize Animation Duration */}
+          {responsiveDropdownOpen && (
+            <div className="space-y-1 pt-2 border-t border-green-200">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-medium">Resize Animation</Label>
+                <span className="text-xs text-gray-500">{chartConfig.responsive?.animationDuration || 0}ms</span>
+              </div>
+              <Slider
+                value={[chartConfig.responsive?.animationDuration || 0]}
+                onValueChange={([value]) => handleConfigUpdate("responsive.animationDuration", value)}
+                max={1000}
+                min={0}
+                step={50}
+                className="mt-1"
+              />
+            </div>
           )}
-          </div>
-          </div>
+        </div>
+      </div>
 
       {/* Hover Animation Section */}
       <div className="space-y-3">
