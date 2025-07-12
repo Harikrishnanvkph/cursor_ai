@@ -42,6 +42,7 @@ export function ConfigPanel({ activeTab }: ConfigPanelProps) {
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
+      <div className="flex flex-row items-center justify-between">sdfsd</div>
       <div className="flex-1 overflow-y-auto p-4">{renderPanel()}</div>
     </div>
   )

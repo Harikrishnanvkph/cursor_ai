@@ -8,6 +8,7 @@ import { Slider } from "@/components/ui/slider"
 import { useChartStore } from "@/lib/chart-store"
 import { useState } from "react"
 import { Input } from "@/components/ui/input"
+import React from "react"
 
 const allowedEasings = [
   "linear",
@@ -31,13 +32,49 @@ export function AnimationsPanel() {
   const [hoverEnabled, setHoverEnabled] = useState(chartConfig.interaction?.mode !== undefined && chartConfig.interaction?.mode !== false)
   const [widthUnit, setWidthUnit] = useState<'px' | '%'>('px');
   const [heightUnit, setHeightUnit] = useState<'px' | '%'>('px');
-  const widthValue = chartConfig.width || 900;
-  const heightValue = chartConfig.height || 400;
+  
+  // Update parseDimensionValue to accept a fallback parameter
+  const parseDimensionValue = (value: any, fallback: number): { value: number, unit: 'px' | '%' } => {
+    if (typeof value === 'string') {
+      if (value.includes('%')) {
+        const parsed = parseFloat(value);
+        return { value: isNaN(parsed) ? 100 : parsed, unit: '%' };
+      } else if (value.includes('px')) {
+        const parsed = parseFloat(value);
+        return { value: isNaN(parsed) ? fallback : parsed, unit: 'px' };
+      }
+      // If it's a string without units, try to parse as number
+      const parsed = parseFloat(value);
+      return { value: isNaN(parsed) ? fallback : parsed, unit: 'px' };
+    }
+    if (typeof value === 'number') {
+      return { value: isNaN(value) ? fallback : value, unit: 'px' };
+    }
+    // Default values
+    return { value: fallback, unit: 'px' };
+  };
+
+  // Use 500 for width and 400 for height
+  const widthDimension = parseDimensionValue((chartConfig as any).width, 500);
+  const heightDimension = parseDimensionValue((chartConfig as any).height, 400);
+  
+  const widthValue = widthDimension.value;
+  const heightValue = heightDimension.value;
+  
+  // Update units when they change
+  React.useEffect(() => {
+    setWidthUnit(widthDimension.unit);
+  }, [widthDimension.unit]);
+  
+  React.useEffect(() => {
+    setHeightUnit(heightDimension.unit);
+  }, [heightDimension.unit]);
+  
   const isResponsive = chartConfig.responsive !== false;
 
   const handleConfigUpdate = (path: string, value: any) => {
     const keys = path.split(".")
-    const newConfig = { ...chartConfig }
+    const newConfig = { ...chartConfig } as any
     let current = newConfig
 
     for (let i = 0; i < keys.length - 1; i++) {
@@ -191,27 +228,89 @@ export function AnimationsPanel() {
         </div>
         
         <div className="bg-green-50 rounded-lg p-3 space-y-3">
-          {/* Responsive Toggle */}
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium">Responsive</Label>
-              <Switch
-                checked={isResponsive}
-                onCheckedChange={(checked) => handleConfigUpdate("responsive", checked)}
-                className="data-[state=checked]:bg-green-600"
+          {/* Radio Buttons for Chart Mode */}
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <input
+                type="radio"
+                id="responsive-mode-anim"
+                name="chart-mode-anim"
+                checked={chartConfig.responsive === true}
+                onChange={() => {
+                  console.log('Responsive selected (anim)');
+                  updateChartConfig({
+                    ...chartConfig,
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    manualDimensions: false
+                  });
+                }}
+                className="text-green-600 focus:ring-green-500"
               />
+              <Label htmlFor="responsive-mode-anim" className="text-xs font-medium cursor-pointer">
+                Responsive {chartConfig.responsive === true ? '(Active)' : ''}
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="radio"
+                id="aspect-ratio-mode-anim"
+                name="chart-mode-anim"
+                checked={chartConfig.maintainAspectRatio === true}
+                onChange={() => {
+                  console.log('Aspect Ratio selected (anim)');
+                  updateChartConfig({
+                    ...chartConfig,
+                    maintainAspectRatio: true,
+                    responsive: false,
+                    manualDimensions: false
+                  });
+                }}
+                className="text-green-600 focus:ring-green-500"
+              />
+              <Label htmlFor="aspect-ratio-mode-anim" className="text-xs font-medium cursor-pointer">
+                Maintain Aspect Ratio {chartConfig.maintainAspectRatio === true ? '(Active)' : ''}
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="radio"
+                id="manual-mode-anim"
+                name="chart-mode-anim"
+                checked={chartConfig.manualDimensions === true}
+                onChange={() => {
+                  console.log('Manual Dimensions selected (anim)');
+                  updateChartConfig({
+                    ...chartConfig,
+                    manualDimensions: true,
+                    responsive: false,
+                    maintainAspectRatio: false
+                  });
+                }}
+                className="text-green-600 focus:ring-green-500"
+              />
+              <Label htmlFor="manual-mode-anim" className="text-xs font-medium cursor-pointer">
+                Manual Dimensions {chartConfig.manualDimensions === true ? '(Active)' : ''}
+              </Label>
             </div>
           </div>
-          {/* Maintain Aspect Ratio */}
+          
+          {/* Aspect Ratio Input */}
           <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium">Maintain Aspect Ratio</Label>
-              <Switch
-                checked={chartConfig.maintainAspectRatio !== false}
-                onCheckedChange={(checked) => handleConfigUpdate("maintainAspectRatio", checked)}
-                className="data-[state=checked]:bg-green-600"
-              />
-            </div>
+            <Label className="text-xs font-medium">Aspect Ratio</Label>
+            <Input
+              type="number"
+              step="0.1"
+              min="0.1"
+              max="10"
+              value={chartConfig.aspectRatio || 1}
+              onChange={(e) =>
+                handleConfigUpdate("aspectRatio", e.target.value ? Number.parseFloat(e.target.value) : 1)
+              }
+              placeholder="1.0"
+              className="h-8 text-xs"
+              disabled={chartConfig.maintainAspectRatio !== true}
+            />
           </div>
           {/* Width/Height Controls */}
           <div className="grid grid-cols-2 gap-3">
@@ -223,11 +322,26 @@ export function AnimationsPanel() {
                   min={widthUnit === 'px' ? 100 : 1}
                   max={widthUnit === 'px' ? 2000 : 100}
                   value={widthValue}
-                  disabled={isResponsive}
-                  onChange={e => handleConfigUpdate('width', e.target.value)}
+                  disabled={chartConfig.manualDimensions !== true}
+                  onChange={e => {
+                    const newValue = e.target.value ? `${e.target.value}${widthUnit}` : undefined;
+                    updateChartConfig({
+                      ...chartConfig,
+                      width: newValue
+                    });
+                  }}
                   className="h-8 text-xs w-20"
                 />
-                <Select value={widthUnit} onValueChange={setWidthUnit} disabled={isResponsive}>
+                <Select value={widthUnit} onValueChange={(value: 'px' | '%') => {
+                  setWidthUnit(value);
+                  if (chartConfig.width && widthValue) {
+                    const newValue = `${widthValue}${value}`;
+                    updateChartConfig({
+                      ...chartConfig,
+                      width: newValue
+                    });
+                  }
+                }} disabled={chartConfig.manualDimensions !== true}>
                   <SelectTrigger className="h-8 w-16 text-xs">
                     <SelectValue />
                   </SelectTrigger>
@@ -246,11 +360,26 @@ export function AnimationsPanel() {
                   min={heightUnit === 'px' ? 100 : 1}
                   max={heightUnit === 'px' ? 2000 : 100}
                   value={heightValue}
-                  disabled={isResponsive}
-                  onChange={e => handleConfigUpdate('height', e.target.value)}
+                  disabled={chartConfig.manualDimensions !== true}
+                  onChange={e => {
+                    const newValue = e.target.value ? `${e.target.value}${heightUnit}` : undefined;
+                    updateChartConfig({
+                      ...chartConfig,
+                      height: newValue
+                    });
+                  }}
                   className="h-8 text-xs w-20"
                 />
-                <Select value={heightUnit} onValueChange={setHeightUnit} disabled={isResponsive}>
+                <Select value={heightUnit} onValueChange={(value: 'px' | '%') => {
+                  setHeightUnit(value);
+                  if (chartConfig.height && heightValue) {
+                    const newValue = `${heightValue}${value}`;
+                    updateChartConfig({
+                      ...chartConfig,
+                      height: newValue
+                    });
+                  }
+                }} disabled={chartConfig.manualDimensions !== true}>
                   <SelectTrigger className="h-8 w-16 text-xs">
                     <SelectValue />
                   </SelectTrigger>

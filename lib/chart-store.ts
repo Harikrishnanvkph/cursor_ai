@@ -63,6 +63,16 @@ declare module 'chart.js' {
   interface ChartTypeRegistry {
     horizontalBar: ChartTypeRegistry['bar'];
   }
+
+
+}
+
+// Create a custom interface that extends ChartOptions with our additional properties
+export interface ExtendedChartOptions extends ChartOptions {
+  aspectRatio?: number;
+  manualDimensions?: boolean;
+  width?: number | string;
+  height?: number | string;
 }
 
 // Define our custom dataset properties
@@ -157,7 +167,7 @@ export type ChartMode = 'single' | 'grouped'
 interface ChartStore {
   chartType: SupportedChartType;
   chartData: ExtendedChartData;
-  chartConfig: ChartOptions;
+  chartConfig: ExtendedChartOptions;
   chartMode: ChartMode;
   activeDatasetIndex: number;
   // Add separate storage for each mode's datasets
@@ -179,7 +189,7 @@ interface ChartStore {
   removeDataset: (index: number) => void;
   updateDataset: (index: number, updates: Partial<ExtendedChartDataset> & { addPoint?: boolean; removePoint?: boolean; randomizeColors?: boolean }) => void;
   updateDataPoint: (datasetIndex: number, pointIndex: number, field: string, value: any) => void;
-  updateChartConfig: (config: ChartOptions) => void;
+  updateChartConfig: (config: ExtendedChartOptions) => void;
   updatePointImage: (datasetIndex: number, pointIndex: number, imageUrl: string, imageConfig: any) => void;
   resetChart: () => void;
   setChartMode: (mode: ChartMode) => void;
@@ -188,7 +198,7 @@ interface ChartStore {
   updateLabels: (labels: string[]) => void;
   toggleFillArea: () => void;
   toggleShowBorder: () => void;
-  setFullChart: (chart: { chartType: SupportedChartType; chartData: ExtendedChartData; chartConfig: ChartOptions }) => void;
+  setFullChart: (chart: { chartType: SupportedChartType; chartData: ExtendedChartData; chartConfig: ExtendedChartOptions }) => void;
   setHasJSON: (value: boolean) => void;
 }
 
@@ -285,7 +295,7 @@ export const getDefaultDataForMode = (mode: ChartMode): ExtendedChartData => {
 }
 
 // Export getDefaultConfigForType for use in chart-preview
-export const getDefaultConfigForType = (type: SupportedChartType): ChartOptions => {
+export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChartOptions => {
   // For area chart, use line chart config
   // Use type assertion to avoid TypeScript error
   let processedType: keyof ChartTypeRegistry;
@@ -294,8 +304,10 @@ export const getDefaultConfigForType = (type: SupportedChartType): ChartOptions 
   } else {
     processedType = type as keyof ChartTypeRegistry;
   }
-  const baseConfig: ChartOptions = {
+  const baseConfig: ExtendedChartOptions = {
     responsive: true,
+    maintainAspectRatio: false,
+    manualDimensions: false,
     plugins: {
       title: {
         display: true,

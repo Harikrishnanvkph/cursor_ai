@@ -625,8 +625,22 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
 
   // Chart size logic
   const isResponsive = (chartConfig as any)?.responsive !== false;
-  const chartWidth = !isResponsive ? ((chartConfig as any)?.width ? Number((chartConfig as any)?.width) : 900) : undefined;
-  const chartHeight = !isResponsive ? ((chartConfig as any)?.height ? Number((chartConfig as any)?.height) : 400) : undefined;
+  
+  // Parse width and height values, handling both numbers and strings with units
+  const parseDimension = (value: any): number => {
+    if (typeof value === 'number') {
+      return isNaN(value) ? 500 : value;
+    }
+    if (typeof value === 'string') {
+      // Remove units and parse as number
+      const numericValue = parseFloat(value.replace(/[^\d.-]/g, ''));
+      return isNaN(numericValue) ? 400 : numericValue;
+    }
+    return 500; // Default fallback
+  };
+  
+  const chartWidth = !isResponsive ? parseDimension((chartConfig as any)?.width) : undefined;
+  const chartHeight = !isResponsive ? parseDimension((chartConfig as any)?.height) : undefined;
 
   // If stackedBar, ensure both x and y axes are stacked
   let stackedBarConfig = {
@@ -795,33 +809,46 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       <Card className={`flex-1 shadow-lg overflow-hidden transition-all duration-200 ${isFullscreen ? 'fixed inset-4 z-50 m-0 rounded-lg' : ''}`}>
         <CardContent className="p-6 h-full">
           {chartData.datasets.length > 0 ? (
-            <div className={`h-full w-full flex items-center justify-center relative`} style={isResponsive ? { minHeight: 300, minWidth: 400 } : { height: chartHeight, width: chartWidth }}>
+            <div className="h-full w-full flex items-start justify-center relative" style={isResponsive ? { minHeight: 300, minWidth: 400 } : {}}>
               {getBackgroundLayers()}
               <div
                 style={{
                   position: 'relative',
                   zIndex: 1,
-                  width: isResponsive ? '100%' : chartWidth,
-                  height: isResponsive ? '100%' : chartHeight,
+                  width: '100%',
+                  height: '100%',
                   background: 'transparent',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   maxWidth: '100%',
-                  maxHeight: '100%'
+                  maxHeight: '100%',
+                  aspectRatio: chartConfig.maintainAspectRatio ? (chartConfig.aspectRatio || 1) : undefined
                 }}
                 onMouseLeave={() => setHoveredDatasetIndex(null)}
               >
                 <Chart
-                  key={`${chartType}-${chartWidth}-${chartHeight}-${isResponsive}`}
+                  key={`${chartType}-${chartWidth}-${chartHeight}-${isResponsive}-${chartConfig.manualDimensions}-${chartConfig.aspectRatio}`}
                   ref={chartRef}
                   type={chartTypeForChart as any}
                   data={chartDataForChart}
+                  // Debug logging
+                  {...(chartConfig.manualDimensions && {
+                    'data-debug-width': chartConfig.width,
+                    'data-debug-height': chartConfig.height
+                  })}
                   options={{
                     ...(chartType === 'stackedBar' ? stackedBarConfig : 
                         (chartType === 'horizontalBar' ? { ...chartConfig, indexAxis: 'y' } : chartConfig)),
-                    responsive: isResponsive,
-                    maintainAspectRatio: false,
+                    responsive: chartConfig.manualDimensions ? false : isResponsive,
+                    maintainAspectRatio: chartConfig.manualDimensions ? false : chartConfig.maintainAspectRatio,
+                    aspectRatio: chartConfig.maintainAspectRatio ? (chartConfig.aspectRatio || 1) : undefined,
+                    layout: {
+                      padding: {
+                        left: 20,
+                        right: 20
+                      }
+                    },
                     hover: {
                       intersect: chartConfig.hover?.intersect ?? false,
                       animationDuration: chartConfig.hover?.animationDuration ?? 400,
@@ -965,8 +992,8 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                       },
                     } as any),
                   }}
-                  width={isResponsive ? undefined : chartWidth}
-                  height={isResponsive ? undefined : chartHeight}
+                  width={chartConfig.manualDimensions ? chartWidth : undefined}
+                  height={chartConfig.manualDimensions ? chartHeight : undefined}
                 />
               </div>
             </div>

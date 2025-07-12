@@ -99,9 +99,12 @@ export function PreviewPanel() {
                 data={chartData}
                 options={{
                   ...chartConfig,
-                  responsive: true,
-                  maintainAspectRatio: false,
+                  responsive: chartConfig.manualDimensions ? false : true,
+                  maintainAspectRatio: chartConfig.manualDimensions ? false : chartConfig.maintainAspectRatio,
+                  aspectRatio: chartConfig.maintainAspectRatio ? (chartConfig.aspectRatio || 1) : undefined,
                 }}
+                width={chartConfig.manualDimensions ? (chartConfig.width || '900px') : undefined}
+                height={chartConfig.manualDimensions ? (chartConfig.height || '600px') : undefined}
               />
             </div>
           ) : (

@@ -227,25 +227,100 @@ export function AdvancedPanel() {
         </div>
         <div className="bg-purple-50 rounded-lg">
           <div className="flex items-center justify-between px-3 py-2">
-            <span className="text-xs font-medium text-black">Responsive</span>
-            <Switch
-              checked={chartConfig.responsive !== false}
-              onCheckedChange={(checked) => handleConfigUpdate("responsive", checked)}
-              className="data-[state=checked]:bg-purple-600"
-            />
+            <span className="text-xs font-medium text-black">Chart Mode</span>
           </div>
           {layoutOpen && (
             <div className="px-3 pb-3 space-y-3">
+              {/* Radio Buttons for Chart Mode */}
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="responsive-mode"
+                    name="chart-mode"
+                    checked={chartConfig.responsive === true}
+                    onChange={() => {
+                      console.log('Responsive selected');
+                      updateChartConfig({
+                        ...chartConfig,
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        manualDimensions: false
+                      });
+                    }}
+                    className="text-purple-600 focus:ring-purple-500"
+                  />
+                  <Label htmlFor="responsive-mode" className="text-xs font-medium cursor-pointer">
+                    Responsive {chartConfig.responsive === true ? '(Active)' : ''}
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="aspect-ratio-mode"
+                    name="chart-mode"
+                    checked={chartConfig.maintainAspectRatio === true}
+                    onChange={() => {
+                      console.log('Aspect Ratio selected');
+                      updateChartConfig({
+                        ...chartConfig,
+                        maintainAspectRatio: true,
+                        responsive: false,
+                        manualDimensions: false
+                      });
+                    }}
+                    className="text-purple-600 focus:ring-purple-500"
+                  />
+                  <Label htmlFor="aspect-ratio-mode" className="text-xs font-medium cursor-pointer">
+                    Maintain Aspect Ratio {chartConfig.maintainAspectRatio === true ? '(Active)' : ''}
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="manual-mode"
+                    name="chart-mode"
+                    checked={chartConfig.manualDimensions === true}
+                    onChange={() => {
+                      console.log('Manual Dimensions selected');
+                      updateChartConfig({
+                        ...chartConfig,
+                        manualDimensions: true,
+                        responsive: false,
+                        maintainAspectRatio: false
+                      });
+                    }}
+                    className="text-purple-600 focus:ring-purple-500"
+                  />
+                  <Label htmlFor="manual-mode" className="text-xs font-medium cursor-pointer">
+                    Manual Dimensions {chartConfig.manualDimensions === true ? '(Active)' : ''}
+                  </Label>
+                </div>
+              </div>
+              
+              {/* Debug Info */}
+              <div className="text-xs text-gray-500 mt-2 p-2 bg-gray-100 rounded">
+                Debug: responsive={String(chartConfig.responsive)}, 
+                maintainAspectRatio={String(chartConfig.maintainAspectRatio)}, 
+                manualDimensions={String(chartConfig.manualDimensions)}
+              </div>
+              
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs font-medium">Maintain Aspect Ratio</Label>
-                  <div className="mt-1 flex justify-start">
-                    <Switch
-                      checked={chartConfig.maintainAspectRatio !== false}
-                      onCheckedChange={(checked) => handleConfigUpdate("maintainAspectRatio", checked)}
-                      className="data-[state=checked]:bg-purple-600"
-                    />
-                  </div>
+                  <Label className="text-xs font-medium">Aspect Ratio</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min="0.1"
+                    max="10"
+                    value={chartConfig.aspectRatio || 1}
+                    onChange={(e) =>
+                      handleConfigUpdate("aspectRatio", e.target.value ? Number.parseFloat(e.target.value) : 1)
+                    }
+                    placeholder="1.0"
+                    className="h-8 text-xs mt-1 w-full"
+                    disabled={chartConfig.maintainAspectRatio !== true}
+                  />
                 </div>
                 <div>
                   <Label className="text-xs font-medium">Device Pixel Ratio</Label>
