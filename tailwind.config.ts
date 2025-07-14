@@ -10,6 +10,10 @@ const config: Config = {
   ],
   theme: {
   	extend: {
+		screens: {
+			'xs576' : {max : '576px'},
+			'xs400' : {max : '400px'}
+		},
   		colors: {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',

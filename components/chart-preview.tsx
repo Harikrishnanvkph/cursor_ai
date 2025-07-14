@@ -102,6 +102,15 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   const { clearMessages } = useChatStore();
   const [hoveredDatasetIndex, setHoveredDatasetIndex] = useState<number | null>(null);
 
+  // Responsive check for <576px
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth <= 576);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
   if (chartType === 'pie' || chartType === 'doughnut') {
     console.log("ChartPreview - Pie/Doughnut chartConfig received:", JSON.parse(JSON.stringify(chartConfig)));
   }
@@ -753,52 +762,70 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   };
 
   return (
-    <div className="h-full flex flex-col overflow-hidden" ref={fullscreenContainerRef}>
+    <div className={`flex flex-col overflow-hidden${isMobile ? '' : ' h-full'}`} ref={fullscreenContainerRef}>
       {/* Fullscreen overlay */}
       {isFullscreen && (
         <div className="fixed inset-0 bg-white z-40" />
       )}
       {/* Header */}
-      <div className="mb-4 flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="min-w-0 flex-1">
-            <h1 className="text-lg font-bold text-gray-900 truncate">Chart Preview</h1>
-            <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
-              <BarChart3 className="h-4 w-4 mr-1" />
-              <span>{getChartDisplayName()}</span>
-              <Dot className="h-4 w-4 mx-1" />
-              <span>{chartData.datasets.length} Dataset(s)</span>
-              <Dot className="h-4 w-4 mx-1" />
-              <span className="font-medium">{chartData.labels?.length || 0} Points</span>
+      <div className={`${isMobile ? '' : 'mb-4'} flex-shrink-0`}>
+        <div className={`flex${isMobile ? ' mb-2 flex-col' : ' items-center justify-between flex-wrap'} gap-2 px-2`}> {/* Responsive: column on mobile, row on desktop */}
+          {/* Chart title and info row: inline on mobile, stacked on desktop */}
+          {isMobile ? (
+            <div className="min-w-0 flex-1 flex flex-row items-center xs576:justify-between gap-x-2">
+              <h1 className="text-lg font-bold text-gray-900 truncate xs400:text-base"><span className="xs400:hidden">Chart</span> Preview</h1>
+              <div className="flex items-center gap-3 text-xs text-gray-500 min-w-0 flex-nowrap overflow-x-auto">
+                <BarChart3 className="h-4 w-4 mr-1" />
+                <span className="truncate max-w-[80px]">{getChartDisplayName()}</span>
+                <Dot className="h-4 w-4 mx-1 xs400:hidden"/>
+                <span>{chartData.datasets.length} Dataset(s)</span>
+                <Dot className="h-4 w-4 mx-1 xs400:hidden" />
+                <span className="font-medium">{chartData.labels?.length || 0} Points</span>
+              </div>
             </div>
-          </div>
-
-          <div className="flex gap-2 flex-shrink-0 ml-4">
-            <div className="flex border border-gray-200 rounded-lg overflow-hidden bg-white">
-              {onToggleLeftSidebar && (
-                <Button 
-                  variant="ghost"
-                  size="sm"
-                  onClick={onToggleLeftSidebar}
-                  title={isLeftSidebarCollapsed ? "Expand Left Sidebar" : "Collapse Left Sidebar"}
-                  className="rounded-none"
-                >
-                  <PanelLeft className={`h-5 w-5 transition-colors ${isLeftSidebarCollapsed ? 'text-slate-300' : 'text-black'}`} />
-                </Button>
-              )}
-              <div className="w-px bg-gray-200 my-2" />
-              {onToggleSidebar && (
-                <Button 
-                  variant="ghost"
-                  size="sm"
-                  onClick={onToggleSidebar}
-                  title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-                  className="rounded-none"
-                >
-                  <PanelRight className={`h-5 w-5 transition-colors ${isSidebarCollapsed ? 'text-slate-300' : 'text-black'}`} />
-                </Button>
-              )}
+          ) : (
+            <div className="min-w-0 flex-1">
+              <h1 className="text-lg font-bold text-gray-900 truncate">Chart Preview</h1>
+              <div className="flex items-center gap-3 text-xs text-gray-500 mt-1 flex-wrap min-w-0">
+                <BarChart3 className="h-4 w-4 mr-1" />
+                <span className="truncate max-w-[80px]">{getChartDisplayName()}</span>
+                <Dot className="h-4 w-4 mx-1" />
+                <span>{chartData.datasets.length} Dataset(s)</span>
+                <Dot className="h-4 w-4 mx-1" />
+                <span className="font-medium">{chartData.labels?.length || 0} Points</span>
+              </div>
             </div>
+          )}
+          {/* Action buttons: horizontally scrollable on mobile if needed */}
+          <div className={`flex gap-2 flex-shrink-0 ml-4${isMobile ? ' justify-evenly ml-0 overflow-x-auto max-w-full pb-1' : ''}`} style={isMobile ? { WebkitOverflowScrolling: 'touch' } : {}}>
+            {/* Only render sidebar toggle container if it contains actual toggles (desktop only) */}
+            {!isMobile && (
+              <div className="flex border border-gray-200 rounded-lg overflow-hidden bg-white">
+                {onToggleLeftSidebar && (
+                  <Button 
+                    variant="ghost"
+                    size="sm"
+                    onClick={onToggleLeftSidebar}
+                    title={isLeftSidebarCollapsed ? "Expand Left Sidebar" : "Collapse Left Sidebar"}
+                    className="rounded-none"
+                  >
+                    <PanelLeft className={`h-5 w-5 transition-colors ${isLeftSidebarCollapsed ? 'text-slate-300' : 'text-black'}`} />
+                  </Button>
+                )}
+                <div className="w-px bg-gray-200 my-2" />
+                {onToggleSidebar && (
+                  <Button 
+                    variant="ghost"
+                    size="sm"
+                    onClick={onToggleSidebar}
+                    title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+                    className="rounded-none"
+                  >
+                    <PanelRight className={`h-5 w-5 transition-colors ${isSidebarCollapsed ? 'text-slate-300' : 'text-black'}`} />
+                  </Button>
+                )}
+              </div>
+            )}
             <Button variant="outline" size="sm" onClick={handleRefresh} title="Refresh Chart">
               <RefreshCw className="h-4 w-4" />
             </Button>
@@ -817,7 +844,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="sm" variant="default" title="Export">
-                  <FileDown className="h-4 w-4 mr-1" /> Export
+                  <FileDown className="h-4 w-4 mr-1 xs400:mr-0" /> <span className="xs400:hidden">Export</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -843,10 +870,10 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       </div>
 
       {/* Chart Container */}
-      <Card className={`flex-1 shadow-lg overflow-hidden transition-all duration-200 ${isFullscreen ? 'fixed inset-4 z-50 m-0 rounded-lg' : ''}`}>
-        <CardContent className="p-6 h-full">
+      <Card className={`${isMobile ? 'w-full min-h-[300px]' : 'w-full flex-1 min-h-[300px]'} rounded-lg border bg-card text-card-foreground shadow-lg overflow-hidden transition-all duration-200${isFullscreen ? ' fixed inset-4 z-50 m-0 rounded-lg' : ''}`}>
+        <CardContent className={`${isMobile ? 'p-2' : 'p-6'} h-full`}>
           {chartData.datasets.length > 0 ? (
-            <div className="h-full w-full flex items-start justify-center relative" style={isResponsive ? { minHeight: 300, minWidth: 400 } : {}}>
+            <div className="h-full w-full flex items-start justify-center relative" style={(!isMobile && isResponsive) ? { minHeight: 300, minWidth: 400 } : {}}>
               {getBackgroundLayers()}
               <div
                 style={{
@@ -1035,24 +1062,8 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
               </div>
             </div>
           ) : (
-            <div className="h-full flex items-center justify-center text-center text-gray-500">
-              <div>
-                <div className="w-20 h-20 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                  <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Data Available</h3>
-                <p className="text-gray-500 mb-4">Add datasets from the sidebar to see your chart</p>
-                <Button variant="outline" onClick={() => window.dispatchEvent(new CustomEvent("add-sample-data"))}>
-                  Add Sample Data
-                </Button>
-              </div>
+            <div className="flex items-center justify-center h-full w-full text-gray-400">
+              No chart data available.
             </div>
           )}
         </CardContent>

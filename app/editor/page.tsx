@@ -54,12 +54,13 @@ export default function EditorPage() {
   // Mobile layout for <=576px
   if (isMobile) {
     return (
-      <div className="relative w-full max-w-[480px] mx-auto min-h-screen bg-gray-50 flex flex-col">
+      <div className="relative w-full mx-auto min-h-screen bg-gray-50 flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-2 border-b bg-white">
           <Link href="/landing">
-            <Button variant="outline" size="icon" className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 flex flex-row items-center justify-center gap-1">
+            <Button variant="outline" className="xs400:p-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 flex flex-row items-center justify-center gap-1">
               <ArrowLeft className="h-5 w-5" />
+              Generate
               <Sparkles className="h-4 w-4" />
             </Button>
           </Link>
