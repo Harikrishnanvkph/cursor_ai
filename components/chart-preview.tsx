@@ -26,10 +26,11 @@ import exportPlugin from "@/lib/export-plugin"
 import { useChatStore } from "@/lib/chat-store"
 import { customLabelPlugin } from "@/lib/custom-label-plugin"
 import { Button } from "@/components/ui/button"
-import { Download, RefreshCw, Maximize2, Minimize2, RotateCcw, X, PanelLeft, PanelRight, FileCode } from "lucide-react"
+import { Download, RefreshCw, Maximize2, Minimize2, RotateCcw, X, PanelLeft, PanelRight, FileCode, FileDown, FileImage, FileText, FileType2, ImageIcon } from "lucide-react"
 import { BarChart3, Database, Dot } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { downloadChartAsHTML } from "@/lib/html-exporter"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 
 ChartJS.register(
@@ -732,6 +733,25 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     }
   }, [chartWidth, chartHeight, isResponsive]);
 
+  // Add export handler stubs if not already present
+  const handleExportJPEG = () => {
+    if (chartRef.current) {
+      const url = chartRef.current.toBase64Image('image/jpeg', 1.0);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'chart.jpeg';
+      link.click();
+    }
+  };
+  const handleExportSVG = () => {
+    // Chart.js does not natively support SVG export; you may need a plugin or custom logic
+    alert('SVG export is not implemented yet.');
+  };
+  const handleExportCSV = () => {
+    // Implement CSV export logic here
+    alert('CSV export is not implemented yet.');
+  };
+
   return (
     <div className="h-full flex flex-col overflow-hidden" ref={fullscreenContainerRef}>
       {/* Fullscreen overlay */}
@@ -787,20 +807,37 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
             </Button>
             <Button variant="outline" size="sm" onClick={() => {
               clearMessages();
-  resetChart();
-  setHasJSON(false);
-}} title="Reset Chart" className="flex items-center gap-1">
-  <RotateCcw className="h-4 w-4" />
-  <span>Reset</span>
-</Button>
-            <Button size="sm" onClick={handleExport} title="Export as PNG">
-              <Download className="h-4 w-4 mr-1" />
-              PNG
+              resetChart();
+              setHasJSON(false);
+            }} title="Reset Chart" className="flex items-center gap-1">
+              <RotateCcw className="h-4 w-4" />
+              <span>Reset</span>
             </Button>
-            <Button size="sm" onClick={handleExportHTML} title="Export as HTML">
-              <FileCode className="h-4 w-4 mr-1" />
-              HTML
-            </Button>
+            {/* Export Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="default" title="Export">
+                  <FileDown className="h-4 w-4 mr-1" /> Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExport}>
+                  <FileImage className="h-4 w-4 mr-2" /> PNG
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportJPEG}>
+                  <ImageIcon className="h-4 w-4 mr-2" /> JPEG
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportSVG}>
+                  <FileType2 className="h-4 w-4 mr-2" /> SVG
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportHTML}>
+                  <FileCode className="h-4 w-4 mr-2" /> HTML
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportCSV}>
+                  <FileText className="h-4 w-4 mr-2" /> CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
