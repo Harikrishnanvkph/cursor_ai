@@ -114,12 +114,14 @@ export default function EditorPage() {
           <div className="w-10" /> {/* Spacer for symmetry */}
         </div>
         {/* Chart Preview */}
-        <div className="flex-1 flex items-start justify-center p-2">
-          <ChartPreview />
+        <div className="flex-1 flex items-start justify-center p-2 pb-20 overflow-hidden">
+          <div className="w-full h-full overflow-auto">
+            <ChartPreview />
+          </div>
         </div>
         {/* Bottom Navigation - horizontally scrollable, tiles never squish */}
         {/* fixed right-0 left-0 bottom-0 top-0 */}
-        <nav className="flex w-full bg-white border-t z-50 overflow-x-auto whitespace-nowrap">
+        <nav className="fixed right-0 left-0 bottom-0 w-full bg-white border-t z-50 overflow-x-auto whitespace-nowrap">
           <div className="flex flex-row min-w-full">
             {TABS.map((tab) => {
               const Icon = tab.icon
