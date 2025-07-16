@@ -844,7 +844,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="sm" variant="default" title="Export">
-                  <FileDown className="h-4 w-4 mr-1 xs400:mr-0" /> <span className="xs400:hidden">Export</span>
+                  <FileDown className="h-4 w-4 mr-1 xs400:mr-0" /> <span className="">Export</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
