@@ -14,13 +14,10 @@ import { useState } from "react"
 
 export function AdvancedPanel() {
   const { chartConfig, chartData, chartType, updateChartConfig } = useChartStore()
-  const [performanceOpen, setPerformanceOpen] = useState(false)
-  const [layoutOpen, setLayoutOpen] = useState(false)
   const [effectsOpen, setEffectsOpen] = useState(false)
   const [rawOpen, setRawOpen] = useState(false)
   const [watermarkOpen, setWatermarkOpen] = useState(false)
   const [tooltipOpen, setTooltipOpen] = useState(false)
-  const [hoverOpen, setHoverOpen] = useState(true)
   const [hoverEnabled, setHoverEnabled] = useState(chartConfig.interaction?.mode !== undefined && chartConfig.interaction?.mode !== false)
 
   const handleConfigUpdate = (path: string, value: any) => {
@@ -49,6 +46,10 @@ export function AdvancedPanel() {
   const handleResetConfig = () => {
     updateChartConfig({
       responsive: true,
+      maintainAspectRatio : false,
+      layout: {
+        padding: { top: 10, right: 10, bottom: 10, left: 10 }
+      },
       plugins: {
         title: {
           display: true,

@@ -103,6 +103,7 @@ const exportPlugin = {
         
         // Draw background based on type
         if (background.type === 'color' && background.color) {
+          console.log(background.imageWhiteBase)
           tempCtx.fillStyle = background.color;
           tempCtx.globalAlpha = opacity;
           tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
@@ -110,8 +111,8 @@ const exportPlugin = {
         } 
         else if (background.type === 'gradient') {
           const gradientType = background.gradientType || 'linear';
-          const color1 = background.gradientColor1 || background.gradientStart || '#000000';
-          const color2 = background.gradientColor2 || background.gradientEnd || '#ffffff';
+          const color1 = background.gradientColor2 || background.gradientStart || '#000000';
+          const color2 = background.gradientColor1 || background.gradientEnd || '#ffffff';
           const direction = background.gradientDirection || 'to bottom';
           
           console.log('Drawing gradient background:', { 
@@ -195,6 +196,7 @@ const exportPlugin = {
           console.log('Exporting with background image:', background);
           try {
             // Draw white base if enabled
+            console.log(background.imageWhiteBase)
             if (background.imageWhiteBase !== false) {
               console.log('Drawing white base for image background');
               tempCtx.fillStyle = '#ffffff';

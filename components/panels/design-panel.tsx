@@ -524,14 +524,7 @@ export function DesignPanel() {
                   </>
                 )}
 
-              <div className="flex items-center justify-between">
-                <Label className="text-custom-sm font-medium">Transparent Background</Label>
-                <Switch
-                  checked={chartConfig.backgroundColor === "transparent"}
-                  onCheckedChange={(checked) => handleConfigUpdate("backgroundColor", checked ? "transparent" : "#ffffff")}
-                />
-              </div>
-            </CardContent>
+              </CardContent>
           </Card>
 
           <Card>

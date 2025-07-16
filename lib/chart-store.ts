@@ -72,6 +72,20 @@ export interface ExtendedChartOptions extends ChartOptions {
   manualDimensions?: boolean;
   width?: number | string;
   height?: number | string;
+  background?: {
+    type: 'color' | 'gradient' | 'image' | 'transparent';
+    color?: string;
+    gradientStart?: string;
+    gradientEnd?: string;
+    gradientType?: 'linear' | 'radial';
+    gradientDirection?: 'to right' | 'to left' | 'to top' | 'to bottom' | '135deg';
+    gradientColor1?: string;
+    gradientColor2?: string;
+    opacity?: number;
+    imageUrl?: string;
+    imageFit?: 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';
+    imageWhiteBase?: boolean;
+  };
 }
 
 // Define our custom dataset properties
@@ -303,7 +317,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
   } else {
     processedType = type as keyof ChartTypeRegistry;
   }
-  const baseConfig: ExtendedChartOptions = {
+  let baseConfig: ExtendedChartOptions = {
     responsive: true,
     manualDimensions: false,
     layout: {
@@ -358,6 +372,9 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
       mode: "point" as const,
     },
   }
+
+  // Add default background property
+  baseConfig = { ...baseConfig, background: { type: 'color', color: '#ffffff', opacity: 100, gradientDirection: 'to right' } };
 
   // Special configuration for radar chart
   if (processedType === 'radar') {
