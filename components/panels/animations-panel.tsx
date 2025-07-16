@@ -237,12 +237,11 @@ export function AnimationsPanel() {
                 name="chart-mode-anim"
                 checked={chartConfig.responsive === true}
                 onChange={() => {
-                  console.log('Responsive selected (anim)');
                   updateChartConfig({
                     ...chartConfig,
                     responsive: true,
-                    maintainAspectRatio: false,
-                    manualDimensions: false
+                    manualDimensions: false,
+                    dynamicDimension: false
                   });
                 }}
                 className="text-green-600 focus:ring-green-500"
@@ -254,22 +253,21 @@ export function AnimationsPanel() {
             <div className="flex items-center space-x-2">
               <input
                 type="radio"
-                id="aspect-ratio-mode-anim"
+                id="dynamic-dimension-mode-anim"
                 name="chart-mode-anim"
-                checked={chartConfig.maintainAspectRatio === true}
+                checked={chartConfig.dynamicDimension === true}
                 onChange={() => {
-                  console.log('Aspect Ratio selected (anim)');
                   updateChartConfig({
                     ...chartConfig,
-                    maintainAspectRatio: true,
+                    dynamicDimension: true,
                     responsive: false,
                     manualDimensions: false
                   });
                 }}
                 className="text-green-600 focus:ring-green-500"
               />
-              <Label htmlFor="aspect-ratio-mode-anim" className="text-xs font-medium cursor-pointer">
-                Maintain Aspect Ratio {chartConfig.maintainAspectRatio === true ? '(Active)' : ''}
+              <Label htmlFor="dynamic-dimension-mode-anim" className="text-xs font-medium cursor-pointer">
+                Dynamic Dimension {chartConfig.dynamicDimension === true ? '(Active)' : ''}
               </Label>
             </div>
             <div className="flex items-center space-x-2">
@@ -279,12 +277,11 @@ export function AnimationsPanel() {
                 name="chart-mode-anim"
                 checked={chartConfig.manualDimensions === true}
                 onChange={() => {
-                  console.log('Manual Dimensions selected (anim)');
                   updateChartConfig({
                     ...chartConfig,
                     manualDimensions: true,
                     responsive: false,
-                    maintainAspectRatio: false
+                    dynamicDimension: false
                   });
                 }}
                 className="text-green-600 focus:ring-green-500"
@@ -294,101 +291,47 @@ export function AnimationsPanel() {
               </Label>
             </div>
           </div>
-          
-          {/* Aspect Ratio Input */}
-          <div className="space-y-1">
-            <Label className="text-xs font-medium">Aspect Ratio</Label>
-            <Input
-              type="number"
-              step="0.1"
-              min="0.1"
-              max="10"
-              value={chartConfig.aspectRatio || 1}
-              onChange={(e) =>
-                handleConfigUpdate("aspectRatio", e.target.value ? Number.parseFloat(e.target.value) : 1)
-              }
-              placeholder="1.0"
-              className="h-8 text-xs"
-              disabled={chartConfig.maintainAspectRatio !== true}
-            />
-          </div>
+          {/* Debug Info */}
+          {/* Removed Aspect Ratio Input */}
           {/* Width/Height Controls */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs font-medium">Width</Label>
-              <div className="flex gap-1 mt-1">
                 <Input
                   type="number"
-                  min={widthUnit === 'px' ? 100 : 1}
-                  max={widthUnit === 'px' ? 2000 : 100}
+                min={100}
+                max={2000}
                   value={widthValue}
-                  disabled={chartConfig.manualDimensions !== true}
+                disabled={!(chartConfig.manualDimensions || chartConfig.dynamicDimension)}
                   onChange={e => {
-                    const newValue = e.target.value ? `${e.target.value}${widthUnit}` : undefined;
-                    updateChartConfig({
-                      ...chartConfig,
-                      width: newValue
-                    });
-                  }}
-                  className="h-8 text-xs w-20"
-                />
-                <Select value={widthUnit} onValueChange={(value: 'px' | '%') => {
-                  setWidthUnit(value);
-                  if (chartConfig.width && widthValue) {
-                    const newValue = `${widthValue}${value}`;
-                    updateChartConfig({
-                      ...chartConfig,
-                      width: newValue
-                    });
+                  const newValue = e.target.value ? `${e.target.value}px` : undefined;
+                  if (chartConfig.dynamicDimension) {
+                    updateChartConfig({ ...chartConfig, width: newValue, dynamicDimension: true });
+                  } else if (chartConfig.manualDimensions) {
+                    updateChartConfig({ ...chartConfig, width: newValue, manualDimensions: true });
                   }
-                }} disabled={chartConfig.manualDimensions !== true}>
-                  <SelectTrigger className="h-8 w-16 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="px">px</SelectItem>
-                    <SelectItem value="%">%</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                }}
+                className="h-8 text-xs w-full"
+              />
             </div>
             <div>
               <Label className="text-xs font-medium">Height</Label>
-              <div className="flex gap-1 mt-1">
                 <Input
                   type="number"
-                  min={heightUnit === 'px' ? 100 : 1}
-                  max={heightUnit === 'px' ? 2000 : 100}
+                min={100}
+                max={2000}
                   value={heightValue}
-                  disabled={chartConfig.manualDimensions !== true}
+                disabled={!(chartConfig.manualDimensions || chartConfig.dynamicDimension)}
                   onChange={e => {
-                    const newValue = e.target.value ? `${e.target.value}${heightUnit}` : undefined;
-                    updateChartConfig({
-                      ...chartConfig,
-                      height: newValue
-                    });
-                  }}
-                  className="h-8 text-xs w-20"
-                />
-                <Select value={heightUnit} onValueChange={(value: 'px' | '%') => {
-                  setHeightUnit(value);
-                  if (chartConfig.height && heightValue) {
-                    const newValue = `${heightValue}${value}`;
-                    updateChartConfig({
-                      ...chartConfig,
-                      height: newValue
-                    });
+                  const newValue = e.target.value ? `${e.target.value}px` : undefined;
+                  if (chartConfig.dynamicDimension) {
+                    updateChartConfig({ ...chartConfig, height: newValue, dynamicDimension: true });
+                  } else if (chartConfig.manualDimensions) {
+                    updateChartConfig({ ...chartConfig, height: newValue, manualDimensions: true });
                   }
-                }} disabled={chartConfig.manualDimensions !== true}>
-                  <SelectTrigger className="h-8 w-16 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="px">px</SelectItem>
-                    <SelectItem value="%">%</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                }}
+                className="h-8 text-xs w-full"
+              />
             </div>
           </div>
           {/* Resize Animation Duration */}
@@ -408,6 +351,57 @@ export function AnimationsPanel() {
               />
             </div>
           )}
+            {/* Padding Controls */}
+            <div className="grid grid-cols-2 gap-3 mt-2">
+              <div>
+                <Label className="text-xs font-medium">Padding Top</Label>
+                <Input
+                  type="number"
+                  value={chartConfig.layout?.padding?.top ?? 10}
+                  onChange={(e) =>
+                    handleConfigUpdate("layout.padding.top", e.target.value ? Number.parseInt(e.target.value) : undefined)
+                  }
+                  placeholder="0"
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div>
+                <Label className="text-xs font-medium">Padding Right</Label>
+                <Input
+                  type="number"
+                  value={chartConfig.layout?.padding?.right ?? 10}
+                  onChange={(e) =>
+                    handleConfigUpdate("layout.padding.right", e.target.value ? Number.parseInt(e.target.value) : undefined)
+                  }
+                  placeholder="0"
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div>
+                <Label className="text-xs font-medium">Padding Bottom</Label>
+                <Input
+                  type="number"
+                  value={chartConfig.layout?.padding?.bottom ?? 10}
+                  onChange={(e) =>
+                    handleConfigUpdate("layout.padding.bottom", e.target.value ? Number.parseInt(e.target.value) : undefined)
+                  }
+                  placeholder="0"
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div>
+                <Label className="text-xs font-medium">Padding Left</Label>
+                <Input
+                  type="number"
+                  value={chartConfig.layout?.padding?.left ?? 10}
+                  onChange={(e) =>
+                    handleConfigUpdate("layout.padding.left", e.target.value ? Number.parseInt(e.target.value) : undefined)
+                  }
+                  placeholder="0"
+                  className="h-8 text-xs"
+                />
+              </div>
+            </div>
         </div>
       </div>
 

@@ -1247,14 +1247,6 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                     />
                   </div>
                   
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-medium">Maintain Aspect Ratio</Label>
-                    <Switch
-                      defaultChecked={true}
-                      className="data-[state=checked]:bg-orange-600"
-                    />
-                  </div>
-                  
                   <div className="space-y-1">
                     <Label className="text-xs font-medium">Device Pixel Ratio</Label>
                     <Select defaultValue="auto">

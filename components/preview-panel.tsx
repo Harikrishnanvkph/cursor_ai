@@ -100,8 +100,7 @@ export function PreviewPanel() {
                 options={{
                   ...chartConfig,
                   responsive: chartConfig.manualDimensions ? false : true,
-                  maintainAspectRatio: chartConfig.manualDimensions ? false : chartConfig.maintainAspectRatio,
-                  aspectRatio: chartConfig.maintainAspectRatio ? (chartConfig.aspectRatio || 1) : undefined,
+                  // Removed maintainAspectRatio and aspectRatio from chart area
                 }}
                 width={chartConfig.manualDimensions ? (chartConfig.width || '900px') : undefined}
                 height={chartConfig.manualDimensions ? (chartConfig.height || '600px') : undefined}

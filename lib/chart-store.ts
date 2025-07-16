@@ -69,7 +69,6 @@ declare module 'chart.js' {
 
 // Create a custom interface that extends ChartOptions with our additional properties
 export interface ExtendedChartOptions extends ChartOptions {
-  aspectRatio?: number;
   manualDimensions?: boolean;
   width?: number | string;
   height?: number | string;
@@ -306,8 +305,10 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
   }
   const baseConfig: ExtendedChartOptions = {
     responsive: true,
-    maintainAspectRatio: false,
     manualDimensions: false,
+    layout: {
+      padding: { top: 10, right: 10, bottom: 10, left: 10 }
+    },
     plugins: {
       title: {
         display: true,

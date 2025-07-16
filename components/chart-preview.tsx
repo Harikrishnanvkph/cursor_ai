@@ -872,9 +872,9 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
 
       {/* Chart Container */}
       <Card className={`${isMobile ? 'w-full min-h-[300px]' : 'w-full flex-1 min-h-[300px]'} rounded-lg border bg-card text-card-foreground shadow-lg overflow-hidden transition-all duration-200${isFullscreen ? ' fixed inset-4 z-50 m-0 rounded-lg' : ''}`}>
-        <CardContent className={`${isMobile ? 'p-2' : 'p-6'} h-full`}>
+        <CardContent className={`${isMobile ? 'p-0' : 'p-0'} h-full w-full`}>
           {chartData.datasets.length > 0 ? (
-            <div className="h-full w-full flex items-start justify-center relative" style={(!isMobile && isResponsive) ? { minHeight: 300, minWidth: 400 } : {}}>
+            <div className="h-full w-full flex items-start justify-center relative" style={(!isMobile && isResponsive) ? { minHeight: 300, minWidth: 400, height: '100%', width: '100%' } : { height: '100%', width: '100%' }}>
               {getBackgroundLayers()}
               <div
                 style={{
@@ -888,18 +888,183 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                   justifyContent: 'center',
                   maxWidth: '100%',
                   maxHeight: '100%',
-                  aspectRatio: chartConfig.maintainAspectRatio ? (chartConfig.aspectRatio || 1) : undefined
                 }}
                 onMouseLeave={() => setHoveredDatasetIndex(null)}
               >
-                <ResizableChartArea>
+                {chartConfig.dynamicDimension ? (
+                  <ResizableChartArea>
+                    <Chart
+                      key={`${chartType}-${chartWidth}-${chartHeight}-${isResponsive}-${chartConfig.manualDimensions}`}
+                      ref={chartRef}
+                      type={chartTypeForChart as any}
+                      data={chartDataForChart}
+                      // Debug logging
+                      {...((chartConfig.manualDimensions || chartConfig.dynamicDimension) && {
+                        'data-debug-width': chartConfig.width,
+                        'data-debug-height': chartConfig.height
+                      })}
+                      options={{
+                        ...(chartType === 'stackedBar' ? stackedBarConfig : 
+                            (chartType === 'horizontalBar' ? { ...chartConfig, indexAxis: 'y' } : chartConfig)),
+                        responsive: chartConfig.manualDimensions ? false : isResponsive,
+                        maintainAspectRatio: !(isResponsive),
+                        layout: {
+                          padding: chartConfig.layout?.padding || 0
+                        },
+                        hover: {
+                          intersect: chartConfig.hover?.intersect ?? false,
+                          animationDuration: chartConfig.hover?.animationDuration ?? 400,
+                        },
+                        interaction: {
+                          intersect: chartConfig.interaction?.intersect ?? true,
+                          mode: chartConfig.interaction?.mode ?? 'point',
+                        },
+                        onHover: (event: any, elements: any[]) => {
+                          if (!chartConfig.interaction?.mode) {
+                            setHoveredDatasetIndex(null);
+                            return;
+                          }
+                          if (chartMode === 'grouped' && elements && elements.length > 0) {
+                            setHoveredDatasetIndex(elements[0].datasetIndex);
+                          } else {
+                            setHoveredDatasetIndex(null);
+                          }
+                        },
+                        plugins: ({
+                          ...chartConfig.plugins,
+                          customLabels: { shapeSize: 32, labels: customLabels },
+                          legend: {
+                            ...((chartConfig.plugins as any)?.legend),
+                            labels: {
+                              ...(((chartConfig.plugins as any)?.legend)?.labels || {}),
+                              generateLabels: (chart: any) => {
+                                const legendType = ((chartConfig.plugins as any)?.legendType) || 'slice';
+                                const usePointStyle = (chartConfig.plugins?.legend as any)?.labels?.usePointStyle || false;
+                                const pointStyle = (chartConfig.plugins?.legend as any)?.labels?.pointStyle || 'circle';
+                                const fontColor = (chartConfig.plugins?.legend?.labels as any)?.color || '#000000';
+                                
+                                const createItem = (props: any) => ({
+                                  ...props,
+                                  pointStyle: usePointStyle ? pointStyle : undefined,
+                                  fontColor: fontColor // Apply the font color to each legend item
+                                });
+                                
+                                const items = [];
+                                if (legendType === 'slice' || legendType === 'both') {
+                                  // Slices: filteredLabels
+                                  for (let i = 0; i < filteredLabels.length; ++i) {
+                                    items.push(createItem({
+                                      text: String(filteredLabels[i]),
+                                      fillStyle: filteredDatasets[0]?.backgroundColor?.[i] || '#ccc',
+                                      strokeStyle: filteredDatasets[0]?.borderColor?.[i] || '#333',
+                                      hidden: false, // Already filtered, so not hidden
+                                      index: i,
+                                      datasetIndex: 0,
+                                      type: 'slice',
+                                    }));
+                                  }
+                                }
+                                if (legendType === 'dataset' || legendType === 'both') {
+                                  // Datasets: filteredDatasets
+                                  for (let i = 0; i < filteredDatasets.length; ++i) {
+                                    items.push(createItem({
+                                      text: filteredDatasets[i].label || `Dataset ${i + 1}`,
+                                      fillStyle: Array.isArray(filteredDatasets[i].backgroundColor) ? (filteredDatasets[i].backgroundColor as string[])[0] : (filteredDatasets[i].backgroundColor as string) || '#ccc',
+                                      strokeStyle: Array.isArray(filteredDatasets[i].borderColor) ? (filteredDatasets[i].borderColor as string[])[0] : (filteredDatasets[i].borderColor as string) || '#333',
+                                      hidden: false, // Already filtered, so not hidden
+                                      datasetIndex: i,
+                                      index: i,
+                                      type: 'dataset',
+                                    }));
+                                  }
+                                }
+                                return items;
+                              },
+                            },
+                            onClick: (e: any, legendItem: any, legend: any) => {
+                              // legendItem.type is either 'dataset' or 'slice'
+                              if (legendItem.type === 'dataset') {
+                                toggleDatasetVisibility(legendItem.datasetIndex);
+                              } else if (legendItem.type === 'slice') {
+                                toggleSliceVisibility(legendItem.index);
+                              }
+                            },
+                            onHover: () => {},
+                            onLeave: () => {},
+                          },
+                          tooltip: {
+                            ...((chartConfig.plugins as any)?.tooltip),
+                            callbacks: {
+                              ...((chartConfig.plugins as any)?.tooltip?.callbacks),
+                              label: function(context: any) {
+                                const mode = (chartConfig.plugins as any)?.tooltip?.customDisplayMode || 'slice';
+                                const chart = context.chart;
+                                const data = chart.data;
+                                const datasetIndex = context.datasetIndex;
+                                const dataIndex = context.dataIndex;
+                                const dataset = data.datasets[datasetIndex];
+                                const label = data.labels?.[dataIndex];
+                                const value = dataset.data[dataIndex];
+                                const datasetLabel = dataset.label || `Dataset ${datasetIndex + 1}`;
+                                const datasetColor = Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor[dataIndex] : dataset.backgroundColor;
+                                // Slice mode: default
+                                if (mode === 'slice') {
+                                  return `${label}: ${value}`;
+                                }
+                                // Dataset mode
+                                if (mode === 'dataset') {
+                                  let lines = [`%c${datasetLabel}`, ...dataset.data.map((v: any, i: number) => {
+                                    const sliceLabel = data.labels?.[i] || `Slice ${i + 1}`;
+                                    const sliceColor = Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor[i] : dataset.backgroundColor;
+                                    return `%c${sliceLabel}: ${v}`;
+                                  })];
+                                  return lines;
+                                }
+                                // X axis mode
+                                if (mode === 'xaxis') {
+                                  // For the hovered x label, show all dataset names and values
+                                  let lines = [`${label}`];
+                                  data.datasets.forEach((ds: any, i: number) => {
+                                    const dsLabel = ds.label || `Dataset ${i + 1}`;
+                                    const dsColor = Array.isArray(ds.backgroundColor) ? ds.backgroundColor[dataIndex] : ds.backgroundColor;
+                                    lines.push(`${dsLabel}: ${ds.data[dataIndex]}`);
+                                  });
+                                  return lines;
+                                }
+                                // Y axis mode
+                                if (mode === 'yaxis') {
+                                  // Show all values for the hovered y value
+                                  let lines: string[] = [];
+                                  data.datasets.forEach((ds: any, i: number) => {
+                                    ds.data.forEach((v: any, j: number) => {
+                                      if (v === value) {
+                                        const dsLabel = ds.label || `Dataset ${i + 1}`;
+                                        const sliceLabel = data.labels?.[j] || `Slice ${j + 1}`;
+                                        lines.push(`${dsLabel} - ${sliceLabel}: ${v}`);
+                                      }
+                                    });
+                                  });
+                                  return lines.length ? lines : [`${label}: ${value}`];
+                                }
+                                // Default fallback
+                                return `${label}: ${value}`;
+                              }
+                            }
+                          },
+                        } as any),
+                      }}
+                      width={((chartConfig.manualDimensions || chartConfig.dynamicDimension) ? chartWidth : undefined)}
+                      height={((chartConfig.manualDimensions || chartConfig.dynamicDimension) ? chartHeight : undefined)}
+                    />
+                  </ResizableChartArea>
+                ) : (
                   <Chart
-                    key={`${chartType}-${chartWidth}-${chartHeight}-${isResponsive}-${chartConfig.manualDimensions}-${chartConfig.aspectRatio}`}
+                    key={`${chartType}-${chartWidth}-${chartHeight}-${isResponsive}-${chartConfig.manualDimensions}`}
                     ref={chartRef}
                     type={chartTypeForChart as any}
                     data={chartDataForChart}
                     // Debug logging
-                    {...(chartConfig.manualDimensions && {
+                    {...((chartConfig.manualDimensions || chartConfig.dynamicDimension) && {
                       'data-debug-width': chartConfig.width,
                       'data-debug-height': chartConfig.height
                     })}
@@ -907,13 +1072,9 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                       ...(chartType === 'stackedBar' ? stackedBarConfig : 
                           (chartType === 'horizontalBar' ? { ...chartConfig, indexAxis: 'y' } : chartConfig)),
                       responsive: chartConfig.manualDimensions ? false : isResponsive,
-                      maintainAspectRatio: chartConfig.manualDimensions ? false : chartConfig.maintainAspectRatio,
-                      aspectRatio: chartConfig.maintainAspectRatio ? (chartConfig.aspectRatio || 1) : undefined,
+                      maintainAspectRatio: !(isResponsive),
                       layout: {
-                        padding: {
-                          left: 20,
-                          right: 20
-                        }
+                        padding: chartConfig.layout?.padding || 0
                       },
                       hover: {
                         intersect: chartConfig.hover?.intersect ?? false,
@@ -924,7 +1085,6 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                         mode: chartConfig.interaction?.mode ?? 'point',
                       },
                       onHover: (event: any, elements: any[]) => {
-                        // Disable hover effect if interaction.mode is undefined or false
                         if (!chartConfig.interaction?.mode) {
                           setHoveredDatasetIndex(null);
                           return;
@@ -1058,10 +1218,10 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                         },
                       } as any),
                     }}
-                    width={chartConfig.manualDimensions ? chartWidth : undefined}
-                    height={chartConfig.manualDimensions ? chartHeight : undefined}
+                    width={((chartConfig.manualDimensions || chartConfig.dynamicDimension) ? chartWidth : undefined)}
+                    height={((chartConfig.manualDimensions || chartConfig.dynamicDimension) ? chartHeight : undefined)}
                   />
-                </ResizableChartArea>
+                )}
               </div>
             </div>
           ) : (

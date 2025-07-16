@@ -200,11 +200,6 @@ export function DatasetPanel() {
             <Switch defaultChecked />
             <Label>Responsive</Label>
           </div>
-
-          <div className="flex items-center space-x-2">
-            <Switch defaultChecked />
-            <Label>Maintain Aspect Ratio</Label>
-          </div>
         </CardContent>
       </Card>
 

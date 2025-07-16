@@ -16,9 +16,9 @@ export function ResizableChartArea({ children }: ResizableChartAreaProps) {
   const [startPos, setStartPos] = useState({ x: 0, y: 0 })
   const [startSize, setStartSize] = useState({ width: 0, height: 0 })
 
-  // Get current chart dimensions
+  // Get current chart dimensions for dynamic mode only
   const getCurrentDimensions = () => {
-    if (chartConfig.manualDimensions) {
+    if (chartConfig.dynamicDimension) {
       const width = typeof chartConfig.width === 'string' 
         ? parseInt(chartConfig.width) 
         : chartConfig.width || 400
@@ -32,11 +32,17 @@ export function ResizableChartArea({ children }: ResizableChartAreaProps) {
 
   const [dimensions, setDimensions] = useState(getCurrentDimensions())
 
+  // Only update local state if dynamicDimension is active
   useEffect(() => {
-    setDimensions(getCurrentDimensions())
-  }, [chartConfig.width, chartConfig.height])
+    if (chartConfig.dynamicDimension) {
+      setDimensions(getCurrentDimensions())
+    }
+    // Do not update if not in dynamic mode
+    // eslint-disable-next-line
+  }, [chartConfig.width, chartConfig.height, chartConfig.dynamicDimension])
 
   const handleMouseDown = (e: React.MouseEvent, direction: string) => {
+    if (!chartConfig.dynamicDimension) return;
     e.preventDefault()
     setIsResizing(true)
     setResizeDirection(direction)
@@ -45,7 +51,7 @@ export function ResizableChartArea({ children }: ResizableChartAreaProps) {
   }
 
   const handleMouseMove = (e: MouseEvent) => {
-    if (!isResizing) return
+    if (!isResizing || !chartConfig.dynamicDimension) return
 
     const deltaX = e.clientX - startPos.x
     const deltaY = e.clientY - startPos.y
@@ -68,16 +74,16 @@ export function ResizableChartArea({ children }: ResizableChartAreaProps) {
     }
 
     setDimensions({ width: newWidth, height: newHeight })
-    
-    // Update chart config immediately during resize
-    updateChartConfig({
-      ...chartConfig,
-      manualDimensions: true,
-      responsive: false,
-      maintainAspectRatio: false,
-      width: `${newWidth}px`,
-      height: `${newHeight}px`
-    })
+
+    // Only update chart config if in dynamic mode
+    if (chartConfig.dynamicDimension) {
+      updateChartConfig({
+        ...chartConfig,
+        dynamicDimension: true,
+        width: `${newWidth}px`,
+        height: `${newHeight}px`
+      })
+    }
   }
 
   const handleMouseUp = () => {
@@ -107,7 +113,12 @@ export function ResizableChartArea({ children }: ResizableChartAreaProps) {
       document.body.style.cursor = ''
       document.body.style.userSelect = ''
     }
-  }, [isResizing, resizeDirection, startPos, startSize])
+  }, [isResizing, resizeDirection, startPos, startSize, chartConfig.dynamicDimension])
+
+  // Only render the resizable area if dynamicDimension is true
+  if (!chartConfig.dynamicDimension) {
+    return children as React.ReactElement
+  }
 
   return (
     <div className="relative inline-block">
@@ -156,9 +167,7 @@ export function ResizableChartArea({ children }: ResizableChartAreaProps) {
         </div>
 
         {/* Size indicator */}
-        <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded pointer-events-none">
-          {dimensions.width} × {dimensions.height}
-        </div>
+        {dimensions.width} × {dimensions.height}
       </div>
     </div>
   )
