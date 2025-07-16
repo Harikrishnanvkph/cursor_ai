@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft, Sparkles, BarChart3, Database, Palette, Grid, Tag, Zap, Settings, Download } from "lucide-react"
 import Link from "next/link"
 import React from "react"
+import { ResizableChartArea } from "@/components/resizable-chart-area"
 
 const TABS = [
   { id: "types_toggles", label: "Types", icon: BarChart3 },
@@ -200,11 +201,11 @@ export default function EditorPage() {
       {/* Center Area - Chart Preview */}
       <div className="flex-1 min-w-0 pr-4 pl-2 py-4">
         <ChartPreview
-          onToggleLeftSidebar={() => setLeftSidebarCollapsed((v) => !v)}
-          isLeftSidebarCollapsed={leftSidebarCollapsed}
-          onToggleSidebar={() => setRightSidebarCollapsed((v) => !v)}
-          isSidebarCollapsed={rightSidebarCollapsed}
-        />
+            onToggleLeftSidebar={() => setLeftSidebarCollapsed((v) => !v)}
+            isLeftSidebarCollapsed={leftSidebarCollapsed}
+            onToggleSidebar={() => setRightSidebarCollapsed((v) => !v)}
+            isSidebarCollapsed={rightSidebarCollapsed}
+          />
       </div>
       {/* Right Panel - Configuration */}
       {!rightSidebarCollapsed && (
