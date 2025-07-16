@@ -762,7 +762,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   };
 
   return (
-    <div className={`flex flex-col overflow-hidden${isMobile ? '' : ' h-full'}`} ref={fullscreenContainerRef}>
+    <div className={`flex min-w-full flex-col overflow-hidden${isMobile ? '' : ' h-full'}`} ref={fullscreenContainerRef}>
       {/* Fullscreen overlay */}
       {isFullscreen && (
         <div className="fixed inset-0 bg-white z-40" />

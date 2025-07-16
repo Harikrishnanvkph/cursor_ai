@@ -36,16 +36,55 @@ function useIsMobile576() {
   return isMobile;
 }
 
+// Custom hook to get screen dimensions
+function useScreenDimensions() {
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  
+  useEffect(() => {
+    function updateDimensions() {
+      setDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
+    }
+    
+    updateDimensions();
+    window.addEventListener("resize", updateDimensions);
+    return () => window.removeEventListener("resize", updateDimensions);
+  }, []);
+  
+  return dimensions;
+}
+
 export default function EditorPage() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
   const [activeTab, setActiveTab] = useState("types_toggles")
-  const { chartConfig } = useChartStore()
+  const { chartConfig, updateChartConfig } = useChartStore()
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false)
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false)
   const [mobilePanel, setMobilePanel] = useState<string | null>(null)
   const isMobile = useIsMobile576();
+  const { width: screenWidth, height: screenHeight } = useScreenDimensions();
+
+  // Auto-apply mobile dimensions when Manual Dimensions is enabled on mobile
+  useEffect(() => {
+    if (isMobile && screenWidth > 0) {
+      // Automatically enable Manual Dimensions on mobile devices
+      const mobileWidth = `${screenWidth}px`;
+      const mobileHeight = `${screenWidth}px`; // Same as width for square aspect
+      
+      updateChartConfig({
+        ...chartConfig,
+        manualDimensions: true,
+        responsive: false,
+        maintainAspectRatio: false,
+        width: mobileWidth,
+        height: mobileHeight
+      });
+    }
+  }, [isMobile, screenWidth, updateChartConfig]);
 
   if (!mounted) {
     return null; // Or a loading spinner if you prefer
@@ -59,20 +98,28 @@ export default function EditorPage() {
         <div className="flex items-center justify-between p-2 border-b bg-white">
           <Link href="/landing">
             <Button variant="outline" className="xs400:p-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 flex flex-row items-center justify-center gap-1">
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-5 w-5 xs400:hidden" />
               Generate
               <Sparkles className="h-4 w-4" />
             </Button>
           </Link>
-          <span className="font-bold text-lg text-gray-900">Chart Editor</span>
+          <div className="flex flex-col items-center">
+            <span className="font-bold text-lg text-gray-900 xs400:text-base">Chart Editor</span>
+            {isMobile && (
+              <span className="text-xs text-gray-500">
+                {screenWidth}px × {screenWidth}px
+              </span>
+            )}
+          </div>
           <div className="w-10" /> {/* Spacer for symmetry */}
         </div>
         {/* Chart Preview */}
-        <div className="flex-1 flex items-center justify-center p-2">
+        <div className="flex-1 flex items-start justify-center p-2">
           <ChartPreview />
         </div>
         {/* Bottom Navigation - horizontally scrollable, tiles never squish */}
-        <nav className="fixed bottom-0 left-0 right-0 w-full bg-white border-t z-50 overflow-x-auto whitespace-nowrap">
+        {/* fixed right-0 left-0 bottom-0 top-0 */}
+        <nav className="flex w-full bg-white border-t z-50 overflow-x-auto whitespace-nowrap">
           <div className="flex flex-row min-w-full">
             {TABS.map((tab) => {
               const Icon = tab.icon
