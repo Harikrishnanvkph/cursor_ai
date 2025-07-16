@@ -41,79 +41,94 @@ export function ResizableChartArea({ children }: ResizableChartAreaProps) {
     // eslint-disable-next-line
   }, [chartConfig.width, chartConfig.height, chartConfig.dynamicDimension])
 
-  const handleMouseDown = (e: React.MouseEvent, direction: string) => {
+  const handlePointerDown = (e: React.MouseEvent | React.TouchEvent, direction: string) => {
     if (!chartConfig.dynamicDimension) return;
-    e.preventDefault()
-    setIsResizing(true)
-    setResizeDirection(direction)
-    setStartPos({ x: e.clientX, y: e.clientY })
-    setStartSize({ width: dimensions.width, height: dimensions.height })
-  }
+    e.preventDefault();
+    let clientX, clientY;
+    if ('touches' in e) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+    setIsResizing(true);
+    setResizeDirection(direction);
+    setStartPos({ x: clientX, y: clientY });
+    setStartSize({ width: dimensions.width, height: dimensions.height });
+  };
 
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!isResizing || !chartConfig.dynamicDimension) return
-
-    const deltaX = e.clientX - startPos.x
-    const deltaY = e.clientY - startPos.y
-
-    let newWidth = startSize.width
-    let newHeight = startSize.height
-
-    // Calculate new dimensions based on resize direction
+  const handlePointerMove = (e: MouseEvent | TouchEvent) => {
+    if (!isResizing || !chartConfig.dynamicDimension) return;
+    let clientX, clientY;
+    if ('touches' in e && e.touches.length > 0) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else if ('clientX' in e) {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    } else {
+      return;
+    }
+    const deltaX = clientX - startPos.x;
+    const deltaY = clientY - startPos.y;
+    let newWidth = startSize.width;
+    let newHeight = startSize.height;
     switch (resizeDirection) {
       case 'right':
-        newWidth = Math.max(200, startSize.width + deltaX)
-        break
+        newWidth = Math.max(200, startSize.width + deltaX);
+        break;
       case 'bottom':
-        newHeight = Math.max(150, startSize.height + deltaY)
-        break
+        newHeight = Math.max(150, startSize.height + deltaY);
+        break;
       case 'corner':
-        newWidth = Math.max(200, startSize.width + deltaX)
-        newHeight = Math.max(150, startSize.height + deltaY)
-        break
+        newWidth = Math.max(200, startSize.width + deltaX);
+        newHeight = Math.max(150, startSize.height + deltaY);
+        break;
     }
-
-    setDimensions({ width: newWidth, height: newHeight })
-
-    // Only update chart config if in dynamic mode
+    setDimensions({ width: newWidth, height: newHeight });
     if (chartConfig.dynamicDimension) {
       updateChartConfig({
         ...chartConfig,
         dynamicDimension: true,
         width: `${newWidth}px`,
         height: `${newHeight}px`
-      })
+      });
     }
-  }
+  };
 
-  const handleMouseUp = () => {
+  const handlePointerUp = () => {
     if (isResizing) {
-      setIsResizing(false)
-      setResizeDirection('')
-      // Chart config is already updated during resize, no need to update again
+      setIsResizing(false);
+      setResizeDirection('');
     }
-  }
+  };
 
   useEffect(() => {
     if (isResizing) {
-      document.addEventListener('mousemove', handleMouseMove)
-      document.addEventListener('mouseup', handleMouseUp)
-      document.body.style.cursor = 'se-resize'
-      document.body.style.userSelect = 'none'
+      document.addEventListener('mousemove', handlePointerMove);
+      document.addEventListener('mouseup', handlePointerUp);
+      document.addEventListener('touchmove', handlePointerMove, { passive: false });
+      document.addEventListener('touchend', handlePointerUp);
+      document.body.style.cursor = 'se-resize';
+      document.body.style.userSelect = 'none';
     } else {
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
+      document.removeEventListener('mousemove', handlePointerMove);
+      document.removeEventListener('mouseup', handlePointerUp);
+      document.removeEventListener('touchmove', handlePointerMove);
+      document.removeEventListener('touchend', handlePointerUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
     }
-
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-    }
-  }, [isResizing, resizeDirection, startPos, startSize, chartConfig.dynamicDimension])
+      document.removeEventListener('mousemove', handlePointerMove);
+      document.removeEventListener('mouseup', handlePointerUp);
+      document.removeEventListener('touchmove', handlePointerMove);
+      document.removeEventListener('touchend', handlePointerUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizing, resizeDirection, startPos, startSize, chartConfig.dynamicDimension]);
 
   // Only render the resizable area if dynamicDimension is true
   if (!chartConfig.dynamicDimension) {
@@ -144,7 +159,8 @@ export function ResizableChartArea({ children }: ResizableChartAreaProps) {
           {/* Right handle */}
           <div
             className="absolute right-0 top-1/2 transform -translate-y-1/2 w-2 h-8 bg-blue-500 rounded cursor-ew-resize pointer-events-auto hover:bg-blue-600 transition-colors"
-            onMouseDown={(e) => handleMouseDown(e, 'right')}
+            onMouseDown={(e) => handlePointerDown(e, 'right')}
+            onTouchStart={(e) => handlePointerDown(e, 'right')}
           >
             <GripVertical className="w-2 h-8 text-white" />
           </div>
@@ -152,7 +168,8 @@ export function ResizableChartArea({ children }: ResizableChartAreaProps) {
           {/* Bottom handle */}
           <div
             className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-8 h-2 bg-blue-500 rounded cursor-ns-resize pointer-events-auto hover:bg-blue-600 transition-colors"
-            onMouseDown={(e) => handleMouseDown(e, 'bottom')}
+            onMouseDown={(e) => handlePointerDown(e, 'bottom')}
+            onTouchStart={(e) => handlePointerDown(e, 'bottom')}
           >
             <GripHorizontal className="w-8 h-2 text-white" />
           </div>
@@ -160,7 +177,8 @@ export function ResizableChartArea({ children }: ResizableChartAreaProps) {
           {/* Corner handle */}
           <div
             className="absolute bottom-0 right-0 w-6 h-6 bg-blue-500 rounded cursor-se-resize pointer-events-auto hover:bg-blue-600 transition-colors"
-            onMouseDown={(e) => handleMouseDown(e, 'corner')}
+            onMouseDown={(e) => handlePointerDown(e, 'corner')}
+            onTouchStart={(e) => handlePointerDown(e, 'corner')}
           >
             <CornerDownRight className="w-6 h-6 text-white" />
           </div>

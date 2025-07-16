@@ -70,6 +70,7 @@ declare module 'chart.js' {
 // Create a custom interface that extends ChartOptions with our additional properties
 export interface ExtendedChartOptions extends ChartOptions {
   manualDimensions?: boolean;
+  dynamicDimension?: boolean;
   width?: number | string;
   height?: number | string;
   background?: {
