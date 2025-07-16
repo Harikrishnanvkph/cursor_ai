@@ -93,9 +93,9 @@ export default function EditorPage() {
   // Mobile layout for <=576px
   if (isMobile) {
     return (
-      <div className="relative w-full mx-auto min-h-screen bg-gray-50 flex flex-col">
+      <div className="fixed inset-0 w-full h-full bg-gray-50 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-2 border-b bg-white">
+        <div className="flex items-center justify-between p-2 border-b bg-white flex-shrink-0">
           <Link href="/landing">
             <Button variant="outline" className="xs400:p-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 flex flex-row items-center justify-center gap-1">
               <ArrowLeft className="h-5 w-5 xs400:hidden" />
@@ -115,13 +115,13 @@ export default function EditorPage() {
         </div>
         {/* Chart Preview */}
         <div className="flex-1 flex items-start justify-center p-2 pb-20 overflow-hidden">
-          <div className="w-full h-full overflow-auto">
+          <div className="w-full max-w-full overflow-auto" style={{ maxHeight: 'calc(100vh - 120px)' }}>
             <ChartPreview />
           </div>
         </div>
         {/* Bottom Navigation - horizontally scrollable, tiles never squish */}
         {/* fixed right-0 left-0 bottom-0 top-0 */}
-        <nav className="fixed right-0 left-0 bottom-0 w-full bg-white border-t z-50 overflow-x-auto whitespace-nowrap">
+        <nav className="fixed right-0 left-0 bottom-0 w-full bg-white border-t z-50 overflow-x-auto whitespace-nowrap flex-shrink-0">
           <div className="flex flex-row min-w-full">
             {TABS.map((tab) => {
               const Icon = tab.icon
@@ -141,7 +141,7 @@ export default function EditorPage() {
         </nav>
         {/* Bottom Sheet/Drawer for Active Panel */}
         {mobilePanel && (
-          <div className="fixed bottom-0 left-0 w-full max-w-[480px] mx-auto bg-white rounded-t-2xl shadow-2xl z-50 animate-slide-up flex flex-col" style={{ maxHeight: '80vh' }}>
+          <div className="fixed bottom-0 left-0 w-full max-w-[480px] mx-auto bg-white rounded-t-2xl shadow-2xl z-[60] animate-slide-up flex flex-col" style={{ maxHeight: '80vh' }}>
             <div className="flex items-center justify-between px-4 py-2 border-b">
               <span className="font-semibold text-base">{TABS.find(t => t.id === mobilePanel)?.label}</span>
               <button onClick={() => setMobilePanel(null)} className="text-gray-400 hover:text-gray-700 p-1">

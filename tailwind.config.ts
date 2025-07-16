@@ -12,7 +12,8 @@ const config: Config = {
   	extend: {
 		screens: {
 			'xs576' : {max : '576px'},
-			'xs400' : {max : '400px'}
+			'xs400' : {max : '400px'},
+			
 		},
   		colors: {
   			background: 'hsl(var(--background))',
