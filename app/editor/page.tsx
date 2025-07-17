@@ -6,13 +6,14 @@ import { ChartPreview } from "@/components/chart-preview"
 import { ConfigPanel } from "@/components/config-panel"
 import { useChartStore } from "@/lib/chart-store"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Sparkles, BarChart3, Database, Palette, Grid, Tag, Zap, Settings, Download } from "lucide-react"
+import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Zap, Settings, Download, ChevronLeft, User, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import React from "react"
 import { ResizableChartArea } from "@/components/resizable-chart-area"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 const TABS = [
-  { id: "types_toggles", label: "Types", icon: BarChart3 },
+  { id: "types_toggles", label: "Types", icon: AlignEndHorizontal },
   { id: "datasets_slices", label: "Datasets", icon: Database },
   { id: "design", label: "Design", icon: Palette },
   { id: "axes", label: "Axes", icon: Grid },
@@ -106,13 +107,14 @@ export default function EditorPage() {
           </Link>
           <div className="flex flex-col items-center">
             <span className="font-bold text-lg text-gray-900 xs400:text-base">Chart Editor</span>
-            {isMobile && (
-              <span className="text-xs text-gray-500">
-                {screenWidth}px × {screenWidth}px
-              </span>
-            )}
           </div>
-          <div className="w-10" /> {/* Spacer for symmetry */}
+          <div className="flex items-center gap-2">
+            <Avatar className="h-8 w-8 border-2 border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 cursor-pointer group">
+              <AvatarFallback className="bg-gradient-to-br from-blue-100 to-blue-200 text-blue-700 text-xs font-medium group-hover:from-blue-200 group-hover:to-blue-300 transition-all duration-200">
+                <User className="h-3 w-3" />
+              </AvatarFallback>
+            </Avatar>
+          </div>
         </div>
         {/* Chart Preview */}
         <div className="flex-1 flex items-start justify-center p-2 pb-20 overflow-hidden">
@@ -142,15 +144,28 @@ export default function EditorPage() {
         </nav>
         {/* Bottom Sheet/Drawer for Active Panel */}
         {mobilePanel && (
-          <div className="fixed bottom-0 left-0 w-full max-w-[480px] mx-auto bg-white rounded-t-2xl shadow-2xl z-[60] animate-slide-up flex flex-col" style={{ maxHeight: '80vh' }}>
-            <div className="flex items-center justify-between px-4 py-2 border-b">
-              <span className="font-semibold text-base">{TABS.find(t => t.id === mobilePanel)?.label}</span>
-              <button onClick={() => setMobilePanel(null)} className="text-gray-400 hover:text-gray-700 p-1">
-                <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+          <div className="fixed bottom-0 left-0 w-full mx-auto bg-white rounded-t-2xl shadow-2xl z-[60] animate-slide-up flex flex-col" style={{ height: '78vh' }}>
+            <div className="flex items-center justify-between px-4 py-1 border-b">
+              <div className="flex items-center gap-2">
+                {(() => {
+                  const Icon = TABS.find(t => t.id === mobilePanel)?.icon
+                  return Icon ? <Icon className="h-4 w-4 text-blue-600" /> : null
+                })()}
+                <span className="font-semibold text-sm">{TABS.find(t => t.id === mobilePanel)?.label}</span>
+              </div>
+              <button onClick={() => setMobilePanel(null)} className="text-gray-400 hover:text-gray-700 p-1 rounded-lg hover:bg-gray-100 transition-colors">
+                <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-2">
-              <ConfigPanel activeTab={mobilePanel} />
+            <div className="flex-1 overflow-y-auto p-1">
+              <ConfigPanel 
+                activeTab={mobilePanel} 
+                onToggleSidebar={() => setMobilePanel(null)}
+                isSidebarCollapsed={false}
+              />
             </div>
           </div>
         )}
@@ -164,19 +179,31 @@ export default function EditorPage() {
       {/* Left Sidebar - Navigation */}
       {leftSidebarCollapsed ? (
         <div className="w-16 flex-shrink-0 flex flex-col h-full items-center bg-white border-r border-gray-200 p-2">
-          <Link href="/landing" className="mb-6 mt-4">
+          <Link href="/landing" className="mb-4 mt-4">
             <Button variant="outline" size="icon" className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 flex flex-row items-center justify-center gap-1">
               <ArrowLeft className="h-5 w-5" />
               <Sparkles className="h-4 w-4" />
             </Button>
           </Link>
+          
+          {/* Collapse Left Sidebar Button - Above active tab */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLeftSidebarCollapsed((v) => !v)}
+            className="h-10 w-10 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg mb-4"
+            title="Expand Left Sidebar"
+          >
+            <ChevronRight className="h-4 w-4 rotate-180" />
+          </Button>
+          
           {TABS.map((tab) => {
             const Icon = tab.icon
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`mb-2 p-2 rounded hover:bg-gray-100 ${activeTab === tab.id ? "bg-blue-50 text-blue-700" : "text-gray-500"}`}
+                className={`mb-2 p-2 rounded hover:bg-gray-100 transition-all duration-200 ${activeTab === tab.id ? "bg-blue-50 text-blue-700 shadow-sm" : "text-gray-500"}`}
                 title={tab.label}
               >
                 <Icon className="h-5 w-5" />
@@ -194,7 +221,12 @@ export default function EditorPage() {
               </Button>
             </Link>
             <div className="border-b mb-4"></div>
-            <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+            <Sidebar 
+              activeTab={activeTab} 
+              onTabChange={setActiveTab}
+              onToggleLeftSidebar={() => setLeftSidebarCollapsed((v) => !v)}
+              isLeftSidebarCollapsed={leftSidebarCollapsed}
+            />
           </div>
         </div>
       )}
@@ -208,9 +240,71 @@ export default function EditorPage() {
           />
       </div>
       {/* Right Panel - Configuration */}
-      {!rightSidebarCollapsed && (
+      {rightSidebarCollapsed ? (
+        <div className="w-16 flex-shrink-0 flex flex-col h-full bg-white border-l border-gray-200 shadow-sm">
+          {/* Profile Button - Top */}
+          <div className="p-2 border-b border-gray-200">
+            <Avatar className="h-10 w-10 border-2 border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 cursor-pointer group mx-auto">
+              <AvatarFallback className="bg-gradient-to-br from-blue-100 to-blue-200 text-blue-700 text-xs font-medium group-hover:from-blue-200 group-hover:to-blue-300 transition-all duration-200">
+                <User className="h-4 w-4" />
+              </AvatarFallback>
+            </Avatar>
+          </div>
+          
+          {/* Collapse/Expand Button - Below Profile */}
+          <div className="p-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setRightSidebarCollapsed((v) => !v)}
+              className="h-10 w-10 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg mx-auto"
+              title="Expand Sidebar"
+            >
+              <ChevronLeft className="h-4 w-4 rotate-180" />
+            </Button>
+          </div>
+          
+          {/* Panel Title - Middle (centered) */}
+          <div className="flex-1 flex items-center justify-center px-2">
+            <div className="transform -rotate-90 whitespace-nowrap">
+              <h3 className="text-xs font-semibold text-gray-700 leading-tight">
+                {(() => {
+                  const titles: Record<string, string> = {
+                    types_toggles: "Chart Types",
+                    datasets_slices: "Datasets & Slices",
+                    datasets: "Datasets",
+                    design: "Design",
+                    axes: "Axes",
+                    labels: "Labels",
+                    animations: "Animations",
+                    advanced: "Advanced",
+                    export: "Export"
+                  }
+                  return titles[activeTab] || "Configuration"
+                })()}
+              </h3>
+            </div>
+          </div>
+          
+          {/* Settings Button - Bottom */}
+          <div className="p-2 border-t border-gray-200">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-10 w-10 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg mx-auto"
+              title="Settings"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      ) : (
         <div className="w-80 flex-shrink-0 border-l bg-white overflow-hidden">
-          <ConfigPanel activeTab={activeTab} />
+          <ConfigPanel 
+            activeTab={activeTab} 
+            onToggleSidebar={() => setRightSidebarCollapsed((v) => !v)}
+            isSidebarCollapsed={rightSidebarCollapsed}
+          />
         </div>
       )}
     </div>

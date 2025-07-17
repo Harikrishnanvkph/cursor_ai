@@ -1,30 +1,46 @@
 "use client"
 
-import { BarChart3, Palette, Download, Database, Grid, Tag, Zap, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { BarChart3, AlignEndHorizontal, Database, Palette, Grid, Tag, Zap, SlidersHorizontal, Download, ChevronRight } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 interface SidebarProps {
   activeTab: string
   onTabChange: (tab: string) => void
+  onToggleLeftSidebar?: () => void
+  isLeftSidebarCollapsed?: boolean
 }
 
 const tabs = [
-  { id: "types_toggles", label: "Types and Toggles", icon: BarChart3 },
+  { id: "types_toggles", label: "Types and Toggles", icon: AlignEndHorizontal },
   { id: "datasets_slices", label: "Datasets and Slices", icon: Database },
   { id: "design", label: "Design", icon: Palette },
   { id: "axes", label: "Axes", icon: Grid },
   { id: "labels", label: "Labels", icon: Tag },
   { id: "animations", label: "Animations", icon: Zap },
-  { id: "advanced", label: "Advanced", icon: Settings },
+  { id: "advanced", label: "Advanced", icon: SlidersHorizontal },
   { id: "export", label: "Export", icon: Download },
 ]
 
-export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
+export function Sidebar({ activeTab, onTabChange, onToggleLeftSidebar, isLeftSidebarCollapsed }: SidebarProps) {
   return (
     <div className="h-full bg-white border-r border-gray-200 p-3 flex flex-col overflow-hidden">
-      <div className="flex items-center gap-2 mb-6 flex-shrink-0">
-        <BarChart3 className="h-6 w-6 text-blue-600" />
-        <span className="text-lg font-bold text-gray-900 truncate">Chart Builder</span>
+      <div className="flex items-center justify-between mb-6 flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <BarChart3 className="h-6 w-6 text-blue-600" />
+          <span className="text-lg font-bold text-gray-900 truncate">Chart Builder</span>
+        </div>
+        {onToggleLeftSidebar && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onToggleLeftSidebar}
+            className="h-8 w-8 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg"
+            title={isLeftSidebarCollapsed ? "Expand Left Sidebar" : "Collapse Left Sidebar"}
+          >
+            <ChevronRight className={`h-4 w-4 transition-transform duration-200 ${isLeftSidebarCollapsed ? 'rotate-180' : ''}`} />
+          </Button>
+        )}
       </div>
 
       <nav className="space-y-1 flex-1 overflow-y-auto">

@@ -27,7 +27,7 @@ import { useChatStore } from "@/lib/chat-store"
 import { customLabelPlugin } from "@/lib/custom-label-plugin"
 import { Button } from "@/components/ui/button"
 import { Download, RefreshCw, Maximize2, Minimize2, RotateCcw, X, PanelLeft, PanelRight, FileCode, FileDown, FileImage, FileText, FileType2, ImageIcon } from "lucide-react"
-import { BarChart3, Database, Dot } from "lucide-react"
+import { BarChart3,ChartColumnStacked,ChartColumnBig,ChartBarBig,ChartLine,ChartPie,ChartScatter,ChartArea,Radar, Database, Dot } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { downloadChartAsHTML } from "@/lib/html-exporter"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -762,6 +762,34 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     alert('CSV export is not implemented yet.');
   };
 
+  const getChartIcon = (chartName:string)=>{
+    switch(chartName){
+      case 'Bar':
+        return <ChartColumnBig className="h-4 w-4 mr-1" />
+      case 'Line':
+        return <ChartLine className="h-4 w-4 mr-1" />
+      case 'Horizontal Bar':
+        return <ChartBarBig className="h-4 w-4 mr-1" />
+      case 'Stacked Bar':
+        return <ChartColumnStacked className="h-4 w-4 mr-1" />
+      case 'Pie':
+      case 'Doughnut':
+        return <ChartPie className="h-4 w-4 mr-1" />
+      case 'Doughnut':
+        return <ChartPie className="h-4 w-4 mr-1" />
+      case 'Polar Area':
+      case 'Radar':
+        return <Radar className="h-4 w-4 mr-1" />
+      case 'Scatter':
+      case 'Bubble':
+        return <ChartScatter className="h-4 w-4 mr-1" />
+      case 'Area':
+        return <ChartArea className="h-4 w-4 mr-1" />
+      default:
+        return <ChartColumnBig className="h-4 w-4 mr-1" />
+    }
+  }
+
   return (
     <div className={`flex min-w-full flex-col overflow-hidden${isMobile ? '' : ' h-full'}`} ref={fullscreenContainerRef}>
       {/* Fullscreen overlay */}
@@ -776,7 +804,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
             <div className="min-w-0 flex-1 flex flex-row items-center xs576:justify-between gap-x-2">
               <h1 className="text-lg font-bold text-gray-900 truncate xs400:text-base"><span className="xs400:hidden">Chart</span> Preview</h1>
               <div className="flex items-center gap-3 text-xs text-gray-500 min-w-0 flex-nowrap overflow-x-auto">
-                <BarChart3 className="h-4 w-4 mr-1" />
+                <ChartColumnBig  className="h-4 w-4 mr-1" />
                 <span className="truncate max-w-[80px]">{getChartDisplayName()}</span>
                 <Dot className="h-4 w-4 mx-1 xs400:hidden"/>
                 <span>{chartData.datasets.length} Dataset(s)</span>
@@ -786,13 +814,16 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
             </div>
           ) : (
             <div className="min-w-0 flex-1">
-              <h1 className="text-lg font-bold text-gray-900 truncate">Chart Preview</h1>
+              <h1 className="text-lg lap1280:text-base font-bold text-gray-900 truncate">Chart Preview</h1>
               <div className="flex items-center gap-3 text-xs text-gray-500 mt-1 flex-wrap min-w-0">
-                <BarChart3 className="h-4 w-4 mr-1" />
-                <span className="truncate max-w-[80px]">{getChartDisplayName()}</span>
-                <Dot className="h-4 w-4 mx-1" />
-                <span>{chartData.datasets.length} Dataset(s)</span>
-                <Dot className="h-4 w-4 mx-1" />
+                <span className="flex flex-row">
+                  {getChartIcon(getChartDisplayName())}
+                  {/* <ChartColumnBig className="h-4 w-4 mr-1" /> */}
+                  <span className="truncate max-w-[80px]">{getChartDisplayName()}</span>
+                </span>
+                <Dot className="h-4 w-4 mx-1 lap1280:hidden" />
+                <span className="lap1280:hidden">{chartData.datasets.length} Dataset(s)</span>
+                <Dot className="h-4 w-4 mx-1 lap1280:hidden" />
                 <span className="font-medium">{chartData.labels?.length || 0} Points</span>
               </div>
             </div>
@@ -827,7 +858,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                 )}
               </div>
             )}
-            <Button variant="outline" size="sm" onClick={handleRefresh} title="Refresh Chart">
+            <Button className="lap1280:hidden" variant="outline" size="sm" onClick={handleRefresh} title="Refresh Chart">
               <RefreshCw className="h-4 w-4" />
             </Button>
             <Button variant="outline" size="sm" onClick={handleFullscreen} title="Fullscreen">

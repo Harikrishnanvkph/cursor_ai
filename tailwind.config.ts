@@ -13,7 +13,9 @@ const config: Config = {
 		screens: {
 			'xs576' : {max : '576px'},
 			'xs400' : {max : '400px'},
-			
+			'lap1024' : {max : '1024px'},
+			'lap1280' : {max : '1280px'},
+			'lap1440' : {max : '1440px'},
 		},
   		colors: {
   			background: 'hsl(var(--background))',
