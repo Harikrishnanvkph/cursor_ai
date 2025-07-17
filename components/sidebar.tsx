@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { BarChart3, AlignEndHorizontal, Database, Palette, Grid, Tag, Zap, SlidersHorizontal, Download, ChevronRight } from "lucide-react"
+import { BarChart3, AlignEndHorizontal, Database,PanelLeft, Palette, Grid, Tag, Zap, SlidersHorizontal, Download, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface SidebarProps {
@@ -38,6 +38,7 @@ export function Sidebar({ activeTab, onTabChange, onToggleLeftSidebar, isLeftSid
             className="h-8 w-8 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg"
             title={isLeftSidebarCollapsed ? "Expand Left Sidebar" : "Collapse Left Sidebar"}
           >
+            {/* <PanelLeft className={`h-5 w-5 transition-colors ${isLeftSidebarCollapsed ? 'text-slate-300' : 'text-black'}`} /> */}
             <ChevronRight className={`h-4 w-4 transition-transform duration-200 ${isLeftSidebarCollapsed ? 'rotate-180' : ''}`} />
           </Button>
         )}

@@ -299,7 +299,7 @@ export default function EditorPage() {
           </div>
         </div>
       ) : (
-        <div className="w-80 flex-shrink-0 border-l bg-white overflow-hidden">
+        <div className="w-80 lap1024:x-[19rem] flex-shrink-0 border-l bg-white overflow-hidden">
           <ConfigPanel 
             activeTab={activeTab} 
             onToggleSidebar={() => setRightSidebarCollapsed((v) => !v)}

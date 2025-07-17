@@ -26,7 +26,8 @@ import exportPlugin from "@/lib/export-plugin"
 import { useChatStore } from "@/lib/chat-store"
 import { customLabelPlugin } from "@/lib/custom-label-plugin"
 import { Button } from "@/components/ui/button"
-import { Download, RefreshCw, Maximize2, Minimize2, RotateCcw, X, PanelLeft, PanelRight, FileCode, FileDown, FileImage, FileText, FileType2, ImageIcon } from "lucide-react"
+import { Download, RefreshCw, Maximize2, Minimize2, RotateCcw, X, PanelLeft, PanelRight,
+   FileCode, FileDown, FileImage, FileText, FileType2, ImageIcon } from "lucide-react"
 import { BarChart3,ChartColumnStacked,ChartColumnBig,ChartBarBig,ChartLine,ChartPie,ChartScatter,ChartArea,Radar, Database, Dot } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { downloadChartAsHTML } from "@/lib/html-exporter"
@@ -822,7 +823,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                   <span className="truncate max-w-[80px]">{getChartDisplayName()}</span>
                 </span>
                 <Dot className="h-4 w-4 mx-1 lap1280:hidden" />
-                <span className="lap1280:hidden">{chartData.datasets.length} Dataset(s)</span>
+                <span className="">{chartData.datasets.length} Dataset(s)</span>
                 <Dot className="h-4 w-4 mx-1 lap1280:hidden" />
                 <span className="font-medium">{chartData.labels?.length || 0} Points</span>
               </div>
@@ -832,7 +833,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
           <div className={`flex gap-2 flex-shrink-0 ml-4${isMobile ? ' justify-evenly ml-0 overflow-x-auto max-w-full pb-1' : ''}`} style={isMobile ? { WebkitOverflowScrolling: 'touch' } : {}}>
             {/* Only render sidebar toggle container if it contains actual toggles (desktop only) */}
             {!isMobile && (
-              <div className="flex border border-gray-200 rounded-lg overflow-hidden bg-white">
+              <div className="flex border lap1280:hidden border-gray-200 rounded-lg overflow-hidden bg-white">
                 {onToggleLeftSidebar && (
                   <Button 
                     variant="ghost"

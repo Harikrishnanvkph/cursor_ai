@@ -1096,7 +1096,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                                   borderColor: darkenColor(e.target.value, 20)
                                 })
                               }}
-                              className="sr-only"
+                              className="hidden"
                             />
                             <Input
                               value={Array.isArray(dataset.backgroundColor) 
