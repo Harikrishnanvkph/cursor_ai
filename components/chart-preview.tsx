@@ -91,11 +91,12 @@ function fadeColor(color: any, alpha = 0.15) {
   return color;
 }
 
-export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeftSidebar, isLeftSidebarCollapsed }: {
+export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeftSidebar, isLeftSidebarCollapsed, isTablet = false }: {
   onToggleSidebar?: () => void,
   isSidebarCollapsed?: boolean,
   onToggleLeftSidebar?: () => void,
-  isLeftSidebarCollapsed?: boolean
+  isLeftSidebarCollapsed?: boolean,
+  isTablet?: boolean
 }) {
   const { chartConfig, chartData, chartType, resetChart, legendFilter, fillArea, showBorder, setHasJSON, chartMode, activeDatasetIndex, uniformityMode, toggleDatasetVisibility, toggleSliceVisibility } = useChartStore()
   const chartRef = useRef<ChartJS>(null)
@@ -804,7 +805,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
           {isMobile ? (
             <div className="min-w-0 flex-1 flex flex-row items-center xs576:justify-between gap-x-2">
               <h1 className="text-lg font-bold text-gray-900 truncate xs400:text-base"><span className="xs400:hidden">Chart</span> Preview</h1>
-              <div className="flex items-center gap-3 text-xs text-gray-500 min-w-0 flex-nowrap overflow-x-auto">
+              <div className="flex items-center gap-2 text-xs text-gray-500 min-w-0 flex-nowrap overflow-x-auto">
                 <ChartColumnBig  className="h-4 w-4 mr-1" />
                 <span className="truncate max-w-[80px]">{getChartDisplayName()}</span>
                 <Dot className="h-4 w-4 mx-1 xs400:hidden"/>
@@ -816,7 +817,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
           ) : (
             <div className="min-w-0 flex-1">
               <h1 className="text-lg lap1280:text-base font-bold text-gray-900 truncate">Chart Preview</h1>
-              <div className="flex items-center gap-3 text-xs text-gray-500 mt-1 flex-wrap min-w-0">
+              <div className="flex items-center gap-2 text-xs text-gray-500 mt-1 flex-wrap min-w-0">
                 <span className="flex flex-row">
                   {getChartIcon(getChartDisplayName())}
                   {/* <ChartColumnBig className="h-4 w-4 mr-1" /> */}

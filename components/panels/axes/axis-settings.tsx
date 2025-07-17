@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider"
 import { cn } from "@/lib/utils"
 import { ScaleType } from "chart.js"
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback, useRef, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 interface AxisSettingsProps {
@@ -48,6 +48,11 @@ export function AxisSettings({ axis, config, onUpdate, className }: AxisSettings
   const updateNestedConfig = (basePath: string, path: string, value: any) => {
     updateConfig(`${basePath}.${path}`, value)
   }
+
+  useEffect(()=>{
+    console.log('config initialization')
+    console.log(JSON.stringify(config))
+  },[])
 
   const renderGeneralTab = () => (
     <div className="space-y-4">
@@ -1106,9 +1111,9 @@ export function AxisSettings({ axis, config, onUpdate, className }: AxisSettings
               <Label className="text-xs font-medium">Grace</Label>
               <Input
                 type="number"
-                value={config?.grace || ''}
-                onChange={(e) => updateConfig('grace', e.target.value ? Number(e.target.value) : undefined)}
-                placeholder="0"
+                value={config?.grace ?? 5}
+                onChange={(e) => updateConfig('grace', e.target.value ? Number(e.target.value) : 5)}
+                placeholder="5"
                 className="h-8 text-xs"
                 min={0}
                 step={0.1}

@@ -9,9 +9,9 @@ import { Slider } from "@/components/ui/slider"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useChartStore } from "@/lib/chart-store"
 import { BarChart2, Grid, Ruler, Target } from "lucide-react";
-import { RadarPanel } from "./radar-panel";
-import { PiePanel } from "./pie-panel";
-import { PolarAreaPanel } from "./polar-area-panel";
+import { RadarPanel } from "../panels/radar-panel";
+import { PiePanel } from "../panels/pie-panel";
+import { PolarAreaPanel } from "../panels/polar-area-panel";
 
 export function AxesPanel() {
   const { chartConfig, updateChartConfig, chartType } = useChartStore()

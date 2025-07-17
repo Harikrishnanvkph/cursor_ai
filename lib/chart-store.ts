@@ -497,6 +497,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
       scales: {
         x: {
           display: true,
+          grace: 5, // Add default grace for x-axis
           grid: {
             display: true,
             color: "#e5e7eb",
@@ -531,6 +532,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
         },
         y: {
           display: true,
+          grace: 5, // Add default grace for y-axis
           grid: {
             display: true,
             color: "#e5e7eb",
@@ -578,6 +580,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
     scales: {
       x: {
         display: true,
+        grace: 5, // Add default grace for x-axis
         grid: {
           display: true,
           color: "#e5e7eb",
@@ -612,6 +615,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
       },
       y: {
         display: true,
+        grace: 5, // Add default grace for y-axis
         grid: {
           display: true,
           color: "#e5e7eb",
@@ -1714,6 +1718,27 @@ export const useChartStore = create<ChartStore>()(
           (newConfig as any).background = (state.chartConfig as any).background;
         }
 
+        // Preserve manual/responsive/dimension settings for mobile devices
+        const isMobile = typeof window !== 'undefined' && window.innerWidth <= 576;
+        if (isMobile) {
+          // For mobile devices, preserve manual dimensions if they were set
+          if ('manualDimensions' in state.chartConfig) {
+            newConfig.manualDimensions = state.chartConfig.manualDimensions;
+          }
+          if ('dynamicDimension' in state.chartConfig) {
+            newConfig.dynamicDimension = state.chartConfig.dynamicDimension;
+          }
+          if ('responsive' in state.chartConfig) {
+            newConfig.responsive = state.chartConfig.responsive;
+          }
+          if ('width' in state.chartConfig) {
+            newConfig.width = state.chartConfig.width;
+          }
+          if ('height' in state.chartConfig) {
+            newConfig.height = state.chartConfig.height;
+          }
+        }
+
         // Restore datalabels and customLabelsConfig only if present in newConfig.plugins
         if ((newConfig.plugins as any)?.datalabels) {
           (newConfig.plugins as any).datalabels = {
@@ -1982,6 +2007,30 @@ export const useChartStore = create<ChartStore>()(
       resetChart: () => set((state) => {
         const modeDefaultData = getDefaultDataForMode(state.chartMode);
         
+        // Create new config for bar chart
+        let newConfig = getDefaultConfigForType('bar');
+        
+        // Preserve manual/responsive/dimension settings for mobile devices
+        const isMobile = typeof window !== 'undefined' && window.innerWidth <= 576;
+        if (isMobile) {
+          // For mobile devices, preserve manual dimensions if they were set
+          if ('manualDimensions' in state.chartConfig) {
+            newConfig.manualDimensions = state.chartConfig.manualDimensions;
+          }
+          if ('dynamicDimension' in state.chartConfig) {
+            newConfig.dynamicDimension = state.chartConfig.dynamicDimension;
+          }
+          if ('responsive' in state.chartConfig) {
+            newConfig.responsive = state.chartConfig.responsive;
+          }
+          if ('width' in state.chartConfig) {
+            newConfig.width = state.chartConfig.width;
+          }
+          if ('height' in state.chartConfig) {
+            newConfig.height = state.chartConfig.height;
+          }
+        }
+        
         // Update the appropriate mode-specific storage
         const modeDataUpdate = state.chartMode === 'single' 
           ? { singleModeData: modeDefaultData }
@@ -1990,7 +2039,7 @@ export const useChartStore = create<ChartStore>()(
         return {
           chartType: 'bar',
           chartData: modeDefaultData,
-          chartConfig: getDefaultConfigForType('bar'),
+          chartConfig: newConfig,
           ...modeDataUpdate,
         };
       }),
