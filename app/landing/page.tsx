@@ -2,18 +2,19 @@
 
 import React, { useState, useRef, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Send, BarChart2, Plus, RotateCcw, Edit3, MessageSquare, Sparkles, ArrowRight, ChevronDown, ChevronUp, X, ChevronLeft, ChevronRight, PanelLeft, PanelRight, Settings, User } from "lucide-react"
+import { Send, BarChart2, Plus, SquarePen ,PencilRuler ,RotateCcw, Edit3, MessageSquare, Sparkles, ArrowRight, ChevronDown, ChevronUp, X, ChevronLeft, ChevronRight, PanelLeft, PanelRight, Settings, User } from "lucide-react"
 import { useChartStore } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
 import { ChartLayout } from "@/components/chart-layout"
+import { ChartPreview } from "@/components/chart-preview"
 import { useHistoryStore } from "@/lib/history-store"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import { clearStoreData } from "@/lib/utils"
 import { ResponsiveAnimationsPanel } from "@/components/panels/responsive-animations-panel";
-
-const chartTemplate =
-  "Create a bar chart comparing the top 5 countries by smartphone usage in 2025. Include country names on the x-axis and number of users on the y-axis."
+import { Chart } from "react-chartjs-2"
+import { PromptTemplate, chartTemplate, ChatWindow } from "@/components/landing"
+import { ConfigSidebar } from "@/components/config-sidebar"
 
 const modificationExamples = [
   "Make the bars red",
@@ -25,7 +26,7 @@ const modificationExamples = [
 
 export default function LandingPage() {
   const router = useRouter()
-  const { chartConfig, chartData, setFullChart, resetChart, hasJSON, setHasJSON } = useChartStore()
+  const { chartConfig, chartData, chartType, setFullChart, resetChart, hasJSON, setHasJSON } = useChartStore()
   const { 
     messages, 
     currentChartState,
@@ -42,6 +43,41 @@ export default function LandingPage() {
   const [showActiveBanner, setShowActiveBanner] = useState(true)
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true)
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true)
+  
+  // Custom hook for tablet detection (577px-1024px)
+  const [isTablet, setIsTablet] = useState(false)
+  // Custom hook for mobile detection (<576px)
+  const [isMobile, setIsMobile] = useState(false)
+  const [isClient, setIsClient] = useState(false)
+  
+  useEffect(() => {
+    // Immediate synchronous detection before any render
+    const width = window.innerWidth
+    const tabletSize = width >= 577 && width <= 1024
+    const mobileSize = width < 576
+    
+    // Set states synchronously first
+    setIsClient(true)
+    setIsTablet(tabletSize)
+    setIsMobile(mobileSize)
+    
+    const checkScreenSize = () => {
+      const width = window.innerWidth
+      setIsTablet(width >= 577 && width <= 1024)
+      setIsMobile(width < 576)
+    }
+    
+    window.addEventListener('resize', checkScreenSize)
+    return () => window.removeEventListener('resize', checkScreenSize)
+  }, [])
+  
+  // Tablet-specific states
+  const [tabletRightSidebarOpen, setTabletRightSidebarOpen] = useState(false)
+  const [tabletRightSidebarContent, setTabletRightSidebarContent] = useState<'messages' | 'tools' | 'history' | null>(null)
+
+  // Mobile-specific states (reuse tablet sidebar logic but different positioning)
+  const [mobileRightSidebarOpen, setMobileRightSidebarOpen] = useState(false)
+  const [mobileRightSidebarContent, setMobileRightSidebarContent] = useState<'messages' | 'tools' | 'history' | null>(null)
 
   const handleSend = useCallback(async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
@@ -97,6 +133,38 @@ export default function LandingPage() {
     resetChart()
     setHasJSON(false)
   }, [clearMessages, resetChart, setHasJSON])
+  
+  // Tablet sidebar handlers
+  const handleTabletIconClick = useCallback((contentType: 'messages' | 'tools' | 'history') => {
+    if (tabletRightSidebarContent === contentType && tabletRightSidebarOpen) {
+      setTabletRightSidebarOpen(false)
+      setTabletRightSidebarContent(null)
+    } else {
+      setTabletRightSidebarContent(contentType)
+      setTabletRightSidebarOpen(true)
+    }
+  }, [tabletRightSidebarContent, tabletRightSidebarOpen])
+  
+  const closeTabletSidebar = useCallback(() => {
+    setTabletRightSidebarOpen(false)
+    setTabletRightSidebarContent(null)
+  }, [])
+
+  // Mobile sidebar handlers (same logic as tablet)
+  const handleMobileIconClick = useCallback((contentType: 'messages' | 'tools' | 'history') => {
+    if (mobileRightSidebarContent === contentType && mobileRightSidebarOpen) {
+      setMobileRightSidebarOpen(false)
+      setMobileRightSidebarContent(null)
+    } else {
+      setMobileRightSidebarContent(contentType)
+      setMobileRightSidebarOpen(true)
+    }
+  }, [mobileRightSidebarContent, mobileRightSidebarOpen])
+  
+  const closeMobileSidebar = useCallback(() => {
+    setMobileRightSidebarOpen(false)
+    setMobileRightSidebarContent(null)
+  }, [])
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -128,6 +196,397 @@ export default function LandingPage() {
     return () => window.removeEventListener('error', handleError)
   }, [])
 
+  // Show loading until client-side hydration
+  if (!isClient) {
+    return (
+      <div className="flex h-screen w-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
+
+  // Tablet Layout (577px - 1024px)
+  if (isTablet) {
+    return (
+      <div className="flex h-screen w-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 relative overflow-hidden">
+        {/* Header */}
+        <header className="fixed top-0 left-0 right-0 z-40 h-16 bg-white/95 backdrop-blur-xl border-b border-white/30 shadow-lg">
+          <div className="flex items-center justify-between h-full px-6">
+            {/* Left: App Logo */}
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-2 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl shadow-lg">
+                <BarChart2 className="h-6 w-6 text-white" />
+              </div>
+            </div>
+            
+            {/* Center: Main Title */}
+            <div className="flex-1 flex justify-center">
+              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent tracking-wide text-center">
+                Generate AI Charts
+              </h1>
+            </div>
+            
+            {/* Right: Advanced Editor Button */}
+            <div className="flex items-center gap-3 min-w-0">
+              <button
+                onClick={() => router.push("/editor")}
+                className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl text-sm font-semibold transition-all duration-200 hover:scale-105 shadow-lg"
+              >
+                <PencilRuler className="w-4 h-4" />
+                <span className="hidden sm:inline">Advanced Editor</span>
+                <span className="sm:hidden">ADV Editor</span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* Left Icon Sidebar */}
+        <aside className="fixed left-0 top-16 bottom-0 w-16 bg-white/90 backdrop-blur-xl border-r border-white/20 shadow-lg z-30 flex flex-col items-center py-4 space-y-4">
+          
+          {/* New Chat Icon */}
+          <button
+            onClick={() => {
+              handleNewConversation();
+              // Auto-open messages sidebar for new chat
+              setTabletRightSidebarContent('messages');
+              setTabletRightSidebarOpen(true);
+            }}
+            className="p-2 rounded-lg hover:bg-blue-50 transition-all duration-200 text-gray-600 hover:text-blue-600"
+            title="New Chat"
+          >
+            <SquarePen className="w-5 h-5" />
+          </button>
+          
+          {/* Message Icon */}
+          <button
+            onClick={() => handleTabletIconClick('messages')}
+            className={`p-2 rounded-lg transition-all duration-200 ${
+              tabletRightSidebarContent === 'messages' && tabletRightSidebarOpen
+                ? 'text-blue-600 bg-blue-50' 
+                : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+            }`}
+            title="Messages"
+          >
+            <MessageSquare className="w-5 h-5" />
+          </button>
+          
+          {/* Tools Icon */}
+          <button
+            onClick={() => handleTabletIconClick('tools')}
+            className={`p-2 rounded-lg transition-all duration-200 ${
+              tabletRightSidebarContent === 'tools' && tabletRightSidebarOpen
+                ? 'text-blue-600 bg-blue-50' 
+                : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+            }`}
+            title="Tools"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
+          
+          {/* History Icon */}
+          <button
+            onClick={() => handleTabletIconClick('history')}
+            className={`p-2 rounded-lg transition-all duration-200 ${
+              tabletRightSidebarContent === 'history' && tabletRightSidebarOpen
+                ? 'text-blue-600 bg-blue-50' 
+                : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+            }`}
+            title="History"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
+          
+          {/* Profile Icon at bottom */}
+          <div className="flex-1"></div>
+          <div className="h-10 w-10 flex items-center justify-center rounded-full bg-blue-100 border-2 border-blue-200">
+            <User className="h-5 w-5 text-blue-600" />
+          </div>
+        </aside>
+
+        {/* Main Content Area */}
+        <main className="flex-1 ml-16 mt-16 relative flex flex-col">
+          {/* Main Chart Area */}
+          <div className="flex-1 p-4 flex flex-col">
+            {chartData?.datasets?.length > 0 && hasJSON ? (
+              <div className="flex-1 h-full">
+                <ChartPreview 
+                  onToggleSidebar={() => {}} 
+                  isSidebarCollapsed={true}
+                  onToggleLeftSidebar={() => {}}
+                  isLeftSidebarCollapsed={true}
+                />
+              </div>
+            ) : (
+              <PromptTemplate
+                size="default"
+                onSampleClick={(template) => {
+                  setInput(template);
+                  setTabletRightSidebarContent('messages');
+                  setTabletRightSidebarOpen(true);
+                }}
+              />
+            )}
+          </div>
+        </main>
+
+        {/* Overlaying Right Sidebar */}
+        {tabletRightSidebarOpen && (
+          <div className="fixed inset-0 z-50">
+            {/* Backdrop */}
+            <div 
+              className="absolute inset-0 bg-black/20 backdrop-blur-sm"
+              onClick={closeTabletSidebar}
+            />
+            
+                        {/* Sidebar */}
+            <div className="absolute right-0 top-0 bottom-0 w-80 bg-white shadow-2xl border-l border-white/20 transform transition-transform duration-300 flex flex-col">
+              {/* Sidebar Header */}
+              <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
+                <h3 className="font-semibold text-gray-900 capitalize">
+                  {tabletRightSidebarContent}
+                </h3>
+                <button
+                  onClick={closeTabletSidebar}
+                  className="p-1 hover:bg-gray-100 rounded transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+              
+              {/* Sidebar Content */}
+              <div className="flex-1 min-h-0 flex flex-col">
+                 {tabletRightSidebarContent === 'messages' && (
+                   <ChatWindow
+                     messages={messages}
+                     input={input}
+                     setInput={setInput}
+                     onSend={handleSend}
+                     isProcessing={isProcessing}
+                     hasActiveChart={hasActiveChart}
+                     showActiveBanner={showActiveBanner}
+                     setShowActiveBanner={setShowActiveBanner}
+                     suggestionsOpen={suggestionsOpen}
+                     setSuggestionsOpen={setSuggestionsOpen}
+                     modificationExamples={modificationExamples}
+                     messagesEndRef={messagesEndRef}
+                     textareaRef={textareaRef}
+                     handleInputChange={handleInputChange}
+                     compact={true}
+                   />
+                 )}
+                
+                                 {tabletRightSidebarContent === 'tools' && (
+                   <div className="h-full overflow-auto">
+                     <ConfigSidebar />
+                   </div>
+                 )}
+                
+                {tabletRightSidebarContent === 'history' && (
+                  <div className="p-4">
+                    <HistoryDropdown />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Mobile Layout (< 576px)
+  if (isMobile) {
+    return (
+      <div className="flex flex-col h-screen w-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 relative overflow-hidden">
+        {/* Header */}
+        <header className="fixed top-0 left-0 right-0 z-40 h-14 bg-white/95 backdrop-blur-xl border-b border-white/30 shadow-lg">
+          <div className="flex items-center justify-between h-full px-4">
+            {/* Left: App Logo */}
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="p-1.5 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg shadow-lg">
+                <BarChart2 className="h-5 w-5 text-white" />
+              </div>
+            </div>
+            
+            {/* Center: Main Title */}
+            <div className="flex-1 flex justify-center">
+              <h1 className="text-lg font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent tracking-wide text-center">
+                AI Charts
+              </h1>
+            </div>
+            
+            {/* Right: Advanced Editor Button */}
+            <div className="flex items-center gap-2 min-w-0">
+              <button
+                onClick={() => router.push("/editor")}
+                className="flex items-center gap-1.5 p-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg text-xs font-semibold transition-all duration-200 hover:scale-105 shadow-lg"
+              >
+                <PencilRuler className="w-3.5 h-3.5" />
+                <span>ADV Editor</span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* Main Content Area */}
+        <main className="flex-1 mt-14 mb-16 relative flex flex-col overflow-hidden">
+          {/* Chart/Template Area */}
+          <div className="flex-1 p-3 flex flex-col">
+            {chartData?.datasets?.length > 0 && hasJSON ? (
+              <div className="flex-1 h-full">
+                <ChartPreview 
+                  onToggleSidebar={() => {}} 
+                  isSidebarCollapsed={true}
+                  onToggleLeftSidebar={() => {}}
+                  isLeftSidebarCollapsed={true}
+                />
+              </div>
+            ) : (
+              <PromptTemplate
+                size="compact"
+                onSampleClick={handleTemplateClick}
+              />
+            )}
+          </div>
+        </main>
+
+        {/* Bottom Navigation Bar */}
+        <nav className="fixed bottom-0 left-0 right-0 z-30 h-16 bg-white/95 backdrop-blur-xl border-t border-white/30 shadow-lg">
+          <div className="flex items-center justify-around h-full px-2">
+            
+            {/* New Chat Icon */}
+            <button
+              onClick={() => {
+                handleNewConversation();
+                // Auto-open messages sidebar for new chat
+                setMobileRightSidebarContent('messages');
+                setMobileRightSidebarOpen(true);
+              }}
+              className="flex flex-col items-center justify-center p-2 rounded-lg hover:bg-blue-50 transition-all duration-200 text-gray-600 hover:text-blue-600 min-w-0"
+              title="New Chat"
+            >
+              <SquarePen className="w-5 h-5 mb-1" />
+              <span className="text-xs font-medium">New</span>
+            </button>
+            
+            {/* Messages Icon */}
+            <button
+              onClick={() => handleMobileIconClick('messages')}
+              className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all duration-200 min-w-0 ${
+                mobileRightSidebarContent === 'messages' && mobileRightSidebarOpen
+                  ? 'text-blue-600 bg-blue-50' 
+                  : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+              }`}
+              title="Messages"
+            >
+              <MessageSquare className="w-5 h-5 mb-1" />
+              <span className="text-xs font-medium">Chat</span>
+            </button>
+            
+            {/* Tools Icon */}
+            <button
+              onClick={() => handleMobileIconClick('tools')}
+              className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all duration-200 min-w-0 ${
+                mobileRightSidebarContent === 'tools' && mobileRightSidebarOpen
+                  ? 'text-blue-600 bg-blue-50' 
+                  : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+              }`}
+              title="Tools"
+            >
+              <Settings className="w-5 h-5 mb-1" />
+              <span className="text-xs font-medium">Tools</span>
+            </button>
+            
+            {/* History Icon */}
+            <button
+              onClick={() => handleMobileIconClick('history')}
+              className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all duration-200 min-w-0 ${
+                mobileRightSidebarContent === 'history' && mobileRightSidebarOpen
+                  ? 'text-blue-600 bg-blue-50' 
+                  : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+              }`}
+              title="History"
+            >
+              <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-xs font-medium">History</span>
+            </button>
+
+            {/* Profile Icon */}
+            <button className="flex flex-col items-center justify-center p-2 min-w-0">
+              <div className="w-6 h-6 flex items-center justify-center rounded-full bg-blue-100 border border-blue-200 mb-1">
+                <User className="h-4 w-4 text-blue-600" />
+              </div>
+              <span className="text-xs font-medium text-gray-600">Profile</span>
+            </button>
+            
+          </div>
+        </nav>
+
+        {/* Right Overlay Sidebar for Mobile */}
+        {mobileRightSidebarOpen && (
+          <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm" onClick={closeMobileSidebar}>
+            <div 
+              className="absolute right-0 top-0 bottom-0 w-80 max-w-[85vw] bg-white/95 backdrop-blur-xl shadow-2xl border-l border-white/30 flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Sidebar Header */}
+              <div className="flex items-center justify-between p-4 border-b border-white/20">
+                <h2 className="text-lg font-semibold text-gray-900 capitalize">
+                  {mobileRightSidebarContent}
+                </h2>
+                <button
+                  onClick={closeMobileSidebar}
+                  className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Sidebar Content */}
+              <div className="flex-1 overflow-hidden">
+                {mobileRightSidebarContent === 'messages' && (
+                  <ChatWindow
+                    messages={messages}
+                    input={input}
+                    setInput={setInput}
+                    onSend={handleSend}
+                    handleInputChange={handleInputChange}
+                    isProcessing={isProcessing}
+                    hasActiveChart={hasActiveChart}
+                    showActiveBanner={showActiveBanner}
+                    setShowActiveBanner={setShowActiveBanner}
+                    suggestionsOpen={suggestionsOpen}
+                    setSuggestionsOpen={setSuggestionsOpen}
+                    modificationExamples={modificationExamples}
+                    textareaRef={textareaRef}
+                    messagesEndRef={messagesEndRef}
+                  />
+                )}
+                
+                {mobileRightSidebarContent === 'tools' && (
+                  <div className="h-full">
+                    <ConfigSidebar />
+                  </div>
+                )}
+                
+                {mobileRightSidebarContent === 'history' && (
+                  <div className="p-4">
+                    <HistoryDropdown />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Desktop Layout (default)
   return (
     <div className="flex h-screen w-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 relative overflow-hidden">
       {/* Floating global header for history and avatar, only when no chart is created */}
@@ -411,40 +870,11 @@ export default function LandingPage() {
             setLeftSidebarOpen={setLeftSidebarOpen}
           />
         ) : (
-          <div className="flex items-center justify-center h-full p-12">
-            <div className="flex flex-col items-center justify-center w-full max-w-3xl bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 p-16">
-              <div className="flex flex-col items-center justify-center mb-6">
-                <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-xl mb-4">
-                  <BarChart2 className="w-6 h-6 text-white" />
-              </div>
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-900 via-indigo-800 to-purple-800 bg-clip-text text-transparent mb-3 text-center">
-                Create Your First Chart
-              </h2>
-                <p className="text-slate-600 text-center max-w-md mx-auto leading-relaxed text-base">
-                Describe the chart you want to create in natural language. I'll generate it for you and you can ask me to modify it further!
-              </p>
-              </div>
-              <div className="space-y-3 w-full max-w-md">
-                <button
-                  onClick={handleTemplateClick}
-                  className="w-full bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-slate-800 font-medium px-4 py-3 rounded-xl border border-indigo-200/50 transition-all duration-200 text-left hover:shadow-lg group text-sm"
-                >
-                  <div className="font-semibold flex items-center gap-2 mb-1">
-                    <div className="p-1 bg-indigo-100 rounded group-hover:bg-indigo-200 transition-colors">
-                      <BarChart2 className="w-4 h-4 text-indigo-600" />
-                    </div>
-                    Sample Request
-                  </div>
-                  <div className="text-xs text-slate-600 leading-relaxed">{chartTemplate}</div>
-                </button>
-                <div className="text-center">
-                  <div className="text-xs text-slate-500">
-                    Or type your own request in the chat panel →
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <PromptTemplate
+            size="large"
+            className="p-12"
+            onSampleClick={handleTemplateClick}
+          />
         )}
       </div>
     </div>

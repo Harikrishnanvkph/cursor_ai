@@ -337,7 +337,9 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
         display: true,
         position: "top",
         labels: {
-          color: '#000000' // Set default legend color to black
+          color: '#000000', // Set default legend color to black
+          usePointStyle: true, // Default to true
+          pointStyle: 'rect' // Default to Rectangle
         }
       },
       tooltip: {
@@ -367,6 +369,8 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
           return value
         },
       },
+      // @ts-ignore - legendType is a custom property 
+      legendType: 'dataset', // Default for axis charts
     },
     animation: {
       duration: 1000,
@@ -471,6 +475,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
       circumference: 360, // Default circumference (full circle)
       plugins: {
         ...baseConfig.plugins,
+        legendType: 'slice', // Override to slice for pie/doughnut
         datalabels: { // Ensure datalabels are configured for pie/doughnut
           display: true,
           color: '#fff',
@@ -576,7 +581,59 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
   const noScalesTypes = ["pie", "doughnut", "polarArea"]
 
   if (noScalesTypes.includes(processedType as string)) {
+    // For polar area, override legend type to 'slice'
+    if (processedType as string === 'polarArea') {
+      return {
+        ...baseConfig,
+        plugins: {
+          ...baseConfig.plugins,
+          // @ts-ignore - legendType is a custom property
+          legendType: 'slice' // Override to slice for polar area
+        }
+      }
+    }
     return baseConfig
+  }
+
+  // Handle radar charts - override legend type to 'slice'
+  if (processedType as string === 'radar') {
+    return {
+      ...baseConfig,
+      plugins: {
+        ...baseConfig.plugins,
+        // @ts-ignore - legendType is a custom property
+        legendType: 'slice' // Override to slice for radar
+      },
+      scales: {
+        r: {
+          display: true,
+          grid: {
+            display: true,
+            color: "#e5e7eb",
+            lineWidth: 1,
+          },
+          angleLines: {
+            display: true,
+            color: "#e5e7eb",
+            lineWidth: 1,
+          },
+          pointLabels: {
+            display: true,
+            font: {
+              size: 12,
+            },
+            color: "#666666",
+          },
+          ticks: {
+            display: true,
+            font: {
+              size: 12,
+            },
+            color: "#666666",
+          },
+        },
+      },
+    }
   }
 
   return {
