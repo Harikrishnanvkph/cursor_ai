@@ -110,17 +110,50 @@ export default function LandingPage() {
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value)
-    if (textareaRef.current) {
-      if (e.target.value === "") {
-        textareaRef.current.style.height = "48px"
-        textareaRef.current.style.overflowY = "hidden"
-      } else {
-      textareaRef.current.style.height = "48px"
-      const maxHeight = 160
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`
-      textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > maxHeight ? "auto" : "hidden"
+    
+    // Update height with a small delay to ensure DOM is updated (especially for paste operations)
+    const updateHeight = () => {
+      if (textareaRef.current) {
+        if (e.target.value === "") {
+          textareaRef.current.style.height = "48px"
+          textareaRef.current.style.overflowY = "hidden"
+        } else {
+          textareaRef.current.style.height = "48px"
+          const maxHeight = 128
+          textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`
+          textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > maxHeight ? "auto" : "hidden"
+        }
       }
     }
+    
+    // Use requestAnimationFrame to ensure DOM is updated before height calculation
+    requestAnimationFrame(updateHeight)
+    
+    // Additional check for paste operations with longer delay
+    setTimeout(updateHeight, 10)
+  }, [])
+
+  // Handle paste events specifically to ensure proper height update
+  const handlePaste = useCallback(() => {
+    // Use multiple timeouts to ensure proper height calculation after paste
+          setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.style.height = "48px"
+          const maxHeight = 128
+          textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`
+          textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > maxHeight ? "auto" : "hidden"
+        }
+      }, 10) // Slightly longer delay for paste operations
+    
+          // Additional backup check
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.style.height = "48px"
+          const maxHeight = 128
+          textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`
+          textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > maxHeight ? "auto" : "hidden"
+        }
+      }, 50)
   }, [])
 
   const handleNewConversation = useCallback(() => {
@@ -373,6 +406,7 @@ export default function LandingPage() {
                      messagesEndRef={messagesEndRef}
                      textareaRef={textareaRef}
                      handleInputChange={handleInputChange}
+                     handlePaste={handlePaste}
                      compact={true}
                    />
                  )}
@@ -446,7 +480,11 @@ export default function LandingPage() {
             ) : (
               <PromptTemplate
                 size="compact"
-                onSampleClick={handleTemplateClick}
+                onSampleClick={(template) => {
+                  setInput(template);
+                  setMobileRightSidebarContent('messages');
+                  setMobileRightSidebarOpen(true);
+                }}
               />
             )}
           </div>
@@ -555,6 +593,7 @@ export default function LandingPage() {
                     setInput={setInput}
                     onSend={handleSend}
                     handleInputChange={handleInputChange}
+                    handlePaste={handlePaste}
                     isProcessing={isProcessing}
                     hasActiveChart={hasActiveChart}
                     showActiveBanner={showActiveBanner}
@@ -780,9 +819,9 @@ export default function LandingPage() {
                 placeholder={hasActiveChart ? "Modify the chart..." : "Describe your chart..."}
                 value={input}
                 onChange={handleInputChange}
+                onPaste={handlePaste}
                 disabled={isProcessing}
                 rows={1}
-                style={{ height: "48px", overflowY: textareaRef.current && textareaRef.current.scrollHeight > 128 ? 'auto' : 'hidden' }}
                 onKeyDown={e => {
                   if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                     e.preventDefault();

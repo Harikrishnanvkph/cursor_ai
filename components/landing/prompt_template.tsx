@@ -42,11 +42,11 @@ export function PromptTemplate({
       padding: "p-8"
     },
     large: {
-      container: "max-w-lg p-16",
+      container: "max-w-xl p-16",
       icon: "w-16 h-16", 
       iconInner: "w-8 h-8",
-      title: "text-3xl",
-      description: "text-lg",
+      title: "text-2xl",
+      description: "text-base",
       padding: "p-8"
     }
   }
@@ -61,7 +61,7 @@ export function PromptTemplate({
             <BarChart2 className={`${styles.iconInner} text-white`} />
           </div>
           <h2 className={`${styles.title} font-bold bg-gradient-to-r from-slate-900 via-indigo-800 to-purple-800 bg-clip-text text-transparent mb-3 text-center`}>
-            Create Your First Chart
+            Create Your Chart with AI Prompt
           </h2>
           <p className={`text-slate-600 text-center max-w-md mx-auto leading-relaxed ${styles.description}`}>
             Describe the chart you want to create in natural language. I'll generate it for you and you can ask me to modify it further!

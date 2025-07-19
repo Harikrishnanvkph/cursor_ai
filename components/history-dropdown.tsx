@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronUp, ChevronDown, Trash2, Clock, MessageSquare } from "lucide-react";
+import { ChevronUp, ChevronDown, History , Trash2, Clock, MessageSquare } from "lucide-react";
 import { useHistoryStore } from "@/lib/history-store";
 import { Portal } from "@radix-ui/react-portal";
 
@@ -43,7 +43,7 @@ export function HistoryDropdown() {
           onClick={() => setOpen((o) => !o)}
           className="bg-white/90 border shadow rounded-lg px-4 py-2 flex items-center gap-2 text-sm font-semibold backdrop-blur-md whitespace-nowrap hover:bg-white transition-colors"
         >
-          <MessageSquare className="h-4 w-4" />
+          <History className="h-4 w-4" />
           History ({conversations.length})
           {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>

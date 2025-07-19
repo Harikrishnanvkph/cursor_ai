@@ -306,7 +306,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
         arrowHead: customLabelsConfig.arrowHead !== false,
         arrowColor: customLabelsConfig.arrowColor || customLabelsConfig.calloutColor || '#333',
         calloutOffset: customLabelsConfig.calloutOffset || 48,
-        arrowEndGap: customLabelsConfig.arrowEndGap || 0,
+                        arrowEndGap: customLabelsConfig.arrowEndGap ?? 8,
       };
     })
   ) : [];

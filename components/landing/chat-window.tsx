@@ -28,6 +28,7 @@ interface ChatWindowProps {
   messagesEndRef: React.RefObject<HTMLDivElement | null>
   textareaRef: React.RefObject<HTMLTextAreaElement | null>
   handleInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
+  handlePaste: () => void
   className?: string
   compact?: boolean
 }
@@ -47,9 +48,67 @@ export function ChatWindow({
   messagesEndRef,
   textareaRef,
   handleInputChange,
+  handlePaste,
   className = "",
   compact = false
 }: ChatWindowProps) {
+
+  // Enhanced input change handler with auto-resize
+  const enhancedHandleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    handleInputChange(e)
+    
+    // Auto-resize logic for ChatWindow textarea
+    const updateHeight = () => {
+      if (textareaRef.current) {
+        if (e.target.value === "") {
+          textareaRef.current.style.height = "48px"
+          textareaRef.current.style.overflowY = "hidden"
+        } else {
+          textareaRef.current.style.height = "48px"
+          const maxHeight = 128
+          textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`
+          textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > maxHeight ? "auto" : "hidden"
+        }
+      }
+    }
+    
+    requestAnimationFrame(updateHeight)
+    setTimeout(updateHeight, 10)
+  }, [handleInputChange, textareaRef])
+
+  // Enhanced paste handler for ChatWindow
+  const enhancedHandlePaste = useCallback(() => {
+    handlePaste()
+    
+    // Multiple timing checks for paste operations
+    const updateHeight = () => {
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "48px"
+        const maxHeight = 128
+        textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`
+        textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > maxHeight ? "auto" : "hidden"
+      }
+    }
+    
+    setTimeout(updateHeight, 10)
+    setTimeout(updateHeight, 50)
+    setTimeout(updateHeight, 100)
+  }, [handlePaste, textareaRef])
+
+  // Initial height adjustment when input value changes
+  useEffect(() => {
+    if (textareaRef.current && input) {
+      const updateHeight = () => {
+        if (textareaRef.current) {
+          textareaRef.current.style.height = "48px"
+          const maxHeight = 128
+          textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`
+          textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > maxHeight ? "auto" : "hidden"
+        }
+      }
+      requestAnimationFrame(updateHeight)
+    }
+  }, [input, textareaRef])
 
   return (
     <div className={`flex flex-col h-full ${className}`}>
@@ -182,10 +241,10 @@ export function ChatWindow({
           className="flex-1 rounded-xl border border-slate-200/50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white/80 resize-none max-h-32 min-h-[48px] leading-relaxed transition-all shadow-sm backdrop-blur-sm"
           placeholder={hasActiveChart ? "Modify the chart..." : "Describe your chart..."}
           value={input}
-          onChange={handleInputChange}
+          onChange={enhancedHandleInputChange}
+          onPaste={enhancedHandlePaste}
           disabled={isProcessing}
           rows={1}
-          style={{ height: "48px", overflowY: textareaRef.current && textareaRef.current.scrollHeight > 128 ? 'auto' : 'hidden' }}
           onKeyDown={e => {
             if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault();
@@ -195,9 +254,8 @@ export function ChatWindow({
         />
         <button
           type="submit"
-          className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-4 py-3 rounded-xl shadow-lg disabled:opacity-50 transition-all duration-200 transform hover:scale-105 focus:scale-105 disabled:hover:scale-100"
+          className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-4 py-3 rounded-xl shadow-lg disabled:opacity-50 transition-all duration-200 transform hover:scale-105 focus:scale-105 disabled:hover:scale-100 self-end"
           disabled={isProcessing || !input.trim()}
-          style={{ alignSelf: "flex-end", height: 48 }}
         >
           <Send className="inline-block w-5 h-5" />
         </button>
