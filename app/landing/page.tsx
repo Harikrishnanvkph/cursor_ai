@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Send, BarChart2, Plus, RotateCcw, Edit3, MessageSquare, Sparkles, ArrowRight, ChevronDown, ChevronUp, X, ChevronLeft, ChevronRight, PanelLeft, PanelRight } from "lucide-react"
+import { Send, BarChart2, Plus, RotateCcw, Edit3, MessageSquare, Sparkles, ArrowRight, ChevronDown, ChevronUp, X, ChevronLeft, ChevronRight, PanelLeft, PanelRight, Settings, User } from "lucide-react"
 import { useChartStore } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
 import { ChartLayout } from "@/components/chart-layout"
@@ -10,6 +10,7 @@ import { useHistoryStore } from "@/lib/history-store"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import { clearStoreData } from "@/lib/utils"
+import { ResponsiveAnimationsPanel } from "@/components/panels/responsive-animations-panel";
 
 const chartTemplate =
   "Create a bar chart comparing the top 5 countries by smartphone usage in 2025. Include country names on the x-axis and number of users on the y-axis."
@@ -130,7 +131,7 @@ export default function LandingPage() {
   return (
     <div className="flex h-screen w-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 relative overflow-hidden">
       {/* Floating global header for history and avatar, only when no chart is created */}
-      {!hasActiveChart && (
+      {(!chartData?.datasets?.length || !hasJSON) && (
         <div className="fixed top-4 right-4 z-50 flex items-center gap-3">
           <HistoryDropdown />
           <button
@@ -150,8 +151,8 @@ export default function LandingPage() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(156,146,172,0.15)_1px,transparent_0)] bg-[length:20px_20px]"></div>
       </div>
       {/* Left Sidebar / Chat */}
-      <aside className={`transition-all duration-300 z-10 flex flex-col border-r border-white/20 shadow-2xl bg-white/90 backdrop-blur-xl ${leftSidebarOpen ? 'w-[340px]' : 'w-0'} rounded-tl-2xl rounded-bl-2xl`}>
-        {leftSidebarOpen && (
+      <aside className={`transition-all duration-300 z-10 flex flex-col border-r border-white/20 shadow-2xl bg-white/90 backdrop-blur-xl ${leftSidebarOpen ? 'w-[340px]' : 'w-16'} rounded-tl-2xl rounded-bl-2xl`}>
+        {leftSidebarOpen ? (
           <>
             {/* Header */}
             <div className="flex items-center justify-between p-3 border-b border-white/20 bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg">
@@ -173,6 +174,13 @@ export default function LandingPage() {
                   <Plus className="w-3.5 h-3.5" />
                 </button>
                 <button
+                  className="bg-white/20 hover:bg-white/30 text-white font-semibold px-2 py-1.5 rounded-lg backdrop-blur-sm transition-all duration-200 text-xs border border-white/20 hover:scale-105"
+                  onClick={() => setLeftSidebarOpen(false)}
+                  title="Collapse Sidebar"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+                <button
                   className="bg-white/20 hover:bg-white/30 text-white font-semibold px-3 py-1.5 rounded-lg backdrop-blur-sm transition-all duration-200 text-xs border border-white/20 hover:scale-105 flex items-center gap-1"
                   onClick={() => router.push("/editor")}
                 >
@@ -180,6 +188,7 @@ export default function LandingPage() {
                 </button>
               </div>
             </div>
+            
             {/* Conversation Status */}
             {hasActiveChart && showActiveBanner && (
               <div className="relative px-6 py-4 bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-emerald-200/50">
@@ -203,6 +212,7 @@ export default function LandingPage() {
                 </div>
               </div>
             )}
+            
             {/* Messages */}
             <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2 bg-gradient-to-b from-white/80 to-slate-50/80 font-sans">
               {messages.map((msg, idx) => (
@@ -264,6 +274,7 @@ export default function LandingPage() {
               )}
               <div ref={messagesEndRef} />
             </div>
+            
             {/* Modification Examples */}
             {hasActiveChart && (
               <div className={`w-full transition-all duration-200 ${suggestionsOpen ? 'pb-2' : 'py-1'}`}
@@ -298,6 +309,7 @@ export default function LandingPage() {
                 )}
               </div>
             )}
+            
             {/* Input */}
             <form
               onSubmit={handleSend}
@@ -329,6 +341,66 @@ export default function LandingPage() {
               </button>
             </form>
           </>
+        ) : (
+          // Collapsed Sidebar - Icon Only
+          <div className="flex flex-col items-center h-full py-4 space-y-4 group">
+            {/* Application Logo / Expand Icon - Transforms on hover */}
+            <button
+              onClick={() => setLeftSidebarOpen(true)}
+              className="p-2 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg shadow-lg transition-all duration-200 hover:scale-105 group-hover:shadow-md"
+              title="Expand Sidebar"
+            >
+              <BarChart2 className="w-6 h-6 text-white transition-all duration-200 group-hover:hidden" />
+              <ChevronRight className="w-6 h-6 text-white hidden transition-all duration-200 group-hover:block" />
+            </button>
+            
+            {/* New Chat Icon */}
+            <button
+              onClick={() => {
+                handleNewConversation();
+                setLeftSidebarOpen(true);
+              }}
+              className="p-2 rounded-lg hover:bg-blue-50 transition-all duration-200 text-gray-600 hover:text-blue-600"
+              title="New Chat"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
+            
+            {/* Message Icon - Show current chat */}
+            <button
+              onClick={() => {
+                if (hasActiveChart) {
+                  setLeftSidebarOpen(true);
+                }
+              }}
+              className={`p-2 rounded-lg transition-all duration-200 ${
+                hasActiveChart 
+                  ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' 
+                  : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+              }`}
+              title={hasActiveChart ? "Current Chat" : "No active chat"}
+              disabled={!hasActiveChart}
+            >
+              <MessageSquare className="w-5 h-5" />
+            </button>
+            
+            {/* History Icon */}
+            <button
+              onClick={() => {
+                // This will trigger the history dropdown
+                const historyButton = document.querySelector('[data-history-dropdown]') as HTMLButtonElement;
+                if (historyButton) {
+                  historyButton.click();
+                }
+              }}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-200 text-gray-600 hover:text-gray-800"
+              title="Chat History"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+          </div>
         )}
       </aside>
       {/* Main Content Area */}

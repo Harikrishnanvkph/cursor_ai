@@ -58,14 +58,14 @@ function useScreenDimensions() {
   return dimensions;
 }
 
-// Custom hook to detect 768-1024px
+// Custom hook to detect 577-1024px
 function useIsTablet() {
   const [isTablet, setIsTablet] = useState(
-    typeof window !== "undefined" ? window.innerWidth >= 768 && window.innerWidth <= 1024 : false
+    typeof window !== "undefined" ? window.innerWidth >= 577 && window.innerWidth <= 1024 : false
   );
   useEffect(() => {
     function handleResize() {
-      setIsTablet(window.innerWidth >= 768 && window.innerWidth <= 1024);
+      setIsTablet(window.innerWidth >= 577 && window.innerWidth <= 1024);
     }
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
@@ -345,7 +345,7 @@ export default function EditorPage() {
     );
   }
 
-  // Desktop layout for >576px (original, unchanged)
+  // Desktop layout for >1024px (original, unchanged)
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Left Sidebar - Navigation */}

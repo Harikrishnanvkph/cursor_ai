@@ -98,7 +98,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   isLeftSidebarCollapsed?: boolean,
   isTablet?: boolean
 }) {
-  const { chartConfig, chartData, chartType, resetChart, legendFilter, fillArea, showBorder, setHasJSON, chartMode, activeDatasetIndex, uniformityMode, toggleDatasetVisibility, toggleSliceVisibility } = useChartStore()
+  const { chartConfig, chartData, chartType, resetChart, legendFilter, fillArea, showBorder, showImages, showLabels, setHasJSON, chartMode, activeDatasetIndex, uniformityMode, toggleDatasetVisibility, toggleSliceVisibility } = useChartStore()
   const chartRef = useRef<ChartJS>(null)
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -172,6 +172,11 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     let newPointImages = ds.pointImages ? filterSlice(ds.pointImages) : [];
     let newPointImageConfig = ds.pointImageConfig ? filterSlice(ds.pointImageConfig) : [];
 
+    // Filter out images if showImages is false
+    if (!showImages) {
+      newPointImages = newPointImages.map(() => null);
+    }
+
     let processedDs = {
       ...ds,
       data: newData,
@@ -244,7 +249,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   });
 
   // Build customLabels config for the current chart using the config from the panel
-  const customLabels = filteredDatasetsPatched.map((ds, datasetIdx) =>
+  const customLabels = showLabels ? filteredDatasetsPatched.map((ds, datasetIdx) =>
     ds.data.map((value, pointIdx) => {
       if (customLabelsConfig.display === false) return { text: '' };
       let text = String(value);
@@ -304,7 +309,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
         arrowEndGap: customLabelsConfig.arrowEndGap || 0,
       };
     })
-  );
+  ) : [];
 
   // Compute chart labels based on mode and per-dataset sliceLabels
   let chartLabels: string[] = [];
@@ -667,6 +672,27 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       }
     }
   };
+
+  // Control label visibility
+  if (!showLabels) {
+    stackedBarConfig = {
+      ...stackedBarConfig,
+      plugins: {
+        ...stackedBarConfig.plugins,
+        datalabels: {
+          display: false
+        },
+        tooltip: {
+          ...stackedBarConfig.plugins?.tooltip,
+          enabled: false
+        },
+        customLabels: {
+          ...stackedBarConfig.plugins?.customLabels,
+          display: false
+        }
+      }
+    };
+  }
   
   if (chartType === 'stackedBar') {
     stackedBarConfig = {

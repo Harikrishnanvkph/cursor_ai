@@ -195,6 +195,8 @@ interface ChartStore {
   };
   fillArea: boolean;
   showBorder: boolean;
+  showImages: boolean;
+  showLabels: boolean;
   hasJSON: boolean;
   toggleDatasetVisibility: (index: number) => void;
   toggleSliceVisibility: (index: number) => void;
@@ -210,8 +212,10 @@ interface ChartStore {
   setActiveDatasetIndex: (index: number) => void;
   setUniformityMode: (mode: 'uniform' | 'mixed') => void;
   updateLabels: (labels: string[]) => void;
-  toggleFillArea: () => void;
-  toggleShowBorder: () => void;
+        toggleFillArea: () => void;
+      toggleShowBorder: () => void;
+      toggleShowImages: () => void;
+      toggleShowLabels: () => void;
   setFullChart: (chart: { chartType: SupportedChartType; chartData: ExtendedChartData; chartConfig: ExtendedChartOptions }) => void;
   setHasJSON: (value: boolean) => void;
 }
@@ -1658,6 +1662,8 @@ export const useChartStore = create<ChartStore>()(
       legendFilter: { datasets: {}, slices: {} },
       fillArea: true,
       showBorder: true,
+      showImages: true,
+      showLabels: true,
       hasJSON: false,
       toggleDatasetVisibility: (index: number) => set((state) => {
         const current = (state.legendFilter.datasets as Record<number, boolean>)[index] ?? true;
@@ -2100,6 +2106,8 @@ export const useChartStore = create<ChartStore>()(
         }
         return {};
       }),
+      toggleShowImages: () => set((state) => ({ showImages: !state.showImages })),
+      toggleShowLabels: () => set((state) => ({ showLabels: !state.showLabels })),
       setFullChart: ({ chartType, chartData, chartConfig }) => set({ chartType, chartData, chartConfig }),
     }),
     {

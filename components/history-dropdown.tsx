@@ -39,6 +39,7 @@ export function HistoryDropdown() {
     <div>
       <div className="relative">
         <button
+          data-history-dropdown
           onClick={() => setOpen((o) => !o)}
           className="bg-white/90 border shadow rounded-lg px-4 py-2 flex items-center gap-2 text-sm font-semibold backdrop-blur-md whitespace-nowrap hover:bg-white transition-colors"
         >

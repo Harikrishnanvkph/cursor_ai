@@ -13,6 +13,7 @@ import { DatasetsSlicesPanel } from "@/components/panels/datasets-slices-panel"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { ResponsiveAnimationsPanel } from "@/components/panels/responsive-animations-panel"
 
 export function ConfigSidebar() {
   const { 
@@ -22,8 +23,12 @@ export function ConfigSidebar() {
     updateDataset,
     fillArea,
     showBorder,
+    showImages,
+    showLabels,
     toggleFillArea: storeToggleFillArea,
     toggleShowBorder: storeToggleShowBorder,
+    toggleShowImages,
+    toggleShowLabels,
     toggleDatasetVisibility,
     toggleSliceVisibility,
     legendFilter
@@ -71,12 +76,12 @@ export function ConfigSidebar() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex-none p-4 border-b bg-gray-50/50 flex items-center justify-end gap-3">
+      {/* <div className="flex-none p-4 border-b bg-gray-50/50 flex items-center justify-end gap-3">
         <HistoryDropdown />
         <Avatar className="h-8 w-8">
           <AvatarFallback className="bg-blue-200 text-blue-700 font-bold">U</AvatarFallback>
         </Avatar>
-      </div>
+      </div> */}
       
       <div className="flex-1 p-4 space-y-6 overflow-y-auto">
         <Tabs defaultValue="general" className="w-full">
@@ -85,7 +90,7 @@ export function ConfigSidebar() {
             <TabsTrigger value="datasets" className="text-xs py-2">Datasets</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="general" className="mt-4 space-y-6">
+          <TabsContent value="general" className="mt-4 space-y-3">
             {/* Chart Type */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">Chart Type</Label>
@@ -104,32 +109,55 @@ export function ConfigSidebar() {
             </div>
 
             {/* Style Options */}
-            <div className="flex items-center gap-4 bg-gray-50 rounded-lg px-4 py-2">
-              <div className="flex flex-row items-center gap-2">
-                <Label htmlFor="fill-area" className="text-sm">Fill</Label>
-                <Switch
-                  id="fill-area"
-                  checked={fillArea}
-                  onCheckedChange={handleToggleFillArea}
-                />
+            <div className="space-y-3">
+              <div className="flex items-center gap-4 bg-gray-50 rounded-lg px-4 py-2">
+                <div className="flex flex-row items-center gap-2">
+                  <Label htmlFor="fill-area" className="text-sm">Fill</Label>
+                  <Switch
+                    id="fill-area"
+                    checked={fillArea}
+                    onCheckedChange={handleToggleFillArea}
+                  />
+                </div>
+                <div className="h-6 w-px bg-gray-200 mx-2" />
+                <div className="flex flex-row items-center gap-1">
+                  <button
+                    onClick={() => handleToggleShowBorder(!showBorder)}
+                    disabled={!fillArea}
+                    className={`flex items-center justify-center text-sm rounded-full w-9 h-9 transition-colors border border-gray-200
+                      ${showBorder ? 'bg-blue-50 text-blue-600 border-blue-200 ring-2 ring-blue-200' : 'bg-white text-gray-400'}
+                      ${!fillArea ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-100 hover:text-blue-700'}`}
+                    style={{ minWidth: 36, minHeight: 36 }}
+                  >
+                    {showBorder ? (
+                      <Eye className="h-5 w-5" />
+                    ) : (
+                      <EyeOff className="h-5 w-5" />
+                    )}
+                  </button>
+                  <span className="text-sm font-medium text-gray-700">Border</span>
+                </div>
               </div>
-              <div className="h-6 w-px bg-gray-200 mx-2" />
-              <div className="flex flex-row items-center gap-1">
-                <button
-                  onClick={() => handleToggleShowBorder(!showBorder)}
-                  disabled={!fillArea}
-                  className={`flex items-center justify-center text-sm rounded-full w-9 h-9 transition-colors border border-gray-200
-                    ${showBorder ? 'bg-blue-50 text-blue-600 border-blue-200 ring-2 ring-blue-200' : 'bg-white text-gray-400'}
-                    ${!fillArea ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-100 hover:text-blue-700'}`}
-                  style={{ minWidth: 36, minHeight: 36 }}
-                >
-                  {showBorder ? (
-                    <Eye className="h-5 w-5" />
-                  ) : (
-                    <EyeOff className="h-5 w-5" />
-                  )}
-                </button>
-                <span className="text-sm font-medium text-gray-700">Border</span>
+              
+              {/* Image and Label Toggles */}
+              <div className="flex items-center gap-4 bg-gray-50 rounded-lg px-4 py-2">
+                <div className="flex flex-row items-center gap-2">
+                  <Label htmlFor="show-images" className="text-sm">Image</Label>
+                  <Switch
+                    id="show-images"
+                    checked={showImages}
+                    onCheckedChange={toggleShowImages}
+                  />
+                </div>
+                <div className="h-6 w-px bg-gray-200 mx-2" />
+                <div className="flex flex-row items-center gap-2">
+                  <Label htmlFor="show-labels" className="text-sm">Label</Label>
+                  <Switch
+                    id="show-labels"
+                    checked={showLabels}
+                    onCheckedChange={toggleShowLabels}
+                  />
+                </div>
               </div>
             </div>
 
@@ -168,6 +196,9 @@ export function ConfigSidebar() {
                 ))}
               </div>
             </Card>
+            
+            {/* Responsive Animations Panel */}
+            <ResponsiveAnimationsPanel />
           </TabsContent>
 
           <TabsContent value="datasets" className="mt-4">
