@@ -309,6 +309,134 @@ function drawStar(ctx, cx, cy, r, points) {
 
 // Register the plugin
 Chart.register(customLabelPlugin);
+
+// Add drag functionality for custom labels
+customLabelPlugin.afterInit = function(chart) {
+  const canvas = chart.canvas;
+  let dragging = false;
+  let dragKey = '';
+  let offsetX = 0;
+  let offsetY = 0;
+
+  function getLabelAt(x, y) {
+    const opts = ${JSON.stringify(customLabelsConfig)};
+    if (!opts || !opts.labels) return null;
+    const shapeSize = opts.shapeSize ?? 32;
+    
+    for (let datasetIdx = 0; datasetIdx < opts.labels.length; ++datasetIdx) {
+      const arr = opts.labels[datasetIdx];
+      for (let pointIdx = 0; pointIdx < arr.length; ++pointIdx) {
+        const label = arr[pointIdx];
+        if (!label || label.anchor !== 'callout' || !label.draggable) continue;
+        
+        let lx, ly;
+        const key = \`\${datasetIdx}_\${pointIdx}\`;
+        if (window.labelDragState[key]) {
+          lx = window.labelDragState[key].x;
+          ly = window.labelDragState[key].y;
+        } else {
+          const meta = chart.getDatasetMeta(datasetIdx);
+          const element = meta.data[pointIdx];
+          const offset = label.calloutOffset || shapeSize * 1.5;
+          lx = (element.x ?? 0) + offset;
+          ly = (element.y ?? 0) - offset;
+        }
+        
+        // Hit test (circle)
+        if (Math.hypot(x - lx, y - ly) < shapeSize / 1.5) {
+          return { datasetIdx, pointIdx, lx, ly, key };
+        }
+      }
+    }
+    return null;
+  }
+
+  function onMouseDown(e) {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const hit = getLabelAt(x, y);
+    if (hit) {
+      dragging = true;
+      dragKey = hit.key;
+      offsetX = x - hit.lx;
+      offsetY = y - hit.ly;
+      canvas.style.cursor = 'grabbing';
+      e.preventDefault();
+    }
+  }
+
+  function onMouseMove(e) {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    if (dragging && dragKey) {
+      window.labelDragState[dragKey] = { x: x - offsetX, y: y - offsetY };
+      chart.update('none');
+    } else {
+      // Hover effect
+      const hit = getLabelAt(x, y);
+      canvas.style.cursor = hit ? 'grab' : 'default';
+    }
+  }
+
+  function onMouseUp() {
+    dragging = false;
+    dragKey = '';
+    canvas.style.cursor = 'default';
+  }
+
+  // Touch event handlers for mobile/tablet support
+  function onTouchStart(e) {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+    const hit = getLabelAt(x, y);
+    if (hit) {
+      dragging = true;
+      dragKey = hit.key;
+      offsetX = x - hit.lx;
+      offsetY = y - hit.ly;
+      canvas.style.cursor = 'grabbing';
+      e.preventDefault();
+    }
+  }
+
+  function onTouchMove(e) {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+    if (dragging && dragKey) {
+      window.labelDragState[dragKey] = { x: x - offsetX, y: y - offsetY };
+      chart.update('none');
+      e.preventDefault();
+    }
+  }
+
+  function onTouchEnd(e) {
+    if (dragging) {
+      dragging = false;
+      dragKey = '';
+      canvas.style.cursor = 'default';
+      e.preventDefault();
+    }
+  }
+
+  // Add event listeners for both mouse and touch
+  canvas.addEventListener('mousedown', onMouseDown);
+  canvas.addEventListener('mousemove', onMouseMove);
+  canvas.addEventListener('mouseup', onMouseUp);
+  canvas.addEventListener('mouseleave', onMouseUp);
+
+  // Touch event listeners for mobile/tablet support
+  canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+  canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+  canvas.addEventListener('touchend', onTouchEnd, { passive: false });
+};
 `;
 }
 
@@ -471,11 +599,86 @@ const universalImagePlugin = {
       }
     };
 
-    // Add event listeners
+    // Touch event handlers for mobile/tablet support
+    const handleTouchStart = (event) => {
+      if (event.touches.length !== 1) return;
+      const touch = event.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      const x = touch.clientX - rect.left;
+      const y = touch.clientY - rect.top;
+
+      // Check if touching a callout (same logic as mouse)
+      chart.data.datasets.forEach((dataset, datasetIndex) => {
+        if (!dataset.pointImageConfig) return;
+
+        dataset.pointImageConfig.forEach((config, pointIndex) => {
+          if (config.position === "callout" && dataset.pointImages[pointIndex]) {
+            const meta = chart.getDatasetMeta(datasetIndex);
+            const element = meta.data[pointIndex];
+
+            if (!element) return;
+
+            const calloutX = config.calloutX !== undefined ? config.calloutX : element.x + (config.offset || 40);
+            const calloutY = config.calloutY !== undefined ? config.calloutY : element.y - (config.offset || 40);
+            const size = config.size || 30;
+
+            const distance = Math.sqrt((x - calloutX) ** 2 + (y - calloutY) ** 2);
+
+            if (distance <= size / 2) {
+              window.imageDragState.isDragging = true;
+              window.imageDragState.dragDatasetIndex = datasetIndex;
+              window.imageDragState.dragPointIndex = pointIndex;
+              window.imageDragState.dragOffsetX = x - calloutX;
+              window.imageDragState.dragOffsetY = y - calloutY;
+              canvas.style.cursor = "grabbing";
+              event.preventDefault();
+            }
+          }
+        });
+      });
+    };
+
+    const handleTouchMove = (event) => {
+      if (event.touches.length !== 1) return;
+      const touch = event.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      const x = touch.clientX - rect.left;
+      const y = touch.clientY - rect.top;
+
+      if (window.imageDragState.isDragging) {
+        // Update callout position
+        const dataset = chart.data.datasets[window.imageDragState.dragDatasetIndex];
+        const config = dataset.pointImageConfig[window.imageDragState.dragPointIndex];
+
+        config.calloutX = x - window.imageDragState.dragOffsetX;
+        config.calloutY = y - window.imageDragState.dragOffsetY;
+
+        // Redraw chart
+        chart.update("none");
+        event.preventDefault();
+      }
+    };
+
+    const handleTouchEnd = (event) => {
+      if (window.imageDragState.isDragging) {
+        window.imageDragState.isDragging = false;
+        window.imageDragState.dragDatasetIndex = -1;
+        window.imageDragState.dragPointIndex = -1;
+        canvas.style.cursor = "default";
+        event.preventDefault();
+      }
+    };
+
+    // Add event listeners for both mouse and touch
     canvas.addEventListener("mousedown", handleMouseDown);
     canvas.addEventListener("mousemove", handleMouseMove);
     canvas.addEventListener("mouseup", handleMouseUp);
     canvas.addEventListener("mouseleave", handleMouseUp);
+    
+    // Touch event listeners for mobile/tablet support
+    canvas.addEventListener("touchstart", handleTouchStart, { passive: false });
+    canvas.addEventListener("touchmove", handleTouchMove, { passive: false });
+    canvas.addEventListener("touchend", handleTouchEnd, { passive: false });
 
     // Store references for cleanup
     chart._imagePluginListeners = {

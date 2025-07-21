@@ -794,7 +794,7 @@ const universalImagePlugin = {
         if (!dataset.pointImageConfig) return
 
         dataset.pointImageConfig.forEach((config: any, pointIndex: number) => {
-          if (config.position === "callout" && dataset.pointImages[pointIndex]) {
+          if (config && config.position === "callout" && dataset.pointImages[pointIndex]) {
             const meta = chart.getDatasetMeta(datasetIndex)
             const element = meta.data[pointIndex]
 
@@ -828,13 +828,15 @@ const universalImagePlugin = {
       if (dragState.isDragging) {
         // Update callout position
         const dataset = chart.data.datasets[dragState.dragDatasetIndex]
-        const config = dataset.pointImageConfig[dragState.dragPointIndex]
+        if (dataset && dataset.pointImageConfig && dataset.pointImageConfig[dragState.dragPointIndex]) {
+          const config = dataset.pointImageConfig[dragState.dragPointIndex]
 
-        config.calloutX = x - dragState.dragOffsetX
-        config.calloutY = y - dragState.dragOffsetY
+          config.calloutX = x - dragState.dragOffsetX
+          config.calloutY = y - dragState.dragOffsetY
 
-        // Redraw chart
-        chart.update("none")
+          // Redraw chart
+          chart.update("none")
+        }
         event.preventDefault()
       } else {
         // Check if hovering over a callout
@@ -844,7 +846,7 @@ const universalImagePlugin = {
           if (!dataset.pointImageConfig) return
 
           dataset.pointImageConfig.forEach((config: any, pointIndex: number) => {
-            if (config.position === "callout" && dataset.pointImages[pointIndex]) {
+            if (config && config.position === "callout" && dataset.pointImages[pointIndex]) {
               const meta = chart.getDatasetMeta(datasetIndex)
               const element = meta.data[pointIndex]
 
@@ -876,10 +878,87 @@ const universalImagePlugin = {
       }
     }
 
-    // Add event listeners
+    // Touch event handlers for mobile/tablet support
+    const handleTouchStart = (event: TouchEvent) => {
+      if (event.touches.length !== 1) return
+      const touch = event.touches[0]
+      const rect = canvas.getBoundingClientRect()
+      const x = touch.clientX - rect.left
+      const y = touch.clientY - rect.top
+
+      // Check if touching a callout (same logic as mouse)
+      chart.data.datasets.forEach((dataset: any, datasetIndex: number) => {
+        if (!dataset.pointImageConfig) return
+
+        dataset.pointImageConfig.forEach((config: any, pointIndex: number) => {
+          if (config && config.position === "callout" && dataset.pointImages[pointIndex]) {
+            const meta = chart.getDatasetMeta(datasetIndex)
+            const element = meta.data[pointIndex]
+
+            if (!element) return
+
+            const calloutX = config.calloutX !== undefined ? config.calloutX : element.x + (config.offset || 40)
+            const calloutY = config.calloutY !== undefined ? config.calloutY : element.y - (config.offset || 40)
+            const size = config.size || 30
+
+            const distance = Math.sqrt((x - calloutX) ** 2 + (y - calloutY) ** 2)
+
+            if (distance <= size / 2) {
+              dragState.isDragging = true
+              dragState.dragDatasetIndex = datasetIndex
+              dragState.dragPointIndex = pointIndex
+              dragState.dragOffsetX = x - calloutX
+              dragState.dragOffsetY = y - calloutY
+              canvas.style.cursor = "grabbing"
+              event.preventDefault()
+            }
+          }
+        })
+      })
+    }
+
+    const handleTouchMove = (event: TouchEvent) => {
+      if (event.touches.length !== 1) return
+      const touch = event.touches[0]
+      const rect = canvas.getBoundingClientRect()
+      const x = touch.clientX - rect.left
+      const y = touch.clientY - rect.top
+
+      if (dragState.isDragging) {
+        // Update callout position
+        const dataset = chart.data.datasets[dragState.dragDatasetIndex]
+        if (dataset && dataset.pointImageConfig && dataset.pointImageConfig[dragState.dragPointIndex]) {
+          const config = dataset.pointImageConfig[dragState.dragPointIndex]
+
+          config.calloutX = x - dragState.dragOffsetX
+          config.calloutY = y - dragState.dragOffsetY
+
+          // Redraw chart
+          chart.update("none")
+        }
+        event.preventDefault()
+      }
+    }
+
+    const handleTouchEnd = (event: TouchEvent) => {
+      if (dragState.isDragging) {
+        dragState.isDragging = false
+        dragState.dragDatasetIndex = -1
+        dragState.dragPointIndex = -1
+        canvas.style.cursor = "default"
+        event.preventDefault()
+      }
+    }
+
+    // Add event listeners for both mouse and touch
     canvas.addEventListener("mousedown", handleMouseDown)
     canvas.addEventListener("mousemove", handleMouseMove)
     canvas.addEventListener("mouseup", handleMouseUp)
+    
+    // Touch event listeners for mobile/tablet support
+    canvas.addEventListener("touchstart", handleTouchStart, { passive: false })
+    canvas.addEventListener("touchmove", handleTouchMove, { passive: false })
+    canvas.addEventListener("touchend", handleTouchEnd, { passive: false })
     canvas.addEventListener("mouseleave", handleMouseUp) // Stop dragging when leaving canvas
 
     // Store references for cleanup

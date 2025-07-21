@@ -3,6 +3,9 @@ import { persist } from 'zustand/middleware';
 import { useChartStore, type SupportedChartType, type ExtendedChartData } from './chart-store';
 import type { ChartOptions } from 'chart.js';
 
+//"http://localhost:3001/api/process-chart -> GEMINI API"
+const globalServerAPILink = "http://localhost:3001/api/perplexity/process-chart"
+
 export type ChatMessage = {
   role: 'assistant' | 'user';
   content: string;
@@ -97,7 +100,7 @@ export const useChatStore = create<ChatStore>()(
         set({ messages: messagesWithUser, isProcessing: true });
 
         try {
-          const response = await fetch("http://localhost:3001/api/process-chart", {
+          const response = await fetch(globalServerAPILink, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -143,22 +146,55 @@ export const useChatStore = create<ChatStore>()(
           // Save to history if it's a new chart creation
           if (result.action === 'create') {
             const { useHistoryStore } = await import('./history-store');
-            const id = Date.now().toString();
-            useHistoryStore.getState().addConversation({
+            const historyStore = useHistoryStore.getState();
+            
+            // Add conversation and get the actual ID that was created
+            const conversationData = {
               title: input.length > 60 ? input.slice(0, 57) + '...' : input,
               messages: updatedMessages,
               snapshot: assistantMsg.chartSnapshot,
-            });
-            set({ historyConversationId: id });
+            };
+            
+            // Store the conversation and get the actual ID that was created
+            const newId = historyStore.addConversation(conversationData);
+            
+            // Set the history ID to track this conversation
+            set({ historyConversationId: newId });
           } else {
             // Update the conversation in history if it exists
             const { useHistoryStore } = await import('./history-store');
+            const historyStore = useHistoryStore.getState();
             const historyId = get().historyConversationId;
+            
             if (historyId) {
-              useHistoryStore.getState().updateConversation(historyId, {
-                messages: updatedMessages,
-                snapshot: assistantMsg.chartSnapshot,
-              });
+              // Find the conversation by ID and update it
+              const existingConversation = historyStore.conversations.find(c => c.id === historyId);
+              if (existingConversation) {
+                historyStore.updateConversation(historyId, {
+                  messages: updatedMessages,
+                  snapshot: assistantMsg.chartSnapshot,
+                });
+              } else {
+                                 // If conversation doesn't exist, create a new one
+                 console.log('Creating new history entry as existing one not found');
+                 const conversationData = {
+                   title: updatedMessages[1]?.content?.slice(0, 57) + '...' || 'Chart Conversation',
+                   messages: updatedMessages,
+                   snapshot: assistantMsg.chartSnapshot,
+                 };
+                 const newId = historyStore.addConversation(conversationData);
+                 set({ historyConversationId: newId });
+              }
+            } else {
+              // No history ID exists, create new conversation
+              console.log('Creating new history entry as historyId is null');
+                             const conversationData = {
+                 title: updatedMessages[1]?.content?.slice(0, 57) + '...' || 'Chart Conversation',
+                 messages: updatedMessages,
+                 snapshot: assistantMsg.chartSnapshot,
+               };
+               const newId = historyStore.addConversation(conversationData);
+               set({ historyConversationId: newId });
             }
           }
           
@@ -207,7 +243,8 @@ export const useChatStore = create<ChatStore>()(
       partialize: (state) => ({ 
         messages: state.messages,
         currentConversationId: state.currentConversationId,
-        currentChartState: state.currentChartState
+        currentChartState: state.currentChartState,
+        historyConversationId: state.historyConversationId
       })
     }
   )

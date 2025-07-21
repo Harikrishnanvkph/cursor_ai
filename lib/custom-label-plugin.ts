@@ -380,10 +380,57 @@ export const customLabelPlugin: Plugin = {
       dragKey = '';
       canvas.style.cursor = 'default';
     }
+
+    // Touch event handlers for mobile/tablet support
+    function onTouchStart(e: TouchEvent) {
+      if (e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      const x = touch.clientX - rect.left;
+      const y = touch.clientY - rect.top;
+      const hit = getLabelAt(x, y);
+      if (hit) {
+        dragging = true;
+        dragKey = hit.key;
+        offsetX = x - hit.lx;
+        offsetY = y - hit.ly;
+        canvas.style.cursor = 'grabbing';
+        e.preventDefault();
+      }
+    }
+
+    function onTouchMove(e: TouchEvent) {
+      if (e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      const x = touch.clientX - rect.left;
+      const y = touch.clientY - rect.top;
+      if (dragging && dragKey) {
+        dragState[dragKey] = { x: x - offsetX, y: y - offsetY };
+        chart.update('none');
+        e.preventDefault();
+      }
+    }
+
+    function onTouchEnd(e: TouchEvent) {
+      if (dragging) {
+        dragging = false;
+        dragKey = '';
+        canvas.style.cursor = 'default';
+        e.preventDefault();
+      }
+    }
+
+    // Add event listeners for both mouse and touch
     canvas.addEventListener('mousedown', onMouseDown);
     canvas.addEventListener('mousemove', onMouseMove);
     canvas.addEventListener('mouseup', onMouseUp);
     canvas.addEventListener('mouseleave', onMouseUp);
+
+    // Touch event listeners for mobile/tablet support
+    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+    canvas.addEventListener('touchend', onTouchEnd, { passive: false });
     // Cleanup
     (chart as any)._customLabelListeners = { onMouseDown, onMouseMove, onMouseUp };
   },

@@ -16,7 +16,7 @@ export type Conversation = {
 
 interface HistoryStore {
   conversations: Conversation[];
-  addConversation: (conv: Omit<Conversation, "id" | "timestamp">) => void;
+  addConversation: (conv: Omit<Conversation, "id" | "timestamp">) => string;
   deleteConversation: (id: string) => void;
   restoreConversation: (id: string) => void;
   clearAllConversations: () => void;
@@ -37,6 +37,7 @@ export const useHistoryStore = create<HistoryStore>()(
             ...get().conversations
           ].slice(0, 50) 
         });
+        return id; // Return the created ID
       },
       deleteConversation: (id) => set({ 
         conversations: get().conversations.filter((c) => c.id !== id) 
