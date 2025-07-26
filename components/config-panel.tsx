@@ -4,6 +4,7 @@ import { DatasetPanel } from "./panels/dataset-panel"
 import { DesignPanel } from "./panels/design-panel"
 import { AxesPanel } from "./panels/axes/axes-panel"
 import { LabelsPanel } from "./panels/labels-panel"
+import { OverlayPanel } from "./panels/overlay-panel"
 import { AnimationsPanel } from "./panels/animations-panel"
 import { AdvancedPanel } from "./panels/advanced-panel"
 import { ExportPanel } from "./panels/export-panel"
@@ -44,6 +45,8 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed }: 
         return <AxesPanel />
       case "labels":
         return <LabelsPanel />
+      case "overlay":
+        return <OverlayPanel />
       case "animations":
         return <AnimationsPanel />
       case "advanced":

@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import './globals.css'
-import '../lib/chart-registration.ts'
 
 export const metadata: Metadata = {
   title: 'chart development',

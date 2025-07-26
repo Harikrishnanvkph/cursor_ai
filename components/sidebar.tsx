@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { BarChart3, AlignEndHorizontal, Database,PanelLeft, Palette, Grid, Tag, Zap, SlidersHorizontal, Download, ChevronRight } from "lucide-react"
+import { BarChart3, AlignEndHorizontal, Database,PanelLeft, Palette, Grid, Tag, Layers, Zap, SlidersHorizontal, Download, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface SidebarProps {
@@ -17,6 +17,7 @@ const tabs = [
   { id: "design", label: "Design", icon: Palette },
   { id: "axes", label: "Axes", icon: Grid },
   { id: "labels", label: "Labels", icon: Tag },
+  { id: "overlay", label: "Overlay", icon: Layers },
   { id: "animations", label: "Animations", icon: Zap },
   { id: "advanced", label: "Advanced", icon: SlidersHorizontal },
   { id: "export", label: "Export", icon: Download },

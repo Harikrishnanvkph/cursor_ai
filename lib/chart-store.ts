@@ -178,6 +178,43 @@ export const isAreaChart = (chartType: SupportedChartType, datasets: ExtendedCha
 
 export type ChartMode = 'single' | 'grouped'
 
+// Overlay types
+export interface OverlayImage {
+  id: string
+  url: string
+  x: number
+  y: number
+  width: number
+  height: number
+  naturalWidth?: number
+  naturalHeight?: number
+  useNaturalSize: boolean
+  visible: boolean
+  borderWidth: number
+  borderColor: string
+  shape: 'rectangle' | 'circle' | 'rounded'
+  zIndex: number
+}
+
+export interface OverlayText {
+  id: string
+  text: string
+  x: number
+  y: number
+  fontSize: number
+  fontFamily: string
+  color: string
+  backgroundColor: string
+  backgroundTransparent: boolean
+  borderWidth: number
+  borderColor: string
+  paddingX: number
+  paddingY: number
+  visible: boolean
+  rotation: number
+  zIndex: number
+}
+
 interface ChartStore {
   chartType: SupportedChartType;
   chartData: ExtendedChartData;
@@ -198,6 +235,10 @@ interface ChartStore {
   showImages: boolean;
   showLabels: boolean;
   hasJSON: boolean;
+  // Overlay state
+  overlayImages: OverlayImage[];
+  overlayTexts: OverlayText[];
+  selectedImageId: string | null;
   toggleDatasetVisibility: (index: number) => void;
   toggleSliceVisibility: (index: number) => void;
   setChartType: (type: SupportedChartType) => void;
@@ -218,6 +259,14 @@ interface ChartStore {
       toggleShowLabels: () => void;
   setFullChart: (chart: { chartType: SupportedChartType; chartData: ExtendedChartData; chartConfig: ExtendedChartOptions }) => void;
   setHasJSON: (value: boolean) => void;
+  // Overlay actions
+  addOverlayImage: (image: Omit<OverlayImage, 'id'>) => void;
+  updateOverlayImage: (id: string, updates: Partial<OverlayImage>) => void;
+  removeOverlayImage: (id: string) => void;
+  addOverlayText: (text: Omit<OverlayText, 'id'>) => void;
+  updateOverlayText: (id: string, updates: Partial<OverlayText>) => void;
+  removeOverlayText: (id: string) => void;
+  setSelectedImageId: (id: string | null) => void;
 }
 
 const defaultChartData = {
@@ -1801,6 +1850,10 @@ export const useChartStore = create<ChartStore>()(
       showImages: true,
       showLabels: true,
       hasJSON: false,
+      // Initialize overlay state
+        overlayImages: [],
+  overlayTexts: [],
+  selectedImageId: null,
       toggleDatasetVisibility: (index: number) => set((state) => {
         const current = (state.legendFilter.datasets as Record<number, boolean>)[index] ?? true;
         return { legendFilter: { ...state.legendFilter, datasets: { ...state.legendFilter.datasets, [index]: !current } } };
@@ -2245,6 +2298,28 @@ export const useChartStore = create<ChartStore>()(
       toggleShowImages: () => set((state) => ({ showImages: !state.showImages })),
       toggleShowLabels: () => set((state) => ({ showLabels: !state.showLabels })),
       setFullChart: ({ chartType, chartData, chartConfig }) => set({ chartType, chartData, chartConfig }),
+      // Overlay actions implementation
+      addOverlayImage: (image) => set((state) => ({
+        overlayImages: [...state.overlayImages, { ...image, id: Date.now().toString() + Math.random().toString(36).substr(2, 9) }]
+      })),
+      updateOverlayImage: (id, updates) => set((state) => ({
+        overlayImages: state.overlayImages.map(img => img.id === id ? { ...img, ...updates } : img)
+      })),
+      removeOverlayImage: (id) => set((state) => ({
+        overlayImages: state.overlayImages.filter(img => img.id !== id)
+      })),
+      addOverlayText: (text) => set((state) => ({
+        overlayTexts: [...state.overlayTexts, { ...text, id: Date.now().toString() + Math.random().toString(36).substr(2, 9) }]
+      })),
+      updateOverlayText: (id, updates) => set((state) => ({
+        overlayTexts: state.overlayTexts.map(txt => txt.id === id ? { ...txt, ...updates } : txt)
+      })),
+        removeOverlayText: (id) => set((state) => ({
+    overlayTexts: state.overlayTexts.filter(txt => txt.id !== id)
+  })),
+  setSelectedImageId: (id) => set(() => ({
+    selectedImageId: id
+  })),
     }),
     {
       name: 'chart-store',
@@ -2265,6 +2340,9 @@ export const useChartStore = create<ChartStore>()(
             fillArea: persistedState.fillArea ?? true,
             showBorder: persistedState.showBorder ?? true,
             hasJSON: persistedState.hasJSON ?? false,
+                    overlayImages: persistedState.overlayImages || [],
+        overlayTexts: persistedState.overlayTexts || [],
+        selectedImageId: null, // Don't persist selection state
           };
         }
         return persistedState;
@@ -2282,6 +2360,9 @@ export const useChartStore = create<ChartStore>()(
         fillArea: state.fillArea,
         showBorder: state.showBorder,
         hasJSON: state.hasJSON,
+        overlayImages: state.overlayImages,
+        overlayTexts: state.overlayTexts,
+        selectedImageId: state.selectedImageId,
       }),
     }
   )

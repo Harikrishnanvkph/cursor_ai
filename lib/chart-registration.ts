@@ -30,6 +30,7 @@ import {
 import { universalImagePlugin } from "./chart-store"
 import { customLabelPlugin } from "./custom-label-plugin"
 import exportPlugin from "./export-plugin"
+import { overlayPlugin } from "./overlay-plugin"
 
 // Register all Chart.js components globally
 ChartJS.register(
@@ -57,14 +58,15 @@ ChartJS.register(
   TimeScale,
   universalImagePlugin,
   customLabelPlugin,
-  exportPlugin
+  exportPlugin,
+  overlayPlugin
 )
 
 // Verify registration in development
-if (process.env.NODE_ENV === 'development') {
-  console.log('Chart.js registration completed')
-  console.log('Registered controllers:', Object.keys(ChartJS.registry.controllers))
-  console.log('Registered plugins:', Object.keys(ChartJS.registry.plugins))
-}
+console.log('🟢🟢🟢 CHART.JS REGISTRATION STARTING 🟢🟢🟢')
+console.log('🟢 Registered controllers:', Object.keys(ChartJS.registry.controllers))
+console.log('🟢 Registered plugins:', Object.keys(ChartJS.registry.plugins))
+console.log('🟢 Looking for overlayPlugin:', ChartJS.registry.plugins.overlayPlugin ? 'FOUND' : 'NOT FOUND')
+console.log('🟢🟢🟢 CHART.JS REGISTRATION COMPLETED 🟢🟢🟢')
 
 export default ChartJS 

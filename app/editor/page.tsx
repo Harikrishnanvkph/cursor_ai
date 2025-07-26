@@ -6,7 +6,7 @@ import { ChartPreview } from "@/components/chart-preview"
 import { ConfigPanel } from "@/components/config-panel"
 import { useChartStore } from "@/lib/chart-store"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Zap, Settings, Download, ChevronLeft, User, ChevronRight } from "lucide-react"
+import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Layers, Zap, Settings, Download, ChevronLeft, User, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import React from "react"
 import { ResizableChartArea } from "@/components/resizable-chart-area"
@@ -18,6 +18,7 @@ const TABS = [
   { id: "design", label: "Design", icon: Palette },
   { id: "axes", label: "Axes", icon: Grid },
   { id: "labels", label: "Labels", icon: Tag },
+  { id: "overlay", label: "Overlay", icon: Layers },
   { id: "animations", label: "Animations", icon: Zap },
   { id: "advanced", label: "Advanced", icon: Settings },
   { id: "export", label: "Export", icon: Download },
@@ -282,6 +283,7 @@ export default function EditorPage() {
                     design: "Design",
                     axes: "Axes",
                     labels: "Labels",
+                    overlay: "Canvas Overlays",
                     animations: "Animations",
                     advanced: "Advanced",
                     export: "Export"
@@ -448,6 +450,7 @@ export default function EditorPage() {
                     design: "Design",
                     axes: "Axes",
                     labels: "Labels",
+                    overlay: "Canvas Overlays",
                     animations: "Animations",
                     advanced: "Advanced",
                     export: "Export"

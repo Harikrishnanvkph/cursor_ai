@@ -25,6 +25,7 @@ import { useChartStore, universalImagePlugin } from "@/lib/chart-store"
 import exportPlugin from "@/lib/export-plugin"
 import { useChatStore } from "@/lib/chat-store"
 import { customLabelPlugin } from "@/lib/custom-label-plugin"
+import { overlayPlugin } from "@/lib/overlay-plugin"
 import { Button } from "@/components/ui/button"
 import { Download, RefreshCw, Maximize2, Minimize2, RotateCcw, X, PanelLeft, PanelRight,
    FileCode, FileDown, FileImage, FileText, FileType2, ImageIcon } from "lucide-react"
@@ -59,8 +60,15 @@ ChartJS.register(
   TimeScale,          // Required for time-based scales
   universalImagePlugin, // Register our universal image plugin
   customLabelPlugin, // Register our custom label plugin
-  exportPlugin // Register our export plugin
+  exportPlugin, // Register our export plugin
+  overlayPlugin // Register our overlay plugin
 );
+
+// Verify overlay plugin registration
+console.log('🟢🟢🟢 CHART-PREVIEW: OVERLAY PLUGIN REGISTRATION 🟢🟢🟢')
+console.log('🟢 Registered plugins:', Object.keys(ChartJS.registry.plugins))
+console.log('🟢 Looking for overlayPlugin:', ChartJS.registry.plugins.overlayPlugin ? 'FOUND' : 'NOT FOUND')
+console.log('🟢🟢🟢 CHART-PREVIEW: REGISTRATION COMPLETED 🟢🟢🟢')
 
 // Verify plugin registration
 console.log('Registered plugins:', Object.keys(ChartJS.registry.plugins));
@@ -98,7 +106,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   isLeftSidebarCollapsed?: boolean,
   isTablet?: boolean
 }) {
-  const { chartConfig, chartData, chartType, resetChart, legendFilter, fillArea, showBorder, showImages, showLabels, setHasJSON, chartMode, activeDatasetIndex, uniformityMode, toggleDatasetVisibility, toggleSliceVisibility } = useChartStore()
+  const { chartConfig, chartData, chartType, resetChart, legendFilter, fillArea, showBorder, showImages, showLabels, setHasJSON, chartMode, activeDatasetIndex, uniformityMode, toggleDatasetVisibility, toggleSliceVisibility, overlayImages, overlayTexts, selectedImageId, updateOverlayImage, updateOverlayText, setSelectedImageId } = useChartStore()
   const chartRef = useRef<ChartJS>(null)
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -113,6 +121,90 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
+
+  // Handle overlay position updates from drag and drop
+  useEffect(() => {
+    const canvas = chartRef.current?.canvas
+    if (!canvas) return
+
+    const handleOverlayPositionUpdate = (event: CustomEvent) => {
+      const { type, id, x, y } = event.detail
+      
+      if (type === 'image') {
+        updateOverlayImage(id, { x, y })
+      } else if (type === 'text') {
+        updateOverlayText(id, { x, y })
+      }
+      
+      // Update chart to reflect new position
+      chartRef.current?.update('none')
+    }
+    
+    const handleImageLoaded = (event: CustomEvent) => {
+      console.log('🔄 Image loaded event received, forcing chart update')
+      if (chartRef.current) {
+        chartRef.current.update('none')
+        console.log('✅ Chart updated from component level')
+      }
+    }
+
+    const handleDimensionsUpdate = (event: CustomEvent) => {
+      const { imageId, updateData } = event.detail
+      console.log('📏 Dimensions update event received:', { imageId, updateData })
+      updateOverlayImage(imageId, updateData)
+      
+      // Update chart to reflect new dimensions
+      if (chartRef.current) {
+        chartRef.current.update('none')
+      }
+    }
+
+    const handleImageSelected = (event: CustomEvent) => {
+      const { imageId } = event.detail
+      console.log('🎯 Image selected:', imageId)
+      setSelectedImageId(imageId)
+      
+      // Update chart to show/hide selection handles
+      if (chartRef.current) {
+        chartRef.current.update('none')
+      }
+    }
+
+    const handleImageResize = (event: CustomEvent) => {
+      const { id, x, y, width, height, useNaturalSize } = event.detail
+      console.log('🔄 Image resize:', { id, x, y, width, height, useNaturalSize })
+      updateOverlayImage(id, { x, y, width, height, useNaturalSize })
+      
+      // Update chart to reflect new size
+      if (chartRef.current) {
+        chartRef.current.update('none')
+      }
+    }
+
+    canvas.addEventListener('overlayPositionUpdate', handleOverlayPositionUpdate as EventListener)
+    canvas.addEventListener('overlayImageLoaded', handleImageLoaded as EventListener)
+    canvas.addEventListener('overlayImageDimensionsUpdate', handleDimensionsUpdate as EventListener)
+    canvas.addEventListener('overlayImageSelected', handleImageSelected as EventListener)
+    canvas.addEventListener('overlayImageResize', handleImageResize as EventListener)
+    
+    return () => {
+      canvas.removeEventListener('overlayPositionUpdate', handleOverlayPositionUpdate as EventListener)
+      canvas.removeEventListener('overlayImageLoaded', handleImageLoaded as EventListener)
+      canvas.removeEventListener('overlayImageDimensionsUpdate', handleDimensionsUpdate as EventListener)
+      canvas.removeEventListener('overlayImageSelected', handleImageSelected as EventListener)
+      canvas.removeEventListener('overlayImageResize', handleImageResize as EventListener)
+    }
+  }, [updateOverlayImage, updateOverlayText, setSelectedImageId]);
+
+  // Debug overlay data
+  useEffect(() => {
+    if (overlayImages.length > 0 || overlayTexts.length > 0) {
+      console.log('ChartPreview - Overlay data:', { 
+        overlayImages: overlayImages.length, 
+        overlayTexts: overlayTexts.length
+      })
+    }
+  }, [overlayImages, overlayTexts]);
 
   if (chartType === 'pie' || chartType === 'doughnut') {
     console.log("ChartPreview - Pie/Doughnut chartConfig received:", JSON.parse(JSON.stringify(chartConfig)));
@@ -967,6 +1059,9 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                         (chartType === 'horizontalBar' ? { ...chartConfig, indexAxis: 'y' } : chartConfig)),
                     responsive: chartConfig.manualDimensions ? false : isResponsive,
                         maintainAspectRatio: !(isResponsive),
+                        // Add overlay data
+                        overlayImages,
+                        overlayTexts,
                     layout: {
                           padding: chartConfig.layout?.padding || 0
                         },
@@ -992,6 +1087,11 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                         plugins: ({
                           ...chartConfig.plugins,
                           customLabels: { shapeSize: 32, labels: customLabels },
+                          overlayPlugin: {
+                            overlayImages,
+                            overlayTexts,
+                            selectedImageId
+                          },
                           legend: {
                             ...((chartConfig.plugins as any)?.legend),
                             labels: {
@@ -1132,6 +1232,9 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                           (chartType === 'horizontalBar' ? { ...chartConfig, indexAxis: 'y' } : chartConfig)),
                       responsive: chartConfig.manualDimensions ? false : isResponsive,
                       maintainAspectRatio: !(isResponsive),
+                      // Add overlay data
+                      overlayImages,
+                      overlayTexts,
                       layout: {
                         padding: chartConfig.layout?.padding || 0
                     },
@@ -1157,6 +1260,10 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                     plugins: ({
                       ...chartConfig.plugins,
                       customLabels: { shapeSize: 32, labels: customLabels },
+                      overlayPlugin: {
+                        overlayImages,
+                        overlayTexts
+                      },
                       legend: {
                         ...((chartConfig.plugins as any)?.legend),
                         labels: {
