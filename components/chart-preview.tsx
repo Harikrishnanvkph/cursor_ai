@@ -1262,7 +1262,8 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                       customLabels: { shapeSize: 32, labels: customLabels },
                       overlayPlugin: {
                         overlayImages,
-                        overlayTexts
+                        overlayTexts,
+                        selectedImageId
                       },
                       legend: {
                         ...((chartConfig.plugins as any)?.legend),

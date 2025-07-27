@@ -10,8 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
-import { Image, Type, Upload, Trash2, Eye, EyeOff, Square, Circle, Layers } from "lucide-react"
-import { useState, useRef } from "react"
+import { Image, Type, Upload, Trash2, Eye, EyeOff, Square, Circle, Layers, MousePointer } from "lucide-react"
+import { useState, useRef, useEffect } from "react"
 
 export function OverlayPanel() {
   const { 
@@ -22,11 +22,25 @@ export function OverlayPanel() {
     removeOverlayImage,
     addOverlayText,
     updateOverlayText,
-    removeOverlayText
+    removeOverlayText,
+    selectedImageId,
+    setSelectedImageId
   } = useChartStore()
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [newText, setNewText] = useState("")
+
+  // Add keyboard support for ESC key to deselect
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && selectedImageId) {
+        setSelectedImageId(null)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedImageId, setSelectedImageId])
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
@@ -113,6 +127,8 @@ export function OverlayPanel() {
           <h2 className="text-lg font-semibold text-gray-900">Canvas Overlays</h2>
         </div>
         <p className="text-sm text-gray-600 mt-1">Add floating images and text to your chart canvas</p>
+        <p className="text-xs text-blue-600 mt-1">💡 Click the pointer icon to select an image and see resize handles on the chart</p>
+        <p className="text-xs text-gray-500 mt-1">🖱️ Drag to move • Drag handles to resize • ESC to deselect</p>
       </div>
 
       {/* Content */}
@@ -184,12 +200,32 @@ export function OverlayPanel() {
 
             {/* Image List */}
             <div className="space-y-4">
+              {selectedImageId && (
+                <div className="flex justify-end">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setSelectedImageId(null)}
+                    className="text-xs"
+                  >
+                    Clear Selection
+                  </Button>
+                </div>
+              )}
               {overlayImages.map((image, index) => (
-                <Card key={image.id}>
+                <Card key={image.id} className={selectedImageId === image.id ? "ring-2 ring-blue-500 border-blue-300" : ""}>
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-sm">Image {index + 1}</CardTitle>
                       <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant={selectedImageId === image.id ? "default" : "ghost"}
+                          onClick={() => setSelectedImageId(selectedImageId === image.id ? null : image.id)}
+                          title={selectedImageId === image.id ? "Deselect Image" : "Select Image"}
+                        >
+                          <MousePointer className="h-4 w-4" />
+                        </Button>
                         <Button
                           size="sm"
                           variant="ghost"
