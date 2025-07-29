@@ -13,7 +13,11 @@ import { downloadChartAsHTML, generateChartHTML, type HTMLExportOptions } from "
 import { templateList } from "@/lib/html-templates"
 import { Download, Copy, FileImage, FileText, Code, FileCode, Settings, Eye } from "lucide-react"
 
-export function ExportPanel() {
+interface ExportPanelProps {
+  onTabChange?: (tab: string) => void
+}
+
+export function ExportPanel({ onTabChange }: ExportPanelProps) {
   const { chartData, chartConfig, chartType } = useChartStore()
   const [exportFormat, setExportFormat] = useState("png")
   const [htmlOptions, setHtmlOptions] = useState<HTMLExportOptions>({
@@ -307,6 +311,28 @@ export function ExportPanel() {
                 Download This HTML
               </Button>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Settings Navigation */}
+      {onTabChange && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Export Settings</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              variant="outline" 
+              onClick={() => onTabChange("export")} 
+              className="w-full"
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Configure Export Settings
+            </Button>
+            <p className="text-xs text-gray-500 mt-2">
+              Customize export options, templates, and advanced settings
+            </p>
           </CardContent>
         </Card>
       )}

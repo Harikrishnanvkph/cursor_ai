@@ -4,6 +4,7 @@ import { useChartStore, type OverlayImage, type OverlayText } from "@/lib/chart-
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -126,7 +127,8 @@ export function OverlayPanel() {
       paddingY: 4,
       visible: true,
       rotation: 0,
-      zIndex: 1
+      zIndex: 1,
+      maxWidth: 200 // Default max width for text wrapping
     })
     setNewText("")
   }
@@ -504,15 +506,16 @@ export function OverlayPanel() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex gap-2">
-                  <Input
+                <div className="space-y-2">
+                  <Textarea
                     value={newText}
                     onChange={(e) => setNewText(e.target.value)}
-                    placeholder="Enter text to add..."
-                    onKeyPress={(e) => e.key === 'Enter' && handleAddText()}
+                    placeholder="Enter text to add... (use Enter for new lines)"
+                    className="min-h-[80px] resize-none"
+                    rows={3}
                   />
                   <Button onClick={handleAddText} disabled={!newText.trim()}>
-                    Add
+                    Add Text
                   </Button>
                 </div>
               </CardContent>
@@ -547,10 +550,12 @@ export function OverlayPanel() {
                     {/* Text Content */}
                     <div>
                       <Label className="text-xs">Text</Label>
-                      <Input
+                      <Textarea
                         value={text.text}
                         onChange={(e) => updateOverlayText(text.id, { text: e.target.value })}
-                        className="h-8"
+                        placeholder="Enter text... (use Enter for new lines)"
+                        className="min-h-[80px] resize-none"
+                        rows={3}
                       />
                     </div>
 
@@ -616,6 +621,21 @@ export function OverlayPanel() {
                         onChange={(e) => updateOverlayText(text.id, { color: e.target.value })}
                         className="h-8 w-full"
                       />
+                    </div>
+
+                    {/* Text Wrapping */}
+                    <div>
+                      <Label className="text-xs">Max Width (for text wrapping)</Label>
+                      <Input
+                        type="number"
+                        value={text.maxWidth || ''}
+                        onChange={(e) => updateOverlayText(text.id, { maxWidth: parseInt(e.target.value) || undefined })}
+                        placeholder="Leave empty for no wrapping"
+                        className="h-8"
+                      />
+                      <div className="text-xs text-gray-500 mt-1">
+                        {text.maxWidth ? `${text.maxWidth}px` : 'No wrapping'}
+                      </div>
                     </div>
 
                     {/* Background Options */}

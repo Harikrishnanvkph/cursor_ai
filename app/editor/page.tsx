@@ -113,6 +113,20 @@ export default function EditorPage() {
     }
   }, [isMobile, screenWidth, updateChartConfig]);
 
+  // Listen for custom events to change active tab
+  useEffect(() => {
+    const handleTabChange = (event: CustomEvent) => {
+      const { tab } = event.detail;
+      setActiveTab(tab);
+      setMobilePanel(tab);
+    };
+
+    window.addEventListener('changeActiveTab', handleTabChange as EventListener);
+    return () => {
+      window.removeEventListener('changeActiveTab', handleTabChange as EventListener);
+    };
+  }, []);
+
   if (!mounted) {
     return null; // Or a loading spinner if you prefer
   }
@@ -186,11 +200,12 @@ export default function EditorPage() {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-1">
-              <ConfigPanel 
-                activeTab={mobilePanel} 
-                onToggleSidebar={() => setMobilePanel(null)}
-                isSidebarCollapsed={false}
-              />
+                          <ConfigPanel 
+              activeTab={mobilePanel} 
+              onToggleSidebar={() => setMobilePanel(null)}
+              isSidebarCollapsed={false}
+              onTabChange={setMobilePanel}
+            />
             </div>
           </div>
         )}
@@ -331,11 +346,12 @@ export default function EditorPage() {
         {/* Right Sidebar Overlay when expanded */}
         {(!rightSidebarCollapsed) && (
           <div className="fixed top-0 right-0 h-full w-80 z-40 bg-white shadow-2xl border-l border-gray-200 transition-all duration-300 flex flex-col">
-            <ConfigPanel
-              activeTab={activeTab}
-              onToggleSidebar={() => setRightSidebarCollapsed(true)}
-              isSidebarCollapsed={false}
-            />
+                      <ConfigPanel
+            activeTab={activeTab}
+            onToggleSidebar={() => setRightSidebarCollapsed(true)}
+            isSidebarCollapsed={false}
+            onTabChange={setActiveTab}
+          />
           </div>
         )}
 
@@ -479,6 +495,7 @@ export default function EditorPage() {
             activeTab={activeTab} 
             onToggleSidebar={() => setRightSidebarCollapsed((v) => !v)}
             isSidebarCollapsed={rightSidebarCollapsed}
+            onTabChange={setActiveTab}
           />
         </div>
       )}

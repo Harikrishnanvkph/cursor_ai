@@ -214,6 +214,7 @@ export interface OverlayText {
   visible: boolean
   rotation: number
   zIndex: number
+  maxWidth?: number // Maximum width for text wrapping
 }
 
 interface ChartStore {

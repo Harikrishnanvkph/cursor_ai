@@ -28,11 +28,11 @@ import { customLabelPlugin } from "@/lib/custom-label-plugin"
 import { overlayPlugin } from "@/lib/overlay-plugin"
 import { Button } from "@/components/ui/button"
 import { Download, RefreshCw, Maximize2, Minimize2, RotateCcw, X, PanelLeft, PanelRight,
-   FileCode, FileDown, FileImage, FileText, FileType2, ImageIcon } from "lucide-react"
+   FileCode, FileDown, FileImage, FileText, FileType2, ImageIcon, Settings } from "lucide-react"
 import { BarChart3,ChartColumnStacked,ChartColumnBig,ChartBarBig,ChartLine,ChartPie,ChartScatter,ChartArea,Radar, Database, Dot } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { downloadChartAsHTML } from "@/lib/html-exporter"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { ResizableChartArea } from "@/components/resizable-chart-area"
 import { OverlayContextMenu } from "@/components/overlay-context-menu"
 
@@ -931,6 +931,19 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     alert('CSV export is not implemented yet.');
   };
 
+  const handleExportSettings = () => {
+    // Navigate to export settings in the left sidebar
+    if (onToggleLeftSidebar) {
+      // First expand the left sidebar if it's collapsed
+      if (isLeftSidebarCollapsed) {
+        onToggleLeftSidebar();
+      }
+      // Then trigger a custom event to change the active tab to export
+      const event = new CustomEvent('changeActiveTab', { detail: { tab: 'export' } });
+      window.dispatchEvent(event);
+    }
+  };
+
   const getChartIcon = (chartName:string)=>{
     switch(chartName){
       case 'Bar':
@@ -1089,6 +1102,10 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleExportCSV}>
                   <FileText className="h-4 w-4 mr-2" /> CSV
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleExportSettings} className="bg-blue-50 hover:bg-blue-100">
+                  <Settings className="h-4 w-4 mr-2" /> Settings
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

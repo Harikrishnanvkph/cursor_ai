@@ -19,9 +19,10 @@ interface ConfigPanelProps {
   activeTab: string
   onToggleSidebar?: () => void
   isSidebarCollapsed?: boolean
+  onTabChange?: (tab: string) => void
 }
 
-export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed }: ConfigPanelProps) {
+export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, onTabChange }: ConfigPanelProps) {
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -52,7 +53,7 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed }: 
       case "advanced":
         return <AdvancedPanel />
       case "export":
-        return <ExportPanel />
+        return <ExportPanel onTabChange={onTabChange} />
       default:
         return <TypesTogglesPanel />
     }

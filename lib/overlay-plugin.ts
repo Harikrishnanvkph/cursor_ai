@@ -449,6 +449,26 @@ function drawImageOnCanvas(ctx: CanvasRenderingContext2D, img: HTMLImageElement,
 }
 
 // Function to render overlay text
+// Function to wrap text to a specified width
+function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  const words = text.split(' ')
+  const lines: string[] = []
+  let currentLine = words[0] || ''
+
+  for (let i = 1; i < words.length; i++) {
+    const word = words[i]
+    const width = ctx.measureText(currentLine + ' ' + word).width
+    if (width < maxWidth) {
+      currentLine += ' ' + word
+    } else {
+      lines.push(currentLine)
+      currentLine = word
+    }
+  }
+  lines.push(currentLine)
+  return lines
+}
+
 function renderOverlayText(ctx: CanvasRenderingContext2D, text: OverlayText, chartArea: any): void {
   if (!text.visible) return
 
@@ -469,10 +489,33 @@ function renderOverlayText(ctx: CanvasRenderingContext2D, text: OverlayText, cha
     ctx.translate(-x, -y)
   }
   
-  // Measure text for background and border calculations
-  const textMetrics = ctx.measureText(text.text)
-  const textWidth = textMetrics.width
-  const textHeight = text.fontSize // Approximate height
+  // Process text lines with wrapping
+  const originalLines = text.text.split('\n')
+  const allLines: string[] = []
+  
+  originalLines.forEach(line => {
+    if (text.maxWidth && text.maxWidth > 0) {
+      // Apply text wrapping
+      const wrappedLines = wrapText(ctx, line, text.maxWidth)
+      allLines.push(...wrappedLines)
+    } else {
+      // No wrapping, use original line
+      allLines.push(line)
+    }
+  })
+  
+  const lineHeight = text.fontSize * 1.2 // Line height with some spacing
+  
+  // Calculate total dimensions for multi-line text
+  let maxWidth = 0
+  let totalHeight = 0
+  
+  allLines.forEach(line => {
+    const textMetrics = ctx.measureText(line)
+    maxWidth = Math.max(maxWidth, textMetrics.width)
+  })
+  
+  totalHeight = allLines.length * lineHeight
   
   // Get padding values (with fallbacks for existing text overlays)
   const paddingX = text.paddingX || 8
@@ -481,8 +524,8 @@ function renderOverlayText(ctx: CanvasRenderingContext2D, text: OverlayText, cha
   // Calculate background/border rectangle with padding
   const bgX = x - paddingX
   const bgY = y - paddingY
-  const bgWidth = textWidth + (paddingX * 2)
-  const bgHeight = textHeight + (paddingY * 2)
+  const bgWidth = maxWidth + (paddingX * 2)
+  const bgHeight = totalHeight + (paddingY * 2)
   
   // Draw background if not transparent
   if (!text.backgroundTransparent && text.backgroundColor) {
@@ -497,9 +540,12 @@ function renderOverlayText(ctx: CanvasRenderingContext2D, text: OverlayText, cha
     ctx.strokeRect(bgX, bgY, bgWidth, bgHeight)
   }
   
-  // Draw text
+  // Draw multi-line text
   ctx.fillStyle = text.color
-  ctx.fillText(text.text, x, y)
+  allLines.forEach((line, index) => {
+    const lineY = y + (index * lineHeight)
+    ctx.fillText(line, x, lineY)
+  })
   
   ctx.restore()
 }
@@ -734,11 +780,32 @@ export const overlayPlugin = {
         const x = chartArea.left + selectedText.x
         const y = chartArea.top + selectedText.y
         
-        // Measure text dimensions
+        // Measure text dimensions for multi-line text with wrapping
         ctx.font = `${selectedText.fontSize}px ${selectedText.fontFamily}`
-        const textMetrics = ctx.measureText(selectedText.text)
-        const textWidth = textMetrics.width
-        const textHeight = selectedText.fontSize
+        const originalLines = selectedText.text.split('\n')
+        const allLines: string[] = []
+        
+        originalLines.forEach(line => {
+          if (selectedText.maxWidth && selectedText.maxWidth > 0) {
+            // Apply text wrapping
+            const wrappedLines = wrapText(ctx, line, selectedText.maxWidth)
+            allLines.push(...wrappedLines)
+          } else {
+            // No wrapping, use original line
+            allLines.push(line)
+          }
+        })
+        
+        const lineHeight = selectedText.fontSize * 1.2
+        
+        // Calculate total dimensions for multi-line text
+        let maxWidth = 0
+        allLines.forEach(line => {
+          const textMetrics = ctx.measureText(line)
+          maxWidth = Math.max(maxWidth, textMetrics.width)
+        })
+        
+        const totalHeight = allLines.length * lineHeight
         
         // Account for padding
         const paddingX = selectedText.paddingX || 8
@@ -746,8 +813,8 @@ export const overlayPlugin = {
         
         const bgX = x - paddingX
         const bgY = y - paddingY
-        const bgWidth = textWidth + (paddingX * 2)
-        const bgHeight = textHeight + (paddingY * 2)
+        const bgWidth = maxWidth + (paddingX * 2)
+        const bgHeight = totalHeight + (paddingY * 2)
         
         // Draw dashed border around text
         ctx.save()
@@ -873,12 +940,33 @@ export const overlayPlugin = {
           const txt = overlay.data as OverlayText
           if (!txt.visible) continue
           
-          // Approximate text dimensions with padding
+          // Calculate text dimensions for multi-line text with padding and wrapping
           const ctx = chart.ctx
           ctx.font = `${txt.fontSize}px ${txt.fontFamily}`
-          const textMetrics = ctx.measureText(txt.text)
-          const textWidth = textMetrics.width
-          const textHeight = txt.fontSize
+          const originalLines = txt.text.split('\n')
+          const allLines: string[] = []
+          
+          originalLines.forEach(line => {
+            if (txt.maxWidth && txt.maxWidth > 0) {
+              // Apply text wrapping
+              const wrappedLines = wrapText(ctx, line, txt.maxWidth)
+              allLines.push(...wrappedLines)
+            } else {
+              // No wrapping, use original line
+              allLines.push(line)
+            }
+          })
+          
+          const lineHeight = txt.fontSize * 1.2
+          
+          // Calculate total dimensions for multi-line text
+          let maxWidth = 0
+          allLines.forEach(line => {
+            const textMetrics = ctx.measureText(line)
+            maxWidth = Math.max(maxWidth, textMetrics.width)
+          })
+          
+          const totalHeight = allLines.length * lineHeight
           
           // Account for padding in hit detection
           const paddingX = txt.paddingX || 8
@@ -886,8 +974,8 @@ export const overlayPlugin = {
           
           const txtX = chartArea.left + txt.x - paddingX
           const txtY = chartArea.top + txt.y - paddingY
-          const hitWidth = textWidth + (paddingX * 2)
-          const hitHeight = textHeight + (paddingY * 2)
+          const hitWidth = maxWidth + (paddingX * 2)
+          const hitHeight = totalHeight + (paddingY * 2)
           
           if (isPointInRect(x, y, txtX, txtY, hitWidth, hitHeight)) {
             // Select the text
@@ -1013,20 +1101,41 @@ export const overlayPlugin = {
           const txt = overlay.data as OverlayText
           if (!txt.visible) continue
           
-          // Approximate text dimensions with padding
+          // Calculate text dimensions for multi-line text with padding and wrapping
           const ctx = chart.ctx
           ctx.font = `${txt.fontSize}px ${txt.fontFamily}`
-          const textMetrics = ctx.measureText(txt.text)
-          const textWidth = textMetrics.width
-          const textHeight = txt.fontSize
+          const originalLines = txt.text.split('\n')
+          const allLines: string[] = []
+          
+          originalLines.forEach(line => {
+            if (txt.maxWidth && txt.maxWidth > 0) {
+              // Apply text wrapping
+              const wrappedLines = wrapText(ctx, line, txt.maxWidth)
+              allLines.push(...wrappedLines)
+            } else {
+              // No wrapping, use original line
+              allLines.push(line)
+            }
+          })
+          
+          const lineHeight = txt.fontSize * 1.2
+          
+          // Calculate total dimensions for multi-line text
+          let maxWidth = 0
+          allLines.forEach(line => {
+            const textMetrics = ctx.measureText(line)
+            maxWidth = Math.max(maxWidth, textMetrics.width)
+          })
+          
+          const totalHeight = allLines.length * lineHeight
           
           const paddingX = txt.paddingX || 8
           const paddingY = txt.paddingY || 4
           
           const txtX = chartArea.left + txt.x - paddingX
           const txtY = chartArea.top + txt.y - paddingY
-          const hitWidth = textWidth + (paddingX * 2)
-          const hitHeight = textHeight + (paddingY * 2)
+          const hitWidth = maxWidth + (paddingX * 2)
+          const hitHeight = totalHeight + (paddingY * 2)
           
           if (isPointInRect(x, y, txtX, txtY, hitWidth, hitHeight)) {
             // Show custom context menu for text
