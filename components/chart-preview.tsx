@@ -107,7 +107,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   isLeftSidebarCollapsed?: boolean,
   isTablet?: boolean
 }) {
-  const { chartConfig, chartData, chartType, resetChart, legendFilter, fillArea, showBorder, showImages, showLabels, setHasJSON, chartMode, activeDatasetIndex, uniformityMode, toggleDatasetVisibility, toggleSliceVisibility, overlayImages, overlayTexts, selectedImageId, updateOverlayImage, updateOverlayText, setSelectedImageId, removeOverlayImage, removeOverlayText } = useChartStore()
+  const { chartConfig, chartData, chartType, resetChart, legendFilter, fillArea, showBorder, showImages, showLabels, setHasJSON, chartMode, activeDatasetIndex, uniformityMode, toggleDatasetVisibility, toggleSliceVisibility, overlayImages, overlayTexts, selectedImageId, selectedTextId, updateOverlayImage, updateOverlayText, setSelectedImageId, setSelectedTextId, removeOverlayImage, removeOverlayText } = useChartStore()
   const chartRef = useRef<ChartJS>(null)
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -189,6 +189,18 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       }
     }
 
+    const handleTextSelected = (event: CustomEvent) => {
+      const { textId } = event.detail
+      console.log('🎯 Text selected/deselected:', textId)
+      setSelectedTextId(textId)
+      
+      // Update chart to show/hide selection handles
+      if (chartRef.current) {
+        chartRef.current.update('none')
+        console.log('✅ Chart updated after text selection change')
+      }
+    }
+
     const handleImageResize = (event: CustomEvent) => {
       const { id, x, y, width, height, useNaturalSize } = event.detail
       console.log('🔄 Image resize:', { id, x, y, width, height, useNaturalSize })
@@ -218,6 +230,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     canvas.addEventListener('overlayImageLoaded', handleImageLoaded as EventListener)
     canvas.addEventListener('overlayImageDimensionsUpdate', handleDimensionsUpdate as EventListener)
     canvas.addEventListener('overlayImageSelected', handleImageSelected as EventListener)
+    canvas.addEventListener('overlayTextSelected', handleTextSelected as EventListener)
     canvas.addEventListener('overlayImageResize', handleImageResize as EventListener)
     canvas.addEventListener('overlayContextMenu', handleContextMenu as EventListener)
     
@@ -226,6 +239,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       canvas.removeEventListener('overlayImageLoaded', handleImageLoaded as EventListener)
       canvas.removeEventListener('overlayImageDimensionsUpdate', handleDimensionsUpdate as EventListener)
       canvas.removeEventListener('overlayImageSelected', handleImageSelected as EventListener)
+      canvas.removeEventListener('overlayTextSelected', handleTextSelected as EventListener)
       canvas.removeEventListener('overlayImageResize', handleImageResize as EventListener)
       canvas.removeEventListener('overlayContextMenu', handleContextMenu as EventListener)
     }
@@ -1324,7 +1338,8 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                       overlayPlugin: {
                         overlayImages,
                         overlayTexts,
-                        selectedImageId
+                        selectedImageId,
+                        selectedTextId
                       },
                       legend: {
                         ...((chartConfig.plugins as any)?.legend),

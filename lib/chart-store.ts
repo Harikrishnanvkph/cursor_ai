@@ -193,6 +193,7 @@ export interface OverlayImage {
   borderWidth: number
   borderColor: string
   shape: 'rectangle' | 'circle' | 'rounded'
+  imageFit?: 'fill' | 'cover' | 'contain'
   zIndex: number
 }
 
@@ -239,6 +240,7 @@ interface ChartStore {
   overlayImages: OverlayImage[];
   overlayTexts: OverlayText[];
   selectedImageId: string | null;
+  selectedTextId: string | null;
   toggleDatasetVisibility: (index: number) => void;
   toggleSliceVisibility: (index: number) => void;
   setChartType: (type: SupportedChartType) => void;
@@ -267,6 +269,7 @@ interface ChartStore {
   updateOverlayText: (id: string, updates: Partial<OverlayText>) => void;
   removeOverlayText: (id: string) => void;
   setSelectedImageId: (id: string | null) => void;
+  setSelectedTextId: (id: string | null) => void;
 }
 
 const defaultChartData = {
@@ -1854,6 +1857,7 @@ export const useChartStore = create<ChartStore>()(
         overlayImages: [],
   overlayTexts: [],
   selectedImageId: null,
+  selectedTextId: null,
       toggleDatasetVisibility: (index: number) => set((state) => {
         const current = (state.legendFilter.datasets as Record<number, boolean>)[index] ?? true;
         return { legendFilter: { ...state.legendFilter, datasets: { ...state.legendFilter.datasets, [index]: !current } } };
@@ -2319,6 +2323,9 @@ export const useChartStore = create<ChartStore>()(
   })),
   setSelectedImageId: (id) => set(() => ({
     selectedImageId: id
+  })),
+  setSelectedTextId: (id) => set(() => ({
+    selectedTextId: id
   })),
     }),
     {

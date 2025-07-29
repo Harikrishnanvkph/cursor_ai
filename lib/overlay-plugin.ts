@@ -62,6 +62,69 @@ function drawResizeHandles(ctx: CanvasRenderingContext2D, x: number, y: number, 
   ctx.restore()
 }
 
+// Helper function to draw circular resize handles
+function drawCircularResizeHandles(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number): void {
+  const handleSize = 8
+  const halfHandle = handleSize / 2
+  const centerX = x + width / 2
+  const centerY = y + height / 2
+  const radius = Math.min(width, height) / 2
+  
+  ctx.save()
+  ctx.fillStyle = '#007acc'
+  ctx.strokeStyle = '#ffffff'
+  ctx.lineWidth = 1
+  
+  // Draw 4 handles at cardinal directions (top, right, bottom, left)
+  const handles = [
+    { x: centerX - halfHandle, y: centerY - radius - halfHandle }, // Top
+    { x: centerX + radius - halfHandle, y: centerY - halfHandle }, // Right
+    { x: centerX - halfHandle, y: centerY + radius - halfHandle }, // Bottom
+    { x: centerX - radius - halfHandle, y: centerY - halfHandle }, // Left
+  ]
+  
+  handles.forEach(handle => {
+    ctx.fillRect(handle.x, handle.y, handleSize, handleSize)
+    ctx.strokeRect(handle.x, handle.y, handleSize, handleSize)
+  })
+  
+  ctx.restore()
+}
+
+// Helper function to draw rounded rectangle resize handles
+function drawRoundedResizeHandles(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number): void {
+  const handleSize = 8
+  const halfHandle = handleSize / 2
+  const radius = Math.min(width, height) * 0.1
+  
+  ctx.save()
+  ctx.fillStyle = '#007acc'
+  ctx.strokeStyle = '#ffffff'
+  ctx.lineWidth = 1
+  
+  // Draw handles at the corners and edges of the rounded rectangle
+  const handles = [
+    // Corner handles (adjusted for rounded corners)
+    { x: x + radius - halfHandle, y: y + radius - halfHandle }, // Top-left (adjusted)
+    { x: x + width - radius - halfHandle, y: y + radius - halfHandle }, // Top-right (adjusted)
+    { x: x + radius - halfHandle, y: y + height - radius - halfHandle }, // Bottom-left (adjusted)
+    { x: x + width - radius - halfHandle, y: y + height - radius - halfHandle }, // Bottom-right (adjusted)
+    
+    // Edge handles (center of edges)
+    { x: x + width / 2 - halfHandle, y: y - halfHandle }, // Top center
+    { x: x + width - halfHandle, y: y + height / 2 - halfHandle }, // Right center
+    { x: x + width / 2 - halfHandle, y: y + height - halfHandle }, // Bottom center
+    { x: x - halfHandle, y: y + height / 2 - halfHandle }, // Left center
+  ]
+  
+  handles.forEach(handle => {
+    ctx.fillRect(handle.x, handle.y, handleSize, handleSize)
+    ctx.strokeRect(handle.x, handle.y, handleSize, handleSize)
+  })
+  
+  ctx.restore()
+}
+
 // Helper function to draw dashed border
 function drawDashedBorder(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number): void {
   ctx.save()
@@ -73,29 +136,76 @@ function drawDashedBorder(ctx: CanvasRenderingContext2D, x: number, y: number, w
 }
 
 // Helper function to check which resize handle is clicked
-function getResizeHandle(mouseX: number, mouseY: number, imageX: number, imageY: number, imageWidth: number, imageHeight: number): 'nw' | 'ne' | 'sw' | 'se' | 'n' | 'e' | 's' | 'w' | null {
+function getResizeHandle(mouseX: number, mouseY: number, imageX: number, imageY: number, imageWidth: number, imageHeight: number, shape: string = 'rectangle'): 'nw' | 'ne' | 'sw' | 'se' | 'n' | 'e' | 's' | 'w' | null {
   const handleSize = 8
   const tolerance = 4
-  const midX = imageX + imageWidth / 2
-  const midY = imageY + imageHeight / 2
   
-  const handles = [
-    // Corner handles
-    { type: 'nw' as const, x: imageX - handleSize/2, y: imageY - handleSize/2 },
-    { type: 'ne' as const, x: imageX + imageWidth - handleSize/2, y: imageY - handleSize/2 },
-    { type: 'sw' as const, x: imageX - handleSize/2, y: imageY + imageHeight - handleSize/2 },
-    { type: 'se' as const, x: imageX + imageWidth - handleSize/2, y: imageY + imageHeight - handleSize/2 },
+  if (shape === 'circle') {
+    // For circle, check 4 handles at cardinal directions
+    const centerX = imageX + imageWidth / 2
+    const centerY = imageY + imageHeight / 2
+    const radius = Math.min(imageWidth, imageHeight) / 2
     
-    // Edge handles
-    { type: 'n' as const, x: midX - handleSize/2, y: imageY - handleSize/2 },
-    { type: 'e' as const, x: imageX + imageWidth - handleSize/2, y: midY - handleSize/2 },
-    { type: 's' as const, x: midX - handleSize/2, y: imageY + imageHeight - handleSize/2 },
-    { type: 'w' as const, x: imageX - handleSize/2, y: midY - handleSize/2 },
-  ]
-  
-  for (const handle of handles) {
-    if (isPointInRect(mouseX, mouseY, handle.x - tolerance, handle.y - tolerance, handleSize + tolerance*2, handleSize + tolerance*2)) {
-      return handle.type
+    const handles = [
+      { type: 'n' as const, x: centerX - handleSize/2, y: centerY - radius - handleSize/2 }, // Top
+      { type: 'e' as const, x: centerX + radius - handleSize/2, y: centerY - handleSize/2 }, // Right
+      { type: 's' as const, x: centerX - handleSize/2, y: centerY + radius - handleSize/2 }, // Bottom
+      { type: 'w' as const, x: centerX - radius - handleSize/2, y: centerY - handleSize/2 }, // Left
+    ]
+    
+    for (const handle of handles) {
+      if (isPointInRect(mouseX, mouseY, handle.x - tolerance, handle.y - tolerance, handleSize + tolerance*2, handleSize + tolerance*2)) {
+        return handle.type
+      }
+    }
+  } else if (shape === 'rounded') {
+    // For rounded rectangle, adjust corner positions
+    const radius = Math.min(imageWidth, imageHeight) * 0.1
+    const midX = imageX + imageWidth / 2
+    const midY = imageY + imageHeight / 2
+    
+    const handles = [
+      // Corner handles (adjusted for rounded corners)
+      { type: 'nw' as const, x: imageX + radius - handleSize/2, y: imageY + radius - handleSize/2 },
+      { type: 'ne' as const, x: imageX + imageWidth - radius - handleSize/2, y: imageY + radius - handleSize/2 },
+      { type: 'sw' as const, x: imageX + radius - handleSize/2, y: imageY + imageHeight - radius - handleSize/2 },
+      { type: 'se' as const, x: imageX + imageWidth - radius - handleSize/2, y: imageY + imageHeight - radius - handleSize/2 },
+      
+      // Edge handles (center of edges)
+      { type: 'n' as const, x: midX - handleSize/2, y: imageY - handleSize/2 },
+      { type: 'e' as const, x: imageX + imageWidth - handleSize/2, y: midY - handleSize/2 },
+      { type: 's' as const, x: midX - handleSize/2, y: imageY + imageHeight - handleSize/2 },
+      { type: 'w' as const, x: imageX - handleSize/2, y: midY - handleSize/2 },
+    ]
+    
+    for (const handle of handles) {
+      if (isPointInRect(mouseX, mouseY, handle.x - tolerance, handle.y - tolerance, handleSize + tolerance*2, handleSize + tolerance*2)) {
+        return handle.type
+      }
+    }
+  } else {
+    // Rectangle shape - original logic
+    const midX = imageX + imageWidth / 2
+    const midY = imageY + imageHeight / 2
+    
+    const handles = [
+      // Corner handles
+      { type: 'nw' as const, x: imageX - handleSize/2, y: imageY - handleSize/2 },
+      { type: 'ne' as const, x: imageX + imageWidth - handleSize/2, y: imageY - handleSize/2 },
+      { type: 'sw' as const, x: imageX - handleSize/2, y: imageY + imageHeight - handleSize/2 },
+      { type: 'se' as const, x: imageX + imageWidth - handleSize/2, y: imageY + imageHeight - handleSize/2 },
+      
+      // Edge handles
+      { type: 'n' as const, x: midX - handleSize/2, y: imageY - handleSize/2 },
+      { type: 'e' as const, x: imageX + imageWidth - handleSize/2, y: midY - handleSize/2 },
+      { type: 's' as const, x: midX - handleSize/2, y: imageY + imageHeight - handleSize/2 },
+      { type: 'w' as const, x: imageX - handleSize/2, y: midY - handleSize/2 },
+    ]
+    
+    for (const handle of handles) {
+      if (isPointInRect(mouseX, mouseY, handle.x - tolerance, handle.y - tolerance, handleSize + tolerance*2, handleSize + tolerance*2)) {
+        return handle.type
+      }
     }
   }
   
@@ -260,11 +370,57 @@ function drawImageOnCanvas(ctx: CanvasRenderingContext2D, img: HTMLImageElement,
     renderHeight = img.naturalHeight
   }
   
-  // Apply clipping based on shape
+  // Calculate image fitting for all shapes
+  let drawX = chartArea.left + image.x
+  let drawY = chartArea.top + image.y
+  let drawWidth = renderWidth
+  let drawHeight = renderHeight
+  
+  // Apply image fitting if specified
+  if (image.imageFit) {
+    const imageAspectRatio = img.naturalWidth / img.naturalHeight
+    const containerAspectRatio = renderWidth / renderHeight
+    
+    switch (image.imageFit) {
+      case 'fill':
+        // Stretch to fill the container (default behavior)
+        break
+      case 'cover':
+        // Scale to cover the container, maintaining aspect ratio
+        if (imageAspectRatio > containerAspectRatio) {
+          // Image is wider, scale by height
+          drawWidth = renderHeight * imageAspectRatio
+          drawHeight = renderHeight
+          drawX = chartArea.left + image.x + (renderWidth - drawWidth) / 2
+        } else {
+          // Image is taller, scale by width
+          drawWidth = renderWidth
+          drawHeight = renderWidth / imageAspectRatio
+          drawY = chartArea.top + image.y + (renderHeight - drawHeight) / 2
+        }
+        break
+      case 'contain':
+        // Scale to fit inside the container, maintaining aspect ratio
+        if (imageAspectRatio > containerAspectRatio) {
+          // Image is wider, scale by width
+          drawWidth = renderWidth
+          drawHeight = renderWidth / imageAspectRatio
+          drawY = chartArea.top + image.y + (renderHeight - drawHeight) / 2
+        } else {
+          // Image is taller, scale by height
+          drawWidth = renderHeight * imageAspectRatio
+          drawHeight = renderHeight
+          drawX = chartArea.left + image.x + (renderWidth - drawWidth) / 2
+        }
+        break
+    }
+  }
+  
+  // Apply clipping based on shape - use the original container dimensions for clipping
   clipImageToShape(ctx, chartArea.left + image.x, chartArea.top + image.y, renderWidth, renderHeight, image.shape)
   
-  // Draw the image
-  ctx.drawImage(img, chartArea.left + image.x, chartArea.top + image.y, renderWidth, renderHeight)
+  // Draw the image with calculated dimensions
+  ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight)
   ctx.restore()
   
   // Draw border if specified
@@ -281,11 +437,11 @@ function drawImageOnCanvas(ctx: CanvasRenderingContext2D, img: HTMLImageElement,
       ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI)
       ctx.stroke()
     } else if (image.shape === 'rounded') {
-      const radius = Math.min(image.width, image.height) * 0.1
-      drawRoundedRect(ctx, chartArea.left + image.x, chartArea.top + image.y, image.width, image.height, radius)
+      const radius = Math.min(renderWidth, renderHeight) * 0.1
+      drawRoundedRect(ctx, chartArea.left + image.x, chartArea.top + image.y, renderWidth, renderHeight, radius)
       ctx.stroke()
     } else {
-      ctx.strokeRect(chartArea.left + image.x, chartArea.top + image.y, image.width, image.height)
+      ctx.strokeRect(chartArea.left + image.x, chartArea.top + image.y, renderWidth, renderHeight)
     }
     
     ctx.restore()
@@ -375,41 +531,18 @@ export const overlayPlugin = {
     if (overlayImages.length > 0) {
       overlayImages.forEach((image: any, index: number) => {
         if (image.visible) {
-          const x = chartArea.left + image.x
-          const y = chartArea.top + image.y
-          
           // Check if image is already cached
           let img = imageCache.get(image.url)
           
           if (img && img.complete) {
-            // Determine dimensions to use
-            let w = image.width
-            let h = image.height
-            
-            // Use natural size if specified and available
-            if (image.useNaturalSize && img.naturalWidth && img.naturalHeight) {
-              w = img.naturalWidth
-              h = img.naturalHeight
-            }
-            
-            // Image is loaded, draw it
-            ctx.save()
-            clipImageToShape(ctx, x, y, w, h, image.shape)
-            ctx.drawImage(img, x, y, w, h)
-            ctx.restore()
-            
-            // Draw border if specified
-            if (image.borderWidth > 0) {
-              ctx.save()
-              ctx.strokeStyle = image.borderColor
-              ctx.lineWidth = image.borderWidth
-              ctx.strokeRect(x, y, w, h)
-              ctx.restore()
-            }
+            // Image is loaded, draw it using the sophisticated drawImageOnCanvas function
+            drawImageOnCanvas(ctx, img, image, chartArea)
           } else {
             // Use fallback dimensions for placeholder
             const w = image.width
             const h = image.height
+            const x = chartArea.left + image.x
+            const y = chartArea.top + image.y
             
             // Image not loaded yet, show placeholder
             ctx.save()
@@ -417,9 +550,25 @@ export const overlayPlugin = {
             ctx.strokeStyle = image.borderColor || 'blue'
             ctx.lineWidth = Math.max(2, image.borderWidth)
             
-            // Draw placeholder rectangle
-            ctx.fillRect(x, y, w, h)
-            ctx.strokeRect(x, y, w, h)
+            // Draw placeholder based on shape
+            if (image.shape === 'circle') {
+              const centerX = x + w / 2
+              const centerY = y + h / 2
+              const radius = Math.min(w, h) / 2
+              ctx.beginPath()
+              ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI)
+              ctx.fill()
+              ctx.stroke()
+            } else if (image.shape === 'rounded') {
+              const radius = Math.min(w, h) * 0.1
+              drawRoundedRect(ctx, x, y, w, h, radius)
+              ctx.fill()
+              ctx.stroke()
+            } else {
+              // Rectangle shape
+              ctx.fillRect(x, y, w, h)
+              ctx.strokeRect(x, y, w, h)
+            }
             
             // Draw loading text
             ctx.fillStyle = 'white'
@@ -536,11 +685,77 @@ export const overlayPlugin = {
           h = selectedImage.naturalHeight
         }
         
-        // Draw dashed border
-        drawDashedBorder(ctx, x, y, w, h)
+        // Draw dashed border based on shape
+        if (selectedImage.shape === 'circle') {
+          const centerX = x + w / 2
+          const centerY = y + h / 2
+          const radius = Math.min(w, h) / 2
+          ctx.save()
+          ctx.strokeStyle = '#007acc'
+          ctx.lineWidth = 2
+          ctx.setLineDash([5, 5])
+          ctx.beginPath()
+          ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI)
+          ctx.stroke()
+          ctx.restore()
+        } else if (selectedImage.shape === 'rounded') {
+          const radius = Math.min(w, h) * 0.1
+          ctx.save()
+          ctx.strokeStyle = '#007acc'
+          ctx.lineWidth = 2
+          ctx.setLineDash([5, 5])
+          drawRoundedRect(ctx, x, y, w, h, radius)
+          ctx.stroke()
+          ctx.restore()
+        } else {
+          // Rectangle shape
+          drawDashedBorder(ctx, x, y, w, h)
+        }
         
-        // Draw resize handles
-        drawResizeHandles(ctx, x, y, w, h)
+        // Draw resize handles based on shape
+        if (selectedImage.shape === 'circle') {
+          // For circle, draw handles around the circle perimeter
+          drawCircularResizeHandles(ctx, x, y, w, h)
+        } else if (selectedImage.shape === 'rounded') {
+          // For rounded, draw handles around the rounded rectangle
+          drawRoundedResizeHandles(ctx, x, y, w, h)
+        } else {
+          // Rectangle shape - use existing handles
+          drawResizeHandles(ctx, x, y, w, h)
+        }
+      }
+    }
+    
+    // Draw selection handles for selected text
+    const selectedTextId = (chart.options as any)?.plugins?.overlayPlugin?.selectedTextId
+    if (selectedTextId) {
+      const selectedText = overlayTexts.find((txt: any) => txt.id === selectedTextId)
+      if (selectedText && selectedText.visible) {
+        const x = chartArea.left + selectedText.x
+        const y = chartArea.top + selectedText.y
+        
+        // Measure text dimensions
+        ctx.font = `${selectedText.fontSize}px ${selectedText.fontFamily}`
+        const textMetrics = ctx.measureText(selectedText.text)
+        const textWidth = textMetrics.width
+        const textHeight = selectedText.fontSize
+        
+        // Account for padding
+        const paddingX = selectedText.paddingX || 8
+        const paddingY = selectedText.paddingY || 4
+        
+        const bgX = x - paddingX
+        const bgY = y - paddingY
+        const bgWidth = textWidth + (paddingX * 2)
+        const bgHeight = textHeight + (paddingY * 2)
+        
+        // Draw dashed border around text
+        ctx.save()
+        ctx.strokeStyle = '#007acc'
+        ctx.lineWidth = 2
+        ctx.setLineDash([5, 5])
+        ctx.strokeRect(bgX, bgY, bgWidth, bgHeight)
+        ctx.restore()
       }
     }
   },
@@ -590,7 +805,7 @@ export const overlayPlugin = {
           const selectedImageId = overlayData.selectedImageId
           
           if (selectedImageId === img.id) {
-            const resizeHandle = getResizeHandle(x, y, imgX, imgY, hitWidth, hitHeight)
+            const resizeHandle = getResizeHandle(x, y, imgX, imgY, hitWidth, hitHeight, img.shape)
             if (resizeHandle) {
               // Start resize operation
               dragState.isResizing = true
@@ -675,9 +890,17 @@ export const overlayPlugin = {
           const hitHeight = textHeight + (paddingY * 2)
           
           if (isPointInRect(x, y, txtX, txtY, hitWidth, hitHeight)) {
+            // Select the text
+            const selectEvent = new CustomEvent('overlayTextSelected', {
+              detail: { textId: txt.id }
+            })
+            canvas.dispatchEvent(selectEvent)
+            
+            // Start drag operation
             dragState.isDragging = true
             dragState.dragType = 'text'
             dragState.dragId = txt.id
+            dragState.dragOffsetX = x - txtX
             dragState.dragOffsetY = y - txtY
             canvas.style.cursor = 'grabbing'
             clickedOnOverlay = true
@@ -687,10 +910,11 @@ export const overlayPlugin = {
         }
       }
       
-      // If clicked outside any overlay, deselect the current image
+      // If clicked outside any overlay, deselect the current image and text
       if (!clickedOnOverlay) {
         const overlayData = (chart.options as any)?.plugins?.overlayPlugin || {}
         const selectedImageId = overlayData.selectedImageId
+        const selectedTextId = overlayData.selectedTextId
         
         if (selectedImageId) {
           console.log('🔄 Deselecting image:', selectedImageId)
@@ -699,14 +923,23 @@ export const overlayPlugin = {
             detail: { imageId: null }
           })
           canvas.dispatchEvent(deselectEvent)
-          
-          // Force chart update to hide selection handles
-          if (chart && chart.update) {
-            setTimeout(() => {
-              chart.update('none')
-              console.log('✅ Chart updated after deselection')
-            }, 10)
-          }
+        }
+        
+        if (selectedTextId) {
+          console.log('🔄 Deselecting text:', selectedTextId)
+          // Deselect the text
+          const deselectTextEvent = new CustomEvent('overlayTextSelected', {
+            detail: { textId: null }
+          })
+          canvas.dispatchEvent(deselectTextEvent)
+        }
+        
+        // Force chart update to hide selection handles
+        if (chart && chart.update) {
+          setTimeout(() => {
+            chart.update('none')
+            console.log('✅ Chart updated after deselection')
+          }, 10)
         }
       }
     }
@@ -829,44 +1062,69 @@ export const overlayPlugin = {
         let newX = dragState.startX - chartArea.left
         let newY = dragState.startY - chartArea.top
         
-        switch (dragState.resizeHandle) {
-          // Corner handles
-          case 'se': // Southeast - resize from bottom-right
-            newWidth = Math.max(20, dragState.startWidth + (x - dragState.startX - dragState.startWidth))
-            newHeight = Math.max(20, dragState.startHeight + (y - dragState.startY - dragState.startHeight))
-            break
-          case 'sw': // Southwest - resize from bottom-left
-            newWidth = Math.max(20, dragState.startWidth - (x - dragState.startX))
-            newHeight = Math.max(20, dragState.startHeight + (y - dragState.startY - dragState.startHeight))
-            newX = dragState.startX - chartArea.left + (dragState.startWidth - newWidth)
-            break
-          case 'ne': // Northeast - resize from top-right
-            newWidth = Math.max(20, dragState.startWidth + (x - dragState.startX - dragState.startWidth))
-            newHeight = Math.max(20, dragState.startHeight - (y - dragState.startY))
-            newY = dragState.startY - chartArea.top + (dragState.startHeight - newHeight)
-            break
-          case 'nw': // Northwest - resize from top-left
-            newWidth = Math.max(20, dragState.startWidth - (x - dragState.startX))
-            newHeight = Math.max(20, dragState.startHeight - (y - dragState.startY))
-            newX = dragState.startX - chartArea.left + (dragState.startWidth - newWidth)
-            newY = dragState.startY - chartArea.top + (dragState.startHeight - newHeight)
-            break
-            
-          // Edge handles
-          case 'n': // North - resize from top
-            newHeight = Math.max(20, dragState.startHeight - (y - dragState.startY))
-            newY = dragState.startY - chartArea.top + (dragState.startHeight - newHeight)
-            break
-          case 'e': // East - resize from right
-            newWidth = Math.max(20, dragState.startWidth + (x - dragState.startX - dragState.startWidth))
-            break
-          case 's': // South - resize from bottom
-            newHeight = Math.max(20, dragState.startHeight + (y - dragState.startY - dragState.startHeight))
-            break
-          case 'w': // West - resize from left
-            newWidth = Math.max(20, dragState.startWidth - (x - dragState.startX))
-            newX = dragState.startX - chartArea.left + (dragState.startWidth - newWidth)
-            break
+        // Get the image to check if it's a circle
+        const overlayImages = (chart.options as any)?.overlayImages || []
+        const currentImage = overlayImages.find((img: any) => img.id === dragState.dragId)
+        
+        if (currentImage && currentImage.shape === 'circle') {
+          // Special handling for circle resize
+          const centerX = dragState.startX + dragState.startWidth / 2
+          const centerY = dragState.startY + dragState.startHeight / 2
+          
+          // Calculate distance from center to mouse position
+          const distanceFromCenter = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2)
+          const minRadius = 10 // Minimum radius
+          const newRadius = Math.max(minRadius, distanceFromCenter)
+          
+          // Calculate new diameter (both width and height should be equal for circle)
+          const newDiameter = newRadius * 2
+          newWidth = newDiameter
+          newHeight = newDiameter
+          
+          // Keep the center position fixed, adjust x and y to maintain center
+          newX = centerX - chartArea.left - newRadius
+          newY = centerY - chartArea.top - newRadius
+        } else {
+          // Original rectangle/rounded resize logic
+          switch (dragState.resizeHandle) {
+            // Corner handles
+            case 'se': // Southeast - resize from bottom-right
+              newWidth = Math.max(20, dragState.startWidth + (x - dragState.startX - dragState.startWidth))
+              newHeight = Math.max(20, dragState.startHeight + (y - dragState.startY - dragState.startHeight))
+              break
+            case 'sw': // Southwest - resize from bottom-left
+              newWidth = Math.max(20, dragState.startWidth - (x - dragState.startX))
+              newHeight = Math.max(20, dragState.startHeight + (y - dragState.startY - dragState.startHeight))
+              newX = dragState.startX - chartArea.left + (dragState.startWidth - newWidth)
+              break
+            case 'ne': // Northeast - resize from top-right
+              newWidth = Math.max(20, dragState.startWidth + (x - dragState.startX - dragState.startWidth))
+              newHeight = Math.max(20, dragState.startHeight - (y - dragState.startY))
+              newY = dragState.startY - chartArea.top + (dragState.startHeight - newHeight)
+              break
+            case 'nw': // Northwest - resize from top-left
+              newWidth = Math.max(20, dragState.startWidth - (x - dragState.startX))
+              newHeight = Math.max(20, dragState.startHeight - (y - dragState.startY))
+              newX = dragState.startX - chartArea.left + (dragState.startWidth - newWidth)
+              newY = dragState.startY - chartArea.top + (dragState.startHeight - newHeight)
+              break
+              
+            // Edge handles
+            case 'n': // North - resize from top
+              newHeight = Math.max(20, dragState.startHeight - (y - dragState.startY))
+              newY = dragState.startY - chartArea.top + (dragState.startHeight - newHeight)
+              break
+            case 'e': // East - resize from right
+              newWidth = Math.max(20, dragState.startWidth + (x - dragState.startX - dragState.startWidth))
+              break
+            case 's': // South - resize from bottom
+              newHeight = Math.max(20, dragState.startHeight + (y - dragState.startY - dragState.startHeight))
+              break
+            case 'w': // West - resize from left
+              newWidth = Math.max(20, dragState.startWidth - (x - dragState.startX))
+              newX = dragState.startX - chartArea.left + (dragState.startWidth - newWidth)
+              break
+          }
         }
         
         // Dispatch resize event
@@ -928,7 +1186,7 @@ export const overlayPlugin = {
           
           // If this is the selected image, check for resize handle hover first
           if (selectedImageId === img.id) {
-            const resizeHandle = getResizeHandle(x, y, imgX, imgY, hoverWidth, hoverHeight)
+            const resizeHandle = getResizeHandle(x, y, imgX, imgY, hoverWidth, hoverHeight, img.shape)
             if (resizeHandle) {
               isOverOverlay = true
               // Set cursor based on handle type

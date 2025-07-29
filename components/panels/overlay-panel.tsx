@@ -24,8 +24,21 @@ export function OverlayPanel() {
     updateOverlayText,
     removeOverlayText,
     selectedImageId,
-    setSelectedImageId
+    selectedTextId,
+    setSelectedImageId,
+    setSelectedTextId
   } = useChartStore()
+
+  // Ensure all images have imageFit property
+  useEffect(() => {
+    overlayImages.forEach(image => {
+      if (image.imageFit === undefined) {
+        updateOverlayImage(image.id, { 
+          imageFit: image.shape === 'circle' ? 'cover' : 'fill' 
+        })
+      }
+    })
+  }, [overlayImages, updateOverlayImage])
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [newText, setNewText] = useState("")
@@ -33,14 +46,19 @@ export function OverlayPanel() {
   // Add keyboard support for ESC key to deselect
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && selectedImageId) {
-        setSelectedImageId(null)
+      if (event.key === 'Escape') {
+        if (selectedImageId) {
+          setSelectedImageId(null)
+        }
+        if (selectedTextId) {
+          setSelectedTextId(null)
+        }
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedImageId, setSelectedImageId])
+  }, [selectedImageId, selectedTextId, setSelectedImageId, setSelectedTextId])
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
@@ -70,8 +88,9 @@ export function OverlayPanel() {
           useNaturalSize: true, // Use image's natural dimensions
           visible: true,
           borderWidth: 2,
-          borderColor: "#00ff00", // Green border to distinguish from test
+          borderColor: "#000000", // Black border as default
           shape: 'rectangle',
+          imageFit: 'fill', // Default for rectangles
           zIndex: 1 + index
         })
         
@@ -180,7 +199,7 @@ export function OverlayPanel() {
                           useNaturalSize: false, // Test image should use specified size
                           visible: true,
                           borderWidth: 2,
-                          borderColor: "#ff0000",
+                          borderColor: "#000000",
                           shape: 'rectangle',
                           zIndex: 1
                         })
@@ -214,8 +233,9 @@ export function OverlayPanel() {
                               useNaturalSize: true,
                               visible: true,
                               borderWidth: 2,
-                              borderColor: "#00ff00",
+                              borderColor: "#000000",
                               shape: 'rectangle',
+                              imageFit: 'fill', // Default for rectangles
                               zIndex: 1
                             })
                             e.currentTarget.value = ''
@@ -237,8 +257,9 @@ export function OverlayPanel() {
                             useNaturalSize: true,
                             visible: true,
                             borderWidth: 2,
-                            borderColor: "#00ff00",
+                            borderColor: "#000000",
                             shape: 'rectangle',
+                            imageFit: 'fill', // Default for rectangles
                             zIndex: 1
                           })
                           urlInput.value = ''
@@ -369,7 +390,11 @@ export function OverlayPanel() {
                       <Select 
                         value={image.shape} 
                         onValueChange={(value: 'rectangle' | 'circle' | 'rounded') => 
-                          updateOverlayImage(image.id, { shape: value })
+                          updateOverlayImage(image.id, { 
+                            shape: value,
+                            // Set default imageFit based on shape
+                            imageFit: value === 'circle' ? 'cover' : 'fill'
+                          })
                         }
                       >
                         <SelectTrigger className="h-8">
@@ -386,6 +411,37 @@ export function OverlayPanel() {
                           ))}
                         </SelectContent>
                       </Select>
+                    </div>
+
+                    {/* Image Fit - Show for all shapes */}
+                    <div>
+                      <Label className="text-xs">Image Fit</Label>
+                      <div className="flex gap-1 mt-2">
+                        <Button
+                          size="sm"
+                          variant={image.imageFit === 'fill' ? 'default' : 'outline'}
+                          onClick={() => updateOverlayImage(image.id, { imageFit: 'fill' })}
+                          className="flex-1 text-xs"
+                        >
+                          Fill
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={image.imageFit === 'cover' ? 'default' : 'outline'}
+                          onClick={() => updateOverlayImage(image.id, { imageFit: 'cover' })}
+                          className="flex-1 text-xs"
+                        >
+                          Cover
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={image.imageFit === 'contain' ? 'default' : 'outline'}
+                          onClick={() => updateOverlayImage(image.id, { imageFit: 'contain' })}
+                          className="flex-1 text-xs"
+                        >
+                          Contain
+                        </Button>
+                      </div>
                     </div>
 
                     {/* Border */}
@@ -465,7 +521,7 @@ export function OverlayPanel() {
             {/* Text List */}
             <div className="space-y-4">
               {overlayTexts.map((text, index) => (
-                <Card key={text.id}>
+                <Card key={text.id} className={selectedTextId === text.id ? "ring-2 ring-blue-500 border-blue-300" : ""}>
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-sm">Text {index + 1}</CardTitle>
