@@ -565,6 +565,8 @@ export const overlayPlugin = {
         ...overlayTexts.map((txt: OverlayText) => ({ type: 'text', data: txt }))
       ].sort((a, b) => b.data.zIndex - a.data.zIndex) // Reverse order for top-most first
       
+      let clickedOnOverlay = false
+      
       for (const overlay of allOverlays) {
         if (overlay.type === 'image') {
           const img = overlay.data as OverlayImage
@@ -618,6 +620,7 @@ export const overlayPlugin = {
                   canvas.style.cursor = 'ew-resize'
                   break
               }
+              clickedOnOverlay = true
               event.preventDefault()
               break
             }
@@ -647,6 +650,7 @@ export const overlayPlugin = {
             dragState.dragOffsetX = x - imgX
             dragState.dragOffsetY = y - imgY
             canvas.style.cursor = 'grabbing'
+            clickedOnOverlay = true
             event.preventDefault()
             break
           }
@@ -674,11 +678,136 @@ export const overlayPlugin = {
             dragState.isDragging = true
             dragState.dragType = 'text'
             dragState.dragId = txt.id
-            dragState.dragOffsetX = x - txtX
             dragState.dragOffsetY = y - txtY
             canvas.style.cursor = 'grabbing'
+            clickedOnOverlay = true
             event.preventDefault()
             break
+          }
+        }
+      }
+      
+      // If clicked outside any overlay, deselect the current image
+      if (!clickedOnOverlay) {
+        const overlayData = (chart.options as any)?.plugins?.overlayPlugin || {}
+        const selectedImageId = overlayData.selectedImageId
+        
+        if (selectedImageId) {
+          console.log('🔄 Deselecting image:', selectedImageId)
+          // Deselect the image
+          const deselectEvent = new CustomEvent('overlayImageSelected', {
+            detail: { imageId: null }
+          })
+          canvas.dispatchEvent(deselectEvent)
+          
+          // Force chart update to hide selection handles
+          if (chart && chart.update) {
+            setTimeout(() => {
+              chart.update('none')
+              console.log('✅ Chart updated after deselection')
+            }, 10)
+          }
+        }
+      }
+    }
+    
+    const handleContextMenu = (event: MouseEvent) => {
+      event.preventDefault() // Prevent default browser context menu
+      
+      const rect = canvas.getBoundingClientRect()
+      const x = event.clientX - rect.left
+      const y = event.clientY - rect.top
+      const chartArea = chart.chartArea
+      
+      // Get overlay data
+      const overlayImages = (chart.options as any)?.overlayImages || []
+      const overlayTexts = (chart.options as any)?.overlayTexts || []
+      
+      // Check if right-clicking on any overlay
+      const allOverlays = [
+        ...overlayImages.map((img: OverlayImage) => ({ type: 'image', data: img })),
+        ...overlayTexts.map((txt: OverlayText) => ({ type: 'text', data: txt }))
+      ].sort((a, b) => b.data.zIndex - a.data.zIndex)
+      
+      for (const overlay of allOverlays) {
+        if (overlay.type === 'image') {
+          const img = overlay.data as OverlayImage
+          if (!img.visible) continue
+          
+          const imgX = chartArea.left + img.x
+          const imgY = chartArea.top + img.y
+          
+          // Determine dimensions for hit detection
+          let hitWidth = img.width
+          let hitHeight = img.height
+          
+          if (img.useNaturalSize && img.naturalWidth && img.naturalHeight) {
+            hitWidth = img.naturalWidth
+            hitHeight = img.naturalHeight
+          }
+          
+          let isInside = false
+          if (img.shape === 'circle') {
+            const centerX = imgX + hitWidth / 2
+            const centerY = imgY + hitHeight / 2
+            const radius = Math.min(hitWidth, hitHeight) / 2
+            isInside = isPointInCircle(x, y, centerX, centerY, radius)
+          } else {
+            isInside = isPointInRect(x, y, imgX, imgY, hitWidth, hitHeight)
+          }
+          
+          if (isInside) {
+            // Select the image first
+            const selectEvent = new CustomEvent('overlayImageSelected', {
+              detail: { imageId: img.id }
+            })
+            canvas.dispatchEvent(selectEvent)
+            
+            // Show custom context menu
+            const contextMenuEvent = new CustomEvent('overlayContextMenu', {
+              detail: {
+                type: 'image',
+                id: img.id,
+                x: event.clientX,
+                y: event.clientY,
+                data: img
+              }
+            })
+            canvas.dispatchEvent(contextMenuEvent)
+            return
+          }
+        } else {
+          const txt = overlay.data as OverlayText
+          if (!txt.visible) continue
+          
+          // Approximate text dimensions with padding
+          const ctx = chart.ctx
+          ctx.font = `${txt.fontSize}px ${txt.fontFamily}`
+          const textMetrics = ctx.measureText(txt.text)
+          const textWidth = textMetrics.width
+          const textHeight = txt.fontSize
+          
+          const paddingX = txt.paddingX || 8
+          const paddingY = txt.paddingY || 4
+          
+          const txtX = chartArea.left + txt.x - paddingX
+          const txtY = chartArea.top + txt.y - paddingY
+          const hitWidth = textWidth + (paddingX * 2)
+          const hitHeight = textHeight + (paddingY * 2)
+          
+          if (isPointInRect(x, y, txtX, txtY, hitWidth, hitHeight)) {
+            // Show custom context menu for text
+            const contextMenuEvent = new CustomEvent('overlayContextMenu', {
+              detail: {
+                type: 'text',
+                id: txt.id,
+                x: event.clientX,
+                y: event.clientY,
+                data: txt
+              }
+            })
+            canvas.dispatchEvent(contextMenuEvent)
+            return
           }
         }
       }
@@ -927,6 +1056,7 @@ export const overlayPlugin = {
     canvas.addEventListener('mousemove', handleMouseMove)
     canvas.addEventListener('mouseup', handleMouseUp)
     canvas.addEventListener('mouseleave', handleMouseUp)
+    canvas.addEventListener('contextmenu', handleContextMenu)
     
     // Touch events for mobile
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false })
@@ -939,6 +1069,7 @@ export const overlayPlugin = {
       mousemove: handleMouseMove,
       mouseup: handleMouseUp,
       mouseleave: handleMouseUp,
+      contextmenu: handleContextMenu,
       touchstart: handleTouchStart,
       touchmove: handleTouchMove,
       touchend: handleTouchEnd

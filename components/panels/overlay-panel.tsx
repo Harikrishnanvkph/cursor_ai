@@ -120,19 +120,10 @@ export function OverlayPanel() {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="p-4 border-b bg-gradient-to-r from-blue-50 to-purple-50">
-        <div className="flex items-center gap-2">
-          <Layers className="h-5 w-5 text-blue-600" />
-          <h2 className="text-lg font-semibold text-gray-900">Canvas Overlays</h2>
-        </div>
-        <p className="text-sm text-gray-600 mt-1">Add floating images and text to your chart canvas</p>
-        <p className="text-xs text-blue-600 mt-1">💡 Click the pointer icon to select an image and see resize handles on the chart</p>
-        <p className="text-xs text-gray-500 mt-1">🖱️ Drag to move • Drag handles to resize • ESC to deselect</p>
-      </div>
+
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto">
         <Tabs defaultValue="images" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="images" className="flex items-center gap-2">
@@ -147,54 +138,120 @@ export function OverlayPanel() {
 
           {/* Image Overlays Tab */}
           <TabsContent value="images" className="space-y-4">
-            {/* Upload Section */}
+            {/* Add Image Section */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <Upload className="h-4 w-4" />
-                  Upload Images
+                  <Image className="h-4 w-4" />
+                  Add Image
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageUpload}
-                  className="hidden"
-                />
-                <Button 
-                  onClick={() => fileInputRef.current?.click()}
-                  variant="outline"
-                  className="w-full mb-2"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Choose Images
-                </Button>
-                <Button 
-                  onClick={() => {
-                    console.log('Adding test image')
-                    addOverlayImage({
-                      url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzAwNzVmZiIvPjx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+VEVTVDwvdGV4dD48L3N2Zz4=',
-                      x: 50,
-                      y: 50,
-                      width: 100,
-                      height: 100,
-                      useNaturalSize: false, // Test image should use specified size
-                      visible: true,
-                      borderWidth: 2,
-                      borderColor: "#ff0000",
-                      shape: 'rectangle',
-                      zIndex: 1
-                    })
-                    console.log('Test image added, count:', overlayImages.length + 1)
-                  }}
-                  variant="default"
-                  className="w-full"
-                >
-                  Add Test Image
-                </Button>
+              <CardContent className="space-y-3">
+                {/* Upload from file */}
+                <div>
+                  <Label className="text-xs text-gray-600 mb-2 block">Upload from file</Label>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={() => fileInputRef.current?.click()}
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Choose Images
+                    </Button>
+                    <Button 
+                      onClick={() => {
+                        console.log('Adding test image')
+                        addOverlayImage({
+                          url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzAwNzVmZiIvPjx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+VEVTVDwvdGV4dD48L3N2Zz4=',
+                          x: 50,
+                          y: 50,
+                          width: 100,
+                          height: 100,
+                          useNaturalSize: false, // Test image should use specified size
+                          visible: true,
+                          borderWidth: 2,
+                          borderColor: "#ff0000",
+                          shape: 'rectangle',
+                          zIndex: 1
+                        })
+                        console.log('Test image added, count:', overlayImages.length + 1)
+                      }}
+                      variant="default"
+                      size="sm"
+                    >
+                      Test
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Add from URL */}
+                <div>
+                  <Label className="text-xs text-gray-600 mb-2 block">Add from URL</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Enter image URL (https://...)"
+                      className="h-8 flex-1"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          const url = e.currentTarget.value.trim()
+                          if (url) {
+                            addOverlayImage({
+                              url,
+                              x: 50,
+                              y: 50,
+                              width: 120,
+                              height: 120,
+                              useNaturalSize: true,
+                              visible: true,
+                              borderWidth: 2,
+                              borderColor: "#00ff00",
+                              shape: 'rectangle',
+                              zIndex: 1
+                            })
+                            e.currentTarget.value = ''
+                          }
+                        }
+                      }}
+                    />
+                    <Button 
+                      onClick={() => {
+                        const urlInput = document.querySelector('input[placeholder="Enter image URL (https://...)"]') as HTMLInputElement
+                        const url = urlInput?.value.trim()
+                        if (url) {
+                          addOverlayImage({
+                            url,
+                            x: 50,
+                            y: 50,
+                            width: 120,
+                            height: 120,
+                            useNaturalSize: true,
+                            visible: true,
+                            borderWidth: 2,
+                            borderColor: "#00ff00",
+                            shape: 'rectangle',
+                            zIndex: 1
+                          })
+                          urlInput.value = ''
+                        }
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="px-3"
+                    >
+                      Add
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 

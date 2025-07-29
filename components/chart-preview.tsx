@@ -34,6 +34,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { downloadChartAsHTML } from "@/lib/html-exporter"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { ResizableChartArea } from "@/components/resizable-chart-area"
+import { OverlayContextMenu } from "@/components/overlay-context-menu"
 
 
 ChartJS.register(
@@ -106,12 +107,29 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   isLeftSidebarCollapsed?: boolean,
   isTablet?: boolean
 }) {
-  const { chartConfig, chartData, chartType, resetChart, legendFilter, fillArea, showBorder, showImages, showLabels, setHasJSON, chartMode, activeDatasetIndex, uniformityMode, toggleDatasetVisibility, toggleSliceVisibility, overlayImages, overlayTexts, selectedImageId, updateOverlayImage, updateOverlayText, setSelectedImageId } = useChartStore()
+  const { chartConfig, chartData, chartType, resetChart, legendFilter, fillArea, showBorder, showImages, showLabels, setHasJSON, chartMode, activeDatasetIndex, uniformityMode, toggleDatasetVisibility, toggleSliceVisibility, overlayImages, overlayTexts, selectedImageId, updateOverlayImage, updateOverlayText, setSelectedImageId, removeOverlayImage, removeOverlayText } = useChartStore()
   const chartRef = useRef<ChartJS>(null)
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { clearMessages } = useChatStore();
   const [hoveredDatasetIndex, setHoveredDatasetIndex] = useState<number | null>(null);
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    isOpen: boolean;
+    x: number;
+    y: number;
+    type: 'image' | 'text';
+    id: string;
+    data: any;
+  }>({
+    isOpen: false,
+    x: 0,
+    y: 0,
+    type: 'image',
+    id: '',
+    data: null
+  });
 
   // Responsive check for <576px
   const [isMobile, setIsMobile] = useState(false);
@@ -161,12 +179,13 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
 
     const handleImageSelected = (event: CustomEvent) => {
       const { imageId } = event.detail
-      console.log('🎯 Image selected:', imageId)
+      console.log('🎯 Image selected/deselected:', imageId)
       setSelectedImageId(imageId)
       
       // Update chart to show/hide selection handles
       if (chartRef.current) {
         chartRef.current.update('none')
+        console.log('✅ Chart updated after image selection change')
       }
     }
 
@@ -181,11 +200,26 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       }
     }
 
+    const handleContextMenu = (event: CustomEvent) => {
+      const { type, id, x, y, data } = event.detail
+      console.log('🎯 Context menu triggered:', { type, id, x, y })
+      
+      setContextMenu({
+        isOpen: true,
+        x,
+        y,
+        type,
+        id,
+        data
+      })
+    }
+
     canvas.addEventListener('overlayPositionUpdate', handleOverlayPositionUpdate as EventListener)
     canvas.addEventListener('overlayImageLoaded', handleImageLoaded as EventListener)
     canvas.addEventListener('overlayImageDimensionsUpdate', handleDimensionsUpdate as EventListener)
     canvas.addEventListener('overlayImageSelected', handleImageSelected as EventListener)
     canvas.addEventListener('overlayImageResize', handleImageResize as EventListener)
+    canvas.addEventListener('overlayContextMenu', handleContextMenu as EventListener)
     
     return () => {
       canvas.removeEventListener('overlayPositionUpdate', handleOverlayPositionUpdate as EventListener)
@@ -193,6 +227,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       canvas.removeEventListener('overlayImageDimensionsUpdate', handleDimensionsUpdate as EventListener)
       canvas.removeEventListener('overlayImageSelected', handleImageSelected as EventListener)
       canvas.removeEventListener('overlayImageResize', handleImageResize as EventListener)
+      canvas.removeEventListener('overlayContextMenu', handleContextMenu as EventListener)
     }
   }, [updateOverlayImage, updateOverlayText, setSelectedImageId]);
 
@@ -910,6 +945,32 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     }
   }
 
+  // Context menu handlers
+  const handleContextMenuClose = () => {
+    setContextMenu(prev => ({ ...prev, isOpen: false }))
+  }
+
+  const handleContextMenuDelete = (id: string) => {
+    if (contextMenu.type === 'image') {
+      removeOverlayImage(id)
+    } else {
+      removeOverlayText(id)
+    }
+    setSelectedImageId(null)
+  }
+
+  const handleContextMenuHide = (id: string) => {
+    if (contextMenu.type === 'image') {
+      updateOverlayImage(id, { visible: !contextMenu.data.visible })
+    } else {
+      updateOverlayText(id, { visible: !contextMenu.data.visible })
+    }
+  }
+
+  const handleContextMenuUnselect = () => {
+    setSelectedImageId(null)
+  }
+
   return (
     <div className={`flex min-w-full flex-col overflow-hidden${isMobile ? '' : ' h-full'}`} ref={fullscreenContainerRef}>
       {/* Fullscreen overlay */}
@@ -1431,6 +1492,20 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
           </Button>
         </div>
       )}
+
+      {/* Context Menu */}
+      <OverlayContextMenu
+        isOpen={contextMenu.isOpen}
+        x={contextMenu.x}
+        y={contextMenu.y}
+        type={contextMenu.type}
+        id={contextMenu.id}
+        data={contextMenu.data}
+        onClose={handleContextMenuClose}
+        onDelete={handleContextMenuDelete}
+        onHide={handleContextMenuHide}
+        onUnselect={handleContextMenuUnselect}
+      />
     </div>
   )
 }

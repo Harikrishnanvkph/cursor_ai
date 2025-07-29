@@ -66,6 +66,7 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed }: 
       design: "Design",
       axes: "Axes",
       labels: "Labels",
+      overlay: "Overlays",
       animations: "Animations",
       advanced: "Advanced",
       export: "Export"
@@ -92,7 +93,9 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed }: 
             )}
             <div className="flex flex-col">
               <h3 className="text-sm font-semibold text-gray-900 leading-tight">{getPanelTitle()}</h3>
-              <p className="text-xs text-gray-500 leading-tight">Customize your chart</p>
+              <p className="text-xs text-gray-500 leading-tight">
+                {activeTab === 'overlay' ? 'Floating Images and Texts' : 'Customize your chart'}
+              </p>
             </div>
           </div>
           
