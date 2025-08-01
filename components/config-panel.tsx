@@ -119,7 +119,7 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
       )}
       
       {/* Panel Content */}
-      <div className="flex-1 overflow-y-auto p-4 bg-white">
+      <div className="flex-1 overflow-y-auto bg-white p-4">
         <div className="animate-in fade-in duration-200">
           {renderPanel()}
         </div>

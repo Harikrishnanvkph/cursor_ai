@@ -11,6 +11,7 @@ The AIChartor HTML Export System provides comprehensive functionality to export 
 - **Dark Theme**: Sleek dark theme with neon accents
 - **Minimal**: Simple, clean template with minimal styling
 - **Professional**: Business-ready template with corporate styling
+- **Only Chart**: Clean template with just the chart, no additional styling or information
 
 ### 📱 Responsive Design
 - Automatically adapts to different screen sizes
@@ -235,6 +236,13 @@ The plugin system automatically:
 - Structured layout with sections
 - Professional typography and spacing
 
+### Only Chart Template
+- Clean, minimal design with just the chart
+- No headers, footers, or information panels
+- Perfect for embedding in other applications
+- Responsive design that adapts to container size
+- White background with centered chart display
+
 ## Export Options
 
 ### HTMLExportOptions Interface
@@ -454,6 +462,20 @@ const result = downloadChartAsHTML({
   height: 700,
   includeAnimations: true,
   includeTooltips: true
+});
+```
+
+### Example 4: Only Chart Export
+
+```typescript
+const result = downloadChartAsHTML({
+  title: "Chart",
+  template: "onlyChart",
+  width: 800,
+  height: 600,
+  includeAnimations: true,
+  includeTooltips: true,
+  includeLegend: true
 });
 ```
 

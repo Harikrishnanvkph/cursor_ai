@@ -2328,6 +2328,15 @@ export const useChartStore = create<ChartStore>()(
   setSelectedTextId: (id) => set(() => ({
     selectedTextId: id
   })),
+  // Export method that can be called from anywhere
+  exportChart: (options?: any) => {
+    const chart = (window as any).currentChartRef;
+    if (chart && chart.exportToImage) {
+      chart.exportToImage(options);
+      return true;
+    }
+    return false;
+  },
     }),
     {
       name: 'chart-store',

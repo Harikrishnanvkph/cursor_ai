@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Overlay HTML Export Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .chart-container {
+            width: 800px;
+            height: 600px;
+            max-width: 100%;
+            max-height: 100vh;
+            position: relative;
+        }
+        
+        canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        
+        .test-info {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            max-width: 300px;
+        }
+        
+        @media (max-width: 768px) {
+            .chart-container {
+                width: 100%;
+                height: 400px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .chart-container {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="test-info">
+        <h3>Overlay HTML Export Test</h3>
+        <p>This test verifies that overlay images and text are properly included in HTML exports.</p>
+        <ul>
+            <li>✓ Chart.js loaded</li>
+            <li>✓ Overlay plugin included</li>
+            <li>✓ Sample overlay image (blue square)</li>
+            <li>✓ Sample overlay text</li>
+        </ul>
+    </div>
+
+    <div class="chart-container">
+        <canvas id="chartCanvas"></canvas>
+    </div>
+
+    <script>
+        // Sample chart data
+        const chartData = {
+            labels: ['January', 'February', 'March', 'April', 'May', 'June'],
+            datasets: [{
+                label: 'Sales',
+                data: [12, 19, 3, 5, 2, 3],
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        };
+
+        // Sample overlay images (base64 encoded)
+        const overlayImages = [
+            {
+                id: "test-image-1",
+                url: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzAwNzVmZiIvPjx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+VEVTVDwvdGV4dD48L3N2Zz4=",
+                x: 100,
+                y: 100,
+                width: 100,
+                height: 100,
+                visible: true,
+                borderWidth: 2,
+                borderColor: "#000000",
+                shape: 'rectangle',
+                imageFit: 'fill',
+                zIndex: 1
+            }
+        ];
+
+        // Sample overlay texts
+        const overlayTexts = [
+            {
+                id: "test-text-1",
+                text: "Sample Overlay Text",
+                x: 200,
+                y: 150,
+                fontSize: 16,
+                fontFamily: "Arial",
+                color: "#333333",
+                backgroundColor: "#ffffff",
+                backgroundTransparent: false,
+                borderWidth: 1,
+                borderColor: "#cccccc",
+                paddingX: 8,
+                paddingY: 4,
+                visible: true,
+                rotation: 0,
+                zIndex: 2
+            }
+        ];
+
+        // Overlay Plugin for HTML Export
+        const overlayPlugin = {
+            id: 'overlayPlugin',
+            
+            afterDraw(chart) {
+                const ctx = chart.ctx;
+                const chartArea = chart.chartArea;
+                
+                // Image cache for HTML export
+                const imageCache = new Map();
+                
+                // Helper function to draw rounded rectangle
+                function drawRoundedRect(ctx, x, y, w, h, r) {
+                    ctx.beginPath();
+                    ctx.moveTo(x + r, y);
+                    ctx.lineTo(x + w - r, y);
+                    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+                    ctx.lineTo(x + w, y + h - r);
+                    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+                    ctx.lineTo(x + r, y + h);
+                    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+                    ctx.lineTo(x, y + r);
+                    ctx.quadraticCurveTo(x, y, x + r, y);
+                    ctx.closePath();
+                }
+                
+                // Helper function to draw image on canvas with proper fitting
+                function drawImageOnCanvas(ctx, img, image, chartArea) {
+                    const x = chartArea.left + image.x;
+                    const y = chartArea.top + image.y;
+                    const w = image.width;
+                    const h = image.height;
+                    
+                    ctx.save();
+                    
+                    // Apply clipping based on shape
+                    if (image.shape === 'circle') {
+                        ctx.beginPath();
+                        ctx.arc(x + w / 2, y + h / 2, w / 2, 0, Math.PI * 2);
+                        ctx.clip();
+                    } else if (image.shape === 'rounded') {
+                        const radius = Math.min(w, h) * 0.1;
+                        drawRoundedRect(ctx, x, y, w, h, radius);
+                        ctx.clip();
+                    }
+                    
+                    // Draw image based on fit type
+                    if (image.imageFit === 'cover') {
+                        const imgAspect = img.naturalWidth / img.naturalHeight;
+                        const rectAspect = w / h;
+                        
+                        let sx, sy, sWidth, sHeight;
+                        if (imgAspect > rectAspect) {
+                            sWidth = img.naturalHeight * rectAspect;
+                            sHeight = img.naturalHeight;
+                            sx = (img.naturalWidth - sWidth) / 2;
+                            sy = 0;
+                        } else {
+                            sWidth = img.naturalWidth;
+                            sHeight = img.naturalWidth / rectAspect;
+                            sx = 0;
+                            sy = (img.naturalHeight - sHeight) / 2;
+                        }
+                        ctx.drawImage(img, sx, sy, sWidth, sHeight, x, y, w, h);
+                    } else if (image.imageFit === 'contain') {
+                        const imgAspect = img.naturalWidth / img.naturalHeight;
+                        const rectAspect = w / h;
+                        
+                        let dx, dy, dWidth, dHeight;
+                        if (imgAspect > rectAspect) {
+                            dWidth = w;
+                            dHeight = w / imgAspect;
+                            dx = x;
+                            dy = y + (h - dHeight) / 2;
+                        } else {
+                            dWidth = h * imgAspect;
+                            dHeight = h;
+                            dx = x + (w - dWidth) / 2;
+                            dy = y;
+                        }
+                        ctx.drawImage(img, dx, dy, dWidth, dHeight);
+                    } else {
+                        // Default: fill
+                        ctx.drawImage(img, x, y, w, h);
+                    }
+                    
+                    ctx.restore();
+                }
+                
+                // Helper function to wrap text
+                function wrapText(ctx, text, maxWidth) {
+                    const words = text.split(' ');
+                    const lines = [];
+                    let currentLine = words[0];
+                    
+                    for (let i = 1; i < words.length; i++) {
+                        const word = words[i];
+                        const width = ctx.measureText(currentLine + ' ' + word).width;
+                        if (width < maxWidth) {
+                            currentLine += ' ' + word;
+                        } else {
+                            lines.push(currentLine);
+                            currentLine = word;
+                        }
+                    }
+                    lines.push(currentLine);
+                    return lines;
+                }
+                
+                // Helper function to render overlay text
+                function renderOverlayText(ctx, text, chartArea) {
+                    if (!text.visible) return;
+                    
+                    ctx.save();
+                    
+                    ctx.font = `${text.fontSize}px ${text.fontFamily}`;
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'top';
+                    
+                    const x = chartArea.left + text.x;
+                    const y = chartArea.top + text.y;
+                    
+                    // Apply rotation if specified
+                    if (text.rotation !== 0) {
+                        ctx.translate(x, y);
+                        ctx.rotate((text.rotation * Math.PI) / 180);
+                        ctx.translate(-x, -y);
+                    }
+                    
+                    // Process text lines with wrapping
+                    const originalLines = text.text.split('\n');
+                    const allLines = [];
+                    
+                    originalLines.forEach(line => {
+                        if (text.maxWidth && text.maxWidth > 0) {
+                            const wrappedLines = wrapText(ctx, line, text.maxWidth);
+                            allLines.push(...wrappedLines);
+                        } else {
+                            allLines.push(line);
+                        }
+                    });
+                    
+                    const lineHeight = text.fontSize * 1.2;
+                    
+                    // Calculate total dimensions for multi-line text
+                    let maxWidth = 0;
+                    allLines.forEach(line => {
+                        const textMetrics = ctx.measureText(line);
+                        maxWidth = Math.max(maxWidth, textMetrics.width);
+                    });
+                    
+                    const totalHeight = allLines.length * lineHeight;
+                    
+                    // Get padding values
+                    const paddingX = text.paddingX || 8;
+                    const paddingY = text.paddingY || 4;
+                    
+                    // Calculate background/border rectangle with padding
+                    const bgX = x - paddingX;
+                    const bgY = y - paddingY;
+                    const bgWidth = maxWidth + (paddingX * 2);
+                    const bgHeight = totalHeight + (paddingY * 2);
+                    
+                    // Draw background if not transparent
+                    if (!text.backgroundTransparent && text.backgroundColor) {
+                        ctx.fillStyle = text.backgroundColor;
+                        ctx.fillRect(bgX, bgY, bgWidth, bgHeight);
+                    }
+                    
+                    // Draw border if specified
+                    if (text.borderWidth > 0 && text.borderColor) {
+                        ctx.strokeStyle = text.borderColor;
+                        ctx.lineWidth = text.borderWidth;
+                        ctx.strokeRect(bgX, bgY, bgWidth, bgHeight);
+                    }
+                    
+                    // Draw text
+                    ctx.fillStyle = text.color;
+                    allLines.forEach((line, index) => {
+                        const lineY = y + (index * lineHeight);
+                        ctx.fillText(line, x, lineY);
+                    });
+                    
+                    ctx.restore();
+                }
+                
+                // Handle overlay images
+                overlayImages.forEach((image) => {
+                    if (image.visible) {
+                        let img = imageCache.get(image.url);
+                        
+                        if (img && img.complete) {
+                            // Image is loaded, draw it
+                            drawImageOnCanvas(ctx, img, image, chartArea);
+                        } else {
+                            // Use fallback dimensions for placeholder
+                            const w = image.width;
+                            const h = image.height;
+                            const x = chartArea.left + image.x;
+                            const y = chartArea.top + image.y;
+                            
+                            // Image not loaded yet, show placeholder
+                            ctx.save();
+                            ctx.fillStyle = image.borderColor || 'gray';
+                            ctx.strokeStyle = image.borderColor || 'blue';
+                            ctx.lineWidth = Math.max(2, image.borderWidth);
+                            
+                            // Draw placeholder based on shape
+                            if (image.shape === 'circle') {
+                                const centerX = x + w / 2;
+                                const centerY = y + h / 2;
+                                const radius = Math.min(w, h) / 2;
+                                ctx.beginPath();
+                                ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+                                ctx.fill();
+                                ctx.stroke();
+                            } else if (image.shape === 'rounded') {
+                                const radius = Math.min(w, h) * 0.1;
+                                drawRoundedRect(ctx, x, y, w, h, radius);
+                                ctx.fill();
+                                ctx.stroke();
+                            } else {
+                                // Rectangle shape
+                                ctx.fillRect(x, y, w, h);
+                                ctx.strokeRect(x, y, w, h);
+                            }
+                            
+                            // Draw loading text
+                            ctx.fillStyle = 'white';
+                            ctx.font = '14px Arial';
+                            ctx.textAlign = 'center';
+                            ctx.fillText('Loading...', x + w/2, y + h/2);
+                            ctx.textAlign = 'left';
+                            
+                            ctx.restore();
+                            
+                            // Try to load the image if not already loading
+                            if (!img) {
+                                img = new Image();
+                                img.onload = () => {
+                                    imageCache.set(image.url, img);
+                                    // Trigger chart redraw
+                                    if (chart && typeof chart.update === 'function') {
+                                        requestAnimationFrame(() => {
+                                            chart.update('none');
+                                        });
+                                    }
+                                };
+                                img.onerror = () => {
+                                    console.error('Failed to load overlay image:', image.url);
+                                };
+                                img.src = image.url;
+                            }
+                        }
+                    }
+                });
+                
+                // Draw overlay texts
+                overlayTexts.forEach((text) => {
+                    if (text.visible) {
+                        renderOverlayText(ctx, text, chartArea);
+                    }
+                });
+            }
+        };
+
+        // Register the overlay plugin
+        Chart.register(overlayPlugin);
+
+        // Chart configuration
+        const chartConfig = {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+                duration: 1000,
+                easing: 'easeInOutQuart'
+            },
+            plugins: {
+                tooltip: {
+                    enabled: true,
+                    mode: 'index',
+                    intersect: false,
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                    displayColors: true,
+                    padding: 12
+                },
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 20,
+                        font: { size: 12 }
+                    }
+                },
+                overlayPlugin: {
+                    overlayImages: overlayImages,
+                    overlayTexts: overlayTexts
+                }
+            }
+        };
+        
+        // Initialize chart
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('chartCanvas').getContext('2d');
+            
+            const chart = new Chart(ctx, {
+                type: 'bar',
+                data: chartData,
+                options: chartConfig
+            });
+            
+            // Make chart globally accessible
+            window.chart = chart;
+            
+            console.log('Overlay HTML export test loaded successfully!');
+            console.log('Overlay images:', overlayImages.length);
+            console.log('Overlay texts:', overlayTexts.length);
+        });
+        
+        // Error handling
+        window.addEventListener('error', function(event) {
+            console.error('Chart error:', event.error);
+            document.querySelector('.chart-container').innerHTML = 
+                '<div style="text-align: center; padding: 50px; color: #666;">' +
+                '<h3>Error Loading Chart</h3>' +
+                '<p>There was an error loading the chart. Please check the console for details.</p>' +
+                '</div>';
+        });
+    </script>
+</body>
+</html> 

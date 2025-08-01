@@ -114,6 +114,183 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   const { clearMessages } = useChatStore();
   const [hoveredDatasetIndex, setHoveredDatasetIndex] = useState<number | null>(null);
 
+  // Chart size logic - define this early to avoid reference errors
+  const isResponsive = (chartConfig as any)?.responsive !== false;
+  
+  // Parse width and height values, handling both numbers and strings with units
+  const parseDimension = (value: any): number => {
+    if (typeof value === 'number') {
+      return isNaN(value) ? 500 : value;
+    }
+    if (typeof value === 'string') {
+      // Remove units and parse as number
+      const numericValue = parseFloat(value.replace(/[^\d.-]/g, ''));
+      return isNaN(numericValue) ? 400 : numericValue;
+    }
+    return 500; // Default fallback
+  };
+  
+  const chartWidth = !isResponsive ? parseDimension((chartConfig as any)?.width) : undefined;
+  const chartHeight = !isResponsive ? parseDimension((chartConfig as any)?.height) : undefined;
+
+  // Get background configuration - define this early to avoid reference errors
+  const getBackgroundConfig = () => {
+    const bgConfig = (chartConfig as any)?.background;
+    // console.log('Current background config from chart:', bgConfig);
+    
+    let result;
+    if (bgConfig) {
+      // For gradient, ensure both start and end colors are present
+      if (bgConfig.type === 'gradient') {
+        result = {
+          ...bgConfig,
+          type: 'gradient' as const,
+          gradientStart: bgConfig.gradientStart || '#000000',
+          gradientEnd: bgConfig.gradientEnd || '#ffffff',
+          opacity: bgConfig.opacity ?? 100
+        };
+      } else {
+        result = {
+          ...bgConfig,
+          opacity: bgConfig.opacity ?? 100
+        };
+      }
+    } else if (chartConfig.backgroundColor) {
+      result = {
+        type: 'color' as const,
+        color: chartConfig.backgroundColor,
+        opacity: 100
+      };
+    } else {
+      result = {
+        type: 'color' as const,
+        color: '#ffffff',
+        opacity: 100
+      };
+    }
+    
+    // console.log('Export background config:', JSON.stringify(result, null, 2));
+    return result;
+  };
+
+  // If stackedBar, ensure both x and y axes are stacked
+  let stackedBarConfig = {
+    ...chartConfig,
+    plugins: {
+      ...chartConfig.plugins,
+      exportWithBackground: {
+        background: getBackgroundConfig(),
+        fileNamePrefix: 'chart',
+        quality: 1.0
+      }
+    }
+  };
+
+  // Control label visibility
+  if (!showLabels) {
+    stackedBarConfig = {
+      ...stackedBarConfig,
+      plugins: {
+        ...stackedBarConfig.plugins,
+        datalabels: {
+          display: false
+        },
+        tooltip: {
+          ...stackedBarConfig.plugins?.tooltip,
+          enabled: false
+        },
+        customLabels: {
+          ...stackedBarConfig.plugins?.customLabels,
+          display: false
+        }
+      }
+    };
+  }
+  
+  if (chartType === 'stackedBar') {
+    stackedBarConfig = {
+      ...stackedBarConfig,
+      scales: {
+        ...chartConfig.scales,
+        x: { ...((chartConfig.scales && chartConfig.scales.x) || {}), stacked: true },
+        y: { ...((chartConfig.scales && chartConfig.scales.y) || {}), stacked: true },
+      },
+    };
+  }
+
+  // Set global chart reference for export panel access
+  useEffect(() => {
+    if (chartRef.current) {
+      (window as any).currentChartRef = chartRef.current;
+      
+      // Configure canvas for high-DPI displays
+      const canvas = chartRef.current.canvas;
+      if (canvas) {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        
+        // Set the actual size in memory (scaled up for high-DPI)
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        
+        // Scale the drawing context so everything draws at the correct size
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.scale(dpr, dpr);
+        }
+        
+        // Set the CSS size to maintain the same display size
+        canvas.style.width = rect.width + 'px';
+        canvas.style.height = rect.height + 'px';
+        
+        // Update the chart to reflect the new dimensions
+        chartRef.current.resize();
+        chartRef.current.update();
+      }
+    }
+    return () => {
+      if ((window as any).currentChartRef === chartRef.current) {
+        (window as any).currentChartRef = null;
+      }
+    };
+  }, [chartRef.current]);
+
+  // Additional high-DPI setup when chart dimensions change
+  useEffect(() => {
+    if (chartRef.current && !isResponsive) {
+      const canvas = chartRef.current.canvas;
+      if (canvas) {
+        const dpr = window.devicePixelRatio || 1;
+        
+        // Set canvas pixel size for high-DPI
+        canvas.width = chartWidth * dpr;
+        canvas.height = chartHeight * dpr;
+        
+        // Set CSS size
+        canvas.style.width = chartWidth + 'px';
+        canvas.style.height = chartHeight + 'px';
+        
+        // Scale context for high-DPI
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.scale(dpr, dpr);
+        }
+        
+        // Update chart
+        chartRef.current.resize();
+        chartRef.current.update();
+      }
+    }
+  }, [isResponsive, chartWidth, chartHeight]);
+
+  // Force chart update on dimension/responsive change
+  useEffect(() => {
+    if (chartRef.current) {
+      chartRef.current.resize();
+      chartRef.current.update();
+    }
+  }, [chartWidth, chartHeight, isResponsive]);
+
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
     isOpen: boolean;
@@ -144,6 +321,8 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   useEffect(() => {
     const canvas = chartRef.current?.canvas
     if (!canvas) return
+    
+    console.log('🔄 Setting up event listeners for chart canvas...')
 
     const handleOverlayPositionUpdate = (event: CustomEvent) => {
       const { type, id, x, y } = event.detail
@@ -180,12 +359,17 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     const handleImageSelected = (event: CustomEvent) => {
       const { imageId } = event.detail
       console.log('🎯 Image selected/deselected:', imageId)
+      console.log('🔍 Previous selectedImageId:', selectedImageId)
       setSelectedImageId(imageId)
+      console.log('🔍 New selectedImageId will be:', imageId)
       
       // Update chart to show/hide selection handles
       if (chartRef.current) {
+        console.log('🔄 Updating chart after image selection...')
         chartRef.current.update('none')
         console.log('✅ Chart updated after image selection change')
+      } else {
+        console.log('⚠️ chartRef.current is null, cannot update chart')
       }
     }
 
@@ -243,7 +427,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       canvas.removeEventListener('overlayImageResize', handleImageResize as EventListener)
       canvas.removeEventListener('overlayContextMenu', handleContextMenu as EventListener)
     }
-  }, [updateOverlayImage, updateOverlayText, setSelectedImageId]);
+  }, [updateOverlayImage, updateOverlayText, setSelectedImageId, chartType, chartWidth, chartHeight, isResponsive, chartConfig.manualDimensions]);
 
   // Debug overlay data
   useEffect(() => {
@@ -742,110 +926,6 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     };
   }, []);
 
-  // Get background configuration
-  const getBackgroundConfig = () => {
-    const bgConfig = (chartConfig as any)?.background;
-    console.log('Current background config from chart:', bgConfig);
-    
-    let result;
-    if (bgConfig) {
-      // For gradient, ensure both start and end colors are present
-      if (bgConfig.type === 'gradient') {
-        result = {
-          ...bgConfig,
-          type: 'gradient' as const,
-          gradientStart: bgConfig.gradientStart || '#000000',
-          gradientEnd: bgConfig.gradientEnd || '#ffffff',
-          opacity: bgConfig.opacity ?? 100
-        };
-      } else {
-        result = {
-          ...bgConfig,
-          opacity: bgConfig.opacity ?? 100
-        };
-      }
-    } else if (chartConfig.backgroundColor) {
-      result = {
-        type: 'color' as const,
-        color: chartConfig.backgroundColor,
-        opacity: 100
-      };
-    } else {
-      result = {
-        type: 'color' as const,
-        color: '#ffffff',
-        opacity: 100
-      };
-    }
-    
-    console.log('Export background config:', JSON.stringify(result, null, 2));
-    return result;
-  };
-
-  // Chart size logic
-  const isResponsive = (chartConfig as any)?.responsive !== false;
-  
-  // Parse width and height values, handling both numbers and strings with units
-  const parseDimension = (value: any): number => {
-    if (typeof value === 'number') {
-      return isNaN(value) ? 500 : value;
-    }
-    if (typeof value === 'string') {
-      // Remove units and parse as number
-      const numericValue = parseFloat(value.replace(/[^\d.-]/g, ''));
-      return isNaN(numericValue) ? 400 : numericValue;
-    }
-    return 500; // Default fallback
-  };
-  
-  const chartWidth = !isResponsive ? parseDimension((chartConfig as any)?.width) : undefined;
-  const chartHeight = !isResponsive ? parseDimension((chartConfig as any)?.height) : undefined;
-
-  // If stackedBar, ensure both x and y axes are stacked
-  let stackedBarConfig = {
-    ...chartConfig,
-    plugins: {
-      ...chartConfig.plugins,
-      exportWithBackground: {
-        background: getBackgroundConfig(),
-        fileNamePrefix: 'chart',
-        quality: 1.0
-      }
-    }
-  };
-
-  // Control label visibility
-  if (!showLabels) {
-    stackedBarConfig = {
-      ...stackedBarConfig,
-      plugins: {
-        ...stackedBarConfig.plugins,
-        datalabels: {
-          display: false
-        },
-        tooltip: {
-          ...stackedBarConfig.plugins?.tooltip,
-          enabled: false
-        },
-        customLabels: {
-          ...stackedBarConfig.plugins?.customLabels,
-          display: false
-        }
-      }
-    };
-  }
-  
-  if (chartType === 'stackedBar') {
-    stackedBarConfig = {
-      ...stackedBarConfig,
-      scales: {
-        ...chartConfig.scales,
-        x: { ...((chartConfig.scales && chartConfig.scales.x) || {}), stacked: true },
-        y: { ...((chartConfig.scales && chartConfig.scales.y) || {}), stacked: true },
-      },
-    };
-  }
-
   // When switching to stackedBar, ensure all datasets are enabled by default
   useEffect(() => {
     if (chartType === 'stackedBar') {
@@ -915,10 +995,16 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   // Add export handler stubs if not already present
   const handleExportJPEG = () => {
     if (chartRef.current) {
-      const url = chartRef.current.toBase64Image('image/jpeg', 1.0);
+      const chart = chartRef.current;
+      
+      // Force chart update for maximum quality
+      chart.update('none');
+      
+      // Use chart's native export with maximum quality
+      const url = chart.toBase64Image('image/jpeg', 1.0);
       const link = document.createElement('a');
       link.href = url;
-      link.download = 'chart.jpeg';
+      link.download = `chart-${Date.now()}.jpeg`;
       link.click();
     }
   };
@@ -997,6 +1083,8 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   const handleContextMenuUnselect = () => {
     setSelectedImageId(null)
   }
+
+
 
   return (
     <div className={`flex min-w-full flex-col overflow-hidden${isMobile ? '' : ' h-full'}`} ref={fullscreenContainerRef}>
@@ -1146,6 +1234,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                     'data-debug-width': chartConfig.width,
                     'data-debug-height': chartConfig.height
                   })}
+                  data-chart="true"
                   options={{
                     ...(chartType === 'stackedBar' ? stackedBarConfig : 
                         (chartType === 'horizontalBar' ? { ...chartConfig, indexAxis: 'y' } : chartConfig)),
@@ -1179,6 +1268,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                         plugins: ({
                           ...chartConfig.plugins,
                           customLabels: { shapeSize: 32, labels: customLabels },
+
                           overlayPlugin: {
                             overlayImages,
                             overlayTexts,
@@ -1319,6 +1409,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                       'data-debug-width': chartConfig.width,
                       'data-debug-height': chartConfig.height
                     })}
+                    data-chart="true"
                     options={{
                       ...(chartType === 'stackedBar' ? stackedBarConfig : 
                           (chartType === 'horizontalBar' ? { ...chartConfig, indexAxis: 'y' } : chartConfig)),

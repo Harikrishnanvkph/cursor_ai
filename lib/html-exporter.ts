@@ -196,7 +196,9 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
     chartMode,
     activeDatasetIndex,
     uniformityMode,
-    legendFilter
+    legendFilter,
+    overlayImages,
+    overlayTexts
   } = useChartStore.getState();
 
   // Use provided drag state or try to capture current drag state from any active chart instance
@@ -228,6 +230,25 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
   // Process chart data to convert images to base64
   const processedChartData = await processChartDataForExport(chartDataCopy);
 
+  // Process overlay images to convert URLs to base64
+  const processedOverlayImages = await Promise.all(
+    (overlayImages || []).map(async (image) => {
+      if (image.url) {
+        const processedUrl = await convertImageToBase64(image.url);
+        console.log('Processing overlay image:', {
+          originalUrl: image.url.substring(0, 50) + '...',
+          processedUrl: processedUrl.substring(0, 50) + '...',
+          imageId: image.id
+        });
+        return { ...image, url: processedUrl };
+      }
+      return image;
+    })
+  );
+
+  console.log('Processed overlay images:', processedOverlayImages.length);
+  console.log('Overlay texts:', overlayTexts?.length || 0);
+
   // Generate custom labels and enhance chart config
   const customLabels = generateCustomLabelsFromConfig(chartConfig, processedChartData, legendFilter, currentDragState);
   const enhancedChartConfig = {
@@ -238,9 +259,19 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
       customLabels: customLabels.length > 0 ? { 
         shapeSize: 32, 
         labels: customLabels 
-      } : undefined
+      } : undefined,
+      overlayPlugin: {
+        overlayImages: processedOverlayImages,
+        overlayTexts: overlayTexts || []
+      }
     }
   };
+
+  console.log('Enhanced chart config plugins:', Object.keys(enhancedChartConfig.plugins || {}));
+  console.log('Overlay plugin data:', {
+    images: processedOverlayImages.length,
+    texts: overlayTexts?.length || 0
+  });
 
   const {
     title = "Chart Export",
@@ -254,7 +285,7 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
     customCSS = "",
     customJS = "",
     fileName = `chart-${new Date().toISOString().slice(0, 10)}.html`,
-    template = "modern"
+    template = "onlyChart"
   } = options;
 
   // Use template if specified
