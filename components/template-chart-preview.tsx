@@ -94,7 +94,7 @@ export function TemplateChartPreview({
           format,
           fileName: `${template.name.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}`,
           quality: 1,
-          scale: 2
+          scale: 4 // Increased scale for higher quality
         }
       )
     } catch (error) {
