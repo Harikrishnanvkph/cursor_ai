@@ -1031,8 +1031,151 @@ export const professionalTemplate: HTMLTemplate = {
   }
 };
 
+/**
+ * Standard template - just the chart with overlay images and text
+ */
+export const standardTemplate: HTMLTemplate = {
+  name: "Standard",
+  description: "Clean chart with overlay images and text - no extra styling",
+  generate: (chartData, chartConfig, chartType, options) => {
+    const { title, width, height, includeAnimations, includeTooltips, includeLegend } = options;
+    
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${title}</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+    
+    <!-- Custom Plugins -->
+    <script>
+        ${generateCompletePluginSystem(chartConfig)}
+    </script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .chart-container {
+            width: ${width}px;
+            height: ${height}px;
+            position: relative;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #ffffff;
+        }
+        
+        .chart-canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        
+        @media (max-width: 768px) {
+            .chart-container {
+                width: 100%;
+                max-width: ${width}px;
+                height: ${Math.min(height, 400)}px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chart-container">
+        <canvas id="chartCanvas" class="chart-canvas"></canvas>
+    </div>
+
+    <script>
+        // Chart Configuration
+        const chartConfig = ${JSON.stringify(chartConfig, null, 8)};
+        const chartData = ${JSON.stringify(chartData, null, 8)};
+        const chartType = "${chartType}";
+        
+        // Standard configuration - just the chart
+        const enhancedConfig = {
+            ...chartConfig,
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: ${includeAnimations} ? {
+                duration: 1000,
+                easing: 'easeInOutQuart'
+            } : false,
+            plugins: {
+                ...chartConfig.plugins,
+                tooltip: ${includeTooltips} ? {
+                    enabled: true,
+                    mode: 'index',
+                    intersect: false,
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                    displayColors: true,
+                    padding: 12
+                } : { enabled: false },
+                legend: ${includeLegend} ? {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 20,
+                        font: { size: 12, weight: '500' },
+                        color: '#4a5568'
+                    }
+                } : { display: false }
+            }
+        };
+        
+        // Initialize chart
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('chartCanvas').getContext('2d');
+            
+            const chart = new Chart(ctx, {
+                type: chartType,
+                data: chartData,
+                options: enhancedConfig
+            });
+            
+            // Make chart globally accessible
+            window.chart = chart;
+            
+            console.log('Standard chart initialized successfully!');
+        });
+        
+        // Error handling
+        window.addEventListener('error', function(event) {
+            console.error('Chart error:', event.error);
+            document.querySelector('.chart-container').innerHTML = 
+                '<div style="text-align: center; padding: 50px; color: #666;">' +
+                '<h3>❌ Error Loading Chart</h3>' +
+                '<p>There was an error loading the chart. Please check the console for details.</p>' +
+                '</div>';
+        });
+    </script>
+</body>
+</html>`;
+  }
+};
+
 // Export all templates
 export const htmlTemplates = {
+  standard: standardTemplate,
   modern: modernTemplate,
   dark: darkTemplate,
   minimal: minimalTemplate,

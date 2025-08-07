@@ -10,6 +10,7 @@ import { AdvancedPanel } from "./panels/advanced-panel"
 import { ExportPanel } from "./panels/export-panel"
 import { TypesTogglesPanel } from "./panels/types-toggles-panel"
 import { DatasetsSlicesPanel } from "./panels/datasets-slices-panel"
+import { TemplatesPanel } from "./panels/templates-panel"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { ChevronLeft, User, Settings } from "lucide-react"
@@ -52,6 +53,8 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
         return <AnimationsPanel />
       case "advanced":
         return <AdvancedPanel />
+      case "templates":
+        return <TemplatesPanel />
       case "export":
         return <ExportPanel onTabChange={onTabChange} />
       default:
@@ -70,6 +73,7 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
       overlay: "Overlays",
       animations: "Animations",
       advanced: "Advanced",
+      templates: "Templates",
       export: "Export"
     }
     return titles[activeTab] || "Configuration"
@@ -95,7 +99,9 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
             <div className="flex flex-col">
               <h3 className="text-sm font-semibold text-gray-900 leading-tight">{getPanelTitle()}</h3>
               <p className="text-xs text-gray-500 leading-tight">
-                {activeTab === 'overlay' ? 'Floating Images and Texts' : 'Customize your chart'}
+                {activeTab === 'overlay' ? 'Floating Images and Texts' : 
+                 activeTab === 'templates' ? 'Chart Templates and Text Areas' :
+                 'Customize your chart'}
               </p>
             </div>
           </div>

@@ -5,8 +5,9 @@ import { Sidebar } from "@/components/sidebar"
 import { ChartPreview } from "@/components/chart-preview"
 import { ConfigPanel } from "@/components/config-panel"
 import { useChartStore } from "@/lib/chart-store"
+import { useTemplateStore } from "@/lib/template-store"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Layers, Zap, Settings, Download, ChevronLeft, User, ChevronRight } from "lucide-react"
+import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Layers, Zap, Settings, Download, ChevronLeft, User, ChevronRight, FileText } from "lucide-react"
 import Link from "next/link"
 import React from "react"
 import { ResizableChartArea } from "@/components/resizable-chart-area"
@@ -21,6 +22,7 @@ const TABS = [
   { id: "overlay", label: "Overlay", icon: Layers },
   { id: "animations", label: "Animations", icon: Zap },
   { id: "advanced", label: "Advanced", icon: Settings },
+  { id: "templates", label: "Templates", icon: FileText },
   { id: "export", label: "Export", icon: Download },
 ]
 
@@ -80,6 +82,7 @@ export default function EditorPage() {
 
   const [activeTab, setActiveTab] = useState("types_toggles")
   const { chartConfig, updateChartConfig } = useChartStore()
+  const { setEditorMode } = useTemplateStore()
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false)
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false)
   const [mobilePanel, setMobilePanel] = useState<string | null>(null)
@@ -126,6 +129,19 @@ export default function EditorPage() {
       window.removeEventListener('changeActiveTab', handleTabChange as EventListener);
     };
   }, []);
+
+  // Handle mode switching based on active tab
+  useEffect(() => {
+    // Template-specific tabs: templates, export
+    const templateTabs = ['templates', 'export'];
+    
+    if (templateTabs.includes(activeTab)) {
+      setEditorMode('template');
+    } else {
+      // Chart-specific tabs: types_toggles, datasets_slices, design, axes, labels, overlay, animations, advanced
+      setEditorMode('chart');
+    }
+  }, [activeTab, setEditorMode]);
 
   if (!mounted) {
     return null; // Or a loading spinner if you prefer

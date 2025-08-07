@@ -73,6 +73,7 @@ export interface ExtendedChartOptions extends ChartOptions {
   dynamicDimension?: boolean;
   width?: number | string;
   height?: number | string;
+  hoverFadeEffect?: boolean;
   background?: {
     type: 'color' | 'gradient' | 'image' | 'transparent';
     color?: string;
@@ -218,6 +219,9 @@ export interface OverlayText {
 }
 
 interface ChartStore {
+  // Global chart reference for sharing between components
+  globalChartRef: React.MutableRefObject<any> | null
+  setGlobalChartRef: (ref: React.MutableRefObject<any>) => void
   chartType: SupportedChartType;
   chartData: ExtendedChartData;
   chartConfig: ExtendedChartOptions;
@@ -1838,6 +1842,10 @@ export { universalImagePlugin }
 export const useChartStore = create<ChartStore>()(
   persist(
     (set, get) => ({
+      // Global chart reference
+      globalChartRef: null,
+      setGlobalChartRef: (ref) => set({ globalChartRef: ref }),
+      
       chartType: 'bar',
       chartData: singleModeDefaultData,
       chartConfig: getDefaultConfigForType('bar'),

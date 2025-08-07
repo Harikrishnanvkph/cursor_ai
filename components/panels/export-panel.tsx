@@ -30,7 +30,7 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
     includeTooltips: true,
     includeLegend: true,
     fileName: `chart-${new Date().toISOString().slice(0, 10)}.html`,
-    template: "modern"
+    template: "standard"
   })
   const [showHtmlPreview, setShowHtmlPreview] = useState(false)
   const [htmlPreview, setHtmlPreview] = useState("")

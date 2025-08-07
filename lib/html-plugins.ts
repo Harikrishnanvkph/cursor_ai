@@ -1323,12 +1323,203 @@ Chart.register(universalImagePlugin);
 }
 
 /**
+ * Generate the overlay plugin code for HTML export
+ */
+export function generateOverlayPluginCode(overlayConfig: any): string {
+  if (!overlayConfig || (!overlayConfig.overlayImages?.length && !overlayConfig.overlayTexts?.length)) {
+    return '';
+  }
+
+  return `
+// Overlay Plugin for HTML Export
+const overlayPlugin = {
+  id: 'overlayPlugin',
+  
+  afterDraw(chart) {
+    const ctx = chart.ctx;
+    const chartArea = chart.chartArea;
+    
+    const pluginConfig = ${JSON.stringify(overlayConfig)};
+    const overlayImages = pluginConfig.overlayImages || [];
+    const overlayTexts = pluginConfig.overlayTexts || [];
+    
+    // Draw overlay images
+    if (overlayImages.length > 0) {
+      overlayImages.forEach((image) => {
+        if (image.visible) {
+          const x = chartArea.left + image.x;
+          const y = chartArea.top + image.y;
+          const w = image.width;
+          const h = image.height;
+          
+          // Create image element
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          
+          img.onload = () => {
+            ctx.save();
+            
+            // Apply transformations
+            if (image.rotation) {
+              const centerX = x + w / 2;
+              const centerY = y + h / 2;
+              ctx.translate(centerX, centerY);
+              ctx.rotate(image.rotation * Math.PI / 180);
+              ctx.translate(-centerX, -centerY);
+            }
+            
+            // Draw border if specified
+            if (image.borderWidth > 0) {
+              ctx.strokeStyle = image.borderColor;
+              ctx.lineWidth = image.borderWidth;
+              
+              if (image.shape === 'circle') {
+                const centerX = x + w / 2;
+                const centerY = y + h / 2;
+                const radius = Math.min(w, h) / 2;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+                ctx.stroke();
+              } else {
+                ctx.strokeRect(x, y, w, h);
+              }
+            }
+            
+            // Draw image with shape clipping
+            if (image.shape === 'circle') {
+              const centerX = x + w / 2;
+              const centerY = y + h / 2;
+              const radius = Math.min(w, h) / 2;
+              ctx.save();
+              ctx.beginPath();
+              ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+              ctx.clip();
+              ctx.drawImage(img, x, y, w, h);
+              ctx.restore();
+            } else if (image.shape === 'rounded') {
+              const radius = Math.min(w, h) * 0.1;
+              ctx.save();
+              ctx.beginPath();
+              ctx.roundRect(x, y, w, h, radius);
+              ctx.clip();
+              ctx.drawImage(img, x, y, w, h);
+              ctx.restore();
+            } else {
+              // Rectangle shape
+              ctx.drawImage(img, x, y, w, h);
+            }
+            
+            ctx.restore();
+          };
+          
+          img.src = image.url;
+        }
+      });
+    }
+    
+    // Draw overlay texts
+    if (overlayTexts.length > 0) {
+      overlayTexts.forEach((text) => {
+        if (text.visible) {
+          const x = chartArea.left + text.x;
+          const y = chartArea.top + text.y;
+          
+          ctx.save();
+          
+          // Apply transformations
+          if (text.rotation) {
+            ctx.translate(x, y);
+            ctx.rotate(text.rotation * Math.PI / 180);
+            ctx.translate(-x, -y);
+          }
+          
+          // Set font properties
+          ctx.font = \`\${text.fontSize}px \${text.fontFamily}\`;
+          ctx.fillStyle = text.color;
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
+          
+          // Handle text wrapping
+          const maxWidth = text.maxWidth || 200;
+          const words = text.text.split(' ');
+          const lines = [];
+          let currentLine = '';
+          
+          words.forEach(word => {
+            const testLine = currentLine ? currentLine + ' ' + word : word;
+            const metrics = ctx.measureText(testLine);
+            if (metrics.width > maxWidth && currentLine) {
+              lines.push(currentLine);
+              currentLine = word;
+            } else {
+              currentLine = testLine;
+            }
+          });
+          if (currentLine) {
+            lines.push(currentLine);
+          }
+          
+          // Calculate total dimensions
+          const lineHeight = text.fontSize * 1.2;
+          const totalHeight = lines.length * lineHeight;
+          
+          // Draw background if not transparent
+          if (!text.backgroundTransparent && text.backgroundColor) {
+            const paddingX = text.paddingX || 8;
+            const paddingY = text.paddingY || 4;
+            const bgX = x - paddingX;
+            const bgY = y - paddingY;
+            const bgWidth = Math.max(...lines.map(line => ctx.measureText(line).width)) + (paddingX * 2);
+            const bgHeight = totalHeight + (paddingY * 2);
+            
+            ctx.fillStyle = text.backgroundColor;
+            ctx.fillRect(bgX, bgY, bgWidth, bgHeight);
+            
+            // Reset fill style for text
+            ctx.fillStyle = text.color;
+          }
+          
+          // Draw border if specified
+          if (text.borderWidth > 0) {
+            const paddingX = text.paddingX || 8;
+            const paddingY = text.paddingY || 4;
+            const bgX = x - paddingX;
+            const bgY = y - paddingY;
+            const bgWidth = Math.max(...lines.map(line => ctx.measureText(line).width)) + (paddingX * 2);
+            const bgHeight = totalHeight + (paddingY * 2);
+            
+            ctx.strokeStyle = text.borderColor;
+            ctx.lineWidth = text.borderWidth;
+            ctx.strokeRect(bgX, bgY, bgWidth, bgHeight);
+          }
+          
+          // Draw text lines
+          lines.forEach((line, index) => {
+            const lineY = y + (index * lineHeight);
+            ctx.fillText(line, x, lineY);
+          });
+          
+          ctx.restore();
+        }
+      });
+    }
+  }
+};
+
+// Register the overlay plugin
+Chart.register(overlayPlugin);
+`;
+}
+
+/**
  * Generate the complete plugin system for HTML export
  */
 export function generateCompletePluginSystem(chartConfig: any): string {
   const customLabelsConfig = (chartConfig.plugins as any)?.customLabels;
+  const overlayConfig = (chartConfig.plugins as any)?.overlayPlugin;
   const hasCustomLabels = customLabelsConfig && customLabelsConfig.labels;
   const hasImages = chartConfig.data?.datasets?.some((ds: any) => ds.pointImages?.length > 0);
+  const hasOverlays = overlayConfig && (overlayConfig.overlayImages?.length > 0 || overlayConfig.overlayTexts?.length > 0);
 
   let pluginCode = '';
 
@@ -1340,6 +1531,11 @@ export function generateCompletePluginSystem(chartConfig: any): string {
   // Add universal image plugin if needed
   if (hasImages) {
     pluginCode += generateUniversalImagePluginCode();
+  }
+
+  // Add overlay plugin if needed
+  if (hasOverlays) {
+    pluginCode += generateOverlayPluginCode(overlayConfig);
   }
 
   return pluginCode;

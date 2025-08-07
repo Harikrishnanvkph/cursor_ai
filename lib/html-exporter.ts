@@ -228,6 +228,17 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
   // Process chart data to convert images to base64
   const processedChartData = await processChartDataForExport(chartDataCopy);
 
+  // Get overlay data from chart store
+  const { overlayImages, overlayTexts } = useChartStore.getState();
+  
+  // Process overlay images to convert URLs to base64
+  const processedOverlayImages = await Promise.all(
+    overlayImages.map(async (image) => ({
+      ...image,
+      url: await convertImageToBase64(image.url)
+    }))
+  );
+  
   // Generate custom labels and enhance chart config
   const customLabels = generateCustomLabelsFromConfig(chartConfig, processedChartData, legendFilter, currentDragState);
   const enhancedChartConfig = {
@@ -238,7 +249,11 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
       customLabels: customLabels.length > 0 ? { 
         shapeSize: 32, 
         labels: customLabels 
-      } : undefined
+      } : undefined,
+      overlayPlugin: {
+        overlayImages: processedOverlayImages,
+        overlayTexts: overlayTexts
+      }
     }
   };
 

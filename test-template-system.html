@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Template System Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .template-preview {
+            border: 2px solid #e5e7eb;
+            margin: 20px 0;
+            position: relative;
+            background: white;
+        }
+        .template-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .text-area {
+            position: absolute;
+            padding: 8px;
+            border: 1px dashed #ccc;
+            background: rgba(255,255,255,0.9);
+        }
+        .chart-area {
+            position: absolute;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Template System Test</h1>
+        <p>This page demonstrates the template layouts that have been implemented.</p>
+        
+        <div class="template-info">
+            <h2>Template Features:</h2>
+            <ul>
+                <li>Standard size: 1440px × 1024px</li>
+                <li>Editable text areas with customizable styles</li>
+                <li>Zoom and pan functionality</li>
+                <li>High-resolution export (PNG, JPEG, HTML)</li>
+                <li>Responsive design with proper scaling</li>
+            </ul>
+        </div>
+
+        <!-- Template 1: Standard Report -->
+        <div class="template-preview" style="width: 720px; height: 512px; transform: scale(0.5); transform-origin: top left;">
+            <div style="position: absolute; left: 0; top: 0; width: 1440px; height: 1024px; background: white; border: 1px solid #e5e7eb;">
+                <!-- Title -->
+                <div class="text-area" style="left: 0; top: 20px; width: 1440px; height: 40px; font-size: 32px; font-weight: bold; text-align: center; color: #000;">
+                    Chart Title
+                </div>
+                <!-- Heading -->
+                <div class="text-area" style="left: 0; top: 70px; width: 1440px; height: 30px; font-size: 18px; text-align: center; color: #666;">
+                    Subtitle or Description
+                </div>
+                <!-- Chart Area -->
+                <div class="chart-area" style="left: 0; top: 120px; width: 1440px; height: 600px;">
+                    Chart Area (600px height)
+                </div>
+                <!-- Main Text -->
+                <div class="text-area" style="left: 0; top: 740px; width: 1440px; height: 264px; font-size: 16px; line-height: 1.5; color: #333;">
+                    Main explanation text area for detailed descriptions, analysis, or supporting information related to the chart above.
+                </div>
+            </div>
+        </div>
+
+        <!-- Template 2: Side-by-Side Layout -->
+        <div class="template-preview" style="width: 720px; height: 512px; transform: scale(0.5); transform-origin: top left;">
+            <div style="position: absolute; left: 0; top: 0; width: 1440px; height: 1024px; background: white; border: 1px solid #e5e7eb;">
+                <!-- Chart Area (Left) -->
+                <div class="chart-area" style="left: 0; top: 0; width: 960px; height: 1024px;">
+                    Chart Area (Left Side)
+                </div>
+                <!-- Title (Right) -->
+                <div class="text-area" style="left: 980px; top: 20px; width: 440px; height: 40px; font-size: 28px; font-weight: bold; color: #000;">
+                    Chart Title
+                </div>
+                <!-- Heading (Right) -->
+                <div class="text-area" style="left: 980px; top: 70px; width: 440px; height: 30px; font-size: 16px; color: #666;">
+                    Subtitle
+                </div>
+                <!-- Main Text (Right) -->
+                <div class="text-area" style="left: 980px; top: 120px; width: 440px; height: 884px; font-size: 14px; line-height: 1.6; color: #333;">
+                    Detailed explanation and analysis of the chart data. This area provides context, insights, and supporting information.
+                </div>
+            </div>
+        </div>
+
+        <div class="template-info">
+            <h3>Implementation Status:</h3>
+            <ul>
+                <li>✅ Template Store with Zustand</li>
+                <li>✅ Templates Panel in Sidebar</li>
+                <li>✅ Template Chart Preview Component</li>
+                <li>✅ Text Area Editor with Style Controls</li>
+                <li>✅ Zoom and Pan Functionality</li>
+                <li>✅ High-Resolution Export System</li>
+                <li>✅ HTML Export with Chart.js Integration</li>
+                <li>✅ Responsive Design and Scaling</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html> 
