@@ -76,7 +76,7 @@ const exportPlugin = {
     };
 
     // Add export method to chart instance
-    chart.exportToImage = async (options?: Partial<ExportPluginOptions> & { customWidth?: number; customHeight?: number }) => {
+    chart.exportToImage = async (options?: Partial<ExportPluginOptions>) => {
       const exportOptions = { ...pluginOptions, ...options };
       const canvas = chart.canvas;
       const ctx = canvas.getContext('2d');
@@ -86,116 +86,191 @@ const exportPlugin = {
         return;
       }
 
-      // Get device pixel ratio and calculate target dimensions
-      const dpr = window.devicePixelRatio || 1;
-      const customWidth = options?.customWidth;
-      const customHeight = options?.customHeight;
+      // Create a temporary canvas
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = canvas.height;
+      const tempCtx = tempCanvas.getContext('2d');
       
-      // Calculate target dimensions with quality multiplier
-      const qualityMultiplier = options?.quality === 1.0 ? 1 : 1; // Use 1x for best quality
-      let targetWidth, targetHeight;
-      
-      if (customWidth && customHeight) {
-        targetWidth = customWidth * dpr;
-        targetHeight = customHeight * dpr;
-      } else {
-        // Use original canvas dimensions without scaling for best quality
-        targetWidth = canvas.width;
-        targetHeight = canvas.height;
+      if (!tempCtx) {
+        console.error('Failed to create temporary canvas');
+        return;
       }
-      
-      console.log('🔄 Starting high-quality export...');
-      console.log('📊 Original canvas dimensions:', canvas.width, 'x', canvas.height);
-      console.log('🎯 Target dimensions:', targetWidth, 'x', targetHeight);
-      console.log('📈 Quality multiplier:', qualityMultiplier);
-      
-      try {
-        // Create a new canvas at the target resolution
-        const exportCanvas = document.createElement('canvas');
-        exportCanvas.width = targetWidth;
-        exportCanvas.height = targetHeight;
-        
-        const exportCtx = exportCanvas.getContext('2d');
-        
-        if (!exportCtx) {
-          console.error('Failed to create export canvas context');
-          return;
-        }
 
-        // Draw background first
+      try {
         const background = exportOptions.background || { type: 'color', color: '#ffffff' };
         const opacity = (background.opacity ?? 100) / 100;
         
+        // Draw background based on type
         if (background.type === 'color' && background.color) {
-          console.log('🎨 Drawing solid background:', background.color);
-          exportCtx.fillStyle = background.color;
-          exportCtx.globalAlpha = opacity;
-          exportCtx.fillRect(0, 0, targetWidth, targetHeight);
-          exportCtx.globalAlpha = 1.0;
-        } else if (background.type === 'gradient') {
-          console.log('🎨 Drawing gradient background');
-          // Handle gradient background
+          console.log(background.imageWhiteBase)
+          tempCtx.fillStyle = background.color;
+          tempCtx.globalAlpha = opacity;
+          tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+          tempCtx.globalAlpha = 1.0;
+        } 
+        else if (background.type === 'gradient') {
           const gradientType = background.gradientType || 'linear';
           const color1 = background.gradientColor2 || background.gradientStart || '#000000';
           const color2 = background.gradientColor1 || background.gradientEnd || '#ffffff';
           const direction = background.gradientDirection || 'to bottom';
           
-          if (gradientType === 'radial') {
-            const gradient = exportCtx.createRadialGradient(
-              targetWidth / 2, targetHeight / 2, 0,
-              targetWidth / 2, targetHeight / 2, Math.max(targetWidth, targetHeight)
-            );
-            gradient.addColorStop(0, color2);
-            gradient.addColorStop(1, color1);
-            exportCtx.fillStyle = gradient;
-          } else {
-            let x0 = 0, y0 = 0, x1 = 0, y1 = 0;
-            switch (direction) {
-              case 'to right': x0 = 0; y0 = 0; x1 = targetWidth; y1 = 0; break;
-              case 'to left': x0 = targetWidth; y0 = 0; x1 = 0; y1 = 0; break;
-              case 'to bottom': x0 = 0; y0 = 0; x1 = 0; y1 = targetHeight; break;
-              case 'to top': x0 = 0; y0 = targetHeight; x1 = 0; y1 = 0; break;
-              case '135deg': x0 = 0; y0 = 0; x1 = targetWidth; y1 = targetHeight; break;
-              default: x0 = 0; y0 = 0; x1 = 0; y1 = targetHeight;
+          console.log('Drawing gradient background:', { 
+            type: gradientType,
+            direction,
+            color1,
+            color2,
+            opacity
+          });
+          
+          try {
+            if (gradientType === 'radial') {
+              // Radial gradient
+              const gradient = tempCtx.createRadialGradient(
+                tempCanvas.width / 2, // Center X
+                tempCanvas.height / 2, // Center Y
+                0, // Start radius
+                tempCanvas.width / 2, // End X
+                tempCanvas.height / 2, // End Y
+                Math.max(tempCanvas.width, tempCanvas.height) // End radius
+              );
+              gradient.addColorStop(0, color2);
+              gradient.addColorStop(1, color1);
+              
+              tempCtx.fillStyle = gradient;
+            } else {
+              // Linear gradient
+              let x0 = 0, y0 = 0, x1 = 0, y1 = 0;
+              
+              // Set gradient direction based on the direction string
+              // Note: The y-coordinates are inverted because canvas origin (0,0) is top-left
+              switch (direction) {
+                case 'to right':
+                  x0 = 0; y0 = 0;
+                  x1 = tempCanvas.width; y1 = 0;
+                  break;
+                case 'to left':
+                  x0 = tempCanvas.width; y0 = 0;
+                  x1 = 0; y1 = 0;
+                  break;
+                case 'to bottom':
+                  // Top to Bottom
+                  x0 = 0; y0 = 0;
+                  x1 = 0; y1 = tempCanvas.height;
+                  break;
+                case 'to top':
+                  // Bottom to Top
+                  x0 = 0; y0 = tempCanvas.height;
+                  x1 = 0; y1 = 0;
+                  break;
+                case '135deg':
+                  x0 = 0; y0 = 0;
+                  x1 = tempCanvas.width; y1 = tempCanvas.height;
+                  break;
+                default:
+                  // Default to top to bottom
+                  x0 = 0; y0 = 0;
+                  x1 = 0; y1 = tempCanvas.height;
+              }
+              
+              const gradient = tempCtx.createLinearGradient(x0, y0, x1, y1);
+              // Swap the color stops to match the preview
+              gradient.addColorStop(0, color2);
+              gradient.addColorStop(1, color1);
+              
+              tempCtx.fillStyle = gradient;
             }
-            const gradient = exportCtx.createLinearGradient(x0, y0, x1, y1);
-            gradient.addColorStop(0, color2);
-            gradient.addColorStop(1, color1);
-            exportCtx.fillStyle = gradient;
+            
+            tempCtx.globalAlpha = opacity;
+            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+            tempCtx.globalAlpha = 1.0;
+            console.log('Gradient background drawn successfully');
+          } catch (error) {
+            console.error('Error drawing gradient background:', error);
+            // Fallback to solid color
+            tempCtx.fillStyle = '#ff0000';
+            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
           }
-          exportCtx.globalAlpha = opacity;
-          exportCtx.fillRect(0, 0, targetWidth, targetHeight);
-          exportCtx.globalAlpha = 1.0;
+        }
+        else if (background.type === 'image' && background.imageUrl) {
+          console.log('Exporting with background image:', background);
+          try {
+            // Draw white base if enabled
+            console.log(background.imageWhiteBase)
+            if (background.imageWhiteBase !== false) {
+              console.log('Drawing white base for image background');
+              tempCtx.fillStyle = '#ffffff';
+              tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+            }
+
+            // Load and draw the background image
+            console.log('Loading background image from URL:', background.imageUrl);
+            await new Promise<void>((resolve, reject) => {
+              const img = new Image();
+              img.crossOrigin = 'anonymous';
+              
+              img.onload = () => {
+                console.log('Background image loaded successfully');
+                const fit = background.imageFit || 'cover';
+                let dx = 0, dy = 0, dWidth = tempCanvas.width, dHeight = tempCanvas.height;
+                const canvasAspect = tempCanvas.width / tempCanvas.height;
+                const imgAspect = img.width / img.height;
+
+                if (fit === 'fill') {
+                  // Use full canvas dimensions
+                } 
+                else if (fit === 'contain') {
+                  if (imgAspect > canvasAspect) {
+                    dWidth = tempCanvas.width;
+                    dHeight = dWidth / imgAspect;
+                    dy = (tempCanvas.height - dHeight) / 2;
+                  } else {
+                    dHeight = tempCanvas.height;
+                    dWidth = dHeight * imgAspect;
+                    dx = (tempCanvas.width - dWidth) / 2;
+                  }
+                } 
+                else if (fit === 'cover') {
+                  if (imgAspect > canvasAspect) {
+                    dHeight = tempCanvas.height;
+                    dWidth = dHeight * imgAspect;
+                    dx = (tempCanvas.width - dWidth) / 2;
+                  } else {
+                    dWidth = tempCanvas.width;
+                    dHeight = dWidth / imgAspect;
+                    dy = (tempCanvas.height - dHeight) / 2;
+                  }
+                }
+
+                console.log('Drawing image with dimensions:', { dx, dy, dWidth, dHeight, imgWidth: img.width, imgHeight: img.height });
+                tempCtx.globalAlpha = opacity;
+                tempCtx.drawImage(img, dx, dy, dWidth, dHeight);
+                tempCtx.globalAlpha = 1.0;
+                console.log('Background image drawn successfully');
+                resolve();
+              };
+
+              img.onerror = (error) => {
+                console.error('Error loading background image:', error);
+                reject(error);
+              };
+
+              img.src = background.imageUrl;
+            });
+          } catch (error) {
+            console.error('Error processing background image:', error);
+            // Fallback to solid color if image fails to load
+            console.log('Falling back to solid color background due to error');
+            tempCtx.fillStyle = '#ff0000'; // Using red to make it obvious if fallback is used
+            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+          }
         }
         
-        // Use the browser's native high-DPI rendering
-        exportCtx.imageSmoothingEnabled = true;
-        exportCtx.imageSmoothingQuality = 'high';
+        // Draw the chart on top of the background
+        tempCtx.drawImage(canvas, 0, 0);
         
-        // Force chart to render at maximum quality before export
-        chart.update('none');
-        
-        // Draw the chart at original resolution for best quality
-        if (customWidth && customHeight) {
-          // For custom dimensions, scale the chart to fit
-          const scaleX = targetWidth / canvas.width;
-          const scaleY = targetHeight / canvas.height;
-          const scale = Math.min(scaleX, scaleY);
-          
-          const scaledWidth = canvas.width * scale;
-          const scaledHeight = canvas.height * scale;
-          const offsetX = (targetWidth - scaledWidth) / 2;
-          const offsetY = (targetHeight - scaledHeight) / 2;
-          
-          exportCtx.drawImage(canvas, offsetX, offsetY, scaledWidth, scaledHeight);
-        } else {
-          // For standard quality, draw at original resolution
-          exportCtx.drawImage(canvas, 0, 0);
-        }
-        
-        console.log('💾 Creating download link...');
-        // Create download link with maximum quality
-        const url = exportCanvas.toDataURL('image/png', 1.0);
+        // Create download link
+        const url = tempCanvas.toDataURL('image/png', exportOptions.quality);
         const link = document.createElement('a');
         link.download = `${exportOptions.fileNamePrefix}-${Date.now()}.png`;
         link.href = url;
@@ -204,25 +279,8 @@ const exportPlugin = {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        
-        console.log('✅ High-quality export completed successfully');
-        
       } catch (error) {
-        console.error('❌ Error during export:', error);
-        // Fallback to original method if export fails
-        console.log('🔄 Falling back to original export method...');
-        try {
-          const url = canvas.toDataURL('image/png', 1.0);
-          const link = document.createElement('a');
-          link.download = `${exportOptions.fileNamePrefix}-${Date.now()}.png`;
-          link.href = url;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          console.log('✅ Fallback export completed');
-        } catch (fallbackError) {
-          console.error('❌ Fallback export also failed:', fallbackError);
-        }
+        console.error('Error exporting chart:', error);
       }
     };
   },
@@ -241,7 +299,7 @@ const exportPlugin = {
 // Extend Chart type to include our new method
 declare module 'chart.js' {
   interface Chart {
-    exportToImage?: (options?: Partial<ExportPluginOptions> & { customWidth?: number; customHeight?: number }) => void;
+    exportToImage?: (options?: Partial<ExportPluginOptions>) => void;
   }
 }
 

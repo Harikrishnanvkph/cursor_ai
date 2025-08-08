@@ -1032,20 +1032,20 @@ export const professionalTemplate: HTMLTemplate = {
 };
 
 /**
- * Only Chart template - displays just the chart without any additional styling
+ * Standard template - just the chart with overlay images and text
  */
-export const onlyChartTemplate: HTMLTemplate = {
-  name: "Only Chart",
-  description: "Clean template with just the chart, no additional styling or information",
+export const standardTemplate: HTMLTemplate = {
+  name: "Standard",
+  description: "Clean chart with overlay images and text - no extra styling",
   generate: (chartData, chartConfig, chartType, options) => {
-    const { width, height, includeAnimations, includeTooltips, includeLegend } = options;
+    const { title, width, height, includeAnimations, includeTooltips, includeLegend } = options;
     
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chart</title>
+    <title>${title}</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
     
     <!-- Custom Plugins -->
@@ -1061,11 +1061,11 @@ export const onlyChartTemplate: HTMLTemplate = {
         }
         
         body {
-            font-family: Arial, sans-serif;
-            background: white;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: #ffffff;
             display: flex;
-            justify-content: center;
             align-items: center;
+            justify-content: center;
             min-height: 100vh;
             padding: 20px;
         }
@@ -1073,12 +1073,14 @@ export const onlyChartTemplate: HTMLTemplate = {
         .chart-container {
             width: ${width}px;
             height: ${height}px;
-            max-width: 100%;
-            max-height: 100vh;
             position: relative;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #ffffff;
         }
         
-        canvas {
+        .chart-canvas {
             width: 100% !important;
             height: 100% !important;
         }
@@ -1086,20 +1088,15 @@ export const onlyChartTemplate: HTMLTemplate = {
         @media (max-width: 768px) {
             .chart-container {
                 width: 100%;
-                height: 400px;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            .chart-container {
-                height: 300px;
+                max-width: ${width}px;
+                height: ${Math.min(height, 400)}px;
             }
         }
     </style>
 </head>
 <body>
     <div class="chart-container">
-        <canvas id="chartCanvas"></canvas>
+        <canvas id="chartCanvas" class="chart-canvas"></canvas>
     </div>
 
     <script>
@@ -1108,7 +1105,7 @@ export const onlyChartTemplate: HTMLTemplate = {
         const chartData = ${JSON.stringify(chartData, null, 8)};
         const chartType = "${chartType}";
         
-        // Clean configuration for chart-only display
+        // Standard configuration - just the chart
         const enhancedConfig = {
             ...chartConfig,
             responsive: true,
@@ -1138,7 +1135,8 @@ export const onlyChartTemplate: HTMLTemplate = {
                     labels: {
                         usePointStyle: true,
                         padding: 20,
-                        font: { size: 12 }
+                        font: { size: 12, weight: '500' },
+                        color: '#4a5568'
                     }
                 } : { display: false }
             }
@@ -1157,7 +1155,7 @@ export const onlyChartTemplate: HTMLTemplate = {
             // Make chart globally accessible
             window.chart = chart;
             
-            console.log('Chart-only template loaded successfully!');
+            console.log('Standard chart initialized successfully!');
         });
         
         // Error handling
@@ -1165,7 +1163,7 @@ export const onlyChartTemplate: HTMLTemplate = {
             console.error('Chart error:', event.error);
             document.querySelector('.chart-container').innerHTML = 
                 '<div style="text-align: center; padding: 50px; color: #666;">' +
-                '<h3>Error Loading Chart</h3>' +
+                '<h3>❌ Error Loading Chart</h3>' +
                 '<p>There was an error loading the chart. Please check the console for details.</p>' +
                 '</div>';
         });
@@ -1177,11 +1175,11 @@ export const onlyChartTemplate: HTMLTemplate = {
 
 // Export all templates
 export const htmlTemplates = {
+  standard: standardTemplate,
   modern: modernTemplate,
   dark: darkTemplate,
   minimal: minimalTemplate,
-  professional: professionalTemplate,
-  onlyChart: onlyChartTemplate
+  professional: professionalTemplate
 };
 
 export const templateList = Object.entries(htmlTemplates).map(([key, template]) => ({

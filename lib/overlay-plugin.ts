@@ -559,7 +559,7 @@ export const overlayPlugin = {
   },
   
   afterDraw: (chart: Chart) => {
-    // console.log('🔴 OVERLAY PLUGIN afterDraw called!')
+    console.log('🔴 OVERLAY PLUGIN afterDraw called!')
     
     const ctx = chart.ctx
     const chartArea = chart.chartArea
@@ -569,9 +569,9 @@ export const overlayPlugin = {
     const overlayImages = pluginConfig.overlayImages || []
     const overlayTexts = pluginConfig.overlayTexts || []
     
-    // console.log('🔴 Plugin config found:', pluginConfig)
-    // console.log('🔴 Overlay images:', overlayImages.length, overlayImages)
-    // console.log('🔴 Overlay texts:', overlayTexts.length, overlayTexts)
+    console.log('🔴 Plugin config found:', pluginConfig)
+    console.log('🔴 Overlay images:', overlayImages.length, overlayImages)
+    console.log('🔴 Overlay texts:', overlayTexts.length, overlayTexts)
     
     // Handle overlay images
     if (overlayImages.length > 0) {
@@ -660,14 +660,43 @@ export const overlayPlugin = {
                   })
                   chart.canvas.dispatchEvent(updateEvent)
                 }
+                
+                // Multiple approaches to trigger chart redraw
+                console.log('🔄 Triggering chart update...')
+                
+                // Approach 1: Direct chart update
+                if (chart && typeof chart.update === 'function') {
+                  requestAnimationFrame(() => {
+                    chart.update('none')
+                    console.log('✅ Direct chart update completed')
+                  })
+                } else {
+                  console.warn('⚠️ Direct chart update not available')
+                }
+                
+                // Approach 2: Dispatch custom event to component level
+                if (chart && chart.canvas) {
+                  const event = new CustomEvent('overlayImageLoaded', {
+                    detail: { imageUrl: image.url }
+                  })
+                  chart.canvas.dispatchEvent(event)
+                  console.log('📡 Custom event dispatched')
+                }
+                
+                // Approach 3: Force redraw by calling the plugin again
+                setTimeout(() => {
+                  if (chart && chart.draw) {
+                    chart.draw()
+                    console.log('🎨 Forced redraw completed')
+                  }
+                }, 10)
               }
               
               img.onerror = () => {
-                console.error('❌ Failed to load image:', image.url)
+                console.error('❌ Failed to load overlay image:', image.url.substring(0, 50) + '...')
               }
               
               img.src = image.url
-              imageCache.set(image.url, img)
               console.log('🔄 Started loading image:', image.url.substring(0, 50) + '...')
             }
           }
@@ -686,12 +715,9 @@ export const overlayPlugin = {
     
     // Draw selection handles for selected image
     const selectedImageId = (chart.options as any)?.plugins?.overlayPlugin?.selectedImageId
-    console.log('🔍 Selected Image ID:', selectedImageId)
     if (selectedImageId) {
       const selectedImage = overlayImages.find((img: any) => img.id === selectedImageId)
-      console.log('🔍 Found selected image:', selectedImage)
       if (selectedImage && selectedImage.visible) {
-        console.log('🎯 Drawing selection indicators for image:', selectedImage.id)
         const x = chartArea.left + selectedImage.x
         const y = chartArea.top + selectedImage.y
         
@@ -806,7 +832,6 @@ export const overlayPlugin = {
     
     // Mouse event handlers
     const handleMouseDown = (event: MouseEvent) => {
-      console.log('EVENT MOUSE HANDLER IS WORKING')
       const rect = canvas.getBoundingClientRect()
       const x = event.clientX - rect.left
       const y = event.clientY - rect.top
@@ -895,7 +920,6 @@ export const overlayPlugin = {
           
           if (isInside) {
             // Select the image
-            console.log('🎯 Clicked on image, dispatching selection event for:', img.id)
             const selectEvent = new CustomEvent('overlayImageSelected', {
               detail: { imageId: img.id }
             })

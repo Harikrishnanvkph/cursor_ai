@@ -1325,8 +1325,8 @@ Chart.register(universalImagePlugin);
 /**
  * Generate the overlay plugin code for HTML export
  */
-export function generateOverlayPluginCode(overlayImages: any[] = [], overlayTexts: any[] = []): string {
-  if (overlayImages.length === 0 && overlayTexts.length === 0) {
+export function generateOverlayPluginCode(overlayConfig: any): string {
+  if (!overlayConfig || (!overlayConfig.overlayImages?.length && !overlayConfig.overlayTexts?.length)) {
     return '';
   }
 
@@ -1339,299 +1339,170 @@ const overlayPlugin = {
     const ctx = chart.ctx;
     const chartArea = chart.chartArea;
     
-    // Overlay images data
-    const overlayImages = ${JSON.stringify(overlayImages)};
-    const overlayTexts = ${JSON.stringify(overlayTexts)};
+    const pluginConfig = ${JSON.stringify(overlayConfig)};
+    const overlayImages = pluginConfig.overlayImages || [];
+    const overlayTexts = pluginConfig.overlayTexts || [];
     
-    // Image cache for HTML export
-    const imageCache = new Map();
-    
-    // Helper function to draw rounded rectangle
-    function drawRoundedRect(ctx, x, y, w, h, r) {
-      ctx.beginPath();
-      ctx.moveTo(x + r, y);
-      ctx.lineTo(x + w - r, y);
-      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-      ctx.lineTo(x + w, y + h - r);
-      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-      ctx.lineTo(x + r, y + h);
-      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-      ctx.lineTo(x, y + r);
-      ctx.quadraticCurveTo(x, y, x + r, y);
-      ctx.closePath();
-    }
-    
-    // Helper function to draw image with clipping
-    function drawImageWithClipping(ctx, x, y, w, h, img, type) {
-      ctx.save();
-      ctx.beginPath();
-      if (type === 'circle') {
-        ctx.arc(x + w / 2, y + h / 2, w / 2, 0, Math.PI * 2);
-      } else if (type === 'square') {
-        ctx.rect(x, y, w, h);
-      } else if (type === 'rounded') {
-        const radius = Math.min(w, h) / 2;
-        ctx.arc(x + radius, y + radius, radius, 0, Math.PI * 2);
-      }
-      ctx.clip();
-      ctx.drawImage(img, x, y, w, h);
-      ctx.restore();
-    }
-    
-    // Helper function to draw image on canvas with proper fitting
-    function drawImageOnCanvas(ctx, img, image, chartArea) {
-      const x = chartArea.left + image.x;
-      const y = chartArea.top + image.y;
-      const w = image.width;
-      const h = image.height;
-      
-      ctx.save();
-      
-      // Apply clipping based on shape
-      if (image.shape === 'circle') {
-        ctx.beginPath();
-        ctx.arc(x + w / 2, y + h / 2, w / 2, 0, Math.PI * 2);
-        ctx.clip();
-      } else if (image.shape === 'rounded') {
-        const radius = Math.min(w, h) * 0.1;
-        drawRoundedRect(ctx, x, y, w, h, radius);
-        ctx.clip();
-      }
-      
-      // Draw image based on fit type
-      if (image.imageFit === 'cover') {
-        const imgAspect = img.naturalWidth / img.naturalHeight;
-        const rectAspect = w / h;
-        
-        let sx, sy, sWidth, sHeight;
-        if (imgAspect > rectAspect) {
-          sWidth = img.naturalHeight * rectAspect;
-          sHeight = img.naturalHeight;
-          sx = (img.naturalWidth - sWidth) / 2;
-          sy = 0;
-        } else {
-          sWidth = img.naturalWidth;
-          sHeight = img.naturalWidth / rectAspect;
-          sx = 0;
-          sy = (img.naturalHeight - sHeight) / 2;
-        }
-        ctx.drawImage(img, sx, sy, sWidth, sHeight, x, y, w, h);
-      } else if (image.imageFit === 'contain') {
-        const imgAspect = img.naturalWidth / img.naturalHeight;
-        const rectAspect = w / h;
-        
-        let dx, dy, dWidth, dHeight;
-        if (imgAspect > rectAspect) {
-          dWidth = w;
-          dHeight = w / imgAspect;
-          dx = x;
-          dy = y + (h - dHeight) / 2;
-        } else {
-          dWidth = h * imgAspect;
-          dHeight = h;
-          dx = x + (w - dWidth) / 2;
-          dy = y;
-        }
-        ctx.drawImage(img, dx, dy, dWidth, dHeight);
-      } else {
-        // Default: fill
-        ctx.drawImage(img, x, y, w, h);
-      }
-      
-      ctx.restore();
-    }
-    
-    // Helper function to wrap text
-    function wrapText(ctx, text, maxWidth) {
-      const words = text.split(' ');
-      const lines = [];
-      let currentLine = words[0];
-      
-      for (let i = 1; i < words.length; i++) {
-        const word = words[i];
-        const width = ctx.measureText(currentLine + ' ' + word).width;
-        if (width < maxWidth) {
-          currentLine += ' ' + word;
-        } else {
-          lines.push(currentLine);
-          currentLine = word;
-        }
-      }
-      lines.push(currentLine);
-      return lines;
-    }
-    
-    // Helper function to render overlay text
-    function renderOverlayText(ctx, text, chartArea) {
-      if (!text.visible) return;
-      
-      ctx.save();
-      
-      ctx.font = \`\${text.fontSize}px \${text.fontFamily}\`;
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'top';
-      
-      const x = chartArea.left + text.x;
-      const y = chartArea.top + text.y;
-      
-      // Apply rotation if specified
-      if (text.rotation !== 0) {
-        ctx.translate(x, y);
-        ctx.rotate((text.rotation * Math.PI) / 180);
-        ctx.translate(-x, -y);
-      }
-      
-      // Process text lines with wrapping
-      const originalLines = text.text.split('\\n');
-      const allLines = [];
-      
-      originalLines.forEach(line => {
-        if (text.maxWidth && text.maxWidth > 0) {
-          const wrappedLines = wrapText(ctx, line, text.maxWidth);
-          allLines.push(...wrappedLines);
-        } else {
-          allLines.push(line);
-        }
-      });
-      
-      const lineHeight = text.fontSize * 1.2;
-      
-      // Calculate total dimensions for multi-line text
-      let maxWidth = 0;
-      allLines.forEach(line => {
-        const textMetrics = ctx.measureText(line);
-        maxWidth = Math.max(maxWidth, textMetrics.width);
-      });
-      
-      const totalHeight = allLines.length * lineHeight;
-      
-      // Get padding values
-      const paddingX = text.paddingX || 8;
-      const paddingY = text.paddingY || 4;
-      
-      // Calculate background/border rectangle with padding
-      const bgX = x - paddingX;
-      const bgY = y - paddingY;
-      const bgWidth = maxWidth + (paddingX * 2);
-      const bgHeight = totalHeight + (paddingY * 2);
-      
-      // Draw background if not transparent
-      if (!text.backgroundTransparent && text.backgroundColor) {
-        ctx.fillStyle = text.backgroundColor;
-        ctx.fillRect(bgX, bgY, bgWidth, bgHeight);
-      }
-      
-      // Draw border if specified
-      if (text.borderWidth > 0 && text.borderColor) {
-        ctx.strokeStyle = text.borderColor;
-        ctx.lineWidth = text.borderWidth;
-        ctx.strokeRect(bgX, bgY, bgWidth, bgHeight);
-      }
-      
-      // Draw text
-      ctx.fillStyle = text.color;
-      allLines.forEach((line, index) => {
-        const lineY = y + (index * lineHeight);
-        ctx.fillText(line, x, lineY);
-      });
-      
-      ctx.restore();
-    }
-    
-    // Handle overlay images
-    overlayImages.forEach((image) => {
-      if (image.visible) {
-        let img = imageCache.get(image.url);
-        
-        // For HTML export, images are already base64 data URLs and should be immediately available
-        if (!img) {
-          console.log('Creating new image for overlay:', image.url.substring(0, 50) + '...');
-          img = new Image();
-          img.onload = () => {
-            console.log('Overlay image loaded successfully:', {
-              url: image.url.substring(0, 50) + '...',
-              naturalWidth: img.naturalWidth,
-              naturalHeight: img.naturalHeight
-            });
-            imageCache.set(image.url, img);
-            // Trigger chart redraw for immediate display
-            if (chart && typeof chart.update === 'function') {
-              requestAnimationFrame(() => {
-                chart.update('none');
-              });
-            }
-          };
-          img.onerror = () => {
-            console.error('Failed to load overlay image:', image.url.substring(0, 50) + '...');
-          };
-          img.src = image.url;
-        }
-        
-        // Check if image is ready to draw
-        if (img && img.complete && img.naturalWidth > 0) {
-          // Image is loaded, draw it
-          console.log('Drawing overlay image successfully:', image.url.substring(0, 50) + '...');
-          drawImageOnCanvas(ctx, img, image, chartArea);
-        } else if (img && img.complete) {
-          // Image completed loading but might be invalid
-          console.warn('Overlay image completed loading but appears invalid:', image.url.substring(0, 50) + '...');
-          drawImageOnCanvas(ctx, img, image, chartArea);
-        } else {
-          console.log('Overlay image not ready, showing placeholder:', {
-            url: image.url.substring(0, 50) + '...',
-            complete: img?.complete,
-            naturalWidth: img?.naturalWidth,
-            naturalHeight: img?.naturalHeight
-          });
-          // Image not loaded yet, show placeholder
-          const w = image.width;
-          const h = image.height;
+    // Draw overlay images
+    if (overlayImages.length > 0) {
+      overlayImages.forEach((image) => {
+        if (image.visible) {
           const x = chartArea.left + image.x;
           const y = chartArea.top + image.y;
+          const w = image.width;
+          const h = image.height;
+          
+          // Create image element
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          
+          img.onload = () => {
+            ctx.save();
+            
+            // Apply transformations
+            if (image.rotation) {
+              const centerX = x + w / 2;
+              const centerY = y + h / 2;
+              ctx.translate(centerX, centerY);
+              ctx.rotate(image.rotation * Math.PI / 180);
+              ctx.translate(-centerX, -centerY);
+            }
+            
+            // Draw border if specified
+            if (image.borderWidth > 0) {
+              ctx.strokeStyle = image.borderColor;
+              ctx.lineWidth = image.borderWidth;
+              
+              if (image.shape === 'circle') {
+                const centerX = x + w / 2;
+                const centerY = y + h / 2;
+                const radius = Math.min(w, h) / 2;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+                ctx.stroke();
+              } else {
+                ctx.strokeRect(x, y, w, h);
+              }
+            }
+            
+            // Draw image with shape clipping
+            if (image.shape === 'circle') {
+              const centerX = x + w / 2;
+              const centerY = y + h / 2;
+              const radius = Math.min(w, h) / 2;
+              ctx.save();
+              ctx.beginPath();
+              ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+              ctx.clip();
+              ctx.drawImage(img, x, y, w, h);
+              ctx.restore();
+            } else if (image.shape === 'rounded') {
+              const radius = Math.min(w, h) * 0.1;
+              ctx.save();
+              ctx.beginPath();
+              ctx.roundRect(x, y, w, h, radius);
+              ctx.clip();
+              ctx.drawImage(img, x, y, w, h);
+              ctx.restore();
+            } else {
+              // Rectangle shape
+              ctx.drawImage(img, x, y, w, h);
+            }
+            
+            ctx.restore();
+          };
+          
+          img.src = image.url;
+        }
+      });
+    }
+    
+    // Draw overlay texts
+    if (overlayTexts.length > 0) {
+      overlayTexts.forEach((text) => {
+        if (text.visible) {
+          const x = chartArea.left + text.x;
+          const y = chartArea.top + text.y;
           
           ctx.save();
-          ctx.fillStyle = image.borderColor || 'gray';
-          ctx.strokeStyle = image.borderColor || 'blue';
-          ctx.lineWidth = Math.max(2, image.borderWidth);
           
-          // Draw placeholder based on shape
-          if (image.shape === 'circle') {
-            const centerX = x + w / 2;
-            const centerY = y + h / 2;
-            const radius = Math.min(w, h) / 2;
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-            ctx.fill();
-            ctx.stroke();
-          } else if (image.shape === 'rounded') {
-            const radius = Math.min(w, h) * 0.1;
-            drawRoundedRect(ctx, x, y, w, h, radius);
-            ctx.fill();
-            ctx.stroke();
-          } else {
-            // Rectangle shape
-            ctx.fillRect(x, y, w, h);
-            ctx.strokeRect(x, y, w, h);
+          // Apply transformations
+          if (text.rotation) {
+            ctx.translate(x, y);
+            ctx.rotate(text.rotation * Math.PI / 180);
+            ctx.translate(-x, -y);
           }
           
-          // Draw loading text
-          ctx.fillStyle = 'white';
-          ctx.font = '14px Arial';
-          ctx.textAlign = 'center';
-          ctx.fillText('Loading...', x + w/2, y + h/2);
+          // Set font properties
+          ctx.font = \`\${text.fontSize}px \${text.fontFamily}\`;
+          ctx.fillStyle = text.color;
           ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
+          
+          // Handle text wrapping
+          const maxWidth = text.maxWidth || 200;
+          const words = text.text.split(' ');
+          const lines = [];
+          let currentLine = '';
+          
+          words.forEach(word => {
+            const testLine = currentLine ? currentLine + ' ' + word : word;
+            const metrics = ctx.measureText(testLine);
+            if (metrics.width > maxWidth && currentLine) {
+              lines.push(currentLine);
+              currentLine = word;
+            } else {
+              currentLine = testLine;
+            }
+          });
+          if (currentLine) {
+            lines.push(currentLine);
+          }
+          
+          // Calculate total dimensions
+          const lineHeight = text.fontSize * 1.2;
+          const totalHeight = lines.length * lineHeight;
+          
+          // Draw background if not transparent
+          if (!text.backgroundTransparent && text.backgroundColor) {
+            const paddingX = text.paddingX || 8;
+            const paddingY = text.paddingY || 4;
+            const bgX = x - paddingX;
+            const bgY = y - paddingY;
+            const bgWidth = Math.max(...lines.map(line => ctx.measureText(line).width)) + (paddingX * 2);
+            const bgHeight = totalHeight + (paddingY * 2);
+            
+            ctx.fillStyle = text.backgroundColor;
+            ctx.fillRect(bgX, bgY, bgWidth, bgHeight);
+            
+            // Reset fill style for text
+            ctx.fillStyle = text.color;
+          }
+          
+          // Draw border if specified
+          if (text.borderWidth > 0) {
+            const paddingX = text.paddingX || 8;
+            const paddingY = text.paddingY || 4;
+            const bgX = x - paddingX;
+            const bgY = y - paddingY;
+            const bgWidth = Math.max(...lines.map(line => ctx.measureText(line).width)) + (paddingX * 2);
+            const bgHeight = totalHeight + (paddingY * 2);
+            
+            ctx.strokeStyle = text.borderColor;
+            ctx.lineWidth = text.borderWidth;
+            ctx.strokeRect(bgX, bgY, bgWidth, bgHeight);
+          }
+          
+          // Draw text lines
+          lines.forEach((line, index) => {
+            const lineY = y + (index * lineHeight);
+            ctx.fillText(line, x, lineY);
+          });
           
           ctx.restore();
         }
-      }
-    });
-    
-    // Draw overlay texts
-    overlayTexts.forEach((text) => {
-      if (text.visible) {
-        renderOverlayText(ctx, text, chartArea);
-      }
-    });
+      });
+    }
   }
 };
 
@@ -1645,21 +1516,10 @@ Chart.register(overlayPlugin);
  */
 export function generateCompletePluginSystem(chartConfig: any): string {
   const customLabelsConfig = (chartConfig.plugins as any)?.customLabels;
+  const overlayConfig = (chartConfig.plugins as any)?.overlayPlugin;
   const hasCustomLabels = customLabelsConfig && customLabelsConfig.labels;
   const hasImages = chartConfig.data?.datasets?.some((ds: any) => ds.pointImages?.length > 0);
-  
-  // Check for overlay data
-  const overlayPluginConfig = (chartConfig.plugins as any)?.overlayPlugin;
-  console.log('Checking for overlay data:', {
-    hasOverlayPlugin: !!overlayPluginConfig,
-    overlayImages: overlayPluginConfig?.overlayImages?.length || 0,
-    overlayTexts: overlayPluginConfig?.overlayTexts?.length || 0
-  });
-  
-  const hasOverlays = overlayPluginConfig && (
-    (overlayPluginConfig.overlayImages && overlayPluginConfig.overlayImages.length > 0) ||
-    (overlayPluginConfig.overlayTexts && overlayPluginConfig.overlayTexts.length > 0)
-  );
+  const hasOverlays = overlayConfig && (overlayConfig.overlayImages?.length > 0 || overlayConfig.overlayTexts?.length > 0);
 
   let pluginCode = '';
 
@@ -1675,17 +1535,7 @@ export function generateCompletePluginSystem(chartConfig: any): string {
 
   // Add overlay plugin if needed
   if (hasOverlays) {
-    console.log('Including overlay plugin in HTML export');
-    console.log('Overlay images:', overlayPluginConfig.overlayImages?.length || 0);
-    console.log('Overlay texts:', overlayPluginConfig.overlayTexts?.length || 0);
-    pluginCode += generateOverlayPluginCode(
-      overlayPluginConfig.overlayImages || [],
-      overlayPluginConfig.overlayTexts || []
-    );
-  } else {
-    console.log('No overlay data found, skipping overlay plugin');
-    console.log('Available plugins:', Object.keys(chartConfig.plugins || {}));
-    console.log('Overlay plugin config:', overlayPluginConfig);
+    pluginCode += generateOverlayPluginCode(overlayConfig);
   }
 
   return pluginCode;

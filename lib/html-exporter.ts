@@ -196,9 +196,7 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
     chartMode,
     activeDatasetIndex,
     uniformityMode,
-    legendFilter,
-    overlayImages,
-    overlayTexts
+    legendFilter
   } = useChartStore.getState();
 
   // Use provided drag state or try to capture current drag state from any active chart instance
@@ -230,25 +228,17 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
   // Process chart data to convert images to base64
   const processedChartData = await processChartDataForExport(chartDataCopy);
 
+  // Get overlay data from chart store
+  const { overlayImages, overlayTexts } = useChartStore.getState();
+  
   // Process overlay images to convert URLs to base64
   const processedOverlayImages = await Promise.all(
-    (overlayImages || []).map(async (image) => {
-      if (image.url) {
-        const processedUrl = await convertImageToBase64(image.url);
-        console.log('Processing overlay image:', {
-          originalUrl: image.url.substring(0, 50) + '...',
-          processedUrl: processedUrl.substring(0, 50) + '...',
-          imageId: image.id
-        });
-        return { ...image, url: processedUrl };
-      }
-      return image;
-    })
+    overlayImages.map(async (image) => ({
+      ...image,
+      url: await convertImageToBase64(image.url)
+    }))
   );
-
-  console.log('Processed overlay images:', processedOverlayImages.length);
-  console.log('Overlay texts:', overlayTexts?.length || 0);
-
+  
   // Generate custom labels and enhance chart config
   const customLabels = generateCustomLabelsFromConfig(chartConfig, processedChartData, legendFilter, currentDragState);
   const enhancedChartConfig = {
@@ -262,16 +252,10 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
       } : undefined,
       overlayPlugin: {
         overlayImages: processedOverlayImages,
-        overlayTexts: overlayTexts || []
+        overlayTexts: overlayTexts
       }
     }
   };
-
-  console.log('Enhanced chart config plugins:', Object.keys(enhancedChartConfig.plugins || {}));
-  console.log('Overlay plugin data:', {
-    images: processedOverlayImages.length,
-    texts: overlayTexts?.length || 0
-  });
 
   const {
     title = "Chart Export",
@@ -285,7 +269,7 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
     customCSS = "",
     customJS = "",
     fileName = `chart-${new Date().toISOString().slice(0, 10)}.html`,
-    template = "onlyChart"
+    template = "modern"
   } = options;
 
   // Use template if specified
@@ -544,7 +528,7 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
 
   return {
     content: htmlContent,
-    fileName: fileName,
+    fileName,
     size: new Blob([htmlContent]).size
   };
 }
@@ -728,5 +712,178 @@ export function generateEmbeddedChartHTML(options: HTMLExportOptions = {}) {
     content: htmlContent,
     fileName: options.fileName || `embedded-chart-${new Date().toISOString().slice(0, 10)}.html`,
     size: new Blob([htmlContent]).size
+  };
+} 
+
+/**
+ * Generate chart HTML content specifically for embedding in templates
+ * This function extracts just the chart-related HTML without the full page structure
+ */
+export async function generateChartHTMLForTemplate(options: HTMLExportOptions = {}): Promise<{
+  chartScript: string
+  chartStyles: string
+  pluginsScript: string
+  chartContainer: string
+}> {
+  const { 
+    chartType, 
+    chartData, 
+    chartConfig,
+    chartMode,
+    activeDatasetIndex,
+    uniformityMode,
+    legendFilter
+  } = useChartStore.getState();
+
+  // Use provided drag state or try to capture current drag state from any active chart instance
+  let currentDragState = options.dragState || {};
+  if (!currentDragState || Object.keys(currentDragState).length === 0) {
+    try {
+      // Look for any chart instance in the DOM that might have drag state
+      const canvasElements = document.querySelectorAll('canvas');
+      for (const canvas of canvasElements) {
+        const chartInstance = (canvas as any).chart;
+        if (chartInstance) {
+          const dragState = getCurrentDragState(chartInstance);
+          if (Object.keys(dragState).length > 0) {
+            currentDragState = dragState;
+            break;
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Could not capture drag state for HTML export:', error);
+    }
+  }
+
+  // Deep copy chart data to avoid mutating state
+  const chartDataCopy = JSON.parse(JSON.stringify(chartData));
+  // Sync image positions
+  syncImagePositionsToConfig(chartDataCopy, currentDragState);
+
+  // Process chart data to convert images to base64
+  const processedChartData = await processChartDataForExport(chartDataCopy);
+
+  // Get overlay data from chart store
+  const { overlayImages, overlayTexts } = useChartStore.getState();
+  
+  // Process overlay images to convert URLs to base64
+  const processedOverlayImages = await Promise.all(
+    overlayImages.map(async (image) => ({
+      ...image,
+      url: await convertImageToBase64(image.url)
+    }))
+  );
+  
+  // Generate custom labels and enhance chart config
+  const customLabels = generateCustomLabelsFromConfig(chartConfig, processedChartData, legendFilter, currentDragState);
+  const enhancedChartConfig = {
+    ...chartConfig,
+    data: processedChartData,
+    plugins: {
+      ...chartConfig.plugins,
+      customLabels: customLabels.length > 0 ? { 
+        shapeSize: 32, 
+        labels: customLabels 
+      } : undefined,
+      overlayPlugin: {
+        overlayImages: processedOverlayImages,
+        overlayTexts: overlayTexts
+      }
+    }
+  };
+
+  const {
+    width = 800,
+    height = 600,
+    includeResponsive = true,
+    includeAnimations = true,
+    includeTooltips = true,
+    includeLegend = true,
+  } = options;
+
+  // Generate the chart script
+  const chartScript = `
+    // Chart.js Configuration
+    const chartConfig = ${JSON.stringify(enhancedChartConfig, null, 8)};
+    const chartData = ${JSON.stringify(processedChartData, null, 8)};
+    const chartType = "${chartType}";
+    
+    // Enhanced configuration for standalone HTML
+    const enhancedConfig = {
+        ...chartConfig,
+        responsive: ${includeResponsive},
+        maintainAspectRatio: false,
+        animation: ${includeAnimations} ? {
+            duration: 1000,
+            easing: 'easeInOutQuart'
+        } : false,
+        plugins: {
+            ...chartConfig.plugins,
+            tooltip: ${includeTooltips} ? {
+                enabled: true,
+                mode: 'index',
+                intersect: false,
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                titleColor: '#fff',
+                bodyColor: '#fff',
+                borderColor: 'rgba(255, 255, 255, 0.2)',
+                borderWidth: 1,
+                cornerRadius: 8,
+                displayColors: true,
+                padding: 12
+            } : { enabled: false },
+            legend: ${includeLegend} ? {
+                display: true,
+                position: 'top',
+                labels: {
+                    usePointStyle: true,
+                    padding: 20,
+                    font: {
+                        size: 12
+                    }
+                }
+            } : { display: false }
+        }
+    };
+    
+    const ctx = document.getElementById('chartCanvas').getContext('2d');
+    new Chart(ctx, {
+        type: chartType,
+        data: chartData,
+        options: enhancedConfig
+    });
+  `;
+
+  // Generate chart styles
+  const chartStyles = `
+    .chart-area {
+        position: relative;
+        width: ${width}px;
+        height: ${height}px;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    
+    .chart-canvas {
+        width: ${width}px !important;
+        height: ${height}px !important;
+    }
+  `;
+
+  // Generate plugins script
+  const pluginsScript = generateCompletePluginSystem(enhancedChartConfig);
+
+  // Generate chart container
+  const chartContainer = `
+    <canvas id="chartCanvas" class="chart-canvas" width="${width}" height="${height}"></canvas>
+  `;
+
+  return {
+    chartScript,
+    chartStyles,
+    pluginsScript,
+    chartContainer
   };
 } 

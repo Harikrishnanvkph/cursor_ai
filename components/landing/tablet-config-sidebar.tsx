@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
-import { AlignEndHorizontal, Database, Palette, Grid, Tag, Zap, Settings, Download } from "lucide-react"
+import { AlignEndHorizontal, Database, Palette, Grid, Tag, Zap, Settings, Download, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TypesTogglesPanel } from "@/components/panels/types-toggles-panel"
@@ -12,6 +12,7 @@ import { LabelsPanel } from "@/components/panels/labels-panel"
 import { AnimationsPanel } from "@/components/panels/animations-panel"
 import { AdvancedPanel } from "@/components/panels/advanced-panel"
 import { ExportPanel } from "@/components/panels/export-panel"
+import { TemplatesPanel } from "@/components/panels/templates-panel"
 
 const TABLET_TABS = [
   { id: "types_toggles", label: "Types", icon: AlignEndHorizontal },
@@ -20,6 +21,7 @@ const TABLET_TABS = [
   { id: "axes", label: "Axes", icon: Grid },
   { id: "labels", label: "Labels", icon: Tag },
   { id: "animations", label: "Motion", icon: Zap },
+  { id: "templates", label: "Templates", icon: FileText },
   { id: "advanced", label: "Advanced", icon: Settings },
   { id: "export", label: "Export", icon: Download },
 ]
@@ -49,6 +51,8 @@ export function TabletConfigSidebar({
         return <LabelsPanel />
       case "animations":
         return <AnimationsPanel />
+      case "templates":
+        return <TemplatesPanel />
       case "advanced":
         return <AdvancedPanel />
       case "export":

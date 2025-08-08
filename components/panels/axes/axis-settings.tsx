@@ -463,27 +463,39 @@ export function AxisSettings({ axis, config, onUpdate, className }: AxisSettings
         <div className="space-y-3">
           <div className="flex items-center gap-2 pb-1 border-b">
             <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
-            <h3 className="text-sm font-semibold text-gray-900">Grid Lines</h3>
+            <h3 className="text-sm font-semibold text-gray-900">Quick Toggles</h3>
           </div>
           
           <div className="bg-gray-50 rounded-lg p-3 space-y-3 relative overflow-hidden">
-            {/* Show Toggle */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-medium">Show</Label>
-                <Switch
-                  checked={config?.grid?.display !== false}
-                  onCheckedChange={(checked) => updateConfig('grid.display', checked)}
-                  className="data-[state=checked]:bg-gray-600"
-                />
-              </div>
-            </div>
-            
-            {/* Grid Options */}
+            {/* Main Toggles - First Row */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium">Show</Label>
+                  <Switch
+                    checked={config?.grid?.display !== false}
+                    onCheckedChange={(checked) => updateConfig('grid.display', checked)}
+                    className="data-[state=checked]:bg-gray-600"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
                   <Label className="text-xs font-medium">Axis Line</Label>
+                  <Switch
+                    checked={config?.border?.display !== false}
+                    onCheckedChange={(checked) => updateConfig('border.display', checked)}
+                    className="data-[state=checked]:bg-gray-600"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            {/* Grid Options - Second Row */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium">Ref. Lines</Label>
                   <Switch
                     checked={config?.grid?.drawOnChartArea !== false}
                     onCheckedChange={(checked) => updateConfig('grid.drawOnChartArea', checked)}
@@ -661,6 +673,59 @@ export function AxisSettings({ axis, config, onUpdate, className }: AxisSettings
             </div>
           </div>
         )}
+
+        {/* Axis Line Section */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 pb-1 border-b">
+            <div className="w-2 h-2 bg-orange-600 rounded-full"></div>
+            <h3 className="text-sm font-semibold text-gray-900">Axis Line</h3>
+          </div>
+          
+          <div className="bg-orange-50 rounded-lg p-3 space-y-3">
+            {/* Color and Width Controls */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Color */}
+              <div className="space-y-1">
+                <Label className="text-xs font-medium">Color</Label>
+                <div className="flex items-center gap-2">
+                  <div 
+                    className="w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform flex-shrink-0"
+                    style={{ backgroundColor: config?.border?.color || '#666666' }}
+                    onClick={() => document.getElementById(`axis-line-color-${axis}`)?.click()}
+                  />
+                  <input
+                    id={`axis-line-color-${axis}`}
+                    type="color"
+                    value={config?.border?.color || '#666666'}
+                    onChange={(e) => updateConfig('border.color', e.target.value)}
+                    className="sr-only"
+                  />
+                  <Input
+                    value={config?.border?.color || '#666666'}
+                    onChange={(e) => updateConfig('border.color', e.target.value)}
+                    className="h-8 text-xs font-mono uppercase flex-1"
+                    placeholder="#666666"
+                  />
+                </div>
+              </div>
+
+              {/* Width */}
+              <div className="space-y-1">
+                <Label className="text-xs font-medium">Width</Label>
+                <Input
+                  type="number"
+                  value={config?.border?.width || ''}
+                  onChange={(e) => updateConfig('border.width', e.target.value ? Number(e.target.value) : undefined)}
+                  placeholder="1"
+                  className="h-8 text-xs"
+                  min={0}
+                  max={10}
+                  step={0.5}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
