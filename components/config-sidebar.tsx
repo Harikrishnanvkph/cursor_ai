@@ -272,16 +272,7 @@ export function ConfigSidebar() {
                           <h4 className="font-semibold text-sm text-gray-900">{template.name}</h4>
                         </div>
                         <p className="text-xs text-gray-600 mb-2">{template.description}</p>
-                        <div className="flex items-center gap-4 text-xs text-gray-500">
-                          <span className="flex items-center gap-1">
-                            <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                            {template.width} × {template.height}px
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                            {template.textAreas.length} text areas
-                          </span>
-                        </div>
+                        
                       </div>
                       {currentTemplate?.id === template.id && (
                         <div className="flex items-center gap-2">
@@ -305,29 +296,7 @@ export function ConfigSidebar() {
                 </div>
               )}
 
-              {currentTemplate && (
-                <div className="mt-4 pt-4 border-t">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <h5 className="text-sm font-semibold text-gray-900">Active Template: {currentTemplate.name}</h5>
-                      <p className="text-xs text-gray-500 mt-1">{currentTemplate.description}</p>
-                    </div>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={resetTemplate}
-                      className="text-xs"
-                    >
-                      Reset to Default
-                    </Button>
-                  </div>
-                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p className="text-xs text-yellow-800">
-                      💡 Click "Reset to Default" to remove the template and return to the basic chart view.
-                    </p>
-                  </div>
-                </div>
-              )}
+
             </div>
           </TabsContent>
         </Tabs>

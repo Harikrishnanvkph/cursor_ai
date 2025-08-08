@@ -446,32 +446,66 @@ export const useTemplateStore = create<TemplateStore>()(
             templateInBackground: { ...template },
             editorMode: 'template'
           })
+          
+          // Update chart dimensions to match template chart area
+          const chartStore = useChartStore.getState()
+          chartStore.updateChartConfig({
+            ...chartStore.chartConfig,
+            manualDimensions: true,
+            width: `${template.chartArea.width}px`,
+            height: `${template.chartArea.height}px`,
+            responsive: false,
+            maintainAspectRatio: false
+          })
         }
       },
       
       resetTemplate: () => {
-        // Reset template state
-        set({ 
-          currentTemplate: null, 
-          selectedTextAreaId: null,
-          templateInBackground: null,
-          editorMode: 'chart'
-        })
-        
-        // Also reset chart to default state
-        const chartStore = useChartStore.getState()
-        chartStore.resetChart()
+        const state = get()
+        if (state.currentTemplate) {
+          // Find the original template to get the initial text areas
+          const originalTemplate = state.templates.find(t => t.id === state.currentTemplate!.id)
+          if (originalTemplate) {
+            // Reset only the text areas to their initial state
+            set({
+              currentTemplate: {
+                ...state.currentTemplate,
+                textAreas: [...originalTemplate.textAreas] // Restore original text areas
+              }
+            })
+          }
+        }
       },
       
       setEditorMode: (mode) => set((state) => {
+        const chartStore = useChartStore.getState()
+        
         if (mode === 'template' && state.templateInBackground) {
-          // Switch to template mode - show the template
+          // Switch to template mode - show the template and update chart dimensions
+          const template = state.templateInBackground
+          chartStore.updateChartConfig({
+            ...chartStore.chartConfig,
+            manualDimensions: true,
+            width: `${template.chartArea.width}px`,
+            height: `${template.chartArea.height}px`,
+            responsive: false,
+            maintainAspectRatio: false
+          })
+          
           return {
             editorMode: mode,
             currentTemplate: state.templateInBackground
           }
         } else if (mode === 'chart' && state.currentTemplate) {
           // Switch to chart mode - hide template but keep it in background
+          // Reset chart dimensions to default responsive behavior
+          chartStore.updateChartConfig({
+            ...chartStore.chartConfig,
+            manualDimensions: false,
+            responsive: true,
+            maintainAspectRatio: true
+          })
+          
           return {
             editorMode: mode,
             templateInBackground: state.currentTemplate,

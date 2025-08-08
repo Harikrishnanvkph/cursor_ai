@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useRef, useState } from "react"
+import React, { useRef, useState, useEffect } from "react"
 import { useTemplateStore } from "@/lib/template-store"
 import { useChartStore } from "@/lib/chart-store"
 
@@ -38,6 +38,38 @@ export function TemplateChartPreview({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
   const [showGuides, setShowGuides] = useState(true)
+  const [isUpdatingDimensions, setIsUpdatingDimensions] = useState(false)
+
+  // Simple centering effect when template is first loaded
+  useEffect(() => {
+    const template = currentTemplate || templateInBackground
+    if (template && containerRef.current) {
+      // Simple centering - move template to center of viewport
+      const containerWidth = containerRef.current.clientWidth || 800
+      const containerHeight = containerRef.current.clientHeight || 600
+      
+      // Calculate initial offset to center the template
+      const offsetX = (containerWidth - template.width) / 2
+      const offsetY = (containerHeight - template.height) / 2
+      
+      setPanOffset({ x: offsetX, y: offsetY })
+    }
+  }, [currentTemplate?.id, templateInBackground?.id]) // Only run when template ID changes
+
+  // Handle chart dimension updates when template changes
+  useEffect(() => {
+    const template = currentTemplate || templateInBackground
+    if (template && !isUpdatingDimensions) {
+      setIsUpdatingDimensions(true)
+      
+      // Small delay to ensure chart dimensions are updated
+      const timer = setTimeout(() => {
+        setIsUpdatingDimensions(false)
+      }, 100)
+      
+      return () => clearTimeout(timer)
+    }
+  }, [currentTemplate?.id, templateInBackground?.id, isUpdatingDimensions])
 
 
 
@@ -46,7 +78,19 @@ export function TemplateChartPreview({
   const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.1, 0.1))
   const handleResetZoom = () => {
     setZoom(1)
-    setPanOffset({ x: 0, y: 0 })
+    // Center the template when resetting
+    const template = currentTemplate || templateInBackground
+    if (template && containerRef.current) {
+      const containerWidth = containerRef.current.clientWidth || 800
+      const containerHeight = containerRef.current.clientHeight || 600
+      
+      const offsetX = (containerWidth - template.width) / 2
+      const offsetY = (containerHeight - template.height) / 2
+      
+      setPanOffset({ x: offsetX, y: offsetY })
+    } else {
+      setPanOffset({ x: 0, y: 0 })
+    }
   }
 
   // Handle mouse/touch events for panning
@@ -210,7 +254,7 @@ export function TemplateChartPreview({
           </div>
         )}
         
-        <ChartGenerator />
+        <ChartGenerator key={`template-${template.id}-${template.chartArea.width}-${template.chartArea.height}-${isUpdatingDimensions}`} />
       </div>
     )
   }
