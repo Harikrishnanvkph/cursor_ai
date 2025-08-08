@@ -39,7 +39,7 @@ export default function LandingPage() {
   const [input, setInput] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const [suggestionsOpen, setSuggestionsOpen] = useState(true)
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false)
   const [showActiveBanner, setShowActiveBanner] = useState(true)
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true)
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true)
@@ -87,7 +87,7 @@ export default function LandingPage() {
     setInput("")
 
     if (textareaRef.current) {
-      textareaRef.current.style.height = "48px"
+      textareaRef.current.style.height = "36px"
     }
 
     await continueConversation(userInput)
@@ -102,7 +102,7 @@ export default function LandingPage() {
     setTimeout(() => {
       if (textareaRef.current) {
         textareaRef.current.focus()
-        textareaRef.current.style.height = "48px"
+        textareaRef.current.style.height = "36px"
         textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
       }
     }, 0)
@@ -111,49 +111,44 @@ export default function LandingPage() {
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value)
     
-    // Update height with a small delay to ensure DOM is updated (especially for paste operations)
-    const updateHeight = () => {
-      if (textareaRef.current) {
-        if (e.target.value === "") {
-          textareaRef.current.style.height = "48px"
-          textareaRef.current.style.overflowY = "hidden"
-        } else {
-          textareaRef.current.style.height = "48px"
-          const maxHeight = 128
-          textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`
-          textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > maxHeight ? "auto" : "hidden"
+    // Optimized height update with debouncing
+    if (textareaRef.current) {
+      // Clear any existing timeout
+      if (textareaRef.current.dataset.resizeTimeout) {
+        clearTimeout(Number(textareaRef.current.dataset.resizeTimeout))
+      }
+      
+      const updateHeight = () => {
+        if (textareaRef.current) {
+          if (e.target.value === "") {
+            textareaRef.current.style.height = "36px"
+            textareaRef.current.style.overflowY = "hidden"
+          } else {
+            textareaRef.current.style.height = "36px"
+            const maxHeight = 80
+            textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`
+            textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > maxHeight ? "auto" : "hidden"
+          }
         }
       }
+      
+      // Debounce the height update to reduce performance impact
+      const timeoutId = setTimeout(updateHeight, 16) // ~60fps
+      textareaRef.current.dataset.resizeTimeout = timeoutId.toString()
     }
-    
-    // Use requestAnimationFrame to ensure DOM is updated before height calculation
-    requestAnimationFrame(updateHeight)
-    
-    // Additional check for paste operations with longer delay
-    setTimeout(updateHeight, 10)
   }, [])
 
   // Handle paste events specifically to ensure proper height update
   const handlePaste = useCallback(() => {
-    // Use multiple timeouts to ensure proper height calculation after paste
-          setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.style.height = "48px"
-          const maxHeight = 128
-          textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`
-          textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > maxHeight ? "auto" : "hidden"
-        }
-      }, 10) // Slightly longer delay for paste operations
-    
-          // Additional backup check
-      setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.style.height = "48px"
-          const maxHeight = 128
-          textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`
-          textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > maxHeight ? "auto" : "hidden"
-        }
-      }, 50)
+    // Single timeout for paste operations to reduce performance impact
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "36px"
+        const maxHeight = 80
+        textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`
+        textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > maxHeight ? "auto" : "hidden"
+      }
+    }, 10)
   }, [])
 
   const handleNewConversation = useCallback(() => {
@@ -210,10 +205,21 @@ export default function LandingPage() {
     // When a new chart is received, show the banner and expand suggestions
     if (hasActiveChart) {
       setShowActiveBanner(true)
-      setSuggestionsOpen(true)
+      setSuggestionsOpen(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasActiveChart])
+
+  // Auto-hide banner after 8 seconds if not manually closed
+  useEffect(() => {
+    if (showActiveBanner && hasActiveChart) {
+      const timer = setTimeout(() => {
+        setShowActiveBanner(false)
+      }, 8000) // 8 seconds
+
+      return () => clearTimeout(timer)
+    }
+  }, [showActiveBanner, hasActiveChart])
 
   // Handle migration errors by clearing localStorage
   useEffect(() => {
@@ -687,27 +693,71 @@ export default function LandingPage() {
               </div>
             </div>
             
-            {/* Conversation Status */}
-            {hasActiveChart && showActiveBanner && (
-              <div className="relative px-6 py-4 bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-emerald-200/50">
+
+            
+                         {/* Input */}
+             <form
+               onSubmit={handleSend}
+               className="p-2 border-t border-white/20 bg-gradient-to-br from-white/90 to-slate-50/90 flex gap-2 rounded-b-3xl shadow-inner backdrop-blur-sm flex-shrink-0"
+             >
+               <textarea
+                 ref={textareaRef}
+                 className="flex-1 rounded-lg border border-slate-200/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white/80 resize-none max-h-24 min-h-[40px] leading-relaxed transition-colors font-sans shadow-sm backdrop-blur-sm"
+                 placeholder={hasActiveChart ? "Modify the chart..." : "Describe your chart..."}
+                 value={input}
+                 onChange={handleInputChange}
+                 onPaste={handlePaste}
+                 disabled={isProcessing}
+                 rows={1}
+                 onKeyDown={e => {
+                   if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                     e.preventDefault();
+                     handleSend(e)
+                   }
+                 }}
+               />
+               <button
+                 type="submit"
+                 className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-3 py-2 rounded-lg shadow-lg disabled:opacity-50 transition-all duration-200 transform hover:scale-105 focus:scale-105 disabled:hover:scale-100"
+                 disabled={isProcessing || !input.trim()}
+                 style={{ alignSelf: "flex-end", height: 40 }}
+               >
+                 <Send className="inline-block w-4 h-4" />
+               </button>
+             </form>
+
+            {/* Modification Examples */}
+            {hasActiveChart && (
+              <div className={`w-full transition-all duration-200 ${suggestionsOpen ? 'pb-2' : 'py-1'}`}
+                   style={{minHeight: suggestionsOpen ? undefined : '0', marginBottom: suggestionsOpen ? '0.25rem' : '0'}}>
                 <button
-                  className="absolute top-2 right-2 p-1 rounded hover:bg-emerald-100 transition-colors"
-                  onClick={() => setShowActiveBanner(false)}
-                  aria-label="Close banner"
+                  type="button"
+                  className="flex items-center w-full text-xs font-semibold text-slate-600 mb-1 pl-3 pr-2 py-1 hover:bg-slate-100 rounded transition-colors select-none"
+                  onClick={() => setSuggestionsOpen(v => !v)}
+                  aria-expanded={suggestionsOpen}
+                  style={{justifyContent: 'space-between'}}
                 >
-                  <X className="w-4 h-4 text-emerald-700" />
+                  <span className="flex items-center gap-1"><Sparkles className="w-4 h-4" /> Try asking me to:</span>
+                  {suggestionsOpen ? (
+                    <ChevronUp className="w-4 h-4 ml-1" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 ml-1" />
+                  )}
                 </button>
-                <div className="flex items-center gap-3 text-sm text-emerald-800">
-                  <div className="p-1.5 bg-emerald-100 rounded-lg">
-                    <Sparkles className="w-4 h-4 text-emerald-600" />
+                {suggestionsOpen && (
+                  <div className="flex flex-wrap gap-1.5 px-1 pb-1">
+                    {modificationExamples.map((example, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setInput(example)}
+                        className="text-xs bg-white/80 hover:bg-white border border-slate-200/50 rounded-full px-3 py-1 text-slate-700 hover:text-slate-900 hover:border-slate-300 transition-all duration-200 hover:scale-105 shadow-sm backdrop-blur-sm"
+                        style={{marginBottom: '2px'}}
+                      >
+                        {example}
+                      </button>
+                    ))}
                   </div>
-                  <div>
-                    <span className="font-semibold">Active Chart Conversation</span>
-                    <p className="text-xs text-emerald-600 mt-0.5">
-                      Ask me to modify your chart!
-                    </p>
-                  </div>
-                </div>
+                )}
               </div>
             )}
             
@@ -772,72 +822,30 @@ export default function LandingPage() {
               )}
               <div ref={messagesEndRef} />
             </div>
-            
-            {/* Modification Examples */}
-            {hasActiveChart && (
-              <div className={`w-full transition-all duration-200 ${suggestionsOpen ? 'pb-2' : 'py-1'}`}
-                   style={{minHeight: suggestionsOpen ? undefined : '0', marginBottom: suggestionsOpen ? '0.25rem' : '0'}}>
+
+            {/* Conversation Status Banner - Now at bottom */}
+            {hasActiveChart && showActiveBanner && (
+              <div className="relative px-6 py-4 bg-gradient-to-r from-emerald-50 to-teal-50 border-t border-emerald-200/50 flex-shrink-0">
                 <button
-                  type="button"
-                  className="flex items-center w-full text-xs font-semibold text-slate-600 mb-1 pl-3 pr-2 py-1 hover:bg-slate-100 rounded transition-colors select-none"
-                  onClick={() => setSuggestionsOpen(v => !v)}
-                  aria-expanded={suggestionsOpen}
-                  style={{justifyContent: 'space-between'}}
+                  className="absolute top-2 right-2 p-1 rounded hover:bg-emerald-100 transition-colors"
+                  onClick={() => setShowActiveBanner(false)}
+                  aria-label="Close banner"
                 >
-                  <span className="flex items-center gap-1"><Sparkles className="w-4 h-4" /> Try asking me to:</span>
-                  {suggestionsOpen ? (
-                    <ChevronUp className="w-4 h-4 ml-1" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4 ml-1" />
-                  )}
+                  <X className="w-4 h-4 text-emerald-700" />
                 </button>
-                {suggestionsOpen && (
-                  <div className="flex flex-wrap gap-1.5 px-1 pb-1">
-                    {modificationExamples.map((example, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setInput(example)}
-                        className="text-xs bg-white/80 hover:bg-white border border-slate-200/50 rounded-full px-3 py-1 text-slate-700 hover:text-slate-900 hover:border-slate-300 transition-all duration-200 hover:scale-105 shadow-sm backdrop-blur-sm"
-                        style={{marginBottom: '2px'}}
-                      >
-                        {example}
-                      </button>
-                    ))}
+                <div className="flex items-center gap-3 text-sm text-emerald-800">
+                  <div className="p-1.5 bg-emerald-100 rounded-lg">
+                    <Sparkles className="w-4 h-4 text-emerald-600" />
                   </div>
-                )}
+                  <div>
+                    <span className="font-semibold">Active Chart Conversation</span>
+                    <p className="text-xs text-emerald-600 mt-0.5">
+                      Ask me to modify your chart!
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
-            
-            {/* Input */}
-            <form
-              onSubmit={handleSend}
-              className="p-6 border-t border-white/20 bg-gradient-to-br from-white/90 to-slate-50/90 flex gap-3 rounded-b-3xl shadow-inner backdrop-blur-sm"
-            >
-              <textarea
-                ref={textareaRef}
-                className="flex-1 rounded-xl border border-slate-200/50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white/80 resize-none max-h-32 min-h-[48px] leading-relaxed transition-all font-sans shadow-sm backdrop-blur-sm"
-                placeholder={hasActiveChart ? "Modify the chart..." : "Describe your chart..."}
-                value={input}
-                onChange={handleInputChange}
-                onPaste={handlePaste}
-                disabled={isProcessing}
-                rows={1}
-                onKeyDown={e => {
-                  if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                    e.preventDefault();
-                    handleSend(e)
-                  }
-                }}
-              />
-              <button
-                type="submit"
-                className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-4 py-3 rounded-xl shadow-lg disabled:opacity-50 transition-all duration-200 transform hover:scale-105 focus:scale-105 disabled:hover:scale-100"
-                disabled={isProcessing || !input.trim()}
-                style={{ alignSelf: "flex-end", height: 48 }}
-              >
-                <Send className="inline-block w-5 h-5" />
-              </button>
-            </form>
           </>
         ) : (
           // Collapsed Sidebar - Icon Only

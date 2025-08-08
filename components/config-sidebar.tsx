@@ -1,13 +1,14 @@
 "use client"
 
 import { useChartStore } from "@/lib/chart-store"
+import { useTemplateStore } from "@/lib/template-store"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card } from "@/components/ui/card"
 import { useState, useCallback, useEffect } from "react"
-import { Plus, Trash2, Eye, EyeOff } from "lucide-react"
+import { Plus, Trash2, Eye, EyeOff, FileText, Layout, BarChart3 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { DatasetsSlicesPanel } from "@/components/panels/datasets-slices-panel"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -31,8 +32,19 @@ export function ConfigSidebar() {
     toggleShowLabels,
     toggleDatasetVisibility,
     toggleSliceVisibility,
-    legendFilter
+    legendFilter,
+    overlayImages,
+    updateOverlayImage
   } = useChartStore()
+
+  const { 
+    templates, 
+    currentTemplate, 
+    editorMode,
+    setEditorMode,
+    applyTemplate, 
+    resetTemplate 
+  } = useTemplateStore()
 
   const handleToggleFillArea = useCallback((checked: boolean) => {
     storeToggleFillArea()
@@ -52,6 +64,16 @@ export function ConfigSidebar() {
       updateDataset(index, { borderWidth: checked ? 2 : 0 })
     })
   }, [chartData.datasets, storeToggleShowBorder, updateDataset])
+
+  // Enhanced image toggle that also affects overlay images
+  const handleToggleShowImages = useCallback((checked: boolean) => {
+    toggleShowImages()
+    
+    // Also toggle overlay images visibility
+    overlayImages.forEach((image) => {
+      updateOverlayImage(image.id, { visible: checked })
+    })
+  }, [toggleShowImages, overlayImages, updateOverlayImage])
 
   // Set initial fill and border state for datasets
   useEffect(() => {
@@ -74,20 +96,44 @@ export function ConfigSidebar() {
     { value: 'bubble', label: 'Bubble' },
   ]
 
+  const handleTemplateSelect = (templateId: string) => {
+    applyTemplate(templateId)
+  }
+
   return (
     <div className="h-full flex flex-col">
-      {/* <div className="flex-none p-4 border-b bg-gray-50/50 flex items-center justify-end gap-3">
-        <HistoryDropdown />
-        <Avatar className="h-8 w-8">
-          <AvatarFallback className="bg-blue-200 text-blue-700 font-bold">U</AvatarFallback>
-        </Avatar>
-      </div> */}
-      
-      <div className="flex-1 p-4 space-y-6 overflow-y-auto">
+      <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+        {/* Mode Toggle */}
+        <div className="flex items-center justify-between gap-2 bg-gray-50 rounded-lg p-1">
+          <button
+            onClick={() => setEditorMode('chart')}
+            className={`flex items-center gap-1 px-2 py-1.5 rounded-md transition-colors text-xs ${
+              editorMode === 'chart' 
+                ? 'bg-blue-100 text-blue-700 border border-blue-200' 
+                : 'bg-white text-gray-500 hover:bg-gray-100'
+            }`}
+          >
+            <BarChart3 className="h-3.5 w-3.5" />
+            <span className="font-medium">Chart</span>
+          </button>
+          <button
+            onClick={() => setEditorMode('template')}
+            className={`flex items-center gap-1 px-2 py-1.5 rounded-md transition-colors text-xs ${
+              editorMode === 'template' 
+                ? 'bg-purple-100 text-purple-700 border border-purple-200' 
+                : 'bg-white text-gray-500 hover:bg-gray-100'
+            }`}
+          >
+            <Layout className="h-3.5 w-3.5" />
+            <span className="font-medium">Template</span>
+          </button>
+        </div>
+
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 gap-1 h-auto p-1">
+          <TabsList className="grid w-full grid-cols-3 gap-1 h-auto p-1">
             <TabsTrigger value="general" className="text-xs py-2">General</TabsTrigger>
             <TabsTrigger value="datasets" className="text-xs py-2">Datasets</TabsTrigger>
+            <TabsTrigger value="templates" className="text-xs py-2">Templates</TabsTrigger>
           </TabsList>
 
           <TabsContent value="general" className="mt-4 space-y-3">
@@ -146,7 +192,7 @@ export function ConfigSidebar() {
                   <Switch
                     id="show-images"
                     checked={showImages}
-                    onCheckedChange={toggleShowImages}
+                    onCheckedChange={handleToggleShowImages}
                   />
                 </div>
                 <div className="h-6 w-px bg-gray-200 mx-2" />
@@ -203,6 +249,86 @@ export function ConfigSidebar() {
 
           <TabsContent value="datasets" className="mt-4">
             <DatasetsSlicesPanel />
+          </TabsContent>
+
+          <TabsContent value="templates" className="mt-4">
+            <div className="space-y-4">
+              <div className="text-sm font-medium text-gray-900 mb-3">Chart Templates</div>
+              <div className="grid grid-cols-1 gap-3">
+                {templates.map((template) => (
+                  <div
+                    key={template.id}
+                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
+                      currentTemplate?.id === template.id
+                        ? 'border-blue-500 bg-blue-50 shadow-md'
+                        : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/50'
+                    }`}
+                    onClick={() => handleTemplateSelect(template.id)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <FileText className="h-4 w-4 text-blue-600" />
+                          <h4 className="font-semibold text-sm text-gray-900">{template.name}</h4>
+                        </div>
+                        <p className="text-xs text-gray-600 mb-2">{template.description}</p>
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                            {template.width} × {template.height}px
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                            {template.textAreas.length} text areas
+                          </span>
+                        </div>
+                      </div>
+                      {currentTemplate?.id === template.id && (
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                          <span className="text-blue-600 text-xs font-medium">Active</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {!currentTemplate && (
+                <div className="mt-4 pt-4 border-t">
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-600">
+                      Select a template above to start customizing your chart with text areas and styling.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {currentTemplate && (
+                <div className="mt-4 pt-4 border-t">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h5 className="text-sm font-semibold text-gray-900">Active Template: {currentTemplate.name}</h5>
+                      <p className="text-xs text-gray-500 mt-1">{currentTemplate.description}</p>
+                    </div>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={resetTemplate}
+                      className="text-xs"
+                    >
+                      Reset to Default
+                    </Button>
+                  </div>
+                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-xs text-yellow-800">
+                      💡 Click "Reset to Default" to remove the template and return to the basic chart view.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       </div>

@@ -1,13 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ChevronUp, ChevronDown, History , Trash2, Clock, MessageSquare } from "lucide-react";
 import { useHistoryStore } from "@/lib/history-store";
-import { Portal } from "@radix-ui/react-portal";
 
 export function HistoryDropdown() {
   const [open, setOpen] = useState(false);
   const { conversations, deleteConversation, restoreConversation } = useHistoryStore();
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Handle clicks outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    if (open) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [open]);
 
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -36,7 +53,7 @@ export function HistoryDropdown() {
   };
 
   return (
-    <div>
+    <div ref={dropdownRef}>
       <div className="relative">
         <button
           data-history-dropdown
@@ -48,8 +65,7 @@ export function HistoryDropdown() {
           {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
         {open && (
-          <Portal>
-            <div className="absolute right-0 mt-1 bg-white/95 border shadow-lg rounded-lg max-h-[60vh] w-80 overflow-y-auto z-[1000]" style={{right: '1rem', top: '3.5rem', position: 'fixed'}}>
+          <div className="absolute right-0 mt-1 bg-white/95 border shadow-lg rounded-lg max-h-[60vh] w-80 overflow-y-auto z-[1000]" style={{right: '1rem', top: '3.5rem', position: 'fixed'}}>
             {conversations.length === 0 ? (
               <div className="p-4 text-sm text-gray-500 text-center">
                 <MessageSquare className="h-8 w-8 mx-auto mb-2 text-gray-300" />
@@ -100,7 +116,6 @@ export function HistoryDropdown() {
               </div>
             )}
           </div>
-          </Portal>
         )}
       </div>
     </div>

@@ -57,42 +57,46 @@ export function ChatWindow({
   const enhancedHandleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     handleInputChange(e)
     
-    // Auto-resize logic for ChatWindow textarea
-    const updateHeight = () => {
-      if (textareaRef.current) {
-        if (e.target.value === "") {
-          textareaRef.current.style.height = "48px"
-          textareaRef.current.style.overflowY = "hidden"
-        } else {
-          textareaRef.current.style.height = "48px"
-          const maxHeight = 128
-          textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`
-          textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > maxHeight ? "auto" : "hidden"
+    // Optimized auto-resize logic with debouncing for ChatWindow textarea
+    if (textareaRef.current) {
+      // Clear any existing timeout
+      if (textareaRef.current.dataset.resizeTimeout) {
+        clearTimeout(Number(textareaRef.current.dataset.resizeTimeout))
+      }
+      
+      const updateHeight = () => {
+        if (textareaRef.current) {
+          if (e.target.value === "") {
+            textareaRef.current.style.height = "36px"
+            textareaRef.current.style.overflowY = "hidden"
+          } else {
+            textareaRef.current.style.height = "36px"
+            const maxHeight = 80
+            textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`
+            textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > maxHeight ? "auto" : "hidden"
+          }
         }
       }
+      
+      // Debounce the height update to reduce performance impact
+      const timeoutId = setTimeout(updateHeight, 16) // ~60fps
+      textareaRef.current.dataset.resizeTimeout = timeoutId.toString()
     }
-    
-    requestAnimationFrame(updateHeight)
-    setTimeout(updateHeight, 10)
   }, [handleInputChange, textareaRef])
 
   // Enhanced paste handler for ChatWindow
   const enhancedHandlePaste = useCallback(() => {
     handlePaste()
     
-    // Multiple timing checks for paste operations
-    const updateHeight = () => {
+    // Single timeout for paste operations to reduce performance impact
+    setTimeout(() => {
       if (textareaRef.current) {
-        textareaRef.current.style.height = "48px"
-        const maxHeight = 128
+        textareaRef.current.style.height = "36px"
+        const maxHeight = 80
         textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`
         textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > maxHeight ? "auto" : "hidden"
       }
-    }
-    
-    setTimeout(updateHeight, 10)
-    setTimeout(updateHeight, 50)
-    setTimeout(updateHeight, 100)
+    }, 10)
   }, [handlePaste, textareaRef])
 
   // Initial height adjustment when input value changes
@@ -100,8 +104,8 @@ export function ChatWindow({
     if (textareaRef.current && input) {
       const updateHeight = () => {
         if (textareaRef.current) {
-          textareaRef.current.style.height = "48px"
-          const maxHeight = 128
+          textareaRef.current.style.height = "36px"
+          const maxHeight = 80
           textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`
           textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > maxHeight ? "auto" : "hidden"
         }
@@ -112,32 +116,71 @@ export function ChatWindow({
 
   return (
     <div className={`flex flex-col h-full ${className}`}>
-      {/* Conversation Status */}
-      {hasActiveChart && showActiveBanner && (
-        <div className="relative px-4 py-3 bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-emerald-200/50 flex-shrink-0">
+      {/* Input */}
+      <form
+        onSubmit={onSend}
+        className="p-2 border-t border-white/20 bg-gradient-to-br from-white/90 to-slate-50/90 flex gap-2 shadow-inner backdrop-blur-sm flex-shrink-0"
+      >
+        <textarea
+          ref={textareaRef}
+          className="flex-1 rounded-lg border border-slate-200/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white/80 resize-none max-h-20 min-h-[36px] leading-relaxed transition-colors shadow-sm backdrop-blur-sm"
+          placeholder={hasActiveChart ? "Modify the chart..." : "Describe your chart..."}
+          value={input}
+          onChange={enhancedHandleInputChange}
+          onPaste={enhancedHandlePaste}
+          disabled={isProcessing}
+          rows={1}
+          onKeyDown={e => {
+            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              onSend(e)
+            }
+          }}
+        />
+        <button
+          type="submit"
+          className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-2.5 py-2 rounded-lg shadow-lg disabled:opacity-50 transition-all duration-200 transform hover:scale-105 focus:scale-105 disabled:hover:scale-100 self-end"
+          disabled={isProcessing || !input.trim()}
+        >
+          <Send className="inline-block w-3.5 h-3.5" />
+        </button>
+      </form>
+
+      {/* Modification Examples */}
+      {hasActiveChart && (
+        <div className={`transition-all duration-200 ${suggestionsOpen ? 'pb-2' : 'py-1'} flex-shrink-0`}>
           <button
-            className="absolute top-2 right-2 p-1 rounded hover:bg-emerald-100 transition-colors"
-            onClick={() => setShowActiveBanner(false)}
-            aria-label="Close banner"
+            type="button"
+            className="flex items-center w-full text-xs font-semibold text-slate-600 mb-1 pl-3 pr-2 py-1 hover:bg-slate-100 rounded transition-colors select-none"
+            onClick={() => setSuggestionsOpen(v => !v)}
+            aria-expanded={suggestionsOpen}
+            style={{justifyContent: 'space-between'}}
           >
-            <X className="w-4 h-4 text-emerald-700" />
+            <span className="flex items-center gap-1"><Sparkles className="w-4 h-4" /> Try asking me to:</span>
+            {suggestionsOpen ? (
+              <ChevronUp className="w-4 h-4 ml-1" />
+            ) : (
+              <ChevronDown className="w-4 h-4 ml-1" />
+            )}
           </button>
-          <div className="flex items-center gap-3 text-sm text-emerald-800">
-            <div className="p-1.5 bg-emerald-100 rounded-lg">
-              <Sparkles className="w-4 h-4 text-emerald-600" />
+          {suggestionsOpen && (
+            <div className="flex flex-wrap gap-1.5 px-1 pb-1">
+              {modificationExamples.map((example, index) => (
+                <button
+                  key={index}
+                  onClick={() => setInput(example)}
+                  className="text-xs bg-white/80 hover:bg-white border border-slate-200/50 rounded-full px-3 py-1 text-slate-700 hover:text-slate-900 hover:border-slate-300 transition-all duration-200 hover:scale-105 shadow-sm backdrop-blur-sm"
+                >
+                  {example}
+                </button>
+              ))}
             </div>
-            <div>
-              <span className="font-semibold">Active Chart Conversation</span>
-              <p className="text-xs text-emerald-600 mt-0.5">
-                Ask me to modify your chart!
-              </p>
-            </div>
-          </div>
+          )}
         </div>
       )}
       
       {/* Messages */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-3 py-2 space-y-2 bg-gradient-to-b from-white/80 to-slate-50/80">
+      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2 bg-gradient-to-b from-white/80 to-slate-50/80 font-sans">
         {messages.map((msg, idx) => (
           <div
             key={idx}
@@ -197,69 +240,30 @@ export function ChatWindow({
         )}
         <div ref={messagesEndRef} />
       </div>
-      
-      {/* Modification Examples */}
-      {hasActiveChart && (
-        <div className={`transition-all duration-200 ${suggestionsOpen ? 'pb-2' : 'py-1'} flex-shrink-0`}>
+
+      {/* Conversation Status Banner - Now at bottom */}
+      {hasActiveChart && showActiveBanner && (
+        <div className="relative px-4 py-3 bg-gradient-to-r from-emerald-50 to-teal-50 border-t border-emerald-200/50 flex-shrink-0">
           <button
-            type="button"
-            className="flex items-center w-full text-xs font-semibold text-slate-600 mb-1 pl-3 pr-2 py-1 hover:bg-slate-100 rounded transition-colors select-none"
-            onClick={() => setSuggestionsOpen(v => !v)}
-            aria-expanded={suggestionsOpen}
-            style={{justifyContent: 'space-between'}}
+            className="absolute top-2 right-2 p-1 rounded hover:bg-emerald-100 transition-colors"
+            onClick={() => setShowActiveBanner(false)}
+            aria-label="Close banner"
           >
-            <span className="flex items-center gap-1"><Sparkles className="w-4 h-4" /> Try asking me to:</span>
-            {suggestionsOpen ? (
-              <ChevronUp className="w-4 h-4 ml-1" />
-            ) : (
-              <ChevronDown className="w-4 h-4 ml-1" />
-            )}
+            <X className="w-4 h-4 text-emerald-700" />
           </button>
-          {suggestionsOpen && (
-            <div className="flex flex-wrap gap-1.5 px-1 pb-1">
-              {modificationExamples.map((example, index) => (
-                <button
-                  key={index}
-                  onClick={() => setInput(example)}
-                  className="text-xs bg-white/80 hover:bg-white border border-slate-200/50 rounded-full px-3 py-1 text-slate-700 hover:text-slate-900 hover:border-slate-300 transition-all duration-200 hover:scale-105 shadow-sm backdrop-blur-sm"
-                >
-                  {example}
-                </button>
-              ))}
+          <div className="flex items-center gap-3 text-sm text-emerald-800">
+            <div className="p-1.5 bg-emerald-100 rounded-lg">
+              <Sparkles className="w-4 h-4 text-emerald-600" />
             </div>
-          )}
+            <div>
+              <span className="font-semibold">Active Chart Conversation</span>
+              <p className="text-xs text-emerald-600 mt-0.5">
+                Ask me to modify your chart!
+              </p>
+            </div>
+          </div>
         </div>
       )}
-      
-      {/* Input */}
-      <form
-        onSubmit={onSend}
-        className="p-4 border-t border-white/20 bg-gradient-to-br from-white/90 to-slate-50/90 flex gap-3 shadow-inner backdrop-blur-sm flex-shrink-0"
-      >
-        <textarea
-          ref={textareaRef}
-          className="flex-1 rounded-xl border border-slate-200/50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white/80 resize-none max-h-32 min-h-[48px] leading-relaxed transition-all shadow-sm backdrop-blur-sm"
-          placeholder={hasActiveChart ? "Modify the chart..." : "Describe your chart..."}
-          value={input}
-          onChange={enhancedHandleInputChange}
-          onPaste={enhancedHandlePaste}
-          disabled={isProcessing}
-          rows={1}
-          onKeyDown={e => {
-            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-              e.preventDefault();
-              onSend(e)
-            }
-          }}
-        />
-        <button
-          type="submit"
-          className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-4 py-3 rounded-xl shadow-lg disabled:opacity-50 transition-all duration-200 transform hover:scale-105 focus:scale-105 disabled:hover:scale-100 self-end"
-          disabled={isProcessing || !input.trim()}
-        >
-          <Send className="inline-block w-5 h-5" />
-        </button>
-      </form>
     </div>
   )
 } 
