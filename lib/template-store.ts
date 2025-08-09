@@ -56,6 +56,10 @@ interface TemplateStore {
   // Current template state
   currentTemplate: TemplateLayout | null
   selectedTextAreaId: string | null
+  // Draft template state (used for creating/editing without affecting current)
+  draftTemplate: TemplateLayout | null
+  setDraftTemplate: (template: TemplateLayout | null) => void
+  clearDraft: () => void
   
   // Editor mode state
   editorMode: EditorMode
@@ -73,6 +77,11 @@ interface TemplateStore {
   updateTextArea: (id: string, updates: Partial<TemplateTextArea>) => void
   deleteTextArea: (id: string) => void
   setSelectedTextAreaId: (id: string | null) => void
+
+  // Draft text area management
+  addDraftTextArea: (textArea: Omit<TemplateTextArea, 'id'>) => void
+  updateDraftTextArea: (id: string, updates: Partial<TemplateTextArea>) => void
+  deleteDraftTextArea: (id: string) => void
   
   // Template operations
   applyTemplate: (templateId: string) => void
@@ -376,10 +385,14 @@ export const useTemplateStore = create<TemplateStore>()(
     (set, get) => ({
       currentTemplate: null,
       selectedTextAreaId: null,
+      draftTemplate: null,
       templates: defaultTemplates,
       editorMode: 'chart',
       templateInBackground: null,
       
+      setDraftTemplate: (template) => set({ draftTemplate: template }),
+      clearDraft: () => set({ draftTemplate: null }),
+
       setCurrentTemplate: (template) => set({ currentTemplate: template }),
       
       addTemplate: (template) => set((state) => ({
@@ -393,10 +406,33 @@ export const useTemplateStore = create<TemplateStore>()(
           : state.currentTemplate
       })),
       
-      deleteTemplate: (id) => set((state) => ({
-        templates: state.templates.filter(t => t.id !== id),
-        currentTemplate: state.currentTemplate?.id === id ? null : state.currentTemplate
-      })),
+      deleteTemplate: (id) => set((state) => {
+        const remaining = state.templates.filter(t => t.id !== id)
+        const deletedWasCurrent = state.currentTemplate?.id === id
+        const deletedWasBackground = state.templateInBackground?.id === id
+        const fallback = defaultTemplates[0]
+
+        const next: any = { templates: remaining }
+
+        if (deletedWasCurrent) {
+          next.currentTemplate = { ...fallback }
+          next.templateInBackground = state.editorMode === 'template' ? { ...fallback } : state.templateInBackground
+
+          const chartStore = useChartStore.getState()
+          chartStore.updateChartConfig({
+            ...chartStore.chartConfig,
+            manualDimensions: true,
+            width: `${fallback.chartArea.width}px`,
+            height: `${fallback.chartArea.height}px`,
+            responsive: false,
+            maintainAspectRatio: false
+          })
+        } else if (deletedWasBackground) {
+          next.templateInBackground = { ...fallback }
+        }
+
+        return next
+      }),
       
       addTextArea: (textArea) => set((state) => {
         const newTextArea = { ...textArea, id: `text-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` }
@@ -444,6 +480,50 @@ export const useTemplateStore = create<TemplateStore>()(
       }),
       
       setSelectedTextAreaId: (id) => set({ selectedTextAreaId: id }),
+
+      // Draft text area operations
+      addDraftTextArea: (textArea) => set((state) => {
+        const newTextArea = { ...textArea, id: `text-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` }
+        // Enforce uniqueness of singletons
+        if (["title","heading","main"].includes(textArea.type)) {
+          if (state.draftTemplate?.textAreas.some(t => t.type === textArea.type)) {
+            return state
+          }
+        }
+        if (state.draftTemplate) {
+          return {
+            draftTemplate: {
+              ...state.draftTemplate,
+              textAreas: [...state.draftTemplate.textAreas, newTextArea]
+            }
+          }
+        }
+        return state
+      }),
+      updateDraftTextArea: (id, updates) => set((state) => {
+        if (state.draftTemplate) {
+          return {
+            draftTemplate: {
+              ...state.draftTemplate,
+              textAreas: state.draftTemplate.textAreas.map(ta => 
+                ta.id === id ? { ...ta, ...updates } : ta
+              )
+            }
+          }
+        }
+        return state
+      }),
+      deleteDraftTextArea: (id) => set((state) => {
+        if (state.draftTemplate) {
+          return {
+            draftTemplate: {
+              ...state.draftTemplate,
+              textAreas: state.draftTemplate.textAreas.filter(ta => ta.id !== id)
+            }
+          }
+        }
+        return state
+      }),
       
       applyTemplate: (templateId) => {
         const template = get().templates.find(t => t.id === templateId)

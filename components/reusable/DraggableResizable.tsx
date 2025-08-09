@@ -13,6 +13,9 @@ export interface DraggableResizableProps {
   minHeight?: number
   bounds: { width: number; height: number }
   grid?: number // snap size (px). 0 or undefined disables snapping
+  // The visual scale applied to the parent surface (e.g., template zoom).
+  // Used to convert mouse positions (in CSS pixels) to logical coordinates.
+  scale?: number
   selected?: boolean
   onSelect?: () => void
   onChange: (rect: { x: number; y: number; width: number; height: number }) => void
@@ -37,6 +40,7 @@ export function DraggableResizable({
   minHeight = 30,
   bounds,
   grid,
+  scale = 1,
   selected = true,
   onSelect,
   onChange,
@@ -68,8 +72,55 @@ export function DraggableResizable({
     e.stopPropagation()
     e.preventDefault()
     onSelect?.()
+    // First, detect if we're near an edge to start resizing even if not clicking the small handle square
+    const elRect = containerRef.current!.getBoundingClientRect()
+    const px = e.clientX - elRect.left
+    const py = e.clientY - elRect.top
+    const HS = 8 // same tolerance as hover
+    const nearLeft = px <= HS
+    const nearRight = px >= elRect.width - HS
+    const nearTop = py <= HS
+    const nearBottom = py >= elRect.height - HS
+    let inferredHandle: ResizeHandle | null = null
+    if ((nearLeft && nearTop)) inferredHandle = "nw"
+    else if ((nearRight && nearTop)) inferredHandle = "ne"
+    else if ((nearLeft && nearBottom)) inferredHandle = "sw"
+    else if ((nearRight && nearBottom)) inferredHandle = "se"
+    else if (nearLeft) inferredHandle = "w"
+    else if (nearRight) inferredHandle = "e"
+    else if (nearTop) inferredHandle = "n"
+    else if (nearBottom) inferredHandle = "s"
+
+    if (inferredHandle) {
+      // Begin resizing from edge proximity
+      setIsResizing(inferredHandle)
+      startRect.current = { x, y, width, height }
+      switch (inferredHandle) {
+        case "nw":
+        case "se":
+          setCursor("nwse-resize"); break
+        case "ne":
+        case "sw":
+          setCursor("nesw-resize"); break
+        case "n":
+        case "s":
+          setCursor("ns-resize"); break
+        case "e":
+        case "w":
+          setCursor("ew-resize"); break
+      }
+      return
+    }
+
+    // Otherwise, begin dragging
     setIsDragging(true)
-    dragOffset.current = { dx: e.clientX - x, dy: e.clientY - y }
+    // Account for parent scaling when computing initial drag offset
+    const parentRect = containerRef.current?.parentElement?.getBoundingClientRect() || containerRef.current!.getBoundingClientRect()
+    const localX = (e.clientX - parentRect.left) / scale
+    const localY = (e.clientY - parentRect.top) / scale
+    dragOffset.current = { dx: localX - x, dy: localY - y }
+    // Store the starting rect for consistent movement with scaling
+    startRect.current = { x, y, width, height }
     setCursor("grabbing")
   }
 
@@ -97,17 +148,25 @@ export function DraggableResizable({
 
   const handleMove = useCallback((clientX: number, clientY: number) => {
     if (isDragging) {
-      const nx = snap(clientX - dragOffset.current.dx, grid)
-      const ny = snap(clientY - dragOffset.current.dy, grid)
-      onChange(clampRect({ x: nx, y: ny, width, height }))
+      const rect = containerRef.current?.parentElement?.getBoundingClientRect()
+      // Fallback to own rect if parent not found
+      const baseRect = rect || containerRef.current!.getBoundingClientRect()
+      const localX = (clientX - baseRect.left) / scale
+      const localY = (clientY - baseRect.top) / scale
+      const nx = snap(localX - dragOffset.current.dx, grid)
+      const ny = snap(localY - dragOffset.current.dy, grid)
+      onChange(clampRect({ x: nx, y: ny, width: startRect.current.width, height: startRect.current.height }))
     } else if (isResizing) {
       const start = startRect.current
       let nx = start.x
       let ny = start.y
       let nwidth = start.width
       let nheight = start.height
-      const mx = clientX
-      const my = clientY
+      const rect = containerRef.current?.parentElement?.getBoundingClientRect()
+      const baseRect = rect || containerRef.current!.getBoundingClientRect()
+      // Mouse coordinates converted to logical coords considering scale
+      const mx = (clientX - baseRect.left) / scale
+      const my = (clientY - baseRect.top) / scale
 
       if (isResizing.includes("e")) {
         nwidth = Math.max(minWidth, snap(mx - start.x, grid))

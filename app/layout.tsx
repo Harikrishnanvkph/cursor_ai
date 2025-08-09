@@ -13,8 +13,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body>
+    <html lang="en" className="h-full bg-gray-50" style={{ backgroundColor: '#f9fafb' }}>
+      <body className="min-h-screen bg-gray-50" style={{ backgroundColor: '#f9fafb' }}>
         {children}
       </body>
     </html>
