@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react"
 import { useTemplateStore, type TemplateLayout } from "@/lib/template-store"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import Link from "next/link"
+import { Pencil, Trash2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -117,15 +119,43 @@ export function TemplatesPanel() {
                     <p className="text-xs text-gray-600 mt-1">{template.description}</p>
                     
                   </div>
-                  {currentTemplate?.id === template.id && (
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                      <span className="text-blue-600 text-xs font-medium">Active</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {template.isCustom && (
+                      <>
+                        <Link href={`/editor/custom-template?id=${template.id}`} onClick={(e:any)=> e.stopPropagation()}>
+                          <Button size="sm" variant="ghost" title="Edit">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                        <Button size="sm" variant="ghost" title="Delete" onClick={(e:any)=>{ e.stopPropagation(); useTemplateStore.getState().deleteTemplate(template.id) }}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                    {currentTemplate?.id === template.id && (
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                        <span className="text-blue-600 text-xs font-medium">Active</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Create custom template entry */}
+          <div className="mt-2">
+            <a
+              href="/editor/custom-template"
+              className="inline-flex items-center px-3 py-2 border border-dashed border-blue-400 rounded-md text-sm text-blue-700 hover:bg-blue-50"
+            >
+              <span className="mr-2">＋</span>
+              Create custom template
+            </a>
+            <p className="text-xs text-gray-500 mt-1">
+              Canvas, Title, Heading, Main: one each. Custom text: many.
+            </p>
           </div>
 
           {!currentTemplate && (

@@ -34,6 +34,7 @@ export interface TemplateLayout {
   description: string
   width: number
   height: number
+  isCustom?: boolean
   chartArea: {
     x: number
     y: number
@@ -399,6 +400,12 @@ export const useTemplateStore = create<TemplateStore>()(
       
       addTextArea: (textArea) => set((state) => {
         const newTextArea = { ...textArea, id: `text-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` }
+        // Enforce uniqueness of singletons
+        if (["title","heading","main"].includes(textArea.type)) {
+          if (state.currentTemplate?.textAreas.some(t => t.type === textArea.type)) {
+            return state
+          }
+        }
         if (state.currentTemplate) {
           return {
             currentTemplate: {
@@ -522,8 +529,9 @@ export const useTemplateStore = create<TemplateStore>()(
     }),
     {
       name: 'template-store',
-      version: 1,
+      version: 2,
       migrate: (persistedState: any, version: number) => {
+        // Initial structure -> v1
         if (version === 0) {
           return {
             currentTemplate: persistedState.currentTemplate || null,
@@ -531,6 +539,19 @@ export const useTemplateStore = create<TemplateStore>()(
             templates: persistedState.templates || defaultTemplates,
             editorMode: 'chart',
             templateInBackground: null
+          }
+        }
+        // v1 -> v2: ensure isCustom is set for previously saved templates
+        if (version === 1) {
+          const defaultIds = new Set(defaultTemplates.map(t => t.id))
+          const migratedTemplates = (persistedState.templates || []).map((t: any) => {
+            if (typeof t.isCustom === 'boolean') return t
+            const looksCustom = String(t.id || '').startsWith('custom-') || /custom/i.test(String(t.name || '')) || !defaultIds.has(t.id)
+            return { ...t, isCustom: !!looksCustom }
+          })
+          return {
+            ...persistedState,
+            templates: migratedTemplates
           }
         }
         return persistedState
