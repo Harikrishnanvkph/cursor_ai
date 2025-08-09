@@ -95,6 +95,15 @@ export function TemplateChartPreview({
 
   // Handle mouse/touch events for panning
   const handleMouseDown = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement
+    // Do not start template panning when interacting with chart canvas or text areas
+    if (
+      target.closest('.template-chart-area') ||
+      target.closest('.template-text-area') ||
+      target.tagName.toLowerCase() === 'canvas'
+    ) {
+      return
+    }
     setIsDragging(true)
     setDragStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y })
   }
@@ -182,7 +191,7 @@ export function TemplateChartPreview({
       .map((textArea) => (
         <div
           key={textArea.id}
-          className={`absolute cursor-pointer transition-all duration-200 ${
+          className={`absolute template-text-area cursor-pointer transition-all duration-200 ${
             selectedTextAreaId === textArea.id 
               ? 'ring-2 ring-blue-500 ring-opacity-50' 
               : 'hover:ring-1 hover:ring-gray-300'
@@ -233,7 +242,7 @@ export function TemplateChartPreview({
 
     return (
       <div
-        className="absolute"
+        className="absolute template-chart-area"
         style={{
           left: template.chartArea.x,
           top: template.chartArea.y,
@@ -243,6 +252,10 @@ export function TemplateChartPreview({
           backgroundColor: showGuides ? 'rgba(59, 130, 246, 0.05)' : 'transparent',
           borderRadius: '4px'
         }}
+        onMouseDown={(e) => { e.stopPropagation() }}
+        onMouseMove={(e) => { e.stopPropagation() }}
+        onMouseUp={(e) => { e.stopPropagation() }}
+        onContextMenu={(e) => { e.stopPropagation() }}
       >
         {/* Chart area label */}
         {showGuides && (

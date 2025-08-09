@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Pencil, Trash2 } from "lucide-react"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -34,6 +35,28 @@ export function TemplatesPanel() {
     updateTextArea, 
     setSelectedTextAreaId
   } = useTemplateStore()
+
+  const [confirmOpen, setConfirmOpen] = React.useState(false)
+  const [pendingDeleteId, setPendingDeleteId] = React.useState<string | null>(null)
+
+  const askDelete = (e: any, id: string) => {
+    e.stopPropagation()
+    setPendingDeleteId(id)
+    setConfirmOpen(true)
+  }
+
+  const confirmDelete = () => {
+    if (pendingDeleteId) {
+      useTemplateStore.getState().deleteTemplate(pendingDeleteId)
+    }
+    setConfirmOpen(false)
+    setPendingDeleteId(null)
+  }
+
+  const cancelDelete = () => {
+    setConfirmOpen(false)
+    setPendingDeleteId(null)
+  }
 
 
 
@@ -103,46 +126,67 @@ export function TemplatesPanel() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 gap-3">
-            {templates.map((template) => (
-              <div
-                key={template.id}
-                className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
-                  currentTemplate?.id === template.id
-                    ? 'border-blue-500 bg-blue-50 shadow-md'
-                    : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/50'
-                }`}
-                onClick={() => handleTemplateSelect(template.id)}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-sm text-gray-900">{template.name}</h4>
-                    <p className="text-xs text-gray-600 mt-1">{template.description}</p>
-                    
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {template.isCustom && (
-                      <>
-                        <Link href={`/editor/custom-template?id=${template.id}`} onClick={(e:any)=> e.stopPropagation()}>
-                          <Button size="sm" variant="ghost" title="Edit">
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        </Link>
-                        <Button size="sm" variant="ghost" title="Delete" onClick={(e:any)=>{ e.stopPropagation(); useTemplateStore.getState().deleteTemplate(template.id) }}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </>
-                    )}
-                    {currentTemplate?.id === template.id && (
+            {templates.map((template) => {
+              const isActive = currentTemplate?.id === template.id
+              const showDescription = !(template.isCustom && /draft/i.test(String(template.description || '')))
+              return (
+                <div
+                  key={template.id}
+                  className={`group p-4 rounded-lg cursor-pointer transition-all duration-200 border ${
+                    isActive
+                      ? 'border-blue-300 bg-blue-50 ring-1 ring-blue-200 shadow-sm'
+                      : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/40'
+                  }`}
+                  onClick={() => handleTemplateSelect(template.id)}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                        <span className="text-blue-600 text-xs font-medium">Active</span>
+                        {isActive && (
+                          <span className="inline-block h-2.5 w-2.5 rounded-full bg-blue-600 ring-2 ring-blue-200 flex-shrink-0" title="Active" />
+                        )}
+                        <h4 className="font-semibold text-sm text-gray-900 truncate">{template.name}</h4>
                       </div>
-                    )}
+                      {template.isCustom && (
+                        <div className="mt-1">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-purple-700 bg-purple-100 border border-purple-200 rounded-full">
+                            Custom
+                          </span>
+                        </div>
+                      )}
+                      {showDescription && (
+                        <p className="text-xs text-gray-600 mt-1 line-clamp-2">{template.description}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {template.isCustom && (
+                        <>
+                          <Link href={`/editor/custom-template?id=${template.id}`} onClick={(e:any)=> e.stopPropagation()}>
+                            <Button size="icon" variant="ghost" className="h-8 w-8" title="Edit">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                          <Button size="icon" variant="ghost" className="h-8 w-8" title="Delete" onClick={(e:any)=> askDelete(e, template.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
+
+          <ConfirmDialog
+            open={confirmOpen}
+            title="Delete template?"
+            description="This will permanently remove the custom template."
+            confirmText="Delete"
+            cancelText="Cancel"
+            onConfirm={confirmDelete}
+            onCancel={cancelDelete}
+          />
 
           {/* Create custom template entry */}
           <div className="mt-2">

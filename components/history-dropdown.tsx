@@ -2,12 +2,15 @@
 
 import { useState, useEffect, useRef } from "react";
 import { ChevronUp, ChevronDown, History , Trash2, Clock, MessageSquare } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useHistoryStore } from "@/lib/history-store";
 
 export function HistoryDropdown() {
   const [open, setOpen] = useState(false);
   const { conversations, deleteConversation, restoreConversation } = useHistoryStore();
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   // Handle clicks outside to close dropdown
   useEffect(() => {
@@ -25,6 +28,23 @@ export function HistoryDropdown() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [open]);
+  const askDelete = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setPendingDeleteId(id);
+    setConfirmOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (pendingDeleteId) deleteConversation(pendingDeleteId);
+    setConfirmOpen(false);
+    setPendingDeleteId(null);
+  };
+
+  const cancelDelete = () => {
+    setConfirmOpen(false);
+    setPendingDeleteId(null);
+  };
+
 
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -65,6 +85,7 @@ export function HistoryDropdown() {
           {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
         {open && (
+          <>
           <div className="absolute right-0 mt-1 bg-white/95 border shadow-lg rounded-lg max-h-[60vh] w-80 overflow-y-auto z-[1000]" style={{right: '1rem', top: '3.5rem', position: 'fixed'}}>
             {conversations.length === 0 ? (
               <div className="p-4 text-sm text-gray-500 text-center">
@@ -103,10 +124,7 @@ export function HistoryDropdown() {
                     </div>
                     <button
                       className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteConversation(conv.id);
-                      }}
+                      onClick={(e) => askDelete(e, conv.id)}
                       title="Delete conversation"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -116,6 +134,16 @@ export function HistoryDropdown() {
               </div>
             )}
           </div>
+          <ConfirmDialog
+            open={confirmOpen}
+            title="Delete conversation?"
+            description="This will permanently remove this conversation from history."
+            confirmText="Delete"
+            cancelText="Cancel"
+            onConfirm={confirmDelete}
+            onCancel={cancelDelete}
+          />
+          </>
         )}
       </div>
     </div>

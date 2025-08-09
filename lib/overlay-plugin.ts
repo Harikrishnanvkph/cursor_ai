@@ -785,7 +785,7 @@ export const overlayPlugin = {
         const originalLines = selectedText.text.split('\n')
         const allLines: string[] = []
         
-        originalLines.forEach(line => {
+        originalLines.forEach((line: string) => {
           if (selectedText.maxWidth && selectedText.maxWidth > 0) {
             // Apply text wrapping
             const wrappedLines = wrapText(ctx, line, selectedText.maxWidth)
@@ -800,7 +800,7 @@ export const overlayPlugin = {
         
         // Calculate total dimensions for multi-line text
         let maxWidth = 0
-        allLines.forEach(line => {
+        allLines.forEach((line: string) => {
           const textMetrics = ctx.measureText(line)
           maxWidth = Math.max(maxWidth, textMetrics.width)
         })
@@ -833,13 +833,17 @@ export const overlayPlugin = {
     // Mouse event handlers
     const handleMouseDown = (event: MouseEvent) => {
       const rect = canvas.getBoundingClientRect()
-      const x = event.clientX - rect.left
-      const y = event.clientY - rect.top
+      // Map client coordinates to canvas internal coordinates to handle CSS transforms (scale/translate)
+      const scaleX = canvas.width / rect.width
+      const scaleY = canvas.height / rect.height
+      const x = (event.clientX - rect.left) * scaleX
+      const y = (event.clientY - rect.top) * scaleY
       const chartArea = chart.chartArea
       
-      // Get overlay data
-      const overlayImages = (chart.options as any)?.overlayImages || []
-      const overlayTexts = (chart.options as any)?.overlayTexts || []
+      // Get overlay data from plugin options
+      const overlayDataRoot = (chart.options as any)?.plugins?.overlayPlugin || {}
+      const overlayImages = overlayDataRoot.overlayImages || []
+      const overlayTexts = overlayDataRoot.overlayTexts || []
       
       // Check if clicking on any overlay (check in reverse zIndex order for top-most)
       const allOverlays = [
@@ -1036,13 +1040,16 @@ export const overlayPlugin = {
       event.preventDefault() // Prevent default browser context menu
       
       const rect = canvas.getBoundingClientRect()
-      const x = event.clientX - rect.left
-      const y = event.clientY - rect.top
+      const scaleX = canvas.width / rect.width
+      const scaleY = canvas.height / rect.height
+      const x = (event.clientX - rect.left) * scaleX
+      const y = (event.clientY - rect.top) * scaleY
       const chartArea = chart.chartArea
       
-      // Get overlay data
-      const overlayImages = (chart.options as any)?.overlayImages || []
-      const overlayTexts = (chart.options as any)?.overlayTexts || []
+      // Get overlay data from plugin options
+      const overlayDataRoot = (chart.options as any)?.plugins?.overlayPlugin || {}
+      const overlayImages = overlayDataRoot.overlayImages || []
+      const overlayTexts = overlayDataRoot.overlayTexts || []
       
       // Check if right-clicking on any overlay
       const allOverlays = [
@@ -1157,8 +1164,10 @@ export const overlayPlugin = {
     
     const handleMouseMove = (event: MouseEvent) => {
       const rect = canvas.getBoundingClientRect()
-      const x = event.clientX - rect.left
-      const y = event.clientY - rect.top
+      const scaleX = canvas.width / rect.width
+      const scaleY = canvas.height / rect.height
+      const x = (event.clientX - rect.left) * scaleX
+      const y = (event.clientY - rect.top) * scaleY
       const chartArea = chart.chartArea
       
       if (dragState.isResizing) {
@@ -1172,7 +1181,8 @@ export const overlayPlugin = {
         let newY = dragState.startY - chartArea.top
         
         // Get the image to check if it's a circle
-        const overlayImages = (chart.options as any)?.overlayImages || []
+        const overlayDataRoot = (chart.options as any)?.plugins?.overlayPlugin || {}
+        const overlayImages = overlayDataRoot.overlayImages || []
         const currentImage = overlayImages.find((img: any) => img.id === dragState.dragId)
         
         if (currentImage && currentImage.shape === 'circle') {
