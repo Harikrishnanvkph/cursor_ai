@@ -66,7 +66,7 @@ ChartJS.register(
 console.log('🟢🟢🟢 CHART.JS REGISTRATION STARTING 🟢🟢🟢')
 console.log('🟢 Registered controllers:', Object.keys(ChartJS.registry.controllers))
 console.log('🟢 Registered plugins:', Object.keys(ChartJS.registry.plugins))
-console.log('🟢 Looking for overlayPlugin:', ChartJS.registry.plugins.overlayPlugin ? 'FOUND' : 'NOT FOUND')
+console.log('🟢 Overlay plugin registered:', typeof (overlayPlugin as any)?.id === 'string' ? (overlayPlugin as any).id : 'unknown')
 console.log('🟢🟢🟢 CHART.JS REGISTRATION COMPLETED 🟢🟢🟢')
 
 export default ChartJS 

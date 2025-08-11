@@ -180,7 +180,7 @@ export default function EditorPage() {
         </div>
         {/* Bottom Navigation - horizontally scrollable, tiles never squish */}
         {/* fixed right-0 left-0 bottom-0 top-0 */}
-        <nav className="fixed right-0 left-0 bottom-0 w-full bg-white border-t z-50 overflow-x-auto whitespace-nowrap flex-shrink-0">
+        <nav className="fixed right-0 left-0 bottom-0 w-full bg-white border-t z-50 overflow-x-auto whitespace-nowrap flex-shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] backdrop-blur-md">
           <div className="flex flex-row min-w-full">
             {TABS.map((tab) => {
               const Icon = tab.icon
