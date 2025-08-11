@@ -50,11 +50,16 @@ const customLabelPlugin = {
     chart.data.datasets.forEach((dataset, datasetIdx) => {
       const meta = chart.getDatasetMeta(datasetIdx);
       if (!meta || !meta.data) return;
+      // Respect default Chart.js dataset visibility
+      if (typeof chart.isDatasetVisible === 'function' && chart.isDatasetVisible(datasetIdx) === false) return;
       
       const labelArr = opts.labels[datasetIdx] || [];
       meta.data.forEach((element, pointIdx) => {
         const label = labelArr[pointIdx];
         if (!label || !label.text) return;
+        // Respect default slice visibility for pie/doughnut/polarArea
+        if ((chart.config.type === 'pie' || chart.config.type === 'doughnut' || chart.config.type === 'polarArea') &&
+            typeof chart.getDataVisibility === 'function' && chart.getDataVisibility(pointIdx) === false) return;
         
         // Position logic
         let x = label.x;
@@ -80,14 +85,27 @@ const customLabelPlugin = {
           // Arrow always from anchorX, anchorY to x, y
           // (Arrow drawing code below should use these)
         } else if (anchor === 'callout' && label.draggable) {
-          // Fallback for other chart types (previous logic)
+          // Default callout position for non-bar charts
           if (label.relX !== undefined && label.relY !== undefined && chart.width && chart.height) {
             x = label.relX * chart.width;
             y = label.relY * chart.height;
           } else {
             const offset = label.calloutOffset || shapeSize * 1.5;
-            x = (element.x ?? 0) + offset;
-            y = (element.y ?? 0) - offset;
+            if (chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea') {
+              const chartArea = chart.chartArea;
+              const centerX = chartArea.left + chartArea.width / 2;
+              const centerY = chartArea.top + chartArea.height / 2;
+              const startAngle = element.startAngle ?? 0;
+              const endAngle = element.endAngle ?? 0;
+              const midAngle = (startAngle + endAngle) / 2;
+              const outerRadius = element.outerRadius ?? Math.min(chartArea.width, chartArea.height) / 2;
+              const r = outerRadius + offset;
+              x = centerX + Math.cos(midAngle) * r;
+              y = centerY + Math.sin(midAngle) * r;
+            } else {
+              x = (element.x ?? 0) + offset;
+              y = (element.y ?? 0) - offset;
+            }
           }
         } else {
           // Anchor-based logic for center, top, bottom
@@ -175,13 +193,16 @@ const customLabelPlugin = {
           
           const chartType = chart.config.type;
           if (chartType === "pie" || chartType === "doughnut" || chartType === "polarArea") {
+            // Anchor each arrow to its own slice's outer mid-angle
             const chartArea = chart.chartArea;
             const centerX = chartArea.left + chartArea.width / 2;
             const centerY = chartArea.top + chartArea.height / 2;
-            const angle = Math.atan2(startY - centerY, startX - centerX);
-            const radius = Math.min(chartArea.width, chartArea.height) / 2;
-            startX = centerX + Math.cos(angle) * radius;
-            startY = centerY + Math.sin(angle) * radius;
+            const startAngle = element.startAngle ?? 0;
+            const endAngle = element.endAngle ?? 0;
+            const midAngle = (startAngle + endAngle) / 2;
+            const outerRadius = element.outerRadius ?? Math.min(chartArea.width, chartArea.height) / 2;
+            startX = centerX + Math.cos(midAngle) * outerRadius;
+            startY = centerY + Math.sin(midAngle) * outerRadius;
           }
           
           const endGap = label.arrowEndGap || 10;
@@ -198,26 +219,85 @@ const customLabelPlugin = {
             if (label.arrowLine) {
               ctx.beginPath();
               ctx.moveTo(startX, startY);
-              ctx.lineTo(endX, endY);
+              // Optional elbow support in exported HTML as well
+              if (label.arrowSegments === 2) {
+                let bendX = label.arrowBendX;
+                let bendY = label.arrowBendY;
+                if ((bendX == null || bendY == null) && label.arrowBendRelX != null && label.arrowBendRelY != null) {
+                  bendX = label.arrowBendRelX * chart.width;
+                  bendY = label.arrowBendRelY * chart.height;
+                }
+                if (bendX == null || bendY == null) {
+                  // Default elbow for pies: short radial first segment
+                  if (chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea') {
+                    const startAngle = element.startAngle ?? 0;
+                    const endAngle = element.endAngle ?? 0;
+                    const midAngle = (startAngle + endAngle) / 2;
+                    const elbow = (label.arrowElbowLength ?? 14);
+                    bendX = startX + Math.cos(midAngle) * elbow;
+                    bendY = startY + Math.sin(midAngle) * elbow;
+                  } else {
+                    bendX = startX + (endX - startX) * 0.2;
+                    bendY = startY;
+                  }
+                }
+                ctx.lineTo(bendX, bendY);
+                ctx.lineTo(endX, endY);
+              } else {
+                ctx.lineTo(endX, endY);
+              }
               ctx.stroke();
             }
             
             if (label.arrowHead) {
-              const headLength = 8;
-              const headAngle = Math.PI / 6;
-              
-              ctx.beginPath();
-              ctx.moveTo(endX, endY);
-              ctx.lineTo(
-                endX - headLength * Math.cos(Math.atan2(dy, dx) - headAngle),
-                endY - headLength * Math.sin(Math.atan2(dy, dx) - headAngle)
-              );
-              ctx.moveTo(endX, endY);
-              ctx.lineTo(
-                endX - headLength * Math.cos(Math.atan2(dy, dx) + headAngle),
-                endY - headLength * Math.sin(Math.atan2(dy, dx) + headAngle)
-              );
-              ctx.stroke();
+              const style = label.arrowHeadStyle || 'open';
+              const headPos = label.arrowHeadPosition || 'end';
+              const headLen = label.arrowHeadSize ?? 10;
+              const headAng = label.arrowHeadAngle ?? (Math.PI / 6);
+              let tipX = endX, tipY = endY, fromX = startX, fromY = startY;
+              if (label.arrowSegments === 2) {
+                let bendX = label.arrowBendX;
+                let bendY = label.arrowBendY;
+                if ((bendX == null || bendY == null) && label.arrowBendRelX != null && label.arrowBendRelY != null) {
+                  bendX = label.arrowBendRelX * chart.width;
+                  bendY = label.arrowBendRelY * chart.height;
+                }
+                if (headPos === 'start') { tipX = startX; tipY = startY; fromX = bendX ?? endX; fromY = bendY ?? startY; }
+                else { tipX = endX; tipY = endY; fromX = bendX ?? startX; fromY = bendY ?? startY; }
+              } else {
+                if (headPos === 'start') { tipX = startX; tipY = startY; fromX = endX; fromY = endY; }
+                else { tipX = endX; tipY = endY; fromX = startX; fromY = startY; }
+              }
+              const a = Math.atan2(tipY - fromY, tipX - fromX);
+              if (style === 'bar') {
+                const nx = Math.cos(a + Math.PI/2) * (headLen/2);
+                const ny = Math.sin(a + Math.PI/2) * (headLen/2);
+                ctx.beginPath();
+                ctx.moveTo(tipX - nx, tipY - ny);
+                ctx.lineTo(tipX + nx, tipY + ny);
+                ctx.stroke();
+              } else if (style === 'filled') {
+                const lx = tipX - headLen * Math.cos(a - headAng);
+                const ly = tipY - headLen * Math.sin(a - headAng);
+                const rx = tipX - headLen * Math.cos(a + headAng);
+                const ry = tipY - headLen * Math.sin(a + headAng);
+                ctx.beginPath();
+                ctx.moveTo(tipX, tipY);
+                ctx.lineTo(lx, ly);
+                ctx.lineTo(rx, ry);
+                ctx.closePath();
+                const prevFill = ctx.fillStyle;
+                ctx.fillStyle = label.arrowColor || label.calloutColor || '#333';
+                ctx.fill();
+                ctx.fillStyle = prevFill;
+              } else {
+                ctx.beginPath();
+                ctx.moveTo(tipX, tipY);
+                ctx.lineTo(tipX - headLen * Math.cos(a - headAng), tipY - headLen * Math.sin(a - headAng));
+                ctx.moveTo(tipX, tipY);
+                ctx.lineTo(tipX - headLen * Math.cos(a + headAng), tipY - headLen * Math.sin(a + headAng));
+                ctx.stroke();
+              }
             }
           }
           
@@ -338,8 +418,21 @@ customLabelPlugin.afterInit = function(chart) {
           const meta = chart.getDatasetMeta(datasetIdx);
           const element = meta.data[pointIdx];
           const offset = label.calloutOffset || shapeSize * 1.5;
-          lx = (element.x ?? 0) + offset;
-          ly = (element.y ?? 0) - offset;
+          if (chart.config.type === 'pie' || chart.config.type === 'doughnut' || chart.config.type === 'polarArea') {
+            const chartArea = chart.chartArea;
+            const centerX = chartArea.left + chartArea.width / 2;
+            const centerY = chartArea.top + chartArea.height / 2;
+            const startAngle = element.startAngle ?? 0;
+            const endAngle = element.endAngle ?? 0;
+            const midAngle = (startAngle + endAngle) / 2;
+            const outerRadius = element.outerRadius ?? Math.min(chartArea.width, chartArea.height) / 2;
+            const r = outerRadius + offset;
+            lx = centerX + Math.cos(midAngle) * r;
+            ly = centerY + Math.sin(midAngle) * r;
+          } else {
+            lx = (element.x ?? 0) + offset;
+            ly = (element.y ?? 0) - offset;
+          }
         }
         
         // Hit test (circle)
@@ -455,8 +548,15 @@ const universalImagePlugin = {
     chart.data.datasets.forEach((dataset, datasetIndex) => {
       const meta = chart.getDatasetMeta(datasetIndex);
       if (!meta || !meta.data || !dataset.pointImages) return;
+      // Respect default Chart.js dataset visibility
+      if (typeof chart.isDatasetVisible === 'function' && chart.isDatasetVisible(datasetIndex) === false) return;
 
       meta.data.forEach((element, pointIndex) => {
+        // Respect per-slice visibility for pie/doughnut/polarArea
+        if ((chart.config?.type === 'pie' || chart.config?.type === 'doughnut' || chart.config?.type === 'polarArea') &&
+            typeof chart.getDataVisibility === 'function' && chart.getDataVisibility(pointIndex) === false) {
+          return;
+        }
         const imageUrl = dataset.pointImages[pointIndex];
         const imageConfig = dataset.pointImageConfig?.[pointIndex] || getDefaultImageConfig(chart.config.type || 'bar');
 
@@ -951,35 +1051,85 @@ function renderPointImage(ctx, element, img, config) {
 
 function renderCalloutImage(ctx, pointX, pointY, img, config, datasetIndex, pointIndex, chart) {
   const size = config.size || 30;
-  let x = config.calloutX !== undefined ? config.calloutX : pointX + (config.offset || 40);
-  let y = config.calloutY !== undefined ? config.calloutY : pointY - (config.offset || 40);
+  let x = config.calloutX;
+  let y = config.calloutY;
+  if (x === undefined || y === undefined) {
+    const offset = config.offset || 40;
+    const chartType = chart.config?.type;
+    if (chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea') {
+      const centerX = chart.chartArea.left + chart.chartArea.width / 2;
+      const centerY = chart.chartArea.top + chart.chartArea.height / 2;
+      const meta = chart.getDatasetMeta(datasetIndex);
+      const el = meta && meta.data ? meta.data[pointIndex] : null;
+      const startAngle = el?.startAngle || 0;
+      const endAngle = el?.endAngle || 0;
+      const midAngle = (startAngle + endAngle) / 2;
+      const radius = el?.outerRadius || Math.min(chart.chartArea.width, chart.chartArea.height) / 2;
+      const r = radius + offset;
+      x = centerX + Math.cos(midAngle) * r;
+      y = centerY + Math.sin(midAngle) * r;
+    } else {
+      x = pointX + offset;
+      y = pointY - offset;
+    }
+  }
 
   // Draw arrow if enabled
   if (config.arrow) {
     ctx.save();
     ctx.strokeStyle = config.arrowColor || '#333';
     ctx.lineWidth = 2;
+    // Determine anchor/start point
+    const chartType = chart.config?.type;
+    let startX = pointX;
+    let startY = pointY;
+    if (chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea') {
+      const centerX = chart.chartArea.left + chart.chartArea.width / 2;
+      const centerY = chart.chartArea.top + chart.chartArea.height / 2;
+      const meta = chart.getDatasetMeta(datasetIndex);
+      const el = meta && meta.data ? meta.data[pointIndex] : null;
+      const startAngle = el?.startAngle || 0;
+      const endAngle = el?.endAngle || 0;
+      const midAngle = (startAngle + endAngle) / 2;
+      const radius = el?.outerRadius || Math.min(chart.chartArea.width, chart.chartArea.height) / 2;
+      startX = centerX + Math.cos(midAngle) * radius;
+      startY = centerY + Math.sin(midAngle) * radius;
+    }
+
+    // Optional elbow
+    const useElbow = config.arrowSegments === 2;
+    let bendX = config.arrowBendX;
+    let bendY = config.arrowBendY;
+    if ((bendX == null || bendY == null) && config.arrowBendRelX != null && config.arrowBendRelY != null) {
+      bendX = config.arrowBendRelX * chart.width;
+      bendY = config.arrowBendRelY * chart.height;
+    }
+    if (useElbow && (bendX == null || bendY == null)) {
+      bendX = x;
+      bendY = startY;
+    }
+
     ctx.beginPath();
-    ctx.moveTo(pointX, pointY);
-    ctx.lineTo(x, y);
+    ctx.moveTo(startX, startY);
+    if (useElbow) {
+      ctx.lineTo(bendX, bendY);
+      ctx.lineTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
     ctx.stroke();
 
-    // Draw arrow head
+    // Draw arrow head at end of last segment
     const headLength = 8;
     const headAngle = Math.PI / 6;
-    const angle = Math.atan2(y - pointY, x - pointX);
-    
+    let px = startX, py = startY;
+    if (useElbow) { px = bendX; py = bendY; }
+    const angle = Math.atan2(y - py, x - px);
     ctx.beginPath();
     ctx.moveTo(x, y);
-    ctx.lineTo(
-      x - headLength * Math.cos(angle - headAngle),
-      y - headLength * Math.sin(angle - headAngle)
-    );
+    ctx.lineTo(x - headLength * Math.cos(angle - headAngle), y - headLength * Math.sin(angle - headAngle));
     ctx.moveTo(x, y);
-    ctx.lineTo(
-      x - headLength * Math.cos(angle + headAngle),
-      y - headLength * Math.sin(angle + headAngle)
-    );
+    ctx.lineTo(x - headLength * Math.cos(angle + headAngle), y - headLength * Math.sin(angle + headAngle));
     ctx.stroke();
     ctx.restore();
   }
@@ -1518,7 +1668,7 @@ export function generateCompletePluginSystem(chartConfig: any): string {
   const customLabelsConfig = (chartConfig.plugins as any)?.customLabels;
   const overlayConfig = (chartConfig.plugins as any)?.overlayPlugin;
   const hasCustomLabels = customLabelsConfig && customLabelsConfig.labels;
-  const hasImages = chartConfig.data?.datasets?.some((ds: any) => ds.pointImages?.length > 0);
+  const hasImages = chartConfig.data?.datasets?.some((ds: any) => Array.isArray(ds.pointImages) && ds.pointImages.some((v: any) => !!v));
   const hasOverlays = overlayConfig && (overlayConfig.overlayImages?.length > 0 || overlayConfig.overlayTexts?.length > 0);
 
   let pluginCode = '';

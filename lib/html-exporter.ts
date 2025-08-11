@@ -85,12 +85,12 @@ function generateCustomLabelsFromConfig(chartConfig: any, chartData: any, legend
   }
 
   // Filter datasets based on legend filter
-  const filteredDatasets = chartData.datasets.filter((_, index) => 
+  const filteredDatasets = chartData.datasets.filter((_: any, index: number) => 
     legendFilter.datasets[index] !== false
   );
 
-  return filteredDatasets.map((ds, datasetIdx) =>
-    ds.data.map((value, pointIdx) => {
+  return filteredDatasets.map((ds: any, datasetIdx: number) =>
+    ds.data.map((value: any, pointIdx: number) => {
       let text = String(value);
       
       // Label content logic
@@ -155,11 +155,11 @@ function generateCustomLabelsFromConfig(chartConfig: any, chartData: any, legend
 }
 
 // Sync image positions from drag state into chart data before export
-function syncImagePositionsToConfig(chartData, dragState) {
+function syncImagePositionsToConfig(chartData: any, dragState: any) {
   if (!dragState) return;
-  chartData.datasets.forEach((dataset, datasetIdx) => {
+  chartData.datasets.forEach((dataset: any, datasetIdx: number) => {
     if (!dataset.pointImageConfig) return;
-    dataset.pointImageConfig.forEach((config, pointIdx) => {
+    dataset.pointImageConfig.forEach((config: any, pointIdx: number) => {
       const key = `${datasetIdx}_${pointIdx}`;
       if (dragState[key]) {
         config.calloutX = dragState[key].x;
@@ -183,6 +183,11 @@ export interface HTMLExportOptions {
   fileName?: string;
   template?: string; // 'modern', 'dark', 'minimal', 'professional'
   dragState?: any; // Current drag state for custom labels
+  // Runtime toggles from editor
+  showImages?: boolean;
+  showLabels?: boolean;
+  fillArea?: boolean;
+  showBorder?: boolean;
 }
 
 /**
@@ -228,6 +233,41 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
   // Process chart data to convert images to base64
   const processedChartData = await processChartDataForExport(chartDataCopy);
 
+  // If Image toggle is off, strip dataset/slice images so export shows none
+  if (options.showImages === false && Array.isArray(processedChartData.datasets)) {
+    processedChartData.datasets = processedChartData.datasets.map((ds: any) => ({
+      ...ds,
+      pointImages: Array.isArray(ds.pointImages) ? ds.pointImages.map(() => null) : ds.pointImages
+    }));
+  }
+
+  // Apply Fill Area and Show Border directly to the exported data (chartData) because
+  // the Chart initialization uses this 'chartData' object, not options.data
+  if ((options.fillArea !== undefined || options.showBorder !== undefined) && Array.isArray(processedChartData.datasets)) {
+    processedChartData.datasets = processedChartData.datasets.map((ds: any) => {
+      const out = { ...ds } as any;
+      if (options.fillArea !== undefined) {
+        const isLineLike = (chartType === 'line' || chartType === 'area' || chartType === 'radar');
+        if (isLineLike) {
+          out.fill = !!options.fillArea;
+        }
+        if (options.fillArea === false) {
+          if (Array.isArray(out.backgroundColor)) out.backgroundColor = out.backgroundColor.map(() => 'transparent');
+          else out.backgroundColor = 'transparent';
+        }
+      }
+      if (options.showBorder !== undefined) {
+        const bw = options.showBorder ? (typeof out.borderWidth === 'number' ? out.borderWidth || 2 : 2) : 0;
+        out.borderWidth = bw;
+        if (bw === 0) {
+          if (Array.isArray(out.borderColor)) out.borderColor = out.borderColor.map(() => 'transparent');
+          else out.borderColor = 'transparent';
+        }
+      }
+      return out;
+    });
+  }
+
   // Get overlay data from chart store
   const { overlayImages, overlayTexts } = useChartStore.getState();
   
@@ -240,17 +280,24 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
   );
   
   // Generate custom labels and enhance chart config
-  const customLabels = generateCustomLabelsFromConfig(chartConfig, processedChartData, legendFilter, currentDragState);
+  // Apply runtime toggles: hide labels/images if disabled
+  const effectiveConfig = JSON.parse(JSON.stringify(chartConfig));
+  if (options.showLabels === false) {
+    if (effectiveConfig.plugins?.customLabelsConfig) {
+      effectiveConfig.plugins.customLabelsConfig.display = false;
+    }
+  }
+  const customLabels = generateCustomLabelsFromConfig(effectiveConfig, processedChartData, legendFilter, currentDragState);
   const enhancedChartConfig = {
     ...chartConfig,
-    data: processedChartData, // <-- FIX: Ensure data is present for plugin system
+    data: processedChartData, // required for plugins code generation
     plugins: {
       ...chartConfig.plugins,
-      customLabels: customLabels.length > 0 ? { 
+      customLabels: (options.showLabels === false) ? undefined : (customLabels.length > 0 ? { 
         shapeSize: 32, 
         labels: customLabels 
-      } : undefined,
-      overlayPlugin: {
+      } : undefined),
+      overlayPlugin: (options.showImages === false) ? undefined : {
         overlayImages: processedOverlayImages,
         overlayTexts: overlayTexts
       }
@@ -564,7 +611,7 @@ export async function downloadChartAsHTML(options: HTMLExportOptions = {}) {
       size,
       message: `Chart exported as HTML (${(size / 1024).toFixed(2)} KB)`
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error exporting chart as HTML:', error);
     return {
       success: false,
@@ -583,15 +630,19 @@ export async function generateCustomChartHTML(template: string, options: HTMLExp
   // Process chart data to convert images to base64
   const processedChartData = await processChartDataForExport(chartData);
   
-  const customLabels = generateCustomLabelsFromConfig(chartConfig, processedChartData, legendFilter, options.dragState);
+  const effectiveConfig2 = JSON.parse(JSON.stringify(chartConfig));
+  if (options.showLabels === false && effectiveConfig2.plugins?.customLabelsConfig) {
+    effectiveConfig2.plugins.customLabelsConfig.display = false;
+  }
+  const customLabels = generateCustomLabelsFromConfig(effectiveConfig2, processedChartData, legendFilter, options.dragState);
   const enhancedChartConfig = {
     ...chartConfig,
     plugins: {
       ...chartConfig.plugins,
-      customLabels: customLabels.length > 0 ? { 
+      customLabels: (options.showLabels === false) ? undefined : (customLabels.length > 0 ? { 
         shapeSize: 32, 
         labels: customLabels 
-      } : undefined
+      } : undefined)
     }
   };
   
@@ -734,6 +785,11 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
     uniformityMode,
     legendFilter
   } = useChartStore.getState();
+  const storeToggles = useChartStore.getState();
+  const effectiveShowImages = options.showImages ?? (storeToggles as any).showImages ?? true;
+  const effectiveShowLabels = options.showLabels ?? (storeToggles as any).showLabels ?? true;
+  const effectiveFillArea = options.fillArea ?? (storeToggles as any).fillArea;
+  const effectiveShowBorder = options.showBorder ?? (storeToggles as any).showBorder;
 
   // Use provided drag state or try to capture current drag state from any active chart instance
   let currentDragState = options.dragState || {};
@@ -764,6 +820,36 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
   // Process chart data to convert images to base64
   const processedChartData = await processChartDataForExport(chartDataCopy);
 
+  // Respect toggles for images/labels/fill/border in template exports
+  if (effectiveShowImages === false && Array.isArray(processedChartData.datasets)) {
+    processedChartData.datasets = processedChartData.datasets.map((ds: any) => ({
+      ...ds,
+      pointImages: Array.isArray(ds.pointImages) ? ds.pointImages.map(() => null) : ds.pointImages
+    }));
+  }
+  if ((effectiveFillArea !== undefined || effectiveShowBorder !== undefined) && Array.isArray(processedChartData.datasets)) {
+    processedChartData.datasets = processedChartData.datasets.map((ds: any) => {
+      const out = { ...ds } as any;
+      if (effectiveFillArea !== undefined) {
+        const isLineLike = (chartType === 'line' || chartType === 'area' || chartType === 'radar');
+        if (isLineLike) out.fill = !!effectiveFillArea;
+        if (effectiveFillArea === false) {
+          if (Array.isArray(out.backgroundColor)) out.backgroundColor = out.backgroundColor.map(() => 'transparent');
+          else out.backgroundColor = 'transparent';
+        }
+      }
+      if (effectiveShowBorder !== undefined) {
+        const bw = effectiveShowBorder ? (typeof out.borderWidth === 'number' ? out.borderWidth || 2 : 2) : 0;
+        out.borderWidth = bw;
+        if (bw === 0) {
+          if (Array.isArray(out.borderColor)) out.borderColor = out.borderColor.map(() => 'transparent');
+          else out.borderColor = 'transparent';
+        }
+      }
+      return out;
+    });
+  }
+
   // Get overlay data from chart store
   const { overlayImages, overlayTexts } = useChartStore.getState();
   
@@ -776,17 +862,23 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
   );
   
   // Generate custom labels and enhance chart config
-  const customLabels = generateCustomLabelsFromConfig(chartConfig, processedChartData, legendFilter, currentDragState);
+  const effectiveConfig = JSON.parse(JSON.stringify(chartConfig));
+  if (effectiveShowLabels === false) {
+    if (effectiveConfig.plugins?.customLabelsConfig) {
+      effectiveConfig.plugins.customLabelsConfig.display = false;
+    }
+  }
+  const customLabels = generateCustomLabelsFromConfig(effectiveConfig, processedChartData, legendFilter, currentDragState);
   const enhancedChartConfig = {
     ...chartConfig,
     data: processedChartData,
     plugins: {
       ...chartConfig.plugins,
-      customLabels: customLabels.length > 0 ? { 
+      customLabels: (effectiveShowLabels === false) ? undefined : (customLabels.length > 0 ? { 
         shapeSize: 32, 
         labels: customLabels 
-      } : undefined,
-      overlayPlugin: {
+      } : undefined),
+      overlayPlugin: (effectiveShowImages === false) ? undefined : {
         overlayImages: processedOverlayImages,
         overlayTexts: overlayTexts
       }

@@ -116,8 +116,6 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     chartMode, 
     activeDatasetIndex, 
     uniformityMode, 
-    toggleDatasetVisibility, 
-    toggleSliceVisibility, 
     overlayImages, 
     overlayTexts, 
     selectedImageId, 
@@ -288,11 +286,20 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     }
   }, [overlayImages, overlayTexts]);
 
-  // Get enabled datasets
+  // Determine dataset visibility using Chart.js defaults when available
+  const isDatasetVisible = (index: number): boolean => {
+    const chart = chartRef.current as any;
+    if (chart && typeof chart.isDatasetVisible === 'function') {
+      return chart.isDatasetVisible(index);
+    }
+    return (legendFilter.datasets[index] !== false);
+  };
+
+  // Get enabled datasets (respect single/grouped mode and Chart.js visibility)
   const enabledDatasets = chartMode === 'single'
     ? chartData.datasets.filter((_, i) => i === activeDatasetIndex)
     : chartData.datasets
-        .map((ds, i) => legendFilter.datasets[i] === false ? null : ds)
+        .map((ds, i) => (isDatasetVisible(i) ? ds : null))
         .filter((ds): ds is typeof chartData.datasets[number] => ds !== null);
 
   // Filter datasets based on mode
@@ -303,11 +310,21 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     return true;
   });
 
+  // Slice-level visibility (for pie/doughnut/polarArea) - use Chart.js default data visibility when available
+  const isSliceVisible = (index: number): boolean => {
+    const chart = chartRef.current as any;
+    if (chart && typeof chart.getDataVisibility === 'function') {
+      // Chart.js returns true when visible; if explicitly hidden it returns false
+      return chart.getDataVisibility(index) !== false;
+    }
+    return (legendFilter.slices[index] !== false);
+  };
+
   // Find all slice indices that are enabled
   const enabledSliceIndicesSet = new Set<number>();
   modeFilteredDatasets.forEach(ds => {
     (ds.data || []).forEach((_, idx) => {
-      if (legendFilter.slices[idx] !== false) {
+      if (isSliceVisible(idx)) {
         enabledSliceIndicesSet.add(idx);
       }
     });
@@ -414,6 +431,10 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
   const customLabelsConfig = ((chartConfig.plugins as any)?.customLabelsConfig) || {};
   const customLabels = showLabels ? filteredDatasetsPatched.map((ds, datasetIdx) =>
     ds.data.map((value, pointIdx) => {
+      // If this slice is hidden by legend, also hide its label
+      if (!isSliceVisible(pointIdx)) {
+        return { text: '' };
+      }
       if (customLabelsConfig.display === false) return { text: '' };
       let text = String(value);
       
@@ -711,14 +732,14 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                             const usePointStyle = (chartConfig.plugins?.legend as any)?.labels?.usePointStyle || false;
                             const pointStyle = (chartConfig.plugins?.legend as any)?.labels?.pointStyle || 'circle';
                             const fontColor = (chartConfig.plugins?.legend?.labels as any)?.color || '#000000';
-                            
+
                             const createItem = (props: any) => ({
                               ...props,
                               pointStyle: usePointStyle ? pointStyle : undefined,
                               fontColor: fontColor
                             });
-                            
-                            const items = [];
+
+                            const items = [] as any[];
                             if (legendType === 'slice' || legendType === 'both') {
                               for (let i = 0; i < filteredLabels.length; ++i) {
                                 items.push(createItem({
@@ -748,15 +769,6 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                             return items;
                           },
                         },
-                        onClick: (e: any, legendItem: any, legend: any) => {
-                          if (legendItem.type === 'dataset') {
-                            toggleDatasetVisibility(legendItem.datasetIndex);
-                          } else if (legendItem.type === 'slice') {
-                            toggleSliceVisibility(legendItem.index);
-                          }
-                        },
-                        onHover: () => {},
-                        onLeave: () => {},
                       },
                       tooltip: {
                         ...((chartConfig.plugins as any)?.tooltip),
@@ -869,57 +881,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                       ...((chartConfig.plugins as any)?.legend),
                       labels: {
                         ...(((chartConfig.plugins as any)?.legend)?.labels || {}),
-                        generateLabels: (chart: any) => {
-                          const legendType = ((chartConfig.plugins as any)?.legendType) || 'slice';
-                          const usePointStyle = (chartConfig.plugins?.legend as any)?.labels?.usePointStyle || false;
-                          const pointStyle = (chartConfig.plugins?.legend as any)?.labels?.pointStyle || 'circle';
-                          const fontColor = (chartConfig.plugins?.legend?.labels as any)?.color || '#000000';
-                          
-                          const createItem = (props: any) => ({
-                            ...props,
-                            pointStyle: usePointStyle ? pointStyle : undefined,
-                            fontColor: fontColor
-                          });
-                          
-                          const items = [];
-                          if (legendType === 'slice' || legendType === 'both') {
-                            for (let i = 0; i < filteredLabels.length; ++i) {
-                              items.push(createItem({
-                                text: String(filteredLabels[i]),
-                                fillStyle: filteredDatasets[0]?.backgroundColor?.[i] || '#ccc',
-                                strokeStyle: filteredDatasets[0]?.borderColor?.[i] || '#333',
-                                hidden: false,
-                                index: i,
-                                datasetIndex: 0,
-                                type: 'slice',
-                              }));
-                            }
-                          }
-                          if (legendType === 'dataset' || legendType === 'both') {
-                            for (let i = 0; i < filteredDatasets.length; ++i) {
-                              items.push(createItem({
-                                text: filteredDatasets[i].label || `Dataset ${i + 1}`,
-                                fillStyle: Array.isArray(filteredDatasets[i].backgroundColor) ? (filteredDatasets[i].backgroundColor as string[])[0] : (filteredDatasets[i].backgroundColor as string) || '#ccc',
-                                strokeStyle: Array.isArray(filteredDatasets[i].borderColor) ? (filteredDatasets[i].borderColor as string[])[0] : (filteredDatasets[i].borderColor as string) || '#333',
-                                hidden: false,
-                                datasetIndex: i,
-                                index: i,
-                                type: 'dataset',
-                              }));
-                            }
-                          }
-                          return items;
-                        },
                       },
-                      onClick: (e: any, legendItem: any, legend: any) => {
-                        if (legendItem.type === 'dataset') {
-                          toggleDatasetVisibility(legendItem.datasetIndex);
-                        } else if (legendItem.type === 'slice') {
-                          toggleSliceVisibility(legendItem.index);
-                        }
-                      },
-                      onHover: () => {},
-                      onLeave: () => {},
                     },
                     tooltip: {
                       ...((chartConfig.plugins as any)?.tooltip),

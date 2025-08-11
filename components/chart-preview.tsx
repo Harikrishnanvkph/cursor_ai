@@ -21,7 +21,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   isLeftSidebarCollapsed?: boolean,
   isTablet?: boolean
 }) {
-  const { chartConfig, chartData, chartType, resetChart, setHasJSON, globalChartRef, showLabels } = useChartStore()
+  const { chartConfig, chartData, chartType, resetChart, setHasJSON, globalChartRef, showLabels, showImages, fillArea, showBorder } = useChartStore()
   const { shouldShowTemplate, editorMode, templateInBackground } = useTemplateStore()
 
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
@@ -91,7 +91,11 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
         includeTooltips: true,
         includeLegend: true,
         fileName: `chart-${chartType}-${new Date().toISOString().slice(0, 10)}.html`,
-        dragState: currentDragState // Pass the captured drag state
+        dragState: currentDragState, // Pass the captured drag state
+        showImages: showImages,
+        showLabels: showLabels,
+        fillArea: fillArea,
+        showBorder: showBorder
       });
       
       if (result && result.success) {

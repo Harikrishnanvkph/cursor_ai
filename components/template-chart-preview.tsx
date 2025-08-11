@@ -333,7 +333,7 @@ export function TemplateChartPreview({
   return (
     <div className="flex flex-col h-full">
       {/* Template Controls */}
-      <div className="flex items-center justify-between p-4 border-b bg-white">
+      <div className="flex items-center justify-between mb-2">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <h3 className="text-lg font-semibold text-gray-900">{template.name}</h3>
@@ -407,10 +407,10 @@ export function TemplateChartPreview({
       </div>
 
       {/* Template Canvas */}
-      <div className="flex-1 overflow-hidden bg-gray-100 p-4">
+      <div className="flex-1 overflow-hidden">
         <div
           ref={containerRef}
-          className="relative w-full h-full overflow-auto bg-white rounded-lg shadow-sm"
+          className="relative w-full h-full overflow-auto border rounded-lg shadow-sm"
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}

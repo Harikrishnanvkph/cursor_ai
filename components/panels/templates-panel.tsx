@@ -139,39 +139,43 @@ export function TemplatesPanel() {
                   }`}
                   onClick={() => handleTemplateSelect(template.id)}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        {isActive && (
-                          <span className="inline-block h-2.5 w-2.5 rounded-full bg-blue-600 ring-2 ring-blue-200 flex-shrink-0" title="Active" />
-                        )}
-                        <h4 className="font-semibold text-sm text-gray-900 truncate">{template.name}</h4>
-                      </div>
-                      {template.isCustom && (
-                        <div className="mt-1">
+                  <div className="min-w-0 flex-1">
+                    {/* Row 1: Name */}
+                    <div className="flex items-center gap-2">
+                      {isActive && (
+                        <span className="inline-block h-2.5 w-2.5 rounded-full bg-blue-600 ring-2 ring-blue-200 flex-shrink-0" title="Active" />
+                      )}
+                      <h4 className="font-semibold text-sm text-gray-900 truncate">{template.name}</h4>
+                    </div>
+
+                    {/* Row 2: Custom tag on the left, edit/delete on the right */}
+                    <div className="mt-2 flex items-center justify-between">
+                      <div className="min-w-0">
+                        {template.isCustom && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-purple-700 bg-purple-100 border border-purple-200 rounded-full">
                             Custom
                           </span>
-                        </div>
-                      )}
-                      {showDescription && (
-                        <p className="text-xs text-gray-600 mt-1 line-clamp-2">{template.description}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {template.isCustom && (
-                        <>
-                          <Link href={`/editor/custom-template?id=${template.id}`} onClick={(e:any)=> e.stopPropagation()}>
-                            <Button size="icon" variant="ghost" className="h-8 w-8" title="Edit">
-                              <Pencil className="h-4 w-4" />
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {template.isCustom && (
+                          <>
+                            <Link href={`/editor/custom-template?id=${template.id}`} onClick={(e:any)=> e.stopPropagation()}>
+                              <Button size="icon" variant="ghost" className="h-8 w-8" title="Edit">
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </Link>
+                            <Button size="icon" variant="ghost" className="h-8 w-8" title="Delete" onClick={(e:any)=> askDelete(e, template.id)}>
+                              <Trash2 className="h-4 w-4" />
                             </Button>
-                          </Link>
-                          <Button size="icon" variant="ghost" className="h-8 w-8" title="Delete" onClick={(e:any)=> askDelete(e, template.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
+                          </>
+                        )}
+                      </div>
                     </div>
+
+                    {showDescription && (
+                      <p className="text-xs text-gray-600 mt-2 line-clamp-2">{template.description}</p>
+                    )}
                   </div>
                 </div>
               )

@@ -787,10 +787,20 @@ const universalImagePlugin = {
     const chartArea = chart.chartArea
 
     chart.data.datasets.forEach((dataset: any, datasetIndex: number) => {
+      // Respect default Chart.js legend visibility for datasets
+      if (typeof chart.isDatasetVisible === 'function' && chart.isDatasetVisible(datasetIndex) === false) {
+        return;
+      }
       const meta = chart.getDatasetMeta(datasetIndex)
       if (!meta || !meta.data || !dataset.pointImages) return
 
       meta.data.forEach((element: any, pointIndex: number) => {
+        // For pie/doughnut/polarArea, respect per-slice visibility toggled by legend
+        const type = chart.config?.type;
+        if ((type === 'pie' || type === 'doughnut' || type === 'polarArea') &&
+            typeof chart.getDataVisibility === 'function' && chart.getDataVisibility(pointIndex) === false) {
+          return;
+        }
         const imageUrl = dataset.pointImages[pointIndex];
         const imageConfig = dataset.pointImageConfig?.[pointIndex] || getDefaultImageConfig(chart.config.type || 'bar')
 
@@ -1311,8 +1321,27 @@ function renderCalloutImage(
   const offset = config.offset || 40
 
   // Use stored position or calculate default
-  const calloutX = config.calloutX !== undefined ? config.calloutX : pointX + offset
-  const calloutY = config.calloutY !== undefined ? config.calloutY : pointY - offset
+  let calloutX = config.calloutX
+  let calloutY = config.calloutY
+  if (calloutX === undefined || calloutY === undefined) {
+    const chartType = chart.config.type
+    if (chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea') {
+      const centerX = chart.chartArea.left + chart.chartArea.width / 2
+      const centerY = chart.chartArea.top + chart.chartArea.height / 2
+      const meta = chart.getDatasetMeta(datasetIndex)
+      const el = meta?.data?.[pointIndex]
+      const startAngle = el?.startAngle ?? 0
+      const endAngle = el?.endAngle ?? 0
+      const midAngle = (startAngle + endAngle) / 2
+      const outerRadius = el?.outerRadius ?? Math.min(chart.chartArea.width, chart.chartArea.height) / 2
+      const r = outerRadius + offset
+      calloutX = centerX + Math.cos(midAngle) * r
+      calloutY = centerY + Math.sin(midAngle) * r
+    } else {
+      calloutX = pointX + offset
+      calloutY = pointY - offset
+    }
+  }
 
   // Store the calculated position back to config for dragging
   if (config.calloutX === undefined) config.calloutX = calloutX
@@ -1335,11 +1364,17 @@ function renderCalloutImage(
 
     // Adjust start point for different chart types
     if (chartType === "pie" || chartType === "doughnut" || chartType === "polarArea") {
-      const angle = Math.atan2(pointY - chart.chartArea.top - chart.chartArea.height / 2, 
-                             pointX - chart.chartArea.left - chart.chartArea.width / 2)
-      const radius = Math.min(chart.chartArea.width, chart.chartArea.height) / 2
-      startX = chart.chartArea.left + chart.chartArea.width / 2 + Math.cos(angle) * radius
-      startY = chart.chartArea.top + chart.chartArea.height / 2 + Math.sin(angle) * radius
+      // Anchor to this slice's outer mid-angle so arrows don't all start at one point
+      const centerX = chart.chartArea.left + chart.chartArea.width / 2
+      const centerY = chart.chartArea.top + chart.chartArea.height / 2
+      const meta = chart.getDatasetMeta(datasetIndex)
+      const el = meta?.data?.[pointIndex]
+      const startAngle = el?.startAngle ?? 0
+      const endAngle = el?.endAngle ?? 0
+      const midAngle = (startAngle + endAngle) / 2
+      const radius = el?.outerRadius ?? Math.min(chart.chartArea.width, chart.chartArea.height) / 2
+      startX = centerX + Math.cos(midAngle) * radius
+      startY = centerY + Math.sin(midAngle) * radius
     } else if (chartType === "bar") {
       if (chart.config.options?.indexAxis === "y") {
         startX = pointX
@@ -1359,17 +1394,54 @@ function renderCalloutImage(
       endY = endY - gap * Math.sin(angle)
     }
 
+    // Optional two-segment elbow leader support
+    const useElbow = config.arrowSegments === 2
+    let bendX: number | undefined = config.arrowBendX
+    let bendY: number | undefined = config.arrowBendY
+    if ((bendX == null || bendY == null) && config.arrowBendRelX != null && config.arrowBendRelY != null) {
+      bendX = config.arrowBendRelX * chart.width
+      bendY = config.arrowBendRelY * chart.height
+    }
+    if (useElbow && (bendX == null || bendY == null)) {
+      // Default elbow path optimized for pies: short radial segment, then to callout
+      if (chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea') {
+        const meta = chart.getDatasetMeta(datasetIndex)
+        const el = meta?.data?.[pointIndex]
+        const startAngle = el?.startAngle ?? 0
+        const endAngle = el?.endAngle ?? 0
+        const midAngle = (startAngle + endAngle) / 2
+        const elbow = (config.arrowElbowLength ?? 14)
+        bendX = startX + Math.cos(midAngle) * elbow
+        bendY = startY + Math.sin(midAngle) * elbow
+      } else {
+        bendX = startX + (endX - startX) * 0.2
+        bendY = startY
+      }
+    }
+
     // Draw the arrow line if enabled
     if (arrowLine) {
-    ctx.beginPath()
-    ctx.moveTo(startX, startY)
-      ctx.lineTo(endX, endY)
-    ctx.stroke()
+      ctx.beginPath()
+      ctx.moveTo(startX, startY)
+      if (useElbow) {
+        ctx.lineTo(bendX as number, bendY as number)
+        ctx.lineTo(endX, endY)
+      } else {
+        ctx.lineTo(endX, endY)
+      }
+      ctx.stroke()
     }
 
     // Draw arrow head if enabled
     if (arrowHead) {
-      const angle = Math.atan2(endY - startY, endX - startX)
+      // Arrow head should follow the last segment's direction
+      let prevX = startX
+      let prevY = startY
+      if (useElbow) {
+        prevX = (bendX as number)
+        prevY = (bendY as number)
+      }
+      const angle = Math.atan2(endY - prevY, endX - prevX)
     const arrowLength = 12
     ctx.beginPath()
       ctx.moveTo(endX, endY)

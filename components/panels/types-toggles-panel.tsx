@@ -9,7 +9,25 @@ import { Switch } from "@/components/ui/switch"
 import { BarChart3 } from "lucide-react"
 
 export function TypesTogglesPanel() {
-  const { chartType, setChartType, chartData, legendFilter, toggleDatasetVisibility, toggleSliceVisibility, fillArea, showBorder, toggleFillArea, toggleShowBorder, chartMode } = useChartStore()
+  const { 
+    chartType, 
+    setChartType, 
+    chartData, 
+    legendFilter, 
+    toggleDatasetVisibility, 
+    toggleSliceVisibility, 
+    fillArea, 
+    showBorder, 
+    toggleFillArea, 
+    toggleShowBorder, 
+    chartMode,
+    showImages,
+    showLabels,
+    toggleShowImages,
+    toggleShowLabels,
+    overlayImages,
+    updateOverlayImage,
+  } = useChartStore()
 
   const handleChartTypeChange = (type: string) => {
     if (type === 'stackedBar') {
@@ -79,6 +97,22 @@ export function TypesTogglesPanel() {
             <Label htmlFor="show-border-toggle">Show Border</Label>
           </div>
 
+          {/* Image & Label toggles */}
+          <div className="grid grid-cols-2 gap-4 pt-2">
+            <div className="flex items-center space-x-2">
+              <Switch id="show-images-toggle" checked={showImages} onCheckedChange={(checked) => {
+                toggleShowImages();
+                // Also toggle overlay images visibility to mirror global Image toggle
+                overlayImages.forEach((img) => updateOverlayImage(img.id, { visible: checked }));
+              }} />
+              <Label htmlFor="show-images-toggle">Image</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch id="show-labels-toggle" checked={showLabels} onCheckedChange={toggleShowLabels} />
+              <Label htmlFor="show-labels-toggle">Label</Label>
+            </div>
+          </div>
+
           {/* Legend Filter Buttons */}
           <div className="mt-4">
             <div className="font-semibold text-xs mb-2">Legend Filter</div>
@@ -102,16 +136,16 @@ export function TypesTogglesPanel() {
             )}
             <div className="mb-1 font-semibold text-xs">Slices</div>
             <div className="flex flex-wrap gap-2">
-              {chartData.labels && chartData.labels.map((label, i) => (
+              {Array.isArray(chartData.labels) && (chartData.labels as string[]).map((label: string, i: number) => (
                 visibleSliceIndices.has(i) ? (
                   <button
-                    key={label}
+                    key={String(label)}
                     onClick={() => toggleSliceVisibility(i)}
                     className={`flex items-center gap-1 px-2 py-1 rounded border text-xs ${legendFilter.slices[i] === false ? 'opacity-40' : 'opacity-100'} `}
                     style={{ borderColor: '#ccc', color: '#333' }}
                   >
                     <span className="inline-block w-3 h-3 rounded-full mr-1" style={{ background: (chartData.datasets[0] && Array.isArray(chartData.datasets[0].backgroundColor) ? chartData.datasets[0].backgroundColor[i] : (chartData.datasets[0]?.backgroundColor as string)) || '#ccc' }} />
-                    {label}
+                    {String(label)}
                   </button>
                 ) : null
               ))}

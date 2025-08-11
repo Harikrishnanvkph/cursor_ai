@@ -29,6 +29,17 @@ export interface CustomLabel {
   arrowColor?: string;
   calloutOffset?: number;
   arrowEndGap?: number; // Distance from label center to stop arrow
+  // New: support multi-segment leader lines
+  arrowSegments?: 1 | 2; // 1: straight line (default), 2: elbow with bend
+  arrowBendX?: number;   // Optional explicit bend point (absolute)
+  arrowBendY?: number;
+  arrowBendRelX?: number; // Optional bend point relative to end point (percentage of chart width/height if 0..1)
+  arrowBendRelY?: number;
+  // Arrowhead styling
+  arrowHeadStyle?: 'open' | 'filled' | 'bar';
+  arrowHeadPosition?: 'start' | 'end';
+  arrowHeadSize?: number; // px
+  arrowHeadAngle?: number; // radians total half-angle for open/filled types
 }
 
 export interface CustomLabelPluginOptions {
@@ -59,10 +70,21 @@ export const customLabelPlugin: Plugin = {
     chart.data.datasets.forEach((dataset, datasetIdx) => {
       const meta = chart.getDatasetMeta(datasetIdx);
       if (!meta || !meta.data) return;
+      // Respect default Chart.js legend visibility for datasets
+      const dsVisible = typeof (chart as any).isDatasetVisible === 'function'
+        ? (chart as any).isDatasetVisible(datasetIdx)
+        : true;
+      if (!dsVisible) return;
       const labelArr = opts.labels[datasetIdx] || [];
       meta.data.forEach((element: any, pointIdx: number) => {
         const label = labelArr[pointIdx];
         if (!label || !label.text) return;
+        // Respect default Chart.js legend visibility for pie/doughnut/polarArea slices
+        const chartType = (chart.config as any).type as string;
+        if ((chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea') &&
+            typeof (chart as any).getDataVisibility === 'function') {
+          if ((chart as any).getDataVisibility(pointIdx) === false) return;
+        }
         // --- Position logic ---
         let x = label.x;
         let y = label.y;
@@ -75,10 +97,24 @@ export const customLabelPlugin: Plugin = {
             x = dragState[dragKey].x;
             y = dragState[dragKey].y;
           } else if (x == null || y == null) {
-            // Default callout position: offset from element
+            // Default callout position per chart type
+            const ct = (chart.config as any).type as string;
             const offset = label.calloutOffset || shapeSize * 1.5;
-            x = (element.x ?? 0) + offset;
-            y = (element.y ?? 0) - offset;
+            if (ct === 'pie' || ct === 'doughnut' || ct === 'polarArea') {
+              const chartArea = chart.chartArea;
+              const centerX = chartArea.left + chartArea.width / 2;
+              const centerY = chartArea.top + chartArea.height / 2;
+              const startAngle = element.startAngle ?? 0;
+              const endAngle = element.endAngle ?? 0;
+              const midAngle = (startAngle + endAngle) / 2;
+              const outerRadius = element.outerRadius ?? Math.min(chartArea.width, chartArea.height) / 2;
+              const r = outerRadius + offset;
+              x = centerX + Math.cos(midAngle) * r;
+              y = centerY + Math.sin(midAngle) * r;
+            } else {
+              x = (element.x ?? 0) + offset;
+              y = (element.y ?? 0) - offset;
+            }
           }
         }
         // If not absolute, calculate based on anchor
@@ -201,13 +237,16 @@ export const customLabelPlugin: Plugin = {
 
           // Adjust start point for different chart types
           if (chartType === "pie" || chartType === "doughnut" || chartType === "polarArea") {
+            // Use the slice's mid-angle and outer radius so each slice gets its own start point
             const chartArea = chart.chartArea;
             const centerX = chartArea.left + chartArea.width / 2;
             const centerY = chartArea.top + chartArea.height / 2;
-            const angle = Math.atan2(startY - centerY, startX - centerX);
-            const radius = Math.min(chartArea.width, chartArea.height) / 2;
-            startX = centerX + Math.cos(angle) * radius;
-            startY = centerY + Math.sin(angle) * radius;
+            const startAngle = element.startAngle ?? 0;
+            const endAngle = element.endAngle ?? 0;
+            const midAngle = (startAngle + endAngle) / 2;
+            const outerRadius = element.outerRadius ?? Math.min(chartArea.width, chartArea.height) / 2;
+            startX = centerX + Math.cos(midAngle) * outerRadius;
+            startY = centerY + Math.sin(midAngle) * outerRadius;
           } else if (chartType === "bar") {
             if (chart.options.indexAxis === "y") {
               startX = element.x ?? 0;
@@ -228,30 +267,110 @@ export const customLabelPlugin: Plugin = {
             endY = endY - gap * Math.sin(angle);
           }
 
-          // Draw the arrow line if enabled
+          // Draw the arrow line if enabled (support optional elbow bend)
           if (label.arrowLine) {
             ctx.beginPath();
             ctx.moveTo(startX, startY);
-            ctx.lineTo(endX, endY);
+            const useElbow = (label.arrowSegments === 2);
+            if (useElbow) {
+              // Compute bend point
+              let bendX: number | undefined = label.arrowBendX;
+              let bendY: number | undefined = label.arrowBendY;
+              if ((bendX == null || bendY == null) && label.arrowBendRelX != null && label.arrowBendRelY != null) {
+                // Relative to canvas size
+                bendX = label.arrowBendRelX * chart.width;
+                bendY = label.arrowBendRelY * chart.height;
+              }
+              if (bendX == null || bendY == null) {
+                // Default elbow: short radial segment outward from slice edge, then to label
+                if ((chart.config as any).type === 'pie' || (chart.config as any).type === 'doughnut' || (chart.config as any).type === 'polarArea') {
+                  const chartArea = chart.chartArea;
+                  const centerX = chartArea.left + chartArea.width / 2;
+                  const centerY = chartArea.top + chartArea.height / 2;
+                  const startAngle = element.startAngle ?? 0;
+                  const endAngle = element.endAngle ?? 0;
+                  const midAngle = (startAngle + endAngle) / 2;
+                  const elbow = (label as any).arrowElbowLength ?? 14;
+                  bendX = startX + Math.cos(midAngle) * elbow;
+                  bendY = startY + Math.sin(midAngle) * elbow;
+                } else {
+                  // fallback generic elbow near start
+                  bendX = startX + (endX - startX) * 0.2;
+                  bendY = startY;
+                }
+              }
+              ctx.lineTo(bendX as number, bendY as number);
+              ctx.lineTo(endX, endY);
+            } else {
+              ctx.lineTo(endX, endY);
+            }
             ctx.stroke();
           }
 
           // Draw arrow head if enabled
           if (label.arrowHead) {
-            const angle = Math.atan2((endY) - startY, (endX) - startX);
-            const arrowLength = 12;
-          ctx.beginPath();
-            ctx.moveTo(endX, endY);
-            ctx.lineTo(
-              endX - arrowLength * Math.cos(angle - Math.PI / 6),
-              endY - arrowLength * Math.sin(angle - Math.PI / 6),
-            );
-            ctx.moveTo(endX, endY);
-            ctx.lineTo(
-              endX - arrowLength * Math.cos(angle + Math.PI / 6),
-              endY - arrowLength * Math.sin(angle + Math.PI / 6),
-            );
-          ctx.stroke();
+            const headStyle = label.arrowHeadStyle || 'open';
+            const headPos = label.arrowHeadPosition || 'end';
+            const headLen = label.arrowHeadSize ?? 10;
+            const headHalfAngle = label.arrowHeadAngle ?? (Math.PI / 6);
+
+            // Determine point and direction based on segment and position
+            let tipX = endX; let tipY = endY; let fromX = startX; let fromY = startY;
+            if (label.arrowSegments === 2) {
+              const bx = label.arrowBendX ?? (label.arrowBendRelX != null ? label.arrowBendRelX * chart.width : endX);
+              const by = label.arrowBendY ?? (label.arrowBendRelY != null ? label.arrowBendRelY * chart.height : startY);
+              if (headPos === 'start') {
+                tipX = startX; tipY = startY; fromX = bx; fromY = by;
+              } else { // end
+                tipX = endX; tipY = endY; fromX = bx; fromY = by;
+              }
+            } else {
+              if (headPos === 'start') {
+                tipX = startX; tipY = startY; fromX = endX; fromY = endY;
+              } else {
+                tipX = endX; tipY = endY; fromX = startX; fromY = startY;
+              }
+            }
+            const theta = Math.atan2(tipY - fromY, tipX - fromX);
+
+            if (headStyle === 'bar') {
+              // Perpendicular cap
+              const nx = Math.cos(theta + Math.PI / 2) * (headLen / 2);
+              const ny = Math.sin(theta + Math.PI / 2) * (headLen / 2);
+              ctx.beginPath();
+              ctx.moveTo(tipX - nx, tipY - ny);
+              ctx.lineTo(tipX + nx, tipY + ny);
+              ctx.stroke();
+            } else if (headStyle === 'filled') {
+              // Filled triangular head
+              const leftX = tipX - headLen * Math.cos(theta - headHalfAngle);
+              const leftY = tipY - headLen * Math.sin(theta - headHalfAngle);
+              const rightX = tipX - headLen * Math.cos(theta + headHalfAngle);
+              const rightY = tipY - headLen * Math.sin(theta + headHalfAngle);
+              ctx.beginPath();
+              ctx.moveTo(tipX, tipY);
+              ctx.lineTo(leftX, leftY);
+              ctx.lineTo(rightX, rightY);
+              ctx.closePath();
+              const prev = ctx.fillStyle;
+              ctx.fillStyle = label.arrowColor || label.calloutColor || '#333';
+              ctx.fill();
+              ctx.fillStyle = prev as any;
+            } else {
+              // Open V head
+              ctx.beginPath();
+              ctx.moveTo(tipX, tipY);
+              ctx.lineTo(
+                tipX - headLen * Math.cos(theta - headHalfAngle),
+                tipY - headLen * Math.sin(theta - headHalfAngle),
+              );
+              ctx.moveTo(tipX, tipY);
+              ctx.lineTo(
+                tipX - headLen * Math.cos(theta + headHalfAngle),
+                tipY - headLen * Math.sin(theta + headHalfAngle),
+              );
+              ctx.stroke();
+            }
           }
           ctx.restore();
         }
@@ -335,10 +454,24 @@ export const customLabelPlugin: Plugin = {
             ly = dragState[key].y;
           } else {
             const meta = chart.getDatasetMeta(datasetIdx);
-            const element = meta.data[pointIdx];
+            const element: any = meta.data[pointIdx];
             const offset = label.calloutOffset || shapeSize * 1.5;
-            lx = (element.x ?? 0) + offset;
-            ly = (element.y ?? 0) - offset;
+            const chartType = (chart.config as any).type as string;
+            if (chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea') {
+              const chartArea = chart.chartArea;
+              const centerX = chartArea.left + chartArea.width / 2;
+              const centerY = chartArea.top + chartArea.height / 2;
+              const startAngle = element.startAngle ?? 0;
+              const endAngle = element.endAngle ?? 0;
+              const midAngle = (startAngle + endAngle) / 2;
+              const outerRadius = element.outerRadius ?? Math.min(chartArea.width, chartArea.height) / 2;
+              const r = outerRadius + offset;
+              lx = centerX + Math.cos(midAngle) * r;
+              ly = centerY + Math.sin(midAngle) * r;
+            } else {
+              lx = (element.x ?? 0) + offset;
+              ly = (element.y ?? 0) - offset;
+            }
           }
           // Hit test (circle)
           if (Math.hypot(x - lx, y - ly) < shapeSize / 1.5) {
