@@ -21,6 +21,7 @@ const tabs = [
   { id: "animations", label: "Animations", icon: Zap },
   { id: "advanced", label: "Advanced", icon: SlidersHorizontal },
   { id: "templates", label: "Templates", icon: FileText },
+  { id: "data_import", label: "Data Import", icon: Database },
   { id: "export", label: "Export", icon: Download },
 ]
 

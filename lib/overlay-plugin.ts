@@ -837,9 +837,10 @@ export const overlayPlugin = {
       const y = event.clientY - rect.top
       const chartArea = chart.chartArea
       
-      // Get overlay data
-      const overlayImages = (chart.options as any)?.overlayImages || []
-      const overlayTexts = (chart.options as any)?.overlayTexts || []
+      // Get overlay data from plugin options
+      const pluginConfig = (chart.options as any)?.plugins?.overlayPlugin || {}
+      const overlayImages = pluginConfig.overlayImages || []
+      const overlayTexts = pluginConfig.overlayTexts || []
       
       // Check if clicking on any overlay (check in reverse zIndex order for top-most)
       const allOverlays = [
@@ -1040,9 +1041,10 @@ export const overlayPlugin = {
       const y = event.clientY - rect.top
       const chartArea = chart.chartArea
       
-      // Get overlay data
-      const overlayImages = (chart.options as any)?.overlayImages || []
-      const overlayTexts = (chart.options as any)?.overlayTexts || []
+      // Get overlay data from plugin options
+      const pluginConfig = (chart.options as any)?.plugins?.overlayPlugin || {}
+      const overlayImages = pluginConfig.overlayImages || []
+      const overlayTexts = pluginConfig.overlayTexts || []
       
       // Check if right-clicking on any overlay
       const allOverlays = [
@@ -1172,7 +1174,8 @@ export const overlayPlugin = {
         let newY = dragState.startY - chartArea.top
         
         // Get the image to check if it's a circle
-        const overlayImages = (chart.options as any)?.overlayImages || []
+        const pluginConfig = (chart.options as any)?.plugins?.overlayPlugin || {}
+        const overlayImages = pluginConfig.overlayImages || []
         const currentImage = overlayImages.find((img: any) => img.id === dragState.dragId)
         
         if (currentImage && currentImage.shape === 'circle') {
