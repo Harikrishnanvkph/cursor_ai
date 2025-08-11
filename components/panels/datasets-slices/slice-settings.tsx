@@ -43,6 +43,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
     updateLabels,
     chartMode,
     activeDatasetIndex,
+    setActiveDatasetIndex,
   } = useChartStore()
   
   const [activeTab, setActiveTab] = useState<SliceTab>('data')
@@ -59,6 +60,10 @@ export function SliceSettings({ className }: SliceSettingsProps) {
   const [newPointColor, setNewPointColor] = useState("#1E90FF") // DodgerBlue
   const [selectedDatasetIndex, setSelectedDatasetIndex] = useState(0)
   const [showEditSlicesModal, setShowEditSlicesModal] = useState(false)
+  const [showFullEditModal, setShowFullEditModal] = useState(false)
+  const [globalColor, setGlobalColor] = useState<string>("#3b82f6")
+  const [imageSelectedIndex, setImageSelectedIndex] = useState<number>(0)
+  const [fullEditRows, setFullEditRows] = useState<{ label: string; value: number; color: string; imageUrl: string | null }[]>([])
 
   // Filter datasets based on current mode
   const filteredDatasets = chartData.datasets.filter(dataset => {
@@ -74,13 +79,38 @@ export function SliceSettings({ className }: SliceSettingsProps) {
   const currentDataset = filteredDatasets[selectedDatasetIndex] || null
   const currentSliceLabels = currentDataset?.sliceLabels || chartData.labels || []
 
-  // Update selectedDatasetIndex when chartMode changes
+  // Keep selectedDatasetIndex in sync with global activeDatasetIndex (especially after remount)
   useEffect(() => {
-    setSelectedDatasetIndex(0)
-  }, [chartMode])
+    setSelectedDatasetIndex(activeDatasetIndex ?? 0)
+  }, [activeDatasetIndex, chartMode])
+
+  // Sync global color picker with persisted dataset color on mount/changes (Single mode only)
+  useEffect(() => {
+    if (!currentDataset) return
+    let derived = '#3b82f6'
+    const bg = (currentDataset as any).backgroundColor
+    // Prefer dataset.color if single color mode
+    if ((currentDataset as any).datasetColorMode === 'single') {
+      if (typeof (currentDataset as any).color === 'string' && (currentDataset as any).color) {
+        derived = (currentDataset as any).color
+      } else if (Array.isArray(bg) && typeof bg[0] === 'string' && bg[0]) {
+        derived = bg[0] as string
+      } else if (typeof bg === 'string' && bg) {
+        derived = bg as string
+      }
+    } else {
+      // Fall back to first slice color if available
+      if (Array.isArray(bg) && typeof bg[0] === 'string' && bg[0]) {
+        derived = bg[0] as string
+      }
+    }
+    setGlobalColor(derived)
+  }, [selectedDatasetIndex, currentDataset, chartMode, chartData])
 
   const handleDatasetChange = (index: number) => {
     setSelectedDatasetIndex(index)
+    // Reflect selection globally so other panels show same dataset
+    setActiveDatasetIndex(index)
   }
 
   const handleDataPointUpdate = (pointIndex: number, value: string, field: 'x' | 'y' | 'r' = 'y') => {
@@ -115,6 +145,10 @@ export function SliceSettings({ className }: SliceSettingsProps) {
     const newLabels = [...(currentDataset.sliceLabels || currentDataset.data.map((_, i) => `Slice ${i + 1}`))]
     newLabels[pointIndex] = value
     updateDataset(datasetIndex, { sliceLabels: newLabels })
+    // Keep global labels in sync for Single mode so UI and chart persist correctly
+    if (chartMode === 'single') {
+      updateLabels(newLabels)
+    }
   }
 
   const handleColorChange = (pointIndex: number, color: string) => {
@@ -162,7 +196,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
     if (datasetIndex === -1) return
     
     const currentConfig = currentDataset.pointImageConfig?.[pointIndex] || getDefaultImageConfig(chartType)
-    const imageUrl = currentDataset.pointImages?.[pointIndex] || null
+    const imageUrl = (currentDataset.pointImages?.[pointIndex] as string | undefined) ?? ''
     
     // If arrowLine is being unchecked, also uncheck arrowHead
     if (key === 'arrowLine' && value === false) {
@@ -351,7 +385,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                     <div className="w-2/3 min-w-0">
                       <label className="text-xs font-medium text-gray-600 mb-1 block">Name</label>
                       <input
-                        value={currentSliceLabels[pointIndex] || ''}
+                        value={String(currentSliceLabels[pointIndex] ?? '')}
                         onChange={(e) => handleLabelChange(pointIndex, e.target.value)}
                         disabled={chartMode === 'grouped'}
                         className="w-full h-10 px-3 rounded border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-[0.80rem] font-normal transition disabled:bg-gray-100 disabled:text-gray-500"
@@ -364,14 +398,14 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                         <div className="flex gap-1">
                           <input
                             type="number"
-                            value={typeof dataPoint === 'object' && dataPoint?.x !== undefined ? dataPoint.x : ''}
+                            value={typeof dataPoint === 'object' && (dataPoint as any)?.x !== undefined ? (dataPoint as any).x : ''}
                             onChange={(e) => handleDataPointUpdate(pointIndex, e.target.value, 'x')}
                             className="w-1/2 h-10 px-3 rounded border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-[0.80rem] font-normal transition"
                             placeholder="X"
                           />
                           <input
                             type="number"
-                            value={typeof dataPoint === 'object' && dataPoint?.y !== undefined ? dataPoint.y : typeof dataPoint === 'number' ? dataPoint : ''}
+                            value={typeof dataPoint === 'object' && (dataPoint as any)?.y !== undefined ? (dataPoint as any).y : typeof dataPoint === 'number' ? dataPoint : ''}
                             onChange={(e) => handleDataPointUpdate(pointIndex, e.target.value, 'y')}
                             className="w-1/2 h-10 px-3 rounded border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-[0.80rem] font-normal transition"
                             placeholder="Y"
@@ -399,6 +433,40 @@ export function SliceSettings({ className }: SliceSettingsProps) {
 
   const renderColorsTab = () => (
     <div className="space-y-4">
+      {/* Global Color (Single mode only) */}
+      {chartMode === 'single' && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 pb-1 border-b">
+            <div className="w-2 h-2 bg-indigo-600 rounded-full"></div>
+            <h3 className="text-[0.80rem] font-semibold text-gray-900">Global Color</h3>
+          </div>
+          <div className="bg-indigo-50 rounded-lg p-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                value={globalColor}
+                onChange={(e) => setGlobalColor(e.target.value)}
+                className="w-10 h-8 p-0 border-0 bg-transparent cursor-pointer"
+              />
+              <Input value={globalColor} onChange={(e) => setGlobalColor(e.target.value)} className="w-24 h-8 text-xs font-mono uppercase" />
+            </div>
+            <Button
+              size="sm"
+              className="h-8 text-xs bg-indigo-600 hover:bg-indigo-700"
+              onClick={() => {
+                if (!currentDataset) return
+                const datasetIndex = chartData.datasets.findIndex(ds => ds === currentDataset)
+                if (datasetIndex === -1) return
+                // Single call ensures color mode and color are applied atomically
+                updateDataset(datasetIndex, { datasetColorMode: 'single', color: globalColor })
+              }}
+            >
+              Apply to all slices
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Colors Section */}
       <div className="space-y-3">
         <div className="flex items-center gap-2 pb-1 border-b">
@@ -428,14 +496,25 @@ export function SliceSettings({ className }: SliceSettingsProps) {
         <div className="bg-pink-50 rounded-lg p-3 space-y-3">
           <div className="flex items-center justify-between">
             <Label className="text-[0.80rem] font-medium">Slice Colors</Label>
-            <Button size="sm" className="h-7 text-xs bg-pink-600 hover:bg-pink-700">
+            <Button
+              size="sm"
+              className="h-7 text-xs bg-pink-600 hover:bg-pink-700"
+              onClick={() => {
+                if (!currentDataset) return
+                const datasetIndex = chartData.datasets.findIndex(ds => ds === currentDataset)
+                if (datasetIndex === -1) return
+                // Randomize first so lastSliceColors is captured, then switch to slice mode using those colors
+                updateDataset(datasetIndex, { randomizeColors: true })
+                updateDataset(datasetIndex, { datasetColorMode: 'slice' })
+              }}
+            >
               <Palette className="h-3 w-3 mr-1" />
               Randomize
             </Button>
           </div>
           
           {colorsDropdownOpen && (
-            <div className="space-y-2 pt-2 border-t border-pink-200 max-h-96 overflow-y-auto">
+            <div className="space-y-2 pt-2 border-t border-pink-200 max-h-64 overflow-y-auto">
               {currentDataset.data.map((_, pointIndex) => {
                 const currentColor = Array.isArray(currentDataset.backgroundColor) 
                   ? currentDataset.backgroundColor[pointIndex] 
@@ -445,7 +524,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                   <div key={pointIndex} className="flex items-center justify-between p-2 bg-white rounded border">
                     <div className="flex items-center gap-3">
                       <span className="text-xs font-medium text-gray-500">#{pointIndex + 1}</span>
-                      <span className="text-xs">{currentSliceLabels[pointIndex] || `Point ${pointIndex + 1}`}</span>
+                      <span className="text-xs">{String(currentSliceLabels[pointIndex] || `Point ${pointIndex + 1}`)}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div 
@@ -458,7 +537,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                         type="color"
                         value={currentColor || '#3b82f6'}
                         onChange={(e) => handleColorChange(pointIndex, e.target.value)}
-                        className="sr-only"
+                        className="invisible w-0"
                       />
                       <Input
                         value={currentColor || '#3b82f6'}
@@ -492,9 +571,280 @@ export function SliceSettings({ className }: SliceSettingsProps) {
       }
     }
 
+    // Single mode: simplified UI - select a slice, then edit its image settings only
+    if (chartMode === 'single') {
+      const idx = Math.min(Math.max(0, imageSelectedIndex), Math.max(0, (currentDataset?.data?.length || 1) - 1))
+      const hasImage = currentDataset?.pointImages?.[idx]
+      const imageConfig = currentDataset?.pointImageConfig?.[idx] || getDefaultImageConfig(chartType)
+
+      const datasetIndex = chartData.datasets.findIndex(ds => ds === currentDataset)
+      const ensureArrays = () => {
+        const length = currentDataset?.data?.length || 0
+        const images = (currentDataset?.pointImages && currentDataset.pointImages.length === length)
+          ? [...(currentDataset.pointImages as (string|null)[])]
+          : Array(length).fill(null)
+        const configs = (currentDataset?.pointImageConfig && currentDataset.pointImageConfig.length === length)
+          ? [...(currentDataset.pointImageConfig as any[])]
+          : Array(length).fill(getDefaultImageConfig(chartType))
+        return { images, configs }
+    }
+
     return (
       <div className="space-y-4">
-        {/* Images Section */}
+          <div className="flex items-center gap-2 pb-1 border-b">
+            <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+            <h3 className="text-[0.80rem] font-semibold text-gray-900">Slice Image</h3>
+          </div>
+          <div className="bg-green-50 rounded-lg p-3 space-y-3">
+            <div className="flex items-center gap-2">
+              {/* <Label className="text-[0.80rem] font-medium">Choose</Label> */}
+              <Select value={String(idx)} onValueChange={(v) => setImageSelectedIndex(Number(v))}>
+              <SelectTrigger className="h-7 text-xs w-48">
+                <span className="text-xs truncate">{`#${idx + 1} — ${currentSliceLabels[idx] || `Slice ${idx + 1}`}`}</span>
+              </SelectTrigger>
+                <SelectContent>
+                  {currentDataset.data.map((_: any, i: number) => (
+                       <SelectItem key={i} value={String(i)}>
+                         <span className="text-xs">#{i + 1} — {String(currentSliceLabels[i] || `Slice ${i + 1}`)}</span>
+                       </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="ml-auto text-xs">
+                {hasImage ? (
+                  <span className="text-green-700">Image set</span>
+                ) : (
+                  <span className="text-gray-500">No image</span>
+                )}
+              </div>
+            </div>
+
+            {/* Upload / Clear / URL */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => {
+                  const input = document.createElement('input')
+                  input.type = 'file'
+                  input.accept = 'image/*'
+                  input.onchange = (e) => {
+                    const file = (e.target as HTMLInputElement).files?.[0]
+                    if (!file || datasetIndex === -1) return
+                    const reader = new FileReader()
+                    reader.onload = (ev) => {
+                      const url = ev.target?.result as string
+                      const { images, configs } = ensureArrays()
+                      images[idx] = url
+                      configs[idx] = { ...imageConfig }
+                      updateDataset(datasetIndex, { pointImages: images as any, pointImageConfig: configs as any })
+                    }
+                    reader.readAsDataURL(file)
+                  }
+                  input.click()
+                }}
+              >
+                <Upload className="h-3 w-3 mr-1" /> Upload
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => {
+                  if (datasetIndex === -1) return
+                  const { images, configs } = ensureArrays()
+                  images[idx] = ''
+                  configs[idx] = getDefaultImageConfig(chartType)
+                  updateDataset(datasetIndex, { pointImages: images as any, pointImageConfig: configs as any })
+                }}
+              >
+                <Trash2 className="h-3 w-3" /> Clear
+              </Button>
+              <Input
+                placeholder="Paste image URL and hit Enter"
+                className="h-7 text-xs flex-1"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const value = (e.target as HTMLInputElement).value.trim()
+                    if (value && datasetIndex !== -1) {
+                      const { images, configs } = ensureArrays()
+                      images[idx] = value
+                      configs[idx] = { ...imageConfig }
+                      updateDataset(datasetIndex, { pointImages: images as any, pointImageConfig: configs as any })
+                      ;(e.target as HTMLInputElement).value = ''
+                    }
+                  }
+                }}
+              />
+            </div>
+
+            {/* Config for selected slice */}
+            <div className="space-y-2">
+              <Label className="text-xs font-medium text-green-800">Configuration</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium">Type</Label>
+                  <Select
+                    value={imageConfig.type || 'circle'}
+                    onValueChange={(value) => handleImageConfigChange(idx, 'type', value)}
+                  >
+                    <SelectTrigger className="h-7 text-xs">
+                      <span className="text-xs truncate">{String(imageConfig.type || 'circle')}</span>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {imageOptions.types.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          <span className="text-xs">{type.label}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium">Size</Label>
+                  <Input
+                    type="number"
+                    value={imageConfig.size || getDefaultImageSize(chartType)}
+                    className="h-7 text-xs"
+                    min={5}
+                    max={100}
+                    onChange={(e) => handleImageConfigChange(idx, 'size', parseInt(e.target.value))}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-medium">Position</Label>
+                <Select
+                  value={imageConfig.position || 'center'}
+                  onValueChange={(value) => handleImageConfigChange(idx, 'position', value)}
+                >
+                  <SelectTrigger className="h-7 text-xs">
+                    <span className="text-xs truncate">{String(imageConfig.position || 'center')}</span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {imageOptions.positions.map((position) => (
+                      <SelectItem key={position.value} value={position.value}>
+                        <span className="text-xs">{position.label}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Callout / Arrow settings */}
+              {imageOptions.supportsArrow && (imageConfig.position === 'callout') && (
+                <div className="space-y-2 p-2 bg-blue-50 rounded border border-blue-200 mt-2">
+                  <Label className="text-xs font-medium text-green-800">Arrow/Callout Settings</Label>
+                  <div className="flex items-center space-x-3">
+                    <Switch
+                      checked={imageConfig.arrowLine !== false}
+                      onCheckedChange={(checked) => handleImageConfigChange(idx, 'arrowLine', checked)}
+                    />
+                    <Label className="text-xs font-medium">Arrow Line</Label>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Switch
+                      checked={imageConfig.arrowHead !== false}
+                      onCheckedChange={(checked) => handleImageConfigChange(idx, 'arrowHead', checked)}
+                      disabled={imageConfig.arrowLine === false}
+                    />
+                    <Label className="text-xs font-medium">Arrow Head</Label>
+                  </div>
+                  {(imageConfig.arrowLine !== false || imageConfig.arrowHead !== false) && (
+                    <div>
+                      <Label className="text-xs font-medium">Arrow End Distance from Image</Label>
+                      <div className="flex gap-2 mt-1">
+                        <Input
+                          type="number"
+                          value={imageConfig.arrowEndGap ?? 8}
+                          className="h-7 text-xs flex-1"
+                          placeholder="8"
+                          min={0}
+                          max={30}
+                          step={1}
+                          onChange={(e) => handleImageConfigChange(idx, 'arrowEndGap', parseInt(e.target.value))}
+                        />
+                        <span className="text-xs text-gray-500 self-center">px</span>
+                      </div>
+                    </div>
+                  )}
+                  {imageConfig.arrowLine !== false && (
+                    <div className="space-y-1">
+                      <Label className="text-xs font-medium">Arrow Color</Label>
+                      <Input
+                        type="color"
+                        value={imageConfig.arrowColor || '#666666'}
+                        className="h-7 w-full"
+                        onChange={(e) => handleImageConfigChange(idx, 'arrowColor', e.target.value)}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Fill and Image Fit settings */}
+              {imageOptions.supportsFill && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-medium">
+                      {['pie', 'doughnut', 'polarArea'].includes(chartType) ? 'Fill Slice' : 'Fill Bar'}
+                    </Label>
+                    <Switch
+                      checked={['pie', 'doughnut', 'polarArea'].includes(chartType) ? (imageConfig.fillSlice || false) : (imageConfig.fillBar || false)}
+                      onCheckedChange={(checked) => {
+                        if (['pie', 'doughnut', 'polarArea'].includes(chartType)) {
+                          handleImageConfigChange(idx, 'fillSlice', checked)
+                        } else {
+                          handleImageConfigChange(idx, 'fillBar', checked)
+                        }
+                      }}
+                      className="data-[state=checked]:bg-green-600"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Image Fit</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={`h-7 text-xs ${imageConfig.imageFit === 'fill' ? 'bg-green-100 border-green-400' : ''}`}
+                        onClick={() => handleImageConfigChange(idx, 'imageFit', 'fill')}
+                        disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ? imageConfig.fillSlice : imageConfig.fillBar)}
+                      >
+                        Fill
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={`h-7 text-xs ${imageConfig.imageFit === 'cover' ? 'bg-green-100 border-green-400' : ''}`}
+                        onClick={() => handleImageConfigChange(idx, 'imageFit', 'cover')}
+                        disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ? imageConfig.fillSlice : imageConfig.fillBar)}
+                      >
+                        Cover
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={`h-7 text-xs ${imageConfig.imageFit === 'contain' ? 'bg-green-100 border-green-400' : ''}`}
+                        onClick={() => handleImageConfigChange(idx, 'imageFit', 'contain')}
+                        disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ? imageConfig.fillSlice : imageConfig.fillBar)}
+                      >
+                        Contain
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    // Grouped mode: keep existing per-slice list
+    return (
+      <div className="space-y-4">
         <div className="space-y-3">          
           <div className="bg-green-50 rounded-lg p-3 space-y-3">            
             <div className="flex items-center justify-between">
@@ -515,7 +865,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
             </div>
             
             <div className="space-y-3 pt-2 border-t border-green-200 max-h-96">
-                {currentDataset.data.map((_, pointIndex) => {
+                {currentDataset.data.map((_: any, pointIndex) => {
                   const hasImage = currentDataset.pointImages?.[pointIndex]
                   const imageConfig = currentDataset.pointImageConfig?.[pointIndex] || getDefaultImageConfig(chartType)
                   
@@ -524,7 +874,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
                           <span className="text-xs font-medium text-gray-500">#{pointIndex + 1}</span>
-                          <span className="text-xs font-medium">{currentSliceLabels[pointIndex] || `Point ${pointIndex + 1}`}</span>
+                          <span className="text-xs font-medium">{String(currentSliceLabels[pointIndex] || `Point ${pointIndex + 1}`)}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           {hasImage ? (
@@ -818,10 +1168,12 @@ export function SliceSettings({ className }: SliceSettingsProps) {
     <div className="space-y-4">
       {/* Dataset Selection */}
       <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <div className="flex-1 min-w-0">
         <Label className="text-[0.80rem] font-medium">Select Dataset to Edit</Label>
         <Select value={String(selectedDatasetIndex)} onValueChange={(value) => handleDatasetChange(Number(value))}>
-          <SelectTrigger className="h-9">
-            <SelectValue />
+              <SelectTrigger className="h-9 w-full">
+                <span className="text-sm truncate">{filteredDatasets[selectedDatasetIndex]?.label || `Dataset ${selectedDatasetIndex + 1}`}</span>
           </SelectTrigger>
           <SelectContent>
             {filteredDatasets.map((dataset, index) => (
@@ -831,11 +1183,26 @@ export function SliceSettings({ className }: SliceSettingsProps) {
             ))}
           </SelectContent>
         </Select>
-        {currentDataset && (
-          <div className="text-xs text-gray-500">
-            Currently editing: <span className="font-medium">{currentDataset.label || `Dataset ${selectedDatasetIndex + 1}`}</span>
+          </div>
+          {chartMode === 'single' && (
+            <div className="pt-5">
+              <Button size="sm" variant="outline" onClick={() => {
+                // snapshot current rows for full edit modal
+                if (!currentDataset) return
+                const rows: { label: string; value: number; color: string; imageUrl: string | null }[] = currentDataset.data.map((val, i) => ({
+                  label: String(currentSliceLabels[i] || `Slice ${i + 1}`),
+                  value: typeof val === 'number' ? val : (Array.isArray(val) ? (val[1] as number) : (val as any)?.y ?? 0),
+                  color: Array.isArray(currentDataset.backgroundColor) ? (currentDataset.backgroundColor[i] as string) : (currentDataset.backgroundColor as string) || '#3b82f6',
+                  imageUrl: currentDataset.pointImages?.[i] || null,
+                }))
+                setFullEditRows(rows)
+                setShowFullEditModal(true)
+              }}>
+                Full Edit
+              </Button>
           </div>
         )}
+        </div>
         {chartMode === 'grouped' && (
           <div className="mt-2 flex justify-center">
             <Button size="sm" variant="outline" onClick={() => setShowEditSlicesModal(true)}>
@@ -972,6 +1339,113 @@ export function SliceSettings({ className }: SliceSettingsProps) {
           updateLabels(newSliceLabels);
         }}
       />
+
+      {/* Full Edit Modal for Single mode */}
+      <Dialog open={showFullEditModal} onOpenChange={setShowFullEditModal}>
+        <DialogContent className="max-w-3xl w-full">
+          <DialogHeader>
+            <DialogTitle>Full Edit (Single Dataset)</DialogTitle>
+          </DialogHeader>
+          <div className="overflow-auto max-h-[60vh] space-y-2">
+            {chartMode === 'single' && fullEditRows.map((row, i) => {
+              return (
+                <div key={i} className="grid grid-cols-12 gap-2 items-center p-2 border rounded">
+                  <div className="col-span-4">
+                    <Label className="text-xs">Name</Label>
+                    <Input
+                      value={row.label}
+                      onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, label: e.target.value } : r))}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="text-xs">Value</Label>
+                    <Input
+                      type="number"
+                      value={row.value}
+                      onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, value: Number(e.target.value) } : r))}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                  <div className="col-span-3">
+                    <Label className="text-xs">Color</Label>
+                    <div className="flex items-center gap-2">
+                      <input type="color" className="w-10 h-8 p-0 border-0 bg-transparent" value={row.color} onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, color: e.target.value } : r))} />
+                      <Input className="h-8 text-xs w-24" value={row.color} onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, color: e.target.value } : r))} />
+                    </div>
+                  </div>
+                  <div className="col-span-3">
+                    <Label className="text-xs">Image</Label>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs"
+                        onClick={() => {
+                          const input = document.createElement('input')
+                          input.type = 'file'
+                          input.accept = 'image/*'
+                          input.onchange = (e) => {
+                            const file = (e.target as HTMLInputElement).files?.[0]
+                            if (!file) return
+                            const reader = new FileReader()
+                            reader.onload = (ev) => {
+                              const url = ev.target?.result as string
+                              setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, imageUrl: url } : r))
+                            }
+                            reader.readAsDataURL(file)
+                          }
+                          input.click()
+                        }}
+                      >
+                        <Upload className="h-3 w-3 mr-1" /> {fullEditRows[i]?.imageUrl ? 'Change' : 'Upload'}
+                      </Button>
+                      {!!fullEditRows[i]?.imageUrl && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs"
+                          onClick={() => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, imageUrl: null } : r))}
+                        >
+                          Remove
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <div className="flex justify-end gap-2">
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button
+              onClick={() => {
+                if (!currentDataset) return
+                const datasetIndex = chartData.datasets.findIndex(ds => ds === currentDataset)
+                if (datasetIndex === -1) return
+                // Persist labels, values, colors, images
+                const labels = fullEditRows.map(r => r.label)
+                const values = fullEditRows.map(r => r.value)
+                const colors = fullEditRows.map(r => r.color)
+                const images = fullEditRows.map(r => r.imageUrl)
+                // Ensure arrays are aligned and persist slice colors
+                updateDataset(datasetIndex, {
+                  sliceLabels: labels,
+                  data: values as any,
+                  backgroundColor: colors as any,
+                  pointImages: images as any,
+                })
+                updateLabels(labels)
+                setShowFullEditModal(false)
+              }}
+            >
+              Save
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 } 

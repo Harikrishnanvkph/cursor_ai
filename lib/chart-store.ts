@@ -2185,18 +2185,29 @@ export const useChartStore = create<ChartStore>()(
             updatedDataset.backgroundColor = Array(dataset.data.length).fill(baseColor)
             updatedDataset.borderColor = Array(dataset.data.length).fill(darkenColor(baseColor, 20))
           } else if (updates.datasetColorMode === 'slice') {
-            const lastColors = dataset.lastSliceColors
+            // Prefer colors generated/updated earlier in this call
+            const lastColors = (updatedDataset as any).lastSliceColors || dataset.lastSliceColors
             const colors = lastColors && lastColors.length === dataset.data.length
               ? lastColors
               : generateColorPalette(dataset.data.length)
             updatedDataset.backgroundColor = colors
-            updatedDataset.borderColor = colors.map(color => darkenColor(color, 20))
+            updatedDataset.borderColor = colors.map((color: string) => darkenColor(color, 20))
           }
+        }
+        // If caller supplies explicit per-slice backgroundColor, honor and persist as slice mode
+        if (updates.backgroundColor && Array.isArray(updates.backgroundColor)) {
+          const colors = updates.backgroundColor as string[]
+          updatedDataset.backgroundColor = colors
+          updatedDataset.borderColor = colors.map((c: string) => darkenColor(c, 20))
+          updatedDataset.lastSliceColors = colors
+          updatedDataset.datasetColorMode = 'slice'
         }
         // Handle color updates (existing logic)
         if (updates.color) {
           const baseColor = updates.color
-          if (dataset.datasetColorMode === 'single') {
+          // Always store chosen single color for recall in UI
+          updatedDataset.color = baseColor as any
+          if (updatedDataset.datasetColorMode === 'single') {
             updatedDataset.backgroundColor = Array(dataset.data.length).fill(baseColor)
             updatedDataset.borderColor = Array(dataset.data.length).fill(darkenColor(baseColor, 20))
           }

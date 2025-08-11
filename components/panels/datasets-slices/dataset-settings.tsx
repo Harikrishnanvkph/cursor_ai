@@ -99,7 +99,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     { name: "Slice 4", value: 25, color: "#45b7d1" },
     { name: "Slice 5", value: 30, color: "#96ceb4" }
   ])
-  const [newDatasetChartType, setNewDatasetChartType] = useState('bar')
+  const [newDatasetChartType, setNewDatasetChartType] = useState<import("@/lib/chart-store").SupportedChartType>('bar')
   const [colorMode, setColorMode] = useState<'slice' | 'dataset'>('slice');
 
   const supportedChartTypes: { value: import("@/lib/chart-store").SupportedChartType; label: string }[] = [
@@ -320,27 +320,26 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
 
   useEffect(() => {
     chartData.datasets.forEach((dataset, datasetIndex) => {
-      if (colorMode === 'dataset') {
-        // Backup current slice colors
+      // Only modify colors when the dataset's own color mode matches the local selection.
+      if (colorMode === 'dataset' && (dataset as any).datasetColorMode === 'single') {
+        // Backup current slice colors before unifying, if we have a per-slice array
         if (Array.isArray(dataset.backgroundColor)) {
           handleUpdateDataset(datasetIndex, {
             lastSliceColors: [...dataset.backgroundColor],
           });
         }
-        // Use the first color (or fallback) for all slices
-        const baseColor = Array.isArray(dataset.backgroundColor)
-          ? dataset.backgroundColor[0] || '#3b82f6'
-          : dataset.backgroundColor || '#3b82f6';
+        const baseColor = (dataset as any).color
+          || (Array.isArray(dataset.backgroundColor) ? (dataset.backgroundColor[0] || '#3b82f6') : (dataset.backgroundColor || '#3b82f6'));
         handleUpdateDataset(datasetIndex, {
           backgroundColor: Array(dataset.data.length).fill(baseColor),
           borderColor: Array(dataset.data.length).fill(darkenColor(baseColor, 20)),
         });
-      } else {
-        // Restore from backup if available
-        if (Array.isArray(dataset.lastSliceColors) && dataset.lastSliceColors.length === dataset.data.length) {
+      }
+      if (colorMode === 'slice' && (dataset as any).datasetColorMode === 'slice') {
+        if (Array.isArray((dataset as any).lastSliceColors) && (dataset as any).lastSliceColors.length === dataset.data.length) {
           handleUpdateDataset(datasetIndex, {
-            backgroundColor: [...dataset.lastSliceColors],
-            borderColor: dataset.lastSliceColors.map(c => darkenColor(c, 20)),
+            backgroundColor: [...(dataset as any).lastSliceColors],
+            borderColor: (dataset as any).lastSliceColors.map((c: string) => darkenColor(c, 20)),
           });
         }
       }
@@ -546,7 +545,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                     <span className="text-xs text-gray-500 ml-2">(from Types & Toggles)</span>
                   </div>
                 ) : (
-                  <Select value={newDatasetChartType} onValueChange={setNewDatasetChartType}>
+                  <Select value={newDatasetChartType} onValueChange={(v) => setNewDatasetChartType(v as any)}>
                     <SelectTrigger className="w-full h-9">
                       <SelectValue />
                     </SelectTrigger>
@@ -767,7 +766,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
               <div className="flex items-center gap-2">
                 <Input
                   type="number"
-                  value={chartData.datasets[0]?.borderWidth || ''}
+                   value={Number(chartData.datasets[0]?.borderWidth ?? 2)}
                   onChange={(e) => {
                     const value = e.target.value ? Number(e.target.value) : 2
                     chartData.datasets.forEach((_, index) => {
@@ -793,7 +792,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                   <Label className="text-xs font-medium">Point Radius</Label>
                   <Input
                     type="number"
-                    value={chartData.datasets[0]?.pointRadius || ''}
+                     value={Number(chartData.datasets[0]?.pointRadius ?? 5)}
                     onChange={(e) => {
                       const value = e.target.value ? Number(e.target.value) : 5
                       chartData.datasets.forEach((_, index) => {
@@ -812,7 +811,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                   <Label className="text-xs font-medium">Hover Radius</Label>
                   <Input
                     type="number"
-                    value={chartData.datasets[0]?.pointHoverRadius || ''}
+                     value={Number((chartData.datasets[0] as any)?.pointHoverRadius ?? 8)}
                     onChange={(e) => {
                       const value = e.target.value ? Number(e.target.value) : 8
                       chartData.datasets.forEach((_, index) => {
@@ -837,7 +836,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                       <Label className="text-xs font-medium">Line Tension</Label>
                       <Input
                         type="number"
-                        value={chartData.datasets[0]?.tension || ''}
+                       value={Number((chartData.datasets[0] as any)?.tension ?? 0.4)}
                         onChange={(e) => {
                           const value = e.target.value ? Number(e.target.value) : 0.4
                           chartData.datasets.forEach((_, index) => {
@@ -878,7 +877,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                     <Label className="text-xs font-medium">Point Border Width</Label>
                     <Input
                       type="number"
-                      value={chartData.datasets[0]?.pointBorderWidth || ''}
+                       value={Number((chartData.datasets[0] as any)?.pointBorderWidth ?? 1)}
                       onChange={(e) => {
                         const value = e.target.value ? Number(e.target.value) : 1
                         chartData.datasets.forEach((_, index) => {
@@ -897,7 +896,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                     <Label className="text-xs font-medium">Hover Border Width</Label>
                     <Input
                       type="number"
-                      value={chartData.datasets[0]?.pointHoverBorderWidth || ''}
+                       value={Number((chartData.datasets[0] as any)?.pointHoverBorderWidth ?? 2)}
                       onChange={(e) => {
                         const value = e.target.value ? Number(e.target.value) : 2
                         chartData.datasets.forEach((_, index) => {
@@ -1096,7 +1095,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                                   borderColor: darkenColor(e.target.value, 20)
                                 })
                               }}
-                              className="hidden"
+                              className="invisible w-0"
                             />
                             <Input
                               value={Array.isArray(dataset.backgroundColor) 
@@ -1344,7 +1343,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
 
     const handleImageConfigChange = (datasetIndex: number, pointIndex: number, key: string, value: any) => {
       const currentConfig = chartData.datasets[datasetIndex]?.pointImageConfig?.[pointIndex] || getDefaultImageConfigFromStore(chartType);
-      const imageUrl = chartData.datasets[datasetIndex]?.pointImages?.[pointIndex] || null;
+      const imageUrl = (chartData.datasets[datasetIndex]?.pointImages?.[pointIndex] as string | undefined) ?? '';
       updatePointImage(datasetIndex, pointIndex, imageUrl, { ...currentConfig, [key]: value });
     };
 

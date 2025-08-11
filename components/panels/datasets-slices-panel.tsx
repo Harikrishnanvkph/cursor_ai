@@ -1,7 +1,6 @@
 "use client"
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useChartStore } from "@/lib/chart-store"
 import { DatasetSettings } from "./datasets-slices/dataset-settings"
 import { SliceSettings } from "./datasets-slices/slice-settings"

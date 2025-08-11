@@ -286,20 +286,11 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     }
   }, [overlayImages, overlayTexts]);
 
-  // Determine dataset visibility using Chart.js defaults when available
-  const isDatasetVisible = (index: number): boolean => {
-    const chart = chartRef.current as any;
-    if (chart && typeof chart.isDatasetVisible === 'function') {
-      return chart.isDatasetVisible(index);
-    }
-    return (legendFilter.datasets[index] !== false);
-  };
-
-  // Get enabled datasets (respect single/grouped mode and Chart.js visibility)
+  // Get enabled datasets (respect single/grouped mode and legendFilter)
   const enabledDatasets = chartMode === 'single'
     ? chartData.datasets.filter((_, i) => i === activeDatasetIndex)
     : chartData.datasets
-        .map((ds, i) => (isDatasetVisible(i) ? ds : null))
+        .map((ds, i) => (legendFilter.datasets[i] === false ? null : ds))
         .filter((ds): ds is typeof chartData.datasets[number] => ds !== null);
 
   // Filter datasets based on mode
@@ -310,13 +301,8 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     return true;
   });
 
-  // Slice-level visibility (for pie/doughnut/polarArea) - use Chart.js default data visibility when available
+  // Slice-level visibility (for pie/doughnut/polarArea) - respect legendFilter
   const isSliceVisible = (index: number): boolean => {
-    const chart = chartRef.current as any;
-    if (chart && typeof chart.getDataVisibility === 'function') {
-      // Chart.js returns true when visible; if explicitly hidden it returns false
-      return chart.getDataVisibility(index) !== false;
-    }
     return (legendFilter.slices[index] !== false);
   };
 

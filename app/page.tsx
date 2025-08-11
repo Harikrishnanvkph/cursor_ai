@@ -5,98 +5,58 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { 
-  BarChart3, 
-  MessageSquare, 
-  Edit3, 
-  Sparkles, 
-  Download, 
-  Palette, 
-  Zap, 
+import {
+  BarChart3,
+  MessageSquare,
+  Edit3,
+  Sparkles,
+  Download,
   Database,
   ArrowRight,
   Play,
-  Settings,
-  History
+  Settings
 } from "lucide-react"
 
 export default function HomePage() {
   const features = [
-    {
-      icon: Sparkles,
-      title: "AI-Powered Generation",
-      description: "Create charts instantly by describing them in natural language. Our AI understands your requirements and generates beautiful, accurate charts.",
-      color: "text-blue-600"
-    },
-    {
-      icon: MessageSquare,
-      title: "Conversational Editing",
-      description: "Modify your charts through natural conversation. Ask for changes like 'make the bars red' or 'add a title' and watch it happen instantly.",
-      color: "text-green-600"
-    },
-    {
-      icon: Edit3,
-      title: "Manual Editor",
-      description: "Fine-tune every aspect of your charts with our comprehensive manual editor. Control colors, fonts, animations, and more.",
-      color: "text-purple-600"
-    },
-    {
-      icon: Database,
-      title: "Multiple Chart Types",
-      description: "Support for bar, line, pie, doughnut, scatter, bubble, radar, polar area, and more. Plus advanced features like stacked bars and area charts.",
-      color: "text-orange-600"
-    },
-    {
-      icon: Download,
-      title: "Export & Share",
-      description: "Export your charts in multiple formats. Perfect for presentations, reports, and sharing with your team.",
-      color: "text-red-600"
-    },
-    {
-      icon: History,
-      title: "Conversation History",
-      description: "Never lose your work. All your chart conversations are saved and can be restored at any time.",
-      color: "text-indigo-600"
-    }
+    { icon: Sparkles, title: "Natural language to charts", description: "Describe the chart you need; get it instantly." },
+    { icon: Edit3, title: "Precision editor", description: "Adjust labels, axes, styling, overlays and animations." },
+    { icon: Database, title: "Rich chart types", description: "Bar, line, pie, radar, polar, scatter, bubble, stacked, area." },
+    { icon: Download, title: "Export anywhere", description: "Share as PNG/SVG or export responsive HTML templates." },
+    { icon: MessageSquare, title: "Conversational updates", description: "Keep chatting to tweak and iterate quickly." },
+    { icon: Settings, title: "Smart defaults", description: "Great‑looking charts out of the box with modern theming." },
   ]
 
   const chartTypes = [
-    { name: "Bar Charts", icon: BarChart3, color: "bg-blue-100 text-blue-700" },
-    { name: "Line Charts", icon: BarChart3, color: "bg-green-100 text-green-700" },
-    { name: "Pie Charts", icon: BarChart3, color: "bg-purple-100 text-purple-700" },
-    { name: "Scatter Plots", icon: BarChart3, color: "bg-orange-100 text-orange-700" },
-    { name: "Radar Charts", icon: BarChart3, color: "bg-red-100 text-red-700" },
-    { name: "Area Charts", icon: BarChart3, color: "bg-indigo-100 text-indigo-700" }
+    { name: "Bar", icon: BarChart3, color: "bg-indigo-50 text-indigo-700" },
+    { name: "Line", icon: BarChart3, color: "bg-cyan-50 text-cyan-700" },
+    { name: "Pie", icon: BarChart3, color: "bg-emerald-50 text-emerald-700" },
+    { name: "Scatter", icon: BarChart3, color: "bg-amber-50 text-amber-700" },
+    { name: "Radar", icon: BarChart3, color: "bg-rose-50 text-rose-700" },
+    { name: "Area", icon: BarChart3, color: "bg-sky-50 text-sky-700" }
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-neutral-50">
       {/* Header */}
-      <header className="relative overflow-hidden bg-white/80 backdrop-blur-md border-b border-gray-200/50">
+      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl shadow-lg">
-                <BarChart3 className="h-8 w-8 text-white" />
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-gradient-to-br from-indigo-600 to-cyan-600 rounded-xl shadow">
+                <BarChart3 className="h-5 w-5 text-white" />
               </div>
-              <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  AIChartor
-                </h1>
-                <p className="text-sm text-gray-600">AI-Powered Chart Generation</p>
-              </div>
+              <span className="text-lg font-semibold tracking-tight">AIChartor</span>
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <Link href="/landing">
-                <Button variant="outline" className="bg-white/80 hover:bg-white">
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  AI Chat
+                <Button variant="ghost" className="hidden sm:inline-flex">
+                  <MessageSquare className="h-4 w-4 mr-2" /> AI Chat
                 </Button>
               </Link>
               <Link href="/editor">
-                <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                  <Edit3 className="h-4 w-4 mr-2" />
-                  Manual Editor
+                <Button className="bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-700 hover:to-cyan-700">
+                  <Edit3 className="h-4 w-4 mr-2" /> Manual Editor
                 </Button>
               </Link>
             </div>
@@ -104,65 +64,69 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto text-center">
-          <Badge className="mb-6 bg-blue-100 text-blue-700 hover:bg-blue-200">
-            <Sparkles className="h-3 w-3 mr-1" />
-            Powered by AI
-          </Badge>
-          <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
-            Create Beautiful Charts
-            <span className="block bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              with Natural Language
-            </span>
-          </h1>
-          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            Transform your data into stunning visualizations using AI. Describe your chart in plain English, 
-            and watch as AIChartor brings your vision to life. Then refine it with our powerful manual editor.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/landing">
-              <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg px-8 py-6">
-                <Play className="h-5 w-5 mr-2" />
-                Start Creating with AI
-                <ArrowRight className="h-5 w-5 ml-2" />
-              </Button>
-            </Link>
-            <Link href="/editor">
-              <Button size="lg" variant="outline" className="border-white text-blue-600 hover:bg-white hover:text-blue-600 text-lg px-8 py-6">
-                <Settings className="h-5 w-5 mr-2" />
-                Open Manual Editor
-              </Button>
-            </Link>
+      {/* Hero Section (split) */}
+      <section className="relative py-16 sm:py-20">
+        <div className="absolute inset-0 -z-10 opacity-50">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(0,0,0,0.06)_1px,transparent_0)] bg-[length:18px_18px]" />
+        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-10 items-center">
+            <div>
+              <Badge className="mb-4 bg-indigo-100 text-indigo-700 hover:bg-indigo-200">
+                <Sparkles className="h-3 w-3 mr-1" /> AI chart builder
+              </Badge>
+              <h1 className="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight">
+                Build stunning charts
+                <span className="block bg-gradient-to-r from-indigo-600 to-cyan-600 bg-clip-text text-transparent">with natural language</span>
+              </h1>
+              <p className="mt-5 text-lg text-gray-600 max-w-xl">
+                Describe your goal and paste data. Get a beautiful chart immediately, then fine‑tune in the editor.
+              </p>
+              <div className="mt-8 flex flex-col sm:flex-row gap-3">
+                <Link href="/landing">
+                  <Button size="lg" className="px-7 bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-700 hover:to-cyan-700">
+                    <Play className="h-5 w-5 mr-2" /> Start with AI
+                    <ArrowRight className="h-5 w-5 ml-2" />
+                  </Button>
+                </Link>
+                <Link href="/editor">
+                  <Button size="lg" variant="outline" className="px-7">
+                    <Settings className="h-5 w-5 mr-2" /> Open editor
+                  </Button>
+                </Link>
+              </div>
+              <div className="mt-4 text-xs text-gray-500">No signup required</div>
+            </div>
+            <div>
+              <div className="relative rounded-2xl border border-gray-200 bg-white shadow-xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-200 text-sm text-gray-600">Preview</div>
+                <div className="p-4 sm:p-6">
+                  <img src="/placeholder.jpg" alt="Chart preview" className="w-full rounded-lg border" />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white/50">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Everything You Need to Create Amazing Charts
-            </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              From AI-powered generation to precise manual control, AIChartor provides all the tools you need.
-            </p>
+      <section className="py-16 sm:py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Everything you need to build charts</h2>
+            <p className="mt-3 text-gray-600 text-lg">AI when you want speed, controls when you want precision.</p>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {features.map((feature, index) => (
-              <Card key={index} className="border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {features.map((f, i) => (
+              <Card key={i} className="border border-gray-200 shadow-sm hover:shadow-md transition-all">
                 <CardHeader>
-                  <div className={`p-3 rounded-lg bg-gray-50 w-fit ${feature.color}`}>
-                    <feature.icon className="h-6 w-6" />
+                  <div className="p-2.5 rounded-lg bg-indigo-50 w-fit">
+                    <f.icon className="h-5 w-5 text-indigo-700" />
                   </div>
-                  <CardTitle className="text-xl">{feature.title}</CardTitle>
+                  <CardTitle className="text-lg">{f.title}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <CardDescription className="text-gray-600 text-base">
-                    {feature.description}
-                  </CardDescription>
+                  <CardDescription className="text-[15px]">{f.description}</CardDescription>
                 </CardContent>
               </Card>
             ))}
@@ -171,23 +135,17 @@ export default function HomePage() {
       </section>
 
       {/* Chart Types Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Support for All Major Chart Types
-            </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Whether you need simple bar charts or complex radar visualizations, we've got you covered.
-            </p>
+      <section className="py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Supports all major chart types</h2>
+            <p className="mt-3 text-gray-600 text-lg">From simple bars to complex radar and scatter plots.</p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {chartTypes.map((chartType, index) => (
-              <div key={index} className="text-center">
-                <div className={`p-4 rounded-xl ${chartType.color} mb-3 mx-auto w-fit`}>
-                  <chartType.icon className="h-6 w-6" />
-                </div>
-                <p className="text-sm font-medium text-gray-700">{chartType.name}</p>
+          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+            {chartTypes.map((type, i) => (
+              <div key={i} className={`flex items-center gap-2 px-4 py-2 rounded-full border ${type.color} whitespace-nowrap shadow-sm`}>
+                <type.icon className="h-4 w-4" />
+                <span className="text-sm font-medium">{type.name}</span>
               </div>
             ))}
           </div>
@@ -195,25 +153,19 @@ export default function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-blue-600 to-purple-600">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-            Ready to Transform Your Data?
-          </h2>
-          <p className="text-xl text-blue-100 mb-8">
-            Join thousands of users who are already creating stunning charts with AIChartor.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+      <section className="py-16 bg-gradient-to-r from-indigo-600 to-cyan-600">
+        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl md:text-4xl font-bold text-white">Ready to transform your data?</h2>
+          <p className="mt-3 text-indigo-100 text-lg">Create a chart with AI or open the full editor.</p>
+          <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/landing">
-              <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100 text-lg px-8 py-6">
-                <Sparkles className="h-5 w-5 mr-2" />
-                Try AI Generation
+              <Button size="lg" className="bg-white text-gray-900 hover:bg-gray-100">
+                <Sparkles className="h-5 w-5 mr-2" /> Generate with AI
               </Button>
             </Link>
             <Link href="/editor">
-              <Button size="lg" variant="outline" className="border-white text-blue-600 hover:bg-white hover:text-blue-600 text-lg px-8 py-6">
-                <Edit3 className="h-5 w-5 mr-2" />
-                Open Editor
+              <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10">
+                <Edit3 className="h-5 w-5 mr-2" /> Open editor
               </Button>
             </Link>
           </div>
@@ -221,21 +173,16 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="flex items-center gap-3 mb-4 md:mb-0">
-              <div className="p-2 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg">
-                <BarChart3 className="h-6 w-6 text-white" />
+      <footer className="bg-gray-900 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-gradient-to-br from-indigo-600 to-cyan-600 rounded-lg">
+                <BarChart3 className="h-5 w-5 text-white" />
               </div>
-              <div>
-                <h3 className="text-xl font-bold">AIChartor</h3>
-                <p className="text-gray-400 text-sm">AI-Powered Chart Generation</p>
-              </div>
+              <span className="font-semibold">AIChartor</span>
             </div>
-            <div className="flex gap-6 text-sm text-gray-400">
-              <span>© 2024 AIChartor. All rights reserved.</span>
-            </div>
+            <div className="text-sm text-gray-400">© 2024 AIChartor. All rights reserved.</div>
           </div>
         </div>
       </footer>

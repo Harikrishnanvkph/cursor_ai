@@ -645,8 +645,10 @@ export default function LandingPage() {
           >
             Clear Data
           </button>
-          <Avatar className="h-8 w-8">
-            <AvatarFallback className="bg-blue-200 text-blue-700 font-bold">U</AvatarFallback>
+          <Avatar className="h-8 w-8 border-2 border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 cursor-pointer group">
+            <AvatarFallback className="bg-gradient-to-br from-blue-100 to-blue-200 text-blue-700 text-xs font-medium group-hover:from-blue-200 group-hover:to-blue-300 transition-all duration-200">
+              <User className="h-3 w-3" />
+            </AvatarFallback>
           </Avatar>
         </div>
       )}
@@ -661,13 +663,13 @@ export default function LandingPage() {
             {/* Header */}
             <div className="flex items-center justify-between p-3 border-b border-white/20 bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg">
               <div className="flex items-center gap-2">
-                <div className="p-1 bg-white/20 rounded-lg backdrop-blur-sm">
+                <button
+                  onClick={() => router.push('/')}
+                  className="p-1 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-sm transition-colors"
+                  aria-label="Home"
+                >
                   <BarChart2 className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <span className="font-bold text-lg text-white tracking-tight">AIChartor</span>
-                  <div className="text-xs text-white/80 font-medium leading-tight">AI Chart Generator</div>
-                </div>
+                </button>
               </div>
               <div className="flex gap-1">
                 <button
@@ -688,7 +690,7 @@ export default function LandingPage() {
                   className="bg-white/20 hover:bg-white/30 text-white font-semibold px-3 py-1.5 rounded-lg backdrop-blur-sm transition-all duration-200 text-xs border border-white/20 hover:scale-105 flex items-center gap-1"
                   onClick={() => router.push("/editor")}
                 >
-                  Full Editor <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                  Advanced Editor <PencilRuler className="w-3.5 h-3.5 ml-1" />
                 </button>
               </div>
             </div>
