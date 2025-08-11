@@ -23,6 +23,7 @@ const TABS = [
   { id: "animations", label: "Animations", icon: Zap },
   { id: "advanced", label: "Advanced", icon: Settings },
   { id: "templates", label: "Templates", icon: FileText },
+  { id: "data_import", label: "Data", icon: Database },
   { id: "export", label: "Export", icon: Download },
 ]
 
