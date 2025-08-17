@@ -3,8 +3,9 @@ import { persist } from 'zustand/middleware';
 import { useChartStore, type SupportedChartType, type ExtendedChartData } from './chart-store';
 import type { ChartOptions } from 'chart.js';
 
-//"http://localhost:3001/api/process-chart -> GEMINI API"
-const globalServerAPILink = "http://localhost:3001/api/perplexity/process-chart"
+// Server API base
+const baseServerUrl = process.env.NEXT_PUBLIC_SERVER_URL || "http://localhost:3001"
+const globalServerAPILink = `${baseServerUrl}/api/perplexity/process-chart`
 
 export type ChatMessage = {
   role: 'assistant' | 'user';
@@ -103,6 +104,7 @@ export const useChatStore = create<ChatStore>()(
           const response = await fetch(globalServerAPILink, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            credentials: 'include',
             body: JSON.stringify({
               input,
               conversationId: currentConversationId,

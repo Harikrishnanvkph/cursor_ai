@@ -9,6 +9,8 @@ import { ChartLayout } from "@/components/chart-layout"
 import { ChartPreview } from "@/components/chart-preview"
 import { useHistoryStore } from "@/lib/history-store"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { useAuth } from "@/components/auth/AuthProvider"
+import Link from "next/link"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import { clearStoreData } from "@/lib/utils"
 import { ResponsiveAnimationsPanel } from "@/components/panels/responsive-animations-panel";
@@ -25,6 +27,7 @@ const modificationExamples = [
 ]
 
 export default function LandingPage() {
+  const { user, signOut } = useAuth()
   const router = useRouter()
   const { chartConfig, chartData, chartType, setFullChart, resetChart, hasJSON, setHasJSON } = useChartStore()
   const { 
@@ -645,8 +648,11 @@ export default function LandingPage() {
           >
             Clear Data
           </button>
-          <Avatar className="h-8 w-8 border-2 border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 cursor-pointer group">
-            <AvatarFallback className="bg-gradient-to-br from-blue-100 to-blue-200 text-blue-700 text-xs font-medium group-hover:from-blue-200 group-hover:to-blue-300 transition-all duration-200">
+          <Avatar
+            onClick={() => { if (!user) router.push('/signin') }}
+            className="h-8 w-8 border-2 border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 cursor-pointer"
+          >
+            <AvatarFallback className="bg-gradient-to-br from-blue-100 to-blue-200 text-blue-700 text-xs font-medium">
               <User className="h-3 w-3" />
             </AvatarFallback>
           </Avatar>
