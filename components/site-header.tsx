@@ -1,6 +1,8 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
+import { useState } from "react"
 import { useAuth } from "@/components/auth/AuthProvider"
 import { Button } from "@/components/ui/button"
 import { 
@@ -80,11 +82,7 @@ export function SiteHeader() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 p-0 rounded-full border-2 border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 transform hover:scale-105 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 overflow-hidden">
                     {user.avatar_url ? (
-                      <img
-                        src={user.avatar_url}
-                        alt="Profile"
-                        className="h-full w-full rounded-full object-cover"
-                      />
+                      <AvatarImage url={user.avatar_url} />
                     ) : (
                       <div className="h-full w-full rounded-full bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center shadow-sm">
                         <span className="text-white text-sm font-semibold">
@@ -166,6 +164,24 @@ export function SiteHeader() {
         </div>
       </div>
     </header>
+  )
+}
+
+function AvatarImage({ url }: { url: string }) {
+  const [src, setSrc] = useState<string>(
+    url?.startsWith('http') ? url : '/placeholder-user.jpg'
+  )
+  return (
+    <Image
+      src={src}
+      alt="Profile"
+      fill
+      sizes="40px"
+      className="rounded-full object-cover"
+      onError={() => setSrc('/placeholder-user.jpg')}
+      priority
+      referrerPolicy="no-referrer"
+    />
   )
 }
 

@@ -23,6 +23,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   const refresh = useCallback(async () => {
+    console.log('hellow from refresh')
     try {
       const res = await authApi.me()
       setUser(res.user)
@@ -35,7 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     refresh()
-  }, [refresh])
+  }, [])
 
   const signIn = useCallback(async (email: string, password: string) => {
     setLoading(true)
