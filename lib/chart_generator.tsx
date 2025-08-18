@@ -614,6 +614,34 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     },
   } : chartConfig;
 
+  // Ensure safe scales and correct indexAxis resolution
+  const isPlainObject = (v: any) => v && typeof v === 'object' && !Array.isArray(v);
+  const safeScalesSrc = (chartConfig as any)?.scales;
+  const safeScales = isPlainObject(safeScalesSrc) ? safeScalesSrc : {};
+  // Do NOT attach Cartesian scales for circular charts like pie/doughnut
+  const isCircularType = (chartTypeForChart === 'pie' || chartTypeForChart === 'doughnut' || chartTypeForChart === 'radar' || chartTypeForChart === 'polarArea');
+  const optionsScales = isCircularType ? undefined : ({
+    x: { ...(safeScales?.x || {}) },
+    y: { ...(safeScales?.y || {}) },
+  } as any);
+  // Determine if any dataset (or the chart) requests horizontal orientation
+  const needsHorizontal = chartType === 'horizontalBar' || filteredDatasetsPatched.some((ds: any) => (ds?.chartType || chartType) === 'horizontalBar');
+  const baseOptions = {
+    ...(chartConfig as any),
+    indexAxis: needsHorizontal ? 'y' : ((chartConfig as any)?.indexAxis || 'x'),
+    // Explicitly override scales: for circular charts, force empty object to avoid axes
+    scales: isCircularType ? {} : (optionsScales ?? {}),
+  } as any;
+  const appliedOptions = chartType === 'stackedBar'
+    ? {
+        ...baseOptions,
+        scales: {
+          x: { ...optionsScales.x, stacked: true },
+          y: { ...optionsScales.y, stacked: true },
+        },
+      }
+    : baseOptions;
+
   // Context menu handlers
   const handleContextMenuClose = () => {
     setContextMenu(prev => ({ ...prev, isOpen: false }))
@@ -673,8 +701,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                     'data-debug-height': chartConfig.height
                   })}
                   options={{
-                    ...(chartType === 'stackedBar' ? stackedBarConfig : 
-                        (chartType === 'horizontalBar' ? { ...chartConfig, indexAxis: 'y' } : chartConfig)),
+                    ...appliedOptions,
                     responsive: chartConfig.manualDimensions ? false : isResponsive,
                     maintainAspectRatio: !(isResponsive),
                     overlayImages,
@@ -826,8 +853,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                   'data-debug-height': chartConfig.height
                 })}
                 options={{
-                  ...(chartType === 'stackedBar' ? stackedBarConfig : 
-                      (chartType === 'horizontalBar' ? { ...chartConfig, indexAxis: 'y' } : chartConfig)),
+                  ...appliedOptions,
                   responsive: chartConfig.manualDimensions ? false : isResponsive,
                   maintainAspectRatio: !(isResponsive),
                   overlayImages,

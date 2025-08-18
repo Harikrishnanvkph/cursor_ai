@@ -17,6 +17,7 @@ import { ResponsiveAnimationsPanel } from "@/components/panels/responsive-animat
 import { Chart } from "react-chartjs-2"
 import { PromptTemplate, chartTemplate, ChatWindow } from "@/components/landing"
 import { ConfigSidebar } from "@/components/config-sidebar"
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 
 const modificationExamples = [
   "Make the bars red",
@@ -27,6 +28,14 @@ const modificationExamples = [
 ]
 
 export default function LandingPage() {
+  return (
+    <ProtectedRoute>
+      <LandingPageContent />
+    </ProtectedRoute>
+  )
+}
+
+function LandingPageContent() {
   const { user, signOut } = useAuth()
   const router = useRouter()
   const { chartConfig, chartData, chartType, setFullChart, resetChart, hasJSON, setHasJSON } = useChartStore()

@@ -21,11 +21,21 @@ import {
   Play,
   Settings
 } from "lucide-react"
+import Image from "next/image"
 
 export default function HomePage() {
   const { user, loading } = useAuth()
   const searchParams = useSearchParams()
-  const [showWelcome, setShowWelcome] = useState(true)
+  const [showWelcome, setShowWelcome] = useState<boolean>(false)
+  // Only show welcome banner once per session
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const shown = sessionStorage.getItem('welcomeShown')
+    if (!shown) {
+      setShowWelcome(true)
+      sessionStorage.setItem('welcomeShown', '1')
+    }
+  }, [])
   
   // Handle OAuth success redirect
   useEffect(() => {
@@ -81,16 +91,50 @@ export default function HomePage() {
     <div className="min-h-screen bg-neutral-50">
       <SiteHeader />
 
-      {/* Show loading state while authenticating */}
-      {loading && (
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-3 text-gray-600">Signing you in...</span>
+      {/* Show loading state only if unauthenticated and still loading */}
+      {loading && !user && (
+        <div className="py-10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid lg:grid-cols-2 gap-10 items-center">
+              {/* Left skeleton (hero text/buttons) */}
+              <div className="space-y-5 animate-pulse">
+                <div className="h-5 w-40 bg-gray-200 rounded" />
+                <div className="h-9 w-3/4 bg-gray-200 rounded" />
+                <div className="h-9 w-2/3 bg-gray-200 rounded" />
+                <div className="h-5 w-4/5 bg-gray-200 rounded" />
+                <div className="flex gap-3 pt-2">
+                  <div className="h-11 w-40 bg-gray-200 rounded" />
+                  <div className="h-11 w-40 bg-gray-200 rounded" />
+                </div>
+              </div>
+              {/* Right skeleton (preview card) */}
+              <div>
+                <div className="relative rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                  <div className="h-10 bg-gray-100" />
+                  <div className="p-6">
+                    <div className="h-56 w-full bg-gray-200 rounded animate-pulse" />
+                  </div>
+                </div>
+              </div>
+            </div>
+            {/* Feature cards skeleton */}
+            <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="border border-gray-200 rounded-lg p-5 bg-white shadow-sm">
+                  <div className="space-y-3 animate-pulse">
+                    <div className="h-5 w-24 bg-gray-200 rounded" />
+                    <div className="h-4 w-3/4 bg-gray-200 rounded" />
+                    <div className="h-4 w-2/3 bg-gray-200 rounded" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Show content when not loading */}
-      {!loading && (
+      {/* Show content when not loading OR when we have a cached user */}
+      {(!loading || !!user) && (
         <>
           {/* Welcome message for signed-in users */}
           {user && showWelcome && (
@@ -99,10 +143,14 @@ export default function HomePage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center text-green-800">
                     {user.avatar_url && (
-                      <img 
+                      <Image 
                         src={user.avatar_url} 
                         alt="Profile" 
-                        className="w-6 h-6 rounded-full mr-3"
+                        width={36}
+                        height={36}
+                        className="rounded-full mr-3"
+                        referrerPolicy="no-referrer"
+                        priority
                       />
                     )}
                     <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>

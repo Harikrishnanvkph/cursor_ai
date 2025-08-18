@@ -12,6 +12,7 @@ import Link from "next/link"
 import React from "react"
 import { ResizableChartArea } from "@/components/resizable-chart-area"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 
 const TABS = [
   { id: "types_toggles", label: "Types", icon: AlignEndHorizontal },
@@ -77,6 +78,14 @@ function useIsTablet() {
 }
 
 export default function EditorPage() {
+  return (
+    <ProtectedRoute>
+      <EditorPageContent />
+    </ProtectedRoute>
+  )
+}
+
+function EditorPageContent() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 

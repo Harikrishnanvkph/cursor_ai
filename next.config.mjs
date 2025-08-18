@@ -12,10 +12,7 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'lh3.googleusercontent.com',
-      },
-      {
-        protocol: 'https',
-        hostname: '*.googleusercontent.com',
+        pathname: '/**',
       },
     ],
     minimumCacheTTL: 60 * 60 * 24, // 24h cache

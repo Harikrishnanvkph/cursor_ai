@@ -1,6 +1,6 @@
 "use client"
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/components/auth/AuthProvider'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -10,16 +10,34 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 export function SignInForm() {
   const { signIn, signInWithGoogle, loading } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+
+  // Check for redirect parameter from middleware or ProtectedRoute
+  useEffect(() => {
+    const redirect = searchParams.get('redirect')
+    if (redirect && redirect !== '/signin' && redirect !== '/signup') {
+      console.log(`📝 Storing redirect path: ${redirect}`)
+      // Store the redirect path for after sign-in, but avoid auth page loops
+      sessionStorage.setItem('redirectAfterSignIn', redirect)
+    }
+  }, [searchParams])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     try {
-      await signIn(email, password)
-      router.push('/')
-    } catch {
-      // error toast is handled inside AuthProvider.signIn
+      const success = await signIn(email, password)
+      if (success) {
+        // Sign in was successful, redirect will be handled by AuthProvider
+        console.log('Sign in successful')
+      } else {
+        // Sign in failed, error toast already shown by AuthProvider
+        console.log('Sign in failed')
+      }
+    } catch (error) {
+      // This shouldn't happen now since we're not re-throwing errors
+      console.error('Unexpected error in sign in form:', error)
     }
   }
 

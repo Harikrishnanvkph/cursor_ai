@@ -1,6 +1,6 @@
 "use client"
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/components/auth/AuthProvider'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -12,12 +12,23 @@ import { toast } from 'sonner'
 export function SignUpForm() {
   const { signUp, signInWithGoogle, loading } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [resending, setResending] = useState(false)
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [fullNameError, setFullNameError] = useState<string | null>(null)
+
+  // Check for redirect parameter from middleware or ProtectedRoute
+  useEffect(() => {
+    const redirect = searchParams.get('redirect')
+    if (redirect && redirect !== '/signin' && redirect !== '/signup') {
+      console.log(`📝 Storing redirect path: ${redirect}`)
+      // Store the redirect path for after sign-in, but avoid auth page loops
+      sessionStorage.setItem('redirectAfterSignIn', redirect)
+    }
+  }, [searchParams])
 
   function validatePassword(pw: string): string | null {
     if (!pw || pw.length < 8) return 'Password must be at least 8 characters'

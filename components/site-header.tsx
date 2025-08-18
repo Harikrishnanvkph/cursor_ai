@@ -97,10 +97,14 @@ export function SiteHeader() {
                   {/* User Info Header */}
                   <div className="flex items-center gap-2 p-2.5 border-b border-gray-100">
                     {user.avatar_url && (
-                      <img
+                      <Image
                         src={user.avatar_url}
                         alt="Profile"
+                        width={36}
+                        height={36}
                         className="h-9 w-9 rounded-full border border-gray-200 shadow-sm object-cover"
+                        referrerPolicy="no-referrer"
+                        priority
                       />
                     )}
                     <div className="flex-1 min-w-0">
@@ -184,5 +188,3 @@ function AvatarImage({ url }: { url: string }) {
     />
   )
 }
-
-
