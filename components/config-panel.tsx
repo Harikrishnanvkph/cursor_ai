@@ -12,9 +12,10 @@ import { TypesTogglesPanel } from "./panels/types-toggles-panel"
 import { DatasetsSlicesPanel } from "./panels/datasets-slices-panel"
 import { TemplatesPanel } from "./panels/templates-panel"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { ChevronLeft, User, Settings } from "lucide-react"
+import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
+import { ChevronLeft, Settings } from "lucide-react"
 import { useEffect, useState } from "react"
+import { useAuth } from "@/components/auth/AuthProvider"
 
 interface ConfigPanelProps {
   activeTab: string
@@ -25,6 +26,7 @@ interface ConfigPanelProps {
 
 export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, onTabChange }: ConfigPanelProps) {
   const [isMobile, setIsMobile] = useState(false);
+  const { user, signOut } = useAuth();
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth <= 576);
@@ -115,11 +117,7 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
             >
               <Settings className="h-4 w-4" />
             </Button>
-            <Avatar className="h-8 w-8 border-2 border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 cursor-pointer group">
-              <AvatarFallback className="bg-gradient-to-br from-blue-100 to-blue-200 text-blue-700 text-xs font-medium group-hover:from-blue-200 group-hover:to-blue-300 transition-all duration-200">
-                <User className="h-3 w-3" />
-              </AvatarFallback>
-            </Avatar>
+            <SimpleProfileDropdown size="sm" />
           </div>
         </div>
       )}

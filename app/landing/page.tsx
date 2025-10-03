@@ -2,30 +2,25 @@
 
 import React, { useState, useRef, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Send, BarChart2, Plus, SquarePen ,PencilRuler ,RotateCcw, Edit3, MessageSquare, Sparkles, ArrowRight, ChevronDown, ChevronUp, X, ChevronLeft, ChevronRight, PanelLeft, PanelRight, Settings, User } from "lucide-react"
+import { Send, BarChart2, Plus, SquarePen ,PencilRuler ,RotateCcw, Edit3, MessageSquare, Sparkles, ArrowRight, X, ChevronLeft, ChevronRight, PanelLeft, PanelRight, Settings, Brain, Info } from "lucide-react"
 import { useChartStore } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
 import { ChartLayout } from "@/components/chart-layout"
 import { ChartPreview } from "@/components/chart-preview"
 import { useHistoryStore } from "@/lib/history-store"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+
+import { Button } from "@/components/ui/button"
 import { useAuth } from "@/components/auth/AuthProvider"
-import Link from "next/link"
 import { HistoryDropdown } from "@/components/history-dropdown"
+import { UndoRedoButtons } from "@/components/ui/undo-redo-buttons"
+import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
+
 import { clearStoreData } from "@/lib/utils"
 import { ResponsiveAnimationsPanel } from "@/components/panels/responsive-animations-panel";
 import { Chart } from "react-chartjs-2"
 import { PromptTemplate, chartTemplate, ChatWindow } from "@/components/landing"
 import { ConfigSidebar } from "@/components/config-sidebar"
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
-
-const modificationExamples = [
-  "Make the bars red",
-  "Add a title",
-  "Show only the top 3 items",
-  "Change to a pie chart",
-  "Make the bars thicker"
-]
 
 export default function LandingPage() {
   return (
@@ -51,8 +46,7 @@ function LandingPageContent() {
   const [input, setInput] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const [suggestionsOpen, setSuggestionsOpen] = useState(false)
-  const [showActiveBanner, setShowActiveBanner] = useState(true)
+  const [showActiveBanner, setShowActiveBanner] = useState(false)
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true)
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true)
   
@@ -137,7 +131,7 @@ function LandingPageContent() {
             textareaRef.current.style.overflowY = "hidden"
           } else {
             textareaRef.current.style.height = "36px"
-            const maxHeight = 80
+            const maxHeight = 100
             textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`
             textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > maxHeight ? "auto" : "hidden"
           }
@@ -166,12 +160,26 @@ function LandingPageContent() {
   const handleNewConversation = useCallback(() => {
     startNewConversation()
     setInput("")
+    setShowActiveBanner(false)
+    // Clear any existing banner shown flags when starting new conversation
+    Object.keys(sessionStorage).forEach(key => {
+      if (key.startsWith('chartBannerShown_')) {
+        sessionStorage.removeItem(key)
+      }
+    })
   }, [startNewConversation])
 
   const handleResetChart = useCallback(() => {
     clearMessages()
     resetChart()
     setHasJSON(false)
+    setShowActiveBanner(false)
+    // Clear any existing banner shown flags when resetting chart
+    Object.keys(sessionStorage).forEach(key => {
+      if (key.startsWith('chartBannerShown_')) {
+        sessionStorage.removeItem(key)
+      }
+    })
   }, [clearMessages, resetChart, setHasJSON])
   
   // Tablet sidebar handlers
@@ -214,24 +222,72 @@ function LandingPageContent() {
   const hasActiveChart = currentChartState !== null && hasJSON
 
   useEffect(() => {
-    // When a new chart is received, show the banner and expand suggestions
+    // When a new chart is received, show the banner only if it hasn't been shown before
     if (hasActiveChart) {
-      setShowActiveBanner(true)
-      setSuggestionsOpen(false)
+      // Check if banner has been shown for this chart session
+      const chartDataHash = JSON.stringify(currentChartState?.chartData?.datasets?.[0]?.data || [])
+      const bannerShownKey = `chartBannerShown_${currentChartState?.chartType}_${chartDataHash}`
+      const hasBannerBeenShown = sessionStorage.getItem(bannerShownKey)
+      
+      if (!hasBannerBeenShown) {
+        setShowActiveBanner(true)
+        // Mark this banner as shown for this chart session with timestamp
+        sessionStorage.setItem(bannerShownKey, 'true')
+        sessionStorage.setItem(bannerShownKey + '_timestamp', Date.now().toString())
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasActiveChart])
+  }, [hasActiveChart, currentChartState])
 
   // Auto-hide banner after 8 seconds if not manually closed
   useEffect(() => {
     if (showActiveBanner && hasActiveChart) {
       const timer = setTimeout(() => {
         setShowActiveBanner(false)
+        // Mark this banner as shown when auto-hidden
+        if (currentChartState) {
+          const chartDataHash = JSON.stringify(currentChartState.chartData?.datasets?.[0]?.data || [])
+          const bannerShownKey = `chartBannerShown_${currentChartState.chartType}_${chartDataHash}`
+          sessionStorage.setItem(bannerShownKey, 'true')
+          sessionStorage.setItem(bannerShownKey + '_timestamp', Date.now().toString())
+        }
       }, 8000) // 8 seconds
 
       return () => clearTimeout(timer)
     }
-  }, [showActiveBanner, hasActiveChart])
+  }, [showActiveBanner, hasActiveChart, currentChartState])
+
+  // Clean up old banner flags when component unmounts or chart changes significantly
+  useEffect(() => {
+    const cleanupOldBannerFlags = () => {
+      const currentTime = Date.now()
+      const maxAge = 24 * 60 * 60 * 1000 // 24 hours
+      
+      Object.keys(sessionStorage).forEach(key => {
+        if (key.startsWith('chartBannerShown_')) {
+          try {
+            const timestamp = sessionStorage.getItem(key + '_timestamp')
+            if (timestamp && (currentTime - parseInt(timestamp)) > maxAge) {
+              sessionStorage.removeItem(key)
+              sessionStorage.removeItem(key + '_timestamp')
+            }
+          } catch (error) {
+            // If there's an error, remove the key anyway
+            sessionStorage.removeItem(key)
+            sessionStorage.removeItem(key + '_timestamp')
+          }
+        }
+      })
+    }
+
+    // Clean up on mount and when chart changes
+    cleanupOldBannerFlags()
+    
+    // Set up interval to clean up old flags
+    const interval = setInterval(cleanupOldBannerFlags, 60 * 60 * 1000) // Every hour
+    
+    return () => clearInterval(interval)
+  }, [currentChartState])
 
   // Handle migration errors by clearing localStorage
   useEffect(() => {
@@ -334,26 +390,24 @@ function LandingPageContent() {
             <Settings className="w-5 h-5" />
           </button>
           
-          {/* History Icon */}
-          <button
-            onClick={() => handleTabletIconClick('history')}
-            className={`p-2 rounded-lg transition-all duration-200 ${
-              tabletRightSidebarContent === 'history' && tabletRightSidebarOpen
-                ? 'text-blue-600 bg-blue-50' 
-                : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
-            }`}
-            title="History"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </button>
+                     {/* History Icon */}
+           <button
+             onClick={() => handleTabletIconClick('history')}
+             className={`p-2 rounded-lg transition-all duration-200 ${
+               tabletRightSidebarContent === 'history' && tabletRightSidebarOpen
+                 ? 'text-blue-600 bg-blue-50' 
+                 : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+             }`}
+             title="History"
+           >
+             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+             </svg>
+           </button>
           
           {/* Profile Icon at bottom */}
           <div className="flex-1"></div>
-          <div className="h-10 w-10 flex items-center justify-center rounded-full bg-blue-100 border-2 border-blue-200">
-            <User className="h-5 w-5 text-blue-600" />
-          </div>
+          <SimpleProfileDropdown size="md" />
         </aside>
 
         {/* Main Content Area */}
@@ -418,14 +472,12 @@ function LandingPageContent() {
                      hasActiveChart={hasActiveChart}
                      showActiveBanner={showActiveBanner}
                      setShowActiveBanner={setShowActiveBanner}
-                     suggestionsOpen={suggestionsOpen}
-                     setSuggestionsOpen={setSuggestionsOpen}
-                     modificationExamples={modificationExamples}
                      messagesEndRef={messagesEndRef}
                      textareaRef={textareaRef}
                      handleInputChange={handleInputChange}
                      handlePaste={handlePaste}
                      compact={true}
+                     currentChartState={currentChartState}
                    />
                  )}
                 
@@ -555,29 +607,27 @@ function LandingPageContent() {
               <span className="text-xs font-medium">Tools</span>
             </button>
             
-            {/* History Icon */}
-            <button
-              onClick={() => handleMobileIconClick('history')}
-              className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all duration-200 min-w-0 ${
-                mobileRightSidebarContent === 'history' && mobileRightSidebarOpen
-                  ? 'text-blue-600 bg-blue-50' 
-                  : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
-              }`}
-              title="History"
-            >
-              <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="text-xs font-medium">History</span>
-            </button>
+                         {/* History Icon */}
+             <button
+               onClick={() => handleMobileIconClick('history')}
+               className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all duration-200 min-w-0 ${
+                 mobileRightSidebarContent === 'history' && mobileRightSidebarOpen
+                   ? 'text-blue-600 bg-blue-50' 
+                   : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+               }`}
+               title="History"
+             >
+               <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+               </svg>
+               <span className="text-xs font-medium">History</span>
+             </button>
 
             {/* Profile Icon */}
-            <button className="flex flex-col items-center justify-center p-2 min-w-0">
-              <div className="w-6 h-6 flex items-center justify-center rounded-full bg-blue-100 border border-blue-200 mb-1">
-                <User className="h-4 w-4 text-blue-600" />
-              </div>
+            <div className="flex flex-col items-center justify-center p-2 min-w-0">
+              <SimpleProfileDropdown size="md" variant="avatar" className="mb-1" />
               <span className="text-xs font-medium text-gray-600">Profile</span>
-            </button>
+            </div>
             
           </div>
         </nav>
@@ -616,11 +666,9 @@ function LandingPageContent() {
                     hasActiveChart={hasActiveChart}
                     showActiveBanner={showActiveBanner}
                     setShowActiveBanner={setShowActiveBanner}
-                    suggestionsOpen={suggestionsOpen}
-                    setSuggestionsOpen={setSuggestionsOpen}
-                    modificationExamples={modificationExamples}
-                    textareaRef={textareaRef}
                     messagesEndRef={messagesEndRef}
+                    textareaRef={textareaRef}
+                    currentChartState={currentChartState}
                   />
                 )}
                 
@@ -632,7 +680,7 @@ function LandingPageContent() {
                 
                 {mobileRightSidebarContent === 'history' && (
                   <div className="p-4">
-                    <HistoryDropdown />
+                    <HistoryDropdown variant="full" />
                   </div>
                 )}
               </div>
@@ -646,25 +694,12 @@ function LandingPageContent() {
   // Desktop Layout (default)
   return (
     <div className="flex h-screen w-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 relative overflow-hidden">
-      {/* Floating global header for history and avatar, only when no chart is created */}
-      {(!chartData?.datasets?.length || !hasJSON) && (
-        <div className="fixed top-4 right-4 z-50 flex items-center gap-3">
-          <HistoryDropdown />
-          <button
-            onClick={clearStoreData}
-            className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded border border-red-200 transition-colors"
-            title="Clear store data (fixes migration issues)"
-          >
-            Clear Data
-          </button>
-          <Avatar
-            onClick={() => { if (!user) router.push('/signin') }}
-            className="h-8 w-8 border-2 border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 cursor-pointer"
-          >
-            <AvatarFallback className="bg-gradient-to-br from-blue-100 to-blue-200 text-blue-700 text-xs font-medium">
-              <User className="h-3 w-3" />
-            </AvatarFallback>
-          </Avatar>
+             {/* Floating global header for history and avatar, only when no chart is created - Desktop only */}
+       {(!chartData?.datasets?.length || !hasJSON) && !isTablet && !isMobile && (
+         <div className="fixed top-4 right-4 z-50 flex items-center gap-3">
+           
+           <HistoryDropdown variant="full" />
+           <SimpleProfileDropdown size="md" />
         </div>
       )}
       {/* Background decoration */}
@@ -672,7 +707,7 @@ function LandingPageContent() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(156,146,172,0.15)_1px,transparent_0)] bg-[length:20px_20px]"></div>
       </div>
       {/* Left Sidebar / Chat */}
-      <aside className={`transition-all duration-300 z-10 flex flex-col border-r border-white/20 shadow-2xl bg-white/90 backdrop-blur-xl ${leftSidebarOpen ? 'w-[340px]' : 'w-16'} rounded-tl-2xl rounded-bl-2xl`}>
+      <aside className={`transition-all duration-300 z-10 flex flex-col border-r border-white/20 shadow-2xl bg-white/90 backdrop-blur-xl ${leftSidebarOpen ? 'w-[320px]' : 'w-16'} rounded-tl-2xl rounded-bl-2xl`}>
         {leftSidebarOpen ? (
           <>
             {/* Header */}
@@ -692,7 +727,14 @@ function LandingPageContent() {
                   onClick={handleNewConversation}
                   title="New Conversation"
                 >
-                  <Plus className="w-3.5 h-3.5" />
+                  <SquarePen className="w-3.5 h-3.5" />
+                </button>
+                
+                <button
+                  className="bg-white/20 hover:bg-white/30 text-white font-semibold px-3 py-1.5 rounded-lg backdrop-blur-sm transition-all duration-200 text-xs border border-white/20 hover:scale-105 flex items-center gap-1"
+                  onClick={() => router.push("/editor")}
+                >
+                  Advanced Editor <PencilRuler className="w-3.5 h-3.5 ml-1" />
                 </button>
                 <button
                   className="bg-white/20 hover:bg-white/30 text-white font-semibold px-2 py-1.5 rounded-lg backdrop-blur-sm transition-all duration-200 text-xs border border-white/20 hover:scale-105"
@@ -701,25 +743,16 @@ function LandingPageContent() {
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
                 </button>
-                <button
-                  className="bg-white/20 hover:bg-white/30 text-white font-semibold px-3 py-1.5 rounded-lg backdrop-blur-sm transition-all duration-200 text-xs border border-white/20 hover:scale-105 flex items-center gap-1"
-                  onClick={() => router.push("/editor")}
-                >
-                  Advanced Editor <PencilRuler className="w-3.5 h-3.5 ml-1" />
-                </button>
               </div>
             </div>
-            
-
-            
-                         {/* Input */}
+            {/* Input */}
              <form
                onSubmit={handleSend}
-               className="p-2 border-t border-white/20 bg-gradient-to-br from-white/90 to-slate-50/90 flex gap-2 rounded-b-3xl shadow-inner backdrop-blur-sm flex-shrink-0"
+               className="p-2 border-t border-white/20 bg-gradient-to-br from-blue/90 to-blue-50/90 flex gap-2 shadow-inner backdrop-blur-sm flex-shrink-0"
              >
                <textarea
                  ref={textareaRef}
-                 className="flex-1 rounded-lg border border-slate-200/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white/80 resize-none max-h-24 min-h-[40px] leading-relaxed transition-colors font-sans shadow-sm backdrop-blur-sm"
+                 className="flex-1 rounded-lg border border-slate-200/100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white/80 resize-none max-h-24 min-h-[40px] leading-relaxed transition-colors font-sans shadow-sm backdrop-blur-sm"
                  placeholder={hasActiveChart ? "Modify the chart..." : "Describe your chart..."}
                  value={input}
                  onChange={handleInputChange}
@@ -743,47 +776,12 @@ function LandingPageContent() {
                </button>
              </form>
 
-            {/* Modification Examples */}
-            {hasActiveChart && (
-              <div className={`w-full transition-all duration-200 ${suggestionsOpen ? 'pb-2' : 'py-1'}`}
-                   style={{minHeight: suggestionsOpen ? undefined : '0', marginBottom: suggestionsOpen ? '0.25rem' : '0'}}>
-                <button
-                  type="button"
-                  className="flex items-center w-full text-xs font-semibold text-slate-600 mb-1 pl-3 pr-2 py-1 hover:bg-slate-100 rounded transition-colors select-none"
-                  onClick={() => setSuggestionsOpen(v => !v)}
-                  aria-expanded={suggestionsOpen}
-                  style={{justifyContent: 'space-between'}}
-                >
-                  <span className="flex items-center gap-1"><Sparkles className="w-4 h-4" /> Try asking me to:</span>
-                  {suggestionsOpen ? (
-                    <ChevronUp className="w-4 h-4 ml-1" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4 ml-1" />
-                  )}
-                </button>
-                {suggestionsOpen && (
-                  <div className="flex flex-wrap gap-1.5 px-1 pb-1">
-                    {modificationExamples.map((example, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setInput(example)}
-                        className="text-xs bg-white/80 hover:bg-white border border-slate-200/50 rounded-full px-3 py-1 text-slate-700 hover:text-slate-900 hover:border-slate-300 transition-all duration-200 hover:scale-105 shadow-sm backdrop-blur-sm"
-                        style={{marginBottom: '2px'}}
-                      >
-                        {example}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2 bg-gradient-to-b from-white/80 to-slate-50/80 font-sans">
+            <div className="lex-1 overflow-y-auto px-3 py-2 space-y-2 bg-gradient-to-b from-white/80 to-slate-50/80 font-sans">
               {messages.map((msg, idx) => (
                 <div
                   key={idx}
-                  className={`rounded-2xl px-4 py-3 max-w-[90%] whitespace-pre-wrap break-words shadow-lg font-medium text-sm transition-all duration-300 transform hover:scale-[1.02] ${
+                  className={`rounded-2xl px-4 py-3 max-w-[90%] whitespace-pre-wrap break-words shadow-lg font-medium text-sm ${
                     msg.role === "user"
                       ? "bg-gradient-to-br from-indigo-500 to-purple-600 text-white self-end ml-auto border border-indigo-400/30 shadow-indigo-500/25"
                       : "bg-gradient-to-br from-white to-slate-50 text-slate-800 self-start mr-auto border border-slate-200/50 shadow-slate-500/10"
@@ -792,37 +790,35 @@ function LandingPageContent() {
                 >
                   <div className="flex items-start gap-3">
                     {msg.role === 'assistant' && (
-                      <div className="p-1.5 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-lg flex-shrink-0">
-                        <MessageSquare className="w-4 h-4 text-blue-600" />
+                      <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                        <div className="p-1.5 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-lg">
+                          <Brain className="w-4 h-4 text-blue-600" />
+                        </div>
+                        {msg.chartSnapshot && (
+                          <div className="relative group">
+                            <Info className="w-3 h-3 text-blue-400 hover:text-blue-600 cursor-help transition-colors" />
+                            {/* Tooltip */}
+                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+                              <div className="space-y-1">
+                                {msg.chartSnapshot && (
+                                  <div className="flex items-center gap-1">
+                                    <Edit3 className="w-3 h-3" />
+                                    <span>Chart {msg.action === 'create' ? 'created' : 'updated'}</span>
+                                    {msg.changes && msg.changes.length > 0 && (
+                                      <span>• {msg.changes.length} change{msg.changes.length > 1 ? 's' : ''}</span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              {/* Arrow */}
+                              <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
-                    <div className="flex-1">
+                    <div className="flex-1 text-sm">
                       {msg.content}
-                      {msg.chartSnapshot && (
-                        <div className="mt-3 text-xs opacity-80 flex items-center gap-2 bg-white/50 rounded-lg px-2 py-1.5">
-                          <Edit3 className="w-3 h-3" />
-                          Chart {msg.action === 'create' ? 'created' : 'updated'}
-                          {msg.changes && msg.changes.length > 0 && (
-                            <span className="ml-1">• {msg.changes.length} change{msg.changes.length > 1 ? 's' : ''}</span>
-                          )}
-                        </div>
-                      )}
-                      {msg.suggestions && msg.suggestions.length > 0 && (
-                        <div className="mt-3 p-3 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl text-xs text-blue-800 border border-blue-200/50">
-                          <div className="font-semibold mb-2 flex items-center gap-1">
-                            <Sparkles className="w-3 h-3" />
-                            Suggestions:
-                          </div>
-                          <ul className="space-y-1.5">
-                            {msg.suggestions.map((suggestion, i) => (
-                              <li key={i} className="flex items-start gap-2">
-                                <span className="text-blue-500 font-bold">•</span>
-                                <span>{suggestion}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -845,7 +841,16 @@ function LandingPageContent() {
               <div className="relative px-6 py-4 bg-gradient-to-r from-emerald-50 to-teal-50 border-t border-emerald-200/50 flex-shrink-0">
                 <button
                   className="absolute top-2 right-2 p-1 rounded hover:bg-emerald-100 transition-colors"
-                  onClick={() => setShowActiveBanner(false)}
+                  onClick={() => {
+                    setShowActiveBanner(false)
+                    // Mark this banner as shown for the current chart session
+                    if (hasActiveChart && currentChartState) {
+                      const chartDataHash = JSON.stringify(currentChartState.chartData?.datasets?.[0]?.data || [])
+                      const bannerShownKey = `chartBannerShown_${currentChartState.chartType}_${chartDataHash}`
+                      sessionStorage.setItem(bannerShownKey, 'true')
+                      sessionStorage.setItem(bannerShownKey + '_timestamp', Date.now().toString())
+                    }
+                  }}
                   aria-label="Close banner"
                 >
                   <X className="w-4 h-4 text-emerald-700" />
@@ -867,14 +872,22 @@ function LandingPageContent() {
         ) : (
           // Collapsed Sidebar - Icon Only
           <div className="flex flex-col items-center h-full py-4 space-y-4 group">
-            {/* Application Logo / Expand Icon - Transforms on hover */}
+            {/* Application Logo - Always shows logo, routes to home */}
+            <button
+              onClick={() => router.push("/")}
+              className="p-2 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-md"
+              title="Go to Home"
+            >
+              <BarChart2 className="w-6 h-6 text-white" />
+            </button>
+            
+            {/* Expand Sidebar Icon - Separate ChevronRight icon */}
             <button
               onClick={() => setLeftSidebarOpen(true)}
-              className="p-2 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg shadow-lg transition-all duration-200 hover:scale-105 group-hover:shadow-md"
+              className="p-2 rounded-lg hover:bg-gradient-to-br hover:from-blue-50 hover:to-indigo-50 text-gray-500 hover:text-blue-600 hover:shadow-md hover:scale-105"
               title="Expand Sidebar"
             >
-              <BarChart2 className="w-6 h-6 text-white transition-all duration-200 group-hover:hidden" />
-              <ChevronRight className="w-6 h-6 text-white hidden transition-all duration-200 group-hover:block" />
+              <ChevronRight className="w-5 h-5" />
             </button>
             
             {/* New Chat Icon */}
@@ -886,7 +899,7 @@ function LandingPageContent() {
               className="p-2 rounded-lg hover:bg-blue-50 transition-all duration-200 text-gray-600 hover:text-blue-600"
               title="New Chat"
             >
-              <Plus className="w-5 h-5" />
+              <SquarePen className="w-5 h-5" />
             </button>
             
             {/* Message Icon - Show current chat */}
@@ -907,22 +920,22 @@ function LandingPageContent() {
               <MessageSquare className="w-5 h-5" />
             </button>
             
-            {/* History Icon */}
-            <button
-              onClick={() => {
-                // This will trigger the history dropdown
-                const historyButton = document.querySelector('[data-history-dropdown]') as HTMLButtonElement;
-                if (historyButton) {
-                  historyButton.click();
-                }
-              }}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-200 text-gray-600 hover:text-gray-800"
-              title="Chat History"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </button>
+                         {/* History Icon */}
+             <button
+               onClick={() => {
+                 // This will trigger the history dropdown
+                 const historyButton = document.querySelector('[data-history-dropdown]') as HTMLButtonElement;
+                 if (historyButton) {
+                   historyButton.click();
+                 }
+               }}
+               className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-200 text-gray-600 hover:text-gray-800"
+               title="Chat History"
+             >
+               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+               </svg>
+             </button>
           </div>
         )}
       </aside>

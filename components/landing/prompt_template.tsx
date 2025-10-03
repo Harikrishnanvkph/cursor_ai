@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { BarChart2 } from "lucide-react"
+import { BarChart2, Bot, Brain, Forward } from "lucide-react"
 
 const chartTemplate = "Create a bar chart comparing the top 5 countries by smartphone usage in 2025. Include country names on the x-axis and number of users on the y-axis."
 
@@ -57,12 +57,13 @@ export function PromptTemplate({
     <div className={`flex items-center justify-center h-full ${styles.padding} ${className}`}>
       <div className={`flex flex-col items-center justify-center w-full ${styles.container} bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20`}>
         <div className="flex flex-col items-center justify-center mb-6">
-          <div className={`inline-flex items-center justify-center ${styles.icon} bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-xl mb-4`}>
-            <BarChart2 className={`${styles.iconInner} text-white`} />
-          </div>
-          <h2 className={`${styles.title} font-bold bg-gradient-to-r from-slate-900 via-indigo-800 to-purple-800 bg-clip-text text-transparent mb-3 text-center`}>
-            Create Your Chart with AI Prompt
-          </h2>
+          {/* <div className={`inline-flex items-center justify-center ${styles.icon} bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-xl mb-4`}>
+              <BarChart2 className={`${styles.iconInner} text-white`} />
+          </div> */}
+          <div className={`${styles.title} inline-flex items-center font-bold bg-gradient-to-r from-slate-900 via-indigo-800 to-purple-800 bg-clip-text text-transparent mb-3 text-center`}>
+              <span className="text-sm inline text-slate-500 mr-3"><Bot /></span>
+              <h2>Create Your Chart with AI Prompt</h2>
+            </div>
           <p className={`text-slate-600 text-center max-w-md mx-auto leading-relaxed ${styles.description}`}>
             Describe the chart you want to create in natural language. I'll generate it for you and you can ask me to modify it further!
           </p>
@@ -75,7 +76,7 @@ export function PromptTemplate({
           >
             <div className="font-semibold flex items-center gap-2 mb-1">
               <div className="p-1 bg-indigo-100 rounded group-hover:bg-indigo-200 transition-colors">
-                <BarChart2 className="w-4 h-4 text-indigo-600" />
+                <Forward className="w-4 h-4 text-indigo-600" />
               </div>
               Sample Request
             </div>

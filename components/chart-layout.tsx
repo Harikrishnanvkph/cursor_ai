@@ -5,12 +5,15 @@ import { ConfigSidebar } from "@/components/config-sidebar"
 import { useChartStore } from "@/lib/chart-store"
 import { cn } from "@/lib/utils"
 import { useState, useEffect } from "react"
-import { ChevronLeft, ChevronRight, Settings, User } from "lucide-react"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { ChevronLeft, ChevronRight, Settings } from "lucide-react"
 import { HistoryDropdown } from "@/components/history-dropdown"
+import { useAuth } from "@/components/auth/AuthProvider"
+import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
+import { Button } from "@/components/ui/button"
 
 export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSidebarOpen: boolean, setLeftSidebarOpen: (open: boolean) => void }) {
   const { chartData } = useChartStore()
+  const { user, signOut } = useAuth()
   const hasChartData = chartData.datasets.length > 0
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isHovering, setIsHovering] = useState(false)
@@ -53,7 +56,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
       {/* Right Sidebar (Config Panel) - Collapsible */}
       <div 
         className={cn(
-          "absolute right-0 top-0 bottom-0 border-l bg-white shadow-lg transition-all duration-300 flex flex-col z-10",
+          "absolute landing-right-sidebar right-0 top-0 bottom-0 border-l bg-white shadow-lg transition-all duration-300 flex flex-col z-10",
           isCollapsed ? "w-16" : "w-[280px]"
         )}
         onMouseEnter={() => setIsHovering(true)}
@@ -62,9 +65,9 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
         {isCollapsed ? (
           // Collapsed state: show icon stack
           <div className="flex flex-col items-center h-full py-4 group">
-            {/* Profile Icon (outlined user in blue circle) */}
-            <div className="h-10 w-10 mb-2 flex items-center justify-center rounded-full bg-blue-100 border-2 border-blue-200">
-              <User className="h-6 w-6 text-blue-600" />
+            {/* Profile Icon - Dropdown Menu */}
+            <div className="mb-2">
+              <SimpleProfileDropdown size="md" />
             </div>
             {/* Expand Icon */}
             <button
@@ -100,14 +103,14 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
-              {/* History Dropdown */}
-              <div className="flex-1 flex justify-center">
-                <HistoryDropdown />
-              </div>
-              {/* Profile Icon (outlined user in blue circle) */}
-              <div className="h-8 w-8 ml-2 flex items-center justify-center rounded-full bg-blue-100 border-2 border-blue-200">
-                <User className="h-5 w-5 text-blue-600" />
-              </div>
+                             {/* History Dropdown */}
+               <div className="flex-1 flex justify-center">
+                 <HistoryDropdown variant="compact" />
+               </div>
+                             {/* Profile Icon - Dropdown Menu */}
+               <div className="ml-2">
+                 <SimpleProfileDropdown size="sm" />
+               </div>
             </div>
             <div className="flex-1 overflow-y-auto">
               <ConfigSidebar />

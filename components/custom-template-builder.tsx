@@ -3,7 +3,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Eye, EyeOff, RotateCcw, Save, X, Hash  ,ZoomIn, ZoomOut, Plus, Heading1, Heading2, Text, MonitorSmartphone, Trash2, FileText as FileTextIcon } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Eye, EyeOff, RotateCcw, Save, X, Hash  ,ZoomIn, ZoomOut, Plus, Heading1, Heading2, Text, MonitorSmartphone, Trash2, FileText as FileTextIcon, Ellipsis, Maximize2 } from "lucide-react"
 import { useTemplateStore, type TemplateTextArea } from "@/lib/template-store"
 import DraggableResizable from "@/components/reusable/DraggableResizable"
 import { useRouter } from "next/navigation"
@@ -227,9 +228,39 @@ export function CustomTemplateBuilder() {
             <Button variant="outline" size="sm" onClick={() => setZoom(z => Math.max(0.25, z - 0.1))}><ZoomOut className="h-4 w-4" /></Button>
             <span className="text-sm w-12 text-center">{Math.round(zoom * 100)}%</span>
             <Button variant="outline" size="sm" onClick={() => setZoom(z => Math.min(3, z + 0.1))}><ZoomIn className="h-4 w-4" /></Button>
-            <Button variant="outline" size="sm" onClick={() => setZoom(0.75)}><RotateCcw className="h-4 w-4" /></Button>
-            <Button variant="outline" size="sm" onClick={() => setShowGuides(g => !g)} title={showGuides ? "Hide guides" : "Show guides"}>
-              {showGuides ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            {/* Actions Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" title="Actions">
+                  <Ellipsis className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setZoom(0.75)}>
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  <span>Reset Zoom</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowGuides(g => !g)}>
+                  {showGuides ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                  <span>{showGuides ? "Hide Guides" : "Show Guides"}</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            {/* Fullscreen Button */}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                if (document.fullscreenElement) {
+                  document.exitFullscreen();
+                } else {
+                  document.documentElement.requestFullscreen();
+                }
+              }}
+              title="Full Screen"
+            >
+              <Maximize2 className="h-4 w-4" />
             </Button>
           </div>
           <div className="flex items-center gap-2">

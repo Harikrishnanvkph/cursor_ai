@@ -6,12 +6,13 @@ import { ChartPreview } from "@/components/chart-preview"
 import { ConfigPanel } from "@/components/config-panel"
 import { useChartStore } from "@/lib/chart-store"
 import { useTemplateStore } from "@/lib/template-store"
+import { useAuth } from "@/components/auth/AuthProvider"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Layers, Zap, Settings, Download, ChevronLeft, User, ChevronRight, FileText } from "lucide-react"
+import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
+import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Layers, Zap, Settings, Download, ChevronLeft, ChevronRight, FileText } from "lucide-react"
 import Link from "next/link"
 import React from "react"
 import { ResizableChartArea } from "@/components/resizable-chart-area"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 
 const TABS = [
@@ -89,6 +90,7 @@ function EditorPageContent() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
+  const { user, signOut } = useAuth()
   const [activeTab, setActiveTab] = useState("types_toggles")
   const { chartConfig, updateChartConfig } = useChartStore()
   const { setEditorMode } = useTemplateStore()
@@ -173,11 +175,7 @@ function EditorPageContent() {
             <span className="font-bold text-lg text-gray-900 xs400:text-base">Chart Editor</span>
           </div>
           <div className="flex items-center gap-2">
-            <Avatar className="h-8 w-8 border-2 border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 cursor-pointer group">
-              <AvatarFallback className="bg-gradient-to-br from-blue-100 to-blue-200 text-blue-700 text-xs font-medium group-hover:from-blue-200 group-hover:to-blue-300 transition-all duration-200">
-                <User className="h-3 w-3" />
-              </AvatarFallback>
-            </Avatar>
+            <SimpleProfileDropdown size="sm" />
           </div>
         </div>
         {/* Chart Preview */}
@@ -291,11 +289,9 @@ function EditorPageContent() {
         <div className="w-16 flex-shrink-0 flex flex-col h-full bg-white border-l border-gray-200 shadow-sm">
           {/* Profile Button - Top */}
           <div className="p-2 border-b border-gray-200">
-            <Avatar className="h-10 w-10 border-2 border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 cursor-pointer group mx-auto">
-              <AvatarFallback className="bg-gradient-to-br from-blue-100 to-blue-200 text-blue-700 text-xs font-medium group-hover:from-blue-200 group-hover:to-blue-300 transition-all duration-200">
-                <User className="h-4 w-4" />
-              </AvatarFallback>
-            </Avatar>
+            <div className="mx-auto">
+              <SimpleProfileDropdown size="md" />
+            </div>
           </div>
           
           {/* Expand Button */}
@@ -459,11 +455,9 @@ function EditorPageContent() {
         <div className="w-16 flex-shrink-0 flex flex-col h-full bg-white border-l border-gray-200 shadow-sm">
           {/* Profile Button - Top */}
           <div className="p-2 border-b border-gray-200">
-            <Avatar className="h-10 w-10 border-2 border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 cursor-pointer group mx-auto">
-              <AvatarFallback className="bg-gradient-to-br from-blue-100 to-blue-200 text-blue-700 text-xs font-medium group-hover:from-blue-200 group-hover:to-blue-300 transition-all duration-200">
-                <User className="h-4 w-4" />
-              </AvatarFallback>
-            </Avatar>
+            <div className="mx-auto">
+              <SimpleProfileDropdown size="md" />
+            </div>
           </div>
           
           {/* Collapse/Expand Button - Below Profile */}

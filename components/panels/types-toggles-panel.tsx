@@ -13,28 +13,20 @@ export function TypesTogglesPanel() {
     chartType, 
     setChartType, 
     chartData, 
-    legendFilter, 
-    toggleDatasetVisibility, 
-    toggleSliceVisibility, 
     fillArea, 
     showBorder, 
     toggleFillArea, 
     toggleShowBorder, 
-    chartMode,
     showImages,
     showLabels,
     toggleShowImages,
     toggleShowLabels,
-    overlayImages,
-    updateOverlayImage,
   } = useChartStore()
 
   const handleChartTypeChange = (type: string) => {
     if (type === 'stackedBar') {
       setChartType('stackedBar' as SupportedChartType)
       chartData.datasets.forEach((dataset, index) => {
-        // @ts-ignore: updateDataset expects a partial
-        toggleDatasetVisibility(index) // ensure visibility logic is correct
         // update dataset type to 'bar'
         if (dataset.type !== 'bar') {
           dataset.type = 'bar'
@@ -44,16 +36,6 @@ export function TypesTogglesPanel() {
     }
     setChartType(type as SupportedChartType)
   }
-
-  // Compute which slices are visible based on visible datasets
-  const visibleDatasetIndices = chartData.datasets.map((ds, i) => legendFilter.datasets[i] !== false ? i : null).filter(i => i !== null);
-  const visibleSliceIndices = new Set<number>();
-  visibleDatasetIndices.forEach(i => {
-    const ds = chartData.datasets[i as number];
-    if (ds && Array.isArray(ds.data)) {
-      ds.data.forEach((_, idx) => visibleSliceIndices.add(idx));
-    }
-  });
 
   return (
     <div className="space-y-6">
@@ -87,68 +69,27 @@ export function TypesTogglesPanel() {
             </Select>
           </div>
 
-          <div className="flex items-center space-x-2 pt-2">
-            <Switch id="fill-area-toggle" checked={fillArea} onCheckedChange={toggleFillArea} />
-            <Label htmlFor="fill-area-toggle">Fill Area</Label>
-          </div>
-
-          <div className="flex items-center space-x-2 pt-2">
-            <Switch id="show-border-toggle" checked={showBorder} onCheckedChange={toggleShowBorder} disabled={!fillArea} />
-            <Label htmlFor="show-border-toggle">Show Border</Label>
+          {/* Fill & Border toggles */}
+          <div className="grid grid-cols-2 gap-4 pt-2">
+            <div className="flex items-center space-x-2">
+              <Switch id="fill-toggle" checked={fillArea} onCheckedChange={toggleFillArea} />
+              <Label htmlFor="fill-toggle">Fill</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch id="border-toggle" checked={showBorder} onCheckedChange={toggleShowBorder} disabled={!fillArea} />
+              <Label htmlFor="border-toggle">Border</Label>
+            </div>
           </div>
 
           {/* Image & Label toggles */}
           <div className="grid grid-cols-2 gap-4 pt-2">
             <div className="flex items-center space-x-2">
-              <Switch id="show-images-toggle" checked={showImages} onCheckedChange={(checked) => {
-                toggleShowImages();
-                // Also toggle overlay images visibility to mirror global Image toggle
-                overlayImages.forEach((img) => updateOverlayImage(img.id, { visible: checked }));
-              }} />
+              <Switch id="show-images-toggle" checked={showImages} onCheckedChange={toggleShowImages} />
               <Label htmlFor="show-images-toggle">Image</Label>
             </div>
             <div className="flex items-center space-x-2">
               <Switch id="show-labels-toggle" checked={showLabels} onCheckedChange={toggleShowLabels} />
               <Label htmlFor="show-labels-toggle">Label</Label>
-            </div>
-          </div>
-
-          {/* Legend Filter Buttons */}
-          <div className="mt-4">
-            <div className="font-semibold text-xs mb-2">Legend Filter</div>
-            {chartMode === 'grouped' && (
-              <>
-                <div className="mb-1 font-semibold text-xs">Datasets</div>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {chartData.datasets.map((ds, i) => (
-                    <button
-                      key={i}
-                      onClick={() => toggleDatasetVisibility(i)}
-                      className={`flex items-center gap-1 px-2 py-1 rounded border text-xs ${legendFilter.datasets[i] === false ? 'opacity-40' : 'opacity-100'} `}
-                      style={{ borderColor: Array.isArray(ds.backgroundColor) ? ds.backgroundColor[0] : ds.backgroundColor, color: Array.isArray(ds.backgroundColor) ? ds.backgroundColor[0] : ds.backgroundColor }}
-                    >
-                      <span className="inline-block w-3 h-3 rounded-full mr-1" style={{ background: Array.isArray(ds.backgroundColor) ? ds.backgroundColor[0] : ds.backgroundColor }} />
-                      {ds.label || `Dataset ${i+1}`}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-            <div className="mb-1 font-semibold text-xs">Slices</div>
-            <div className="flex flex-wrap gap-2">
-              {Array.isArray(chartData.labels) && (chartData.labels as string[]).map((label: string, i: number) => (
-                visibleSliceIndices.has(i) ? (
-                  <button
-                    key={String(label)}
-                    onClick={() => toggleSliceVisibility(i)}
-                    className={`flex items-center gap-1 px-2 py-1 rounded border text-xs ${legendFilter.slices[i] === false ? 'opacity-40' : 'opacity-100'} `}
-                    style={{ borderColor: '#ccc', color: '#333' }}
-                  >
-                    <span className="inline-block w-3 h-3 rounded-full mr-1" style={{ background: (chartData.datasets[0] && Array.isArray(chartData.datasets[0].backgroundColor) ? chartData.datasets[0].backgroundColor[i] : (chartData.datasets[0]?.backgroundColor as string)) || '#ccc' }} />
-                    {String(label)}
-                  </button>
-                ) : null
-              ))}
             </div>
           </div>
         </CardContent>

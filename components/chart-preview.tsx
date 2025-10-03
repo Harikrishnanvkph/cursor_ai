@@ -4,15 +4,21 @@ import { useRef, useEffect, useState } from "react"
 import { useChartStore } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
 import { Button } from "@/components/ui/button"
-import { Download, RefreshCw, Maximize2, Minimize2, RotateCcw, X, PanelLeft, PanelRight,
-   FileCode, FileDown, FileImage, FileText, FileType2, ImageIcon, Settings } from "lucide-react"
-import { BarChart3,ChartColumnStacked,ChartColumnBig,ChartBarBig,ChartLine,ChartPie,ChartScatter,ChartArea,Radar, Database, Dot } from "lucide-react"
+import { Download, RefreshCw, Maximize2, Minimize2, RotateCcw, X,
+   FileCode, FileDown, FileImage, FileText, FileType2, ImageIcon, Settings, Ellipsis, Eye } from "lucide-react"
+import { BarChart3,ChartColumnStacked,ChartColumnBig,ChartBarBig,ChartLine,ChartPie,ChartScatter,ChartArea,Radar, Database, Dot, Edit3, LogOut } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { downloadChartAsHTML } from "@/lib/html-exporter"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { useTemplateStore } from "@/lib/template-store"
 import { TemplateChartPreview } from "@/components/template-chart-preview"
 import ChartGenerator from "@/lib/chart_generator"
+import { HistoryDropdown } from "@/components/history-dropdown"
+import { UndoRedoButtons } from "@/components/ui/undo-redo-buttons"
+import { useAuth } from "@/components/auth/AuthProvider"
+import Image from "next/image"
+import { DropdownMenu as ProfileDropdownMenu, DropdownMenuContent as ProfileDropdownMenuContent, DropdownMenuItem as ProfileDropdownMenuItem, DropdownMenuSeparator as ProfileDropdownMenuSeparator, DropdownMenuTrigger as ProfileDropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import Link from "next/link"
 
 export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeftSidebar, isLeftSidebarCollapsed, isTablet = false }: {
   onToggleSidebar?: () => void,
@@ -21,8 +27,9 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   isLeftSidebarCollapsed?: boolean,
   isTablet?: boolean
 }) {
-  const { chartConfig, chartData, chartType, resetChart, setHasJSON, globalChartRef, showLabels, showImages, fillArea, showBorder } = useChartStore()
+  const { chartConfig, chartData, chartType, resetChart, setHasJSON, globalChartRef, showLabels, showImages, fillArea, showBorder, toggleShowBorder } = useChartStore()
   const { shouldShowTemplate, editorMode, templateInBackground } = useTemplateStore()
+  const { user } = useAuth()
 
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -505,53 +512,38 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
           )}
           {/* Action buttons: horizontally scrollable on mobile if needed */}
           <div className={`flex gap-2 flex-shrink-0 ml-4${isMobile ? ' justify-evenly ml-0 overflow-x-auto max-w-full pb-1' : ''}`} style={isMobile ? { WebkitOverflowScrolling: 'touch' } : {}}>
-            {/* Only render sidebar toggle container if it contains actual toggles (desktop only) */}
-            {!isMobile && (
-              <div className="flex border lap1280:hidden border-gray-200 rounded-lg overflow-hidden bg-white">
-                {onToggleLeftSidebar && (
-                  <Button 
-                    variant="ghost"
-                    size="sm"
-                    onClick={onToggleLeftSidebar}
-                    title={isLeftSidebarCollapsed ? "Expand Left Sidebar" : "Collapse Left Sidebar"}
-                    className="rounded-none"
-                  >
-                    <PanelLeft className={`h-5 w-5 transition-colors ${isLeftSidebarCollapsed ? 'text-slate-300' : 'text-black'}`} />
-                  </Button>
-                )}
-                <div className="w-px bg-gray-200 my-2" />
-                {onToggleSidebar && (
-                  <Button 
-                    variant="ghost"
-                    size="sm"
-                    onClick={onToggleSidebar}
-                    title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-                    className="rounded-none"
-                  >
-                    <PanelRight className={`h-5 w-5 transition-colors ${isSidebarCollapsed ? 'text-slate-300' : 'text-black'}`} />
-                  </Button>
-                )}
-              </div>
-            )}
-            <Button className="lap1280:hidden" variant="outline" size="sm" onClick={handleRefresh} title="Refresh Chart">
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleFullscreen} title="Fullscreen">
-              <Maximize2 className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => {
-              clearMessages();
-              resetChart();
-              setHasJSON(false);
-            }} title="Reset Chart" className="flex items-center gap-1">
-              <RotateCcw className="h-4 w-4" />
-              <span>Reset</span>
-            </Button>
+            {/* Actions Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" title="Actions">
+                  <Ellipsis className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleRefresh}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  <span>Refresh Chart</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleFullscreen}>
+                  <Maximize2 className="h-4 w-4 mr-2" />
+                  <span>Fullscreen</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  clearMessages();
+                  resetChart();
+                  setHasJSON(false);
+                }}>
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  <span>Reset Chart</span>
+                </DropdownMenuItem>
+
+              </DropdownMenuContent>
+            </DropdownMenu>
             {/* Export Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="sm" variant="default" title="Export">
-                  <FileDown className="h-4 w-4 mr-1 xs400:mr-0" /> <span className="">Export</span>
+                  <Download className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -576,6 +568,9 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            
+            {/* Undo/Redo Buttons */}
+            <UndoRedoButtons variant="default" size="sm" showLabels={false} />
           </div>
         </div>
       </div>

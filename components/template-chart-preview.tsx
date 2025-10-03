@@ -5,7 +5,7 @@ import { useTemplateStore } from "@/lib/template-store"
 import { useChartStore } from "@/lib/chart-store"
 
 import { Button } from "@/components/ui/button"
-import { ZoomIn, ZoomOut, RotateCcw, Eye, EyeOff } from "lucide-react"
+import { ZoomIn, ZoomOut, RotateCcw, Eye, EyeOff, Ellipsis, Maximize2 } from "lucide-react"
 import { downloadTemplateExport } from "@/lib/template-export"
 import { FileDown, FileImage, FileCode } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -336,7 +336,7 @@ export function TemplateChartPreview({
       <div className="flex items-center justify-between mb-2">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="text-lg font-semibold text-gray-900">{template.name}</h3>
+            <h4 className="font-semibold text-gray-900">{template.name}</h4>
             <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full border border-green-200">
               Template Mode
             </span>
@@ -363,22 +363,34 @@ export function TemplateChartPreview({
           >
             <ZoomIn className="h-4 w-4" />
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleResetZoom}
-          >
-            <RotateCcw className="h-4 w-4" />
-          </Button>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowGuides(!showGuides)}
-            title={showGuides ? "Hide guides" : "Show guides"}
-          >
-            {showGuides ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </Button>
+          {/* Actions Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" title="Actions">
+                <Ellipsis className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleResetZoom}>
+                <RotateCcw className="h-4 w-4 mr-2" />
+                <span>Reset Zoom</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowGuides(!showGuides)}>
+                {showGuides ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                <span>{showGuides ? "Hide Guides" : "Show Guides"}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => {
+                if (document.fullscreenElement) {
+                  document.exitFullscreen();
+                } else {
+                  document.documentElement.requestFullscreen();
+                }
+              }}>
+                <Maximize2 className="h-4 w-4 mr-2" />
+                <span>Full Screen</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           
           {/* Export Dropdown */}
           <DropdownMenu>

@@ -275,6 +275,12 @@ interface ChartStore {
   removeOverlayText: (id: string) => void;
   setSelectedImageId: (id: string | null) => void;
   setSelectedTextId: (id: string | null) => void;
+  // Data operations (temporary transformations)
+  sortDataset: (index: number, order: 'asc' | 'desc') => void;
+  reverseDataset: (index: number) => void;
+  backupDatasetState: (index: number) => void;
+  restoreDatasetState: (index: number) => void;
+  datasetBackups: Map<number, { labels: string[], data: any[], backgroundColor: any, borderColor: any, pointImages: any[], pointImageConfig: any[] }>;
 }
 
 const defaultChartData = {
@@ -1910,6 +1916,43 @@ export const getDefaultImageConfig = (chartType: SupportedChartType): PointImage
 
 export { universalImagePlugin }
 
+// Helper function to determine if dataset changes are meaningful
+function areDatasetChangesMeaningful(previousDataset: any, newDataset: any): boolean {
+  // Check if data values changed
+  if (JSON.stringify(previousDataset.data) !== JSON.stringify(newDataset.data)) {
+    return true;
+  }
+  
+  // Check if labels changed
+  if (previousDataset.label !== newDataset.label) {
+    return true;
+  }
+  
+  // Check if colors changed (but ignore fill/border width changes for toggles)
+  const prevColors = JSON.stringify({
+    backgroundColor: previousDataset.backgroundColor,
+    borderColor: previousDataset.borderColor
+  });
+  const newColors = JSON.stringify({
+    backgroundColor: newDataset.backgroundColor,
+    borderColor: newDataset.borderColor
+  });
+  
+  if (prevColors !== newColors) {
+    return true;
+  }
+  
+  // Check if point images changed
+  if (JSON.stringify(previousDataset.pointImages) !== JSON.stringify(newDataset.pointImages)) {
+    return true;
+  }
+  
+  // Fill and border width changes are considered trivial for toggles
+  // Only capture undo points for more substantial changes
+  
+  return false;
+}
+
 // Create the store with persist middleware
 export const useChartStore = create<ChartStore>()(
   persist(
@@ -1948,6 +1991,16 @@ export const useChartStore = create<ChartStore>()(
         return { legendFilter: { ...state.legendFilter, slices: { ...state.legendFilter.slices, [index]: !current } } };
       }),
       setChartType: (type) => set((state) => {
+        // Only proceed if there's an actual change
+        if (state.chartType === type) return state;
+        
+        // Store the previous state for undo comparison
+        const previousState = {
+          chartType: state.chartType,
+          chartData: JSON.parse(JSON.stringify(state.chartData)),
+          chartConfig: JSON.parse(JSON.stringify(state.chartConfig))
+        }
+        
         // Always fully reset config for new chart type
         const chartJsType = type === ('area' as CustomChartType) ? 'line' as const : type;
         const newDatasets = state.chartData.datasets.map((dataset) => {
@@ -2058,7 +2111,7 @@ export const useChartStore = create<ChartStore>()(
           state.uniformityMode === 'mixed' && 
           nonMixedModeCharts.includes(type);
 
-        return {
+        const newState = {
           chartType: type,
           chartData: {
             ...state.chartData,
@@ -2067,6 +2120,28 @@ export const useChartStore = create<ChartStore>()(
           chartConfig: newConfig,
           ...(shouldSwitchToUniform && { uniformityMode: 'uniform' as const }),
         };
+        
+        // Capture undo point AFTER the change is made
+        if (state.hasJSON) {
+          try {
+            const { captureUndoPoint } = require('./chat-store');
+            captureUndoPoint({
+              type: 'manual_chart_type_change',
+              previousState: previousState,
+              currentState: {
+                chartType: newState.chartType,
+                chartData: newState.chartData,
+                chartConfig: newState.chartConfig
+              },
+              toolSource: 'chart-type-selector',
+              changeDescription: `Chart type changed from ${state.chartType} to ${type}`
+            });
+          } catch (error) {
+            console.warn('Failed to capture undo point for chart type change:', error);
+          }
+        }
+        
+        return newState;
       }),
       addDataset: (dataset) => set((state) => {
         const newChartData = {
@@ -2104,6 +2179,13 @@ export const useChartStore = create<ChartStore>()(
         const dataset = state.chartData.datasets[index] as ExtendedChartDataset
         if (!dataset) return state
         
+        // Store the previous state for undo comparison
+        const previousState = {
+          chartType: state.chartType,
+          chartData: JSON.parse(JSON.stringify(state.chartData)),
+          chartConfig: JSON.parse(JSON.stringify(state.chartConfig))
+        }
+        
         // Prevent adding/removing points in Grouped Mode to maintain consistency (only if there are multiple datasets)
         if (state.chartMode === 'grouped' && state.chartData.datasets.length > 1 && (updates.addPoint || updates.removePoint)) {
           console.warn('Adding/removing points is not allowed in Grouped Mode to maintain dataset consistency')
@@ -2133,7 +2215,9 @@ export const useChartStore = create<ChartStore>()(
           ]
           // Update labels
           const newLabels = [...(state.chartData.labels || []), `Slice ${dataset.data.length + 1}`]
-          return {
+          
+          // Create new state
+          const newState = {
             ...state,
             chartData: {
               ...state.chartData,
@@ -2141,6 +2225,28 @@ export const useChartStore = create<ChartStore>()(
               datasets: state.chartData.datasets.map((d, i) => i === index ? updatedDataset : d),
             },
           }
+          
+          // Capture undo point AFTER the change is made
+          if (state.hasJSON) {
+            try {
+              const { captureUndoPoint } = require('./chat-store');
+              captureUndoPoint({
+                type: 'manual_dataset_change',
+                previousState: previousState,
+                currentState: {
+                  chartType: newState.chartType,
+                  chartData: newState.chartData,
+                  chartConfig: newState.chartConfig
+                },
+                toolSource: 'dataset-panel',
+                changeDescription: `Added point to dataset ${index}`
+              });
+            } catch (error) {
+              console.warn('Failed to capture undo point for dataset change:', error);
+            }
+          }
+          
+          return newState
         }
         // Remove Point
         if (updates.removePoint && dataset.data.length > 1) {
@@ -2155,7 +2261,8 @@ export const useChartStore = create<ChartStore>()(
           updatedDataset.pointImageConfig = (dataset.pointImageConfig || []).slice(0, -1)
           // Update labels
           const newLabels = (state.chartData.labels || []).slice(0, -1)
-          return {
+          
+          const newState = {
             ...state,
             chartData: {
               ...state.chartData,
@@ -2163,6 +2270,28 @@ export const useChartStore = create<ChartStore>()(
               datasets: state.chartData.datasets.map((d, i) => i === index ? updatedDataset : d),
             },
           }
+          
+          // Capture undo point AFTER the change is made
+          if (state.hasJSON) {
+            try {
+              const { captureUndoPoint } = require('./chat-store');
+              captureUndoPoint({
+                type: 'manual_dataset_change',
+                previousState: previousState,
+                currentState: {
+                  chartType: newState.chartType,
+                  chartData: newState.chartData,
+                  chartConfig: newState.chartConfig
+                },
+                toolSource: 'dataset-panel',
+                changeDescription: `Removed point from dataset ${index}`
+              });
+            } catch (error) {
+              console.warn('Failed to capture undo point for dataset change:', error);
+            }
+          }
+          
+          return newState
         }
         // Randomize Colors
         if (updates.randomizeColors) {
@@ -2175,6 +2304,7 @@ export const useChartStore = create<ChartStore>()(
           updatedDataset.borderColor = colors.map(c => darkenColor(c, 20))
           updatedDataset.lastSliceColors = colors
         }
+        
         // Handle color mode changes (existing logic)
         if (updates.datasetColorMode) {
           if (updates.datasetColorMode === 'single') {
@@ -2212,24 +2342,55 @@ export const useChartStore = create<ChartStore>()(
             updatedDataset.borderColor = Array(dataset.data.length).fill(darkenColor(baseColor, 20))
           }
         }
+        
         // Update the dataset in the state
         const newDatasets = [...state.chartData.datasets]
         newDatasets[index] = updatedDataset
         const newChartData = {
           ...state.chartData,
           datasets: newDatasets,
-        };
+        }
         
         // Update the appropriate mode-specific storage
         const modeDataUpdate = state.chartMode === 'single' 
           ? { singleModeData: newChartData }
-          : { groupedModeData: newChartData };
+          : { groupedModeData: newChartData }
         
-        return {
+        const newState = {
           ...state,
           chartData: newChartData,
           ...modeDataUpdate,
-        };
+        }
+        
+        // Capture undo point AFTER the change is made, but only if there are actual meaningful changes
+        if (state.hasJSON) {
+          // Check if there are meaningful changes using our helper function
+          const hasMeaningfulChanges = newDatasets.some((newDataset, idx) => {
+            const previousDataset = state.chartData.datasets[idx];
+            return areDatasetChangesMeaningful(previousDataset, newDataset);
+          });
+          
+          if (hasMeaningfulChanges) {
+            try {
+              const { captureUndoPoint } = require('./chat-store');
+              captureUndoPoint({
+                type: 'manual_dataset_change',
+                previousState: previousState,
+                currentState: {
+                  chartType: newState.chartType,
+                  chartData: newState.chartData,
+                  chartConfig: newState.chartConfig
+                },
+                toolSource: 'dataset-panel',
+                changeDescription: `Dataset ${index} updated`
+              });
+            } catch (error) {
+              console.warn('Failed to capture undo point for dataset change:', error);
+            }
+          }
+        }
+        
+        return newState
       }),
       updateDataPoint: (datasetIndex, pointIndex, field, value) => set((state) => {
         const newChartData = {
@@ -2261,6 +2422,30 @@ export const useChartStore = create<ChartStore>()(
         };
       }),
       updateChartConfig: (config) => set((state) => {
+        // Capture undo point before updating chart config
+        if (state.hasJSON) {
+          try {
+            const { captureUndoPoint } = require('./chat-store');
+            captureUndoPoint({
+              type: 'manual_config_change',
+              previousState: {
+                chartType: state.chartType,
+                chartData: state.chartData,
+                chartConfig: state.chartConfig
+              },
+              currentState: {
+                chartType: state.chartType,
+                chartData: state.chartData,
+                chartConfig: config
+              },
+              toolSource: 'config-sidebar',
+              changeDescription: 'Chart configuration updated'
+            });
+          } catch (error) {
+            console.warn('Failed to capture undo point for config change:', error);
+          }
+        }
+        
         if (state.chartType === 'radar') {
           const radarConfig = getDefaultConfigForType('radar');
           return { chartConfig: { ...radarConfig, ...config, scales: { ...radarConfig.scales, ...(config.scales || {}) } } };
@@ -2380,19 +2565,173 @@ export const useChartStore = create<ChartStore>()(
       }),
       toggleFillArea: () => set((state) => {
         const newFillArea = !state.fillArea;
-        return {
+        
+        // Update chart configuration to reflect fill changes
+        const newChartConfig = { ...state.chartConfig };
+        
+        // Update datasets to reflect the new fill state
+        const newDatasets = state.chartData.datasets.map(dataset => ({
+          ...dataset,
+          fill: newFillArea,
+          borderWidth: newFillArea ? (state.showBorder ? 2 : 0) : 2
+        }));
+        
+        const newState = {
           fillArea: newFillArea,
           showBorder: newFillArea ? state.showBorder : true,
+          chartData: {
+            ...state.chartData,
+            datasets: newDatasets
+          }
         };
+        
+        // Capture undo point only if there are actual visual changes and we have chart data
+        if (state.hasJSON && newDatasets.some(dataset => dataset.fill !== state.fillArea)) {
+          try {
+            const { captureUndoPoint, shouldDebounceUndoOperation } = require('./chat-store');
+            
+            // Check if we should debounce this operation
+            if (!shouldDebounceUndoOperation('manual_design_change', 'style-toggles')) {
+              captureUndoPoint({
+                type: 'manual_design_change',
+                previousState: {
+                  chartType: state.chartType,
+                  chartData: state.chartData,
+                  chartConfig: state.chartConfig
+                },
+                currentState: {
+                  chartType: state.chartType,
+                  chartData: newState.chartData,
+                  chartConfig: newState.chartConfig
+                },
+                toolSource: 'style-toggles',
+                changeDescription: `Fill area ${newFillArea ? 'enabled' : 'disabled'}`
+              });
+            }
+          } catch (error) {
+            console.warn('Failed to capture undo point for fill toggle:', error);
+          }
+        }
+        
+        return newState;
       }),
       toggleShowBorder: () => set((state) => {
-        if (state.fillArea) {
-          return { showBorder: !state.showBorder };
+        if (!state.fillArea) {
+          return {}; // No change if fill is disabled
         }
-        return {};
+        
+        const newShowBorder = !state.showBorder;
+        
+        // Update datasets to reflect the new border state
+        const newDatasets = state.chartData.datasets.map(dataset => ({
+          ...dataset,
+          borderWidth: newShowBorder ? 2 : 0
+        }));
+        
+        const newState = {
+          showBorder: newShowBorder,
+          chartData: {
+            ...state.chartData,
+            datasets: newDatasets
+          }
+        };
+        
+        // Capture undo point only if there are actual visual changes and we have chart data
+        if (state.hasJSON && newShowBorder !== state.showBorder) {
+          try {
+            const { captureUndoPoint, shouldDebounceUndoOperation } = require('./chat-store');
+            
+            // Check if we should debounce this operation
+            if (!shouldDebounceUndoOperation('manual_design_change', 'style-toggles')) {
+              captureUndoPoint({
+                type: 'manual_design_change',
+                previousState: {
+                  chartType: state.chartType,
+                  chartData: state.chartData,
+                  chartConfig: state.chartConfig
+                },
+                currentState: {
+                  chartType: state.chartType,
+                  chartData: newState.chartData,
+                  chartConfig: newState.chartConfig
+                },
+                toolSource: 'style-toggles',
+                changeDescription: `Border ${newShowBorder ? 'enabled' : 'disabled'}`
+              });
+            }
+          } catch (error) {
+            console.warn('Failed to capture undo point for border toggle:', error);
+          }
+        }
+        
+        return newState;
       }),
-      toggleShowImages: () => set((state) => ({ showImages: !state.showImages })),
-      toggleShowLabels: () => set((state) => ({ showLabels: !state.showLabels })),
+      toggleShowImages: () => set((state) => {
+        const newShowImages = !state.showImages;
+        
+        // Capture undo point only if there are actual overlay images and we have chart data
+        if (state.hasJSON && state.overlayImages.length > 0) {
+          try {
+            const { captureUndoPoint, shouldDebounceUndoOperation } = require('./chat-store');
+            
+            // Check if we should debounce this operation
+            if (!shouldDebounceUndoOperation('manual_design_change', 'style-toggles')) {
+              captureUndoPoint({
+                type: 'manual_design_change',
+                previousState: {
+                  chartType: state.chartType,
+                  chartData: state.chartData,
+                  chartConfig: state.chartConfig
+                },
+                currentState: {
+                  chartType: state.chartType,
+                  chartData: state.chartData,
+                  chartConfig: state.chartConfig
+                },
+                toolSource: 'style-toggles',
+                changeDescription: `Images ${newShowImages ? 'shown' : 'hidden'}`
+              });
+            }
+          } catch (error) {
+            console.warn('Failed to capture undo point for image toggle:', error);
+          }
+        }
+        
+        return { showImages: newShowImages };
+      }),
+      toggleShowLabels: () => set((state) => {
+        const newShowLabels = !state.showLabels;
+        
+        // Capture undo point only if we have chart data and labels are configured
+        if (state.hasJSON && state.chartConfig.plugins?.datalabels) {
+          try {
+            const { captureUndoPoint, shouldDebounceUndoOperation } = require('./chat-store');
+            
+            // Check if we should debounce this operation
+            if (!shouldDebounceUndoOperation('manual_design_change', 'style-toggles')) {
+              captureUndoPoint({
+                type: 'manual_design_change',
+                previousState: {
+                  chartType: state.chartType,
+                  chartData: state.chartData,
+                  chartConfig: state.chartConfig
+                },
+                currentState: {
+                  chartType: state.chartType,
+                  chartData: state.chartData,
+                  chartConfig: state.chartConfig
+                },
+                toolSource: 'style-toggles',
+                changeDescription: `Labels ${newShowLabels ? 'shown' : 'hidden'}`
+              });
+            }
+          } catch (error) {
+            console.warn('Failed to capture undo point for label toggle:', error);
+          }
+        }
+        
+        return { showLabels: newShowLabels };
+      }),
       setFullChart: ({ chartType, chartData, chartConfig }) => set({ chartType, chartData, chartConfig }),
       // Overlay actions implementation
       addOverlayImage: (image) => set((state) => ({
@@ -2419,6 +2758,378 @@ export const useChartStore = create<ChartStore>()(
   setSelectedTextId: (id) => set(() => ({
     selectedTextId: id
   })),
+      
+      // Data operations - temporary transformations with auto-backup
+      datasetBackups: new Map(),
+
+      backupDatasetState: (index) => {
+        const { chartData, datasetBackups } = get();
+        const dataset = chartData.datasets[index];
+        if (!dataset) return;
+
+        datasetBackups.set(index, {
+          labels: [...(chartData.labels || [])],
+          data: JSON.parse(JSON.stringify(dataset.data)),
+          backgroundColor: Array.isArray(dataset.backgroundColor) ? [...dataset.backgroundColor] : dataset.backgroundColor,
+          borderColor: Array.isArray(dataset.borderColor) ? [...dataset.borderColor] : dataset.borderColor,
+          pointImages: dataset.pointImages ? [...dataset.pointImages] : [],
+          pointImageConfig: dataset.pointImageConfig ? JSON.parse(JSON.stringify(dataset.pointImageConfig)) : []
+        });
+      },
+
+      restoreDatasetState: (index) => {
+        const { datasetBackups, chartData } = get();
+        const backup = datasetBackups.get(index);
+        if (!backup) return;
+
+        set({
+          chartData: {
+            ...chartData,
+            labels: backup.labels,
+            datasets: chartData.datasets.map((d, i) => 
+              i === index ? {
+                ...d,
+                data: backup.data,
+                backgroundColor: backup.backgroundColor,
+                borderColor: backup.borderColor,
+                pointImages: backup.pointImages,
+                pointImageConfig: backup.pointImageConfig
+              } : d
+            )
+          }
+        });
+        
+        datasetBackups.delete(index);
+      },
+
+      sortDataset: (index, order) => {
+        const { chartData, datasetBackups, backupDatasetState } = get();
+        const dataset = chartData.datasets[index];
+        if (!dataset) return;
+
+        if (!datasetBackups.has(index)) {
+          backupDatasetState(index);
+        }
+
+        const paired = dataset.data.map((value, i) => ({
+          label: chartData.labels?.[i] || `Point ${i + 1}`,
+          value: typeof value === 'number' ? value : (value as any)?.y || 0,
+          originalValue: value,
+          color: Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor[i] : dataset.backgroundColor,
+          borderColor: Array.isArray(dataset.borderColor) ? dataset.borderColor[i] : dataset.borderColor,
+          image: dataset.pointImages?.[i] || null,
+          imageConfig: dataset.pointImageConfig?.[i] || null
+        }));
+
+        if (order === 'asc') {
+          paired.sort((a, b) => a.value - b.value);
+        } else if (order === 'desc') {
+          paired.sort((a, b) => b.value - a.value);
+        } else if (order === 'label-asc') {
+          paired.sort((a, b) => a.label.localeCompare(b.label));
+        } else if (order === 'label-desc') {
+          paired.sort((a, b) => b.label.localeCompare(a.label));
+        }
+
+        set({
+          chartData: {
+            ...chartData,
+            labels: paired.map(p => p.label),
+            datasets: chartData.datasets.map((d, i) => 
+              i === index ? {
+                ...d,
+                data: paired.map(p => p.originalValue),
+                backgroundColor: paired.map(p => p.color),
+                borderColor: paired.map(p => p.borderColor),
+                pointImages: paired.map(p => p.image),
+                pointImageConfig: paired.map(p => p.imageConfig)
+              } : d
+            )
+          }
+        });
+      },
+
+      reverseDataset: (index) => {
+        const { chartData, datasetBackups, backupDatasetState } = get();
+        const dataset = chartData.datasets[index];
+        if (!dataset) return;
+
+        if (!datasetBackups.has(index)) {
+          backupDatasetState(index);
+        }
+
+        set({
+          chartData: {
+            ...chartData,
+            labels: [...(chartData.labels || [])].reverse(),
+            datasets: chartData.datasets.map((d, i) => 
+              i === index ? {
+                ...d,
+                data: [...d.data].reverse(),
+                backgroundColor: Array.isArray(d.backgroundColor) ? [...d.backgroundColor].reverse() : d.backgroundColor,
+                borderColor: Array.isArray(d.borderColor) ? [...d.borderColor].reverse() : d.borderColor,
+                pointImages: d.pointImages ? [...d.pointImages].reverse() : [],
+                pointImageConfig: d.pointImageConfig ? [...d.pointImageConfig].reverse() : []
+              } : d
+            )
+          }
+        });
+      },
+
+      filterTopN: (index, n) => {
+        const { chartData, datasetBackups, backupDatasetState } = get();
+        const dataset = chartData.datasets[index];
+        if (!dataset) return;
+
+        if (!datasetBackups.has(index)) {
+          backupDatasetState(index);
+        }
+
+        const paired = dataset.data.map((value, i) => ({
+          label: chartData.labels?.[i] || `Point ${i + 1}`,
+          value: typeof value === 'number' ? value : (value as any)?.y || 0,
+          originalValue: value,
+          color: Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor[i] : dataset.backgroundColor,
+          borderColor: Array.isArray(dataset.borderColor) ? dataset.borderColor[i] : dataset.borderColor,
+          image: dataset.pointImages?.[i] || null,
+          imageConfig: dataset.pointImageConfig?.[i] || null
+        }));
+
+        paired.sort((a, b) => b.value - a.value);
+        const topN = paired.slice(0, Math.min(n, paired.length));
+
+        set({
+          chartData: {
+            ...chartData,
+            labels: topN.map(p => p.label),
+            datasets: chartData.datasets.map((d, i) => 
+              i === index ? {
+                ...d,
+                data: topN.map(p => p.originalValue),
+                backgroundColor: topN.map(p => p.color),
+                borderColor: topN.map(p => p.borderColor),
+                pointImages: topN.map(p => p.image),
+                pointImageConfig: topN.map(p => p.imageConfig)
+              } : d
+            )
+          }
+        });
+      },
+
+      filterAboveThreshold: (index, threshold) => {
+        const { chartData, datasetBackups, backupDatasetState } = get();
+        const dataset = chartData.datasets[index];
+        if (!dataset) return;
+
+        if (!datasetBackups.has(index)) {
+          backupDatasetState(index);
+        }
+
+        const paired = dataset.data.map((value, i) => ({
+          label: chartData.labels?.[i] || `Point ${i + 1}`,
+          value: typeof value === 'number' ? value : (value as any)?.y || 0,
+          originalValue: value,
+          color: Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor[i] : dataset.backgroundColor,
+          borderColor: Array.isArray(dataset.borderColor) ? dataset.borderColor[i] : dataset.borderColor,
+          image: dataset.pointImages?.[i] || null,
+          imageConfig: dataset.pointImageConfig?.[i] || null
+        }));
+
+        const filtered = paired.filter(p => p.value > threshold);
+
+        set({
+          chartData: {
+            ...chartData,
+            labels: filtered.map(p => p.label),
+            datasets: chartData.datasets.map((d, i) => 
+              i === index ? {
+                ...d,
+                data: filtered.map(p => p.originalValue),
+                backgroundColor: filtered.map(p => p.color),
+                borderColor: filtered.map(p => p.borderColor),
+                pointImages: filtered.map(p => p.image),
+                pointImageConfig: filtered.map(p => p.imageConfig)
+              } : d
+            )
+          }
+        });
+      },
+
+      filterBelowThreshold: (index, threshold) => {
+        const { chartData, datasetBackups, backupDatasetState } = get();
+        const dataset = chartData.datasets[index];
+        if (!dataset) return;
+
+        if (!datasetBackups.has(index)) {
+          backupDatasetState(index);
+        }
+
+        const paired = dataset.data.map((value, i) => ({
+          label: chartData.labels?.[i] || `Point ${i + 1}`,
+          value: typeof value === 'number' ? value : (value as any)?.y || 0,
+          originalValue: value,
+          color: Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor[i] : dataset.backgroundColor,
+          borderColor: Array.isArray(dataset.borderColor) ? dataset.borderColor[i] : dataset.borderColor,
+          image: dataset.pointImages?.[i] || null,
+          imageConfig: dataset.pointImageConfig?.[i] || null
+        }));
+
+        const filtered = paired.filter(p => p.value < threshold);
+
+        set({
+          chartData: {
+            ...chartData,
+            labels: filtered.map(p => p.label),
+            datasets: chartData.datasets.map((d, i) => 
+              i === index ? {
+                ...d,
+                data: filtered.map(p => p.originalValue),
+                backgroundColor: filtered.map(p => p.color),
+                borderColor: filtered.map(p => p.borderColor),
+                pointImages: filtered.map(p => p.image),
+                pointImageConfig: filtered.map(p => p.imageConfig)
+              } : d
+            )
+          }
+        });
+      },
+
+      normalizeDataset: (index, range) => {
+        const { chartData, datasetBackups, backupDatasetState } = get();
+        const dataset = chartData.datasets[index];
+        if (!dataset) return;
+
+        if (!datasetBackups.has(index)) {
+          backupDatasetState(index);
+        }
+
+        const values = dataset.data.map(v => typeof v === 'number' ? v : (v as any)?.y || 0);
+        const min = Math.min(...values);
+        const max = Math.max(...values);
+        const diff = max - min || 1;
+
+        const normalized = values.map(v => {
+          if (range === '0-1') {
+            return Number(((v - min) / diff).toFixed(3));
+          } else {
+            return Math.round(((v - min) / diff) * 100);
+          }
+        });
+
+        set({
+          chartData: {
+            ...chartData,
+            datasets: chartData.datasets.map((d, i) => 
+              i === index ? { ...d, data: normalized } : d
+            )
+          }
+        });
+      },
+
+      convertToPercentage: (index) => {
+        const { chartData, datasetBackups, backupDatasetState } = get();
+        const dataset = chartData.datasets[index];
+        if (!dataset) return;
+
+        if (!datasetBackups.has(index)) {
+          backupDatasetState(index);
+        }
+
+        const total = dataset.data.reduce((sum, v) => {
+          const val = typeof v === 'number' ? v : (v as any)?.y || 0;
+          return sum + val;
+        }, 0);
+
+        const percentages = dataset.data.map(value => {
+          const v = typeof value === 'number' ? value : (value as any)?.y || 0;
+          return Math.round((v / total) * 100);
+        });
+
+        set({
+          chartData: {
+            ...chartData,
+            datasets: chartData.datasets.map((d, i) => 
+              i === index ? { ...d, data: percentages } : d
+            )
+          }
+        });
+      },
+
+      roundDataset: (index, decimals) => {
+        const { chartData, datasetBackups, backupDatasetState } = get();
+        const dataset = chartData.datasets[index];
+        if (!dataset) return;
+
+        if (!datasetBackups.has(index)) {
+          backupDatasetState(index);
+        }
+
+        const rounded = dataset.data.map(value => {
+          const v = typeof value === 'number' ? value : (value as any)?.y || 0;
+          return Number(v.toFixed(decimals));
+        });
+
+        set({
+          chartData: {
+            ...chartData,
+            datasets: chartData.datasets.map((d, i) => 
+              i === index ? { ...d, data: rounded } : d
+            )
+          }
+        });
+      },
+
+      scaleDataset: (index, factor) => {
+        const { chartData, datasetBackups, backupDatasetState } = get();
+        const dataset = chartData.datasets[index];
+        if (!dataset) return;
+
+        if (!datasetBackups.has(index)) {
+          backupDatasetState(index);
+        }
+
+        const scaled = dataset.data.map(value => {
+          const v = typeof value === 'number' ? value : (value as any)?.y || 0;
+          return v * factor;
+        });
+
+        set({
+          chartData: {
+            ...chartData,
+            datasets: chartData.datasets.map((d, i) => 
+              i === index ? { ...d, data: scaled } : d
+            )
+          }
+        });
+      },
+
+      offsetDataset: (index, offset) => {
+        const { chartData, datasetBackups, backupDatasetState } = get();
+        const dataset = chartData.datasets[index];
+        if (!dataset) return;
+
+        if (!datasetBackups.has(index)) {
+          backupDatasetState(index);
+        }
+
+        const offsetted = dataset.data.map(value => {
+          const v = typeof value === 'number' ? value : (value as any)?.y || 0;
+          return v + offset;
+        });
+
+        set({
+          chartData: {
+            ...chartData,
+            datasets: chartData.datasets.map((d, i) => 
+              i === index ? { ...d, data: offsetted } : d
+            )
+          }
+        });
+      },
+
+      resetDatasetOperations: (index) => {
+        get().restoreDatasetState(index);
+      },
     }),
     {
       name: 'chart-store',

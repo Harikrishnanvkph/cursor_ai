@@ -6,35 +6,33 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card } from "@/components/ui/card"
-import { useState, useCallback, useEffect } from "react"
-import { Plus, Trash2, Eye, EyeOff, FileText, Layout, BarChart3 } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { DatasetsSlicesPanel } from "@/components/panels/datasets-slices-panel"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ResponsiveAnimationsPanel } from "@/components/panels/responsive-animations-panel"
+import { DatasetsSlicesPanel } from "@/components/panels/datasets-slices-panel"
+import { FileText, Layout, BarChart3 } from "lucide-react"
+import { useState, useCallback } from "react"
+import { Plus, Trash2, Eye, EyeOff } from "lucide-react"
+import { Input } from "@/components/ui/input"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { ResponsiveAnimationsPanel } from "@/components/panels/responsive-animations-panel"
 
 export function ConfigSidebar() {
   const { 
     chartType, 
-    setChartType,
-    chartData,
-    updateDataset,
-    fillArea,
-    showBorder,
-    showImages,
+    chartData, 
+    chartConfig, 
+    updateChartConfig, 
+    fillArea, 
+    showBorder, 
+    showImages, 
     showLabels,
-    toggleFillArea: storeToggleFillArea,
-    toggleShowBorder: storeToggleShowBorder,
-    toggleShowImages,
-    toggleShowLabels,
-    toggleDatasetVisibility,
-    toggleSliceVisibility,
-    legendFilter,
     overlayImages,
-    updateOverlayImage
+    updateOverlayImage,
+    setChartType,
+    toggleFillArea,
+    toggleShowBorder,
+    toggleShowImages,
+    toggleShowLabels
   } = useChartStore()
 
   const { 
@@ -47,23 +45,16 @@ export function ConfigSidebar() {
   } = useTemplateStore()
 
   const handleToggleFillArea = useCallback((checked: boolean) => {
-    storeToggleFillArea()
-    // Update all datasets
-    chartData.datasets.forEach((_, index) => {
-      updateDataset(index, { 
-        fill: checked,
-        borderWidth: checked ? (showBorder ? 2 : 0) : 2 // Show border by default when fill is off
-      })
-    })
-  }, [chartData.datasets, showBorder, storeToggleFillArea, updateDataset])
+    toggleFillArea()
+    // Only update datasets if we need to change their fill property
+    // Don't trigger individual dataset updates for simple toggles
+  }, [toggleFillArea])
 
   const handleToggleShowBorder = useCallback((checked: boolean) => {
-    storeToggleShowBorder()
-    // Update all datasets
-    chartData.datasets.forEach((_, index) => {
-      updateDataset(index, { borderWidth: checked ? 2 : 0 })
-    })
-  }, [chartData.datasets, storeToggleShowBorder, updateDataset])
+    toggleShowBorder()
+    // Only update datasets if we need to change their border properties
+    // Don't trigger individual dataset updates for simple toggles
+  }, [toggleShowBorder])
 
   // Enhanced image toggle that also affects overlay images
   const handleToggleShowImages = useCallback((checked: boolean) => {
@@ -74,16 +65,6 @@ export function ConfigSidebar() {
       updateOverlayImage(image.id, { visible: checked })
     })
   }, [toggleShowImages, overlayImages, updateOverlayImage])
-
-  // Set initial fill and border state for datasets
-  useEffect(() => {
-    chartData.datasets.forEach((_, index) => {
-      updateDataset(index, { 
-        fill: true,
-        borderWidth: 2
-      })
-    })
-  }, []) // Run only once on mount
 
   const chartTypes = [
     { value: 'bar', label: 'Bar' },
@@ -206,42 +187,6 @@ export function ConfigSidebar() {
                 </div>
               </div>
             </div>
-
-            {/* Legend Filter Section */}
-            <Card className="p-4 mt-4">
-              <div className="font-semibold text-xs mb-2">Legend Filter</div>
-              <div className="mb-1 font-semibold text-xs">Datasets</div>
-              <div className="flex flex-wrap gap-2 mb-2">
-                {chartData.datasets.map((ds, i) => (
-                  <button
-                    key={i}
-                    onClick={() => toggleDatasetVisibility(i)}
-                    className={`flex items-center gap-1 px-2 py-1 rounded border text-xs ${legendFilter.datasets[i] === false ? 'opacity-40' : 'opacity-100'} `}
-                    style={{ borderColor: Array.isArray(ds.backgroundColor) ? ds.backgroundColor[0] : ds.backgroundColor, color: Array.isArray(ds.backgroundColor) ? ds.backgroundColor[0] : ds.backgroundColor }}
-                  >
-                    <span className="inline-block w-3 h-3 rounded-full mr-1" style={{ background: Array.isArray(ds.backgroundColor) ? ds.backgroundColor[0] : ds.backgroundColor }} />
-                    {ds.label || `Dataset ${i+1}`}
-                  </button>
-                ))}
-              </div>
-              <div className="mb-1 font-semibold text-xs">Slices</div>
-              <div className="flex flex-wrap gap-2">
-                {chartData.labels && chartData.labels.map((label, i) => (
-                  // Compute visible slices based on visible datasets
-                  (chartData.datasets.some((ds, dsIdx) => legendFilter.datasets[dsIdx] !== false && Array.isArray(ds.data) && ds.data[i] !== undefined)) ? (
-                    <button
-                      key={label}
-                      onClick={() => toggleSliceVisibility(i)}
-                      className={`flex items-center gap-1 px-2 py-1 rounded border text-xs ${legendFilter.slices[i] === false ? 'opacity-40' : 'opacity-100'} `}
-                      style={{ borderColor: '#ccc', color: '#333' }}
-                    >
-                      <span className="inline-block w-3 h-3 rounded-full mr-1" style={{ background: (chartData.datasets[0] && Array.isArray(chartData.datasets[0].backgroundColor) ? chartData.datasets[0].backgroundColor[i] : (chartData.datasets[0]?.backgroundColor as string)) || '#ccc' }} />
-                      {label}
-                    </button>
-                  ) : null
-                ))}
-              </div>
-            </Card>
             
             {/* Responsive Animations Panel */}
             <ResponsiveAnimationsPanel />
