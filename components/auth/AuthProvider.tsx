@@ -28,6 +28,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await authApi.me()
       setUser(res.user)
       
+      // Store user ID for user-specific localStorage keys
+      if (typeof window !== 'undefined' && res.user?.id) {
+        localStorage.setItem('user-id', res.user.id)
+      }
+      
       // Don't handle redirects in refresh - let the signIn method handle it
       // This prevents loops when the user is already authenticated
     } catch (error: any) {
@@ -60,6 +65,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       
       setUser(res.user)
+      
+      // Store user ID for user-specific localStorage keys
+      if (typeof window !== 'undefined' && res.user?.id) {
+        localStorage.setItem('user-id', res.user.id)
+      }
+      
       toast.success('Signed in')
       
       // Handle redirect after successful sign-in
@@ -134,6 +145,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         toast.error('Email is already registered. Try signing in instead.')
       }
       await refresh()
+      
+      // User ID will be stored in refresh() method
       return { wasNewUser: Boolean(res.wasNewUser), requiresEmailConfirmation: res.requiresEmailConfirmation }
     } catch (e: any) {
       const m = String(e?.message || '')
@@ -167,10 +180,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = useCallback(async () => {
     setLoading(true)
     try {
+      // Get user ID before clearing
+      const userId = user?.id || localStorage.getItem('user-id');
+      
       const res = await authApi.signOut()
       
       // Always clear the user locally regardless of server response
       setUser(null)
+      
+      // Clear user-specific localStorage
+      if (typeof window !== 'undefined' && userId) {
+        try {
+          const storeNames = [
+            'chart-store-with-sync',
+            'chart-store',
+            'chat-store',
+            'enhanced-chat-store',
+            'template-store',
+            'undo-store',
+            'chat-history',
+            'offline-conversations',
+            'offline-chart-data',
+          ];
+          
+          storeNames.forEach(name => {
+            const key = `${name}-${userId}`;
+            if (localStorage.getItem(key)) {
+              localStorage.removeItem(key);
+            }
+          });
+        } catch (err) {
+          console.warn('Failed to clear user-specific storage:', err);
+        }
+      }
+      
       // Clear any local caches that could rehydrate user
       if (typeof window !== 'undefined') {
         try {
@@ -196,10 +239,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       // Still clear the user locally even if server call fails
       setUser(null)
+      
+      // Clear user-specific localStorage even on error
       if (typeof window !== 'undefined') {
         try {
+          const userId = localStorage.getItem('user-id');
+          if (userId) {
+            const storeNames = [
+              'chart-store-with-sync',
+              'chart-store',
+              'chat-store',
+              'enhanced-chat-store',
+              'template-store',
+              'undo-store',
+              'chat-history',
+              'offline-conversations',
+              'offline-chart-data',
+            ];
+            
+            storeNames.forEach(name => {
+              const key = `${name}-${userId}`;
+              if (localStorage.getItem(key)) {
+                localStorage.removeItem(key);
+              }
+            });
+          }
+          
           sessionStorage.removeItem('auth_user')
           sessionStorage.removeItem('redirectAfterSignIn')
+          localStorage.removeItem('user-id')
         } catch {}
       }
       

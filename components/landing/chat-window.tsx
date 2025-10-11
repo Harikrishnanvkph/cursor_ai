@@ -3,11 +3,17 @@
 import React, { useRef, useCallback, useEffect } from "react"
 import { Send, MessageSquare, Edit3, Sparkles, X, Brain } from "lucide-react"
 
+interface ChartSnapshot {
+  chartType: string
+  chartData: any
+  chartConfig: any
+}
+
 interface ChatMessage {
   role: 'assistant' | 'user'
   content: string
   timestamp: number
-  chartSnapshot?: any
+  chartSnapshot?: ChartSnapshot
   action?: 'create' | 'modify' | 'update' | 'reset'
   changes?: string[]
 }
@@ -26,6 +32,8 @@ interface ChatWindowProps {
   messagesEndRef: React.RefObject<HTMLDivElement | null>
   textareaRef: React.RefObject<HTMLTextAreaElement | null>
   currentChartState: ChartSnapshot | null
+  className?: string
+  compact?: boolean
 }
 
 export function ChatWindow({
@@ -47,7 +55,7 @@ export function ChatWindow({
 
   // Enhanced input change handler with auto-resize
   const enhancedHandleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    handleInputChange(e)
+    handleInputChange?.(e)
     
     // Optimized auto-resize logic with debouncing for ChatWindow textarea
     if (textareaRef.current) {
@@ -78,7 +86,7 @@ export function ChatWindow({
 
   // Enhanced paste handler for ChatWindow
   const enhancedHandlePaste = useCallback(() => {
-    handlePaste()
+    handlePaste?.()
     
     // Single timeout for paste operations to reduce performance impact
     setTimeout(() => {

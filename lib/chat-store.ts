@@ -53,8 +53,15 @@ export type UndoStack = {
   currentIndex: number;
 };
 
-// Generate unique ID for conversations
-const generateId = () => Date.now().toString() + Math.random().toString(36).substr(2, 9);
+// Generate unique ID for conversations (UUID v4 format)
+const generateId = () => {
+  // Generate a proper UUID v4
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
 
 // Global state for drag handling
 const dragState = {
@@ -100,6 +107,7 @@ interface ChatStore {
   conversationContext: ConversationContext | null;
   isProcessing: boolean;
   historyConversationId: string | null;
+  backendConversationId: string | null; // NEW: Track if chart is already saved to backend
   
   // Undo mechanism
   undoStack: UndoStack;
@@ -116,6 +124,7 @@ interface ChatStore {
   resetConversation: () => void;
   setProcessing: (processing: boolean) => void;
   updateChartState: (snapshot: ChartSnapshot) => void;
+  setBackendConversationId: (id: string | null) => void; // NEW: Setter for backend conversation ID
   
   // Undo methods
   addToUndoStack: (operation: Omit<UndoableOperation, 'id' | 'timestamp'>) => void;
@@ -166,6 +175,7 @@ export const useChatStore = create<ChatStore>()(
       conversationContext: null,
       isProcessing: false,
       historyConversationId: null,
+      backendConversationId: null, // NEW: Track backend conversation ID for updates
       
       // Initialize undo stack
       undoStack: {
@@ -189,6 +199,7 @@ export const useChatStore = create<ChatStore>()(
           currentChartState: null,
           conversationContext: null,
           historyConversationId: null,
+          backendConversationId: null, // Clear backend ID for new conversation
           // Reset undo stack for new conversation
           undoStack: {
             operations: [],
@@ -202,6 +213,8 @@ export const useChatStore = create<ChatStore>()(
         useChartStore.getState().resetChart();
         useChartStore.getState().setHasJSON(false);
       },
+      
+      setBackendConversationId: (id) => set({ backendConversationId: id }),
 
       continueConversation: async (input: string) => {
         const { currentChartState, currentConversationId, messages } = get();
@@ -340,68 +353,16 @@ export const useChatStore = create<ChatStore>()(
             }
           }
           
-          // Save to history if it's a new chart creation
-          if (result.action === 'create') {
-            const { useHistoryStore } = await import('./history-store');
-            const historyStore = useHistoryStore.getState();
-            
-            // Add conversation and get the actual ID that was created
-            if (assistantMsg.chartSnapshot) {
-              const conversationData = {
-                title: input.length > 60 ? input.slice(0, 57) + '...' : input,
-                messages: updatedMessages,
-                snapshot: assistantMsg.chartSnapshot,
-              };
-            
-              // Store the conversation and get the actual ID that was created
-              const newId = historyStore.addConversation(conversationData);
-              
-              // Set the history ID to track this conversation
-              set({ historyConversationId: newId });
-            }
-          } else {
-            // Update the conversation in history if it exists
-            const { useHistoryStore } = await import('./history-store');
-            const historyStore = useHistoryStore.getState();
-            const historyId = get().historyConversationId;
-            
-            if (historyId) {
-              // Find the conversation by ID and update it
-              const existingConversation = historyStore.conversations.find(c => c.id === historyId);
-              if (existingConversation) {
-                if (assistantMsg.chartSnapshot) {
-                  historyStore.updateConversation(historyId, {
-                    messages: updatedMessages,
-                    snapshot: assistantMsg.chartSnapshot,
-                  });
-                }
-              } else {
-                                 // If conversation doesn't exist, create a new one
-                 console.log('Creating new history entry as existing one not found');
-                 if (assistantMsg.chartSnapshot) {
-                   const conversationData = {
-                     title: updatedMessages[1]?.content?.slice(0, 57) + '...' || 'Chart Conversation',
-                     messages: updatedMessages,
-                     snapshot: assistantMsg.chartSnapshot,
-                   };
-                   const newId = historyStore.addConversation(conversationData);
-                   set({ historyConversationId: newId });
-                 }
-              }
-            } else {
-              // No history ID exists, create new conversation
-              console.log('Creating new history entry as historyId is null');
-                             if (assistantMsg.chartSnapshot) {
-                 const conversationData = {
-                   title: updatedMessages[1]?.content?.slice(0, 57) + '...' || 'Chart Conversation',
-                   messages: updatedMessages,
-                   snapshot: assistantMsg.chartSnapshot,
-                 };
-                 const newId = historyStore.addConversation(conversationData);
-                 set({ historyConversationId: newId });
-               }
-            }
-          }
+          // DO NOT save to localStorage history automatically
+          // History entries should ONLY be created when user explicitly clicks Save button
+          // This prevents duplicate history entries during chart editing/modification
+          
+          // Note: historyConversationId tracking removed to prevent confusion
+          // Charts are kept in memory until user clicks Save
+          console.log('Chart created/modified in memory. Click Save button to persist to backend.');
+          
+          // Note: Backend sync is now handled manually via Save button
+          // Charts are only saved to localStorage until user clicks Save
           
         } catch (error: any) {
           if (error?.name === 'AbortError') {
@@ -607,7 +568,13 @@ export const useChatStore = create<ChatStore>()(
       }
     }),
     {
-      name: 'chat-store',
+      name: (() => {
+        if (typeof window !== 'undefined') {
+          const userId = localStorage.getItem('user-id') || 'anonymous';
+          return `chat-store-${userId}`;
+        }
+        return 'chat-store-anonymous';
+      })(),
       version: 2, // Increment version for undo functionality
       migrate: (persistedState: any, version: number) => {
         if (version === 1) {

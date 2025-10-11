@@ -7,6 +7,7 @@ import { ConfigPanel } from "@/components/config-panel"
 import { useChartStore } from "@/lib/chart-store"
 import { useTemplateStore } from "@/lib/template-store"
 import { useAuth } from "@/components/auth/AuthProvider"
+import { dataService } from "@/lib/data-service"
 import { Button } from "@/components/ui/button"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
 import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Layers, Zap, Settings, Download, ChevronLeft, ChevronRight, FileText } from "lucide-react"
@@ -92,7 +93,7 @@ function EditorPageContent() {
 
   const { user, signOut } = useAuth()
   const [activeTab, setActiveTab] = useState("types_toggles")
-  const { chartConfig, updateChartConfig } = useChartStore()
+  const { chartConfig, updateChartConfig, chartType, chartData, hasJSON } = useChartStore()
   const { setEditorMode } = useTemplateStore()
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false)
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false)
@@ -153,6 +154,39 @@ function EditorPageContent() {
       setEditorMode('chart');
     }
   }, [activeTab, setEditorMode]);
+
+  // ❌ BACKEND SYNC DISABLED - Editor changes should NOT auto-save
+  // Charts should ONLY save when user explicitly clicks Save button
+  // This was causing duplicate conversations to be created
+  // useEffect(() => {
+  //   if (!user || !hasJSON) return;
+  //   
+  //   // Debounce sync - save after 3 seconds of inactivity
+  //   const syncTimer = setTimeout(async () => {
+  //     try {
+  //       // Get or create conversation for editor session
+  //       const conversationTitle = `Chart edited on ${new Date().toLocaleDateString()}`;
+  //       const response = await dataService.createConversation(
+  //         conversationTitle,
+  //         'Chart edited in advanced editor'
+  //       );
+  //       
+  //       if (response.data) {
+  //         await dataService.saveChartSnapshot(
+  //           response.data.id,
+  //           chartType,
+  //           chartData,
+  //           chartConfig
+  //         );
+  //         console.log('✅ Editor changes synced to backend');
+  //       }
+  //     } catch (error) {
+  //       console.warn('Editor sync failed (changes saved locally):', error);
+  //     }
+  //   }, 3000);
+  //   
+  //   return () => clearTimeout(syncTimer);
+  // }, [user, chartType, chartData, chartConfig, hasJSON]);
 
   if (!mounted) {
     return null; // Or a loading spinner if you prefer

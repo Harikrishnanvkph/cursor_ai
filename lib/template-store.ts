@@ -608,7 +608,13 @@ export const useTemplateStore = create<TemplateStore>()(
       }
     }),
     {
-      name: 'template-store',
+      name: (() => {
+        if (typeof window !== 'undefined') {
+          const userId = localStorage.getItem('user-id') || 'anonymous';
+          return `template-store-${userId}`;
+        }
+        return 'template-store-anonymous';
+      })(),
       version: 2,
       migrate: (persistedState: any, version: number) => {
         // Initial structure -> v1

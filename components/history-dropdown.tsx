@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react"
+import { useAuth } from "@/components/auth/AuthProvider"
 import { useHistoryStore, type Conversation } from "@/lib/history-store"
 import { useChatStore } from "@/lib/chat-store"
 import { History, ChevronDown, ChevronUp, Trash2, X } from "lucide-react"
@@ -17,9 +18,17 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
   const [open, setOpen] = useState(false)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
-  const { conversations, restoreConversation, clearAllConversations, deleteConversation } = useHistoryStore()
+  const { conversations, restoreConversation, clearAllConversations, deleteConversation, loadConversationsFromBackend, loading } = useHistoryStore()
   const { startNewConversation, historyConversationId, clearUndoStack } = useChatStore()
+  const { user } = useAuth()
   const router = useRouter()
+
+  // Load conversations from backend when user is authenticated
+  useEffect(() => {
+    if (user && open) {
+      loadConversationsFromBackend()
+    }
+  }, [user, open, loadConversationsFromBackend])
 
   // Add null check and provide default empty array
   const safeConversations = conversations || []
@@ -80,13 +89,9 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
               aria-label="Open history"
               variant="default"
               size="sm"
-              className="inline-flex items-center gap-1 h-10 px-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-all duration-200 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-transparent"
+              className="inline-flex items-center gap-0 h-8 px-3 text-xs rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-all duration-200 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-transparent"
             >
-              <p className="text-black">History</p>
-              {/* <History className="h-5 w-5 text-gray-700" /> */}
-              {
-                open ? <ChevronUp className="h-4 w-4 text-gray-500" /> : <ChevronDown className="h-4 w-4 text-gray-500" />
-              }
+              <History className="w-3 h-3 text-gray-700" />
             </Button>
           </DropdownMenuTrigger>
           

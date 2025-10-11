@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Send, BarChart2, Plus, SquarePen ,PencilRuler ,RotateCcw, Edit3, MessageSquare, Sparkles, ArrowRight, X, ChevronLeft, ChevronRight, PanelLeft, PanelRight, Settings, Brain, Info } from "lucide-react"
 import { useChartStore } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
+import { dataService } from "@/lib/data-service"
 import { ChartLayout } from "@/components/chart-layout"
 import { ChartPreview } from "@/components/chart-preview"
 import { useHistoryStore } from "@/lib/history-store"
@@ -21,6 +22,7 @@ import { Chart } from "react-chartjs-2"
 import { PromptTemplate, chartTemplate, ChatWindow } from "@/components/landing"
 import { ConfigSidebar } from "@/components/config-sidebar"
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
+import { toast } from "sonner"
 
 export default function LandingPage() {
   return (
@@ -42,13 +44,14 @@ function LandingPageContent() {
     startNewConversation,
     clearMessages
   } = useChatStore()
-  const { addConversation } = useHistoryStore()
+  const { addConversation, loadConversationsFromBackend } = useHistoryStore()
   const [input, setInput] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [showActiveBanner, setShowActiveBanner] = useState(false)
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true)
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true)
+  const [hasLoadedBackendData, setHasLoadedBackendData] = useState(false)
   
   // Custom hook for tablet detection (577px-1024px)
   const [isTablet, setIsTablet] = useState(false)
@@ -76,6 +79,26 @@ function LandingPageContent() {
     window.addEventListener('resize', checkScreenSize)
     return () => window.removeEventListener('resize', checkScreenSize)
   }, [])
+
+  // Auto-sync backend data when user logs in
+  useEffect(() => {
+    if (user && !hasLoadedBackendData) {
+      console.log('🔄 User logged in, loading conversations from backend...');
+      loadConversationsFromBackend()
+        .then(() => {
+          setHasLoadedBackendData(true);
+          console.log('✅ Backend data loaded successfully');
+        })
+        .catch((error) => {
+          console.error('❌ Failed to load backend data:', error);
+        });
+    }
+    
+    // Reset flag when user logs out
+    if (!user && hasLoadedBackendData) {
+      setHasLoadedBackendData(false);
+    }
+  }, [user, hasLoadedBackendData, loadConversationsFromBackend])
   
   // Tablet-specific states
   const [tabletRightSidebarOpen, setTabletRightSidebarOpen] = useState(false)

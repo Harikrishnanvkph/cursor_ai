@@ -3132,7 +3132,13 @@ export const useChartStore = create<ChartStore>()(
       },
     }),
     {
-      name: 'chart-store',
+      name: (() => {
+        if (typeof window !== 'undefined') {
+          const userId = localStorage.getItem('user-id') || 'anonymous';
+          return `chart-store-${userId}`;
+        }
+        return 'chart-store-anonymous';
+      })(),
       version: 1,
       migrate: (persistedState: any, version: number) => {
         if (version === 0) {
