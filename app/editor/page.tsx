@@ -10,11 +10,16 @@ import { useAuth } from "@/components/auth/AuthProvider"
 import { dataService } from "@/lib/data-service"
 import { Button } from "@/components/ui/button"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
-import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Layers, Zap, Settings, Download, ChevronLeft, ChevronRight, FileText } from "lucide-react"
+import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Layers, Zap, Settings, Download, ChevronLeft, ChevronRight, FileText, Save, X, Loader2 } from "lucide-react"
 import Link from "next/link"
 import React from "react"
 import { ResizableChartArea } from "@/components/resizable-chart-area"
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
+import { HistoryDropdown } from "@/components/history-dropdown"
+import { useChatStore } from "@/lib/chat-store"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
+import { clearCurrentChart } from "@/lib/storage-utils"
 
 const TABS = [
   { id: "types_toggles", label: "Types", icon: AlignEndHorizontal },
@@ -93,11 +98,14 @@ function EditorPageContent() {
 
   const { user, signOut } = useAuth()
   const [activeTab, setActiveTab] = useState("types_toggles")
-  const { chartConfig, updateChartConfig, chartType, chartData, hasJSON } = useChartStore()
+  const { chartConfig, updateChartConfig, chartType, chartData, hasJSON, resetChart, setHasJSON } = useChartStore()
   const { setEditorMode } = useTemplateStore()
+  const { messages, clearMessages, startNewConversation, setBackendConversationId } = useChatStore()
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false)
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false)
   const [mobilePanel, setMobilePanel] = useState<string | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const router = useRouter()
   const isMobile = useIsMobile576();
   const isTablet = useIsTablet();
   const { width: screenWidth, height: screenHeight } = useScreenDimensions();
@@ -154,6 +162,150 @@ function EditorPageContent() {
       setEditorMode('chart');
     }
   }, [activeTab, setEditorMode]);
+
+  const handleSave = async () => {
+    if (!hasJSON || !user) {
+      toast.error("No chart to save or user not authenticated");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const chatMessages = useChatStore.getState().messages
+      const existingBackendId = useChatStore.getState().backendConversationId
+
+      let conversationId: string
+      let isUpdate = false
+
+      if (existingBackendId) {
+        console.log('📝 Updating existing conversation:', existingBackendId)
+        conversationId = existingBackendId
+        isUpdate = true
+
+        // No need to update conversation title - it was already set when created
+        // Just save the new chart snapshot version
+      } else {
+        console.log('💾 Creating new conversation')
+        const firstUserMessage = chatMessages.find(m => m.role === 'user')
+        const conversationTitle = firstUserMessage
+          ? (firstUserMessage.content.length > 60
+              ? firstUserMessage.content.slice(0, 57) + '...'
+              : firstUserMessage.content)
+          : `Chart saved on ${new Date().toLocaleDateString()}`
+
+        const response = await dataService.createConversation(
+          conversationTitle,
+          'Chart saved from editor'
+        )
+
+        if (response.error) {
+          console.error('Failed to create conversation:', response.error)
+          toast.error("Failed to save chart. Please try again.")
+          return
+        }
+
+        if (!response.data) {
+          toast.error("Failed to create conversation.")
+          return
+        }
+
+        conversationId = response.data.id
+        useChatStore.getState().setBackendConversationId(conversationId)
+      }
+
+      // Save chart snapshot (creates new version)
+      const snapshotResult = await dataService.saveChartSnapshot(
+        conversationId,
+        chartType,
+        chartData,
+        chartConfig
+      )
+
+      if (snapshotResult.error) {
+        console.error('Failed to save chart snapshot:', snapshotResult.error)
+        toast.error("Failed to save chart snapshot. Please try again.")
+        return
+      }
+
+      const snapshotId = snapshotResult.data?.id
+
+      if (isUpdate) {
+        // For updates, we don't need to add any automatic messages
+        // The chart snapshot is saved as a new version, which is sufficient
+        console.log('✅ Chart snapshot updated (no additional message needed)')
+      } else {
+        const messagesToSave = chatMessages.filter(m => {
+          return !(m.role === 'assistant' && m.content.includes('Hi! Describe the chart'));
+        })
+
+        let savedCount = 0
+        for (let i = 0; i < messagesToSave.length; i++) {
+          const msg = messagesToSave[i]
+          try {
+            const chartSnapshotId = (msg.role === 'assistant' && msg.chartSnapshot)
+              ? snapshotId
+              : undefined
+
+            await dataService.addMessage(
+              conversationId,
+              msg.role,
+              msg.content,
+              chartSnapshotId,
+              msg.action || undefined,
+              msg.changes || undefined
+            )
+            savedCount++
+          } catch (msgError) {
+            console.error(`Failed to save message ${i}:`, msgError)
+          }
+        }
+        console.log(`✅ Saved ${savedCount}/${messagesToSave.length} messages`)
+      }
+
+      toast.success(isUpdate ? "Chart updated successfully!" : "Chart saved successfully!")
+      console.log(`✅ Chart ${isUpdate ? 'updated' : 'saved'} to backend:`, conversationId)
+
+      clearCurrentChart()
+
+      if (typeof window !== 'undefined') {
+        const userId = localStorage.getItem('user-id') || 'anonymous'
+        const historyKey = `chat-history-${userId}`
+        try {
+          const historyData = localStorage.getItem(historyKey)
+          if (historyData) {
+            const parsed = JSON.parse(historyData)
+            if (parsed.state) {
+              parsed.state.conversations = []
+              localStorage.setItem(historyKey, JSON.stringify(parsed))
+              console.log('✅ Cleared localStorage history to prevent duplicates')
+            }
+          }
+        } catch (error) {
+          console.warn('Failed to clear history:', error)
+        }
+      }
+
+      // Don't clear or route - keep the user on the same page with their saved chart
+      // Just update the backend conversation ID so next save will update instead of create
+      setBackendConversationId(conversationId)
+    } catch (error) {
+      console.error('Save failed:', error)
+      toast.error("Failed to save chart. Please try again.")
+    } finally {
+      setIsSaving(false)
+    }
+  };
+
+  const handleCancel = () => {
+    clearCurrentChart()
+    clearMessages()
+    startNewConversation()
+    resetChart()
+    setHasJSON(false)
+    setBackendConversationId(null)
+    toast.success("Chart cleared")
+    router.push('/landing')
+  };
 
   // ❌ BACKEND SYNC DISABLED - Editor changes should NOT auto-save
   // Charts should ONLY save when user explicitly clicks Save button
@@ -319,7 +471,7 @@ function EditorPageContent() {
           />
         </div>
 
-        {/* Right Sidebar - Collapsed by default, shows only profile and settings */}
+        {/* Right Sidebar - Collapsed by default, shows profile, expand button, and action buttons */}
         <div className="w-16 flex-shrink-0 flex flex-col h-full bg-white border-l border-gray-200 shadow-sm">
           {/* Profile Button - Top */}
           <div className="p-2 border-b border-gray-200">
@@ -341,40 +493,35 @@ function EditorPageContent() {
             </Button>
           </div>
           
-          {/* Panel Title - Middle (centered) */}
-          <div className="flex-1 flex items-center justify-center px-2">
-            <div className="transform -rotate-90 whitespace-nowrap">
-              <h3 className="text-xs font-semibold text-gray-700 leading-tight">
-                {(() => {
-                  const titles: Record<string, string> = {
-                    types_toggles: "Chart Types",
-                    datasets_slices: "Datasets & Slices",
-                    datasets: "Datasets",
-                    design: "Design",
-                    axes: "Axes",
-                    labels: "Labels",
-                    overlay: "Canvas Overlays",
-                    animations: "Animations",
-                    advanced: "Advanced",
-                    export: "Export"
-                  }
-                  return titles[activeTab] || "Configuration"
-                })()}
-              </h3>
+          {/* Action Buttons: Save, Cancel, History - Below collapse button */}
+          <div className="flex flex-col items-center gap-2 px-2">
+            <Button
+              size="sm"
+              variant="default"
+              onClick={handleSave}
+              disabled={!hasJSON || isSaving}
+              className="h-10 w-10 p-0 bg-green-600 hover:bg-green-700 text-white"
+              title="Save chart to online database"
+            >
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleCancel}
+              disabled={!hasJSON}
+              className="h-10 w-10 p-0 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+              title="Clear chart and start new"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+            <div className="h-10 w-10">
+              <HistoryDropdown variant="compact" />
             </div>
           </div>
           
-          {/* Settings Button - Bottom */}
-          <div className="p-2 border-t border-gray-200">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-10 w-10 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg mx-auto"
-              title="Settings"
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
-          </div>
+          {/* Spacer to push buttons to top */}
+          <div className="flex-1"></div>
         </div>
 
         {/* Left Sidebar Overlay when expanded */}
@@ -507,40 +654,35 @@ function EditorPageContent() {
             </Button>
           </div>
           
-          {/* Panel Title - Middle (centered) */}
-          <div className="flex-1 flex items-center justify-center px-2">
-            <div className="transform -rotate-90 whitespace-nowrap">
-              <h3 className="text-xs font-semibold text-gray-700 leading-tight">
-                {(() => {
-                  const titles: Record<string, string> = {
-                    types_toggles: "Chart Types",
-                    datasets_slices: "Datasets & Slices",
-                    datasets: "Datasets",
-                    design: "Design",
-                    axes: "Axes",
-                    labels: "Labels",
-                    overlay: "Canvas Overlays",
-                    animations: "Animations",
-                    advanced: "Advanced",
-                    export: "Export"
-                  }
-                  return titles[activeTab] || "Configuration"
-                })()}
-              </h3>
+          {/* Action Buttons: Save, Cancel, History - Below collapse button */}
+          <div className="flex flex-col items-center gap-2 px-2">
+            <Button
+              size="sm"
+              variant="default"
+              onClick={handleSave}
+              disabled={!hasJSON || isSaving}
+              className="h-10 w-10 p-0 bg-green-600 hover:bg-green-700 text-white"
+              title="Save chart to online database"
+            >
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleCancel}
+              disabled={!hasJSON}
+              className="h-10 w-10 p-0 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+              title="Clear chart and start new"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+            <div className="h-10 w-10">
+              <HistoryDropdown variant="compact" />
             </div>
           </div>
           
-          {/* Settings Button - Bottom */}
-          <div className="p-2 border-t border-gray-200">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-10 w-10 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg mx-auto"
-              title="Settings"
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
-          </div>
+          {/* Spacer to push buttons to top */}
+          <div className="flex-1"></div>
         </div>
       ) : (
         <div className="w-80 flex-shrink-0 border-l bg-white overflow-hidden">

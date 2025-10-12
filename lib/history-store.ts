@@ -19,7 +19,7 @@ interface HistoryStore {
   conversations: Conversation[];
   loading: boolean;
   addConversation: (conv: Omit<Conversation, "id" | "timestamp">) => string;
-  deleteConversation: (id: string) => void;
+  deleteConversation: (id: string) => Promise<void>;
   restoreConversation: (id: string) => Promise<void>;
   clearAllConversations: () => void;
   updateConversation: (id: string, updates: Partial<Omit<Conversation, 'id' | 'timestamp'>>) => void;
@@ -43,9 +43,26 @@ export const useHistoryStore = create<HistoryStore>()(
         });
         return id; // Return the created ID
       },
-      deleteConversation: (id) => set({ 
-        conversations: get().conversations.filter((c) => c.id !== id) 
-      }),
+      deleteConversation: async (id) => {
+        try {
+          // First, try to delete from backend
+          const response = await dataService.deleteConversation(id);
+          if (response.error) {
+            console.error('Failed to delete conversation from backend:', response.error);
+            // Still remove from local state even if backend fails
+          } else {
+            console.log('✅ Conversation deleted from backend:', id);
+          }
+        } catch (error) {
+          console.error('Error deleting conversation from backend:', error);
+          // Still remove from local state even if backend fails
+        }
+        
+        // Remove from local state
+        set({ 
+          conversations: get().conversations.filter((c) => c.id !== id) 
+        });
+      },
       restoreConversation: async (id) => {
         // Try to find conversation in local store first
         let conv = get().conversations.find((c) => c.id === id);

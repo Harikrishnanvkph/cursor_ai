@@ -9,9 +9,10 @@ import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 interface HistoryDropdownProps {
-  variant?: 'full' | 'compact'
+  variant?: 'full' | 'compact' | 'inline'
 }
 
 export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
@@ -42,20 +43,25 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
     router.push('/landing')
   }
 
-  const handleDeleteConversation = (conversationId: string) => {
+  const handleDeleteConversation = async (conversationId: string) => {
     // Check if we're deleting the currently active conversation
     const isCurrentConversation = historyConversationId === conversationId
     
-    deleteConversation(conversationId)
-    setDeleteConfirmId(null)
-    
-    // If we deleted the currently active conversation, start a new one
-    // This will automatically clear the undo/redo stack since it's no longer relevant
-    if (isCurrentConversation) {
-      startNewConversation() // This already clears undo stack as part of startNewConversation
+    try {
+      await deleteConversation(conversationId)
+      setDeleteConfirmId(null)
+      toast.success("Conversation deleted successfully")
+      
+      // If we deleted the currently active conversation, start a new one
+      // This will automatically clear the undo/redo stack since it's no longer relevant
+      if (isCurrentConversation) {
+        startNewConversation() // This already clears undo stack as part of startNewConversation
+      }
+    } catch (error) {
+      console.error('Failed to delete conversation:', error)
+      toast.error("Failed to delete conversation")
+      setDeleteConfirmId(null)
     }
-    // Note: If it's not the current conversation, we don't clear the undo stack
-    // because the user is still working on their current conversation
   }
 
   const handleClearHistory = () => {
@@ -71,6 +77,7 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
   const handleDeleteClick = (e: React.MouseEvent, conversationId: string) => {
     e.stopPropagation()
     setDeleteConfirmId(conversationId)
+    setOpen(false) // Close dropdown when delete confirmation opens
   }
 
   const handleClearClick = (e: React.MouseEvent) => {
@@ -79,7 +86,7 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
   }
 
   if (variant === 'compact') {
-    // Compact mode: icon only with dropdown indicator
+    // Compact mode: icon only with dropdown indicator (for collapsed sidebar)
     return (
       <>
         <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -87,95 +94,74 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
             <Button
               data-history-dropdown
               aria-label="Open history"
-              variant="default"
+              variant="outline"
               size="sm"
-              className="inline-flex items-center gap-0 h-8 px-3 text-xs rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-all duration-200 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-transparent"
+              className="h-10 w-10 p-0 border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-transparent"
             >
-              <History className="w-3 h-3 text-gray-700" />
+              <History className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           
           <DropdownMenuContent className="w-72 mt-2 rounded-lg" align="end" forceMount>
             <div className="p-2 border-b border-gray-100">
               <h3 className="font-semibold text-gray-900 text-sm">Chat History</h3>
-              <p className="text-xs text-gray-500">Your previous conversations</p>
             </div>
             
-            {safeConversations.length === 0 ? (
-              <div className="p-4 text-center">
-                <p className="text-sm text-gray-500">No chat history yet</p>
-              </div>
-            ) : (
-              <>
-                <div className="max-h-64 overflow-y-auto">
-                  {safeConversations.map((conversation) => (
-                    <div key={conversation.id} className="relative group">
-                      {deleteConfirmId === conversation.id ? (
-                        // Delete confirmation
-                        <div className="p-2 bg-red-50 border border-red-200 rounded-lg m-1">
-                          <p className="text-xs text-red-700 mb-2">Delete this conversation?</p>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              className="h-6 px-2 text-xs"
-                              onClick={() => handleDeleteConversation(conversation.id)}
-                            >
-                              Yes
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-6 px-2 text-xs"
-                              onClick={() => setDeleteConfirmId(null)}
-                            >
-                              No
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        // Normal conversation item
-                        <DropdownMenuItem
-                          className="cursor-pointer py-2 hover:bg-gray-50 transition-colors duration-150 pr-12"
-                          onClick={() => handleConversationClick(conversation.id)}
-                        >
-                          <div className="flex items-center w-full">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900 truncate">
-                                {conversation.title || 'Untitled Chat'}
-                              </p>
-                              <p className="text-xs text-gray-500 truncate">
-                                {new Date(conversation.timestamp).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </div>
-                          {/* Delete button - visible on hover */}
-                          <button
-                            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-red-100 text-gray-400 hover:text-red-600 transition-all duration-200 opacity-0 group-hover:opacity-100"
-                            onClick={(e) => handleDeleteClick(e, conversation.id)}
-                            title="Delete conversation"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </DropdownMenuItem>
-                      )}
+            <div className="max-h-64 overflow-y-auto">
+              {loading ? (
+                <div className="p-4 text-center text-gray-500 text-sm">Loading...</div>
+              ) : safeConversations.length === 0 ? (
+                <div className="p-4 text-center text-gray-500 text-sm">No conversations yet</div>
+              ) : (
+                safeConversations.map((conversation: Conversation) => (
+                  <DropdownMenuItem
+                    key={conversation.id}
+                    onClick={() => handleConversationClick(conversation.id)}
+                    className="flex items-center justify-between p-2 hover:bg-gray-50 cursor-pointer"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-gray-900 text-sm truncate">
+                        {conversation.title}
+                      </div>
+                      <div className="text-xs text-gray-500 truncate">
+                        {new Date(conversation.timestamp).toLocaleDateString()}
+                      </div>
                     </div>
-                  ))}
-                </div>
-                
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => handleDeleteClick(e, conversation.id)}
+                      className="h-6 w-6 p-0 text-gray-400 hover:text-red-500 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuItem>
+                ))
+              )}
+            </div>
+            
+            {safeConversations.length > 0 && (
+              <>
                 <DropdownMenuSeparator />
-                
-                <DropdownMenuItem 
-                  className="cursor-pointer py-2 text-red-600 focus:text-red-600 focus:bg-red-50 hover:bg-red-50 transition-colors duration-150"
+                <DropdownMenuItem
                   onClick={handleClearClick}
+                  className="flex items-center gap-2 p-2 text-red-600 hover:bg-red-50 cursor-pointer"
                 >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  <span className="text-sm">Clear History</span>
+                  <Trash2 className="h-4 w-4" />
+                  <span className="text-sm">Clear All History</span>
                 </DropdownMenuItem>
               </>
             )}
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <ConfirmDialog
+          open={deleteConfirmId !== null}
+          onCancel={() => setDeleteConfirmId(null)}
+          title="Delete Conversation"
+          description="Are you sure you want to delete this conversation? This action cannot be undone."
+          onConfirm={() => deleteConfirmId && handleDeleteConversation(deleteConfirmId)}
+        />
 
         {/* Modal for Clear All Confirmation */}
         {clearConfirmOpen && (
@@ -193,20 +179,113 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
     )
   }
 
-  // Full mode: text + icon + dropdown (for new chat pages)
+  if (variant === 'inline') {
+    // Inline mode: matches Save/Cancel button styling (for expanded sidebar)
+    return (
+      <>
+        <DropdownMenu open={open} onOpenChange={setOpen}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              data-history-dropdown
+              aria-label="Open history"
+              variant="outline"
+              size="sm"
+              className="h-8 px-3 text-xs border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-transparent"
+            >
+              <History className="w-3 h-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          
+          <DropdownMenuContent className="w-72 mt-2 rounded-lg" align="end" forceMount>
+            <div className="p-2 border-b border-gray-100">
+              <h3 className="font-semibold text-gray-900 text-sm">Chat History</h3>
+            </div>
+            
+            <div className="max-h-64 overflow-y-auto">
+              {loading ? (
+                <div className="p-4 text-center text-gray-500 text-sm">Loading...</div>
+              ) : safeConversations.length === 0 ? (
+                <div className="p-4 text-center text-gray-500 text-sm">No conversations yet</div>
+              ) : (
+                safeConversations.map((conversation: Conversation) => (
+                  <DropdownMenuItem
+                    key={conversation.id}
+                    onClick={() => handleConversationClick(conversation.id)}
+                    className="flex items-center justify-between p-2 hover:bg-gray-50 cursor-pointer"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-gray-900 text-sm truncate">
+                        {conversation.title}
+                      </div>
+                      <div className="text-xs text-gray-500 truncate">
+                        {new Date(conversation.timestamp).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => handleDeleteClick(e, conversation.id)}
+                      className="h-6 w-6 p-0 text-gray-400 hover:text-red-500 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuItem>
+                ))
+              )}
+            </div>
+            
+            {safeConversations.length > 0 && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleClearClick}
+                  className="flex items-center gap-2 p-2 text-red-600 hover:bg-red-50 cursor-pointer"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span className="text-sm">Clear All History</span>
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <ConfirmDialog
+          open={deleteConfirmId !== null}
+          onCancel={() => setDeleteConfirmId(null)}
+          title="Delete Conversation"
+          description="Are you sure you want to delete this conversation? This action cannot be undone."
+          onConfirm={() => deleteConfirmId && handleDeleteConversation(deleteConfirmId)}
+        />
+
+        <ConfirmDialog
+          open={clearConfirmOpen}
+          onCancel={() => setClearConfirmOpen(false)}
+          title="Clear All History"
+          description="Are you sure you want to delete all conversations? This action cannot be undone."
+          onConfirm={handleClearHistory}
+        />
+      </>
+    )
+  }
+
+  // Default full variant
   return (
     <>
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger asChild>
-        <button
-          data-history-dropdown
-          onClick={() => setOpen((o) => !o)}
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium whitespace-nowrap hover:bg-gray-50 transition-all duration-200 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
-        >
-          <History className="h-4 w-4 text-gray-700" />
-          <span>History ({safeConversations.length})</span>
-          {open ? <ChevronUp className="h-4 w-4 text-gray-700" /> : <ChevronDown className="h-4 w-4 text-gray-700" />}
-        </button>
+          <Button
+            data-history-dropdown
+            aria-label="Open history"
+            variant="outline"
+            size="sm"
+            className="inline-flex items-center gap-2 h-8 px-3 text-xs rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-all duration-200 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-transparent"
+          >
+            <History className="w-3 h-3 text-gray-700" />
+            <span className="text-gray-700">
+              History {safeConversations.length > 0 && `(${safeConversations.length})`}
+            </span>
+            {open ? <ChevronUp className="w-3 h-3 text-gray-700" /> : <ChevronDown className="w-3 h-3 text-gray-700" />}
+          </Button>
         </DropdownMenuTrigger>
         
         <DropdownMenuContent className="w-72 mt-2 rounded-lg" align="end" forceMount>
@@ -223,86 +302,59 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
             <>
               <div className="max-h-64 overflow-y-auto">
                 {safeConversations.map((conversation) => (
-                  <div key={conversation.id} className="relative group">
-                    {deleteConfirmId === conversation.id ? (
-                      // Delete confirmation
-                      <div className="p-2 bg-red-50 border border-red-200 rounded-lg m-1">
-                        <p className="text-xs text-red-700 mb-2">Delete this conversation?</p>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            className="h-6 px-2 text-xs"
-                            onClick={() => handleDeleteConversation(conversation.id)}
-                          >
-                            Yes
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-6 px-2 text-xs"
-                            onClick={() => setDeleteConfirmId(null)}
-                          >
-                            No
-                          </Button>
-                        </div>
-              </div>
-            ) : (
-                      // Normal conversation item
-                      <DropdownMenuItem
-                        className="cursor-pointer py-2 hover:bg-gray-50 transition-colors duration-150 pr-12"
-                        onClick={() => handleConversationClick(conversation.id)}
-                      >
-                        <div className="flex items-center w-full">
+                  <DropdownMenuItem
+                    key={conversation.id}
+                    onClick={() => handleConversationClick(conversation.id)}
+                    className="flex items-center justify-between p-2 hover:bg-gray-50 cursor-pointer"
+                  >
                     <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">
-                              {conversation.title || 'Untitled Chat'}
-                            </p>
-                            <p className="text-xs text-gray-500 truncate">
-                              {new Date(conversation.timestamp).toLocaleDateString()}
-                            </p>
+                      <div className="font-medium text-gray-900 text-sm truncate">
+                        {conversation.title}
+                      </div>
+                      <div className="text-xs text-gray-500 truncate">
+                        {new Date(conversation.timestamp).toLocaleDateString()}
                       </div>
                     </div>
-                        {/* Delete button - visible on hover */}
-                    <button
-                          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-red-100 text-gray-400 hover:text-red-600 transition-all duration-200 opacity-0 group-hover:opacity-100"
-                          onClick={(e) => handleDeleteClick(e, conversation.id)}
-                      title="Delete conversation"
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => handleDeleteClick(e, conversation.id)}
+                      className="h-6 w-6 p-0 text-gray-400 hover:text-red-500 hover:bg-red-50"
                     >
-                          <Trash2 className="h-3 w-3" />
-                    </button>
-                      </DropdownMenuItem>
-                    )}
-                  </div>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuItem>
                 ))}
               </div>
               
               <DropdownMenuSeparator />
-              
-              <DropdownMenuItem 
-                className="cursor-pointer py-2 text-red-600 focus:text-red-600 focus:bg-red-50 hover:bg-red-50 transition-colors duration-150"
+              <DropdownMenuItem
                 onClick={handleClearClick}
+                className="flex items-center gap-2 p-2 text-red-600 hover:bg-red-50 cursor-pointer"
               >
-                <Trash2 className="mr-2 h-4 w-4" />
-                <span className="text-sm">Clear History</span>
+                <Trash2 className="h-4 w-4" />
+                <span className="text-sm">Clear All History</span>
               </DropdownMenuItem>
             </>
           )}
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Modal for Clear All Confirmation */}
-      {clearConfirmOpen && (
-          <ConfirmDialog
-          open={clearConfirmOpen}
-          onConfirm={handleClearHistory}
-          onCancel={() => setClearConfirmOpen(false)}
-          title="Clear History"
-          description="This will permanently remove all chat history."
-          confirmText="Clear All"
-            cancelText="Cancel"
-          />
-      )}
-          </>
+      <ConfirmDialog
+        open={deleteConfirmId !== null}
+        onCancel={() => setDeleteConfirmId(null)}
+        title="Delete Conversation"
+        description="Are you sure you want to delete this conversation? This action cannot be undone."
+        onConfirm={() => deleteConfirmId && handleDeleteConversation(deleteConfirmId)}
+      />
+
+      <ConfirmDialog
+        open={clearConfirmOpen}
+        onCancel={() => setClearConfirmOpen(false)}
+        title="Clear All History"
+        description="Are you sure you want to delete all conversations? This action cannot be undone."
+        onConfirm={handleClearHistory}
+      />
+    </>
   )
 }

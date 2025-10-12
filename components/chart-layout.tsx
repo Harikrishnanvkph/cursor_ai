@@ -6,7 +6,7 @@ import { useChartStore } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
 import { cn } from "@/lib/utils"
 import { useState, useEffect } from "react"
-import { ChevronLeft, ChevronRight, Settings, Save, X } from "lucide-react"
+import { ChevronLeft, ChevronRight, Settings, Save, X, Loader2 } from "lucide-react"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import { useAuth } from "@/components/auth/AuthProvider"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
@@ -57,18 +57,8 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
         conversationId = existingBackendId
         isUpdate = true
         
-        // Optionally update conversation title if needed
-        const firstUserMessage = chatMessages.find(m => m.role === 'user')
-        if (firstUserMessage) {
-          const conversationTitle = firstUserMessage.content.length > 60 
-            ? firstUserMessage.content.slice(0, 57) + '...' 
-            : firstUserMessage.content
-          
-          await dataService.updateConversation(conversationId, {
-            title: conversationTitle,
-            description: 'Chart updated from editor'
-          })
-        }
+        // No need to update conversation title - it was already set when created
+        // Just save the new chart snapshot version
       } else {
         console.log('💾 Creating new conversation')
         
@@ -122,21 +112,9 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
       const snapshotId = snapshotResult.data?.id
       
       if (isUpdate) {
-        // For updates, only add new messages since last save
-        // This is a simple approach - just add a message indicating the update
-        try {
-          await dataService.addMessage(
-            conversationId,
-            'user',
-            'Updated chart configuration',
-            snapshotId,
-            'update',
-            ['Chart modified in editor']
-          )
-          console.log('✅ Added update message to existing conversation')
-        } catch (msgError) {
-          console.error('Failed to add update message:', msgError)
-        }
+        // For updates, we don't need to add any automatic messages
+        // The chart snapshot is saved as a new version, which is sufficient
+        console.log('✅ Chart snapshot updated (no additional message needed)')
       } else {
         // For new saves, save all actual chat messages
         const messagesToSave = chatMessages.filter(m => {
@@ -199,16 +177,9 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
         }
       }
       
-      // Reset the UI
-      clearMessages()
-      startNewConversation()
-      useChartStore.getState().resetChart()
-      useChartStore.getState().setHasJSON(false)
-      
-      // Navigate to landing page
-      setTimeout(() => {
-        router.push('/landing')
-      }, 1000)
+      // Don't clear or route - keep the user on the same page with their saved chart
+      // Just update the backend conversation ID so next save will update instead of create
+      useChatStore.getState().setBackendConversationId(conversationId)
     } catch (error) {
       console.error('Failed to save chart:', error)
       toast.error("Failed to save chart. Please try again.")
@@ -277,33 +248,55 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
         onMouseLeave={() => setIsHovering(false)}
       >
         {isCollapsed ? (
-          // Collapsed state: show icon stack
-          <div className="flex flex-col items-center h-full py-4 group">
-            {/* Profile Icon - Dropdown Menu */}
-            <div className="mb-2">
+          // Collapsed state: show profile, expand button, and action buttons
+          <div className="flex flex-col items-center h-full py-2 group">
+            {/* Profile Icon - Top */}
+            <div className="p-2 border-b border-gray-200 w-full flex justify-center">
               <SimpleProfileDropdown size="md" />
             </div>
-            {/* Expand Icon */}
-            <button
-              onClick={toggleSidebar}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-200 text-gray-600 hover:text-gray-800 group-hover:scale-105"
-              title="Expand Settings"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            {/* Vertical Text */}
-            <div className="flex-1 flex items-center justify-center">
-              <span className="text-xs font-medium text-gray-600 transform -rotate-90 whitespace-nowrap">
-                Expand to Tweak General Settings
-              </span>
+            
+            {/* Expand Button - Below Profile */}
+            <div className="p-2 w-full flex justify-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleSidebar}
+                className="h-10 w-10 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg"
+                title="Expand Settings"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
             </div>
-            {/* Settings Icon */}
-            <button
-              className="mb-2 p-2 rounded-lg hover:bg-gray-100 transition-all duration-200 text-gray-600 hover:text-gray-800 group-hover:scale-105"
-              title="Settings"
-            >
-              <Settings className="w-5 h-5" />
-            </button>
+            
+            {/* Action Buttons: Save, Cancel, History - Below expand button */}
+            <div className="flex flex-col items-center gap-2 px-2 w-full">
+              <Button
+                size="sm"
+                variant="default"
+                onClick={handleSave}
+                disabled={!hasJSON || isSaving}
+                className="h-10 w-10 p-0 bg-green-600 hover:bg-green-700 text-white"
+                title="Save chart to online database"
+              >
+                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleCancel}
+                disabled={!hasJSON}
+                className="h-10 w-10 p-0 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                title="Clear chart and start new"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+              <div className="h-10 w-10">
+                <HistoryDropdown variant="compact" />
+              </div>
+            </div>
+            
+            {/* Spacer to push buttons to top */}
+            <div className="flex-1"></div>
           </div>
         ) : (
           // Expanded state: show ConfigSidebar with top bar (expand, history, profile)
@@ -328,7 +321,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
                   className="h-8 px-3 text-xs bg-green-600 hover:bg-green-700 text-white"
                   title="Save chart to online database"
                 >
-                  <Save className="w-3 h-3" />
+                  {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
                 </Button>
                 <Button
                   size="sm"
@@ -340,7 +333,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
                 >
                   <X className="w-3 h-3" />
                 </Button>
-                <HistoryDropdown variant="compact" />
+                <HistoryDropdown variant="inline" />
               </div>
               
               {/* Spacer to push profile to the right */}
