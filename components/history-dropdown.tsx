@@ -8,7 +8,7 @@ import { History, ChevronDown, ChevronUp, Trash2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { toast } from "sonner"
 
 interface HistoryDropdownProps {
@@ -23,6 +23,7 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
   const { startNewConversation, historyConversationId, clearUndoStack } = useChatStore()
   const { user } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
 
   // Load conversations from backend when user is authenticated
   useEffect(() => {
@@ -40,7 +41,13 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
     // since the undo operations from the previous conversation are no longer relevant
     clearUndoStack()
     setOpen(false)
-    router.push('/landing')
+    
+    // Only route to landing if we're not already on a valid chart page
+    // If we're on editor, docs, or other chart-related pages, stay there
+    if (pathname === '/landing' || pathname === '/') {
+      router.push('/landing')
+    }
+    // For other pages like /editor, /docs, etc., don't navigate - just restore the conversation
   }
 
   const handleDeleteConversation = async (conversationId: string) => {
@@ -64,14 +71,21 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
     }
   }
 
-  const handleClearHistory = () => {
-    clearAllConversations()
-    setClearConfirmOpen(false)
-    setOpen(false)
-    
-    // Always start a new conversation after clearing all history
-    // This will automatically clear the undo/redo stack as well
-    startNewConversation()
+  const handleClearHistory = async () => {
+    try {
+      await clearAllConversations()
+      setClearConfirmOpen(false)
+      setOpen(false)
+      toast.success("All history cleared successfully")
+      
+      // Always start a new conversation after clearing all history
+      // This will automatically clear the undo/redo stack as well
+      startNewConversation()
+    } catch (error) {
+      console.error('Failed to clear all history:', error)
+      toast.error("Failed to clear all history")
+      setClearConfirmOpen(false)
+    }
   }
 
   const handleDeleteClick = (e: React.MouseEvent, conversationId: string) => {

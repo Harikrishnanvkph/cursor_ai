@@ -10,7 +10,7 @@ import { useAuth } from "@/components/auth/AuthProvider"
 import { dataService } from "@/lib/data-service"
 import { Button } from "@/components/ui/button"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
-import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Layers, Zap, Settings, Download, ChevronLeft, ChevronRight, FileText, Save, X, Loader2 } from "lucide-react"
+import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Layers, Zap, Settings, Download, ChevronLeft, ChevronRight, FileText, Save, X, Loader2, Plus, Info } from "lucide-react"
 import Link from "next/link"
 import React from "react"
 import { ResizableChartArea } from "@/components/resizable-chart-area"
@@ -20,6 +20,9 @@ import { useChatStore } from "@/lib/chat-store"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { clearCurrentChart } from "@/lib/storage-utils"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { EditorWelcomeScreen } from "@/components/editor-welcome-screen"
 
 const TABS = [
   { id: "types_toggles", label: "Types", icon: AlignEndHorizontal },
@@ -105,6 +108,8 @@ function EditorPageContent() {
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false)
   const [mobilePanel, setMobilePanel] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false)
+  const [showNewChartInfoDialog, setShowNewChartInfoDialog] = useState(false)
   const router = useRouter()
   const isMobile = useIsMobile576();
   const isTablet = useIsTablet();
@@ -216,9 +221,9 @@ function EditorPageContent() {
       // Save chart snapshot (creates new version)
       const snapshotResult = await dataService.saveChartSnapshot(
         conversationId,
-        chartType,
-        chartData,
-        chartConfig
+            chartType,
+            chartData,
+            chartConfig
       )
 
       if (snapshotResult.error) {
@@ -279,8 +284,8 @@ function EditorPageContent() {
               localStorage.setItem(historyKey, JSON.stringify(parsed))
               console.log('✅ Cleared localStorage history to prevent duplicates')
             }
-          }
-        } catch (error) {
+        }
+      } catch (error) {
           console.warn('Failed to clear history:', error)
         }
       }
@@ -304,7 +309,76 @@ function EditorPageContent() {
     setHasJSON(false)
     setBackendConversationId(null)
     toast.success("Chart cleared")
-    router.push('/landing')
+    // Stay on editor page - don't route away
+  };
+
+  // Handle new chart creation
+  const handleNewChart = () => {
+    // Check if there's meaningful existing chart data
+    const hasMeaningfulData = hasJSON || 
+      (chartData.datasets.length > 0 && 
+       chartData.datasets.some(dataset => 
+         dataset.data && 
+         dataset.data.length > 0 && 
+         dataset.data.some(value => value !== 0 && value !== null && value !== undefined)
+       ));
+    
+    if (hasMeaningfulData) {
+      // Show confirmation dialog
+      setShowSaveConfirmDialog(true)
+    } else {
+      // No meaningful data, show info dialog directly
+      setShowNewChartInfoDialog(true)
+    }
+  };
+
+  const handleSaveAndClear = async () => {
+    setShowSaveConfirmDialog(false)
+    // Trigger save
+    await handleSave()
+    // After save, show new chart info
+    setShowNewChartInfoDialog(true)
+  };
+
+  const handleJustClear = () => {
+    setShowSaveConfirmDialog(false)
+    // Clear everything
+    clearCurrentChart()
+    clearMessages()
+    startNewConversation()
+    resetChart()
+    setHasJSON(false)
+    setBackendConversationId(null)
+    // Show new chart info
+    setShowNewChartInfoDialog(true)
+  };
+
+  const handleLoadSampleData = () => {
+    setShowNewChartInfoDialog(false)
+    // Load sample data
+    const sampleData = {
+      labels: ['January', 'February', 'March', 'April', 'May', 'June'],
+      datasets: [{
+        label: 'Sample Dataset',
+        data: [12, 19, 3, 5, 2, 3],
+        backgroundColor: 'rgba(54, 162, 235, 0.5)',
+        borderColor: 'rgba(54, 162, 235, 1)',
+        borderWidth: 1
+      }]
+    }
+    useChartStore.getState().setFullChart({
+      chartType: 'bar',
+      chartData: sampleData,
+      chartConfig: {}
+    })
+    setHasJSON(true)
+    toast.success("Sample data loaded")
+  };
+
+  const handleGoToDataset = () => {
+    setShowNewChartInfoDialog(false)
+    setActiveTab('datasets_slices')
+    toast.info("Navigate to Datasets to add your data")
   };
 
   // ❌ BACKEND SYNC DISABLED - Editor changes should NOT auto-save
@@ -367,7 +441,14 @@ function EditorPageContent() {
         {/* Chart Preview */}
         <div className="flex-1 flex items-start justify-center p-2 pb-20 overflow-hidden">
           <div className="w-full max-w-full overflow-auto" style={{ maxHeight: 'calc(100vh - 120px)' }}>
-            <ChartPreview />
+            {hasJSON ? (
+              <ChartPreview />
+            ) : (
+              <EditorWelcomeScreen 
+                onDatasetClick={() => setMobilePanel('datasets_slices')} 
+                size="compact"
+              />
+            )}
           </div>
         </div>
         {/* Bottom Navigation - horizontally scrollable, tiles never squish */}
@@ -463,12 +544,18 @@ function EditorPageContent() {
 
         {/* Chart Area (between left and right sidebars) */}
         <div className="flex-1 min-w-0 pr-4 pl-2 py-4">
-          <ChartPreview
-            onToggleLeftSidebar={() => setLeftSidebarCollapsed((v) => !v)}
-            isLeftSidebarCollapsed={leftSidebarCollapsed}
-            onToggleSidebar={() => setRightSidebarCollapsed((v) => !v)}
-            isSidebarCollapsed={rightSidebarCollapsed}
-          />
+          {hasJSON ? (
+            <ChartPreview
+              onToggleLeftSidebar={() => setLeftSidebarCollapsed((v) => !v)}
+              isLeftSidebarCollapsed={leftSidebarCollapsed}
+              onToggleSidebar={() => setRightSidebarCollapsed((v) => !v)}
+              isSidebarCollapsed={rightSidebarCollapsed}
+            />
+          ) : (
+            <EditorWelcomeScreen 
+              onDatasetClick={() => setActiveTab('datasets_slices')} 
+            />
+          )}
         </div>
 
         {/* Right Sidebar - Collapsed by default, shows profile, expand button, and action buttons */}
@@ -493,8 +580,17 @@ function EditorPageContent() {
             </Button>
           </div>
           
-          {/* Action Buttons: Save, Cancel, History - Below collapse button */}
+          {/* Action Buttons: New, Save, Cancel, History - Below collapse button */}
           <div className="flex flex-col items-center gap-2 px-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleNewChart}
+              className="h-10 w-10 p-0 border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300"
+              title="Create new chart from scratch"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
             <Button
               size="sm"
               variant="default"
@@ -624,12 +720,18 @@ function EditorPageContent() {
       )}
       {/* Center Area - Chart Preview */}
       <div className="flex-1 min-w-0 pr-4 pl-2 py-4">
-        <ChartPreview
+        {hasJSON ? (
+          <ChartPreview
             onToggleLeftSidebar={() => setLeftSidebarCollapsed((v) => !v)}
             isLeftSidebarCollapsed={leftSidebarCollapsed}
             onToggleSidebar={() => setRightSidebarCollapsed((v) => !v)}
             isSidebarCollapsed={rightSidebarCollapsed}
           />
+        ) : (
+          <EditorWelcomeScreen 
+            onDatasetClick={() => setActiveTab('datasets_slices')} 
+          />
+        )}
       </div>
       {/* Right Panel - Configuration */}
       {rightSidebarCollapsed ? (
@@ -654,8 +756,17 @@ function EditorPageContent() {
             </Button>
           </div>
           
-          {/* Action Buttons: Save, Cancel, History - Below collapse button */}
+          {/* Action Buttons: New, Save, Cancel, History - Below collapse button */}
           <div className="flex flex-col items-center gap-2 px-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleNewChart}
+              className="h-10 w-10 p-0 border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300"
+              title="Create new chart from scratch"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
             <Button
               size="sm"
               variant="default"
@@ -691,9 +802,68 @@ function EditorPageContent() {
             onToggleSidebar={() => setRightSidebarCollapsed((v) => !v)}
             isSidebarCollapsed={rightSidebarCollapsed}
             onTabChange={setActiveTab}
+            onNewChart={handleNewChart}
           />
         </div>
       )}
+
+      {/* Confirmation Dialog for Save/Clear */}
+      <ConfirmDialog
+        open={showSaveConfirmDialog}
+        onCancel={() => setShowSaveConfirmDialog(false)}
+        title="Existing Chart Data"
+        description="You have unsaved chart data. Would you like to save it before creating a new chart?"
+        onConfirm={handleSaveAndClear}
+        confirmText="Save"
+        cancelText="Cancel"
+        onAlternate={handleJustClear}
+        alternateText="Discard"
+      />
+
+      {/* Info Dialog for New Chart Options */}
+      <Dialog open={showNewChartInfoDialog} onOpenChange={setShowNewChartInfoDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              <Info className="h-5 w-5 text-blue-600" />
+              <DialogTitle>Create New Chart</DialogTitle>
+            </div>
+            <DialogDescription className="pt-2">
+              Choose how you'd like to start creating your chart:
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex flex-col gap-3 py-4">
+            <Button
+              onClick={handleLoadSampleData}
+              className="w-full h-auto py-4 flex flex-col items-start gap-1"
+              variant="outline"
+            >
+              <div className="flex items-center gap-2 w-full">
+                <Sparkles className="h-5 w-5 text-purple-600" />
+                <span className="font-semibold">Load Sample Data</span>
+              </div>
+              <span className="text-xs text-left text-gray-500">
+                Start with pre-loaded example data to explore chart features
+              </span>
+            </Button>
+            
+            <Button
+              onClick={handleGoToDataset}
+              className="w-full h-auto py-4 flex flex-col items-start gap-1"
+              variant="outline"
+            >
+              <div className="flex items-center gap-2 w-full">
+                <Database className="h-5 w-5 text-blue-600" />
+                <span className="font-semibold">Add Your Own Data</span>
+              </div>
+              <span className="text-xs text-left text-gray-500">
+                Navigate to the Datasets panel to input your custom data
+              </span>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 } 

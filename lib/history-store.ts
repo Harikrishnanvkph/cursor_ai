@@ -21,7 +21,7 @@ interface HistoryStore {
   addConversation: (conv: Omit<Conversation, "id" | "timestamp">) => string;
   deleteConversation: (id: string) => Promise<void>;
   restoreConversation: (id: string) => Promise<void>;
-  clearAllConversations: () => void;
+  clearAllConversations: () => Promise<void>;
   updateConversation: (id: string, updates: Partial<Omit<Conversation, 'id' | 'timestamp'>>) => void;
   loadConversationsFromBackend: () => Promise<void>;
 }
@@ -140,7 +140,24 @@ export const useHistoryStore = create<HistoryStore>()(
           updateChartState(conv.snapshot);
         }
       },
-      clearAllConversations: () => set({ conversations: [] }),
+      clearAllConversations: async () => {
+        try {
+          // First, try to delete all conversations from backend
+          const response = await dataService.deleteAllConversations();
+          if (response.error) {
+            console.error('Failed to delete all conversations from backend:', response.error);
+            // Still clear local state even if backend fails
+          } else {
+            console.log('✅ All conversations deleted from backend');
+          }
+        } catch (error) {
+          console.error('Error deleting all conversations from backend:', error);
+          // Still clear local state even if backend fails
+        }
+        
+        // Clear local state
+        set({ conversations: [] });
+      },
       updateConversation: (id, updates) => {
         set({
           conversations: get().conversations.map(conv =>

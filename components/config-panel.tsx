@@ -13,7 +13,7 @@ import { DatasetsSlicesPanel } from "./panels/datasets-slices-panel"
 import { TemplatesPanel } from "./panels/templates-panel"
 import { Button } from "@/components/ui/button"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
-import { ChevronLeft, Settings, Save, X, Loader2 } from "lucide-react"
+import { ChevronLeft, Settings, Save, X, Loader2, Plus } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useAuth } from "@/components/auth/AuthProvider"
 import { HistoryDropdown } from "@/components/history-dropdown"
@@ -29,9 +29,10 @@ interface ConfigPanelProps {
   onToggleSidebar?: () => void
   isSidebarCollapsed?: boolean
   onTabChange?: (tab: string) => void
+  onNewChart?: () => void
 }
 
-export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, onTabChange }: ConfigPanelProps) {
+export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, onTabChange, onNewChart }: ConfigPanelProps) {
   const [isMobile, setIsMobile] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const { user, signOut } = useAuth();
@@ -187,7 +188,7 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
     setHasJSON(false)
     setBackendConversationId(null)
     toast.success("Chart cleared")
-    router.push('/landing')
+    // Stay on editor page - don't route away
   };
 
   const renderPanel = () => {
@@ -238,8 +239,17 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
             </Button>
           )}
 
-          {/* Action Buttons: Save, Cancel, History */}
+          {/* Action Buttons: New, Save, Cancel, History */}
           <div className="flex gap-2 flex-shrink-0">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onNewChart}
+              className="h-8 px-3 text-xs border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300"
+              title="Create new chart from scratch"
+            >
+              <Plus className="w-3 h-3" />
+            </Button>
             <Button
               size="sm"
               variant="default"

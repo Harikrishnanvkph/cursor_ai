@@ -100,6 +100,12 @@ class DataService {
     }, false);
   }
 
+  async deleteAllConversations(): Promise<ApiResponse<void>> {
+    return this.request('/api/data/conversations', {
+      method: 'DELETE',
+    }, false);
+  }
+
   // =============================================
   // CHART SNAPSHOT MANAGEMENT
   // =============================================

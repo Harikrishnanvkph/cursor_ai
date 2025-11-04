@@ -8,8 +8,10 @@ export interface ConfirmDialogProps {
   description?: string
   confirmText?: string
   cancelText?: string
+  alternateText?: string
   onConfirm: () => void
   onCancel: () => void
+  onAlternate?: () => void
   dismissible?: boolean
 }
 
@@ -19,8 +21,10 @@ export function ConfirmDialog({
   description = "This action cannot be undone.",
   confirmText = "Confirm",
   cancelText = "Cancel",
+  alternateText,
   onConfirm,
   onCancel,
+  onAlternate,
   dismissible = true,
 }: ConfirmDialogProps) {
   useEffect(() => {
@@ -54,20 +58,29 @@ export function ConfirmDialog({
             <p className="mt-1 text-sm text-gray-600">{description}</p>
           )}
         </div>
-        <div className="mt-4 flex items-center justify-end gap-2">
+        <div className="mt-4 flex items-center justify-evenly gap-2">
+          <button
+              type="button"
+              onClick={onConfirm}
+              className="inline-flex items-center justify-center h-9 rounded-md bg-green-600 px-4 text-sm font-semibold text-white hover:bg-green-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 shadow-sm transition-colors"
+            >
+              {confirmText}
+            </button>
+          {alternateText && onAlternate && (
+            <button
+              type="button"
+              onClick={onAlternate}
+              className="inline-flex items-center justify-center h-9 rounded-md border border-orange-300 bg-white px-4 text-sm font-medium text-orange-700 hover:bg-orange-50 hover:border-orange-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 transition-colors"
+            >
+              {alternateText}
+            </button>
+          )}
           <button
             type="button"
             onClick={onCancel}
-            className="inline-flex items-center justify-center h-9 rounded-md border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="inline-flex items-center justify-center h-9 rounded-md border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors"
           >
             {cancelText}
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className="inline-flex items-center justify-center h-9 rounded-md bg-red-600 px-3 text-sm font-semibold text-white hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
-          >
-            {confirmText}
           </button>
         </div>
       </div>

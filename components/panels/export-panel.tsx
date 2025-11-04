@@ -100,215 +100,245 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Export & Share</h2>
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 pb-2 border-b">
+        <Download className="h-4 w-4 text-blue-600" />
+        <h2 className="text-base font-semibold text-gray-900">Export & Share</h2>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Export Chart Image</CardTitle>
+      <Card className="border-blue-100 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <FileImage className="h-4 w-4 text-blue-600" />
+            Chart Image
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3">
           <div>
-            <Label>Format</Label>
+            <Label className="text-xs font-medium text-gray-700">Format</Label>
             <Select value={exportFormat} onValueChange={setExportFormat}>
-              <SelectTrigger>
+              <SelectTrigger className="h-8 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="png">PNG</SelectItem>
+                <SelectItem value="png">PNG (Recommended)</SelectItem>
                 <SelectItem value="jpg">JPG</SelectItem>
                 <SelectItem value="svg">SVG</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          <Button className="w-full">
-            <FileImage className="h-4 w-4 mr-2" />
+          <Button className="w-full h-9 text-xs bg-blue-600 hover:bg-blue-700">
+            <FileImage className="h-3 w-3 mr-2" />
             Export as {exportFormat.toUpperCase()}
           </Button>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Export Configuration</CardTitle>
+      <Card className="border-purple-100 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Code className="h-4 w-4 text-purple-600" />
+            Configuration
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleExportConfig} className="flex-1">
-              <Download className="h-4 w-4 mr-2" />
-              Download JSON
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" onClick={handleExportConfig} className="h-8 text-xs">
+              <Download className="h-3 w-3 mr-1" />
+              JSON
             </Button>
-            <Button variant="outline" onClick={handleCopyConfig} className="flex-1">
-              <Copy className="h-4 w-4 mr-2" />
-              Copy Config
+            <Button variant="outline" onClick={handleCopyConfig} className="h-8 text-xs">
+              <Copy className="h-3 w-3 mr-1" />
+              Copy
             </Button>
           </div>
 
           <div>
-            <Label>Chart.js Configuration</Label>
+            <Label className="text-xs font-medium text-gray-700">Chart.js Config</Label>
             <Textarea
               value={JSON.stringify({ type: chartType, data: chartData, options: chartConfig }, null, 2)}
               readOnly
-              className="h-32 font-mono text-xs"
+              className="h-24 font-mono text-[10px] bg-gray-50"
             />
           </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Export Data</CardTitle>
+      <Card className="border-green-100 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <FileText className="h-4 w-4 text-green-600" />
+            Data Export
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <Button variant="outline" onClick={handleExportData} className="w-full">
-            <FileText className="h-4 w-4 mr-2" />
+        <CardContent>
+          <Button variant="outline" onClick={handleExportData} className="w-full h-9 text-xs">
+            <FileText className="h-3 w-3 mr-2" />
             Export as CSV
           </Button>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Export as HTML</CardTitle>
+      <Card className="border-orange-100 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <FileCode className="h-4 w-4 text-orange-600" />
+            HTML Export
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Title</Label>
-              <Input
-                value={htmlOptions.title}
-                onChange={(e) => setHtmlOptions({ ...htmlOptions, title: e.target.value })}
-                placeholder="Chart Title"
-              />
-            </div>
-            <div>
-              <Label>File Name</Label>
-              <Input
-                value={htmlOptions.fileName}
-                onChange={(e) => setHtmlOptions({ ...htmlOptions, fileName: e.target.value })}
-                placeholder="chart.html"
-              />
-            </div>
+        <CardContent className="space-y-3">
+          <div>
+            <Label className="text-xs font-medium text-gray-700">Title</Label>
+            <Input
+              value={htmlOptions.title}
+              onChange={(e) => setHtmlOptions({ ...htmlOptions, title: e.target.value })}
+              placeholder="Chart Title"
+              className="h-8 text-xs"
+            />
+          </div>
+
+          <div>
+            <Label className="text-xs font-medium text-gray-700">File Name</Label>
+            <Input
+              value={htmlOptions.fileName}
+              onChange={(e) => setHtmlOptions({ ...htmlOptions, fileName: e.target.value })}
+              placeholder="chart.html"
+              className="h-8 text-xs"
+            />
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Width (px)</Label>
+              <Label className="text-xs font-medium text-gray-700">Width</Label>
               <Input
                 type="number"
                 value={htmlOptions.width}
                 onChange={(e) => setHtmlOptions({ ...htmlOptions, width: parseInt(e.target.value) || 800 })}
                 min="200"
                 max="2000"
+                className="h-8 text-xs"
               />
             </div>
             <div>
-              <Label>Height (px)</Label>
+              <Label className="text-xs font-medium text-gray-700">Height</Label>
               <Input
                 type="number"
                 value={htmlOptions.height}
                 onChange={(e) => setHtmlOptions({ ...htmlOptions, height: parseInt(e.target.value) || 600 })}
                 min="200"
                 max="2000"
+                className="h-8 text-xs"
               />
             </div>
           </div>
 
           <div>
-            <Label>Background Color</Label>
-            <Input
-              value={htmlOptions.backgroundColor}
-              onChange={(e) => setHtmlOptions({ ...htmlOptions, backgroundColor: e.target.value })}
-              placeholder="#ffffff"
-            />
+            <Label className="text-xs font-medium text-gray-700">Background</Label>
+            <div className="flex gap-2">
+              <input
+                type="color"
+                value={htmlOptions.backgroundColor}
+                onChange={(e) => setHtmlOptions({ ...htmlOptions, backgroundColor: e.target.value })}
+                className="w-10 h-8 rounded border cursor-pointer"
+              />
+              <Input
+                value={htmlOptions.backgroundColor}
+                onChange={(e) => setHtmlOptions({ ...htmlOptions, backgroundColor: e.target.value })}
+                placeholder="#ffffff"
+                className="h-8 text-xs flex-1"
+              />
+            </div>
           </div>
 
           <div>
-            <Label>Template</Label>
+            <Label className="text-xs font-medium text-gray-700">Template</Label>
             <Select value={htmlOptions.template} onValueChange={(value) => setHtmlOptions({ ...htmlOptions, template: value })}>
-              <SelectTrigger>
+              <SelectTrigger className="h-8 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {templateList.map((template) => (
                   <SelectItem key={template.id} value={template.id}>
-                    <div>
-                      <div className="font-medium">{template.name}</div>
-                      <div className="text-xs text-gray-500">{template.description}</div>
-                    </div>
+                    <span className="text-xs">{template.name}</span>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label>Responsive</Label>
-              <Switch
-                checked={htmlOptions.includeResponsive}
-                onCheckedChange={(checked) => setHtmlOptions({ ...htmlOptions, includeResponsive: checked })}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label>Animations</Label>
-              <Switch
-                checked={htmlOptions.includeAnimations}
-                onCheckedChange={(checked) => setHtmlOptions({ ...htmlOptions, includeAnimations: checked })}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label>Tooltips</Label>
-              <Switch
-                checked={htmlOptions.includeTooltips}
-                onCheckedChange={(checked) => setHtmlOptions({ ...htmlOptions, includeTooltips: checked })}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label>Legend</Label>
-              <Switch
-                checked={htmlOptions.includeLegend}
-                onCheckedChange={(checked) => setHtmlOptions({ ...htmlOptions, includeLegend: checked })}
-              />
+          <div className="space-y-2 pt-2 border-t">
+            <Label className="text-xs font-medium text-gray-700">Options</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex items-center justify-between bg-orange-50 p-2 rounded">
+                <Label className="text-xs">Responsive</Label>
+                <Switch
+                  checked={htmlOptions.includeResponsive}
+                  onCheckedChange={(checked) => setHtmlOptions({ ...htmlOptions, includeResponsive: checked })}
+                />
+              </div>
+              <div className="flex items-center justify-between bg-orange-50 p-2 rounded">
+                <Label className="text-xs">Animations</Label>
+                <Switch
+                  checked={htmlOptions.includeAnimations}
+                  onCheckedChange={(checked) => setHtmlOptions({ ...htmlOptions, includeAnimations: checked })}
+                />
+              </div>
+              <div className="flex items-center justify-between bg-orange-50 p-2 rounded">
+                <Label className="text-xs">Tooltips</Label>
+                <Switch
+                  checked={htmlOptions.includeTooltips}
+                  onCheckedChange={(checked) => setHtmlOptions({ ...htmlOptions, includeTooltips: checked })}
+                />
+              </div>
+              <div className="flex items-center justify-between bg-orange-50 p-2 rounded">
+                <Label className="text-xs">Legend</Label>
+                <Switch
+                  checked={htmlOptions.includeLegend}
+                  onCheckedChange={(checked) => setHtmlOptions({ ...htmlOptions, includeLegend: checked })}
+                />
+              </div>
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <Button onClick={handleExportHTML} className="flex-1">
-              <FileCode className="h-4 w-4 mr-2" />
-              Download HTML
+          <div className="grid grid-cols-3 gap-2 pt-2">
+            <Button onClick={handleExportHTML} className="h-8 text-xs col-span-3 bg-orange-600 hover:bg-orange-700">
+              <Download className="h-3 w-3 mr-1" />
+              Download
             </Button>
-            <Button variant="outline" onClick={handlePreviewHTML} className="flex-1">
-              <Eye className="h-4 w-4 mr-2" />
+            <Button variant="outline" onClick={handlePreviewHTML} className="h-8 text-xs">
+              <Eye className="h-3 w-3 mr-1" />
               Preview
             </Button>
-            <Button variant="outline" onClick={handleCopyHTML} className="flex-1">
-              <Copy className="h-4 w-2 mr-2" />
-              Copy
+            <Button variant="outline" onClick={handleCopyHTML} className="h-8 text-xs col-span-2">
+              <Copy className="h-3 w-3 mr-1" />
+              Copy Code
             </Button>
           </div>
         </CardContent>
       </Card>
 
       {showHtmlPreview && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">HTML Preview</CardTitle>
+        <Card className="border-gray-200 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Code className="h-4 w-4 text-gray-600" />
+              HTML Preview
+            </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             <Textarea
               value={htmlPreview}
               readOnly
-              className="h-64 font-mono text-xs"
+              className="h-48 font-mono text-[10px] bg-gray-50"
             />
-            <div className="flex gap-2 mt-4">
-              <Button variant="outline" onClick={() => setShowHtmlPreview(false)} className="flex-1">
-                Close Preview
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" onClick={() => setShowHtmlPreview(false)} className="h-8 text-xs">
+                Close
               </Button>
-              <Button onClick={handleExportHTML} className="flex-1">
-                <Download className="h-4 w-4 mr-2" />
-                Download This HTML
+              <Button onClick={handleExportHTML} className="h-8 text-xs bg-orange-600 hover:bg-orange-700">
+                <Download className="h-3 w-3 mr-1" />
+                Download
               </Button>
             </div>
           </CardContent>
@@ -317,21 +347,18 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
 
       {/* Settings Navigation */}
       {onTabChange && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Export Settings</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <Card className="border-gray-200 shadow-sm bg-gradient-to-br from-gray-50 to-white">
+          <CardContent className="pt-6">
             <Button 
               variant="outline" 
               onClick={() => onTabChange("export")} 
-              className="w-full"
+              className="w-full h-9 text-xs border-2 hover:border-blue-400 hover:bg-blue-50"
             >
               <Settings className="h-4 w-4 mr-2" />
-              Configure Export Settings
+              Advanced Export Settings
             </Button>
-            <p className="text-xs text-gray-500 mt-2">
-              Customize export options, templates, and advanced settings
+            <p className="text-xs text-gray-500 mt-2 text-center">
+              More export options & customization
             </p>
           </CardContent>
         </Card>

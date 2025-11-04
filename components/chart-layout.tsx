@@ -70,8 +70,8 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
               : firstUserMessage.content)
           : `Chart saved on ${new Date().toLocaleDateString()}`
         
-        const response = await dataService.createConversation(
-          conversationTitle,
+      const response = await dataService.createConversation(
+        conversationTitle,
           'Chart saved from editor'
         )
         
@@ -97,11 +97,11 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
       // Save chart snapshot (creates new version)
       const snapshotResult = await dataService.saveChartSnapshot(
         conversationId,
-        chartType,
-        chartData,
-        chartConfig
-      )
-      
+          chartType,
+          chartData,
+          chartConfig
+        )
+        
       if (snapshotResult.error) {
         console.error('Failed to save chart snapshot:', snapshotResult.error)
         toast.error("Failed to save chart snapshot. Please try again.")
@@ -260,10 +260,10 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={toggleSidebar}
+              onClick={toggleSidebar}
                 className="h-10 w-10 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg"
-                title="Expand Settings"
-              >
+              title="Expand Settings"
+            >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
             </div>

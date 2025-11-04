@@ -35,6 +35,12 @@ export function DatasetPanel() {
   const handleAddDataset = () => {
     if (newDatasetName.trim()) {
       const colors = generateColorPalette(5)
+      // Use existing chart labels if available, otherwise use default labels
+      const defaultLabels = ['Label 1', 'Label 2', 'Label 3', 'Label 4', 'Label 5']
+      const sliceLabels = chartData.labels && chartData.labels.length > 0 
+        ? chartData.labels 
+        : defaultLabels
+      
       const newDataset: ExtendedChartDataset = {
         label: newDatasetName,
         data: [10, 20, 30, 40, 50],
@@ -52,6 +58,7 @@ export function DatasetPanel() {
           position: "center",
           arrow: false,
         }),
+        sliceLabels: sliceLabels, // Add sliceLabels to the dataset
       }
 
       addDataset(newDataset)

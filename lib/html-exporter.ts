@@ -204,6 +204,9 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
     legendFilter
   } = useChartStore.getState();
 
+  // Map custom chart types to actual Chart.js types
+  const mappedChartType = chartTypeMapping[chartType as SupportedChartType] || chartType;
+
   // Use provided drag state or try to capture current drag state from any active chart instance
   let currentDragState = options.dragState || {};
   if (!currentDragState || Object.keys(currentDragState).length === 0) {
@@ -322,7 +325,7 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
   // Use template if specified
   if (template && htmlTemplates[template as keyof typeof htmlTemplates]) {
     const selectedTemplate = htmlTemplates[template as keyof typeof htmlTemplates];
-    const htmlContent = selectedTemplate.generate(processedChartData, enhancedChartConfig, chartType, options);
+    const htmlContent = selectedTemplate.generate(processedChartData, enhancedChartConfig, mappedChartType, options);
     return {
       content: htmlContent,
       fileName,
@@ -472,7 +475,7 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
         // Chart.js Configuration
         const chartConfig = ${JSON.stringify(enhancedChartConfig, null, 8)};
         const chartData = ${JSON.stringify(processedChartData, null, 8)};
-        const chartType = "${chartType}";
+        const chartType = "${mappedChartType}";
         
         // Enhanced configuration for standalone HTML
         const enhancedConfig = {
@@ -627,6 +630,9 @@ export async function downloadChartAsHTML(options: HTMLExportOptions = {}) {
 export async function generateCustomChartHTML(template: string, options: HTMLExportOptions = {}) {
   const { chartType, chartData, chartConfig, chartMode, activeDatasetIndex, uniformityMode, legendFilter } = useChartStore.getState();
   
+  // Map custom chart types to actual Chart.js types
+  const mappedChartType = chartTypeMapping[chartType as SupportedChartType] || chartType;
+  
   // Process chart data to convert images to base64
   const processedChartData = await processChartDataForExport(chartData);
   
@@ -648,7 +654,7 @@ export async function generateCustomChartHTML(template: string, options: HTMLExp
   
   // Replace placeholders in template
   const htmlContent = template
-    .replace(/\{\{chartType\}\}/g, chartType)
+    .replace(/\{\{chartType\}\}/g, mappedChartType)
     .replace(/\{\{chartData\}\}/g, JSON.stringify(processedChartData, null, 2))
     .replace(/\{\{chartConfig\}\}/g, JSON.stringify(enhancedChartConfig, null, 2))
     .replace(/\{\{title\}\}/g, options.title || 'Chart Export')
@@ -670,6 +676,10 @@ export async function generateCustomChartHTML(template: string, options: HTMLExp
  */
 export function generateMinimalChartHTML(options: HTMLExportOptions = {}) {
   const { chartType, chartData, chartConfig, chartMode, activeDatasetIndex, uniformityMode, legendFilter } = useChartStore.getState();
+  
+  // Map custom chart types to actual Chart.js types
+  const mappedChartType = chartTypeMapping[chartType as SupportedChartType] || chartType;
+  
   const customLabels = generateCustomLabelsFromConfig(chartConfig, chartData, legendFilter, options.dragState);
   const enhancedChartConfig = {
     ...chartConfig,
@@ -693,7 +703,7 @@ export function generateMinimalChartHTML(options: HTMLExportOptions = {}) {
     <script>
         const ctx = document.getElementById('chart').getContext('2d');
         new Chart(ctx, {
-            type: '${chartType}',
+            type: '${mappedChartType}',
             data: ${JSON.stringify(chartData)},
             options: ${JSON.stringify(enhancedChartConfig)}
         });
@@ -713,6 +723,9 @@ export function generateMinimalChartHTML(options: HTMLExportOptions = {}) {
  */
 export function generateEmbeddedChartHTML(options: HTMLExportOptions = {}) {
   const { chartType, chartData, chartConfig } = useChartStore.getState();
+  
+  // Map custom chart types to actual Chart.js types
+  const mappedChartType = chartTypeMapping[chartType as SupportedChartType] || chartType;
   
   // This would require embedding the entire Chart.js library
   // For now, we'll use CDN but with fallback
@@ -748,7 +761,7 @@ export function generateEmbeddedChartHTML(options: HTMLExportOptions = {}) {
         loadChartJS().then(() => {
             const ctx = document.getElementById('chart').getContext('2d');
             new Chart(ctx, {
-                type: '${chartType}',
+                type: '${mappedChartType}',
                 data: ${JSON.stringify(chartData)},
                 options: ${JSON.stringify(chartConfig)}
             });
@@ -785,6 +798,9 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
     uniformityMode,
     legendFilter
   } = useChartStore.getState();
+  
+  // Map custom chart types to actual Chart.js types
+  const mappedChartType = chartTypeMapping[chartType as SupportedChartType] || chartType;
   const storeToggles = useChartStore.getState();
   const effectiveShowImages = options.showImages ?? (storeToggles as any).showImages ?? true;
   const effectiveShowLabels = options.showLabels ?? (storeToggles as any).showLabels ?? true;
@@ -899,7 +915,7 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
     // Chart.js Configuration
     const chartConfig = ${JSON.stringify(enhancedChartConfig, null, 8)};
     const chartData = ${JSON.stringify(processedChartData, null, 8)};
-    const chartType = "${chartType}";
+    const chartType = "${mappedChartType}";
     
     // Enhanced configuration for standalone HTML
     const enhancedConfig = {

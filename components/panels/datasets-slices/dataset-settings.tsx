@@ -6,13 +6,13 @@ import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog"
 import { useState, useRef, useEffect } from "react"
 import { useChartStore, getDefaultImageType, getDefaultImageSize, getImageOptionsForChartType, getDefaultImageConfig as getDefaultImageConfigFromStore, type ExtendedChartDataset } from "@/lib/chart-store"
 import {
   Plus,
   Trash2,
   Settings,
-  Shuffle,
   Layers,
   BarChart2,
   Palette,
@@ -53,7 +53,6 @@ import {
   ArrowLeft,
   ArrowRight,
 } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogClose } from "@/components/ui/dialog"
 import { Slider } from "@/components/ui/slider"
 
 interface DatasetSettingsProps {
@@ -81,14 +80,21 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
   
   const [activeTab, setActiveTab] = useState<DatasetTab>('general')
   const [datasetsDropdownOpen, setDatasetsDropdownOpen] = useState(false)
-  const [stylingDropdownOpen, setStylingDropdownOpen] = useState(true)
-  const [colorsDropdownOpen, setColorsDropdownOpen] = useState(true)
   const [imagesDropdownOpen, setImagesDropdownOpen] = useState(false)
   const [advancedDropdownOpen, setAdvancedDropdownOpen] = useState(false)
   const [selectedImageType, setSelectedImageType] = useState('circle')
   const [imageUploadUrl, setImageUploadUrl] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [showAddDatasetModal, setShowAddDatasetModal] = useState(false)
+  const [showFullEditModal, setShowFullEditModal] = useState(false)
+  const [fullEditRows, setFullEditRows] = useState<{ label: string; value: number; color: string; imageUrl: string | null }[]>([])
+  const [editingDatasetIndex, setEditingDatasetIndex] = useState<number>(0)
+  const [editingDatasetName, setEditingDatasetName] = useState<string>("")
+  const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false)
+  const [datasetToDelete, setDatasetToDelete] = useState<number | null>(null)
+  const [editingColorMode, setEditingColorMode] = useState<'slice' | 'dataset'>('slice')
+  const [editingDatasetColor, setEditingDatasetColor] = useState<string>('#3b82f6')
+  const [preservedSliceColors, setPreservedSliceColors] = useState<string[]>([])
   const [newDatasetName, setNewDatasetName] = useState("")
   const [newDatasetColor, setNewDatasetColor] = useState("#1E90FF") // DodgerBlue
   const [newDatasetPoints, setNewDatasetPoints] = useState(5)
@@ -101,6 +107,9 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
   ])
   const [newDatasetChartType, setNewDatasetChartType] = useState<import("@/lib/chart-store").SupportedChartType>('bar')
   const [colorMode, setColorMode] = useState<'slice' | 'dataset'>('slice');
+  const [colorOpacity, setColorOpacity] = useState(100); // 0-100 for transparency
+  const [borderColorMode, setBorderColorMode] = useState<'auto' | 'manual'>('auto');
+  const [manualBorderColor, setManualBorderColor] = useState('#000000');
 
   const supportedChartTypes: { value: import("@/lib/chart-store").SupportedChartType; label: string }[] = [
     { value: 'bar', label: 'Bar' },
@@ -165,6 +174,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
   }
 
   const darkenColor = (color: string, percent: number) => {
+    // Handle HSL colors
     if (color.startsWith("hsl")) {
       const match = color.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/)
       if (match) {
@@ -173,6 +183,40 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
         return `hsl(${h}, ${s}%, ${newL}%)`
       }
     }
+    
+    // Handle hex colors
+    if (color.startsWith("#")) {
+      const hex = color.replace("#", "")
+      const r = parseInt(hex.substring(0, 2), 16)
+      const g = parseInt(hex.substring(2, 4), 16)
+      const b = parseInt(hex.substring(4, 6), 16)
+      
+      // Darken by reducing RGB values
+      const factor = 1 - percent / 100
+      const newR = Math.max(0, Math.round(r * factor))
+      const newG = Math.max(0, Math.round(g * factor))
+      const newB = Math.max(0, Math.round(b * factor))
+      
+      return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`
+    }
+    
+    // Handle rgba/rgb colors
+    if (color.startsWith("rgba") || color.startsWith("rgb")) {
+      const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/)
+      if (match) {
+        const [, r, g, b, a] = match
+        const factor = 1 - percent / 100
+        const newR = Math.max(0, Math.round(parseInt(r) * factor))
+        const newG = Math.max(0, Math.round(parseInt(g) * factor))
+        const newB = Math.max(0, Math.round(parseInt(b) * factor))
+        
+        if (a !== undefined) {
+          return `rgba(${newR}, ${newG}, ${newB}, ${a})`
+        }
+        return `rgb(${newR}, ${newG}, ${newB})`
+      }
+    }
+    
     return color
   }
 
@@ -304,6 +348,122 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     initializeModalWithExistingStructure();
   };
 
+  // Helper function to convert RGBA to hex
+  const rgbaToHex = (rgba: string): string => {
+    // Handle hex colors (already in correct format)
+    if (rgba.startsWith('#')) return rgba
+    
+    // Handle rgba colors
+    const match = rgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/)
+    if (match) {
+      const [, r, g, b] = match
+      return `#${[r, g, b].map(x => {
+        const hex = parseInt(x).toString(16)
+        return hex.length === 1 ? '0' + hex : hex
+      }).join('')}`
+    }
+    
+    // Fallback for other formats
+    return rgba || '#3b82f6'
+  }
+
+  const handleDatasetTileClick = (datasetIndex: number) => {
+    const dataset = filteredDatasets[datasetIndex]
+    if (!dataset) return
+    
+    const currentSliceLabels = dataset.sliceLabels || chartData.labels || []
+    
+    const rows: { label: string; value: number; color: string; imageUrl: string | null }[] = dataset.data.map((val, i) => {
+      const rawColor = Array.isArray(dataset.backgroundColor) 
+        ? (dataset.backgroundColor[i] as string) 
+        : (dataset.backgroundColor as string) || '#3b82f6'
+      
+      return {
+        label: String(currentSliceLabels[i] || `Slice ${i + 1}`),
+        value: typeof val === 'number' ? val : (Array.isArray(val) ? (val[1] as number) : (val as any)?.y ?? 0),
+        color: rgbaToHex(rawColor),
+        imageUrl: dataset.pointImages?.[i] || null,
+      }
+    })
+    
+    setFullEditRows(rows)
+    setEditingDatasetIndex(datasetIndex)
+    setEditingDatasetName(dataset.label || `Dataset ${datasetIndex + 1}`)
+    
+    // Determine color mode and set dataset color
+    const isSingleColorMode = (dataset as any).datasetColorMode === 'single' || 
+                              (typeof dataset.backgroundColor === 'string')
+    const currentColorMode = isSingleColorMode ? 'dataset' : 'slice'
+    
+    setEditingColorMode(currentColorMode)
+    
+    if (currentColorMode === 'dataset') {
+      const singleColor = typeof dataset.backgroundColor === 'string' 
+        ? dataset.backgroundColor 
+        : (Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor[0] : '#3b82f6')
+      setEditingDatasetColor(rgbaToHex(singleColor))
+    } else {
+      // For slice mode, extract the first color as default dataset color
+      const firstColor = Array.isArray(dataset.backgroundColor) 
+        ? dataset.backgroundColor[0] 
+        : dataset.backgroundColor || '#3b82f6'
+      setEditingDatasetColor(rgbaToHex(firstColor))
+    }
+    
+    // Preserve original slice colors
+    setPreservedSliceColors(rows.map(row => row.color))
+    
+    setShowFullEditModal(true)
+  }
+
+  const handleDeleteClick = (datasetIndex: number) => {
+    setDatasetToDelete(datasetIndex)
+    setShowDeleteConfirmDialog(true)
+  }
+
+  const handleConfirmDelete = () => {
+    if (datasetToDelete !== null) {
+      removeDataset(datasetToDelete)
+      setShowDeleteConfirmDialog(false)
+      setDatasetToDelete(null)
+    }
+  }
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirmDialog(false)
+    setDatasetToDelete(null)
+  }
+
+  const handleColorModeChange = (mode: 'slice' | 'dataset') => {
+    setEditingColorMode(mode)
+    
+    if (mode === 'slice') {
+      // Restore preserved slice colors
+      setFullEditRows(prev => prev.map((row, index) => ({
+        ...row,
+        color: preservedSliceColors[index] || row.color
+      })))
+    } else {
+      // Apply dataset color to all slices
+      setFullEditRows(prev => prev.map(row => ({
+        ...row,
+        color: editingDatasetColor
+      })))
+    }
+  }
+
+  const handleDatasetColorChange = (color: string) => {
+    setEditingDatasetColor(color)
+    
+    if (editingColorMode === 'dataset') {
+      // Update all slice colors to match dataset color
+      setFullEditRows(prev => prev.map(row => ({
+        ...row,
+        color: color
+      })))
+    }
+  }
+
   // Update modal structure when chart mode or datasets change
   useEffect(() => {
     if (showAddDatasetModal) {
@@ -346,6 +506,32 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [colorMode]);
+
+  // Update opacity state when dataset changes in single mode
+  useEffect(() => {
+    if (chartMode === 'single' && activeDatasetIndex >= 0) {
+      const activeDataset = chartData.datasets[activeDatasetIndex]
+      if (!activeDataset) return
+      
+      const bgColor = Array.isArray(activeDataset.backgroundColor) 
+        ? activeDataset.backgroundColor[0] 
+        : activeDataset.backgroundColor
+      
+      if (bgColor && bgColor.startsWith('rgba')) {
+        const match = bgColor.match(/rgba?\(\d+,\s*\d+,\s*\d+,\s*([\d.]+)\)/)
+        if (match) {
+          const detectedOpacity = Math.round(parseFloat(match[1]) * 100)
+          setColorOpacity(detectedOpacity)
+        }
+      } else {
+        setColorOpacity(100)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeDatasetIndex, chartMode]);
+
+  // Note: Border color mode defaults to 'auto' and stays that way unless user explicitly changes it
+  // No auto-detection to avoid confusion - user has full control
 
   const renderGeneralTab = () => (
     <div className="space-y-4">
@@ -476,10 +662,11 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
               {filteredDatasets.map((dataset, datasetIndex) => (
                 <div
                   key={datasetIndex}
-                  className={`p-3 bg-white rounded-lg border transition-all ${
+                  onClick={() => handleDatasetTileClick(datasetIndex)}
+                  className={`p-3 bg-white rounded-lg border transition-all cursor-pointer ${
                     chartMode === 'single' && datasetIndex === activeDatasetIndex
                       ? 'border-blue-300 shadow-sm'
-                      : 'border-gray-200 hover:border-gray-300'
+                      : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
@@ -495,7 +682,8 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                       <Input
                         value={dataset.label || ''}
                         onChange={(e) => handleUpdateDataset(datasetIndex, 'label', e.target.value)}
-                        className="h-7 text-xs font-medium border-0 p-0 bg-transparent focus-visible:ring-1"
+                        onClick={(e) => e.stopPropagation()}
+                        className="h-7 text-xs font-medium border border-gray-300 px-2 py-1 bg-white hover:border-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
                         placeholder={`Dataset ${datasetIndex + 1}`}
                       />
                     </div>
@@ -507,7 +695,10 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                         variant="outline" 
                         size="sm" 
                         className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
-                        onClick={() => removeDataset(datasetIndex)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteClick(datasetIndex)
+                        }}
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>
@@ -535,18 +726,17 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
             <DialogTitle>Create New Dataset</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            {/* Dataset Basic Info */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
+            {/* Dataset Basic Info - All in one line */}
+            <div className="flex gap-3 items-end">
+              <div className="flex-shrink-0" style={{ width: '140px' }}>
                 <label className="text-[0.80rem] font-medium text-gray-600 mb-1 block">Chart Type</label>
                 {chartMode === 'grouped' && uniformityMode === 'uniform' ? (
                   <div className="w-full h-9 px-3 rounded border border-gray-200 bg-gray-50 flex items-center text-[0.80rem]">
                     <span className="text-gray-700">{chartType.charAt(0).toUpperCase() + chartType.slice(1)}</span>
-                    <span className="text-xs text-gray-500 ml-2">(from Types & Toggles)</span>
                   </div>
                 ) : (
                   <Select value={newDatasetChartType} onValueChange={(v) => setNewDatasetChartType(v as any)}>
-                    <SelectTrigger className="w-full h-9">
+                    <SelectTrigger className="w-full h-9 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -557,7 +747,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                   </Select>
                 )}
               </div>
-              <div>
+              <div className="flex-1">
                 <label className="text-[0.80rem] font-medium text-gray-600 mb-1 block">Dataset Name <span className="text-red-500">*</span></label>
                 <input
                   value={newDatasetName}
@@ -565,19 +755,24 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                   className="w-full h-9 px-3 rounded border border-gray-200 focus:border-green-400 focus:ring-2 focus:ring-green-100 text-[0.80rem] font-normal transition"
                   placeholder="Enter dataset name"
                 />
-                {chartMode === 'grouped' && filteredDatasets.length > 0 && (
-                  <p className="text-xs text-gray-500 mt-1">Slice names will match existing datasets, but you can customize values and dataset name.</p>
-                )}
               </div>
-              <div>
+              <div className="flex-shrink-0" style={{ width: '100px' }}>
                 <label className="text-[0.80rem] font-medium text-gray-600 mb-1 block">Mode</label>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-[0.80rem] font-medium px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                <div className="h-9 px-3 rounded border border-gray-200 bg-gray-50 flex items-center justify-center">
+                  <span className="text-[0.80rem] font-medium text-blue-800">
                     {chartMode === 'single' ? 'Single' : 'Grouped'}
                   </span>
                 </div>
               </div>
             </div>
+            
+            {chartMode === 'grouped' && filteredDatasets.length > 0 && (
+              <div className="p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-xs text-yellow-800">
+                  <strong>Grouped Mode:</strong> Slice names will match existing datasets, but you can customize values and dataset name.
+                </p>
+              </div>
+            )}
 
             {/* Slices Management */}
             <div className="space-y-3">
@@ -732,190 +927,233 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
 
   const renderStylingTab = () => (
     <div className="space-y-4">
-      {/* Border Styling */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 pb-1 border-b">
+      <div className="bg-purple-50 rounded-lg p-3 space-y-3">
+        {/* Border Styling */}
+        <div className="flex items-center gap-2 pb-1 border-b border-purple-200">
           <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
           <h3 className="text-[0.80rem] font-semibold text-gray-900">Border Styling</h3>
-          <button
-            onClick={() => setStylingDropdownOpen(!stylingDropdownOpen)}
-            className="ml-auto p-1 hover:bg-gray-100 rounded transition-colors"
-          >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              width="16" 
-              height="16" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
-              strokeLinejoin="round"
-              className={`transform transition-transform ${stylingDropdownOpen ? 'rotate-180' : ''}`}
-            >
-              <path d="M6 9L12 15L18 9"/>
-            </svg>
-          </button>
         </div>
         
-        <div className="bg-purple-50 rounded-lg p-3 space-y-3">
-          {/* Border Width - Always Visible */}
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium">Border Width</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="number"
-                   value={Number(chartData.datasets[0]?.borderWidth ?? 2)}
-                  onChange={(e) => {
-                    const value = e.target.value ? Number(e.target.value) : 2
-                    chartData.datasets.forEach((_, index) => {
-                      handleUpdateDataset(index, 'borderWidth', value)
-                    })
-                  }}
-                  className="w-16 h-8 text-xs"
-                  placeholder="2"
-                  min={0}
-                  max={10}
-                  step={1}
-                />
-                <span className="text-xs text-purple-700">px</span>
-              </div>
+        {/* Border Width */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-medium">Border Width</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                value={Number(chartData.datasets[0]?.borderWidth ?? 2)}
+                onChange={(e) => {
+                  const value = e.target.value ? Number(e.target.value) : 2
+                  chartData.datasets.forEach((_, index) => {
+                    handleUpdateDataset(index, 'borderWidth', value)
+                  })
+                }}
+                className="w-16 h-8 text-xs"
+                placeholder="2"
+                min={0}
+                max={10}
+                step={1}
+              />
+              <span className="text-xs text-purple-700">px</span>
             </div>
           </div>
+        </div>
+        
+        {/* Border Color */}
+        <div className="space-y-2">
+          <Label className="text-xs font-medium">Border Color</Label>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={borderColorMode === 'auto' ? "default" : "outline"}
+              size="sm"
+              className="h-8 text-xs flex-1"
+              onClick={() => {
+                setBorderColorMode('auto')
+                // Apply auto border colors (darkened background colors)
+                chartData.datasets.forEach((dataset, index) => {
+                  const bgColors = Array.isArray(dataset.backgroundColor) 
+                    ? dataset.backgroundColor 
+                    : [dataset.backgroundColor]
+                  const autoBorderColors = bgColors.map(color => darkenColor(String(color), 20))
+                  handleUpdateDataset(index, 'borderColor', autoBorderColors)
+                })
+              }}
+            >
+              Auto
+            </Button>
+            <Button
+              variant={borderColorMode === 'manual' ? "default" : "outline"}
+              size="sm"
+              className="h-8 text-xs flex-1"
+              onClick={() => setBorderColorMode('manual')}
+            >
+              Manual
+            </Button>
+          </div>
           
-          {stylingDropdownOpen && (
-            <div className="space-y-3 pt-2 border-t border-purple-200">
-              {/* Point Styling */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium">Point Radius</Label>
-                  <Input
-                    type="number"
-                     value={Number(chartData.datasets[0]?.pointRadius ?? 5)}
-                    onChange={(e) => {
-                      const value = e.target.value ? Number(e.target.value) : 5
-                      chartData.datasets.forEach((_, index) => {
-                        handleUpdateDataset(index, 'pointRadius', value)
-                      })
-                    }}
-                    className="h-8 text-xs"
-                    placeholder="5"
-                    min={0}
-                    max={20}
-                    step={1}
-                  />
-                </div>
-                
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium">Hover Radius</Label>
-                  <Input
-                    type="number"
-                     value={Number((chartData.datasets[0] as any)?.pointHoverRadius ?? 8)}
-                    onChange={(e) => {
-                      const value = e.target.value ? Number(e.target.value) : 8
-                      chartData.datasets.forEach((_, index) => {
-                        handleUpdateDataset(index, 'pointHoverRadius', value)
-                      })
-                    }}
-                    className="h-8 text-xs"
-                    placeholder="8"
-                    min={0}
-                    max={30}
-                    step={1}
-                  />
-                </div>
+          {borderColorMode === 'manual' && (
+            <div className="flex items-center gap-2 p-2 bg-white rounded border border-purple-200">
+              <div 
+                className="w-10 h-10 rounded border-2 border-white shadow-sm cursor-pointer hover:scale-105 transition-transform"
+                style={{ backgroundColor: manualBorderColor }}
+                onClick={() => document.getElementById('manual-border-color-picker')?.click()}
+              />
+              <div className="flex-1">
+                <div className="text-xs font-medium text-gray-700">Uniform Border</div>
+                <div className="text-[10px] text-gray-500 font-mono uppercase">{manualBorderColor}</div>
               </div>
-
-              {/* Line Chart Specific */}
-              {['line', 'area'].includes(chartType) && (
-                <div className="space-y-3">
-                  <Label className="text-xs font-medium text-purple-800">Line Properties</Label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs font-medium">Line Tension</Label>
-                      <Input
-                        type="number"
-                       value={Number((chartData.datasets[0] as any)?.tension ?? 0.4)}
-                        onChange={(e) => {
-                          const value = e.target.value ? Number(e.target.value) : 0.4
-                          chartData.datasets.forEach((_, index) => {
-                            handleUpdateDataset(index, 'tension', value)
-                          })
-                        }}
-                        className="h-8 text-xs"
-                        placeholder="0.4"
-                        min={0}
-                        max={1}
-                        step={0.1}
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-xs font-medium">Fill Area</Label>
-                        <Switch
-                          checked={!!chartData.datasets[0]?.fill}
-                          onCheckedChange={(checked) => {
-                            chartData.datasets.forEach((_, index) => {
-                              handleUpdateDataset(index, 'fill', checked)
-                            })
-                          }}
-                          className="data-[state=checked]:bg-purple-600"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Point Border Styling */}
-              <div className="space-y-3">
-                <Label className="text-xs font-medium text-purple-800">Point Borders</Label>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium">Point Border Width</Label>
-                    <Input
-                      type="number"
-                       value={Number((chartData.datasets[0] as any)?.pointBorderWidth ?? 1)}
-                      onChange={(e) => {
-                        const value = e.target.value ? Number(e.target.value) : 1
-                        chartData.datasets.forEach((_, index) => {
-                          handleUpdateDataset(index, 'pointBorderWidth', value)
-                        })
-                      }}
-                      className="h-8 text-xs"
-                      placeholder="1"
-                      min={0}
-                      max={5}
-                      step={1}
-                    />
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <Label className="text-xs font-medium">Hover Border Width</Label>
-                    <Input
-                      type="number"
-                       value={Number((chartData.datasets[0] as any)?.pointHoverBorderWidth ?? 2)}
-                      onChange={(e) => {
-                        const value = e.target.value ? Number(e.target.value) : 2
-                        chartData.datasets.forEach((_, index) => {
-                          handleUpdateDataset(index, 'pointHoverBorderWidth', value)
-                        })
-                      }}
-                      className="h-8 text-xs"
-                      placeholder="2"
-                      min={0}
-                      max={10}
-                      step={1}
-                    />
-                  </div>
-                </div>
-              </div>
+              <input
+                id="manual-border-color-picker"
+                type="color"
+                value={manualBorderColor}
+                onChange={(e) => {
+                  setManualBorderColor(e.target.value)
+                  // Apply manual border color to all datasets uniformly
+                  chartData.datasets.forEach((dataset, index) => {
+                    const sliceCount = dataset.data.length
+                    handleUpdateDataset(index, 'borderColor', Array(sliceCount).fill(e.target.value))
+                  })
+                }}
+                className="invisible w-0 h-0"
+              />
             </div>
           )}
         </div>
       </div>
+      
+      <div className="bg-purple-50 rounded-lg p-3 space-y-3">
+        {/* Point Edit */}
+        <div className="flex items-center gap-2 pb-1 border-b border-purple-200">
+          <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
+          <h3 className="text-[0.80rem] font-semibold text-gray-900">
+            Point Edit <span className="text-xs text-gray-500">(Line, Area, Radar Charts Only)</span>
+          </h3>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs font-medium">Point Radius</Label>
+            <Input
+              type="number"
+              value={Number(chartData.datasets[0]?.pointRadius ?? 5)}
+              onChange={(e) => {
+                const value = e.target.value ? Number(e.target.value) : 5
+                chartData.datasets.forEach((_, index) => {
+                  handleUpdateDataset(index, 'pointRadius', value)
+                })
+              }}
+              className="h-8 text-xs"
+              placeholder="5"
+              min={0}
+              max={20}
+              step={1}
+            />
+          </div>
+          
+          <div className="space-y-1">
+            <Label className="text-xs font-medium">Hover Radius</Label>
+            <Input
+              type="number"
+              value={Number((chartData.datasets[0] as any)?.pointHoverRadius ?? 8)}
+              onChange={(e) => {
+                const value = e.target.value ? Number(e.target.value) : 8
+                chartData.datasets.forEach((_, index) => {
+                  handleUpdateDataset(index, 'pointHoverRadius', value)
+                })
+              }}
+              className="h-8 text-xs"
+              placeholder="8"
+              min={0}
+              max={30}
+              step={1}
+            />
+          </div>
+          
+          <div className="space-y-1">
+            <Label className="text-xs font-medium">Point Border Width</Label>
+            <Input
+              type="number"
+              value={Number((chartData.datasets[0] as any)?.pointBorderWidth ?? 1)}
+              onChange={(e) => {
+                const value = e.target.value ? Number(e.target.value) : 1
+                chartData.datasets.forEach((_, index) => {
+                  handleUpdateDataset(index, 'pointBorderWidth', value)
+                })
+              }}
+              className="h-8 text-xs"
+              placeholder="1"
+              min={0}
+              max={5}
+              step={1}
+            />
+          </div>
+          
+          <div className="space-y-1">
+            <Label className="text-xs font-medium">Hover Border Width</Label>
+            <Input
+              type="number"
+              value={Number((chartData.datasets[0] as any)?.pointHoverBorderWidth ?? 2)}
+              onChange={(e) => {
+                const value = e.target.value ? Number(e.target.value) : 2
+                chartData.datasets.forEach((_, index) => {
+                  handleUpdateDataset(index, 'pointHoverBorderWidth', value)
+                })
+              }}
+              className="h-8 text-xs"
+              placeholder="2"
+              min={0}
+              max={10}
+              step={1}
+            />
+          </div>
+        </div>
+      </div>
+      
+      {/* Line Properties - Only for line/area charts */}
+      {['line', 'area'].includes(chartType) && (
+        <div className="bg-purple-50 rounded-lg p-3 space-y-3">
+          <div className="flex items-center gap-2 pb-1 border-b border-purple-200">
+            <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
+            <h3 className="text-[0.80rem] font-semibold text-gray-900">Line Properties</h3>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs font-medium">Line Tension</Label>
+              <Input
+                type="number"
+                value={Number((chartData.datasets[0] as any)?.tension ?? 0.4)}
+                onChange={(e) => {
+                  const value = e.target.value ? Number(e.target.value) : 0.4
+                  chartData.datasets.forEach((_, index) => {
+                    handleUpdateDataset(index, 'tension', value)
+                  })
+                }}
+                className="h-8 text-xs"
+                placeholder="0.4"
+                min={0}
+                max={1}
+                step={0.1}
+              />
+            </div>
+            
+            <div className="space-y-1">
+              <Label className="text-xs font-medium">Fill Area</Label>
+              <div className="flex items-center justify-start h-8">
+                <Switch
+                  checked={!!chartData.datasets[0]?.fill}
+                  onCheckedChange={(checked) => {
+                    chartData.datasets.forEach((_, index) => {
+                      handleUpdateDataset(index, 'fill', checked)
+                    })
+                  }}
+                  className="data-[state=checked]:bg-purple-600"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 
@@ -929,196 +1167,560 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     ]
     
     const applyColorPalette = (colors: string[]) => {
+      if (chartMode === 'single') {
+        // In single mode, always apply colors to slices of the active dataset
+        const activeDataset = chartData.datasets[activeDatasetIndex]
+        if (!activeDataset) return
+        
+        const sliceColors = colors.slice(0, activeDataset.data.length)
+        const borderColors = borderColorMode === 'manual'
+          ? Array(activeDataset.data.length).fill(manualBorderColor)
+          : sliceColors.map(c => darkenColor(c, 20))
+          
+        handleUpdateDataset(activeDatasetIndex, {
+          backgroundColor: sliceColors,
+          borderColor: borderColors
+        })
+      } else {
+        // Grouped mode: respect color mode selection
       chartData.datasets.forEach((dataset, datasetIndex) => {
         const datasetColor = colors[datasetIndex % colors.length]
         if (colorMode === 'dataset') {
           // Use one color for the whole dataset
+            const borderColors = borderColorMode === 'manual'
+              ? Array(dataset.data.length).fill(manualBorderColor)
+              : Array(dataset.data.length).fill(darkenColor(datasetColor, 20))
+              
           handleUpdateDataset(datasetIndex, {
             backgroundColor: Array(dataset.data.length).fill(datasetColor),
-            borderColor: Array(dataset.data.length).fill(darkenColor(datasetColor, 20)),
+              borderColor: borderColors,
           })
         } else {
           // Use a different color for each slice
           const sliceColors = colors.slice(0, dataset.data.length)
+            const borderColors = borderColorMode === 'manual'
+              ? Array(dataset.data.length).fill(manualBorderColor)
+              : sliceColors.map(c => darkenColor(c, 20))
+              
           handleUpdateDataset(datasetIndex, {
             backgroundColor: sliceColors,
-            borderColor: sliceColors.map(c => darkenColor(c, 20))
+              borderColor: borderColors
           })
         }
       })
+      }
+    }
+
+    // Quick color presets for single mode
+    const quickColors = [
+      '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899',
+      '#06b6d4', '#f97316', '#14b8a6', '#eab308', '#a855f7', '#f43f5e',
+      '#0ea5e9', '#dc2626', '#059669', '#ca8a04', '#9333ea', '#e11d48',
+      '#22c55e', '#f59e0b', '#6366f1', '#d946ef', '#84cc16', '#fb923c'
+    ]
+
+    // Helper function to convert hex to rgba
+    const hexToRgba = (hex: string, alpha: number) => {
+      const r = parseInt(hex.slice(1, 3), 16)
+      const g = parseInt(hex.slice(3, 5), 16)
+      const b = parseInt(hex.slice(5, 7), 16)
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`
+    }
+
+    // Helper function to extract hex from rgba or return hex
+    const getHexFromColor = (color: string) => {
+      if (color.startsWith('rgba')) {
+        // Extract RGB values from rgba
+        const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
+        if (match) {
+          const r = parseInt(match[1]).toString(16).padStart(2, '0')
+          const g = parseInt(match[2]).toString(16).padStart(2, '0')
+          const b = parseInt(match[3]).toString(16).padStart(2, '0')
+          return `#${r}${g}${b}`
+        }
+      }
+      return color
+    }
+
+    // Helper function to apply opacity to any color format
+    const applyOpacityToColor = (color: string | undefined, opacityPercent: number) => {
+      if (!color) return 'rgba(59, 130, 246, 1)' // Default blue
+      
+      const alpha = opacityPercent / 100
+      
+      // Handle hex colors
+      if (color.startsWith('#')) {
+        return hexToRgba(color, alpha)
+      }
+      
+      // Handle rgba colors - replace the alpha value
+      if (color.startsWith('rgba')) {
+        return color.replace(/rgba?\((\d+),\s*(\d+),\s*(\d+),\s*[\d.]+\)/, `rgba($1, $2, $3, ${alpha})`)
+      }
+      
+      // Handle rgb colors - convert to rgba
+      if (color.startsWith('rgb')) {
+        return color.replace(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/, `rgba($1, $2, $3, ${alpha})`)
+      }
+      
+      // Handle hsl colors
+      if (color.startsWith('hsl')) {
+        // For hsl, we'll try to convert or just adjust opacity
+        // For simplicity, try to convert to rgba
+        const match = color.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/)
+        if (match) {
+          // Convert HSL to RGB then apply alpha
+          const h = parseInt(match[1])
+          const s = parseInt(match[2]) / 100
+          const l = parseInt(match[3]) / 100
+          
+          const c = (1 - Math.abs(2 * l - 1)) * s
+          const x = c * (1 - Math.abs((h / 60) % 2 - 1))
+          const m = l - c / 2
+          
+          let r = 0, g = 0, b = 0
+          if (h < 60) { r = c; g = x; b = 0 }
+          else if (h < 120) { r = x; g = c; b = 0 }
+          else if (h < 180) { r = 0; g = c; b = x }
+          else if (h < 240) { r = 0; g = x; b = c }
+          else if (h < 300) { r = x; g = 0; b = c }
+          else { r = c; g = 0; b = x }
+          
+          const red = Math.round((r + m) * 255)
+          const green = Math.round((g + m) * 255)
+          const blue = Math.round((b + m) * 255)
+          
+          return `rgba(${red}, ${green}, ${blue}, ${alpha})`
+        }
+      }
+      
+      // Fallback: return the color as-is
+      return color
+    }
+
+    const applyQuickColor = (color: string, opacity?: number) => {
+      const activeDataset = chartData.datasets[activeDatasetIndex]
+      if (!activeDataset) return
+      
+      const alpha = (opacity !== undefined ? opacity : colorOpacity) / 100
+      const finalColor = alpha < 1 ? hexToRgba(color, alpha) : color
+      
+      // Apply color to all slices in the active dataset
+      const sliceCount = activeDataset.data.length
+      
+      // Determine border color based on mode
+      let finalBorderColor
+      if (borderColorMode === 'manual') {
+        // Use manual border color
+        finalBorderColor = Array(sliceCount).fill(manualBorderColor)
+      } else {
+        // Auto mode: darken the base color for border
+        const darkenedColor = darkenColor(color, 20)
+        // Apply same opacity to border color
+        finalBorderColor = Array(sliceCount).fill(alpha < 1 ? hexToRgba(darkenedColor, alpha) : darkenedColor)
+      }
+      
+      handleUpdateDataset(activeDatasetIndex, {
+        backgroundColor: Array(sliceCount).fill(finalColor),
+        borderColor: finalBorderColor,
+      })
+    }
+
+    const applyOpacity = (opacity: number) => {
+      const activeDataset = chartData.datasets[activeDatasetIndex]
+      if (!activeDataset) return
+      
+      // Apply opacity ONLY to background colors (preserving individual colors, leaving borders unchanged)
+      let newBgColors: any
+      if (Array.isArray(activeDataset.backgroundColor)) {
+        newBgColors = activeDataset.backgroundColor.map(color => 
+          typeof color === 'string' ? applyOpacityToColor(color, opacity) : color
+        )
+      } else if (typeof activeDataset.backgroundColor === 'string') {
+        newBgColors = applyOpacityToColor(activeDataset.backgroundColor, opacity)
+      } else {
+        newBgColors = activeDataset.backgroundColor
+      }
+      
+      // IMPORTANT: Preserve existing borderColor exactly as-is to keep borders crisp and unaffected by opacity
+      // Create a deep copy to ensure the reference is preserved
+      const preservedBorderColor = Array.isArray(activeDataset.borderColor)
+        ? [...activeDataset.borderColor]
+        : activeDataset.borderColor
+      
+      handleUpdateDataset(activeDatasetIndex, {
+        backgroundColor: newBgColors,
+        borderColor: preservedBorderColor as any
+      })
+    }
+
+    const getCurrentColor = () => {
+      const activeDataset = chartData.datasets[activeDatasetIndex]
+      if (!activeDataset) return '#3b82f6'
+      
+      const bgColor = activeDataset.backgroundColor
+      if (Array.isArray(bgColor)) {
+        const firstColor = bgColor[0]
+        return typeof firstColor === 'string' ? firstColor : '#3b82f6'
+      }
+      return typeof bgColor === 'string' ? bgColor : '#3b82f6'
+    }
+
+    const getCurrentOpacity = () => {
+      const activeDataset = chartData.datasets[activeDatasetIndex]
+      if (!activeDataset) return 100
+      
+      // Get opacity from the first background color
+      let firstColor = ''
+      if (Array.isArray(activeDataset.backgroundColor)) {
+        const color = activeDataset.backgroundColor[0]
+        firstColor = typeof color === 'string' ? color : ''
+      } else {
+        const color = activeDataset.backgroundColor
+        firstColor = typeof color === 'string' ? color : ''
+      }
+      
+      if (firstColor && firstColor.startsWith('rgba')) {
+        const match = firstColor.match(/rgba?\(\d+,\s*\d+,\s*\d+,\s*([\d.]+)\)/)
+        if (match) {
+          return Math.round(parseFloat(match[1]) * 100)
+        }
+      }
+      return 100
     }
 
     return (
       <div className="space-y-4">
-        {/* Color Mode Selection - moved above palette */}
-        <div className="space-y-2">
-          <Label className="text-xs font-medium text-pink-800">Color Mode</Label>
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              variant={colorMode === 'slice' ? "default" : "outline"}
-              size="sm"
-              className="h-8 text-xs"
-              onClick={() => setColorMode('slice')}
-            >
-              Slice Colors
-            </Button>
-            <Button
-              variant={colorMode === 'dataset' ? "default" : "outline"}
-              size="sm"
-              className="h-8 text-xs"
-              onClick={() => setColorMode('dataset')}
-            >
-              Dataset Colors
-            </Button>
-          </div>
-        </div>
-
-        {/* Color Palettes */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 pb-1 border-b">
-            <div className="w-2 h-2 bg-pink-600 rounded-full"></div>
-            <h3 className="text-[0.80rem] font-semibold text-gray-900">Color Palettes</h3>
-            <button
-              onClick={() => setColorsDropdownOpen(!colorsDropdownOpen)}
-              className="ml-auto p-1 hover:bg-gray-100 rounded transition-colors"
-            >
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                width="16" 
-                height="16" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                strokeWidth="2" 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
-                className={`transform transition-transform ${colorsDropdownOpen ? 'rotate-180' : ''}`}
+        {/* Color Mode Selection - Only show for grouped mode */}
+        {chartMode === 'grouped' && (
+        <>
+          <div className="space-y-2">
+            <Label className="text-xs font-medium text-pink-800">Color Mode</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant={colorMode === 'slice' ? "default" : "outline"}
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() => setColorMode('slice')}
               >
-                <path d="M6 9L12 15L18 9"/>
-              </svg>
-            </button>
+                Slice Colors
+              </Button>
+              <Button
+                variant={colorMode === 'dataset' ? "default" : "outline"}
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() => setColorMode('dataset')}
+              >
+                Dataset Colors
+              </Button>
+            </div>
           </div>
-          
-          <div className="bg-pink-50 rounded-lg p-3 space-y-3">
-            {/* Quick Palette Actions */}
+
+          {/* Opacity Control for Grouped Mode */}
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
-              {/* Removed Quick Actions label */}
-              <div />
-              <div className="flex gap-4">
-                <Button 
-                  size="sm" 
-                  className="h-7 text-xs bg-pink-600 hover:bg-pink-700"
+              <Label className="text-xs font-medium text-pink-800">Opacity</Label>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-600">{colorOpacity}%</span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-2 text-xs"
                   onClick={() => {
-                    chartData.datasets.forEach((_, index) => {
-                      handleRandomizeColors(index)
+                    setColorOpacity(100)
+                    // Apply 100% opacity to all datasets (background colors only)
+                    chartData.datasets.forEach((_, datasetIndex) => {
+                      const dataset = chartData.datasets[datasetIndex]
+                      
+                      // Type-safe background color handling
+                      let newBgColors: any
+                      if (Array.isArray(dataset.backgroundColor)) {
+                        newBgColors = dataset.backgroundColor.map(color => 
+                          typeof color === 'string' ? applyOpacityToColor(color, 100) : color
+                        )
+                      } else if (typeof dataset.backgroundColor === 'string') {
+                        newBgColors = applyOpacityToColor(dataset.backgroundColor, 100)
+                      } else {
+                        newBgColors = dataset.backgroundColor
+                      }
+                      
+                      // Preserve existing borderColor exactly as-is
+                      const preservedBorderColor = Array.isArray(dataset.borderColor)
+                        ? [...dataset.borderColor]
+                        : dataset.borderColor
+                      
+                      updateDataset(datasetIndex, {
+                        backgroundColor: newBgColors,
+                        borderColor: preservedBorderColor as any
+                      })
                     })
                   }}
+                  title="Reset to fully opaque"
                 >
-                  <Shuffle className="h-3 w-3 mr-1" />
-                  Randomize Colors
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  className="h-7 text-xs"
-                  onClick={() => applyColorPalette(colorPalettes[0].colors)}
-                >
-                  <Palette className="h-3 w-3 mr-1" />
                   Reset
                 </Button>
               </div>
             </div>
-            
-            {colorsDropdownOpen && (
-              <div className="space-y-3 pt-2 border-t border-pink-200">
-                {/* Palette Grid */}
-                <div className="space-y-2">
-                  <Label className="text-xs font-medium text-pink-800">Preset Palettes</Label>
-                  <div className="grid gap-2">
-                    {colorPalettes.map((palette, index) => (
-                      <div 
-                        key={index}
-                        className="flex items-center justify-between p-2 bg-white rounded border hover:border-pink-300 transition-colors cursor-pointer"
-                        onClick={() => applyColorPalette(palette.colors)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs font-medium min-w-16">{palette.name}</span>
-                          <div className="flex gap-1">
-                            {palette.colors.map((color, colorIndex) => (
-                              <div
-                                key={colorIndex}
-                                className="w-4 h-4 rounded border border-white shadow-sm"
-                                style={{ backgroundColor: color }}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M5 12h14M12 5l7 7-7 7"/>
-                          </svg>
-                        </Button>
-                      </div>
-                    ))}
+            <div className="p-3 bg-pink-50 rounded-lg border border-pink-200">
+              <Slider
+                value={[colorOpacity]}
+                onValueChange={(value) => {
+                  setColorOpacity(value[0])
+                  // Apply opacity to all datasets in grouped mode (background colors only)
+                  chartData.datasets.forEach((_, datasetIndex) => {
+                    const dataset = chartData.datasets[datasetIndex]
+                    
+                    // Type-safe background color handling
+                    let newBgColors: any
+                    if (Array.isArray(dataset.backgroundColor)) {
+                      newBgColors = dataset.backgroundColor.map(color => 
+                        typeof color === 'string' ? applyOpacityToColor(color, value[0]) : color
+                      )
+                    } else if (typeof dataset.backgroundColor === 'string') {
+                      newBgColors = applyOpacityToColor(dataset.backgroundColor, value[0])
+                    } else {
+                      newBgColors = dataset.backgroundColor
+                    }
+                    
+                    // Preserve existing borderColor exactly as-is
+                    const preservedBorderColor = Array.isArray(dataset.borderColor)
+                      ? [...dataset.borderColor]
+                      : dataset.borderColor
+                    
+                    updateDataset(datasetIndex, {
+                      backgroundColor: newBgColors,
+                      borderColor: preservedBorderColor as any
+                    })
+                  })
+                }}
+                min={0}
+                max={100}
+                step={1}
+                className="w-full"
+              />
+              <div className="flex justify-between mt-2 text-[10px] text-gray-500">
+                <span>Transparent</span>
+                <span>Opaque</span>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 italic">
+              Adjusts opacity for background colors (borders unchanged)
+            </p>
+          </div>
+        </>
+        )}
+
+        {/* Color Picker for Single Mode */}
+        {chartMode === 'single' && (
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label className="text-xs font-medium text-pink-800">Dataset Color</Label>
+              <div className="flex items-center gap-3 p-3 bg-pink-50 rounded-lg border border-pink-200">
+                <div className="flex-1 flex items-center gap-3">
+                  <div className="relative">
+                    {/* Checkerboard background for transparency preview */}
+                    <div 
+                      className="absolute inset-0 rounded-lg"
+                      style={{
+                        backgroundImage: 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)',
+                        backgroundSize: '8px 8px',
+                        backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px'
+                      }}
+                    />
+                    <div 
+                      className="relative w-12 h-12 rounded-lg border-2 border-white shadow-md cursor-pointer hover:scale-105 transition-transform"
+                      style={{ backgroundColor: getCurrentColor() }}
+                      onClick={() => document.getElementById('single-mode-color-picker')?.click()}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-xs font-medium text-gray-700">Current Color</div>
+                    <div className="text-[10px] text-gray-500 font-mono uppercase">{getCurrentColor()}</div>
                   </div>
                 </div>
+                <input
+                  id="single-mode-color-picker"
+                  type="color"
+                  value={getHexFromColor(getCurrentColor())}
+                  onChange={(e) => applyQuickColor(e.target.value)}
+                  className="invisible w-0 h-0"
+                />
+              </div>
+            </div>
 
-                {/* Individual Dataset Colors */}
-                {chartMode === 'grouped' && (
-                  <div className="space-y-2">
-                    <Label className="text-xs font-medium text-pink-800">Dataset Colors</Label>
-                    <div className="space-y-2">
-                      {chartData.datasets.map((dataset, datasetIndex) => (
-                        <div key={datasetIndex} className="flex items-center justify-between p-2 bg-white rounded border">
-                          <span className="text-xs font-medium">
-                            {dataset.label || `Dataset ${datasetIndex + 1}`}
-                          </span>
-                          <div className="flex items-center gap-2">
-                            <div 
-                              className="w-6 h-6 rounded border-2 border-white shadow-sm cursor-pointer hover:scale-110 transition-transform"
-                              style={{ 
-                                backgroundColor: Array.isArray(dataset.backgroundColor) 
-                                  ? dataset.backgroundColor[0] 
-                                  : dataset.backgroundColor 
-                              }}
-                              onClick={() => document.getElementById(`dataset-color-${datasetIndex}`)?.click()}
-                            />
-                            <input
-                              id={`dataset-color-${datasetIndex}`}
-                              type="color"
-                              value={Array.isArray(dataset.backgroundColor) 
-                                ? dataset.backgroundColor[0] 
-                                : dataset.backgroundColor || '#3b82f6'}
-                              onChange={(e) => {
-                                handleUpdateDataset(datasetIndex, {
-                                  backgroundColor: e.target.value,
-                                  borderColor: darkenColor(e.target.value, 20)
-                                })
-                              }}
-                              className="invisible w-0"
-                            />
-                            <Input
-                              value={Array.isArray(dataset.backgroundColor) 
-                                ? dataset.backgroundColor[0] 
-                                : dataset.backgroundColor || '#3b82f6'}
-                              onChange={(e) => {
-                                handleUpdateDataset(datasetIndex, {
-                                  backgroundColor: e.target.value,
-                                  borderColor: darkenColor(e.target.value, 20)
-                                })
-                              }}
-                              className="w-20 h-6 text-xs font-mono uppercase"
-                              placeholder="#3b82f6"
-                            />
-                          </div>
-                        </div>
-                      ))}
+            {/* Opacity/Transparency Control */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-medium text-pink-800">Opacity</Label>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-600">{colorOpacity}%</span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 px-2 text-xs"
+                    onClick={() => {
+                      setColorOpacity(100)
+                      applyOpacity(100)
+                    }}
+                    title="Reset to fully opaque"
+                  >
+                    Reset
+                  </Button>
+                </div>
+              </div>
+              <div className="p-3 bg-pink-50 rounded-lg border border-pink-200">
+                <Slider
+                  value={[colorOpacity]}
+                  onValueChange={(value) => {
+                    setColorOpacity(value[0])
+                    applyOpacity(value[0])
+                  }}
+                  min={0}
+                  max={100}
+                  step={1}
+                  className="w-full"
+                />
+                <div className="flex justify-between mt-2 text-[10px] text-gray-500">
+                  <span>Transparent</span>
+                  <span>Opaque</span>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 italic">
+                Adjusts opacity of background colors (borders unchanged)
+              </p>
+            </div>
+
+            {/* Quick Color Swatches */}
+            <div className="space-y-2">
+              <Label className="text-xs font-medium text-pink-800">Pick Quick Dataset Colors</Label>
+              <div className="grid grid-cols-8 gap-2 p-3 bg-pink-50 rounded-lg border border-pink-200">
+                {quickColors.map((color, index) => (
+                  <button
+                    key={index}
+                    className="w-8 h-8 rounded-lg border-2 border-white shadow-sm hover:scale-110 hover:shadow-md transition-all cursor-pointer relative overflow-hidden"
+                    onClick={() => {
+                      setColorOpacity(100)
+                      applyQuickColor(color, 100)
+                    }}
+                    title={color}
+                  >
+                    {/* Checkerboard background for transparency */}
+                    <div 
+                      className="absolute inset-0"
+                      style={{
+                        backgroundImage: 'linear-gradient(45deg, #e5e7eb 25%, transparent 25%), linear-gradient(-45deg, #e5e7eb 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e7eb 75%), linear-gradient(-45deg, transparent 75%, #e5e7eb 75%)',
+                        backgroundSize: '4px 4px',
+                        backgroundPosition: '0 0, 0 2px, 2px -2px, -2px 0px'
+                      }}
+                    />
+                    <div 
+                      className="absolute inset-0"
+                      style={{ backgroundColor: color }}
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Preset Palettes */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 pb-1 border-b">
+            <div className="w-2 h-2 bg-pink-600 rounded-full"></div>
+            <h3 className="text-[0.80rem] font-semibold text-gray-900">Preset Palettes</h3>
+          </div>
+          
+          <div className="space-y-2">
+            <div className="grid gap-2 p-3 bg-pink-50 rounded-lg border border-pink-200">
+              {colorPalettes.map((palette, index) => (
+                <button
+                  key={index}
+                  className="flex items-center justify-between p-2 bg-white rounded border hover:border-pink-400 hover:shadow-sm transition-all cursor-pointer"
+                  onClick={() => applyColorPalette(palette.colors)}
+                  title={`Apply ${palette.name} palette`}
+                >
+                  <span className="text-xs font-medium text-gray-700">{palette.name}</span>
+                  <div className="flex gap-1">
+                    {palette.colors.map((color, colorIndex) => (
+                      <div
+                        key={colorIndex}
+                        className="w-5 h-5 rounded border border-white shadow-sm"
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </div>
+                </button>
+              ))}
+            </div>
+            
+            {/* Reset Button */}
+            <div className="flex justify-center">
+              <Button 
+                size="sm" 
+                variant="outline"
+                className="h-8 text-xs w-full"
+                onClick={() => applyColorPalette(colorPalettes[0].colors)}
+              >
+                <Palette className="h-3 w-3 mr-1" />
+                Reset to Default Palette
+              </Button>
+            </div>
+          </div>
+
+          {/* Individual Dataset Colors - Only for grouped mode */}
+          {chartMode === 'grouped' && (
+            <div className="space-y-2 mt-3">
+              <Label className="text-xs font-medium text-pink-800">Dataset Colors</Label>
+              <div className="space-y-2 p-3 bg-pink-50 rounded-lg border border-pink-200">
+                {chartData.datasets.map((dataset, datasetIndex) => (
+                  <div key={datasetIndex} className="flex items-center justify-between p-2 bg-white rounded border">
+                    <span className="text-xs font-medium">
+                      {dataset.label || `Dataset ${datasetIndex + 1}`}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="w-6 h-6 rounded border-2 border-white shadow-sm cursor-pointer hover:scale-110 transition-transform"
+                        style={{ 
+                          backgroundColor: Array.isArray(dataset.backgroundColor) 
+                            ? dataset.backgroundColor[0] 
+                            : dataset.backgroundColor 
+                        }}
+                        onClick={() => document.getElementById(`dataset-color-${datasetIndex}`)?.click()}
+                      />
+                      <input
+                        id={`dataset-color-${datasetIndex}`}
+                        type="color"
+                        value={Array.isArray(dataset.backgroundColor) 
+                          ? dataset.backgroundColor[0] 
+                          : dataset.backgroundColor || '#3b82f6'}
+                        onChange={(e) => {
+                          handleUpdateDataset(datasetIndex, {
+                            backgroundColor: e.target.value,
+                            borderColor: darkenColor(e.target.value, 20)
+                          })
+                        }}
+                        className="invisible w-0"
+                      />
+                      <Input
+                        value={Array.isArray(dataset.backgroundColor) 
+                          ? dataset.backgroundColor[0] 
+                          : dataset.backgroundColor || '#3b82f6'}
+                        onChange={(e) => {
+                          handleUpdateDataset(datasetIndex, {
+                            backgroundColor: e.target.value,
+                            borderColor: darkenColor(e.target.value, 20)
+                          })
+                        }}
+                        className="w-20 h-6 text-xs font-mono uppercase"
+                        placeholder="#3b82f6"
+                      />
                     </div>
                   </div>
-                )}
+                ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     )
@@ -1708,6 +2310,230 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
       <div className="min-h-0">
         {renderTabContent(activeTab)}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteConfirmDialog} onOpenChange={setShowDeleteConfirmDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Dataset</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Are you sure you want to delete this dataset? This action cannot be undone.
+            </p>
+            {datasetToDelete !== null && (
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <p className="text-sm font-medium text-gray-900">
+                  Dataset: {filteredDatasets[datasetToDelete]?.label || `Dataset ${datasetToDelete + 1}`}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {filteredDatasets[datasetToDelete]?.data.length || 0} data points
+                </p>
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={handleCancelDelete}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDelete}>
+              Delete Dataset
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Full Edit Modal for Single mode */}
+      <Dialog open={showFullEditModal} onOpenChange={setShowFullEditModal}>
+        <DialogContent className="max-w-3xl w-full">
+          <DialogHeader>
+            <DialogTitle>Full Edit (Single Dataset)</DialogTitle>
+          </DialogHeader>
+          
+          {/* Dataset Name and Color Section */}
+          <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+            <div className="grid grid-cols-2 gap-6">
+              {/* Dataset Name */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Dataset Name</Label>
+                <Input
+                  value={editingDatasetName}
+                  onChange={(e) => setEditingDatasetName(e.target.value)}
+                  placeholder="Enter dataset name"
+                  className="h-10"
+                />
+              </div>
+              
+              {/* Dataset Color */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Dataset Color</Label>
+                <div className="flex items-center gap-3">
+                  {/* Radio Buttons */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center space-x-1">
+                      <input
+                        type="radio"
+                        id="slice-color"
+                        name="color-mode"
+                        value="slice"
+                        checked={editingColorMode === 'slice'}
+                        onChange={() => handleColorModeChange('slice')}
+                        className="w-4 h-4 text-blue-600"
+                      />
+                      <Label htmlFor="slice-color" className="text-xs">Slice</Label>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <input
+                        type="radio"
+                        id="dataset-color"
+                        name="color-mode"
+                        value="dataset"
+                        checked={editingColorMode === 'dataset'}
+                        onChange={() => handleColorModeChange('dataset')}
+                        className="w-4 h-4 text-blue-600"
+                      />
+                      <Label htmlFor="dataset-color" className="text-xs">Dataset</Label>
+                    </div>
+                  </div>
+                  
+                  {/* Color Picker */}
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={editingDatasetColor}
+                      onChange={(e) => handleDatasetColorChange(e.target.value)}
+                      disabled={editingColorMode === 'slice'}
+                      className={`w-8 h-8 p-0 border-0 bg-transparent rounded ${editingColorMode === 'slice' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                    />
+                    <Input
+                      value={editingDatasetColor}
+                      onChange={(e) => handleDatasetColorChange(e.target.value)}
+                      disabled={editingColorMode === 'slice'}
+                      className={`h-8 text-xs w-20 ${editingColorMode === 'slice' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="overflow-auto max-h-[60vh] space-y-2">
+            {chartMode === 'single' && fullEditRows.map((row, i) => {
+              return (
+                <div key={i} className="grid grid-cols-12 gap-2 items-center p-2 border rounded">
+                  <div className="col-span-4">
+                    <Label className="text-xs">Name</Label>
+                    <Input
+                      value={row.label}
+                      onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, label: e.target.value } : r))}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="text-xs">Value</Label>
+                    <Input
+                      type="number"
+                      value={row.value}
+                      onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, value: Number(e.target.value) } : r))}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+                  <div className="col-span-3">
+                    <Label className="text-xs">Color</Label>
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="color" 
+                        className={`w-10 h-8 p-0 border-0 bg-transparent ${editingColorMode === 'dataset' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                        value={row.color} 
+                        onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, color: e.target.value } : r))}
+                        disabled={editingColorMode === 'dataset'}
+                      />
+                      <Input 
+                        className={`h-8 text-xs w-24 ${editingColorMode === 'dataset' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        value={row.color} 
+                        onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, color: e.target.value } : r))}
+                        disabled={editingColorMode === 'dataset'}
+                      />
+                    </div>
+                  </div>
+                  <div className="col-span-3">
+                    <Label className="text-xs">Image</Label>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs"
+                        onClick={() => {
+                          const input = document.createElement('input')
+                          input.type = 'file'
+                          input.accept = 'image/*'
+                          input.onchange = (e) => {
+                            const file = (e.target as HTMLInputElement).files?.[0]
+                            if (!file) return
+                            const reader = new FileReader()
+                            reader.onload = (ev) => {
+                              const url = ev.target?.result as string
+                              setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, imageUrl: url } : r))
+                            }
+                            reader.readAsDataURL(file)
+                          }
+                          input.click()
+                        }}
+                      >
+                        <Upload className="h-3 w-3 mr-1" /> {fullEditRows[i]?.imageUrl ? 'Change' : 'Upload'}
+                      </Button>
+                      {!!fullEditRows[i]?.imageUrl && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs"
+                          onClick={() => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, imageUrl: null } : r))}
+                        >
+                          Remove
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <div className="flex justify-end gap-2">
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button
+              onClick={() => {
+                if (fullEditRows.length === 0) return
+                // Use the stored dataset index from when the tile was clicked
+                const datasetIndex = editingDatasetIndex
+                if (datasetIndex === -1 || !filteredDatasets[datasetIndex]) return
+                
+                // Persist labels, values, colors, images
+                const labels = fullEditRows.map(r => r.label)
+                const values = fullEditRows.map(r => r.value)
+                const colors = fullEditRows.map(r => r.color)
+                const images = fullEditRows.map(r => r.imageUrl)
+                
+                // Ensure arrays are aligned and persist slice colors
+                updateDataset(datasetIndex, {
+                  label: editingDatasetName,
+                  sliceLabels: labels,
+                  data: values as any,
+                  backgroundColor: editingColorMode === 'dataset' ? editingDatasetColor : (colors as any),
+                  pointImages: images as any,
+                  datasetColorMode: editingColorMode === 'dataset' ? 'single' : 'slice',
+                  color: editingColorMode === 'dataset' ? editingDatasetColor : undefined,
+                })
+                updateLabels(labels)
+                setShowFullEditModal(false)
+              }}
+            >
+              Save
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 } 

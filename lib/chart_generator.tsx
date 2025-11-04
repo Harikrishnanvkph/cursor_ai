@@ -319,7 +319,20 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
 
   // Filter x-axis labels to only include enabled slices
   let filteredLabels: string[] = [];
-  if (Array.isArray(chartData.labels)) {
+  
+  // For both single and grouped modes, check for sliceLabels in datasets first
+  if (modeFilteredDatasets.length > 0) {
+    // Check if any dataset has sliceLabels (prioritize the first one found)
+    const datasetWithSliceLabels = modeFilteredDatasets.find(ds => 
+      ds.sliceLabels && Array.isArray(ds.sliceLabels)
+    );
+    
+    if (datasetWithSliceLabels) {
+      filteredLabels = enabledSliceIndices.map(idx => String(datasetWithSliceLabels.sliceLabels![idx]));
+    } else if (Array.isArray(chartData.labels)) {
+      filteredLabels = enabledSliceIndices.map(idx => String(chartData.labels![idx]));
+    }
+  } else if (Array.isArray(chartData.labels)) {
     filteredLabels = enabledSliceIndices.map(idx => String(chartData.labels![idx]));
   }
 
@@ -425,7 +438,12 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
       let text = String(value);
       
       if (customLabelsConfig.labelContent === 'label') {
-        text = String(chartData.labels?.[pointIdx] ?? text);
+        // For both single and grouped modes, use sliceLabels from the dataset if available
+        if (ds.sliceLabels && Array.isArray(ds.sliceLabels)) {
+          text = String(ds.sliceLabels[pointIdx] ?? text);
+        } else {
+          text = String(chartData.labels?.[pointIdx] ?? text);
+        }
       } else if (customLabelsConfig.labelContent === 'percentage') {
         const total = ds.data.reduce((a: number, b: any) => {
           if (typeof b === 'number') return a + b;
@@ -668,6 +686,37 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     setSelectedImageId(null)
     setSelectedTextId(null)
   }
+
+  // Function to load sample data based on current mode
+  const loadSampleGroupedData = () => {
+    const { getDefaultDataForMode } = require('@/lib/chart-store');
+    const groupedData = getDefaultDataForMode('grouped');
+    
+    // Update the chart with grouped mode sample data
+    useChartStore.getState().setFullChart({
+      chartType: chartType,
+      chartData: groupedData,
+      chartConfig: chartConfig
+    });
+    
+    // Mark as having JSON data
+    useChartStore.getState().setHasJSON(true);
+  };
+
+  const loadSampleSingleData = () => {
+    const { getDefaultDataForMode } = require('@/lib/chart-store');
+    const singleData = getDefaultDataForMode('single');
+    
+    // Update the chart with single mode sample data
+    useChartStore.getState().setFullChart({
+      chartType: chartType,
+      chartData: singleData,
+      chartConfig: chartConfig
+    });
+    
+    // Mark as having JSON data
+    useChartStore.getState().setHasJSON(true);
+  };
 
   return (
     <div className="p-0 h-full w-full">
@@ -957,8 +1006,65 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-center h-full w-full text-gray-400">
-          No chart data available.
+        <div className="flex flex-col items-center justify-center h-full w-full text-gray-400 gap-4 p-8">
+          <div className="text-center max-w-md">
+            <div className="mb-6">
+              <svg className="w-16 h-16 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              <p className="text-lg font-semibold text-gray-600 mb-2">No chart data available</p>
+            </div>
+            
+            {chartMode === 'grouped' && (
+              <>
+                <p className="text-sm text-gray-500 mb-6">
+                  You're in <span className="font-semibold text-blue-600">grouped mode</span> but don't have any datasets yet.
+                </p>
+                <button
+                  onClick={loadSampleGroupedData}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Load Sample Grouped Data
+                </button>
+                <p className="text-xs text-gray-400 mt-4">
+                  This will load 2 datasets with 6 data points each
+                </p>
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <p className="text-xs text-gray-500">
+                    Or switch to the <span className="font-semibold">Datasets panel</span> to add your own data manually
+                  </p>
+                </div>
+              </>
+            )}
+            
+            {chartMode === 'single' && (
+              <>
+                <p className="text-sm text-gray-500 mb-6">
+                  You're in <span className="font-semibold text-blue-600">single mode</span> but don't have any data yet.
+                </p>
+                <button
+                  onClick={loadSampleSingleData}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Load Sample Single Data
+                </button>
+                <p className="text-xs text-gray-400 mt-4">
+                  This will load 1 dataset with 4 data points
+                </p>
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <p className="text-xs text-gray-500">
+                    Or switch to the <span className="font-semibold">Datasets panel</span> to add your own data manually
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
       

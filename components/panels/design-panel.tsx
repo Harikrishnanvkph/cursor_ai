@@ -78,6 +78,16 @@ export function DesignPanel() {
                 />
               </div>
 
+              {!chartConfig.plugins?.title?.display && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-xs text-blue-800 leading-relaxed">
+                    <strong>Enable Chart Title</strong> to add a prominent heading above your chart. 
+                    You can customize the text, font, size, color, alignment, and position. 
+                    Great for providing context and making your chart more professional.
+                  </p>
+                </div>
+              )}
+
               {chartConfig.plugins?.title?.display && (
                 <>
                   <div>
@@ -615,6 +625,16 @@ export function DesignPanel() {
                   onCheckedChange={(checked) => handleConfigUpdate("plugins.legend.display", checked)}
                 />
               </div>
+
+              {chartConfig.plugins?.legend?.display === false && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-xs text-blue-800 leading-relaxed">
+                    <strong>Enable Legend</strong> to display a color-coded key that helps viewers understand what each data series represents. 
+                    You can customize the position, alignment, font styles, and choose between slice, dataset, or both legend types. 
+                    Essential for charts with multiple datasets or categories.
+                  </p>
+                </div>
+              )}
 
               {chartConfig.plugins?.legend?.display !== false && (
                 <>

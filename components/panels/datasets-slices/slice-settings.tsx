@@ -47,8 +47,6 @@ export function SliceSettings({ className }: SliceSettingsProps) {
   } = useChartStore()
   
   const [activeTab, setActiveTab] = useState<SliceTab>('data')
-  const [dataDropdownOpen, setDataDropdownOpen] = useState(false)
-  const [colorsDropdownOpen, setColorsDropdownOpen] = useState(false)
   const [imagesDropdownOpen, setImagesDropdownOpen] = useState(false)
   const [showImageModal, setShowImageModal] = useState(false)
   const [selectedSliceIndex, setSelectedSliceIndex] = useState<number | null>(null)
@@ -307,30 +305,6 @@ export function SliceSettings({ className }: SliceSettingsProps) {
     <div className="space-y-4">
       {/* Data Management */}
       <div className="space-y-3">
-        <div className="flex items-center gap-2 pb-1 border-b">
-          <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-          <h3 className="text-[0.80rem] font-semibold text-gray-900">Data & Labels</h3>
-          <button
-            onClick={() => setDataDropdownOpen(!dataDropdownOpen)}
-            className="ml-auto p-1 hover:bg-gray-100 rounded transition-colors"
-          >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              width="16" 
-              height="16" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
-              strokeLinejoin="round"
-              className={`transform transition-transform ${dataDropdownOpen ? 'rotate-180' : ''}`}
-            >
-              <path d="M6 9L12 15L18 9"/>
-            </svg>
-          </button>
-        </div>
-        
         <div className="bg-blue-50 rounded-lg p-3 space-y-3">
           <div className="flex items-center justify-between">
             <Label className="text-[0.80rem] font-medium text-blue-900">
@@ -363,69 +337,63 @@ export function SliceSettings({ className }: SliceSettingsProps) {
             </div>
           )}
           
-          {dataDropdownOpen && (
-            <div className="space-y-2 pt-2 border-t border-blue-200 max-h-96 overflow-y-auto">
-              {currentDataset.data.map((dataPoint, pointIndex) => (
-                <div
-                  key={pointIndex}
-                  className="p-4 bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all mb-2"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs text-gray-400 font-semibold">#{pointIndex + 1}</span>
-                    <button
-                      className="p-1 rounded hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      onClick={() => removeSlice(pointIndex)}
-                      disabled={chartMode === 'grouped' && filteredDatasets.length > 1}
-                      title={chartMode === 'grouped' && filteredDatasets.length > 1 ? 'Cannot remove points in Grouped Mode' : 'Remove point'}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </button>
+          <div className="space-y-1.5 pt-2 border-t border-blue-200 max-h-96 overflow-y-auto">
+            {currentDataset.data.map((dataPoint, pointIndex) => (
+              <div
+                key={pointIndex}
+                className="p-2 bg-white rounded-lg border border-gray-200 hover:shadow-sm transition-all"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-gray-500 font-medium min-w-[24px]">#{pointIndex + 1}</span>
+                  <div className="flex-1 min-w-0">
+                    <input
+                      value={String(currentSliceLabels[pointIndex] ?? '')}
+                      onChange={(e) => handleLabelChange(pointIndex, e.target.value)}
+                      disabled={chartMode === 'grouped'}
+                      className="w-full h-7 px-2 rounded border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 text-xs font-normal transition disabled:bg-gray-100 disabled:text-gray-500"
+                      placeholder={`Name ${pointIndex + 1}`}
+                    />
                   </div>
-                  <div className="flex items-end gap-2">
-                    <div className="w-2/3 min-w-0">
-                      <label className="text-xs font-medium text-gray-600 mb-1 block">Name</label>
-                      <input
-                        value={String(currentSliceLabels[pointIndex] ?? '')}
-                        onChange={(e) => handleLabelChange(pointIndex, e.target.value)}
-                        disabled={chartMode === 'grouped'}
-                        className="w-full h-10 px-3 rounded border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-[0.80rem] font-normal transition disabled:bg-gray-100 disabled:text-gray-500"
-                        placeholder={`Name ${pointIndex + 1}`}
-                      />
-                    </div>
-                    <div className="w-1/3 min-w-0">
-                      <label className="text-xs font-medium text-gray-600 mb-1 block">Value</label>
-                      {chartType === 'scatter' || chartType === 'bubble' ? (
-                        <div className="flex gap-1">
-                          <input
-                            type="number"
-                            value={typeof dataPoint === 'object' && (dataPoint as any)?.x !== undefined ? (dataPoint as any).x : ''}
-                            onChange={(e) => handleDataPointUpdate(pointIndex, e.target.value, 'x')}
-                            className="w-1/2 h-10 px-3 rounded border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-[0.80rem] font-normal transition"
-                            placeholder="X"
-                          />
-                          <input
-                            type="number"
-                            value={typeof dataPoint === 'object' && (dataPoint as any)?.y !== undefined ? (dataPoint as any).y : typeof dataPoint === 'number' ? dataPoint : ''}
-                            onChange={(e) => handleDataPointUpdate(pointIndex, e.target.value, 'y')}
-                            className="w-1/2 h-10 px-3 rounded border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-[0.80rem] font-normal transition"
-                            placeholder="Y"
-                          />
-                        </div>
-                      ) : (
+                  <div className="w-16 min-w-0">
+                    {chartType === 'scatter' || chartType === 'bubble' ? (
+                      <div className="flex gap-0.5">
                         <input
                           type="number"
-                          value={typeof dataPoint === 'number' ? dataPoint : ''}
-                          onChange={(e) => handleDataPointUpdate(pointIndex, e.target.value)}
-                          className="w-full h-10 px-3 rounded border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-[0.80rem] font-normal transition"
-                          placeholder="Value"
+                          value={typeof dataPoint === 'object' && (dataPoint as any)?.x !== undefined ? (dataPoint as any).x : ''}
+                          onChange={(e) => handleDataPointUpdate(pointIndex, e.target.value, 'x')}
+                          className="w-1/2 h-7 px-1 rounded border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 text-xs font-normal transition"
+                          placeholder="X"
                         />
-                      )}
-                    </div>
+                        <input
+                          type="number"
+                          value={typeof dataPoint === 'object' && (dataPoint as any)?.y !== undefined ? (dataPoint as any).y : typeof dataPoint === 'number' ? dataPoint : ''}
+                          onChange={(e) => handleDataPointUpdate(pointIndex, e.target.value, 'y')}
+                          className="w-1/2 h-7 px-1 rounded border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 text-xs font-normal transition"
+                          placeholder="Y"
+                        />
+                      </div>
+                    ) : (
+                      <input
+                        type="number"
+                        value={typeof dataPoint === 'number' ? dataPoint : ''}
+                        onChange={(e) => handleDataPointUpdate(pointIndex, e.target.value)}
+                        className="w-full h-7 px-1 rounded border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 text-xs font-normal transition"
+                        placeholder="Value"
+                      />
+                    )}
                   </div>
+                  <button
+                    className="p-1 rounded hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                    onClick={() => removeSlice(pointIndex)}
+                    disabled={chartMode === 'grouped' && filteredDatasets.length > 1}
+                    title={chartMode === 'grouped' && filteredDatasets.length > 1 ? 'Cannot remove points in Grouped Mode' : 'Remove point'}
+                  >
+                    <Trash2 className="h-3 w-3 text-red-500" />
+                  </button>
                 </div>
-              ))}
-            </div>
-          )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -461,7 +429,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                 updateDataset(datasetIndex, { datasetColorMode: 'single', color: globalColor })
               }}
             >
-              Apply to all slices
+              Apply to All
             </Button>
           </div>
         </div>
@@ -472,85 +440,71 @@ export function SliceSettings({ className }: SliceSettingsProps) {
         <div className="flex items-center gap-2 pb-1 border-b">
           <div className="w-2 h-2 bg-pink-600 rounded-full"></div>
           <h3 className="text-[0.80rem] font-semibold text-gray-900">Individual Colors</h3>
-          <button
-            onClick={() => setColorsDropdownOpen(!colorsDropdownOpen)}
-            className="ml-auto p-1 hover:bg-gray-100 rounded transition-colors"
-          >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              width="16" 
-              height="16" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
-              strokeLinejoin="round"
-              className={`transform transition-transform ${colorsDropdownOpen ? 'rotate-180' : ''}`}
-            >
-              <path d="M6 9L12 15L18 9"/>
-            </svg>
-          </button>
         </div>
         
-        <div className="bg-pink-50 rounded-lg p-3 space-y-3">
-          <div className="flex items-center justify-between">
-            <Label className="text-[0.80rem] font-medium">Slice Colors</Label>
-            <Button
-              size="sm"
-              className="h-7 text-xs bg-pink-600 hover:bg-pink-700"
-              onClick={() => {
-                if (!currentDataset) return
-                const datasetIndex = chartData.datasets.findIndex(ds => ds === currentDataset)
-                if (datasetIndex === -1) return
-                // Randomize first so lastSliceColors is captured, then switch to slice mode using those colors
-                updateDataset(datasetIndex, { randomizeColors: true })
-                updateDataset(datasetIndex, { datasetColorMode: 'slice' })
-              }}
-            >
-              <Palette className="h-3 w-3 mr-1" />
-              Randomize
-            </Button>
-          </div>
-          
-          {colorsDropdownOpen && (
-            <div className="space-y-2 pt-2 border-t border-pink-200 max-h-64 overflow-y-auto">
-              {currentDataset.data.map((_, pointIndex) => {
-                const currentColor = Array.isArray(currentDataset.backgroundColor) 
-                  ? currentDataset.backgroundColor[pointIndex] 
-                  : currentDataset.backgroundColor
-                
-                return (
-                  <div key={pointIndex} className="flex items-center justify-between p-2 bg-white rounded border">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs font-medium text-gray-500">#{pointIndex + 1}</span>
-                      <span className="text-xs">{String(currentSliceLabels[pointIndex] || `Point ${pointIndex + 1}`)}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div 
-                        className="w-6 h-6 rounded border-2 border-white shadow-sm cursor-pointer hover:scale-110 transition-transform"
-                        style={{ backgroundColor: currentColor || '#3b82f6' }}
-                        onClick={() => document.getElementById(`slice-color-${pointIndex}`)?.click()}
-                      />
-                      <input
-                        id={`slice-color-${pointIndex}`}
-                        type="color"
-                        value={currentColor || '#3b82f6'}
-                        onChange={(e) => handleColorChange(pointIndex, e.target.value)}
-                        className="invisible w-0"
-                      />
-                      <Input
-                        value={currentColor || '#3b82f6'}
-                        onChange={(e) => handleColorChange(pointIndex, e.target.value)}
-                        className="w-20 h-6 text-xs font-mono uppercase"
-                        placeholder="#3b82f6"
-                      />
-                    </div>
+        <div className="bg-pink-50 rounded-lg p-3">
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {currentDataset.data.map((_, pointIndex) => {
+              const currentColor = Array.isArray(currentDataset.backgroundColor) 
+                ? currentDataset.backgroundColor[pointIndex] 
+                : currentDataset.backgroundColor
+              
+              // Check if color is transparent
+              const isTransparent = currentColor && (
+                currentColor.includes('rgba') && currentColor.includes(', 0)') ||
+                currentColor.includes('rgba') && currentColor.includes(', 0.00)') ||
+                currentColor === 'transparent'
+              )
+
+              return (
+                <div key={pointIndex} className="flex items-center justify-between p-2 bg-white rounded border min-w-0">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <span className="text-xs font-medium text-gray-500 flex-shrink-0">#{pointIndex + 1}</span>
+                    <span className="text-xs truncate">{String(currentSliceLabels[pointIndex] || `Point ${pointIndex + 1}`)}</span>
                   </div>
-                )
-              })}
-            </div>
-          )}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <div 
+                      className="w-6 h-6 rounded border-2 border-white shadow-sm cursor-pointer hover:scale-110 transition-transform relative"
+                      style={{ backgroundColor: currentColor || '#3b82f6' }}
+                      onClick={() => document.getElementById(`slice-color-${pointIndex}`)?.click()}
+                    >
+                      {/* Transparent indicator - diagonal stripes */}
+                      {isTransparent && (
+                        <div className="absolute inset-0 rounded" style={{
+                          backgroundImage: `repeating-linear-gradient(
+                            45deg,
+                            #ccc 0px,
+                            #ccc 2px,
+                            transparent 2px,
+                            transparent 4px
+                          )`
+                        }} />
+                      )}
+                      {/* Transparent indicator - "T" text */}
+                      {isTransparent && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-[8px] font-bold text-red-600">T</span>
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      id={`slice-color-${pointIndex}`}
+                      type="color"
+                      value={currentColor || '#3b82f6'}
+                      onChange={(e) => handleColorChange(pointIndex, e.target.value)}
+                      className="invisible w-0"
+                    />
+                    <Input
+                      value={currentColor || '#3b82f6'}
+                      onChange={(e) => handleColorChange(pointIndex, e.target.value)}
+                      className="w-20 h-6 text-xs font-mono uppercase"
+                      placeholder="#3b82f6"
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       </div>
     </div>
@@ -591,30 +545,31 @@ export function SliceSettings({ className }: SliceSettingsProps) {
 
     return (
       <div className="space-y-4">
-          <div className="flex items-center gap-2 pb-1 border-b">
-            <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-            <h3 className="text-[0.80rem] font-semibold text-gray-900">Slice Image</h3>
-          </div>
           <div className="bg-green-50 rounded-lg p-3 space-y-3">
-            <div className="flex items-center gap-2">
-              {/* <Label className="text-[0.80rem] font-medium">Choose</Label> */}
-              <Select value={String(idx)} onValueChange={(v) => setImageSelectedIndex(Number(v))}>
-              <SelectTrigger className="h-7 text-xs w-48">
-                <span className="text-xs truncate">{`#${idx + 1} — ${currentSliceLabels[idx] || `Slice ${idx + 1}`}`}</span>
-              </SelectTrigger>
-                <SelectContent>
-                  {currentDataset.data.map((_: any, i: number) => (
-                       <SelectItem key={i} value={String(i)}>
-                         <span className="text-xs">#{i + 1} — {String(currentSliceLabels[i] || `Slice ${i + 1}`)}</span>
-                       </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="ml-auto text-xs">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 flex-1">
+                <Label className="text-xs font-medium text-green-800">Select Slice:</Label>
+                <Select value={String(idx)} onValueChange={(v) => setImageSelectedIndex(Number(v))}>
+                  <SelectTrigger className="h-8 text-xs flex-1 max-w-[200px]">
+                    <span className="text-xs truncate">{`#${idx + 1} — ${currentSliceLabels[idx] || `Slice ${idx + 1}`}`}</span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {currentDataset.data.map((_: any, i: number) => (
+                      <SelectItem key={i} value={String(i)}>
+                        <span className="text-xs">#{i + 1} — {String(currentSliceLabels[i] || `Slice ${i + 1}`)}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
                 {hasImage ? (
-                  <span className="text-green-700">Image set</span>
+                  <div className="flex items-center gap-1 text-xs text-green-700 bg-green-100 px-2 py-1 rounded">
+                    <ImageIcon className="h-3 w-3" />
+                    <span>Active</span>
+                  </div>
                 ) : (
-                  <span className="text-gray-500">No image</span>
+                  <span className="text-xs text-gray-500">No image</span>
                 )}
               </div>
             </div>
@@ -1187,14 +1142,39 @@ export function SliceSettings({ className }: SliceSettingsProps) {
           {chartMode === 'single' && (
             <div className="pt-5">
               <Button size="sm" variant="outline" onClick={() => {
+                // Helper function to convert RGBA to hex
+                const rgbaToHex = (rgba: string): string => {
+                  // Handle hex colors (already in correct format)
+                  if (rgba.startsWith('#')) return rgba
+                  
+                  // Handle rgba colors
+                  const match = rgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/)
+                  if (match) {
+                    const [, r, g, b] = match
+                    return `#${[r, g, b].map(x => {
+                      const hex = parseInt(x).toString(16)
+                      return hex.length === 1 ? '0' + hex : hex
+                    }).join('')}`
+                  }
+                  
+                  // Fallback for other formats
+                  return rgba || '#3b82f6'
+                }
+                
                 // snapshot current rows for full edit modal
                 if (!currentDataset) return
-                const rows: { label: string; value: number; color: string; imageUrl: string | null }[] = currentDataset.data.map((val, i) => ({
-                  label: String(currentSliceLabels[i] || `Slice ${i + 1}`),
-                  value: typeof val === 'number' ? val : (Array.isArray(val) ? (val[1] as number) : (val as any)?.y ?? 0),
-                  color: Array.isArray(currentDataset.backgroundColor) ? (currentDataset.backgroundColor[i] as string) : (currentDataset.backgroundColor as string) || '#3b82f6',
-                  imageUrl: currentDataset.pointImages?.[i] || null,
-                }))
+                const rows: { label: string; value: number; color: string; imageUrl: string | null }[] = currentDataset.data.map((val, i) => {
+                  const rawColor = Array.isArray(currentDataset.backgroundColor) 
+                    ? (currentDataset.backgroundColor[i] as string) 
+                    : (currentDataset.backgroundColor as string) || '#3b82f6'
+                  
+                  return {
+                    label: String(currentSliceLabels[i] || `Slice ${i + 1}`),
+                    value: typeof val === 'number' ? val : (Array.isArray(val) ? (val[1] as number) : (val as any)?.y ?? 0),
+                    color: rgbaToHex(rawColor),
+                    imageUrl: currentDataset.pointImages?.[i] || null,
+                  }
+                })
                 setFullEditRows(rows)
                 setShowFullEditModal(true)
               }}>

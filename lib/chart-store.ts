@@ -1954,6 +1954,12 @@ function areDatasetChangesMeaningful(previousDataset: any, newDataset: any): boo
 }
 
 // Create the store with persist middleware
+// Empty initial state - no datasets until user action
+const emptyChartData = {
+  labels: [],
+  datasets: []
+}
+
 export const useChartStore = create<ChartStore>()(
   persist(
     (set, get) => ({
@@ -1962,13 +1968,13 @@ export const useChartStore = create<ChartStore>()(
       setGlobalChartRef: (ref) => set({ globalChartRef: ref }),
       
       chartType: 'bar',
-      chartData: singleModeDefaultData,
+      chartData: emptyChartData,
       chartConfig: getDefaultConfigForType('bar'),
       chartMode: 'single',
       activeDatasetIndex: 0,
-      // Add separate storage for each mode's datasets
-      singleModeData: singleModeDefaultData,
-      groupedModeData: groupedModeDefaultData,
+      // Add separate storage for each mode's datasets - start empty
+      singleModeData: emptyChartData,
+      groupedModeData: emptyChartData,
       // Add uniformity mode for grouped charts
       uniformityMode: 'uniform',
       legendFilter: { datasets: {}, slices: {} },
@@ -2157,6 +2163,8 @@ export const useChartStore = create<ChartStore>()(
         return {
           chartData: newChartData,
           ...modeDataUpdate,
+          // Set hasJSON to true when dataset is added
+          hasJSON: true,
         };
       }),
       removeDataset: (index) => set((state) => {
@@ -2328,7 +2336,11 @@ export const useChartStore = create<ChartStore>()(
         if (updates.backgroundColor && Array.isArray(updates.backgroundColor)) {
           const colors = updates.backgroundColor as string[]
           updatedDataset.backgroundColor = colors
-          updatedDataset.borderColor = colors.map((c: string) => darkenColor(c, 20))
+          // Only auto-generate borderColor if not explicitly provided (preserves existing borders during opacity changes)
+          // Use 'in' operator to check if borderColor key exists in updates object
+          if (!('borderColor' in updates)) {
+            updatedDataset.borderColor = colors.map((c: string) => darkenColor(c, 20))
+          }
           updatedDataset.lastSliceColors = colors
           updatedDataset.datasetColorMode = 'slice'
         }
@@ -2356,14 +2368,20 @@ export const useChartStore = create<ChartStore>()(
           ? { singleModeData: newChartData }
           : { groupedModeData: newChartData }
         
+        // Check if we should set hasJSON based on chart data validity
+        const shouldSetHasJSON = newChartData.labels.length > 0 && 
+                                 newChartData.datasets.length > 0 && 
+                                 newChartData.datasets.some(d => d.data && d.data.length > 0);
+        
         const newState = {
           ...state,
           chartData: newChartData,
           ...modeDataUpdate,
+          hasJSON: shouldSetHasJSON || state.hasJSON,
         }
         
         // Capture undo point AFTER the change is made, but only if there are actual meaningful changes
-        if (state.hasJSON) {
+        if (state.hasJSON || shouldSetHasJSON) {
           // Check if there are meaningful changes using our helper function
           const hasMeaningfulChanges = newDatasets.some((newDataset, idx) => {
             const previousDataset = state.chartData.datasets[idx];
@@ -2551,6 +2569,11 @@ export const useChartStore = create<ChartStore>()(
         const newChartData = {
           ...state.chartData,
           labels,
+          // Also update sliceLabels in all datasets to match the new labels
+          datasets: state.chartData.datasets.map(dataset => ({
+            ...dataset,
+            sliceLabels: labels // Update sliceLabels to match the new labels
+          }))
         };
         
         // Update the appropriate mode-specific storage
@@ -2558,9 +2581,15 @@ export const useChartStore = create<ChartStore>()(
           ? { singleModeData: newChartData }
           : { groupedModeData: newChartData };
         
+        // Set hasJSON to true if we have both labels and datasets with data
+        const shouldSetHasJSON = labels.length > 0 && 
+                                 newChartData.datasets.length > 0 && 
+                                 newChartData.datasets.some(d => d.data && d.data.length > 0);
+        
         return {
           chartData: newChartData,
           ...modeDataUpdate,
+          hasJSON: shouldSetHasJSON || state.hasJSON,
         };
       }),
       toggleFillArea: () => set((state) => {
@@ -2732,7 +2761,42 @@ export const useChartStore = create<ChartStore>()(
         
         return { showLabels: newShowLabels };
       }),
-      setFullChart: ({ chartType, chartData, chartConfig }) => set({ chartType, chartData, chartConfig }),
+      setFullChart: ({ chartType, chartData, chartConfig }) => set((state) => {
+        // Determine the mode based on the datasets
+        const hasGroupedDatasets = chartData.datasets.some(ds => ds.mode === 'grouped');
+        const hasSingleDatasets = chartData.datasets.some(ds => ds.mode === 'single' || !ds.mode);
+        
+        let newMode = state.chartMode;
+        let newSingleModeData = state.singleModeData;
+        let newGroupedModeData = state.groupedModeData;
+        
+        // If we have both types of datasets, preserve the current mode
+        // If we only have one type, switch to that mode
+        if (hasGroupedDatasets && !hasSingleDatasets) {
+          newMode = 'grouped';
+          newGroupedModeData = chartData;
+        } else if (hasSingleDatasets && !hasGroupedDatasets) {
+          newMode = 'single';
+          newSingleModeData = chartData;
+        } else if (hasGroupedDatasets && hasSingleDatasets) {
+          // Mixed datasets - preserve current mode and update appropriate storage
+          if (state.chartMode === 'grouped') {
+            newGroupedModeData = chartData;
+          } else {
+            newSingleModeData = chartData;
+          }
+        }
+        
+        return {
+          chartType,
+          chartData,
+          chartConfig,
+          chartMode: newMode,
+          singleModeData: newSingleModeData,
+          groupedModeData: newGroupedModeData,
+          activeDatasetIndex: 0, // Reset to first dataset
+        };
+      }),
       // Overlay actions implementation
       addOverlayImage: (image) => set((state) => ({
         overlayImages: [...state.overlayImages, { ...image, id: Date.now().toString() + Math.random().toString(36).substr(2, 9) }]
@@ -2842,7 +2906,9 @@ export const useChartStore = create<ChartStore>()(
                 backgroundColor: paired.map(p => p.color),
                 borderColor: paired.map(p => p.borderColor),
                 pointImages: paired.map(p => p.image),
-                pointImageConfig: paired.map(p => p.imageConfig)
+                pointImageConfig: paired.map(p => p.imageConfig),
+                // Update sliceLabels for single mode datasets
+                sliceLabels: paired.map(p => p.label)
               } : d
             )
           }
@@ -2869,7 +2935,9 @@ export const useChartStore = create<ChartStore>()(
                 backgroundColor: Array.isArray(d.backgroundColor) ? [...d.backgroundColor].reverse() : d.backgroundColor,
                 borderColor: Array.isArray(d.borderColor) ? [...d.borderColor].reverse() : d.borderColor,
                 pointImages: d.pointImages ? [...d.pointImages].reverse() : [],
-                pointImageConfig: d.pointImageConfig ? [...d.pointImageConfig].reverse() : []
+                pointImageConfig: d.pointImageConfig ? [...d.pointImageConfig].reverse() : [],
+                // Update sliceLabels for single mode datasets
+                sliceLabels: d.sliceLabels ? [...d.sliceLabels].reverse() : undefined
               } : d
             )
           }
