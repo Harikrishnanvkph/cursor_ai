@@ -101,11 +101,6 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 pb-2 border-b">
-        <Download className="h-4 w-4 text-blue-600" />
-        <h2 className="text-base font-semibold text-gray-900">Export & Share</h2>
-      </div>
-
       <Card className="border-blue-100 shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm flex items-center gap-2">

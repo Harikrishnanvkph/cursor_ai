@@ -28,7 +28,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   isTablet?: boolean
 }) {
   const { chartConfig, chartData, chartType, resetChart, setHasJSON, globalChartRef, showLabels, showImages, fillArea, showBorder, toggleShowBorder } = useChartStore()
-  const { shouldShowTemplate, editorMode, templateInBackground } = useTemplateStore()
+  const { shouldShowTemplate, editorMode, templateInBackground, setEditorMode } = useTemplateStore()
   const { user } = useAuth()
 
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
@@ -473,9 +473,28 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
               <div className="flex items-center gap-2">
                 <h1 className="text-lg font-bold text-gray-900 truncate xs400:text-base"><span className="xs400:hidden">Chart</span> Preview</h1>
                 {templateInBackground && (
-                  <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded-full border border-blue-200">
-                    Chart Mode
-                  </span>
+                  <div className="flex items-center gap-1 bg-gray-100 rounded-full p-0.5 border border-gray-200">
+                    <button
+                      onClick={() => setEditorMode('chart')}
+                      className={`px-2 py-1 text-xs font-medium rounded-full transition-all ${
+                        editorMode === 'chart' 
+                          ? 'bg-blue-500 text-white shadow-sm' 
+                          : 'bg-transparent text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      Chart
+                    </button>
+                    <button
+                      onClick={() => setEditorMode('template')}
+                      className={`px-2 py-1 text-xs font-medium rounded-full transition-all ${
+                        editorMode === 'template' 
+                          ? 'bg-blue-500 text-white shadow-sm' 
+                          : 'bg-transparent text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      Template
+                    </button>
+                  </div>
                 )}
               </div>
               <div className="flex items-center gap-2 text-xs text-gray-500 min-w-0 flex-nowrap overflow-x-auto">
@@ -492,9 +511,28 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
               <div className="flex items-center gap-2 mb-1">
                 <h1 className="text-lg lap1280:text-base font-bold text-gray-900 truncate">Chart Preview</h1>
                 {templateInBackground && (
-                  <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded-full border border-blue-200">
-                    Chart Mode
-                  </span>
+                  <div className="flex items-center gap-1 bg-gray-100 rounded-full p-0.5 border border-gray-200">
+                    <button
+                      onClick={() => setEditorMode('chart')}
+                      className={`px-2 py-1 text-xs font-medium rounded-full transition-all ${
+                        editorMode === 'chart' 
+                          ? 'bg-blue-500 text-white shadow-sm' 
+                          : 'bg-transparent text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      Chart
+                    </button>
+                    <button
+                      onClick={() => setEditorMode('template')}
+                      className={`px-2 py-1 text-xs font-medium rounded-full transition-all ${
+                        editorMode === 'template' 
+                          ? 'bg-blue-500 text-white shadow-sm' 
+                          : 'bg-transparent text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      Template
+                    </button>
+                  </div>
                 )}
               </div>
               <div className="flex items-center gap-2 text-xs text-gray-500 flex-wrap min-w-0">

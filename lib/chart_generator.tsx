@@ -34,6 +34,7 @@ import { useChartStore, universalImagePlugin } from "@/lib/chart-store"
 import exportPlugin from "@/lib/export-plugin"
 import { customLabelPlugin } from "@/lib/custom-label-plugin"
 import { overlayPlugin } from "@/lib/overlay-plugin"
+import { enhancedTitlePlugin } from "@/lib/enhanced-title-plugin"
 import { ResizableChartArea } from "@/components/resizable-chart-area"
 import { OverlayContextMenu } from "@/components/overlay-context-menu"
 
@@ -63,7 +64,8 @@ ChartJS.register(
   universalImagePlugin,
   customLabelPlugin,
   exportPlugin,
-  overlayPlugin
+  overlayPlugin,
+  enhancedTitlePlugin
 );
 
 // Verify plugin registration
@@ -718,10 +720,24 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     useChartStore.getState().setHasJSON(true);
   };
 
+  // Get chart border styles
+  const chartBorderStyles: React.CSSProperties = {};
+  if (chartConfig.borderWidth && chartConfig.borderWidth > 0) {
+    chartBorderStyles.border = `${chartConfig.borderWidth}px solid ${chartConfig.borderColor || '#000000'}`;
+    chartBorderStyles.borderRadius = `${(chartConfig as any).chartBorderRadius || 0}px`;
+    chartBorderStyles.boxSizing = 'border-box';
+  }
+
   return (
     <div className="p-0 h-full w-full">
       {chartData.datasets.length > 0 ? (
-        <div className="h-full w-full flex items-start justify-center relative" style={(!isMobile && isResponsive) ? { minHeight: 300, minWidth: 400, height: '100%', width: '100%' } : { height: '100%', width: '100%' }}>
+        <div 
+          className="h-full w-full flex items-start justify-center relative" 
+          style={{
+            ...(!isMobile && isResponsive ? { minHeight: 300, minWidth: 400, height: '100%', width: '100%' } : { height: '100%', width: '100%' }),
+            ...chartBorderStyles
+          }}
+        >
           {getBackgroundLayers()}
           <div
             style={{

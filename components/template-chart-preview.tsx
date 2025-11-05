@@ -25,7 +25,7 @@ export function TemplateChartPreview({
   onToggleLeftSidebar,
   isLeftSidebarCollapsed
 }: TemplateChartPreviewProps) {
-  const { currentTemplate, templateInBackground, selectedTextAreaId, setSelectedTextAreaId, editorMode } = useTemplateStore()
+  const { currentTemplate, templateInBackground, selectedTextAreaId, setSelectedTextAreaId, editorMode, setEditorMode } = useTemplateStore()
   const { 
     chartData, 
     chartConfig, 
@@ -337,9 +337,28 @@ export function TemplateChartPreview({
         <div>
           <div className="flex items-center gap-2 mb-1">
             <h4 className="font-semibold text-gray-900">{template.name}</h4>
-            <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full border border-green-200">
-              Template Mode
-            </span>
+            <div className="flex items-center gap-1 bg-gray-100 rounded-full p-0.5 border border-gray-200">
+              <button
+                onClick={() => setEditorMode('chart')}
+                className={`px-2 py-1 text-xs font-medium rounded-full transition-all ${
+                  editorMode === 'chart' 
+                    ? 'bg-blue-500 text-white shadow-sm' 
+                    : 'bg-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Chart
+              </button>
+              <button
+                onClick={() => setEditorMode('template')}
+                className={`px-2 py-1 text-xs font-medium rounded-full transition-all ${
+                  editorMode === 'template' 
+                    ? 'bg-blue-500 text-white shadow-sm' 
+                    : 'bg-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Template
+              </button>
+            </div>
           </div>
           <p className="text-xs text-gray-500">Template: {template.width} × {template.height}px</p>
         </div>

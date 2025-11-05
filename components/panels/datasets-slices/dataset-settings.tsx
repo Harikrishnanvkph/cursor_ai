@@ -1019,6 +1019,23 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
             </div>
           )}
         </div>
+        
+        {/* Border Radius */}
+        <div className="space-y-1">
+          <Label className="text-xs font-medium">Border Radius (Slices)</Label>
+          <Slider
+            value={[Number(chartData.datasets[0]?.borderRadius ?? 0)]}
+            onValueChange={([value]) => {
+              chartData.datasets.forEach((_, index) => {
+                handleUpdateDataset(index, 'borderRadius', value)
+              })
+            }}
+            max={200}
+            step={1}
+            className="mt-2"
+          />
+          <div className="text-xs text-gray-500 mt-1">{Number(chartData.datasets[0]?.borderRadius ?? 0)}px</div>
+        </div>
       </div>
       
       <div className="bg-purple-50 rounded-lg p-3 space-y-3">
@@ -1117,39 +1134,48 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
             <h3 className="text-[0.80rem] font-semibold text-gray-900">Line Properties</h3>
           </div>
           
-          <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-3">
             <div className="space-y-1">
               <Label className="text-xs font-medium">Line Tension</Label>
-              <Input
-                type="number"
-                value={Number((chartData.datasets[0] as any)?.tension ?? 0.4)}
-                onChange={(e) => {
-                  const value = e.target.value ? Number(e.target.value) : 0.4
+              <Slider
+                value={[Number((chartData.datasets[0] as any)?.tension ?? 0.4)]}
+                onValueChange={([value]) => {
                   chartData.datasets.forEach((_, index) => {
                     handleUpdateDataset(index, 'tension', value)
                   })
                 }}
-                className="h-8 text-xs"
-                placeholder="0.4"
                 min={0}
                 max={1}
                 step={0.1}
+                className="mt-2"
               />
+              <div className="text-xs text-gray-500 mt-1">{Number((chartData.datasets[0] as any)?.tension ?? 0.4).toFixed(1)}</div>
             </div>
             
             <div className="space-y-1">
-              <Label className="text-xs font-medium">Fill Area</Label>
-              <div className="flex items-center justify-start h-8">
-                <Switch
-                  checked={!!chartData.datasets[0]?.fill}
-                  onCheckedChange={(checked) => {
-                    chartData.datasets.forEach((_, index) => {
-                      handleUpdateDataset(index, 'fill', checked)
-                    })
-                  }}
-                  className="data-[state=checked]:bg-purple-600"
-                />
-              </div>
+              <Label className="text-xs font-medium">Line Style</Label>
+              <Select 
+                value={
+                  (chartData.datasets[0] as any)?.borderDash 
+                    ? (JSON.stringify((chartData.datasets[0] as any).borderDash) === JSON.stringify([5, 5]) ? 'dashed' : 'dotted')
+                    : 'solid'
+                }
+                onValueChange={(value) => {
+                  const borderDash = value === 'solid' ? undefined : value === 'dashed' ? [5, 5] : [2, 2]
+                  chartData.datasets.forEach((_, index) => {
+                    handleUpdateDataset(index, 'borderDash', borderDash)
+                  })
+                }}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="solid">Solid</SelectItem>
+                  <SelectItem value="dashed">Dashed</SelectItem>
+                  <SelectItem value="dotted">Dotted</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>

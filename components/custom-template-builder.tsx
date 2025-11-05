@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Eye, EyeOff, RotateCcw, Save, X, Hash  ,ZoomIn, ZoomOut, Plus, Heading1, Heading2, Text, MonitorSmartphone, Trash2, FileText as FileTextIcon, Ellipsis, Maximize2 } from "lucide-react"
+import { Eye, EyeOff, RotateCcw, Save, X, Hash, ZoomIn, ZoomOut, Plus, Heading1, Heading2, Text, MonitorSmartphone, Trash2, FileText as FileTextIcon, Ellipsis, Maximize2, AlertCircle } from "lucide-react"
 import { useTemplateStore, type TemplateTextArea } from "@/lib/template-store"
 import DraggableResizable from "@/components/reusable/DraggableResizable"
 import { useRouter } from "next/navigation"
@@ -37,6 +37,9 @@ export function CustomTemplateBuilder() {
   const [hasCanvas, setHasCanvas] = useState(true)
   const [isExiting, setIsExiting] = useState(false)
   const [isBusy, setIsBusy] = useState(false)
+  const [widthInput, setWidthInput] = useState('')
+  const [heightInput, setHeightInput] = useState('')
+  const [dimensionError, setDimensionError] = useState('')
 
   // Initialize draft template if none
   useEffect(() => {
@@ -80,6 +83,53 @@ export function CustomTemplateBuilder() {
     if (!template) return false
     return templates.some(t => t.id === template.id)
   }, [template, templates])
+
+  // Sync input values with template
+  useEffect(() => {
+    if (template) {
+      setWidthInput(template.width.toString())
+      setHeightInput(template.height.toString())
+    }
+  }, [template])
+
+  // Handle dimension validation and update
+  const handleWidthBlur = () => {
+    if (!template) return
+    const value = parseInt(widthInput)
+    if (isNaN(value) || value < 300) {
+      setDimensionError('Width must be at least 300px')
+      setWidthInput(template.width.toString())
+      setTimeout(() => setDimensionError(''), 3000)
+      return
+    }
+    if (value > 4000) {
+      setDimensionError('Width cannot exceed 4000px')
+      setWidthInput(template.width.toString())
+      setTimeout(() => setDimensionError(''), 3000)
+      return
+    }
+    setDimensionError('')
+    setDraftTemplate({ ...template, width: value })
+  }
+
+  const handleHeightBlur = () => {
+    if (!template) return
+    const value = parseInt(heightInput)
+    if (isNaN(value) || value < 300) {
+      setDimensionError('Height must be at least 300px')
+      setHeightInput(template.height.toString())
+      setTimeout(() => setDimensionError(''), 3000)
+      return
+    }
+    if (value > 4000) {
+      setDimensionError('Height cannot exceed 4000px')
+      setHeightInput(template.height.toString())
+      setTimeout(() => setDimensionError(''), 3000)
+      return
+    }
+    setDimensionError('')
+    setDraftTemplate({ ...template, height: value })
+  }
 
   const canAdd = useMemo(() => {
     if (!template) return { title: true, heading: true, main: true }
@@ -384,6 +434,96 @@ export function CustomTemplateBuilder() {
 
       {/* Right panel (palette + tips) */}
       <div className="w-[280px] border-l bg-white p-3 flex flex-col overflow-hidden">
+        {/* Surface Dimensions */}
+        <div className="mb-4 pb-3 border-b">
+          <div className="text-sm font-semibold mb-2">Surface Dimensions</div>
+          {dimensionError && (
+            <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700 flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+              <span>{dimensionError}</span>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-2 mb-2">
+            <div>
+              <label className="text-xs text-gray-600 mb-1 block">Width (px)</label>
+              <Input
+                type="number"
+                value={widthInput}
+                onChange={(e) => setWidthInput(e.target.value)}
+                onBlur={handleWidthBlur}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleWidthBlur()
+                    e.currentTarget.blur()
+                  }
+                }}
+                className="h-8 text-xs"
+                placeholder="300-4000"
+                disabled={isBusy}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-600 mb-1 block">Height (px)</label>
+              <Input
+                type="number"
+                value={heightInput}
+                onChange={(e) => setHeightInput(e.target.value)}
+                onBlur={handleHeightBlur}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleHeightBlur()
+                    e.currentTarget.blur()
+                  }
+                }}
+                className="h-8 text-xs"
+                placeholder="300-4000"
+                disabled={isBusy}
+              />
+            </div>
+          </div>
+          <div className="flex gap-1 mb-1">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex-1 h-7 text-xs"
+              onClick={() => {
+                setDraftTemplate({ ...template, width: 1920, height: 1080 })
+                setDimensionError('')
+              }}
+              disabled={isBusy}
+              title="Full HD (1920×1080)"
+            >
+              FHD
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex-1 h-7 text-xs"
+              onClick={() => {
+                setDraftTemplate({ ...template, width: 1440, height: 1024 })
+                setDimensionError('')
+              }}
+              disabled={isBusy}
+              title="Default (1440×1024)"
+            >
+              Default
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex-1 h-7 text-xs"
+              onClick={() => {
+                setDraftTemplate({ ...template, width: 1280, height: 720 })
+                setDimensionError('')
+              }}
+              disabled={isBusy}
+              title="HD (1280×720)"
+            >
+              HD
+            </Button>
+          </div>
+        </div>
+
         <div className="text-sm font-semibold mb-1">Sections</div>
         <div className="grid grid-cols-1 gap-3 pr-1">
           {hasCanvas ? (
@@ -464,8 +604,7 @@ export function CustomTemplateBuilder() {
         )}
         <div className="pt-3 border-t text-xs text-gray-600">
           - Canvas, Title, Heading, Main: only one each.<br />
-          - Custom text: any number.<br />
-          - Surface is fixed at <span className="font-bold">1440×1024 px</span>.
+          - Custom text: any number.
         </div>
       </div>
     </div>
