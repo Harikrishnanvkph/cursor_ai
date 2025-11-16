@@ -44,7 +44,7 @@ export default function AboutPage() {
               <div className="bg-orange-50 p-4 rounded-lg">
                 <h3 className="font-semibold text-orange-900 mb-2">Export Options</h3>
                 <p className="text-orange-800 text-sm">
-                  Download your charts in various formats including PNG, SVG, and PDF for presentations and reports.
+                Download your charts in versatile formats including PNG and responsive HTML packages for presentations and reports.
                 </p>
               </div>
             </div>

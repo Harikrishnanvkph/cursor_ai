@@ -74,6 +74,14 @@ export const exportTemplateAsImage = async (
   // Enable high-quality rendering
   ctx.imageSmoothingEnabled = true
   ctx.imageSmoothingQuality = 'high'
+  
+  // Improve text rendering quality
+  if ('textRendering' in ctx) {
+    (ctx as any).textRendering = 'optimizeLegibility'
+  }
+  if ('fontKerning' in ctx) {
+    (ctx as any).fontKerning = 'normal'
+  }
 
   // Scale the context for high resolution
   ctx.scale(scale, scale)
@@ -139,59 +147,96 @@ export const exportTemplateAsImage = async (
     }
   }
 
-  // Draw text areas with high quality
+  // Draw text areas with high quality (matching HTML rendering exactly)
   template.textAreas.forEach(textArea => {
     if (!textArea.visible) return
 
     const { x, y, width, height } = textArea.position
     const style = textArea.style
 
-    // Set text styles with high quality
-    ctx.font = `${style.fontWeight} ${style.fontSize}px ${style.fontFamily}`
+    // Use exact font size and line height as HTML
+    const fontSize = style.fontSize
+    // Line height in CSS is unitless multiplier applied to font size
+    const lineHeight = fontSize * style.lineHeight
+    const padding = 8
+    
+    // Set text styles to match HTML exactly
+    ctx.font = `${style.fontWeight} ${fontSize}px ${style.fontFamily}`
     ctx.fillStyle = style.color
-    ctx.textAlign = style.textAlign as CanvasTextAlign
+    ctx.textAlign = 'left' // Always start with left, adjust position instead
     ctx.textBaseline = 'top'
     
-    // Enable high-quality text rendering
-    ctx.imageSmoothingEnabled = true
-    ctx.imageSmoothingQuality = 'high'
-
-    // Handle text wrapping and positioning
-    const words = textArea.content.split(' ')
-    let line = ''
-    let lineHeight = style.fontSize * style.lineHeight
-    let currentY = y + 8 // Add padding to match preview
-
-    // Calculate text position based on alignment
-    let textX = x + 8 // Add left padding
-    if (style.textAlign === 'center') {
-      textX = x + width / 2
-    } else if (style.textAlign === 'right') {
-      textX = x + width - 8 // Subtract right padding
-    }
-
-    for (let i = 0; i < words.length; i++) {
-      const testLine = line + words[i] + ' '
-      const metrics = ctx.measureText(testLine)
-      
-      if (metrics.width > width - 16 && i > 0) { // Account for padding
-        ctx.fillText(line, textX, currentY)
-        line = words[i] + ' '
-        currentY += lineHeight
-        
-        // Check if we've exceeded the height
-        if (currentY + lineHeight > y + height - 8) {
-          break
-        }
-      } else {
-        line = testLine
-      }
+    // Disable smoothing for crisp text matching HTML
+    ctx.imageSmoothingEnabled = false
+    
+    // Apply letter spacing if supported
+    const letterSpacing = style.letterSpacing || 0
+    if ('letterSpacing' in ctx && letterSpacing !== 0) {
+      (ctx as any).letterSpacing = `${letterSpacing}px`
     }
     
-    // Draw the last line
-    if (line.trim()) {
-      ctx.fillText(line, textX, currentY)
-    }
+    // Split content by newlines (preserve line breaks like HTML white-space: pre-wrap)
+    const lines = textArea.content.split('\n')
+    let currentY = y + padding
+
+    lines.forEach((line) => {
+      // Handle word wrapping for each line
+      const words = line.split(' ')
+      let currentLine = ''
+
+      for (let i = 0; i < words.length; i++) {
+        const word = words[i]
+        const testLine = currentLine + (currentLine ? ' ' : '') + word
+        const metrics = ctx.measureText(testLine)
+        const availableWidth = width - (padding * 2)
+        
+        // Check if line exceeds available width
+        if (metrics.width > availableWidth && currentLine) {
+          // Draw the current line
+          const lineText = currentLine.trim()
+          if (lineText) {
+            // Calculate x position based on text alignment
+            let textX = x + padding
+            if (style.textAlign === 'center') {
+              const lineWidth = ctx.measureText(lineText).width
+              textX = x + (width - lineWidth) / 2
+            } else if (style.textAlign === 'right') {
+              const lineWidth = ctx.measureText(lineText).width
+              textX = x + width - lineWidth - padding
+            }
+            
+            ctx.fillText(lineText, textX, currentY)
+          }
+          
+          currentLine = word
+          currentY += lineHeight
+          
+          // Check if we've exceeded the height
+          if (currentY + lineHeight > y + height - padding) {
+            return
+          }
+        } else {
+          currentLine = testLine
+        }
+      }
+      
+      // Draw the last line
+      const lineText = currentLine.trim()
+      if (lineText) {
+        let textX = x + padding
+        if (style.textAlign === 'center') {
+          const lineWidth = ctx.measureText(lineText).width
+          textX = x + (width - lineWidth) / 2
+        } else if (style.textAlign === 'right') {
+          const lineWidth = ctx.measureText(lineText).width
+          textX = x + width - lineWidth - padding
+        }
+        
+        ctx.fillText(lineText, textX, currentY)
+      }
+      
+      currentY += lineHeight
+    })
   })
 
   // Convert to data URL with high quality

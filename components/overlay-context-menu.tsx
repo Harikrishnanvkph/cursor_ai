@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { Button } from '@/components/ui/button'
 import { Trash2, Eye, EyeOff, X } from 'lucide-react'
 
@@ -61,59 +62,35 @@ export function OverlayContextMenu({
 
   if (!isOpen) return null
 
-  // Calculate intelligent positioning
-  const calculatePosition = () => {
-    const menuWidth = 140
-    const menuHeight = 120
-    const padding = 20
-    const offset = 10 // Distance from click point
-    
-    // Get viewport dimensions
-    const viewportWidth = window.innerWidth
-    const viewportHeight = window.innerHeight
-    
-    let finalX = x
-    let finalY = y
-    
-    // Try to position below and to the right of the click point first
-    let preferredX = x + offset
-    let preferredY = y + offset
-    
-    // Check if preferred position works
-    if (preferredX + menuWidth <= viewportWidth - padding && preferredY + menuHeight <= viewportHeight - padding) {
-      // Position below and to the right
-      finalX = preferredX
-      finalY = preferredY
-    } else if (x - menuWidth - offset >= padding && y + menuHeight <= viewportHeight - padding) {
-      // Position below and to the left
-      finalX = x - menuWidth - offset
-      finalY = y + offset
-    } else if (y - menuHeight - offset >= padding) {
-      // Position above
-      finalX = x + offset
-      finalY = y - menuHeight - offset
-    } else if (y + menuHeight + offset <= viewportHeight - padding) {
-      // Position below
-      finalX = x + offset
-      finalY = y + offset
-    } else {
-      // Fallback: center on screen
-      finalX = Math.max(padding, Math.min(viewportWidth - menuWidth - padding, x - menuWidth / 2))
-      finalY = Math.max(padding, Math.min(viewportHeight - menuHeight - padding, y - menuHeight / 2))
-    }
-    
-    return { x: finalX, y: finalY }
+  // Use coordinates directly - they should be event.clientX/clientY (viewport coordinates)
+  // Fixed positioning works with viewport coordinates
+  const menuWidth = 140
+  const menuHeight = 120
+  const offset = 5 // Very small offset from click point
+  
+  // Simple positioning - just offset from click point
+  let finalX = x + offset
+  let finalY = y + offset
+  
+  // Only adjust if it would go off-screen
+  if (finalX + menuWidth > window.innerWidth) {
+    finalX = x - menuWidth - offset
+  }
+  if (finalY + menuHeight > window.innerHeight) {
+    finalY = y - menuHeight - offset
   }
   
-  const position = calculatePosition()
+  // Ensure it stays on screen
+  finalX = Math.max(5, Math.min(finalX, window.innerWidth - menuWidth - 5))
+  finalY = Math.max(5, Math.min(finalY, window.innerHeight - menuHeight - 5))
 
-  return (
+  const menuContent = (
     <div
       ref={menuRef}
-      className="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[140px]"
+      className="fixed z-[9999] bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[140px]"
       style={{
-        left: position.x,
-        top: position.y,
+        left: `${finalX}px`,
+        top: `${finalY}px`,
       }}
     >
       <div className="py-1">
@@ -162,4 +139,11 @@ export function OverlayContextMenu({
       </div>
     </div>
   )
+
+  // Render using portal to document body to avoid transform issues
+  if (typeof window !== 'undefined') {
+    return createPortal(menuContent, document.body)
+  }
+  
+  return null
 } 

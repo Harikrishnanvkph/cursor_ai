@@ -52,6 +52,15 @@ export interface TemplateLayout {
 export type EditorMode = 'chart' | 'template'
 
 // Template store interface
+interface ChartDimensionState {
+  manualDimensions?: boolean
+  responsive?: boolean
+  dynamicDimension?: boolean
+  width?: string | number
+  height?: string | number
+  maintainAspectRatio?: boolean
+}
+
 interface TemplateStore {
   // Current template state
   currentTemplate: TemplateLayout | null
@@ -64,6 +73,7 @@ interface TemplateStore {
   // Editor mode state
   editorMode: EditorMode
   templateInBackground: TemplateLayout | null // Keep template when in chart mode
+  chartDimensionBackup: ChartDimensionState | null // Preserve chart dimensions when switching modes
   
   // Template management
   templates: TemplateLayout[]
@@ -389,6 +399,7 @@ export const useTemplateStore = create<TemplateStore>()(
       templates: defaultTemplates,
       editorMode: 'chart',
       templateInBackground: null,
+      chartDimensionBackup: null,
       
       setDraftTemplate: (template) => set({ draftTemplate: template }),
       clearDraft: () => set({ draftTemplate: null }),
@@ -454,17 +465,21 @@ export const useTemplateStore = create<TemplateStore>()(
       }),
       
       updateTextArea: (id, updates) => set((state) => {
-        if (state.currentTemplate) {
+        const updateTextAreas = (template: TemplateLayout | null) => {
+          if (!template) return null
           return {
-            currentTemplate: {
-              ...state.currentTemplate,
-              textAreas: state.currentTemplate.textAreas.map(ta => 
-                ta.id === id ? { ...ta, ...updates } : ta
-              )
-            }
+            ...template,
+            textAreas: template.textAreas.map(ta => 
+              ta.id === id ? { ...ta, ...updates } : ta
+            )
           }
         }
-        return state
+
+        // Update both currentTemplate and templateInBackground to preserve changes
+        return {
+          currentTemplate: updateTextAreas(state.currentTemplate),
+          templateInBackground: updateTextAreas(state.templateInBackground)
+        }
       }),
       
       deleteTextArea: (id) => set((state) => {
@@ -565,40 +580,74 @@ export const useTemplateStore = create<TemplateStore>()(
       },
       
       setEditorMode: (mode) => set((state) => {
+        if (mode === state.editorMode) {
+          return state
+        }
+
         const chartStore = useChartStore.getState()
-        
-        if (mode === 'template' && state.templateInBackground) {
-          // Switch to template mode - show the template and update chart dimensions
-          const template = state.templateInBackground
+        const chartConfig = chartStore.chartConfig as any
+
+        const captureDimensions = (): ChartDimensionState => ({
+          manualDimensions: chartConfig.manualDimensions,
+          responsive: chartConfig.responsive,
+          dynamicDimension: chartConfig.dynamicDimension,
+          width: chartConfig.width,
+          height: chartConfig.height,
+          maintainAspectRatio: chartConfig.maintainAspectRatio
+        })
+
+        if (mode === 'template') {
+          const activeTemplate =
+            state.currentTemplate ||
+            state.templateInBackground ||
+            state.templates[0] ||
+            null
+
+          if (!activeTemplate) {
+            return { editorMode: mode }
+          }
+
+          const dimensionBackup = state.chartDimensionBackup || captureDimensions()
+
           chartStore.updateChartConfig({
-            ...chartStore.chartConfig,
+            ...chartConfig,
             manualDimensions: true,
-            width: `${template.chartArea.width}px`,
-            height: `${template.chartArea.height}px`,
             responsive: false,
+            dynamicDimension: false,
+            width: `${activeTemplate.chartArea.width}px`,
+            height: `${activeTemplate.chartArea.height}px`,
             maintainAspectRatio: false
           })
-          
+
           return {
             editorMode: mode,
-            currentTemplate: state.templateInBackground
-          }
-        } else if (mode === 'chart' && state.currentTemplate) {
-          // Switch to chart mode - hide template but keep it in background
-          // Reset chart dimensions to default responsive behavior
-          chartStore.updateChartConfig({
-            ...chartStore.chartConfig,
-            manualDimensions: false,
-            responsive: true,
-            maintainAspectRatio: true
-          })
-          
-          return {
-            editorMode: mode,
-            templateInBackground: state.currentTemplate,
-            currentTemplate: null
+            currentTemplate: activeTemplate,
+            templateInBackground: activeTemplate,
+            chartDimensionBackup: dimensionBackup
           }
         }
+
+        if (mode === 'chart') {
+          const dimensionBackup = state.chartDimensionBackup || captureDimensions()
+
+          chartStore.updateChartConfig({
+            ...chartConfig,
+            manualDimensions: dimensionBackup.manualDimensions ?? false,
+            responsive: dimensionBackup.responsive ?? !dimensionBackup.manualDimensions,
+            dynamicDimension: dimensionBackup.dynamicDimension ?? false,
+            width: dimensionBackup.width,
+            height: dimensionBackup.height,
+            maintainAspectRatio: dimensionBackup.maintainAspectRatio ?? true
+          })
+
+          return {
+            editorMode: mode,
+            templateInBackground: state.currentTemplate || state.templateInBackground,
+            currentTemplate: null,
+            chartDimensionBackup: null
+          }
+        }
+
         return { editorMode: mode }
       }),
       

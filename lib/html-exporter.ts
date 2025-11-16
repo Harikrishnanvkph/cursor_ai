@@ -76,6 +76,33 @@ async function processChartDataForExport(chartData: ExtendedChartData): Promise<
   return processedData;
 }
 
+function buildLegendConfigForExport(chartConfig: any, includeLegend: boolean) {
+  const legendConfig = chartConfig?.plugins?.legend ?? {};
+  const labelsConfig = legendConfig.labels ?? {};
+  const fontConfig = labelsConfig.font ?? {};
+  const usePointStyle = labelsConfig.usePointStyle ?? true;
+
+  if (!includeLegend) {
+    return { display: false };
+  }
+
+  return {
+    ...legendConfig,
+    display: true,
+    position: legendConfig.position ?? 'top',
+    labels: {
+      ...labelsConfig,
+      usePointStyle,
+      pointStyle: labelsConfig.pointStyle ?? (usePointStyle ? 'circle' : undefined),
+      padding: labelsConfig.padding ?? 20,
+      font: {
+        ...fontConfig,
+        size: fontConfig.size ?? 12,
+      },
+    },
+  };
+}
+
 // Shared function to generate custom labels
 function generateCustomLabelsFromConfig(chartConfig: any, chartData: any, legendFilter: any, dragState: any = {}) {
   const customLabelsConfig = ((chartConfig.plugins as any)?.customLabelsConfig) || {};
@@ -183,6 +210,7 @@ export interface HTMLExportOptions {
   fileName?: string;
   template?: string; // 'modern', 'dark', 'minimal', 'professional'
   dragState?: any; // Current drag state for custom labels
+  legendConfigOverride?: any;
   // Runtime toggles from editor
   showImages?: boolean;
   showLabels?: boolean;
@@ -322,10 +350,17 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
     template = "modern"
   } = options;
 
+  const legendForExport = buildLegendConfigForExport(enhancedChartConfig, includeLegend);
+
+  const optionsWithLegend = {
+    ...options,
+    legendConfigOverride: legendForExport
+  };
+
   // Use template if specified
   if (template && htmlTemplates[template as keyof typeof htmlTemplates]) {
     const selectedTemplate = htmlTemplates[template as keyof typeof htmlTemplates];
-    const htmlContent = selectedTemplate.generate(processedChartData, enhancedChartConfig, mappedChartType, options);
+    const htmlContent = selectedTemplate.generate(processedChartData, enhancedChartConfig, mappedChartType, optionsWithLegend);
     return {
       content: htmlContent,
       fileName,
@@ -501,17 +536,7 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
                     displayColors: true,
                     padding: 12
                 } : { enabled: false },
-                legend: ${includeLegend} ? {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        usePointStyle: true,
-                        padding: 20,
-                        font: {
-                            size: 12
-                        }
-                    }
-                } : { display: false }
+                legend: ${JSON.stringify(legendForExport, null, 8)}
             }
         };
         
@@ -910,6 +935,8 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
     includeLegend = true,
   } = options;
 
+  const legendForExport = buildLegendConfigForExport(enhancedChartConfig, includeLegend);
+
   // Generate the chart script
   const chartScript = `
     // Chart.js Configuration
@@ -941,17 +968,7 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
                 displayColors: true,
                 padding: 12
             } : { enabled: false },
-            legend: ${includeLegend} ? {
-                display: true,
-                position: 'top',
-                labels: {
-                    usePointStyle: true,
-                    padding: 20,
-                    font: {
-                        size: 12
-                    }
-                }
-            } : { display: false }
+            legend: ${JSON.stringify(legendForExport, null, 8)}
         }
     };
     

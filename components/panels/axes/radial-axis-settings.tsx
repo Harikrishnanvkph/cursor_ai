@@ -15,7 +15,7 @@ interface RadialAxisSettingsProps {
   className?: string
 }
 
-type RadialAxisTab = 'general' | 'grid' | 'ticks' | 'labels' | 'angleLines'
+type RadialAxisTab = 'general' | 'grid' | 'ticks' | 'labels'
 
 export function RadialAxisSettings({ config, onUpdate, className }: RadialAxisSettingsProps) {
   const [activeTab, setActiveTab] = useState<RadialAxisTab>('general')
@@ -95,9 +95,17 @@ export function RadialAxisSettings({ config, onUpdate, className }: RadialAxisSe
         <div className="flex items-center gap-2 pb-1 border-b">
           <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
           <h3 className="text-sm font-semibold text-gray-900">Grid Lines</h3>
+          <div className="ml-auto flex items-center gap-2">
+            <Switch
+              checked={config?.grid?.display !== false}
+              onCheckedChange={(checked) => updateConfig('grid.display', checked)}
+              className="data-[state=checked]:bg-purple-600"
+              aria-label="Toggle grid lines"
+            />
           <button
             onClick={() => setGridDropdownOpen(!gridDropdownOpen)}
-            className="ml-auto p-1 hover:bg-gray-100 rounded transition-colors"
+              className="p-1 hover:bg-gray-100 rounded transition-colors"
+              aria-label={gridDropdownOpen ? "Collapse grid options" : "Expand grid options"}
           >
             <svg 
               xmlns="http://www.w3.org/2000/svg" 
@@ -114,43 +122,36 @@ export function RadialAxisSettings({ config, onUpdate, className }: RadialAxisSe
               <path d="M6 9L12 15L18 9"/>
             </svg>
           </button>
+          </div>
         </div>
         
-        <div className="bg-purple-50 rounded-lg p-3 space-y-3">
-          {/* Grid Options */}
-          <div className="grid grid-cols-2 gap-3">
+        {config?.grid?.display === false ? (
+          <div className="bg-purple-50 rounded-lg p-3">
+            <p className="text-xs text-purple-700">Grid lines are hidden. Toggle the switch above to enable styling options.</p>
+              </div>
+        ) : gridDropdownOpen ? (
+          <div className="bg-purple-50 rounded-lg p-3">
+            <div className="space-y-3 pt-1">
+              {/* Circular Grid */}
             <div className="space-y-1">
               <div className="flex items-center justify-between">
-                <Label className="text-xs font-medium">Show</Label>
+                  <Label className="text-xs font-medium">Circular Grid</Label>
                 <Switch
-                  checked={config?.grid?.display !== false}
-                  onCheckedChange={(checked) => updateConfig('grid.display', checked)}
+                    checked={config?.grid?.circular === true}
+                    onCheckedChange={(checked) => updateConfig('grid.circular', checked)}
                   className="data-[state=checked]:bg-purple-600"
                 />
-              </div>
-            </div>
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-medium">Axis Line</Label>
-                <Switch
-                  checked={config?.border?.display !== false}
-                  onCheckedChange={(checked) => updateConfig('border.display', checked)}
-                  className="data-[state=checked]:bg-purple-600"
-                />
-              </div>
             </div>
           </div>
           
-          {/* Dropdown Content */}
-          {gridDropdownOpen && (
-            <div className="space-y-3 pt-2 border-t border-purple-200">
-              {/* Grid Color */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
+              {/* Color and Line Width on same line */}
+              <div className="grid grid-cols-2 gap-3">
+                {/* Grid Color - Stacked: label above, color picker below */}
+                <div className="space-y-2">
                   <Label className="text-xs font-medium">Color</Label>
                   <div className="flex items-center gap-2">
                     <div 
-                      className="w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform"
+                      className="w-8 h-8 rounded border-2 border-white shadow-sm cursor-pointer hover:scale-110 transition-transform flex-shrink-0"
                       style={{ backgroundColor: config?.grid?.color || '#e5e7eb' }}
                       onClick={() => document.getElementById('grid-color')?.click()}
                     />
@@ -164,6 +165,94 @@ export function RadialAxisSettings({ config, onUpdate, className }: RadialAxisSe
                     <Input
                       value={config?.grid?.color || '#e5e7eb'}
                       onChange={(e) => updateConfig('grid.color', e.target.value)}
+                      className="flex-1 h-8 text-xs font-mono uppercase"
+                      placeholder="#e5e7eb"
+                    />
+                  </div>
+                </div>
+
+                {/* Grid Line Width - Stacked: label above, input below */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">Line Width</Label>
+                  <Input
+                    type="number"
+                    value={config?.grid?.lineWidth || 1}
+                    onChange={(e) => updateConfig('grid.lineWidth', e.target.value ? Number(e.target.value) : 1)}
+                    placeholder="1"
+                    className="h-8 text-xs"
+                    min={0}
+                    max={10}
+                    step={0.5}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {/* Angle Lines Section */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 pb-1 border-b">
+          <div className="w-2 h-2 bg-red-600 rounded-full"></div>
+          <h3 className="text-sm font-semibold text-gray-900">Angle Lines</h3>
+          <div className="ml-auto flex items-center gap-2">
+            <Switch
+              checked={config?.angleLines?.display !== false}
+              onCheckedChange={(checked) => updateConfig('angleLines.display', checked)}
+              className="data-[state=checked]:bg-red-600"
+              aria-label="Toggle angle lines"
+            />
+            <button
+              onClick={() => setAngleLinesDropdownOpen(!angleLinesDropdownOpen)}
+              className="p-1 hover:bg-gray-100 rounded transition-colors"
+              aria-label={angleLinesDropdownOpen ? "Collapse angle lines options" : "Expand angle lines options"}
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width="16" 
+                height="16" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+                className={`transform transition-transform ${angleLinesDropdownOpen ? 'rotate-180' : ''}`}
+              >
+                <path d="M6 9L12 15L18 9"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        
+        {config?.angleLines?.display === false ? (
+          <div className="bg-red-50 rounded-lg p-3">
+            <p className="text-xs text-red-700">Angle lines are hidden. Toggle the switch above to enable styling options.</p>
+          </div>
+        ) : angleLinesDropdownOpen ? (
+          <div className="bg-red-50 rounded-lg p-3">
+            <div className="space-y-3 pt-1">
+              {/* Angle Lines Color */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium">Color</Label>
+                  <div className="flex items-center gap-2">
+                    <div 
+                      className="w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform"
+                      style={{ backgroundColor: config?.angleLines?.color || '#e5e7eb' }}
+                      onClick={() => document.getElementById('angle-color')?.click()}
+                    />
+                    <input
+                      id="angle-color"
+                      type="color"
+                      value={config?.angleLines?.color || '#e5e7eb'}
+                      onChange={(e) => updateConfig('angleLines.color', e.target.value)}
+                      className="sr-only"
+                    />
+                    <Input
+                      value={config?.angleLines?.color || '#e5e7eb'}
+                      onChange={(e) => updateConfig('angleLines.color', e.target.value)}
                       className="w-24 h-8 text-xs font-mono uppercase"
                       placeholder="#e5e7eb"
                     />
@@ -171,92 +260,26 @@ export function RadialAxisSettings({ config, onUpdate, className }: RadialAxisSe
                 </div>
               </div>
 
-              {/* Grid Line Width */}
+              {/* Line Width */}
               <div className="space-y-1">
                 <Label className="text-xs font-medium">Line Width</Label>
                 <div className="flex items-center gap-3">
                   <Slider
-                    value={[config?.grid?.lineWidth || 1]}
-                    onValueChange={([value]) => updateConfig('grid.lineWidth', value)}
+                    value={[config?.angleLines?.lineWidth || 1]}
+                    onValueChange={([value]) => updateConfig('angleLines.lineWidth', value)}
                     max={10}
                     min={0}
                     step={1}
                     className="flex-1"
                   />
                   <span className="text-xs font-mono w-8 text-center">
-                    {config?.grid?.lineWidth || 1}
+                    {config?.angleLines?.lineWidth || 1}
                   </span>
                 </div>
               </div>
-
-              {/* Circular Grid (for radar charts) */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium">Circular Grid</Label>
-                  <Switch
-                    checked={config?.grid?.circular !== false}
-                    onCheckedChange={(checked) => updateConfig('grid.circular', checked)}
-                    className="data-[state=checked]:bg-purple-600"
-                  />
-                </div>
-                <p className="text-xs text-gray-500">Use circular instead of polygonal grid lines</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Axis Line Section */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 pb-1 border-b">
-          <div className="w-2 h-2 bg-orange-600 rounded-full"></div>
-          <h3 className="text-sm font-semibold text-gray-900">Axis Line</h3>
-        </div>
-        
-        <div className="bg-orange-50 rounded-lg p-3 space-y-3">
-          {/* Color and Width Controls */}
-          <div className="grid grid-cols-2 gap-3">
-            {/* Color */}
-            <div className="space-y-1">
-              <Label className="text-xs font-medium">Color</Label>
-              <div className="flex items-center gap-2">
-                <div 
-                  className="w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform flex-shrink-0"
-                  style={{ backgroundColor: config?.border?.color || '#666666' }}
-                  onClick={() => document.getElementById('radial-axis-line-color')?.click()}
-                />
-                <input
-                  id="radial-axis-line-color"
-                  type="color"
-                  value={config?.border?.color || '#666666'}
-                  onChange={(e) => updateConfig('border.color', e.target.value)}
-                  className="sr-only"
-                />
-                <Input
-                  value={config?.border?.color || '#666666'}
-                  onChange={(e) => updateConfig('border.color', e.target.value)}
-                  className="h-8 text-xs font-mono uppercase flex-1"
-                  placeholder="#666666"
-                />
-              </div>
-            </div>
-
-            {/* Width */}
-            <div className="space-y-1">
-              <Label className="text-xs font-medium">Width</Label>
-              <Input
-                type="number"
-                value={config?.border?.width || ''}
-                onChange={(e) => updateConfig('border.width', e.target.value ? Number(e.target.value) : undefined)}
-                placeholder="1"
-                className="h-8 text-xs"
-                min={0}
-                max={10}
-                step={0.5}
-              />
             </div>
           </div>
-        </div>
+        ) : null}
       </div>
     </div>
   )
@@ -509,101 +532,6 @@ export function RadialAxisSettings({ config, onUpdate, className }: RadialAxisSe
     </div>
   )
 
-  const renderAngleLinesTab = () => (
-    <div className="space-y-4">
-      {/* Angle Lines Section */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 pb-1 border-b">
-          <div className="w-2 h-2 bg-red-600 rounded-full"></div>
-          <h3 className="text-sm font-semibold text-gray-900">Angle Lines</h3>
-          <button
-            onClick={() => setAngleLinesDropdownOpen(!angleLinesDropdownOpen)}
-            className="ml-auto p-1 hover:bg-gray-100 rounded transition-colors"
-          >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              width="16" 
-              height="16" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
-              strokeLinejoin="round"
-              className={`transform transition-transform ${angleLinesDropdownOpen ? 'rotate-180' : ''}`}
-            >
-              <path d="M6 9L12 15L18 9"/>
-            </svg>
-          </button>
-        </div>
-        
-        <div className="bg-red-50 rounded-lg p-3 space-y-3">
-          {/* Show Angle Lines Toggle */}
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium">Show Angle Lines</Label>
-              <Switch
-                checked={config?.angleLines?.display !== false}
-                onCheckedChange={(checked) => updateConfig('angleLines.display', checked)}
-                className="data-[state=checked]:bg-red-600"
-              />
-            </div>
-          </div>
-          
-          {/* Dropdown Content */}
-          {angleLinesDropdownOpen && (
-            <div className="space-y-3 pt-2 border-t border-red-200">
-              {/* Angle Lines Color */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium">Color</Label>
-                  <div className="flex items-center gap-2">
-                    <div 
-                      className="w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform"
-                      style={{ backgroundColor: config?.angleLines?.color || '#e5e7eb' }}
-                      onClick={() => document.getElementById('angle-color')?.click()}
-                    />
-                    <input
-                      id="angle-color"
-                      type="color"
-                      value={config?.angleLines?.color || '#e5e7eb'}
-                      onChange={(e) => updateConfig('angleLines.color', e.target.value)}
-                      className="sr-only"
-                    />
-                    <Input
-                      value={config?.angleLines?.color || '#e5e7eb'}
-                      onChange={(e) => updateConfig('angleLines.color', e.target.value)}
-                      className="w-24 h-8 text-xs font-mono uppercase"
-                      placeholder="#e5e7eb"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Line Width */}
-              <div className="space-y-1">
-                <Label className="text-xs font-medium">Line Width</Label>
-                <div className="flex items-center gap-3">
-                  <Slider
-                    value={[config?.angleLines?.lineWidth || 1]}
-                    onValueChange={([value]) => updateConfig('angleLines.lineWidth', value)}
-                    max={10}
-                    min={0}
-                    step={1}
-                    className="flex-1"
-                  />
-                  <span className="text-xs font-mono w-8 text-center">
-                    {config?.angleLines?.lineWidth || 1}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-
   const renderTabContent = (tab: RadialAxisTab) => {
     switch (tab) {
       case 'general':
@@ -614,8 +542,6 @@ export function RadialAxisSettings({ config, onUpdate, className }: RadialAxisSe
         return renderTicksTab()
       case 'labels':
         return renderLabelsTab()
-      case 'angleLines':
-        return renderAngleLinesTab()
       default:
         return renderGeneralTab()
     }
@@ -623,22 +549,24 @@ export function RadialAxisSettings({ config, onUpdate, className }: RadialAxisSe
 
   return (
     <div className={cn("space-y-4", className)}>
-      {/* Tabs */}
-      <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
-        {(['general', 'grid', 'ticks', 'labels', 'angleLines'] as RadialAxisTab[]).map((tab) => (
+      {/* Tabs - Horizontally Scrollable */}
+      <div className="overflow-x-auto">
+        <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg min-w-min">
+          {(['general', 'grid', 'ticks', 'labels'] as RadialAxisTab[]).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={cn(
-              "flex-1 text-xs font-medium py-2 px-3 rounded-md transition-colors",
+                "flex-shrink-0 text-sm font-semibold py-2.5 px-4 rounded-md transition-colors whitespace-nowrap",
               activeTab === tab
                 ? "bg-white text-gray-900 shadow-sm"
                 : "text-gray-600 hover:text-gray-900"
             )}
           >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {tab === 'angleLines' ? 'Angle Lines' : tab.charAt(0).toUpperCase() + tab.slice(1)}
           </button>
         ))}
+        </div>
       </div>
 
       {/* Tab Content */}

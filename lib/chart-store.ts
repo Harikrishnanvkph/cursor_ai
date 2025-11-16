@@ -452,8 +452,14 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
   if (processedType === 'radar') {
     return {
       ...baseConfig,
+      plugins: {
+        ...baseConfig.plugins,
+        // @ts-ignore - legendType is a custom property
+        legendType: 'slice' // Override to slice for radar
+      },
       scales: {
         r: {
+          type: 'radialLinear', // Required for Chart.js to recognize radial scale
           display: true,
           beginAtZero: true,
           min: undefined,
@@ -462,7 +468,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
             display: true,
             color: "#e5e7eb",
             lineWidth: 1,
-            circular: true // Default to circular grid, panel can toggle to polygonal
+            circular: false // Default to polygonal grid, panel can toggle to circular
           },
           angleLines: {
             display: true,
@@ -496,6 +502,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
       ...baseConfig,
       scales: {
         r: {
+          type: 'radialLinear', // Required for Chart.js to recognize radial scale
           beginAtZero: true,
           min: 0, 
           ticks: {
@@ -520,6 +527,8 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
       // For polarArea, datalabels are often useful, let's enable them by default but allow override
       plugins: {
         ...baseConfig.plugins, // Keep other base plugin configs like title, legend, tooltip
+        // @ts-ignore - legendType is a custom property
+        legendType: 'slice', // Override to slice for polar area
         datalabels: { // Override datalabels specifically for polarArea
           display: true, // Default to true for polarArea
           color: '#fff', // White color for better contrast on colored slices
@@ -641,62 +650,9 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
     }
   }
 
-  const noScalesTypes = ["pie", "doughnut", "polarArea"]
-
-  if (noScalesTypes.includes(processedType as string)) {
-    // For polar area, override legend type to 'slice'
-    if (processedType as string === 'polarArea') {
-      return {
-        ...baseConfig,
-        plugins: {
-          ...baseConfig.plugins,
-          // @ts-ignore - legendType is a custom property
-          legendType: 'slice' // Override to slice for polar area
-        }
-      }
-    }
+  // Pie and doughnut charts don't need scales
+  if (['pie', 'doughnut'].includes(processedType as string)) {
     return baseConfig
-  }
-
-  // Handle radar charts - override legend type to 'slice'
-  if (processedType as string === 'radar') {
-    return {
-      ...baseConfig,
-      plugins: {
-        ...baseConfig.plugins,
-        // @ts-ignore - legendType is a custom property
-        legendType: 'slice' // Override to slice for radar
-      },
-      scales: {
-        r: {
-          display: true,
-          grid: {
-            display: true,
-            color: "#e5e7eb",
-            lineWidth: 1,
-          },
-          angleLines: {
-            display: true,
-            color: "#e5e7eb",
-            lineWidth: 1,
-          },
-          pointLabels: {
-            display: true,
-            font: {
-              size: 12,
-            },
-            color: "#666666",
-          },
-          ticks: {
-            display: true,
-            font: {
-              size: 12,
-            },
-            color: "#666666",
-          },
-        },
-      },
-    }
   }
 
   return {

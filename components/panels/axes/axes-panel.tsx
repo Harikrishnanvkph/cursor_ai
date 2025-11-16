@@ -42,17 +42,10 @@ export function AxesPanel() {
   // Handle radar and polar area charts (radial axes)
   if (['radar', 'polarArea'].includes(chartType)) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Radial Axis Configuration</CardTitle>
-        </CardHeader>
-        <CardContent>
           <RadialAxisSettings
             config={chartConfig.scales?.r || {}}
             onUpdate={handleConfigUpdate}
           />
-        </CardContent>
-      </Card>
     )
   }
 

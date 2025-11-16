@@ -1091,13 +1091,14 @@ export const overlayPlugin = {
             })
             canvas.dispatchEvent(selectEvent)
             
-            // Show custom context menu
+            // Use the exact click position - event.clientX/clientY are viewport coordinates
+            // These work correctly with fixed positioning regardless of transforms
             const contextMenuEvent = new CustomEvent('overlayContextMenu', {
               detail: {
                 type: 'image',
                 id: img.id,
-                x: event.clientX,
-                y: event.clientY,
+                x: event.clientX, // Direct viewport X coordinate - works with fixed positioning
+                y: event.clientY, // Direct viewport Y coordinate - works with fixed positioning
                 data: img
               }
             })
@@ -1145,13 +1146,14 @@ export const overlayPlugin = {
           const hitHeight = totalHeight + (paddingY * 2)
           
           if (isPointInRect(x, y, txtX, txtY, hitWidth, hitHeight)) {
-            // Show custom context menu for text
+            // Use the exact click position - event.clientX/clientY are viewport coordinates
+            // These work correctly with fixed positioning regardless of transforms
             const contextMenuEvent = new CustomEvent('overlayContextMenu', {
               detail: {
                 type: 'text',
                 id: txt.id,
-                x: event.clientX,
-                y: event.clientY,
+                x: event.clientX, // Direct viewport X coordinate - works with fixed positioning
+                y: event.clientY, // Direct viewport Y coordinate - works with fixed positioning
                 data: txt
               }
             })

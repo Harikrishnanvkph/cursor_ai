@@ -5,7 +5,7 @@ import { useChartStore } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
 import { Button } from "@/components/ui/button"
 import { Download, RefreshCw, Maximize2, Minimize2, RotateCcw, X,
-   FileCode, FileDown, FileImage, FileText, FileType2, ImageIcon, Settings, Ellipsis, Eye } from "lucide-react"
+   FileCode, FileDown, FileImage, FileText, ImageIcon, Settings, Ellipsis, Eye, ZoomIn, ZoomOut, Hand } from "lucide-react"
 import { BarChart3,ChartColumnStacked,ChartColumnBig,ChartBarBig,ChartLine,ChartPie,ChartScatter,ChartArea,Radar, Database, Dot, Edit3, LogOut } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { downloadChartAsHTML } from "@/lib/html-exporter"
@@ -32,7 +32,13 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   const { user } = useAuth()
 
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
+  const chartContainerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [panMode, setPanMode] = useState(false);
   const { clearMessages } = useChatStore();
 
 
@@ -394,10 +400,6 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       link.click();
     }
   };
-  const handleExportSVG = () => {
-    // Chart.js does not natively support SVG export; you may need a plugin or custom logic
-    alert('SVG export is not implemented yet.');
-  };
   const handleExportCSV = () => {
     // Implement CSV export logic here
     alert('CSV export is not implemented yet.');
@@ -415,6 +417,89 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       window.dispatchEvent(event);
     }
   };
+
+  // Handle zoom controls
+  const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.1, 3));
+  const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.1, 0.1));
+  const handleResetZoom = () => {
+    setZoom(1);
+    setPanOffset({ x: 0, y: 0 });
+  };
+
+  // Handle mouse/touch events for panning (only on chart)
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // Only allow chart dragging when pan mode is active
+    if (!panMode) {
+      return
+    }
+    
+    const target = e.target as HTMLElement
+    
+    // When pan mode is active, allow dragging from anywhere including canvas
+    setIsDragging(true)
+    // Store the initial mouse position and current pan offset
+    setDragStart({ 
+      x: e.clientX - panOffset.x, 
+      y: e.clientY - panOffset.y 
+    })
+    e.preventDefault() // Prevent text selection while dragging
+    e.stopPropagation() // Prevent event bubbling
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging) {
+      // Calculate new pan offset based on mouse movement
+      setPanOffset({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y
+      })
+      e.preventDefault()
+    }
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
+  }
+
+  // Handle mouse move globally when dragging
+  useEffect(() => {
+    if (isDragging) {
+      const handleGlobalMouseMove = (e: MouseEvent) => {
+        setPanOffset({
+          x: e.clientX - dragStart.x,
+          y: e.clientY - dragStart.y
+        })
+      }
+
+      const handleGlobalMouseUp = () => {
+        setIsDragging(false)
+      }
+
+      window.addEventListener('mousemove', handleGlobalMouseMove)
+      window.addEventListener('mouseup', handleGlobalMouseUp)
+
+      return () => {
+        window.removeEventListener('mousemove', handleGlobalMouseMove)
+        window.removeEventListener('mouseup', handleGlobalMouseUp)
+      }
+    }
+  }, [isDragging, dragStart])
+
+  // Center the view when zoom resets or component mounts
+  useEffect(() => {
+    if (chartContainerRef.current && zoom === 1 && panOffset.x === 0 && panOffset.y === 0) {
+      // Small delay to ensure layout is complete
+      setTimeout(() => {
+        if (chartContainerRef.current) {
+          const container = chartContainerRef.current
+          const scrollLeft = (container.scrollWidth - container.clientWidth) / 2
+          const scrollTop = (container.scrollHeight - container.clientHeight) / 2
+          container.scrollLeft = scrollLeft
+          container.scrollTop = scrollTop
+        }
+      }, 100)
+    }
+  }, [zoom, panOffset.x, panOffset.y])
 
   const getChartIcon = (chartName:string)=>{
     switch(chartName){
@@ -550,6 +635,42 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
           )}
           {/* Action buttons: horizontally scrollable on mobile if needed */}
           <div className={`flex gap-2 flex-shrink-0 ml-4${isMobile ? ' justify-evenly ml-0 overflow-x-auto max-w-full pb-1' : ''}`} style={isMobile ? { WebkitOverflowScrolling: 'touch' } : {}}>
+            {/* Zoom Controls */}
+            <div className="flex items-center gap-1 border rounded-md p-0.5 bg-white">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleZoomOut}
+                disabled={zoom <= 0.1}
+                className="h-7 w-7 p-0"
+                title="Zoom Out"
+              >
+                <ZoomOut className="h-3.5 w-3.5" />
+              </Button>
+              <span className="text-xs text-gray-600 min-w-[45px] text-center px-1">
+                {Math.round(zoom * 100)}%
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleZoomIn}
+                disabled={zoom >= 3}
+                className="h-7 w-7 p-0"
+                title="Zoom In"
+              >
+                <ZoomIn className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+            {/* Pan Mode Toggle */}
+            <Button
+              variant={panMode ? "default" : "outline"}
+              size="sm"
+              onClick={() => setPanMode(!panMode)}
+              className="h-7 px-2"
+              title={panMode ? "Disable Pan Mode" : "Enable Pan Mode"}
+            >
+              <Hand className="h-3.5 w-3.5" />
+            </Button>
             {/* Actions Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -561,6 +682,10 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                 <DropdownMenuItem onClick={handleRefresh}>
                   <RefreshCw className="h-4 w-4 mr-2" />
                   <span>Refresh Chart</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleResetZoom}>
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  <span>Reset Zoom</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleFullscreen}>
                   <Maximize2 className="h-4 w-4 mr-2" />
@@ -591,9 +716,6 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                 <DropdownMenuItem onClick={handleExportJPEG}>
                   <ImageIcon className="h-4 w-4 mr-2" /> JPEG
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportSVG}>
-                  <FileType2 className="h-4 w-4 mr-2" /> SVG
-                </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleExportHTML}>
                   <FileCode className="h-4 w-4 mr-2" /> HTML
                 </DropdownMenuItem>
@@ -616,7 +738,212 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       {/* Chart Container */}
       <Card className={`${isMobile ? 'w-full min-h-[300px]' : 'w-full flex-1 min-h-[300px]'} rounded-lg border bg-card text-card-foreground shadow-lg overflow-hidden transition-all duration-200${isFullscreen ? ' fixed inset-4 z-50 m-0 rounded-lg' : ''}`}>
         <CardContent className={`${isMobile ? 'p-0' : 'p-0'} h-full w-full`}>
-          <ChartGenerator />
+          {/* Scrollable Canvas Container */}
+          <div
+            ref={chartContainerRef}
+            className="relative w-full h-full overflow-auto bg-gray-50"
+            style={{
+              scrollbarWidth: 'thin',
+              scrollbarColor: '#cbd5e1 #f1f5f9',
+              minHeight: '100%',
+              height: '100%'
+            }}
+          >
+            {/* Canvas Background - Similar to template mode */}
+            {/* Calculate canvas dimensions - larger than chart to show outer space */}
+            {(() => {
+              const isResponsive = (chartConfig as any)?.responsive !== false;
+              const parseDimension = (value: any): number => {
+                if (typeof value === 'number') return isNaN(value) ? 800 : value;
+                if (typeof value === 'string') {
+                  const numericValue = parseFloat(value.replace(/[^\d.-]/g, ''));
+                  return isNaN(numericValue) ? 800 : numericValue;
+                }
+                return 800;
+              };
+              
+              const chartWidth = !isResponsive ? parseDimension((chartConfig as any)?.width) : 800;
+              const chartHeight = !isResponsive ? parseDimension((chartConfig as any)?.height) : 600;
+              
+              // When responsive, chart fills the entire scrollable container
+              if (isResponsive) {
+                return (
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      backgroundColor: 'transparent',
+                      width: '100%',
+                      height: '100%',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0
+                    }}
+                  >
+                    {/* Background layer for dragging - behind the chart (only active in pan mode) */}
+                    {panMode && (
+                      <div
+                        className="absolute inset-0"
+                        style={{
+                          cursor: isDragging ? 'grabbing' : 'grab',
+                          zIndex: 1
+                        }}
+                        onMouseDown={handleMouseDown}
+                      />
+                    )}
+                    
+                    {/* Chart Area - Fills full container in responsive mode */}
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        transform: zoom !== 1 ? `scale(${zoom})` : 'none',
+                        transformOrigin: 'center center',
+                        transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+                        zIndex: 10,
+                        cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'default',
+                        pointerEvents: panMode ? 'auto' : 'auto'
+                      }}
+                      onMouseDown={panMode ? handleMouseDown : undefined}
+                    >
+                      <div 
+                        className="absolute inset-0"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          pointerEvents: panMode ? 'none' : 'auto',
+                          userSelect: panMode ? 'none' : 'auto',
+                          WebkitUserSelect: panMode ? 'none' : 'auto'
+                        }}
+                        onMouseDown={(e) => {
+                          if (panMode) {
+                            handleMouseDown(e as any)
+                            e.preventDefault()
+                            e.stopPropagation()
+                          } else {
+                            e.stopPropagation()
+                          }
+                        }}
+                        onDragStart={(e) => {
+                          if (panMode) {
+                            e.preventDefault()
+                          }
+                        }}
+                      >
+                        <div 
+                          className="absolute inset-0"
+                          style={{ 
+                            width: '100%',
+                            height: '100%',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            pointerEvents: panMode ? 'none' : 'auto' 
+                          }}
+                        >
+                          <ChartGenerator />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+              
+              // Non-responsive mode: fixed dimensions with canvas padding
+              const canvasPadding = 200;
+              const canvasWidth = chartWidth + canvasPadding;
+              const canvasHeight = chartHeight + canvasPadding;
+              
+              // Calculate canvas size - needs to be large enough for zoomed chart + padding
+              const scaledChartWidth = chartWidth * zoom;
+              const scaledChartHeight = chartHeight * zoom;
+              const effectiveCanvasWidth = Math.max(canvasWidth, scaledChartWidth + canvasPadding);
+              const effectiveCanvasHeight = Math.max(canvasHeight, scaledChartHeight + canvasPadding);
+              
+              // Calculate initial centered position within the canvas
+              const initialLeft = effectiveCanvasWidth / 2 - scaledChartWidth / 2;
+              const initialTop = effectiveCanvasHeight / 2 - scaledChartHeight / 2;
+              
+              return (
+                <div
+                  className="relative"
+                  style={{
+                    width: `${effectiveCanvasWidth}px`,
+                    height: `${effectiveCanvasHeight}px`,
+                    margin: '0 auto',
+                    backgroundColor: 'transparent'
+                  }}
+                >
+                  {/* Background layer for dragging - behind the chart (only active in pan mode) */}
+                  {panMode && (
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        cursor: isDragging ? 'grabbing' : 'grab',
+                        zIndex: 1
+                      }}
+                      onMouseDown={handleMouseDown}
+                    />
+                  )}
+                  
+                  {/* Chart Area - Positioned */}
+                  <div
+                    className="absolute"
+                    style={{
+                      left: `${initialLeft + panOffset.x}px`,
+                      top: `${initialTop + panOffset.y}px`,
+                      width: `${chartWidth}px`,
+                      height: `${chartHeight}px`,
+                      transform: `scale(${zoom})`,
+                      transformOrigin: 'top left',
+                      transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+                      zIndex: 10,
+                      cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'default',
+                      pointerEvents: panMode ? 'auto' : 'auto'
+                    }}
+                    onMouseDown={panMode ? handleMouseDown : undefined}
+                  >
+                    <div 
+                      className="w-full h-full"
+                      style={{
+                        pointerEvents: panMode ? 'none' : 'auto',
+                        userSelect: panMode ? 'none' : 'auto',
+                        WebkitUserSelect: panMode ? 'none' : 'auto'
+                      }}
+                      onMouseDown={(e) => {
+                        if (panMode) {
+                          handleMouseDown(e as any)
+                          e.preventDefault()
+                          e.stopPropagation()
+                        } else {
+                          e.stopPropagation()
+                        }
+                      }}
+                      onDragStart={(e) => {
+                        if (panMode) {
+                          e.preventDefault()
+                        }
+                      }}
+                    >
+                      <div style={{ pointerEvents: panMode ? 'none' : 'auto' }}>
+                        <ChartGenerator />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
         </CardContent>
       </Card>
       

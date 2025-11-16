@@ -24,9 +24,15 @@ export function RadarPanel({ className }: RadarPanelProps) {
   const handleRadarScaleUpdate = (path: string, value: any) => {
     const newConfig = { ...chartConfig }
     if (!newConfig.scales) newConfig.scales = {}
-    if (!newConfig.scales.r) newConfig.scales.r = {}
+    if (!newConfig.scales.r) newConfig.scales.r = { type: 'radialLinear' } as any
 
     let current = newConfig.scales.r as any
+    
+    // Ensure type is always set
+    if (!current.type) {
+      current.type = 'radialLinear'
+    }
+    
     const pathParts = path.split('.')
     
     for (let i = 0; i < pathParts.length - 1; i++) {

@@ -283,12 +283,41 @@ export async function saveChartToBackend(): Promise<boolean> {
     
     const conversationId = conversationResponse.data.id;
     
+    // Normalize chartConfig before saving: convert dynamicDimension to manualDimensions
+    const normalizedConfig = (() => {
+      const config = { ...chartConfig };
+      
+      // If dynamicDimension is active, convert it to manualDimensions
+      if (config.dynamicDimension === true) {
+        config.manualDimensions = true;
+        config.responsive = false;
+        delete config.dynamicDimension; // Remove the dynamicDimension flag
+        
+        // Ensure width and height are preserved
+        if (!config.width) config.width = '800px';
+        if (!config.height) config.height = '600px';
+        
+        console.log('📊 Converted dynamicDimension to manualDimensions for storage');
+      } else {
+        // Clean up - ensure only responsive OR manualDimensions is set
+        delete config.dynamicDimension;
+        
+        if (config.responsive === true) {
+          config.manualDimensions = false;
+        } else if (config.manualDimensions === true) {
+          config.responsive = false;
+        }
+      }
+      
+      return config;
+    })();
+
     // Save chart snapshot
     const snapshotResult = await dataService.saveChartSnapshot(
       conversationId,
       chartType,
       chartDataValue,
-      chartConfig
+      normalizedConfig
     );
     
     if (snapshotResult.error) {

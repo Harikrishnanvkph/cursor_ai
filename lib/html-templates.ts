@@ -10,12 +10,35 @@ export interface HTMLTemplate {
 /**
  * Modern responsive template with clean design
  */
+function resolveLegendConfig(
+  options: HTMLExportOptions,
+  fallback: () => Record<string, any>
+) {
+  if (options.legendConfigOverride) {
+    return options.legendConfigOverride;
+  }
+  if (options.includeLegend === false) {
+    return { display: false };
+  }
+  return fallback();
+}
+
 export const modernTemplate: HTMLTemplate = {
   name: "Modern Responsive",
   description: "Clean, modern design with responsive layout and smooth animations",
   generate: (chartData, chartConfig, chartType, options) => {
     const { title, width, height, backgroundColor, includeAnimations, includeTooltips, includeLegend } = options;
-    
+    const legendConfig = resolveLegendConfig(options, () => ({
+      display: true,
+      position: 'top',
+      labels: {
+        usePointStyle: true,
+        padding: 20,
+        font: { size: 12, weight: '500' },
+        color: '#4a5568'
+      }
+    }));
+
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -263,16 +286,7 @@ export const modernTemplate: HTMLTemplate = {
                     titleFont: { size: 14, weight: '600' },
                     bodyFont: { size: 13 }
                 } : { enabled: false },
-                legend: ${includeLegend} ? {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        usePointStyle: true,
-                        padding: 20,
-                        font: { size: 12, weight: '500' },
-                        color: '#4a5568'
-                    }
-                } : { display: false }
+                legend: ${JSON.stringify(legendConfig, null, 20)}
             }
         };
         
@@ -340,6 +354,16 @@ export const darkTemplate: HTMLTemplate = {
   description: "Modern dark theme with neon accents and sleek design",
   generate: (chartData, chartConfig, chartType, options) => {
     const { title, width, height, includeAnimations, includeTooltips, includeLegend } = options;
+    const legendConfig = resolveLegendConfig(options, () => ({
+      display: true,
+      position: 'top',
+      labels: {
+        usePointStyle: true,
+        padding: 20,
+        font: { size: 12, weight: '500' },
+        color: '#e2e8f0'
+      }
+    }));
     
     return `<!DOCTYPE html>
 <html lang="en">
@@ -579,16 +603,7 @@ export const darkTemplate: HTMLTemplate = {
                     displayColors: true,
                     padding: 16
                 } : { enabled: false },
-                legend: ${includeLegend} ? {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        usePointStyle: true,
-                        padding: 20,
-                        font: { size: 12, weight: '500' },
-                        color: '#e2e8f0'
-                    }
-                } : { display: false }
+                legend: ${JSON.stringify(legendConfig, null, 20)}
             }
         };
         
@@ -642,6 +657,17 @@ export const minimalTemplate: HTMLTemplate = {
   description: "Simple, clean template with minimal styling",
   generate: (chartData, chartConfig, chartType, options) => {
     const { title, width, height, includeAnimations, includeTooltips, includeLegend } = options;
+    const legendConfig = resolveLegendConfig(options, () => ({
+      display: true,
+      position: 'top',
+      labels: {
+        usePointStyle: true,
+        padding: 20,
+        font: {
+          size: 12
+        }
+      }
+    }));
     
     return `<!DOCTYPE html>
 <html lang="en">
@@ -743,17 +769,7 @@ export const minimalTemplate: HTMLTemplate = {
                     displayColors: true,
                     padding: 12
                 } : { enabled: false },
-                legend: ${includeLegend} ? {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        usePointStyle: true,
-                        padding: 20,
-                        font: {
-                            size: 12
-                        }
-                    }
-                } : { display: false }
+                legend: ${JSON.stringify(legendConfig, null, 20)}
             }
         };
         
@@ -776,6 +792,16 @@ export const professionalTemplate: HTMLTemplate = {
   description: "Business-ready template with corporate styling",
   generate: (chartData, chartConfig, chartType, options) => {
     const { title, width, height, includeAnimations, includeTooltips, includeLegend } = options;
+    const legendConfig = resolveLegendConfig(options, () => ({
+      display: true,
+      position: 'top',
+      labels: {
+        usePointStyle: true,
+        padding: 20,
+        font: { size: 12, weight: '500' },
+        color: '#2c3e50'
+      }
+    }));
     
     return `<!DOCTYPE html>
 <html lang="en">
@@ -987,16 +1013,7 @@ export const professionalTemplate: HTMLTemplate = {
                     displayColors: true,
                     padding: 12
                 } : { enabled: false },
-                legend: ${includeLegend} ? {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        usePointStyle: true,
-                        padding: 20,
-                        font: { size: 12, weight: '500' },
-                        color: '#2c3e50'
-                    }
-                } : { display: false }
+                legend: ${JSON.stringify(legendConfig, null, 20)}
             }
         };
         
@@ -1039,6 +1056,16 @@ export const standardTemplate: HTMLTemplate = {
   description: "Clean chart with overlay images and text - no extra styling",
   generate: (chartData, chartConfig, chartType, options) => {
     const { title, width, height, includeAnimations, includeTooltips, includeLegend } = options;
+    const legendConfig = resolveLegendConfig(options, () => ({
+      display: true,
+      position: 'top',
+      labels: {
+        usePointStyle: true,
+        padding: 20,
+        font: { size: 12, weight: '500' },
+        color: '#4a5568'
+      }
+    }));
     
     return `<!DOCTYPE html>
 <html lang="en">
@@ -1129,16 +1156,7 @@ export const standardTemplate: HTMLTemplate = {
                     displayColors: true,
                     padding: 12
                 } : { enabled: false },
-                legend: ${includeLegend} ? {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        usePointStyle: true,
-                        padding: 20,
-                        font: { size: 12, weight: '500' },
-                        color: '#4a5568'
-                    }
-                } : { display: false }
+                legend: ${JSON.stringify(legendConfig, null, 20)}
             }
         };
         

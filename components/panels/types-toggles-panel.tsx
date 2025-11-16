@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { BarChart3 } from "lucide-react"
+import { ResponsiveAnimationsPanel } from "@/components/panels/responsive-animations-panel"
 
 export function TypesTogglesPanel() {
   const { 
@@ -94,6 +95,9 @@ export function TypesTogglesPanel() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Responsive Animations */}
+      <ResponsiveAnimationsPanel />
     </div>
   )
 }            

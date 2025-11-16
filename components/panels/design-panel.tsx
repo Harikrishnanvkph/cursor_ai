@@ -7,10 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Button } from "@/components/ui/button"
 import { useChartStore } from "@/lib/chart-store"
-import { ImageIcon, Layers, Type } from "lucide-react";
+import { ImageIcon, Layers, Type, Palette } from "lucide-react";
 import { RadarPanel } from "./radar-panel"; // Added import for RadarPanel
 import { PiePanel } from "./pie-panel"; // Added import for PiePanel
+import { useState } from "react"
 
 // Add type for slice value config
 interface SliceValueConfig {
@@ -33,33 +35,358 @@ interface SliceValueConfig {
   borderWidth: number
 }
 
+type ConfigPathUpdate = {
+  path: string;
+  value: any;
+};
+
 export function DesignPanel() {
-  const { chartConfig, updateChartConfig, chartType } = useChartStore(); // Added chartType
+  const { chartConfig, updateChartConfig, chartType, chartData, updateDataset } = useChartStore();
+  const [borderColorMode, setBorderColorMode] = useState<'auto' | 'manual'>('auto');
+  const [manualBorderColor, setManualBorderColor] = useState('#000000');
+
+  const applyConfigUpdates = (updates: ConfigPathUpdate[]) => {
+    const newConfig = { ...chartConfig };
+
+    updates.forEach(({ path, value }) => {
+      const keys = path.split(".");
+      let current: any = newConfig;
+
+      for (let i = 0; i < keys.length - 1; i++) {
+        if (!current[keys[i]] || typeof current[keys[i]] !== "object") {
+          current[keys[i]] = {};
+        }
+        current = current[keys[i]];
+      }
+
+      current[keys[keys.length - 1]] = value;
+    });
+
+    updateChartConfig(newConfig);
+  };
 
   const handleConfigUpdate = (path: string, value: any) => {
-    const newConfig = { ...chartConfig }
-    const keys = path.split(".")
-    let current: any = newConfig
+    applyConfigUpdates([{ path, value }]);
+  };
 
-    for (let i = 0; i < keys.length - 1; i++) {
-      if (!current[keys[i]]) {
-        current[keys[i]] = {}
+  const handleUpdateDataset = (datasetIndex: number, property: string, value: any) => {
+    updateDataset(datasetIndex, { [property]: value });
+  };
+
+  const darkenColor = (color: string, percent: number) => {
+    // Handle HSL colors
+    if (color.startsWith("hsl")) {
+      const match = color.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/)
+      if (match) {
+        const [, h, s, l] = match
+        const newL = Math.max(0, Number.parseInt(l) - percent)
+        return `hsl(${h}, ${s}%, ${newL}%)`
       }
-      current = current[keys[i]]
     }
-
-    current[keys[keys.length - 1]] = value
-    updateChartConfig(newConfig)
+    
+    // Handle hex colors
+    if (color.startsWith("#")) {
+      const hex = color.replace("#", "")
+      const r = parseInt(hex.substring(0, 2), 16)
+      const g = parseInt(hex.substring(2, 4), 16)
+      const b = parseInt(hex.substring(4, 6), 16)
+      
+      // Darken by reducing RGB values
+      const factor = 1 - percent / 100
+      const newR = Math.max(0, Math.round(r * factor))
+      const newG = Math.max(0, Math.round(g * factor))
+      const newB = Math.max(0, Math.round(b * factor))
+      
+      return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`
+    }
+    
+    // Handle rgba/rgb colors
+    if (color.startsWith("rgba") || color.startsWith("rgb")) {
+      const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/)
+      if (match) {
+        const [, r, g, b, a] = match
+        const factor = 1 - percent / 100
+        const newR = Math.max(0, Math.round(parseInt(r) * factor))
+        const newG = Math.max(0, Math.round(parseInt(g) * factor))
+        const newB = Math.max(0, Math.round(parseInt(b) * factor))
+        
+        if (a !== undefined) {
+          return `rgba(${newR}, ${newG}, ${newB}, ${a})`
+        }
+        return `rgb(${newR}, ${newG}, ${newB})`
+      }
+    }
+    
+    return color
   }
 
   return (
     <div className="space-y-4">
-      <Tabs defaultValue="title" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="title">Title</TabsTrigger>
-          <TabsTrigger value="background">Background</TabsTrigger>
-          <TabsTrigger value="legend">Legend</TabsTrigger>
+      <Tabs defaultValue="styling" className="w-full">
+        <div className="overflow-x-auto">
+          <TabsList className="inline-flex w-auto min-w-full">
+            <TabsTrigger value="styling" className="flex-shrink-0">Styling</TabsTrigger>
+            <TabsTrigger value="title" className="flex-shrink-0">Title</TabsTrigger>
+            <TabsTrigger value="background" className="flex-shrink-0">Background</TabsTrigger>
+            <TabsTrigger value="legend" className="flex-shrink-0">Legend</TabsTrigger>
         </TabsList>
+        </div>
+
+        <TabsContent value="styling" className="mt-4 space-y-3">
+          <div className="bg-purple-50 rounded-lg p-3 space-y-3">
+            {/* Border Styling */}
+            <div className="flex items-center gap-2 pb-1 border-b border-purple-200">
+              <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
+              <h3 className="text-[0.80rem] font-semibold text-gray-900">Border Styling</h3>
+            </div>
+            
+            {/* Border Width */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-medium">Border Width</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    value={Number(chartData.datasets[0]?.borderWidth ?? 2)}
+                    onChange={(e) => {
+                      const value = e.target.value ? Number(e.target.value) : 2
+                      chartData.datasets.forEach((_, index) => {
+                        handleUpdateDataset(index, 'borderWidth', value)
+                      })
+                    }}
+                    className="w-16 h-8 text-xs"
+                    placeholder="2"
+                    min={0}
+                    max={10}
+                    step={1}
+                  />
+                  <span className="text-xs text-purple-700">px</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Border Color */}
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Border Color</Label>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={borderColorMode === 'auto' ? "default" : "outline"}
+                  size="sm"
+                  className="h-8 text-xs flex-1"
+                  onClick={() => {
+                    setBorderColorMode('auto')
+                    // Apply auto border colors (darkened background colors)
+                    chartData.datasets.forEach((dataset, index) => {
+                      const bgColors = Array.isArray(dataset.backgroundColor) 
+                        ? dataset.backgroundColor 
+                        : [dataset.backgroundColor]
+                      const autoBorderColors = bgColors.map(color => darkenColor(String(color), 20))
+                      handleUpdateDataset(index, 'borderColor', autoBorderColors)
+                    })
+                  }}
+                >
+                  Auto
+                </Button>
+                <Button
+                  variant={borderColorMode === 'manual' ? "default" : "outline"}
+                  size="sm"
+                  className="h-8 text-xs flex-1"
+                  onClick={() => setBorderColorMode('manual')}
+                >
+                  Manual
+                </Button>
+              </div>
+              
+              {borderColorMode === 'manual' && (
+                <div className="flex items-center gap-2 p-2 bg-white rounded border border-purple-200">
+                  <div 
+                    className="w-10 h-10 rounded border-2 border-white shadow-sm cursor-pointer hover:scale-105 transition-transform"
+                    style={{ backgroundColor: manualBorderColor }}
+                    onClick={() => document.getElementById('manual-border-color-picker')?.click()}
+                  />
+                  <div className="flex-1">
+                    <div className="text-xs font-medium text-gray-700">Uniform Border</div>
+                    <div className="text-[10px] text-gray-500 font-mono uppercase">{manualBorderColor}</div>
+                  </div>
+                  <input
+                    id="manual-border-color-picker"
+                    type="color"
+                    value={manualBorderColor}
+                    onChange={(e) => {
+                      setManualBorderColor(e.target.value)
+                      // Apply manual border color to all datasets uniformly
+                      chartData.datasets.forEach((dataset, index) => {
+                        const sliceCount = dataset.data.length
+                        handleUpdateDataset(index, 'borderColor', Array(sliceCount).fill(e.target.value))
+                      })
+                    }}
+                    className="invisible w-0 h-0"
+                  />
+                </div>
+              )}
+            </div>
+            
+            {/* Border Radius */}
+            <div className="space-y-1">
+              <Label className="text-xs font-medium">Border Radius (Slices)</Label>
+              <Slider
+                value={[Number(chartData.datasets[0]?.borderRadius ?? 0)]}
+                onValueChange={([value]) => {
+                  chartData.datasets.forEach((_, index) => {
+                    handleUpdateDataset(index, 'borderRadius', value)
+                  })
+                }}
+                max={200}
+                step={1}
+                className="mt-2"
+              />
+              <div className="text-xs text-gray-500 mt-1">{Number(chartData.datasets[0]?.borderRadius ?? 0)}px</div>
+            </div>
+          </div>
+          
+          <div className="bg-purple-50 rounded-lg p-3 space-y-3">
+            {/* Point Edit */}
+            <div className="flex items-center gap-2 pb-1 border-b border-purple-200">
+              <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
+              <h3 className="text-[0.80rem] font-semibold text-gray-900">
+                Point Edit <span className="text-xs text-gray-500">(Line, Area, Radar Charts Only)</span>
+              </h3>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs font-medium">Point Radius</Label>
+                <Input
+                  type="number"
+                  value={Number(chartData.datasets[0]?.pointRadius ?? 5)}
+                  onChange={(e) => {
+                    const value = e.target.value ? Number(e.target.value) : 5
+                    chartData.datasets.forEach((_, index) => {
+                      handleUpdateDataset(index, 'pointRadius', value)
+                    })
+                  }}
+                  className="h-8 text-xs"
+                  placeholder="5"
+                  min={0}
+                  max={20}
+                  step={1}
+                />
+              </div>
+              
+              <div className="space-y-1">
+                <Label className="text-xs font-medium">Hover Radius</Label>
+                <Input
+                  type="number"
+                  value={Number((chartData.datasets[0] as any)?.pointHoverRadius ?? 8)}
+                  onChange={(e) => {
+                    const value = e.target.value ? Number(e.target.value) : 8
+                    chartData.datasets.forEach((_, index) => {
+                      handleUpdateDataset(index, 'pointHoverRadius', value)
+                    })
+                  }}
+                  className="h-8 text-xs"
+                  placeholder="8"
+                  min={0}
+                  max={30}
+                  step={1}
+                />
+              </div>
+              
+              <div className="space-y-1">
+                <Label className="text-xs font-medium">Point Border Width</Label>
+                <Input
+                  type="number"
+                  value={Number((chartData.datasets[0] as any)?.pointBorderWidth ?? 1)}
+                  onChange={(e) => {
+                    const value = e.target.value ? Number(e.target.value) : 1
+                    chartData.datasets.forEach((_, index) => {
+                      handleUpdateDataset(index, 'pointBorderWidth', value)
+                    })
+                  }}
+                  className="h-8 text-xs"
+                  placeholder="1"
+                  min={0}
+                  max={5}
+                  step={1}
+                />
+              </div>
+              
+              <div className="space-y-1">
+                <Label className="text-xs font-medium">Hover Border Width</Label>
+                <Input
+                  type="number"
+                  value={Number((chartData.datasets[0] as any)?.pointHoverBorderWidth ?? 2)}
+                  onChange={(e) => {
+                    const value = e.target.value ? Number(e.target.value) : 2
+                    chartData.datasets.forEach((_, index) => {
+                      handleUpdateDataset(index, 'pointHoverBorderWidth', value)
+                    })
+                  }}
+                  className="h-8 text-xs"
+                  placeholder="2"
+                  min={0}
+                  max={10}
+                  step={1}
+                />
+              </div>
+            </div>
+          </div>
+          
+          {/* Line Properties */}
+          <div className="bg-purple-50 rounded-lg p-3 space-y-3">
+            <div className="flex items-center gap-2 pb-1 border-b border-purple-200">
+              <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
+              <h3 className="text-[0.80rem] font-semibold text-gray-900">
+                Line Properties <span className="text-xs text-gray-500">(Line, Area Chart Only)</span>
+              </h3>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs font-medium">Line Tension</Label>
+                <Slider
+                  value={[Number((chartData.datasets[0] as any)?.tension ?? 0.4)]}
+                  onValueChange={([value]) => {
+                    chartData.datasets.forEach((_, index) => {
+                      handleUpdateDataset(index, 'tension', value)
+                    })
+                  }}
+                  min={0}
+                  max={1}
+                  step={0.1}
+                  className="mt-2"
+                />
+                <div className="text-xs text-gray-500 mt-1">{Number((chartData.datasets[0] as any)?.tension ?? 0.4).toFixed(1)}</div>
+              </div>
+              
+              <div className="space-y-1">
+                <Label className="text-xs font-medium">Line Style</Label>
+                <Select 
+                  value={
+                    (chartData.datasets[0] as any)?.borderDash 
+                      ? (JSON.stringify((chartData.datasets[0] as any).borderDash) === JSON.stringify([5, 5]) ? 'dashed' : 'dotted')
+                      : 'solid'
+                  }
+                  onValueChange={(value) => {
+                    const borderDash = value === 'solid' ? undefined : value === 'dashed' ? [5, 5] : [2, 2]
+                    chartData.datasets.forEach((_, index) => {
+                      handleUpdateDataset(index, 'borderDash', borderDash)
+                    })
+                  }}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="solid">Solid</SelectItem>
+                    <SelectItem value="dashed">Dashed</SelectItem>
+                    <SelectItem value="dotted">Dotted</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
 
         <TabsContent value="title" className="mt-4 space-y-3">
           <Card>
@@ -486,13 +813,7 @@ export function DesignPanel() {
         </TabsContent>
 
         <TabsContent value="legend" className="mt-4 space-y-3">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <ImageIcon className="h-4 w-4" />
-                Legend Settings
-              </CardTitle>
-            </CardHeader>
+          <Card className="pt-4">
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-medium">Show Legend</Label>
@@ -531,72 +852,121 @@ export function DesignPanel() {
                     </Select>
                   </div>
 
-                  <div>
-                    <Label className="text-xs font-medium">Legend Position</Label>
-                    <Select
-                      value={chartConfig.plugins?.legend?.position || "top"}
-                      onValueChange={(value) => handleConfigUpdate("plugins.legend.position", value)}
-                    >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Top" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="top">Top</SelectItem>
-                        <SelectItem value="bottom">Bottom</SelectItem>
-                        <SelectItem value="left">Left</SelectItem>
-                        <SelectItem value="right">Right</SelectItem>
-                        <SelectItem value="chartArea">Chart Area</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs font-medium">Position</Label>
+                      <Select
+                        value={chartConfig.plugins?.legend?.position || "top"}
+                        onValueChange={(value) => handleConfigUpdate("plugins.legend.position", value)}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Top" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="top">Top</SelectItem>
+                          <SelectItem value="bottom">Bottom</SelectItem>
+                          <SelectItem value="left">Left</SelectItem>
+                          <SelectItem value="right">Right</SelectItem>
+                          <SelectItem value="chartArea">Chart Area</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs font-medium">Alignment</Label>
+                      <Select
+                        value={((chartConfig.plugins?.legend as any)?.align as string) || "center"}
+                        onValueChange={(value: string) => handleConfigUpdate("plugins.legend.align", value)}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Center" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="start">Start</SelectItem>
+                          <SelectItem value="center">Center</SelectItem>
+                          <SelectItem value="end">End</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
-                  <div>
-                    <Label className="text-xs font-medium">Legend Alignment</Label>
-                    <Select
-                      value={((chartConfig.plugins?.legend as any)?.align as string) || "center"}
-                      onValueChange={(value: string) => handleConfigUpdate("plugins.legend.align", value)}
-                    >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Center" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="start">Start</SelectItem>
-                        <SelectItem value="center">Center</SelectItem>
-                        <SelectItem value="end">End</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs font-medium">Orientation</Label>
+                      <Select
+                        value={((chartConfig.plugins?.legend as any)?.orientation as string) || "horizontal"}
+                        onValueChange={(value: string) => handleConfigUpdate("plugins.legend.orientation", value)}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Horizontal" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="horizontal">Horizontal</SelectItem>
+                          <SelectItem value="vertical">Vertical</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs font-medium">Font Size</Label>
+                      <Input
+                        type="number"
+                        value={((chartConfig.plugins?.legend?.labels as any)?.font?.size as number) || 12}
+                        onChange={(e) => {
+                          const value = Number(e.target.value) || 12;
+                          handleConfigUpdate("plugins.legend.labels.font.size", value);
+                        }}
+                        min={8}
+                        max={48}
+                        step={1}
+                        className="h-8 text-xs"
+                      />
+                    </div>
                   </div>
 
-                  <div>
-                    <Label className="text-xs font-medium">Orientation</Label>
-                    <Select
-                      value={((chartConfig.plugins?.legend as any)?.orientation as string) || "horizontal"}
-                      onValueChange={(value: string) => handleConfigUpdate("plugins.legend.orientation", value)}
-                    >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Horizontal" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="horizontal">Horizontal</SelectItem>
-                        <SelectItem value="vertical">Vertical</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
+                    <div>
+                      <Label className="text-xs font-medium">Use Point Style</Label>
+                      <div className="flex items-center gap-3 mt-1">
+                        <Switch
+                          checked={!!(chartConfig.plugins?.legend?.labels as any)?.usePointStyle}
+                          onCheckedChange={(checked: boolean) => {
+                            const updates: ConfigPathUpdate[] = [
+                              { path: "plugins.legend.labels.usePointStyle", value: checked },
+                            ];
+                            const hasPointStyle = !!(chartConfig.plugins?.legend?.labels as any)?.pointStyle;
+                            if (checked && !hasPointStyle) {
+                              updates.push({ path: "plugins.legend.labels.pointStyle", value: "rect" });
+                            }
+                            applyConfigUpdates(updates);
+                          }}
+                        />
+                      </div>
+                    </div>
 
-                  <div>
-                    <Label className="text-xs font-medium">Font Size</Label>
-                    <Slider 
-                      value={[((chartConfig.plugins?.legend?.labels as any)?.font?.size as number) || 12]} 
-                      onValueChange={([value]: number[]) => {
-                        // Update both font size properties for compatibility
-                        handleConfigUpdate("plugins.legend.labels.font.size", value);
-                      }}
-                      max={24} 
-                      min={8} 
-                      step={1} 
-                    />
-                    <div className="text-xs text-gray-500 mt-1">
-                      {((chartConfig.plugins?.legend?.labels as any)?.font?.size as number) || 12}px
+                    <div>
+                      <Label className="text-xs font-medium">Point Style</Label>
+                      <Select
+                        value={((chartConfig.plugins?.legend?.labels as any)?.pointStyle as string) || "rect"}
+                        onValueChange={(value: string) => handleConfigUpdate("plugins.legend.labels.pointStyle", value)}
+                        disabled={!(chartConfig.plugins?.legend?.labels as any)?.usePointStyle}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Rectangle" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="rect">Rectangle</SelectItem>
+                          <SelectItem value="circle">Circle</SelectItem>
+                          <SelectItem value="cross">Cross</SelectItem>
+                          <SelectItem value="star">Star</SelectItem>
+                          <SelectItem value="triangle">Triangle</SelectItem>
+                          <SelectItem value="dash">Dash</SelectItem>
+                          <SelectItem value="line">Line</SelectItem>
+                          <SelectItem value="rectRounded">Rectangle Rounded</SelectItem>
+                          <SelectItem value="rectRot">Diamond</SelectItem>
+                          <SelectItem value="crossRot">Cross Rotated</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 
@@ -617,43 +987,46 @@ export function DesignPanel() {
                     </div>
                   </div>
 
-                  <div>
-                    <Label className="text-xs font-medium">Font Family</Label>
-                    <Select
-                      value={((chartConfig.plugins?.legend?.labels as any)?.font?.family as string) || "Arial"}
-                      onValueChange={(value: string) => handleConfigUpdate("plugins.legend.labels.font.family", value)}
-                    >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Default" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Arial">Arial</SelectItem>
-                        <SelectItem value="Lucida Console">Lucida Console</SelectItem>
-                        <SelectItem value="Times New Roman">Times New Roman</SelectItem>
-                        <SelectItem value="Open Sans">Open Sans</SelectItem>
-                        <SelectItem value="Courier">Courier New</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs font-medium">Font Family</Label>
+                      <Select
+                        value={((chartConfig.plugins?.legend?.labels as any)?.font?.family as string) || "Arial"}
+                        onValueChange={(value: string) => handleConfigUpdate("plugins.legend.labels.font.family", value)}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Default" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Arial">Arial</SelectItem>
+                          <SelectItem value="Lucida Console">Lucida Console</SelectItem>
+                          <SelectItem value="Times New Roman">Times New Roman</SelectItem>
+                          <SelectItem value="Open Sans">Open Sans</SelectItem>
+                          <SelectItem value="Courier">Courier New</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs font-medium">Font Weight</Label>
+                      <Select
+                        value={((chartConfig.plugins?.legend?.labels as any)?.font?.weight as string) || "400"}
+                        onValueChange={(value: string) => handleConfigUpdate("plugins.legend.labels.font.weight", value)}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="lighter" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="400">Normal</SelectItem>
+                          <SelectItem value="700">Bold</SelectItem>
+                          <SelectItem value="800">Extra Bold</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
-                  <div>
-                    <Label className="text-xs font-medium">Font Weight</Label>
-                    <Select
-                      value={((chartConfig.plugins?.legend?.labels as any)?.font?.weight as string) || "400"}
-                      onValueChange={(value: string) => handleConfigUpdate("plugins.legend.labels.font.weight", value)}
-                    >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="lighter" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="400">Normal</SelectItem>
-                        <SelectItem value="700">Bold</SelectItem>
-                        <SelectItem value="800">Extra Bold</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
                     <Label className="text-xs font-medium">Box Width</Label>
                     <Slider 
                       value={[((chartConfig.plugins?.legend?.labels as any)?.boxWidth as number) || 40]} 
@@ -664,41 +1037,59 @@ export function DesignPanel() {
                       }}
                       max={100} 
                       min={10} 
-                      step={1} 
+                      step={1}
+                      className="mt-2"
                     />
                     <div className="text-xs text-gray-500 mt-1">
                       {((chartConfig.plugins?.legend?.labels as any)?.boxWidth as number) || 40}px
                     </div>
-                  </div>
+                    </div>
 
-                  <div>
-                    <Label className="text-xs font-medium">Box Height</Label>
-                    <Slider 
+                    <div>
+                      <Label className="text-xs font-medium">Box Height</Label>
+                      <Slider 
                       value={[((chartConfig.plugins?.legend?.labels as any)?.boxHeight as number) || 12]} 
-                      onValueChange={([value]: number[]) => {
-                        // Update both the root level and labels level for compatibility
-                        //handleConfigUpdate("plugins.legend.boxHeight", value);
-                        handleConfigUpdate("plugins.legend.labels.boxHeight", value);
-                      }}
-                      max={50} 
-                      min={5} 
-                      step={1} 
-                    />
-                    <div className="text-xs text-gray-500 mt-1">
-                      {((chartConfig.plugins?.legend?.labels as any)?.boxHeight as number) || 12}px
+                        onValueChange={([value]: number[]) => {
+                          // Update both the root level and labels level for compatibility
+                          //handleConfigUpdate("plugins.legend.boxHeight", value);
+                          handleConfigUpdate("plugins.legend.labels.boxHeight", value);
+                        }}
+                        max={50} 
+                        min={5} 
+                      step={1}
+                      className="mt-2"
+                      />
+                      <div className="text-xs text-gray-500 mt-1">
+                        {((chartConfig.plugins?.legend?.labels as any)?.boxHeight as number) || 12}px
+                      </div>
                     </div>
                   </div>
 
-                  <div>
-                    <Label className="text-xs font-medium">Padding</Label>
-                    <Slider 
-                      value={[((chartConfig.plugins?.legend?.labels as any)?.padding as number) || 10]} 
-                      onValueChange={([value]: number[]) => handleConfigUpdate("plugins.legend.labels.padding", value)}
-                      max={50} 
-                      min={0} 
-                      step={1} 
-                    />
-                    <div className="text-xs text-gray-500 mt-1">{((chartConfig.plugins?.legend?.labels as any)?.padding as number) || 10}px</div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs font-medium">Padding</Label>
+                      <Slider 
+                        value={[((chartConfig.plugins?.legend?.labels as any)?.padding as number) || 10]} 
+                        onValueChange={([value]: number[]) => handleConfigUpdate("plugins.legend.labels.padding", value)}
+                        max={50} 
+                        min={0} 
+                        step={1}
+                        className="mt-2"
+                      />
+                      <div className="text-xs text-gray-500 mt-1">{((chartConfig.plugins?.legend?.labels as any)?.padding as number) || 10}px</div>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs font-medium">Max Columns</Label>
+                      <Input 
+                        type="number" 
+                        value={((chartConfig.plugins?.legend as any)?.maxColumns as number) || 1}
+                        onChange={(e) => handleConfigUpdate("plugins.legend.maxColumns", parseInt(e.target.value))}
+                        min="1" 
+                        max="10" 
+                        className="h-8 text-xs mt-2 md:mt-0"
+                      />
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between">
@@ -709,71 +1100,27 @@ export function DesignPanel() {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-medium">Use Point Style</Label>
-                    <Switch
-                      checked={!!(chartConfig.plugins?.legend?.labels as any)?.usePointStyle}
-                      onCheckedChange={(checked: boolean) => {
-                        handleConfigUpdate("plugins.legend.labels.usePointStyle", checked);
-                        // Also update the pointStyle to a default if enabling
-                        if (checked && !(chartConfig.plugins?.legend?.labels as any)?.pointStyle) {
-                          handleConfigUpdate("plugins.legend.labels.pointStyle", "circle");
-                        }
-                      }}
-                    />
-                  </div>
 
-                  <div>
-                    <Label className="text-xs font-medium">Point Style</Label>
-                    <Select
-                      value={((chartConfig.plugins?.legend?.labels as any)?.pointStyle as string) || "circle"}
-                      onValueChange={(value: string) => handleConfigUpdate("plugins.legend.labels.pointStyle", value)}
-                      disabled={!(chartConfig.plugins?.legend?.labels as any)?.usePointStyle}
-                    >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Circle" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="circle">Circle</SelectItem>
-                        <SelectItem value="cross">Cross</SelectItem>
-                        <SelectItem value="rect">Rectangle</SelectItem>
-                        <SelectItem value="star">Star</SelectItem>
-                        <SelectItem value="triangle">Triangle</SelectItem>
-                        <SelectItem value="dash">Dash</SelectItem>
-                        <SelectItem value="line">Line</SelectItem>
-                        <SelectItem value="rectRounded">Rectangle Rounded</SelectItem>
-                        <SelectItem value="rectRot">Diamond</SelectItem>
-                        <SelectItem value="crossRot">Cross Rotated</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs font-medium">Full Size</Label>
+                      <div className="flex items-center mt-1">
+                        <Switch
+                          checked={!!(chartConfig.plugins?.legend as any)?.fullSize}
+                          onCheckedChange={(checked: boolean) => handleConfigUpdate("plugins.legend.fullSize", checked)}
+                        />
+                      </div>
+                    </div>
 
-                  <div>
-                    <Label className="text-xs font-medium">Max Columns</Label>
-                    <Input 
-                      type="number" 
-                      value={((chartConfig.plugins?.legend as any)?.maxColumns as number) || 1}
-                      onChange={(e) => handleConfigUpdate("plugins.legend.maxColumns", parseInt(e.target.value))}
-                      min="1" 
-                      max="10" 
-                      className="h-8 text-xs"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-medium">Full Size</Label>
-                    <Switch
-                      checked={!!(chartConfig.plugins?.legend as any)?.fullSize}
-                      onCheckedChange={(checked: boolean) => handleConfigUpdate("plugins.legend.fullSize", checked)}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-medium">RTL (Right to Left)</Label>
-                    <Switch
-                      checked={!!(chartConfig.plugins?.legend as any)?.rtl}
-                      onCheckedChange={(checked: boolean) => handleConfigUpdate("plugins.legend.rtl", checked)}
-                    />
+                    <div>
+                      <Label className="text-xs font-medium">Text Icon Reverse</Label>
+                      <div className="flex items-center mt-1">
+                        <Switch
+                          checked={!!(chartConfig.plugins?.legend as any)?.rtl}
+                          onCheckedChange={(checked: boolean) => handleConfigUpdate("plugins.legend.rtl", checked)}
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   <div>

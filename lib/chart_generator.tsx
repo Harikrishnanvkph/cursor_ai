@@ -639,7 +639,9 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
   const safeScalesSrc = (chartConfig as any)?.scales;
   const safeScales = isPlainObject(safeScalesSrc) ? safeScalesSrc : {};
   // Do NOT attach Cartesian scales for circular charts like pie/doughnut
+  // But radar and polarArea DO need radial scales (r scale)
   const isCircularType = (chartTypeForChart === 'pie' || chartTypeForChart === 'doughnut' || chartTypeForChart === 'radar' || chartTypeForChart === 'polarArea');
+  const isRadialType = (chartTypeForChart === 'radar' || chartTypeForChart === 'polarArea');
   const optionsScales = isCircularType ? undefined : ({
     x: { ...(safeScales?.x || {}) },
     y: { ...(safeScales?.y || {}) },
@@ -649,8 +651,9 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
   const baseOptions = {
     ...(chartConfig as any),
     indexAxis: needsHorizontal ? 'y' : ((chartConfig as any)?.indexAxis || 'x'),
-    // Explicitly override scales: for circular charts, force empty object to avoid axes
-    scales: isCircularType ? {} : (optionsScales ?? {}),
+    // Explicitly override scales: for pie/doughnut, force empty object to avoid axes
+    // For radar/polarArea, preserve the r scale configuration
+    scales: isRadialType ? (safeScales || {}) : (isCircularType ? {} : (optionsScales ?? {})),
   } as any;
   const appliedOptions = chartType === 'stackedBar'
     ? {
@@ -732,7 +735,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     <div className="p-0 h-full w-full">
       {chartData.datasets.length > 0 ? (
         <div 
-          className="h-full w-full flex items-start justify-center relative" 
+          className={`h-full w-full ${isResponsive ? '' : 'flex items-start justify-center'} relative`}
           style={{
             ...(!isMobile && isResponsive ? { minHeight: 300, minWidth: 400, height: '100%', width: '100%' } : { height: '100%', width: '100%' }),
             ...chartBorderStyles
@@ -741,14 +744,18 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
           {getBackgroundLayers()}
           <div
             style={{
-              position: 'relative',
+              position: isResponsive ? 'absolute' : 'relative',
               zIndex: 1,
               width: '100%',
               height: '100%',
+              top: isResponsive ? 0 : 'auto',
+              left: isResponsive ? 0 : 'auto',
+              right: isResponsive ? 0 : 'auto',
+              bottom: isResponsive ? 0 : 'auto',
               background: 'transparent',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              display: isResponsive ? 'block' : 'flex',
+              alignItems: isResponsive ? 'stretch' : 'center',
+              justifyContent: isResponsive ? 'stretch' : 'center',
               maxWidth: '100%',
               maxHeight: '100%',
             }}
@@ -808,7 +815,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                           generateLabels: (chart: any) => {
                             const legendType = ((chartConfig.plugins as any)?.legendType) || 'slice';
                             const usePointStyle = (chartConfig.plugins?.legend as any)?.labels?.usePointStyle || false;
-                            const pointStyle = (chartConfig.plugins?.legend as any)?.labels?.pointStyle || 'circle';
+                            const pointStyle = (chartConfig.plugins?.legend as any)?.labels?.pointStyle || 'rect';
                             const fontColor = (chartConfig.plugins?.legend?.labels as any)?.color || '#000000';
 
                             const createItem = (props: any) => ({
@@ -908,19 +915,28 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                 />
               </ResizableChartArea>
             ) : (
-              <Chart
-                key={`${chartType}-${chartWidth}-${chartHeight}-${isResponsive}-${chartConfig.manualDimensions}`}
-                ref={chartRef}
-                type={chartTypeForChart as any}
-                data={chartDataForChart}
-                {...((chartConfig.manualDimensions || chartConfig.dynamicDimension) && {
-                  'data-debug-width': chartConfig.width,
-                  'data-debug-height': chartConfig.height
-                })}
-                options={{
-                  ...appliedOptions,
-                  responsive: chartConfig.manualDimensions ? false : isResponsive,
-                  maintainAspectRatio: !(isResponsive),
+              <div
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  position: 'relative',
+                  minHeight: isResponsive ? '100%' : 'auto',
+                  minWidth: isResponsive ? '100%' : 'auto'
+                }}
+              >
+                <Chart
+                  key={`${chartType}-${chartWidth}-${chartHeight}-${isResponsive}-${chartConfig.manualDimensions}`}
+                  ref={chartRef}
+                  type={chartTypeForChart as any}
+                  data={chartDataForChart}
+                  {...((chartConfig.manualDimensions || chartConfig.dynamicDimension) && {
+                    'data-debug-width': chartConfig.width,
+                    'data-debug-height': chartConfig.height
+                  })}
+                  options={{
+                    ...appliedOptions,
+                    responsive: chartConfig.manualDimensions ? false : isResponsive,
+                    maintainAspectRatio: !(isResponsive),
                   overlayImages,
                   overlayTexts,
                   layout: {
@@ -1018,6 +1034,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                 width={((chartConfig.manualDimensions || chartConfig.dynamicDimension) ? chartWidth : undefined)}
                 height={((chartConfig.manualDimensions || chartConfig.dynamicDimension) ? chartHeight : undefined)}
               />
+              </div>
             )}
           </div>
         </div>

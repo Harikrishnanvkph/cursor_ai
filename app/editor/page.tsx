@@ -10,7 +10,7 @@ import { useAuth } from "@/components/auth/AuthProvider"
 import { dataService } from "@/lib/data-service"
 import { Button } from "@/components/ui/button"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
-import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Layers, Zap, Settings, Download, ChevronLeft, ChevronRight, FileText, Save, X, Loader2, Plus, Info } from "lucide-react"
+import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Layers, Zap, Settings, Download, ChevronLeft, ChevronRight, FileText, Save, X, Loader2, Plus, Info, LayoutDashboard, MessageSquare, Edit3 } from "lucide-react"
 import Link from "next/link"
 import React from "react"
 import { ResizableChartArea } from "@/components/resizable-chart-area"
@@ -100,6 +100,7 @@ function EditorPageContent() {
   useEffect(() => setMounted(true), []);
 
   const { user, signOut } = useAuth()
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState("types_toggles")
   const { chartConfig, updateChartConfig, chartType, chartData, hasJSON, resetChart, setHasJSON } = useChartStore()
   const { setEditorMode } = useTemplateStore()
@@ -110,7 +111,6 @@ function EditorPageContent() {
   const [isSaving, setIsSaving] = useState(false)
   const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false)
   const [showNewChartInfoDialog, setShowNewChartInfoDialog] = useState(false)
-  const router = useRouter()
   const isMobile = useIsMobile576();
   const isTablet = useIsTablet();
   const { width: screenWidth, height: screenHeight } = useScreenDimensions();
@@ -157,13 +157,13 @@ function EditorPageContent() {
 
   // Handle mode switching based on active tab
   useEffect(() => {
-    // Template-specific tabs: templates, export
-    const templateTabs = ['templates', 'export'];
+    // Template-specific tabs: only templates
+    const templateTabs = ['templates'];
     
     if (templateTabs.includes(activeTab)) {
       setEditorMode('template');
     } else {
-      // Chart-specific tabs: types_toggles, datasets_slices, design, axes, labels, overlay, animations, advanced
+      // Chart-specific tabs: types_toggles, datasets_slices, design, axes, labels, overlay, animations, advanced, export
       setEditorMode('chart');
     }
   }, [activeTab, setEditorMode]);
@@ -218,12 +218,41 @@ function EditorPageContent() {
         useChatStore.getState().setBackendConversationId(conversationId)
       }
 
+      // Normalize chartConfig before saving: convert dynamicDimension to manualDimensions
+      const normalizedConfig = (() => {
+        const config = { ...chartConfig };
+        
+        // If dynamicDimension is active, convert it to manualDimensions
+        if (config.dynamicDimension === true) {
+          config.manualDimensions = true;
+          config.responsive = false;
+          delete config.dynamicDimension; // Remove the dynamicDimension flag
+          
+          // Ensure width and height are preserved
+          if (!config.width) config.width = '800px';
+          if (!config.height) config.height = '600px';
+          
+          console.log('📊 Converted dynamicDimension to manualDimensions for storage');
+        } else {
+          // Clean up - ensure only responsive OR manualDimensions is set
+          delete config.dynamicDimension;
+          
+          if (config.responsive === true) {
+            config.manualDimensions = false;
+          } else if (config.manualDimensions === true) {
+            config.responsive = false;
+          }
+        }
+        
+        return config;
+      })();
+
       // Save chart snapshot (creates new version)
       const snapshotResult = await dataService.saveChartSnapshot(
         conversationId,
             chartType,
             chartData,
-            chartConfig
+            normalizedConfig
       )
 
       if (snapshotResult.error) {
@@ -624,12 +653,32 @@ function EditorPageContent() {
         {(!leftSidebarCollapsed) && (
           <div className="fixed top-0 left-0 h-full w-64 z-40 bg-white shadow-2xl border-r border-gray-200 transition-all duration-300 flex flex-col">
             <div className="p-4">
-              <Link href="/landing" className="block mb-4">
-                <Button variant="outline" className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 hover:text-blue-800 border-blue-200 transition-colors">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Generate AI Chart
-                </Button>
-              </Link>
+              {/* Navigation Section */}
+              <div className="mb-4">
+                <div className="flex items-center gap-0 bg-gray-50 rounded-lg p-1">
+                  <button
+                    onClick={() => router.push('/board')}
+                    className="flex items-center justify-center px-3 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-all"
+                    title="Dashboard"
+                  >
+                    <LayoutDashboard className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => router.push('/landing')}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-all relative"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    <span>AI Chat</span>
+                  </button>
+                  <button
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-700 bg-white rounded-md shadow-sm transition-all relative"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Editor</span>
+                    <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-indigo-600 rounded-full"></div>
+                  </button>
+                </div>
+              </div>
               <div className="border-b mb-4"></div>
               <Sidebar 
                 activeTab={activeTab} 
@@ -702,12 +751,32 @@ function EditorPageContent() {
       ) : (
         <div className="w-64 flex-shrink-0 flex flex-col h-full">
           <div className="p-4">
-            <Link href="/landing" className="block mb-4">
-              <Button variant="outline" className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 hover:text-blue-800 border-blue-200 transition-colors">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Generate AI Chart
-              </Button>
-            </Link>
+            {/* Navigation Section */}
+            <div className="mb-4">
+              <div className="flex items-center gap-0 bg-gray-50 rounded-lg p-1">
+                <button
+                  onClick={() => router.push('/board')}
+                  className="flex items-center justify-center px-3 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-all"
+                  title="Board"
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => router.push('/landing')}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-all relative"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>AI Chat</span>
+                </button>
+                <button
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-700 bg-white rounded-md shadow-sm transition-all relative"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>Editor</span>
+                  <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-indigo-600 rounded-full"></div>
+                </button>
+              </div>
+            </div>
             <div className="border-b mb-4"></div>
             <Sidebar 
               activeTab={activeTab} 

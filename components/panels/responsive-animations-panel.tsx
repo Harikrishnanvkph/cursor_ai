@@ -3,11 +3,16 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { useChartStore } from "@/lib/chart-store";
+import { useTemplateStore } from "@/lib/template-store";
 import React, { useState } from "react";
 
 export function ResponsiveAnimationsPanel() {
   const { chartConfig, updateChartConfig } = useChartStore();
+  const { editorMode } = useTemplateStore();
   const [responsiveDropdownOpen, setResponsiveDropdownOpen] = useState(false);
+  
+  // Check if template mode is active
+  const isTemplateMode = editorMode === 'template';
 
   // Helper to parse dimension values
   const parseDimensionValue = (value: any, fallback: number): { value: number, unit: 'px' | '%' } => {
@@ -53,6 +58,7 @@ export function ResponsiveAnimationsPanel() {
         <button
           onClick={() => setResponsiveDropdownOpen(!responsiveDropdownOpen)}
           className="ml-auto p-1 hover:bg-gray-100 rounded transition-colors"
+          disabled={isTemplateMode}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -72,8 +78,14 @@ export function ResponsiveAnimationsPanel() {
       </div>
       {responsiveDropdownOpen && (
         <div className="bg-green-50 rounded-lg p-3 space-y-3">
+          {/* Template Mode Notice */}
+          {isTemplateMode && (
+            <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200 mb-2">
+              ⚠️ Layout settings are locked in Template mode. Responsive mode is active.
+            </div>
+          )}
           {/* Radio Buttons for Chart Mode */}
-          <div className="space-y-2">
+          <div className={`space-y-2 ${isTemplateMode ? 'opacity-50 pointer-events-none' : ''}`}>
             <div className="flex items-center space-x-2">
               <input
                 type="radio"
@@ -101,11 +113,19 @@ export function ResponsiveAnimationsPanel() {
                 name="chart-mode-anim"
                 checked={chartConfig.dynamicDimension === true}
                 onChange={() => {
+                  // Initialize width/height if they don't exist
+                  const currentWidth = (chartConfig as any)?.width;
+                  const currentHeight = (chartConfig as any)?.height;
+                  const width = currentWidth || '600px';
+                  const height = currentHeight || '500px';
+                  
                   updateChartConfig({
                     ...chartConfig,
                     dynamicDimension: true,
                     responsive: false,
-                    manualDimensions: false
+                    manualDimensions: false,
+                    width: width,
+                    height: height
                   });
                 }}
                 className="text-green-600 focus:ring-green-500"
@@ -121,11 +141,19 @@ export function ResponsiveAnimationsPanel() {
                 name="chart-mode-anim"
                 checked={chartConfig.manualDimensions === true}
                 onChange={() => {
+                  // Initialize width/height if they don't exist
+                  const currentWidth = (chartConfig as any)?.width;
+                  const currentHeight = (chartConfig as any)?.height;
+                  const width = currentWidth || '600px';
+                  const height = currentHeight || '500px';
+                  
                   updateChartConfig({
                     ...chartConfig,
                     manualDimensions: true,
                     responsive: false,
-                    dynamicDimension: false
+                    dynamicDimension: false,
+                    width: width,
+                    height: height
                   });
                 }}
                 className="text-green-600 focus:ring-green-500"
@@ -136,7 +164,7 @@ export function ResponsiveAnimationsPanel() {
             </div>
           </div>
           {/* Width/Height Controls */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className={`grid grid-cols-2 gap-3 ${isTemplateMode ? 'opacity-50 pointer-events-none' : ''}`}>
             <div>
               <Label className="text-xs font-medium">Width</Label>
               <Input
@@ -144,7 +172,7 @@ export function ResponsiveAnimationsPanel() {
                 min={100}
                 max={2000}
                 value={widthValue}
-                disabled={!(chartConfig.manualDimensions || chartConfig.dynamicDimension)}
+                disabled={!(chartConfig.manualDimensions || chartConfig.dynamicDimension) || isTemplateMode}
                 onChange={e => {
                   const newValue = e.target.value ? `${e.target.value}px` : undefined;
                   if (chartConfig.dynamicDimension) {
@@ -163,7 +191,7 @@ export function ResponsiveAnimationsPanel() {
                 min={100}
                 max={2000}
                 value={heightValue}
-                disabled={!(chartConfig.manualDimensions || chartConfig.dynamicDimension)}
+                disabled={!(chartConfig.manualDimensions || chartConfig.dynamicDimension) || isTemplateMode}
                 onChange={e => {
                   const newValue = e.target.value ? `${e.target.value}px` : undefined;
                   if (chartConfig.dynamicDimension) {
@@ -176,28 +204,13 @@ export function ResponsiveAnimationsPanel() {
               />
             </div>
           </div>
-          {/* Resize Animation Duration */}
-          <div className="space-y-1 pt-2 border-t border-green-200">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium">Resize Animation</Label>
-              <span className="text-xs text-gray-500">{chartConfig.responsive?.animationDuration || 0}ms</span>
-            </div>
-            <Slider
-              value={[chartConfig.responsive?.animationDuration || 0]}
-              onValueChange={([value]) => handleConfigUpdate("responsive.animationDuration", value)}
-              max={1000}
-              min={0}
-              step={50}
-              className="mt-1"
-            />
-          </div>
           {/* Padding Controls */}
-          <div className="grid grid-cols-2 gap-3 mt-2">
+          <div className={`grid grid-cols-2 gap-3 mt-2 ${isTemplateMode ? 'opacity-50 pointer-events-none' : ''}`}>
             <div>
               <Label className="text-xs font-medium">Padding Top</Label>
               <Input
                 type="number"
-                value={chartConfig.layout?.padding?.top ?? 10}
+                value={(chartConfig.layout?.padding as any)?.top ?? 10}
                 onChange={(e) =>
                   handleConfigUpdate("layout.padding.top", e.target.value ? Number.parseInt(e.target.value) : undefined)
                 }
@@ -209,7 +222,7 @@ export function ResponsiveAnimationsPanel() {
               <Label className="text-xs font-medium">Padding Right</Label>
               <Input
                 type="number"
-                value={chartConfig.layout?.padding?.right ?? 10}
+                value={(chartConfig.layout?.padding as any)?.right ?? 10}
                 onChange={(e) =>
                   handleConfigUpdate("layout.padding.right", e.target.value ? Number.parseInt(e.target.value) : undefined)
                 }
@@ -221,7 +234,7 @@ export function ResponsiveAnimationsPanel() {
               <Label className="text-xs font-medium">Padding Bottom</Label>
               <Input
                 type="number"
-                value={chartConfig.layout?.padding?.bottom ?? 10}
+                value={(chartConfig.layout?.padding as any)?.bottom ?? 10}
                 onChange={(e) =>
                   handleConfigUpdate("layout.padding.bottom", e.target.value ? Number.parseInt(e.target.value) : undefined)
                 }
@@ -233,7 +246,7 @@ export function ResponsiveAnimationsPanel() {
               <Label className="text-xs font-medium">Padding Left</Label>
               <Input
                 type="number"
-                value={chartConfig.layout?.padding?.left ?? 10}
+                value={(chartConfig.layout?.padding as any)?.left ?? 10}
                 onChange={(e) =>
                   handleConfigUpdate("layout.padding.left", e.target.value ? Number.parseInt(e.target.value) : undefined)
                 }

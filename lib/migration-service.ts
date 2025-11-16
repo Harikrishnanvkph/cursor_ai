@@ -87,11 +87,40 @@ class MigrationService {
 
           // Migrate chart snapshot if exists
           if (conversation.snapshot) {
+            // Normalize chartConfig before saving: convert dynamicDimension to manualDimensions
+            const normalizedConfig = (() => {
+              const config = { ...conversation.snapshot.chartConfig };
+              
+              // If dynamicDimension is active, convert it to manualDimensions
+              if (config.dynamicDimension === true) {
+                config.manualDimensions = true;
+                config.responsive = false;
+                delete config.dynamicDimension; // Remove the dynamicDimension flag
+                
+                // Ensure width and height are preserved
+                if (!config.width) config.width = '800px';
+                if (!config.height) config.height = '600px';
+                
+                console.log('📊 [Migration] Converted dynamicDimension to manualDimensions');
+              } else {
+                // Clean up - ensure only responsive OR manualDimensions is set
+                delete config.dynamicDimension;
+                
+                if (config.responsive === true) {
+                  config.manualDimensions = false;
+                } else if (config.manualDimensions === true) {
+                  config.responsive = false;
+                }
+              }
+              
+              return config;
+            })();
+
             await dataService.saveChartSnapshot(
               conversationId,
               conversation.snapshot.chartType,
               conversation.snapshot.chartData,
-              conversation.snapshot.chartConfig
+              normalizedConfig
             );
           }
 

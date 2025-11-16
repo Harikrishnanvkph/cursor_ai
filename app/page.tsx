@@ -11,15 +11,19 @@ import { toast } from "sonner"
  
 import { Badge } from "@/components/ui/badge"
 import {
+  ArrowRight,
   BarChart3,
-  MessageSquare,
   Edit3,
+  History,
+  LayoutDashboard,
+  MessageSquare,
+  Play,
+  Settings,
+  Share2,
   Sparkles,
   Download,
-  Database,
-  ArrowRight,
-  Play,
-  Settings
+  ShieldCheck,
+  Wand2
 } from "lucide-react"
 import Image from "next/image"
 
@@ -69,22 +73,58 @@ export default function HomePage() {
     }
   }, [user, showWelcome])
 
-  const features = [
-    { icon: Sparkles, title: "Natural language to charts", description: "Describe the chart you need; get it instantly." },
-    { icon: Edit3, title: "Precision editor", description: "Adjust labels, axes, styling, overlays and animations." },
-    { icon: Database, title: "Rich chart types", description: "Bar, line, pie, radar, polar, scatter, bubble, stacked, area." },
-    { icon: Download, title: "Export anywhere", description: "Share as PNG/SVG or export responsive HTML templates." },
-    { icon: MessageSquare, title: "Conversational updates", description: "Keep chatting to tweak and iterate quickly." },
-    { icon: Settings, title: "Smart defaults", description: "Great‑looking charts out of the box with modern theming." },
+  const heroHighlights = [
+    { icon: Sparkles, label: "AI chart assistant for every teammate" },
+    { icon: LayoutDashboard, label: "Pixel-perfect editor with 10 pro panels" },
+    { icon: ShieldCheck, label: "Version history, secure cloud save & exports" }
   ]
 
-  const chartTypes = [
-    { name: "Bar", icon: BarChart3, color: "bg-indigo-50 text-indigo-700" },
-    { name: "Line", icon: BarChart3, color: "bg-cyan-50 text-cyan-700" },
-    { name: "Pie", icon: BarChart3, color: "bg-emerald-50 text-emerald-700" },
-    { name: "Scatter", icon: BarChart3, color: "bg-amber-50 text-amber-700" },
-    { name: "Radar", icon: BarChart3, color: "bg-rose-50 text-rose-700" },
-    { name: "Area", icon: BarChart3, color: "bg-sky-50 text-sky-700" }
+  const valueProps = [
+    {
+      icon: MessageSquare,
+      title: "Ask, don't configure",
+      description: "Turn plain language, meeting notes or CSV data into production-ready charts in seconds."
+    },
+    {
+      icon: Edit3,
+      title: "Full-scale visual editor",
+      description: "Fine-tune datasets, overlays, responsive breakpoints, animations and more without touching code."
+    },
+    {
+      icon: History,
+      title: "Living chart history",
+      description: "Save versions, revisit conversations, and branch ideas with undo/redo, snapshots and Supabase sync."
+    },
+    {
+      icon: Download,
+      title: "Ship anywhere",
+      description: "Export crisp PNG files, responsive HTML bundles, or drop-in embeds tailored for marketing sites, dashboards and decks."
+    }
+  ]
+
+  const workflowSteps = [
+    {
+      step: "01",
+      title: "Describe the story",
+      body: "Paste a brief, spreadsheet or KPI summary. Our AI suggests the ideal chart type, copy, palettes and annotations."
+    },
+    {
+      step: "02",
+      title: "Refine visually",
+      body: "Switch to the pro editor to adjust datasets, axes, callouts, overlays and accessibility details with granular controls."
+    },
+    {
+      step: "03",
+      title: "Publish with confidence",
+      body: "Export in your team’s format—static assets, responsive embeds or full HTML hand-off—with version history preserved."
+    }
+  ]
+
+  const exportHighlights = [
+    "Pixel-crisp PNG downloads",
+    "Responsive HTML packages for product & marketing",
+    "Embed snippets with theme-aware styling",
+    "Dataset + chart snapshots stored securely"
   ]
 
   return (
@@ -187,13 +227,29 @@ export default function HomePage() {
                     <span className="block bg-gradient-to-r from-indigo-600 to-cyan-600 bg-clip-text text-transparent">with natural language</span>
                   </h1>
                   <p className="mt-5 text-lg text-gray-600 max-w-xl">
-                    Describe your goal and paste data. Get a beautiful chart immediately, then fine‑tune in the editor.
+                    AIChartor is the fastest way for data, design and product teams to move from messy inputs to publish-ready visuals.
+                    Draft ideas with AI, perfect them with pro tools, then export in every format stakeholders expect.
                   </p>
+                  <ul className="mt-6 space-y-3">
+                    {heroHighlights.map((item, index) => (
+                      <li key={index} className="flex items-center gap-3 text-sm text-gray-600">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 text-indigo-700">
+                          <item.icon className="h-4 w-4" />
+                        </div>
+                        <span className="text-sm font-medium text-gray-800">{item.label}</span>
+                      </li>
+                    ))}
+                  </ul>
                   <div className="mt-8 flex flex-col sm:flex-row gap-3">
                      <Link href="/landing">
                       <Button size="lg" className="px-7 bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-700 hover:to-cyan-700">
                         <Play className="h-5 w-5 mr-2" /> Start with AI
                         <ArrowRight className="h-5 w-5 ml-2" />
+                      </Button>
+                    </Link>
+                     <Link href="/board">
+                      <Button size="lg" variant="outline" className="px-7">
+                        <LayoutDashboard className="h-5 w-5 mr-2" /> View Dashboard
                       </Button>
                     </Link>
                      <Link href="/editor">
@@ -216,24 +272,24 @@ export default function HomePage() {
             </div>
           </section>
 
-          {/* Features Section */}
+          {/* Value Proposition Section */}
           <section className="py-16 sm:py-20 bg-white">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="text-center mb-12">
-                <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Everything you need to build charts</h2>
-                <p className="mt-3 text-gray-600 text-lg">AI when you want speed, controls when you want precision.</p>
+                <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Why teams choose AIChartor</h2>
+                <p className="mt-3 text-gray-600 text-lg">Pair conversational charting with professional tooling for the entire visualization lifecycle.</p>
               </div>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {features.map((f, i) => (
-              <Card key={i} className="border border-gray-200 shadow-sm hover:shadow-md transition-all">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {valueProps.map((item, index) => (
+                  <Card key={index} className="border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-200">
                 <CardHeader>
                   <div className="p-2.5 rounded-lg bg-indigo-50 w-fit">
-                    <f.icon className="h-5 w-5 text-indigo-700" />
+                        <item.icon className="h-5 w-5 text-indigo-700" />
                   </div>
-                  <CardTitle className="text-lg">{f.title}</CardTitle>
+                      <CardTitle className="text-lg text-gray-900">{item.title}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <CardDescription className="text-[15px]">{f.description}</CardDescription>
+                      <CardDescription className="text-sm leading-relaxed text-gray-600">{item.description}</CardDescription>
                 </CardContent>
               </Card>
             ))}
@@ -241,23 +297,75 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Chart Types Section */}
-      <section className="py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Supports all major chart types</h2>
-            <p className="mt-3 text-gray-600 text-lg">From simple bars to complex radar and scatter plots.</p>
+          {/* Workflow Section */}
+          <section className="py-16 sm:py-20">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="mb-12 max-w-2xl">
+                <h2 className="text-3xl md:text-4xl font-bold text-gray-900">From prompt to publish in minutes</h2>
+                <p className="mt-3 text-gray-600 text-lg">AI handles the heavy lifting while you keep full creative control. Each step is designed for modern data teams, designers and product writers.</p>
           </div>
-          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
-            {chartTypes.map((type, i) => (
-              <div key={i} className={`flex items-center gap-2 px-4 py-2 rounded-full border ${type.color} whitespace-nowrap shadow-sm`}>
-                <type.icon className="h-4 w-4" />
-                <span className="text-sm font-medium">{type.name}</span>
+              <div className="grid gap-6 md:grid-cols-3">
+                {workflowSteps.map((step) => (
+                  <div key={step.step} className="relative border border-gray-200 rounded-2xl bg-white p-6 shadow-sm hover:shadow-md transition-all">
+                    <span className="text-sm font-semibold text-indigo-600">Step {step.step}</span>
+                    <h3 className="mt-3 text-xl font-semibold text-gray-900">{step.title}</h3>
+                    <p className="mt-3 text-sm text-gray-600 leading-relaxed">{step.body}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
+
+          {/* Export Section */}
+          <section className="py-16 sm:py-20 bg-gray-50">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="grid lg:grid-cols-2 gap-10 items-center">
+                <div>
+                  <Badge className="bg-indigo-100 text-indigo-700 mb-4">Deliver anywhere</Badge>
+                  <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Share charts the way stakeholders expect</h2>
+                  <p className="mt-4 text-gray-600 text-lg">Whether you are preparing investor updates, in-product dashboards or marketing landing pages, exports stay true to the preview—responsive, accessible and on-brand.</p>
+                  <ul className="mt-6 space-y-3">
+                    {exportHighlights.map((item, index) => (
+                      <li key={index} className="flex items-start gap-3 text-sm text-gray-700">
+                        <div className="mt-1 flex h-6 w-6 items-center justify-center rounded-full bg-indigo-500/10 text-indigo-600">
+                          <Share2 className="h-3.5 w-3.5" />
+                        </div>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="relative rounded-3xl border border-indigo-100 bg-white/70 backdrop-blur shadow-xl p-6">
+                  <div className="grid gap-4">
+                    <div className="rounded-2xl border border-gray-100 bg-gradient-to-br from-indigo-50 to-white p-4">
+                      <div className="flex items-center gap-2 text-indigo-600 text-sm font-semibold"><Wand2 className="h-4 w-4" /> AI Recommendation</div>
+                      <p className="mt-2 text-sm text-gray-600">“For your product usage data, we prepared a stacked area chart with milestone annotations and contrast-aware palette.”</p>
+                    </div>
+                    <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                      <div className="flex items-center justify-between text-sm text-gray-500">
+                        <span>Export package</span>
+                        <span className="font-semibold text-gray-900">Ready</span>
+                      </div>
+                      <div className="mt-3 space-y-2 text-sm text-gray-700">
+                        <div className="flex items-center justify-between">
+                          <span>📦 PNG download bundle</span>
+                          <span className="text-indigo-600">8.4 MB</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>🌐 Responsive HTML embed</span>
+                          <span className="text-indigo-600">Hosted</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>🗂 Snapshot history</span>
+                          <span className="text-indigo-600">6 versions</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
 
       {/* CTA Section */}
       <section className="py-16 bg-gradient-to-r from-indigo-600 to-cyan-600">

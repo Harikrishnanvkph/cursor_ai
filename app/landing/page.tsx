@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Send, BarChart2, Plus, SquarePen ,PencilRuler ,RotateCcw, Edit3, MessageSquare, Sparkles, ArrowRight, X, ChevronLeft, ChevronRight, PanelLeft, PanelRight, Settings, Brain, Info } from "lucide-react"
+import { Send, BarChart2, Plus, SquarePen ,PencilRuler ,RotateCcw, Edit3, MessageSquare, Sparkles, ArrowRight, X, ChevronLeft, ChevronRight, PanelLeft, PanelRight, Settings, Brain, Info, LayoutDashboard } from "lucide-react"
 import { useChartStore } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
 import { dataService } from "@/lib/data-service"
@@ -486,6 +486,34 @@ function LandingPageContent() {
               {/* Sidebar Content */}
               <div className="flex-1 min-h-0 flex flex-col">
                  {tabletRightSidebarContent === 'messages' && (
+                   <>
+                     {/* Navigation Section - Tablet */}
+                     <div className="p-3 bg-white/95 flex-shrink-0">
+                       <div className="flex items-center gap-0 bg-gray-50 rounded-lg p-1">
+                         <button
+                           onClick={() => router.push('/board')}
+                           className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-all relative"
+                           title="Dashboard"
+                         >
+                           <LayoutDashboard className="w-3.5 h-3.5" />
+                           <span>Board</span>
+                         </button>
+                         <button
+                           className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-semibold text-indigo-700 bg-white rounded-md shadow-sm transition-all relative"
+                         >
+                           <MessageSquare className="w-3.5 h-3.5" />
+                           <span>AI Chat</span>
+                           <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-indigo-600 rounded-full"></div>
+                         </button>
+                         <button
+                           onClick={() => router.push('/editor')}
+                           className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-all relative"
+                         >
+                           <Edit3 className="w-3.5 h-3.5" />
+                           <span>Editor</span>
+                         </button>
+                       </div>
+                     </div>
                    <ChatWindow
                      messages={messages}
                      input={input}
@@ -502,6 +530,7 @@ function LandingPageContent() {
                      compact={true}
                      currentChartState={currentChartState}
                    />
+                   </>
                  )}
                 
                                  {tabletRightSidebarContent === 'tools' && (
@@ -678,6 +707,34 @@ function LandingPageContent() {
               {/* Sidebar Content */}
               <div className="flex-1 overflow-hidden">
                 {mobileRightSidebarContent === 'messages' && (
+                  <>
+                    {/* Navigation Section - Mobile */}
+                    <div className="p-3 bg-white/95 flex-shrink-0">
+                      <div className="flex items-center gap-0 bg-gray-50 rounded-lg p-1">
+                        <button
+                          onClick={() => router.push('/board')}
+                          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-all relative"
+                          title="Dashboard"
+                        >
+                          <LayoutDashboard className="w-3.5 h-3.5" />
+                          <span>Board</span>
+                        </button>
+                        <button
+                          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-semibold text-indigo-700 bg-white rounded-md shadow-sm transition-all relative"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span>AI Chat</span>
+                          <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-indigo-600 rounded-full"></div>
+                        </button>
+                        <button
+                          onClick={() => router.push('/editor')}
+                          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-all relative"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span>Editor</span>
+                        </button>
+                      </div>
+                    </div>
                   <ChatWindow
                     messages={messages}
                     input={input}
@@ -693,6 +750,7 @@ function LandingPageContent() {
                     textareaRef={textareaRef}
                     currentChartState={currentChartState}
                   />
+                  </>
                 )}
                 
                 {mobileRightSidebarContent === 'tools' && (
@@ -733,11 +791,39 @@ function LandingPageContent() {
       <aside className={`transition-all duration-300 z-10 flex flex-col border-r border-white/20 shadow-2xl bg-white/90 backdrop-blur-xl ${leftSidebarOpen ? 'w-[320px]' : 'w-16'} rounded-tl-2xl rounded-bl-2xl`}>
         {leftSidebarOpen ? (
           <>
+            {/* Navigation Section */}
+            <div className="p-2 bg-white/95">
+              <div className="flex items-center gap-0 bg-gray-50 rounded-lg p-1">
+                <button
+                  onClick={() => router.push('/board')}
+                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-all relative"
+                  title="Dashboard"
+                >
+                  <LayoutDashboard className="w-3.5 h-3.5" />
+                  <span>Board</span>
+                </button>
+                <button
+                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-semibold text-indigo-700 bg-white rounded-md shadow-sm transition-all relative"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>AI Chat</span>
+                  <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-indigo-600 rounded-full"></div>
+                </button>
+                <button
+                  onClick={() => router.push('/editor')}
+                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-all relative"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>Editor</span>
+                </button>
+              </div>
+            </div>
+            
             {/* Header */}
             <div className="flex items-center justify-between p-3 border-b border-white/20 bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg">
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => router.push('/')}
+                  onClick={() => router.push('/board')}
                   className="p-1 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-sm transition-colors"
                   aria-label="Home"
                 >
@@ -768,6 +854,7 @@ function LandingPageContent() {
                 </button>
               </div>
             </div>
+            
             {/* Input */}
              <form
                onSubmit={handleSend}
@@ -895,11 +982,11 @@ function LandingPageContent() {
         ) : (
           // Collapsed Sidebar - Icon Only
           <div className="flex flex-col items-center h-full py-4 space-y-4 group">
-            {/* Application Logo - Always shows logo, routes to home */}
+            {/* Application Logo - Always shows logo, routes to board */}
             <button
-              onClick={() => router.push("/")}
+              onClick={() => router.push("/board")}
               className="p-2 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-md"
-              title="Go to Home"
+              title="Go to Board"
             >
               <BarChart2 className="w-6 h-6 text-white" />
             </button>
