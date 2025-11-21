@@ -163,12 +163,6 @@ export function DatasetPanel() {
     <div className="space-y-6">
       {/* Chart Type Selection */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-sm flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Chart Configuration
-          </CardTitle>
-        </CardHeader>
         <CardContent className="space-y-4">
           <div>
             <Label>Chart Type</Label>

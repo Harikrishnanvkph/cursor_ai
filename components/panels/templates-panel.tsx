@@ -317,8 +317,11 @@ export function TemplatesPanel() {
                  <Input
                    id="fontSize"
                    type="number"
-                   value={selectedTextArea.style.fontSize}
-                   onChange={(e) => handleStyleUpdate('fontSize', parseInt(e.target.value))}
+                   value={selectedTextArea.style.fontSize || ''}
+                   onChange={(e) => {
+                     const val = parseInt(e.target.value)
+                     handleStyleUpdate('fontSize', isNaN(val) ? 14 : val)
+                   }}
                    className="mt-1 h-7 text-xs"
                  />
                </div>
@@ -392,8 +395,11 @@ export function TemplatesPanel() {
                    id="lineHeight"
                    type="number"
                    step="0.1"
-                   value={selectedTextArea.style.lineHeight}
-                   onChange={(e) => handleStyleUpdate('lineHeight', parseFloat(e.target.value))}
+                   value={selectedTextArea.style.lineHeight || ''}
+                   onChange={(e) => {
+                     const val = parseFloat(e.target.value)
+                     handleStyleUpdate('lineHeight', isNaN(val) ? 1.5 : val)
+                   }}
                    className="mt-1 h-7 text-xs"
                  />
                </div>
@@ -402,8 +408,11 @@ export function TemplatesPanel() {
                  <Input
                    id="letterSpacing"
                    type="number"
-                   value={selectedTextArea.style.letterSpacing}
-                   onChange={(e) => handleStyleUpdate('letterSpacing', parseInt(e.target.value))}
+                   value={selectedTextArea.style.letterSpacing || ''}
+                   onChange={(e) => {
+                     const val = parseInt(e.target.value)
+                     handleStyleUpdate('letterSpacing', isNaN(val) ? 0 : val)
+                   }}
                    className="mt-1 h-7 text-xs"
                  />
                </div>

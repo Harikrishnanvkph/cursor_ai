@@ -5,10 +5,14 @@ import { useTemplateStore } from "@/lib/template-store"
 import { useChartStore } from "@/lib/chart-store"
 
 import { Button } from "@/components/ui/button"
-import { ZoomIn, ZoomOut, RotateCcw, Eye, EyeOff, Ellipsis, Maximize2 } from "lucide-react"
+import { ZoomIn, ZoomOut, RotateCcw, Eye, EyeOff, Ellipsis, Maximize2, Minimize2, Settings, Menu, X, ChevronLeft, Download } from "lucide-react"
 import { downloadTemplateExport } from "@/lib/template-export"
 import { FileDown, FileImage, FileCode } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Sidebar } from "@/components/sidebar"
+import { ConfigPanel } from "@/components/config-panel"
+import { SidebarPortalProvider } from "@/components/sidebar-portal-context"
+import { SidebarContainer } from "@/components/sidebar-container"
 
 import ChartGenerator from "@/lib/chart_generator"
 
@@ -17,13 +21,19 @@ interface TemplateChartPreviewProps {
   isSidebarCollapsed?: boolean
   onToggleLeftSidebar?: () => void
   isLeftSidebarCollapsed?: boolean
+  activeTab?: string
+  onTabChange?: (tab: string) => void
+  onNewChart?: () => void
 }
 
 export function TemplateChartPreview({
   onToggleSidebar,
   isSidebarCollapsed,
   onToggleLeftSidebar,
-  isLeftSidebarCollapsed
+  isLeftSidebarCollapsed,
+  activeTab,
+  onTabChange,
+  onNewChart
 }: TemplateChartPreviewProps) {
   const { currentTemplate, templateInBackground, selectedTextAreaId, setSelectedTextAreaId, editorMode, setEditorMode } = useTemplateStore()
   const { 
@@ -32,6 +42,10 @@ export function TemplateChartPreview({
     globalChartRef 
   } = useChartStore()
   const containerRef = useRef<HTMLDivElement>(null)
+  const fullscreenContainerRef = useRef<HTMLDivElement>(null)
+  const pendingTabRef = useRef<string | null>(null)
+  const leftSidebarPanelRef = useRef<HTMLDivElement>(null)
+  const rightSidebarPanelRef = useRef<HTMLDivElement>(null)
 
   const [zoom, setZoom] = useState(1)
   const [isDragging, setIsDragging] = useState(false)
@@ -39,6 +53,19 @@ export function TemplateChartPreview({
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
   const [showGuides, setShowGuides] = useState(true)
   const [isUpdatingDimensions, setIsUpdatingDimensions] = useState(false)
+  
+  // Fullscreen state
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [showLeftOverlay, setShowLeftOverlay] = useState(false)
+  const [showRightOverlay, setShowRightOverlay] = useState(false)
+  const [fullscreenActiveTab, setFullscreenActiveTab] = useState(activeTab || "templates")
+
+  // Sync fullscreenActiveTab with activeTab prop
+  useEffect(() => {
+    if (activeTab) {
+      setFullscreenActiveTab(activeTab)
+    }
+  }, [activeTab])
 
   // Simple centering effect when template is first loaded
   useEffect(() => {
@@ -70,6 +97,99 @@ export function TemplateChartPreview({
       return () => clearTimeout(timer)
     }
   }, [currentTemplate?.id, templateInBackground?.id, isUpdatingDimensions])
+
+  // Handle fullscreen functionality
+  const handleFullscreen = async () => {
+    if (!fullscreenContainerRef.current) return
+
+    const container = fullscreenContainerRef.current
+    
+    try {
+      if (!document.fullscreenElement) {
+        // Enter fullscreen
+        await container.requestFullscreen()
+        setIsFullscreen(true)
+        
+        // Trigger chart dimension update after a delay to ensure fullscreen layout is complete
+        setTimeout(() => {
+          setIsUpdatingDimensions(true)
+          
+          // If chart exists, adjust canvas for high-DPI
+          if (globalChartRef?.current) {
+            const canvas = globalChartRef.current.canvas
+            const dpr = window.devicePixelRatio || 1
+            const rect = container.getBoundingClientRect()
+            
+            canvas.style.width = '100%'
+            canvas.style.height = '100%'
+            canvas.style.objectFit = 'contain'
+            
+            canvas.width = rect.width * dpr
+            canvas.height = rect.height * dpr
+            
+            globalChartRef.current.resize()
+            globalChartRef.current.render()
+          }
+          
+          // Reset updating flag after chart has resized
+          setTimeout(() => {
+            setIsUpdatingDimensions(false)
+          }, 100)
+        }, 100)
+      } else {
+        // Exit fullscreen
+        await document.exitFullscreen()
+        setIsFullscreen(false)
+        
+        // Trigger chart dimension update after a delay
+        setTimeout(() => {
+          setIsUpdatingDimensions(true)
+          
+          // Reset chart canvas if it exists
+          if (globalChartRef?.current) {
+            const canvas = globalChartRef.current.canvas
+            canvas.style.width = ''
+            canvas.style.height = ''
+            canvas.style.objectFit = ''
+            
+            globalChartRef.current.resize()
+            globalChartRef.current.render()
+          }
+          
+          // Reset updating flag
+          setTimeout(() => {
+            setIsUpdatingDimensions(false)
+          }, 100)
+        }, 100)
+      }
+    } catch (err) {
+      console.error('Error toggling fullscreen:', err)
+    }
+  }
+
+  // Handle fullscreen change events
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isNowFullscreen = !!document.fullscreenElement
+      setIsFullscreen(isNowFullscreen)
+      // Close overlays when exiting fullscreen
+      if (!isNowFullscreen) {
+        setShowLeftOverlay(false)
+        setShowRightOverlay(false)
+      }
+    }
+    
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  }, [])
+
+  // When exiting fullscreen, apply any pending tab change to parent
+  useEffect(() => {
+    if (!isFullscreen && pendingTabRef.current && onTabChange) {
+      onTabChange(pendingTabRef.current)
+      pendingTabRef.current = null
+    }
+  }, [isFullscreen, onTabChange])
 
 
 
@@ -331,7 +451,11 @@ export function TemplateChartPreview({
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" ref={fullscreenContainerRef}>
+      {/* Fullscreen overlay */}
+      {isFullscreen && (
+        <div className="fixed inset-0 bg-white z-40" />
+      )}
       {/* Template Controls */}
       <div className="flex items-center justify-between mb-2">
         <div>
@@ -398,15 +522,9 @@ export function TemplateChartPreview({
                 {showGuides ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
                 <span>{showGuides ? "Hide Guides" : "Show Guides"}</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => {
-                if (document.fullscreenElement) {
-                  document.exitFullscreen();
-                } else {
-                  document.documentElement.requestFullscreen();
-                }
-              }}>
+              <DropdownMenuItem onClick={handleFullscreen}>
                 <Maximize2 className="h-4 w-4 mr-2" />
-                <span>Full Screen</span>
+                <span>Fullscreen</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -441,7 +559,7 @@ export function TemplateChartPreview({
       <div className="flex-1 overflow-hidden">
         <div
           ref={containerRef}
-          className="relative w-full h-full overflow-auto border rounded-lg shadow-sm"
+          className={`relative w-full h-full overflow-auto border rounded-lg shadow-sm${isFullscreen ? ' fixed inset-4 z-50 m-0' : ''}`}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
@@ -470,6 +588,185 @@ export function TemplateChartPreview({
           </div>
         </div>
       </div>
+
+      {/* Fullscreen Toolbar */}
+      {isFullscreen && (
+        <>
+          {/* Top Left Button - Open Left Sidebar */}
+          {activeTab && onTabChange && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowLeftOverlay(true)}
+              className="fixed top-4 left-4 z-50 bg-white/95 backdrop-blur-md rounded-xl shadow-xl border border-gray-300/50 hover:bg-white hover:shadow-2xl hover:border-gray-400/60 transition-all duration-200 h-11 w-11"
+              title="Open Options"
+            >
+              <Menu className="h-5 w-5 text-gray-700" />
+            </Button>
+          )}
+
+          {/* Top Right Toolbar */}
+          <div className="fixed top-4 right-4 z-50 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-2 flex gap-2 border border-gray-200 animate-in fade-in duration-200">
+            {/* Zoom Controls */}
+            <div className="flex items-center gap-1 border rounded-md p-0.5 bg-white mr-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleZoomOut}
+                disabled={zoom <= 0.1}
+                className="h-7 w-7 p-0"
+                title="Zoom Out"
+              >
+                <ZoomOut className="h-3.5 w-3.5" />
+              </Button>
+              <span className="text-xs text-gray-600 min-w-[45px] text-center px-1">
+                {Math.round(zoom * 100)}%
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleZoomIn}
+                disabled={zoom >= 3}
+                className="h-7 w-7 p-0"
+                title="Zoom In"
+              >
+                <ZoomIn className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => handleExport('png')}
+              title="Download PNG"
+              className="hover:bg-gray-100 h-8 w-8"
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleFullscreen}
+              title="Exit fullscreen"
+              className="hover:bg-gray-100 h-8 w-8"
+            >
+              <Minimize2 className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => document.exitFullscreen()}
+              title="Close"
+              className="hover:bg-gray-100 text-red-500 hover:bg-red-50 h-8 w-8"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Left Sidebar Overlay */}
+          {showLeftOverlay && activeTab && onTabChange && (
+            <SidebarPortalProvider>
+              <SidebarContainer containerRef={leftSidebarPanelRef}>
+                <div className="fixed inset-0 z-[60] flex">
+                  {/* Sidebar Panel */}
+                  <div ref={leftSidebarPanelRef} className="w-80 bg-white shadow-2xl border-r border-gray-200 flex flex-col h-full relative z-[61]">
+                    <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
+                      <h2 className="text-lg font-semibold text-gray-900">Options</h2>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setShowLeftOverlay(false)}
+                        className="h-8 w-8"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto">
+                      <Sidebar
+                        activeTab={fullscreenActiveTab}
+                        onTabChange={(tab) => {
+                          setFullscreenActiveTab(tab)
+                          setShowRightOverlay(true) // Auto-open right panel when tab is selected
+
+                          if (isFullscreen) {
+                            pendingTabRef.current = tab
+                          } else if (onTabChange) {
+                            onTabChange(tab)
+                          }
+                        }}
+                        onToggleLeftSidebar={() => setShowLeftOverlay(false)}
+                        isLeftSidebarCollapsed={false}
+                      />
+                    </div>
+                  </div>
+                  {/* Backdrop */}
+                  <div 
+                    className="flex-1 bg-black/20 backdrop-blur-sm"
+                    onClick={() => setShowLeftOverlay(false)}
+                  />
+                </div>
+              </SidebarContainer>
+            </SidebarPortalProvider>
+          )}
+
+          {/* Right Tools Panel Overlay */}
+          {showRightOverlay && activeTab && onTabChange && (
+            <SidebarPortalProvider>
+              <SidebarContainer containerRef={rightSidebarPanelRef}>
+                <div className="fixed inset-0 z-[70] flex">
+                  {/* Tools Panel - Positioned on left, stacked on top of options sidebar */}
+                  <div ref={rightSidebarPanelRef} className="w-80 bg-white shadow-2xl border-r border-gray-200 flex flex-col h-full relative z-[71]">
+                    <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
+                      <h2 className="text-lg font-semibold text-gray-900">Tools</h2>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setShowRightOverlay(false)}
+                          className="h-8 w-8"
+                          title="Close Tools"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setShowRightOverlay(false)
+                            setShowLeftOverlay(false)
+                          }}
+                          className="h-8 w-8"
+                          title="Close All"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex-1 overflow-y-auto">
+                      <ConfigPanel
+                        activeTab={fullscreenActiveTab}
+                        onTabChange={(tab) => {
+                          setFullscreenActiveTab(tab)
+                          if (isFullscreen) {
+                            pendingTabRef.current = tab
+                          } else if (onTabChange) {
+                            onTabChange(tab)
+                          }
+                        }}
+                        onNewChart={onNewChart}
+                      />
+                    </div>
+                  </div>
+                  {/* Backdrop */}
+                  <div 
+                    className="flex-1 bg-black/20 backdrop-blur-sm"
+                    onClick={() => setShowRightOverlay(false)}
+                  />
+                </div>
+              </SidebarContainer>
+            </SidebarPortalProvider>
+          )}
+        </>
+      )}
     </div>
   )
 } 

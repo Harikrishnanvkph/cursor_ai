@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog"
 import { useState, useRef, useEffect } from "react"
 import { useChartStore, getDefaultImageType, getDefaultImageSize, getImageOptionsForChartType, getDefaultImageConfig, type ExtendedChartDataset } from "@/lib/chart-store"
+import { toast } from "sonner"
 import {
   Plus,
   Trash2,
@@ -162,20 +163,117 @@ export function SliceSettings({ className }: SliceSettingsProps) {
     updateDataset(datasetIndex, { backgroundColor: newBackgroundColors })
   }
 
-  const handleImageUpload = (pointIndex: number, event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (pointIndex: number, event: React.ChangeEvent<HTMLInputElement>) => {
     if (!currentDataset) return
     const datasetIndex = chartData.datasets.findIndex(ds => ds === currentDataset)
     if (datasetIndex === -1) return
     
     const file = event.target.files?.[0]
     if (file) {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const imageUrl = e.target?.result as string
-        const config = currentDataset.pointImageConfig?.[pointIndex] || getDefaultImageConfig(chartType)
-        updatePointImage(datasetIndex, pointIndex, imageUrl, config)
+      // Import compression utility
+      const { 
+        compressImage, 
+        validateImageFile,
+        getAvailableLocalStorageSpace,
+        shouldCleanupImages,
+        getImagesToCleanup,
+        wouldExceedQuota
+      } = await import('@/lib/image-utils')
+      
+      // Validate file
+      if (!validateImageFile(file, 10)) {
+        toast.error('Invalid image file. Please select an image file under 10MB.')
+        return
       }
-      reader.readAsDataURL(file)
+
+      try {
+        // Check available space and cleanup if needed
+        const availableSpace = getAvailableLocalStorageSpace()
+        if (availableSpace < 200 * 1024) { // Less than 200KB available
+          const cleanupInfo = shouldCleanupImages(chartData, 1 * 1024 * 1024)
+          
+          if (cleanupInfo.needed) {
+            // Clean up old images from all datasets
+            chartData.datasets.forEach((dataset: any, dsIdx: number) => {
+              const indicesToRemove = getImagesToCleanup(dataset, cleanupInfo.maxImagesToKeep)
+              if (indicesToRemove.length > 0) {
+                const newPointImages = [...(dataset.pointImages || [])]
+                indicesToRemove.forEach((idx: number) => {
+                  newPointImages[idx] = null
+                })
+                updateDataset(dsIdx, { pointImages: newPointImages })
+              }
+            })
+            toast.info('Cleaned up old images to free space.')
+          }
+        }
+
+        // Compress image with better defaults (600x600, 0.7 quality)
+        // Progressive compression will adjust if quota is low
+        const compressedImageUrl = await compressImage(file, 600, 600, 0.7, true)
+        
+        // Check if compressed image would exceed quota
+        if (wouldExceedQuota(compressedImageUrl)) {
+          // Try more aggressive cleanup
+          const cleanupInfo = shouldCleanupImages(chartData, 2 * 1024 * 1024)
+          
+          if (cleanupInfo.needed) {
+            chartData.datasets.forEach((dataset: any, dsIdx: number) => {
+              const indicesToRemove = getImagesToCleanup(dataset, cleanupInfo.maxImagesToKeep)
+              if (indicesToRemove.length > 0) {
+                const newPointImages = [...(dataset.pointImages || [])]
+                indicesToRemove.forEach((idx: number) => {
+                  newPointImages[idx] = null
+                })
+                updateDataset(dsIdx, { pointImages: newPointImages })
+              }
+            })
+          }
+          
+          // Check again after cleanup
+          if (wouldExceedQuota(compressedImageUrl)) {
+            toast.error('Storage quota exceeded. Please remove some images or clear browser storage.')
+            return
+          }
+        }
+
+        const config = currentDataset.pointImageConfig?.[pointIndex] || getDefaultImageConfig(chartType)
+        
+        // Try to update, catch quota errors
+        try {
+          updatePointImage(datasetIndex, pointIndex, compressedImageUrl, config)
+        } catch (error: any) {
+          if (error?.message?.includes('quota') || error?.name === 'QuotaExceededError') {
+            // Last resort cleanup - remove all but most recent image from each dataset
+            chartData.datasets.forEach((dataset: any, dsIdx: number) => {
+              const indicesToRemove = getImagesToCleanup(dataset, 1)
+              if (indicesToRemove.length > 0) {
+                const newPointImages = [...(dataset.pointImages || [])]
+                indicesToRemove.forEach((idx: number) => {
+                  newPointImages[idx] = null
+                })
+                updateDataset(dsIdx, { pointImages: newPointImages })
+              }
+            })
+            
+            try {
+              updatePointImage(datasetIndex, pointIndex, compressedImageUrl, config)
+            } catch (e) {
+              toast.error('Storage quota exceeded. Please remove some images or clear browser storage.')
+              console.error('Storage quota error:', e)
+            }
+          } else {
+            throw error
+          }
+        }
+      } catch (error: any) {
+        console.error('Error compressing image:', error)
+        if (error?.message?.includes('quota') || error?.name === 'QuotaExceededError') {
+          toast.error('Storage quota exceeded. Please remove some images or clear browser storage.')
+        } else {
+          toast.error('Failed to process image. Please try a smaller file.')
+        }
+      }
     }
   }
 
@@ -528,8 +626,13 @@ export function SliceSettings({ className }: SliceSettingsProps) {
     // Single mode: simplified UI - select a slice, then edit its image settings only
     if (chartMode === 'single') {
       const idx = Math.min(Math.max(0, imageSelectedIndex), Math.max(0, (currentDataset?.data?.length || 1) - 1))
-      const hasImage = currentDataset?.pointImages?.[idx]
+      const imageUrl = currentDataset?.pointImages?.[idx]
+      const hasImage = imageUrl && imageUrl !== '' && imageUrl !== null ? imageUrl as string : null
       const imageConfig = currentDataset?.pointImageConfig?.[idx] || getDefaultImageConfig(chartType)
+      // Ensure type defaults to 'regular' if not set or invalid
+      if (!imageConfig.type || (imageConfig.type !== 'regular' && imageConfig.type !== 'circle' && imageConfig.type !== 'square' && imageConfig.type !== 'rounded')) {
+        imageConfig.type = 'regular'
+      }
 
       const datasetIndex = chartData.datasets.findIndex(ds => ds === currentDataset)
       const ensureArrays = () => {
@@ -544,13 +647,14 @@ export function SliceSettings({ className }: SliceSettingsProps) {
     }
 
     return (
-      <div className="space-y-4">
-          <div className="bg-green-50 rounded-lg p-3 space-y-3">
+      <div className="space-y-3">
+          <div className="bg-gradient-to-br from-green-50 to-green-100/50 rounded-lg p-3 space-y-3 border border-green-200/50">
+            {/* Slice Selection & Status */}
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 flex-1">
-                <Label className="text-xs font-medium text-green-800">Select Slice:</Label>
+                <Label className="text-[10px] font-semibold text-green-700 uppercase tracking-wide">Slice</Label>
                 <Select value={String(idx)} onValueChange={(v) => setImageSelectedIndex(Number(v))}>
-                  <SelectTrigger className="h-8 text-xs flex-1 max-w-[200px]">
+                  <SelectTrigger className="h-7 text-xs flex-1 border-green-200 focus:border-green-400">
                     <span className="text-xs truncate">{`#${idx + 1} — ${currentSliceLabels[idx] || `Slice ${idx + 1}`}`}</span>
                   </SelectTrigger>
                   <SelectContent>
@@ -562,66 +666,176 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center gap-2">
-                {hasImage ? (
-                  <div className="flex items-center gap-1 text-xs text-green-700 bg-green-100 px-2 py-1 rounded">
-                    <ImageIcon className="h-3 w-3" />
-                    <span>Active</span>
-                  </div>
-                ) : (
-                  <span className="text-xs text-gray-500">No image</span>
-                )}
-              </div>
+              {hasImage && (
+                <div className="flex items-center gap-1 text-[10px] text-green-700 bg-green-100 px-2 py-1 rounded-full border border-green-300">
+                  <ImageIcon className="h-2.5 w-2.5" />
+                  <span className="font-medium">Active</span>
+                </div>
+              )}
             </div>
 
-            {/* Upload / Clear / URL */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs"
-                onClick={() => {
-                  const input = document.createElement('input')
-                  input.type = 'file'
-                  input.accept = 'image/*'
-                  input.onchange = (e) => {
-                    const file = (e.target as HTMLInputElement).files?.[0]
-                    if (!file || datasetIndex === -1) return
-                    const reader = new FileReader()
-                    reader.onload = (ev) => {
-                      const url = ev.target?.result as string
+            {/* Image Preview */}
+            {hasImage && (
+              <div className="bg-white rounded-lg p-2 border border-green-200 shadow-sm">
+                <Label className="text-[10px] font-medium text-green-700 mb-1.5 block">Preview</Label>
+                <div className="relative aspect-square w-full max-w-[100px] mx-auto rounded-lg overflow-hidden border-2 border-green-300 bg-gray-50">
+                  <img 
+                    src={hasImage} 
+                    alt="Preview" 
+                    className="w-full h-full object-cover z-10 relative"
+                    onError={(e) => {
+                      const img = e.target as HTMLImageElement;
+                      img.style.display = 'none';
+                      const fallback = img.nextElementSibling as HTMLElement;
+                      if (fallback) fallback.style.display = 'flex';
+                    }}
+                    onLoad={(e) => {
+                      const img = e.target as HTMLImageElement;
+                      const fallback = img.nextElementSibling as HTMLElement;
+                      if (fallback) fallback.style.display = 'none';
+                    }}
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-0" style={{ display: 'none' }}>
+                    <ImageIcon className="h-5 w-5 text-gray-400" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Upload / Clear / URL - Compact */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 h-7 text-xs border-green-300 hover:bg-green-50"
+                  onClick={() => {
+                    const input = document.createElement('input')
+                    input.type = 'file'
+                    input.accept = 'image/*'
+                    input.onchange = async (e) => {
+                      const file = (e.target as HTMLInputElement).files?.[0]
+                      if (!file || datasetIndex === -1) return
+                      
+                      // Import compression utility
+                      const { 
+                        compressImage, 
+                        validateImageFile,
+                        getAvailableLocalStorageSpace,
+                        shouldCleanupImages,
+                        getImagesToCleanup,
+                        wouldExceedQuota
+                      } = await import('@/lib/image-utils')
+                      
+                      // Validate file
+                      if (!validateImageFile(file, 10)) {
+                        toast.error('Invalid image file. Please select an image file under 10MB.')
+                        return
+                      }
+
+                    try {
+                      // Check available space and cleanup if needed
+                      const availableSpace = getAvailableLocalStorageSpace()
+                      if (availableSpace < 200 * 1024) {
+                        const cleanupInfo = shouldCleanupImages(chartData, 1 * 1024 * 1024)
+                        if (cleanupInfo.needed) {
+                          chartData.datasets.forEach((dataset: any, dsIdx: number) => {
+                            const indicesToRemove = getImagesToCleanup(dataset, cleanupInfo.maxImagesToKeep)
+                            if (indicesToRemove.length > 0) {
+                              const newPointImages = [...(dataset.pointImages || [])]
+                              indicesToRemove.forEach((idx: number) => {
+                                newPointImages[idx] = null
+                              })
+                              updateDataset(dsIdx, { pointImages: newPointImages })
+                            }
+                          })
+                        }
+                      }
+
+                      // Compress image with better defaults
+                      const compressedImageUrl = await compressImage(file, 600, 600, 0.7, true)
+                      
+                      // Check if compressed image would exceed quota
+                      if (wouldExceedQuota(compressedImageUrl)) {
+                        const cleanupInfo = shouldCleanupImages(chartData, 2 * 1024 * 1024)
+                        if (cleanupInfo.needed) {
+                          chartData.datasets.forEach((dataset: any, dsIdx: number) => {
+                            const indicesToRemove = getImagesToCleanup(dataset, cleanupInfo.maxImagesToKeep)
+                            if (indicesToRemove.length > 0) {
+                              const newPointImages = [...(dataset.pointImages || [])]
+                              indicesToRemove.forEach((idx: number) => {
+                                newPointImages[idx] = null
+                              })
+                              updateDataset(dsIdx, { pointImages: newPointImages })
+                            }
+                          })
+                        }
+                        if (wouldExceedQuota(compressedImageUrl)) {
+                          toast.error('Storage quota exceeded. Please remove some images.')
+                          return
+                        }
+                      }
+
                       const { images, configs } = ensureArrays()
-                      images[idx] = url
+                      images[idx] = compressedImageUrl
                       configs[idx] = { ...imageConfig }
-                      updateDataset(datasetIndex, { pointImages: images as any, pointImageConfig: configs as any })
+                      
+                      try {
+                        updateDataset(datasetIndex, { pointImages: images as any, pointImageConfig: configs as any })
+                      } catch (error: any) {
+                        if (error?.message?.includes('quota') || error?.name === 'QuotaExceededError') {
+                          chartData.datasets.forEach((dataset: any, dsIdx: number) => {
+                            const indicesToRemove = getImagesToCleanup(dataset, 1)
+                            if (indicesToRemove.length > 0) {
+                              const newPointImages = [...(dataset.pointImages || [])]
+                              indicesToRemove.forEach((idx: number) => {
+                                newPointImages[idx] = null
+                              })
+                              updateDataset(dsIdx, { pointImages: newPointImages })
+                            }
+                          })
+                          updateDataset(datasetIndex, { pointImages: images as any, pointImageConfig: configs as any })
+                        } else {
+                          throw error
+                        }
+                      }
+                    } catch (error: any) {
+                      console.error('Error compressing image:', error)
+                      if (error?.message?.includes('quota') || error?.name === 'QuotaExceededError') {
+                        toast.error('Storage quota exceeded. Please remove some images.')
+                      } else {
+                        toast.error('Failed to process image. Please try a smaller file.')
+                      }
                     }
-                    reader.readAsDataURL(file)
-                  }
-                  input.click()
-                }}
-              >
-                <Upload className="h-3 w-3 mr-1" /> Upload
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs"
-                onClick={() => {
-                  if (datasetIndex === -1) return
-                  const { images, configs } = ensureArrays()
-                  images[idx] = ''
-                  configs[idx] = getDefaultImageConfig(chartType)
-                  updateDataset(datasetIndex, { pointImages: images as any, pointImageConfig: configs as any })
-                }}
-              >
-                <Trash2 className="h-3 w-3" /> Clear
-              </Button>
+                    }
+                    input.click()
+                  }}
+                >
+                  <Upload className="h-3 w-3 mr-1" /> Upload
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 w-7 p-0 border-green-300 hover:bg-green-50"
+                  onClick={() => {
+                    if (datasetIndex === -1) return
+                    const { images, configs } = ensureArrays()
+                    images[idx] = ''
+                    configs[idx] = getDefaultImageConfig(chartType)
+                    updateDataset(datasetIndex, { pointImages: images as any, pointImageConfig: configs as any })
+                  }}
+                  disabled={!hasImage}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
               <Input
-                placeholder="Paste image URL and hit Enter"
-                className="h-7 text-xs flex-1"
+                placeholder="Paste image URL and press Enter"
+                className="h-7 text-xs flex-1 border-green-200 focus:border-green-400"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     const value = (e.target as HTMLInputElement).value.trim()
+                    if (value && datasetIndex === -1) return
                     if (value && datasetIndex !== -1) {
                       const { images, configs } = ensureArrays()
                       images[idx] = value
@@ -634,34 +848,39 @@ export function SliceSettings({ className }: SliceSettingsProps) {
               />
             </div>
 
-            {/* Config for selected slice */}
-            <div className="space-y-2">
-              <Label className="text-xs font-medium text-green-800">Configuration</Label>
+            {/* Config for selected slice - Compact */}
+            <div className="space-y-2 pt-2 border-t border-green-200">
+              <Label className="text-[10px] font-semibold text-green-700 uppercase tracking-wide">Configuration</Label>
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <Label className="text-xs font-medium">Type</Label>
+                  <Label className="text-[10px] font-medium text-gray-600">Shape</Label>
                   <Select
-                    value={imageConfig.type || 'circle'}
+                    value={imageConfig.type || 'regular'}
                     onValueChange={(value) => handleImageConfigChange(idx, 'type', value)}
                   >
-                    <SelectTrigger className="h-7 text-xs">
-                      <span className="text-xs truncate">{String(imageConfig.type || 'circle')}</span>
+                    <SelectTrigger className="h-7 text-xs border-green-200 focus:border-green-400">
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {imageOptions.types.map((type) => (
                         <SelectItem key={type.value} value={type.value}>
-                          <span className="text-xs">{type.label}</span>
+                          <div className="flex items-center gap-2">
+                            {type.value === 'circle' && <Circle className="h-3 w-3" />}
+                            {type.value === 'square' && <Square className="h-3 w-3" />}
+                            {type.value === 'regular' && <ImageIcon className="h-3 w-3" />}
+                            <span className="text-xs">{type.label}</span>
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs font-medium">Size</Label>
+                  <Label className="text-[10px] font-medium text-gray-600">Size (px)</Label>
                   <Input
                     type="number"
                     value={imageConfig.size || getDefaultImageSize(chartType)}
-                    className="h-7 text-xs"
+                    className="h-7 text-xs border-green-200 focus:border-green-400"
                     min={5}
                     max={100}
                     onChange={(e) => handleImageConfigChange(idx, 'size', parseInt(e.target.value))}
@@ -669,80 +888,121 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                 </div>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs font-medium">Position</Label>
+                <Label className="text-[10px] font-medium text-gray-600">Position</Label>
                 <Select
                   value={imageConfig.position || 'center'}
                   onValueChange={(value) => handleImageConfigChange(idx, 'position', value)}
                 >
-                  <SelectTrigger className="h-7 text-xs">
-                    <span className="text-xs truncate">{String(imageConfig.position || 'center')}</span>
+                  <SelectTrigger className="h-7 text-xs border-green-200 focus:border-green-400">
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {imageOptions.positions.map((position) => (
-                      <SelectItem key={position.value} value={position.value}>
-                        <span className="text-xs">{position.label}</span>
-                      </SelectItem>
-                    ))}
+                    {imageOptions.positions.map((position) => {
+                      const Icon = getPositionIcon(position.value);
+                      return (
+                        <SelectItem key={position.value} value={position.value}>
+                          <div className="flex items-center gap-2">
+                            <Icon className="h-3 w-3" />
+                            <span className="text-xs">{position.label}</span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Callout / Arrow settings */}
-              {imageOptions.supportsArrow && (imageConfig.position === 'callout') && (
-                <div className="space-y-2 p-2 bg-blue-50 rounded border border-blue-200 mt-2">
-                  <Label className="text-xs font-medium text-green-800">Arrow/Callout Settings</Label>
-                  <div className="flex items-center space-x-3">
-                    <Switch
-                      checked={imageConfig.arrowLine !== false}
-                      onCheckedChange={(checked) => handleImageConfigChange(idx, 'arrowLine', checked)}
-                    />
-                    <Label className="text-xs font-medium">Arrow Line</Label>
+              {/* Arrow/Callout Settings - Compact */}
+              {imageOptions.supportsArrow && imageConfig.position === 'callout' && (
+                <div className="space-y-2 pt-2 border-t border-green-200">
+                  <Label className="text-xs font-semibold text-green-700 uppercase tracking-wide">Arrow Settings</Label>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-medium text-gray-600">Border Width</Label>
+                      <Input
+                        type="number"
+                        value={imageConfig.borderWidth || 3}
+                        className="h-7 text-xs border-green-200 focus:border-green-400"
+                        placeholder="3"
+                        min={0}
+                        max={10}
+                        step={1}
+                        onChange={(e) => handleImageConfigChange(idx, 'borderWidth', parseInt(e.target.value))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-medium text-gray-600">Border Color</Label>
+                      <div className="flex items-center gap-1.5">
+                        <Input
+                          type="color"
+                          value={imageConfig.borderColor || '#ffffff'}
+                          className="h-7 w-12 p-0.5 border border-green-200 rounded cursor-pointer"
+                          onChange={(e) => handleImageConfigChange(idx, 'borderColor', e.target.value)}
+                        />
+                        <Input
+                          value={imageConfig.borderColor || '#ffffff'}
+                          className="h-7 text-xs flex-1 border-green-200 focus:border-green-400 font-mono text-[10px]"
+                          onChange={(e) => handleImageConfigChange(idx, 'borderColor', e.target.value)}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-3">
-                    <Switch
-                      checked={imageConfig.arrowHead !== false}
-                      onCheckedChange={(checked) => handleImageConfigChange(idx, 'arrowHead', checked)}
-                      disabled={imageConfig.arrowLine === false}
-                    />
-                    <Label className="text-xs font-medium">Arrow Head</Label>
+                  
+                  <div className="flex items-center gap-3 pt-1">
+                    <div className="flex items-center gap-1.5">
+                      <Switch
+                        checked={imageConfig.arrowLine !== false}
+                        onCheckedChange={(checked) => handleImageConfigChange(idx, 'arrowLine', checked)}
+                        className="scale-75"
+                      />
+                      <Label className="text-xs font-medium text-gray-700">Arrow Line</Label>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Switch
+                        checked={imageConfig.arrowHead !== false}
+                        onCheckedChange={(checked) => handleImageConfigChange(idx, 'arrowHead', checked)}
+                        disabled={imageConfig.arrowLine === false}
+                        className="scale-75"
+                      />
+                      <Label className="text-xs font-medium text-gray-700">Arrow Head</Label>
+                    </div>
                   </div>
-                  {(imageConfig.arrowLine !== false || imageConfig.arrowHead !== false) && (
-                    <div>
-                      <Label className="text-xs font-medium">Arrow End Distance from Image</Label>
-                      <div className="flex gap-2 mt-1">
+                  
+                  {imageConfig.arrowLine !== false && (
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <div className="space-y-1">
+                        <Label className="text-xs font-medium text-gray-600">Arrow Color</Label>
+                        <Input
+                          type="color"
+                          value={imageConfig.arrowColor || '#666666'}
+                          className="h-7 w-full p-0.5 border border-green-200 rounded cursor-pointer"
+                          onChange={(e) => handleImageConfigChange(idx, 'arrowColor', e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs font-medium text-gray-600">Gap (px)</Label>
                         <Input
                           type="number"
                           value={imageConfig.arrowEndGap ?? 8}
-                          className="h-7 text-xs flex-1"
+                          className="h-7 text-xs border-green-200 focus:border-green-400"
                           placeholder="8"
                           min={0}
                           max={30}
                           step={1}
                           onChange={(e) => handleImageConfigChange(idx, 'arrowEndGap', parseInt(e.target.value))}
                         />
-                        <span className="text-xs text-gray-500 self-center">px</span>
                       </div>
-                    </div>
-                  )}
-                  {imageConfig.arrowLine !== false && (
-                    <div className="space-y-1">
-                      <Label className="text-xs font-medium">Arrow Color</Label>
-                      <Input
-                        type="color"
-                        value={imageConfig.arrowColor || '#666666'}
-                        className="h-7 w-full"
-                        onChange={(e) => handleImageConfigChange(idx, 'arrowColor', e.target.value)}
-                      />
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Fill and Image Fit settings */}
+              {/* Fill and Image Fit settings - Compact */}
               {imageOptions.supportsFill && (
-                <>
+                <div className="space-y-2 pt-2 border-t border-green-200">
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs font-medium">
+                    <Label className="text-[10px] font-semibold text-green-700 uppercase tracking-wide">
                       {['pie', 'doughnut', 'polarArea'].includes(chartType) ? 'Fill Slice' : 'Fill Bar'}
                     </Label>
                     <Switch
@@ -754,42 +1014,45 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                           handleImageConfigChange(idx, 'fillBar', checked)
                         }
                       }}
-                      className="data-[state=checked]:bg-green-600"
+                      className="scale-75 data-[state=checked]:bg-green-600"
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs font-medium">Image Fit</Label>
-                    <div className="grid grid-cols-3 gap-2">
+                    <Label className="text-[10px] font-medium text-gray-600">Image Fit</Label>
+                    <div className="grid grid-cols-3 gap-1.5">
                       <Button
                         variant="outline"
                         size="sm"
-                        className={`h-7 text-xs ${imageConfig.imageFit === 'fill' ? 'bg-green-100 border-green-400' : ''}`}
+                        className={`h-7 text-[10px] ${imageConfig.imageFit === 'fill' ? 'bg-green-100 border-green-400 text-green-700' : ''}`}
                         onClick={() => handleImageConfigChange(idx, 'imageFit', 'fill')}
                         disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ? imageConfig.fillSlice : imageConfig.fillBar)}
                       >
+                        <Maximize2 className="h-2.5 w-2.5 mr-1" />
                         Fill
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
-                        className={`h-7 text-xs ${imageConfig.imageFit === 'cover' ? 'bg-green-100 border-green-400' : ''}`}
+                        className={`h-7 text-[10px] ${imageConfig.imageFit === 'cover' ? 'bg-green-100 border-green-400 text-green-700' : ''}`}
                         onClick={() => handleImageConfigChange(idx, 'imageFit', 'cover')}
                         disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ? imageConfig.fillSlice : imageConfig.fillBar)}
                       >
+                        <Crop className="h-2.5 w-2.5 mr-1" />
                         Cover
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
-                        className={`h-7 text-xs ${imageConfig.imageFit === 'contain' ? 'bg-green-100 border-green-400' : ''}`}
+                        className={`h-7 text-[10px] ${imageConfig.imageFit === 'contain' ? 'bg-green-100 border-green-400 text-green-700' : ''}`}
                         onClick={() => handleImageConfigChange(idx, 'imageFit', 'contain')}
                         disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ? imageConfig.fillSlice : imageConfig.fillBar)}
                       >
+                        <Grid className="h-2.5 w-2.5 mr-1" />
                         Contain
                       </Button>
                     </div>
                   </div>
-                </>
+                </div>
               )}
             </div>
           </div>
@@ -797,17 +1060,20 @@ export function SliceSettings({ className }: SliceSettingsProps) {
       )
     }
 
-    // Grouped mode: keep existing per-slice list
+    // Grouped mode: keep existing per-slice list with modern UI
     return (
-      <div className="space-y-4">
-        <div className="space-y-3">          
-          <div className="bg-green-50 rounded-lg p-3 space-y-3">            
-            <div className="flex items-center justify-between">
-              <Label className="text-[0.80rem] font-medium">Individual Point Images</Label>
+      <div className="space-y-3">
+        <div className="space-y-2.5">          
+          <div className="bg-gradient-to-br from-green-50 to-green-100/50 rounded-lg p-3 space-y-3 border border-green-200/50">            
+            <div className="flex items-center justify-between pb-2 border-b border-green-200">
+              <Label className="text-xs font-semibold text-gray-900 flex items-center gap-2">
+                <ImageIcon className="h-3.5 w-3.5 text-green-600" />
+                Point Images
+              </Label>
               <Button
                 size="sm"
                 variant="outline"
-                className="h-7 text-xs"
+                className="h-7 text-xs border-green-300 hover:bg-green-50"
                 onClick={() => {
                   currentDataset.data.forEach((_: any, pointIndex: number) => {
                     const datasetIndex = chartData.datasets.findIndex(ds => ds === currentDataset);
@@ -815,41 +1081,70 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                   });
                 }}
               >
+                <Trash2 className="h-3 w-3 mr-1" />
                 Clear All
               </Button>
             </div>
             
-            <div className="space-y-3 pt-2 border-t border-green-200 max-h-96">
+            <div className="space-y-2.5 max-h-96 overflow-y-auto pr-1">
                 {currentDataset.data.map((_: any, pointIndex) => {
-                  const hasImage = currentDataset.pointImages?.[pointIndex]
+                  const imageUrl = currentDataset.pointImages?.[pointIndex]
+                  const hasImage = imageUrl && imageUrl !== '' && imageUrl !== null ? imageUrl as string : null
                   const imageConfig = currentDataset.pointImageConfig?.[pointIndex] || getDefaultImageConfig(chartType)
+                  // Ensure type defaults to 'regular' if not set or invalid
+                  if (!imageConfig.type || (imageConfig.type !== 'regular' && imageConfig.type !== 'circle' && imageConfig.type !== 'square' && imageConfig.type !== 'rounded')) {
+                    imageConfig.type = 'regular'
+                  }
                   
                   return (
-                    <div key={pointIndex} className="p-3 bg-white rounded border">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs font-medium text-gray-500">#{pointIndex + 1}</span>
-                          <span className="text-xs font-medium">{String(currentSliceLabels[pointIndex] || `Point ${pointIndex + 1}`)}</span>
+                    <div key={pointIndex} className="p-2.5 bg-white rounded-lg border border-green-200 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">#{pointIndex + 1}</span>
+                          <span className="text-xs font-medium text-gray-700">{String(currentSliceLabels[pointIndex] || `Point ${pointIndex + 1}`)}</span>
                         </div>
-                        <div className="flex items-center gap-1">
-                          {hasImage ? (
-                            <div className="flex items-center gap-1 text-green-600">
-                              <ImageIcon className="h-3 w-3" />
-                              <span className="text-xs">Has Image</span>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-gray-400">No Image</span>
-                          )}
-                        </div>
+                        {hasImage && (
+                          <div className="flex items-center gap-1 text-[10px] text-green-700 bg-green-100 px-2 py-0.5 rounded-full border border-green-300">
+                            <ImageIcon className="h-2.5 w-2.5" />
+                            <span className="font-medium">Active</span>
+                          </div>
+                        )}
                       </div>
                       
-                      {/* Image Upload */}
-                      <div className="space-y-2 mb-3">
-                        <div className="flex items-center gap-2">
+                      {/* Image Preview */}
+                      {hasImage && (
+                        <div className="mb-2 bg-gray-50 rounded p-1.5 border border-green-200">
+                          <div className="relative aspect-square w-full max-w-[80px] mx-auto rounded overflow-hidden border border-green-300 bg-white">
+                            <img 
+                              src={hasImage} 
+                              alt={`Preview ${pointIndex + 1}`} 
+                              className="w-full h-full object-cover z-10 relative"
+                              onError={(e) => {
+                                const img = e.target as HTMLImageElement;
+                                img.style.display = 'none';
+                                const fallback = img.nextElementSibling as HTMLElement;
+                                if (fallback) fallback.style.display = 'flex';
+                              }}
+                              onLoad={(e) => {
+                                const img = e.target as HTMLImageElement;
+                                const fallback = img.nextElementSibling as HTMLElement;
+                                if (fallback) fallback.style.display = 'none';
+                              }}
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-0" style={{ display: 'none' }}>
+                              <ImageIcon className="h-4 w-4 text-gray-400" />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Image Upload - Compact */}
+                      <div className="space-y-1.5 mb-2">
+                        <div className="flex items-center gap-1.5">
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-7 text-xs flex-1"
+                            className="flex-1 h-7 text-xs border-green-300 hover:bg-green-50"
                             onClick={() => {
                               const input = document.createElement('input');
                               input.type = 'file';
@@ -859,50 +1154,49 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                             }}
                           >
                             <Upload className="h-3 w-3 mr-1" />
-                            Upload Image
+                            Upload
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-7 w-7 p-0"
+                            className="h-7 w-7 p-0 border-green-300 hover:bg-green-50"
                             onClick={() => {
                               const datasetIndex = chartData.datasets.findIndex(ds => ds === currentDataset);
                               updatePointImage(datasetIndex, pointIndex, '', getDefaultImageConfig(chartType));
                             }}
+                            disabled={!hasImage}
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
                         
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder="Image URL"
-                            className="h-7 text-xs flex-1"
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                const value = (e.target as HTMLInputElement).value;
-                                if (value.trim()) {
-                                  handleImageUrlChange(pointIndex, value.trim());
-                                  (e.target as HTMLInputElement).value = '';
-                                }
+                        <Input
+                          placeholder="Paste URL and press Enter"
+                          className="h-7 text-xs flex-1 border-green-200 focus:border-green-400"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              const value = (e.target as HTMLInputElement).value;
+                              if (value.trim()) {
+                                handleImageUrlChange(pointIndex, value.trim());
+                                (e.target as HTMLInputElement).value = '';
                               }
-                            }}
-                          />
-                        </div>
+                            }
+                          }}
+                        />
                       </div>
 
-                      {/* Image Configuration */}
-                      <div className="space-y-2">
-                        <Label className="text-xs font-medium text-green-800">Configuration</Label>
+                      {/* Image Configuration - Compact */}
+                      <div className="space-y-2 pt-2 border-t border-green-200">
+                        <Label className="text-[10px] font-semibold text-green-700 uppercase tracking-wide">Configuration</Label>
                         
                         <div className="grid grid-cols-2 gap-2">
                           <div className="space-y-1">
-                            <Label className="text-xs font-medium">Type</Label>
+                            <Label className="text-[10px] font-medium text-gray-600">Shape</Label>
                             <Select
-                              value={imageConfig.type || 'circle'}
+                              value={imageConfig.type || 'regular'}
                               onValueChange={(value) => handleImageConfigChange(pointIndex, 'type', value)}
                             >
-                              <SelectTrigger className="h-7 text-xs">
+                              <SelectTrigger className="h-7 text-xs border-green-200 focus:border-green-400">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -911,7 +1205,8 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                                     <div className="flex items-center gap-2">
                                       {type.value === 'circle' && <Circle className="h-3 w-3" />}
                                       {type.value === 'square' && <Square className="h-3 w-3" />}
-                                      {type.label}
+                                      {type.value === 'regular' && <ImageIcon className="h-3 w-3" />}
+                                      <span className="text-xs">{type.label}</span>
                                     </div>
                                   </SelectItem>
                                 ))}
@@ -920,12 +1215,12 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                           </div>
                           
                           <div className="space-y-1">
-                            <Label className="text-xs font-medium">Size</Label>
+                            <Label className="text-[10px] font-medium text-gray-600">Size (px)</Label>
                             <Input
                               type="number"
                               value={imageConfig.size || getDefaultImageSize(chartType)}
-                              className="h-7 text-xs"
-                              placeholder="Size"
+                              className="h-7 text-xs border-green-200 focus:border-green-400"
+                              placeholder="20"
                               min={5}
                               max={100}
                               onChange={(e) => handleImageConfigChange(pointIndex, 'size', parseInt(e.target.value))}
@@ -934,83 +1229,121 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                         </div>
 
                         <div className="space-y-1">
-                          <Label className="text-xs font-medium">Position</Label>
+                          <Label className="text-[10px] font-medium text-gray-600">Position</Label>
                           <Select
                             value={imageConfig.position || 'center'}
                             onValueChange={(value) => handleImageConfigChange(pointIndex, 'position', value)}
                           >
-                            <SelectTrigger className="h-7 text-xs">
+                            <SelectTrigger className="h-7 text-xs border-green-200 focus:border-green-400">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {imageOptions.positions.map((position) => (
-                                <SelectItem key={position.value} value={position.value}>
-                                  <div className="flex items-center gap-2">
-                                    {position.value === 'callout' && <ArrowUpRight className="h-3 w-3" />}
-                                    {position.value === 'center' && <Target className="h-3 w-3" />}
-                                    {position.label}
-                                  </div>
-                                </SelectItem>
-                              ))}
+                              {imageOptions.positions.map((position) => {
+                                const Icon = getPositionIcon(position.value);
+                                return (
+                                  <SelectItem key={position.value} value={position.value}>
+                                    <div className="flex items-center gap-2">
+                                      <Icon className="h-3 w-3" />
+                                      <span className="text-xs">{position.label}</span>
+                                    </div>
+                                  </SelectItem>
+                                );
+                              })}
                             </SelectContent>
                           </Select>
                         </div>
 
-                        {/* Callout Arrow Controls */}
+                        {/* Arrow/Callout Settings - Compact */}
                         {imageOptions.supportsArrow && imageConfig.position === 'callout' && (
-                          <div className="space-y-2 p-2 bg-blue-50 rounded border border-blue-200 mt-2">
-                            <Label className="text-xs font-medium text-green-800">Arrow/Callout Settings</Label>
-                            <div className="flex items-center space-x-3">
-                              <Switch
-                                checked={imageConfig.arrowLine !== false}
-                                onCheckedChange={(checked) => handleImageConfigChange(pointIndex, 'arrowLine', checked)}
-                              />
-                              <Label className="text-xs font-medium">Arrow Line</Label>
+                          <div className="space-y-2 pt-2 border-t border-green-200">
+                            <Label className="text-xs font-semibold text-green-700 uppercase tracking-wide">Arrow Settings</Label>
+                            
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="space-y-1">
+                                <Label className="text-xs font-medium text-gray-600">Border Width</Label>
+                                <Input
+                                  type="number"
+                                  value={imageConfig.borderWidth || 3}
+                                  className="h-7 text-xs border-green-200 focus:border-green-400"
+                                  placeholder="3"
+                                  min={0}
+                                  max={10}
+                                  step={1}
+                                  onChange={(e) => handleImageConfigChange(pointIndex, 'borderWidth', parseInt(e.target.value))}
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs font-medium text-gray-600">Border Color</Label>
+                                <div className="flex items-center gap-1.5">
+                                  <Input
+                                    type="color"
+                                    value={imageConfig.borderColor || '#ffffff'}
+                                    className="h-7 w-12 p-0.5 border border-green-200 rounded cursor-pointer"
+                                    onChange={(e) => handleImageConfigChange(pointIndex, 'borderColor', e.target.value)}
+                                  />
+                                  <Input
+                                    value={imageConfig.borderColor || '#ffffff'}
+                                    className="h-7 text-xs flex-1 border-green-200 focus:border-green-400 font-mono text-[10px]"
+                                    onChange={(e) => handleImageConfigChange(pointIndex, 'borderColor', e.target.value)}
+                                  />
+                                </div>
+                              </div>
                             </div>
-                            <div className="flex items-center space-x-3">
-                              <Switch
-                                checked={imageConfig.arrowHead !== false}
-                                onCheckedChange={(checked) => handleImageConfigChange(pointIndex, 'arrowHead', checked)}
-                                disabled={imageConfig.arrowLine === false}
-                              />
-                              <Label className="text-xs font-medium">Arrow Head</Label>
+                            
+                            <div className="flex items-center gap-3 pt-1">
+                              <div className="flex items-center gap-1.5">
+                                <Switch
+                                  checked={imageConfig.arrowLine !== false}
+                                  onCheckedChange={(checked) => handleImageConfigChange(pointIndex, 'arrowLine', checked)}
+                                  className="scale-75"
+                                />
+                                <Label className="text-xs font-medium text-gray-700">Arrow Line</Label>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <Switch
+                                  checked={imageConfig.arrowHead !== false}
+                                  onCheckedChange={(checked) => handleImageConfigChange(pointIndex, 'arrowHead', checked)}
+                                  disabled={imageConfig.arrowLine === false}
+                                  className="scale-75"
+                                />
+                                <Label className="text-xs font-medium text-gray-700">Arrow Head</Label>
+                              </div>
                             </div>
-                            {(imageConfig.arrowLine !== false || imageConfig.arrowHead !== false) && (
-                              <div>
-                                <Label className="text-xs font-medium">Arrow End Distance from Image</Label>
-                                <div className="flex gap-2 mt-1">
+                            
+                            {imageConfig.arrowLine !== false && (
+                              <div className="grid grid-cols-2 gap-2 pt-1">
+                                <div className="space-y-1">
+                                  <Label className="text-xs font-medium text-gray-600">Arrow Color</Label>
+                                  <Input
+                                    type="color"
+                                    value={imageConfig.arrowColor || '#666666'}
+                                    className="h-7 w-full p-0.5 border border-green-200 rounded cursor-pointer"
+                                    onChange={(e) => handleImageConfigChange(pointIndex, 'arrowColor', e.target.value)}
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs font-medium text-gray-600">Gap (px)</Label>
                                   <Input
                                     type="number"
                                     value={imageConfig.arrowEndGap ?? 8}
-                                    className="h-7 text-xs flex-1"
+                                    className="h-7 text-xs border-green-200 focus:border-green-400"
                                     placeholder="8"
                                     min={0}
                                     max={30}
                                     step={1}
                                     onChange={(e) => handleImageConfigChange(pointIndex, 'arrowEndGap', parseInt(e.target.value))}
                                   />
-                                  <span className="text-xs text-gray-500 self-center">px</span>
                                 </div>
-                              </div>
-                            )}
-                            {imageConfig.arrowLine !== false && (
-                              <div className="space-y-1">
-                                <Label className="text-xs font-medium">Arrow Color</Label>
-                                <Input
-                                  type="color"
-                                  value={imageConfig.arrowColor || '#666666'}
-                                  className="h-7 w-full"
-                                  onChange={(e) => handleImageConfigChange(pointIndex, 'arrowColor', e.target.value)}
-                                />
                               </div>
                             )}
                           </div>
                         )}
 
+                        {/* Fill Settings - Compact */}
                         {imageOptions.supportsFill && (
-                          <>
+                          <div className="space-y-2 pt-2 border-t border-green-200">
                             <div className="flex items-center justify-between">
-                              <Label className="text-xs font-medium">
+                              <Label className="text-[10px] font-semibold text-green-700 uppercase tracking-wide">
                                 {['pie', 'doughnut', 'polarArea'].includes(chartType) ? 'Fill Slice' : 'Fill Bar'}
                               </Label>
                               <Switch
@@ -1024,60 +1357,61 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                                     handleImageConfigChange(pointIndex, 'fillBar', checked)
                                   }
                                 }}
-                                className="data-[state=checked]:bg-green-600"
+                                className="scale-75 data-[state=checked]:bg-green-600"
                               />
                             </div>
                             <div className="space-y-1">
-                              <Label className="text-xs font-medium">Image Fit</Label>
-                              <div className="grid grid-cols-3 gap-2">
+                              <Label className="text-[10px] font-medium text-gray-600">Image Fit</Label>
+                              <div className="grid grid-cols-3 gap-1.5">
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className={`h-7 text-xs ${imageConfig.imageFit === 'fill' ? 'bg-green-100 border-green-400' : ''}`}
+                                  className={`h-7 text-[10px] ${imageConfig.imageFit === 'fill' ? 'bg-green-100 border-green-400 text-green-700' : ''}`}
                                   onClick={() => handleImageConfigChange(pointIndex, 'imageFit', 'fill')}
                                   disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ? 
                                     imageConfig.fillSlice : 
                                     imageConfig.fillBar)}
                                 >
-                                  <Maximize2 className="h-3 w-3 mr-1" />
+                                  <Maximize2 className="h-2.5 w-2.5 mr-1" />
                                   Fill
                                 </Button>
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className={`h-7 text-xs ${imageConfig.imageFit === 'cover' ? 'bg-green-100 border-green-400' : ''}`}
+                                  className={`h-7 text-[10px] ${imageConfig.imageFit === 'cover' ? 'bg-green-100 border-green-400 text-green-700' : ''}`}
                                   onClick={() => handleImageConfigChange(pointIndex, 'imageFit', 'cover')}
                                   disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ? 
                                     imageConfig.fillSlice : 
                                     imageConfig.fillBar)}
                                 >
-                                  <Crop className="h-3 w-3 mr-1" />
+                                  <Crop className="h-2.5 w-2.5 mr-1" />
                                   Cover
                                 </Button>
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className={`h-7 text-xs ${imageConfig.imageFit === 'contain' ? 'bg-green-100 border-green-400' : ''}`}
+                                  className={`h-7 text-[10px] ${imageConfig.imageFit === 'contain' ? 'bg-green-100 border-green-400 text-green-700' : ''}`}
                                   onClick={() => handleImageConfigChange(pointIndex, 'imageFit', 'contain')}
                                   disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ? 
                                     imageConfig.fillSlice : 
                                     imageConfig.fillBar)}
                                 >
-                                  <Grid className="h-3 w-3 mr-1" />
+                                  <Grid className="h-2.5 w-2.5 mr-1" />
                                   Contain
                                 </Button>
                               </div>
                             </div>
-                          </>
+                          </div>
                         )}
 
-                        <div className="grid grid-cols-2 gap-2">
+                        {/* Border Settings - Compact */}
+                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-green-200">
                           <div className="space-y-1">
-                            <Label className="text-xs font-medium">Border Width</Label>
+                            <Label className="text-[10px] font-medium text-gray-600">Border Width</Label>
                             <Input
                               type="number"
                               value={imageConfig.borderWidth || 3}
-                              className="h-7 text-xs"
+                              className="h-7 text-xs border-green-200 focus:border-green-400"
                               placeholder="3"
                               min={0}
                               max={10}
@@ -1086,13 +1420,20 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                           </div>
                           
                           <div className="space-y-1">
-                            <Label className="text-xs font-medium">Border Color</Label>
-                            <Input
-                              type="color"
-                              value={imageConfig.borderColor || '#ffffff'}
-                              className="h-7 w-full"
-                              onChange={(e) => handleImageConfigChange(pointIndex, 'borderColor', e.target.value)}
-                            />
+                            <Label className="text-[10px] font-medium text-gray-600">Border Color</Label>
+                            <div className="flex items-center gap-1.5">
+                              <Input
+                                type="color"
+                                value={imageConfig.borderColor || '#ffffff'}
+                                className="h-7 w-12 p-0.5 border border-green-200 rounded cursor-pointer"
+                                onChange={(e) => handleImageConfigChange(pointIndex, 'borderColor', e.target.value)}
+                              />
+                              <Input
+                                value={imageConfig.borderColor || '#ffffff'}
+                                className="h-7 text-xs flex-1 border-green-200 focus:border-green-400 font-mono text-[10px]"
+                                onChange={(e) => handleImageConfigChange(pointIndex, 'borderColor', e.target.value)}
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1361,19 +1702,82 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                         variant="outline"
                         size="sm"
                         className="h-8 text-xs"
-                        onClick={() => {
+                        onClick={async () => {
                           const input = document.createElement('input')
                           input.type = 'file'
                           input.accept = 'image/*'
-                          input.onchange = (e) => {
+                          input.onchange = async (e) => {
                             const file = (e.target as HTMLInputElement).files?.[0]
                             if (!file) return
-                            const reader = new FileReader()
-                            reader.onload = (ev) => {
-                              const url = ev.target?.result as string
-                              setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, imageUrl: url } : r))
+                            
+                            // Import compression utility
+                            const { 
+                              compressImage, 
+                              validateImageFile,
+                              getAvailableLocalStorageSpace,
+                              shouldCleanupImages,
+                              getImagesToCleanup,
+                              wouldExceedQuota
+                            } = await import('@/lib/image-utils')
+                            
+                            // Validate file
+                            if (!validateImageFile(file, 10)) {
+                              toast.error('Invalid image file. Please select an image file under 10MB.')
+                              return
                             }
-                            reader.readAsDataURL(file)
+
+                            try {
+                              // Check available space and cleanup if needed
+                              const availableSpace = getAvailableLocalStorageSpace()
+                              if (availableSpace < 200 * 1024) {
+                                const cleanupInfo = shouldCleanupImages(chartData, 1 * 1024 * 1024)
+                                if (cleanupInfo.needed) {
+                                  chartData.datasets.forEach((dataset: any, dsIdx: number) => {
+                                    const indicesToRemove = getImagesToCleanup(dataset, cleanupInfo.maxImagesToKeep)
+                                    if (indicesToRemove.length > 0) {
+                                      const newPointImages = [...(dataset.pointImages || [])]
+                                      indicesToRemove.forEach((idx: number) => {
+                                        newPointImages[idx] = null
+                                      })
+                                      updateDataset(dsIdx, { pointImages: newPointImages })
+                                    }
+                                  })
+                                }
+                              }
+
+                              // Compress image with better defaults
+                              const compressedImageUrl = await compressImage(file, 600, 600, 0.7, true)
+                              
+                              // Check if compressed image would exceed quota
+                              if (wouldExceedQuota(compressedImageUrl)) {
+                                const cleanupInfo = shouldCleanupImages(chartData, 2 * 1024 * 1024)
+                                if (cleanupInfo.needed) {
+                                  chartData.datasets.forEach((dataset: any, dsIdx: number) => {
+                                    const indicesToRemove = getImagesToCleanup(dataset, cleanupInfo.maxImagesToKeep)
+                                    if (indicesToRemove.length > 0) {
+                                      const newPointImages = [...(dataset.pointImages || [])]
+                                      indicesToRemove.forEach((idx: number) => {
+                                        newPointImages[idx] = null
+                                      })
+                                      updateDataset(dsIdx, { pointImages: newPointImages })
+                                    }
+                                  })
+                                }
+                                if (wouldExceedQuota(compressedImageUrl)) {
+                                  toast.error('Storage quota exceeded. Please remove some images.')
+                                  return
+                                }
+                              }
+
+                              setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, imageUrl: compressedImageUrl } : r))
+                            } catch (error: any) {
+                              console.error('Error compressing image:', error)
+                              if (error?.message?.includes('quota') || error?.name === 'QuotaExceededError') {
+                                toast.error('Storage quota exceeded. Please remove some images.')
+                              } else {
+                                toast.error('Failed to process image. Please try a smaller file.')
+                              }
+                            }
                           }
                           input.click()
                         }}

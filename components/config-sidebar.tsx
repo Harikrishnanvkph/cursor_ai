@@ -9,12 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ResponsiveAnimationsPanel } from "@/components/panels/responsive-animations-panel"
 import { DatasetsSlicesPanel } from "@/components/panels/datasets-slices-panel"
-import { FileText, Layout, BarChart3 } from "lucide-react"
+import { FileText, Layout, BarChart3, Edit3 } from "lucide-react"
 import { useState, useCallback } from "react"
 import { Plus, Trash2, Eye, EyeOff } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import Link from "next/link"
 
 export function ConfigSidebar() {
   const { 
@@ -228,6 +229,27 @@ export function ConfigSidebar() {
                     </div>
                   </div>
                 ))}
+                
+                {/* Dummy card to go to editor page */}
+                <div className="p-4 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50/40 transition-all duration-200">
+                  <div className="flex flex-col items-center justify-center text-center space-y-3">
+                    <Edit3 className="h-6 w-6 text-gray-400" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-700 mb-1">
+                        Go to Editor Page to Create Custom Templates
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Use the advanced editor to design your own templates
+                      </p>
+                    </div>
+                    <Link href="/editor">
+                      <Button variant="default" size="sm" className="mt-1">
+                        <Edit3 className="h-4 w-4 mr-2" />
+                        Go to Editor
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
               </div>
 
               {!currentTemplate && (

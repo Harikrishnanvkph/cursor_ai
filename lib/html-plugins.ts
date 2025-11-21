@@ -1134,19 +1134,72 @@ function renderCalloutImage(ctx, pointX, pointY, img, config, datasetIndex, poin
     ctx.restore();
   }
 
+  // Calculate actual image dimensions for regular type (for border)
+  let borderX = x - size / 2;
+  let borderY = y - size / 2;
+  let borderW = size;
+  let borderH = size;
+  
+  if (config.type === 'regular') {
+    const imgAspectRatio = img.naturalWidth / img.naturalHeight;
+    if (imgAspectRatio > 1) {
+      // Image is wider - fit to width
+      borderH = size / imgAspectRatio;
+      borderY = y - borderH / 2;
+    } else {
+      // Image is taller - fit to height
+      borderW = size * imgAspectRatio;
+      borderX = x - borderW / 2;
+    }
+  }
+
   // Draw border if specified
   if (config.borderColor && config.borderWidth) {
     ctx.save();
     ctx.strokeStyle = config.borderColor;
     ctx.lineWidth = config.borderWidth;
     ctx.beginPath();
-    ctx.arc(x, y, size / 2 + config.borderWidth / 2, 0, Math.PI * 2);
+    if (config.type === 'circle') {
+      ctx.arc(x, y, size / 2 + config.borderWidth / 2, 0, Math.PI * 2);
+    } else if (config.type === 'regular') {
+      ctx.rect(borderX - config.borderWidth / 2, borderY - config.borderWidth / 2, 
+               borderW + config.borderWidth, borderH + config.borderWidth);
+    } else if (config.type === 'square') {
+      ctx.rect(x - size / 2 - config.borderWidth / 2, y - size / 2 - config.borderWidth / 2, 
+               size + config.borderWidth, size + config.borderWidth);
+    } else if (config.type === 'rounded') {
+      const radius = size * 0.2;
+      roundRect(ctx, x - size / 2 - config.borderWidth / 2, y - size / 2 - config.borderWidth / 2, 
+                size + config.borderWidth, size + config.borderWidth, radius);
+    }
     ctx.stroke();
     ctx.restore();
   }
 
   // Draw image
-  if (config.type === 'circle') {
+  if (config.type === 'regular') {
+    // Regular: Preserve aspect ratio, scale to fit within bounds, center it
+    const imgAspectRatio = img.naturalWidth / img.naturalHeight;
+    const targetAspectRatio = 1; // Square target (size x size)
+    
+    let drawWidth = size;
+    let drawHeight = size;
+    let drawX = x - size / 2;
+    let drawY = y - size / 2;
+    
+    if (imgAspectRatio > targetAspectRatio) {
+      // Image is wider - fit to width, scale height proportionally
+      drawHeight = size / imgAspectRatio;
+      drawY = y - drawHeight / 2; // Center vertically
+    } else {
+      // Image is taller - fit to height, scale width proportionally
+      drawWidth = size * imgAspectRatio;
+      drawX = x - drawWidth / 2; // Center horizontally
+    }
+    
+    // Draw image without clipping to preserve aspect ratio
+    ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+  } else if (config.type === 'circle') {
     ctx.save();
     ctx.beginPath();
     ctx.arc(x, y, size / 2, 0, Math.PI * 2);
@@ -1430,17 +1483,44 @@ function renderSliceFillImage(ctx, element, img, config) {
 
 function drawImageWithClipping(ctx, x, y, w, h, img, type) {
   ctx.save();
-  ctx.beginPath();
-  if (type === 'circle') {
-    ctx.arc(x + w / 2, y + h / 2, w / 2, 0, Math.PI * 2);
-  } else if (type === 'square') {
-    ctx.rect(x, y, w, h);
-  } else if (type === 'rounded') {
-    const radius = Math.min(w, h) / 2;
-    ctx.arc(x + radius, y + radius, radius, 0, Math.PI * 2);
+  
+  if (type === 'regular') {
+    // Regular: Preserve aspect ratio, scale to fit within bounds, center it
+    const imgAspectRatio = img.naturalWidth / img.naturalHeight;
+    const targetAspectRatio = w / h;
+    
+    let drawWidth = w;
+    let drawHeight = h;
+    let drawX = x;
+    let drawY = y;
+    
+    if (imgAspectRatio > targetAspectRatio) {
+      // Image is wider - fit to width, scale height proportionally
+      drawHeight = w / imgAspectRatio;
+      drawY = y + (h - drawHeight) / 2; // Center vertically
+    } else {
+      // Image is taller - fit to height, scale width proportionally
+      drawWidth = h * imgAspectRatio;
+      drawX = x + (w - drawWidth) / 2; // Center horizontally
+    }
+    
+    // Draw image without clipping to preserve aspect ratio
+    ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+  } else {
+    // Apply clipping for circle, square, or rounded
+    ctx.beginPath();
+    if (type === 'circle') {
+      ctx.arc(x + w / 2, y + h / 2, Math.min(w, h) / 2, 0, Math.PI * 2);
+    } else if (type === 'square') {
+      ctx.rect(x, y, w, h);
+    } else if (type === 'rounded') {
+      const radius = Math.min(w, h) * 0.15; // 15% border radius
+      roundRect(ctx, x, y, w, h, radius);
+    }
+    ctx.clip();
+    ctx.drawImage(img, x, y, w, h);
   }
-  ctx.clip();
-  ctx.drawImage(img, x, y, w, h);
+  
   ctx.restore();
 }
 

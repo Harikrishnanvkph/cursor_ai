@@ -92,7 +92,7 @@ export interface ExtendedChartOptions extends ChartOptions {
 
 // Define our custom dataset properties
 interface PointImageConfig {
-  type: string                    // 'circle' | 'square' | 'rounded'
+  type: string                    // 'circle' | 'square' | 'rounded' | 'regular'
   size: number                    // Image size in pixels
   position: string                // Position relative to data point
   arrow: boolean                  // Show arrow for callout
@@ -778,7 +778,28 @@ const universalImagePlugin = {
             // Add chart reference to element
             element.chart = chart
 
-            // Handle callout position for all chart types
+            // Fill Slice/Bar takes priority over position - check it first
+            if (chartType === "pie" || chartType === "doughnut" || chartType === "polarArea") {
+              if (imageConfig.fillSlice) {
+                // Fill slice mode - ignore position setting
+                renderSliceImage(ctx, element, img, imageConfig)
+                ctx.restore()
+                return
+              }
+            } else if (chartType === "bar") {
+              if (imageConfig.fillBar) {
+                // Fill bar mode - ignore position setting
+                if (chart.config.options?.indexAxis === "y") {
+                  renderBarImageHorizontal(ctx, element, img, imageConfig)
+                } else {
+                  renderBarImageVertical(ctx, element, img, imageConfig)
+                }
+                ctx.restore()
+                return
+              }
+            }
+
+            // Handle callout position for all chart types (only if fillSlice/fillBar is not enabled)
             if (imageConfig.position === "callout") {
               renderCalloutImage(ctx, x, y, img, imageConfig, datasetIndex, pointIndex, chart)
               ctx.restore()
@@ -822,11 +843,18 @@ const universalImagePlugin = {
       chart.data.datasets.forEach((dataset: any, datasetIndex: number) => {
         if (!dataset.pointImageConfig) return
 
-        dataset.pointImageConfig.forEach((config: any, pointIndex: number) => {
-          if (config && config.position === "callout" && dataset.pointImages[pointIndex]) {
-            const meta = chart.getDatasetMeta(datasetIndex)
-            const element = meta.data[pointIndex]
+        const meta = chart.getDatasetMeta(datasetIndex)
+        if (!meta || !meta.data) return
 
+        // Iterate over visible elements only (meta.data is already filtered)
+        meta.data.forEach((element: any, filteredPointIndex: number) => {
+          // Map filtered index back to original index for accessing pointImageConfig
+          // Since datasets are filtered, we need to find the original index
+          // For now, use filteredPointIndex directly as the datasets are already filtered
+          const pointIndex = filteredPointIndex
+          const config = dataset.pointImageConfig?.[pointIndex]
+          
+          if (config && config.position === "callout" && dataset.pointImages?.[pointIndex]) {
             if (!element) return
 
             const calloutX = config.calloutX !== undefined ? config.calloutX : element.x + (config.offset || 40)
@@ -919,11 +947,15 @@ const universalImagePlugin = {
       chart.data.datasets.forEach((dataset: any, datasetIndex: number) => {
         if (!dataset.pointImageConfig) return
 
-        dataset.pointImageConfig.forEach((config: any, pointIndex: number) => {
-          if (config && config.position === "callout" && dataset.pointImages[pointIndex]) {
-            const meta = chart.getDatasetMeta(datasetIndex)
-            const element = meta.data[pointIndex]
+        const meta = chart.getDatasetMeta(datasetIndex)
+        if (!meta || !meta.data) return
 
+        // Iterate over visible elements only (meta.data is already filtered)
+        meta.data.forEach((element: any, filteredPointIndex: number) => {
+          const pointIndex = filteredPointIndex
+          const config = dataset.pointImageConfig?.[pointIndex]
+          
+          if (config && config.position === "callout" && dataset.pointImages?.[pointIndex]) {
             if (!element) return
 
             const calloutX = config.calloutX !== undefined ? config.calloutX : element.x + (config.offset || 40)
@@ -1434,6 +1466,28 @@ function renderCalloutImage(
     ctx.strokeStyle = borderColor
     ctx.lineWidth = borderWidth
     
+    // Calculate actual image dimensions for regular type
+    let borderX = calloutX - size / 2
+    let borderY = calloutY - size / 2
+    let borderW = size
+    let borderH = size
+    
+    if (imageType === "regular") {
+      // Calculate the actual rendered dimensions (preserving aspect ratio)
+      const imgAspectRatio = img.naturalWidth / img.naturalHeight
+      const targetAspectRatio = size / size
+      
+      if (imgAspectRatio > targetAspectRatio) {
+        // Image is wider - fit to width
+        borderH = size / imgAspectRatio
+        borderY = calloutY - borderH / 2
+      } else {
+        // Image is taller - fit to height
+        borderW = size * imgAspectRatio
+        borderX = calloutX - borderW / 2
+      }
+    }
+    
     if (imageType === "circle") {
       ctx.beginPath()
       ctx.arc(calloutX, calloutY, size / 2, 0, 2 * Math.PI)
@@ -1441,6 +1495,10 @@ function renderCalloutImage(
     } else if (imageType === "square") {
       ctx.beginPath()
       ctx.rect(calloutX - size / 2, calloutY - size / 2, size, size)
+      ctx.stroke()
+    } else if (imageType === "regular") {
+      ctx.beginPath()
+      ctx.rect(borderX, borderY, borderW, borderH)
       ctx.stroke()
     } else if (imageType === "rounded") {
       const radius = size * 0.15 // 15% border radius
@@ -1464,6 +1522,10 @@ function renderCalloutImage(
       ctx.beginPath()
       ctx.rect(calloutX - size / 2, calloutY - size / 2, size, size)
       ctx.stroke()
+    } else if (imageType === "regular") {
+      ctx.beginPath()
+      ctx.rect(borderX, borderY, borderW, borderH)
+      ctx.stroke()
     } else if (imageType === "rounded") {
       const radius = size * 0.15
       ctx.beginPath()
@@ -1479,22 +1541,48 @@ function renderCalloutImage(
 function drawImageWithClipping(ctx: any, x: any, y: any, width: any, height: any, img: any, type: string) {
   ctx.save()
 
-  if (type === "circle") {
-    ctx.beginPath()
-    ctx.arc(x + width / 2, y + height / 2, Math.min(width, height) / 2, 0, 2 * Math.PI)
-    ctx.clip()
-  } else if (type === "square") {
-    ctx.beginPath()
-    ctx.rect(x, y, width, height)
-    ctx.clip()
-  } else if (type === "rounded") {
-    const radius = Math.min(width, height) * 0.15 // 15% border radius
-    ctx.beginPath()
-    roundRect(ctx, x, y, width, height, radius)
-    ctx.clip()
-  }
+  if (type === "regular") {
+    // Regular: Preserve aspect ratio, scale to fit within bounds, center it
+    const imgAspectRatio = img.naturalWidth / img.naturalHeight
+    const targetAspectRatio = width / height
+    
+    let drawWidth = width
+    let drawHeight = height
+    let drawX = x
+    let drawY = y
+    
+    if (imgAspectRatio > targetAspectRatio) {
+      // Image is wider - fit to width, scale height proportionally
+      drawHeight = width / imgAspectRatio
+      drawY = y + (height - drawHeight) / 2 // Center vertically
+    } else {
+      // Image is taller - fit to height, scale width proportionally
+      drawWidth = height * imgAspectRatio
+      drawX = x + (width - drawWidth) / 2 // Center horizontally
+    }
+    
+    // Draw image without clipping to preserve aspect ratio
+    ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight)
+  } else {
+    // Apply clipping for circle, square, or rounded
+    if (type === "circle") {
+      ctx.beginPath()
+      ctx.arc(x + width / 2, y + height / 2, Math.min(width, height) / 2, 0, 2 * Math.PI)
+      ctx.clip()
+    } else if (type === "square") {
+      ctx.beginPath()
+      ctx.rect(x, y, width, height)
+      ctx.clip()
+    } else if (type === "rounded") {
+      const radius = Math.min(width, height) * 0.15 // 15% border radius
+      ctx.beginPath()
+      roundRect(ctx, x, y, width, height, radius)
+      ctx.clip()
+    }
 
-  ctx.drawImage(img, x, y, width, height)
+    ctx.drawImage(img, x, y, width, height)
+  }
+  
   ctx.restore()
 }
 
@@ -1739,6 +1827,7 @@ export const getImageOptionsForChartType = (chartType: SupportedChartType): Imag
         types: [
           { value: 'square', label: 'Square' },
           { value: 'circle', label: 'Circle' },
+          { value: 'regular', label: 'Regular' },
         ],
         positions: [
           { value: 'center', label: 'Center' },
@@ -1755,6 +1844,7 @@ export const getImageOptionsForChartType = (chartType: SupportedChartType): Imag
         types: [
           { value: "circle", label: "Circle" },
           { value: "square", label: "Square" },
+          { value: "regular", label: "Regular" },
         ],
         positions: [
           { value: "center", label: "Center" },
@@ -1769,6 +1859,7 @@ export const getImageOptionsForChartType = (chartType: SupportedChartType): Imag
         types: [
           { value: "circle", label: "Circle" },
           { value: "square", label: "Square" },
+          { value: "regular", label: "Regular" },
         ],
         positions: [
           { value: "center", label: "Center" },
@@ -1782,6 +1873,7 @@ export const getImageOptionsForChartType = (chartType: SupportedChartType): Imag
         types: [
           { value: "circle", label: "Circle" },
           { value: "square", label: "Square" },
+          { value: "regular", label: "Regular" },
         ],
         positions: [
           { value: "center", label: "Center" },
@@ -1798,6 +1890,7 @@ export const getImageOptionsForChartType = (chartType: SupportedChartType): Imag
         types: [
           { value: "circle", label: "Circle" },
           { value: "square", label: "Square" },
+          { value: "regular", label: "Regular" },
         ],
         positions: [
           { value: "center", label: "Center" },
@@ -1810,7 +1903,10 @@ export const getImageOptionsForChartType = (chartType: SupportedChartType): Imag
       }
     default:
       return {
-        types: [{ value: "circle", label: "Circle" }],
+        types: [
+          { value: "circle", label: "Circle" },
+          { value: "regular", label: "Regular" },
+        ],
         positions: [
           { value: "center", label: "Center" },
           { value: "callout", label: "Callout with Arrow" },
@@ -1821,17 +1917,7 @@ export const getImageOptionsForChartType = (chartType: SupportedChartType): Imag
 }
 
 export const getDefaultImageType = (chartType: SupportedChartType): string => {
-  switch (chartType) {
-    case "pie":
-    case "doughnut":
-    case "polarArea":
-      return "cover"
-    case "bar":
-    case "horizontalBar":
-      return "square"
-    default:
-      return "circle"
-  }
+  return "regular"
 }
 
 export const getDefaultImageSize = (chartType: SupportedChartType): number => {
@@ -2427,20 +2513,47 @@ export const useChartStore = create<ChartStore>()(
         return { chartConfig: config };
       }),
       updatePointImage: (datasetIndex, pointIndex, imageUrl, imageConfig) => set((state) => {
+        const dataset = state.chartData.datasets[datasetIndex];
+        if (!dataset) return state;
+        
+        // Ensure arrays exist and are the correct length
+        const dataLength = dataset.data.length;
+        let pointImages = dataset.pointImages || [];
+        let pointImageConfig = dataset.pointImageConfig || [];
+        
+        // Initialize arrays if they don't exist or are the wrong length
+        if (pointImages.length !== dataLength) {
+          pointImages = Array(dataLength).fill(null).map((_, idx) => 
+            pointImages[idx] !== undefined ? pointImages[idx] : null
+          );
+        }
+        
+        if (pointImageConfig.length !== dataLength) {
+          pointImageConfig = Array(dataLength).fill(null).map((_, idx) => 
+            pointImageConfig[idx] || getDefaultImageConfig(state.chartType)
+          );
+        }
+        
+        // Update the specific point
+        const updatedPointImages = [...pointImages];
+        updatedPointImages[pointIndex] = imageUrl;
+        
+        const updatedPointImageConfig = [...pointImageConfig];
+        updatedPointImageConfig[pointIndex] = { 
+          ...(updatedPointImageConfig[pointIndex] || getDefaultImageConfig(state.chartType)), 
+          ...imageConfig 
+        };
+        
         const newChartData = {
           ...state.chartData,
-          datasets: state.chartData.datasets.map((dataset, i) =>
+          datasets: state.chartData.datasets.map((d, i) =>
             i === datasetIndex
               ? {
-                  ...dataset,
-                  pointImages: dataset.pointImages?.map((img, j) =>
-                    j === pointIndex ? imageUrl : img
-                  ),
-                  pointImageConfig: dataset.pointImageConfig?.map((cfg, j) =>
-                    j === pointIndex ? { ...cfg, ...imageConfig } : cfg
-                  ),
+                  ...d,
+                  pointImages: updatedPointImages,
+                  pointImageConfig: updatedPointImageConfig,
                 } as ExtendedChartDataset
-              : dataset
+              : d
           ),
         };
         

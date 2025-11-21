@@ -8,6 +8,8 @@ import { Slider } from "@/components/ui/slider"
 import { useChartStore } from "@/lib/chart-store"
 import { useState } from "react"
 import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Settings, Plus } from "lucide-react"
 
 const allowedEasings = [
   "linear",
@@ -28,6 +30,7 @@ export function AnimationsPanel() {
   const [hoverDropdownOpen, setHoverDropdownOpen] = useState(false)
   const [hoverOpen, setHoverOpen] = useState(true)
   const [hoverEnabled, setHoverEnabled] = useState(chartConfig.interaction?.mode !== undefined && chartConfig.interaction?.mode !== false)
+  const [dsAnimationsDropdownOpen, setDsAnimationsDropdownOpen] = useState(false)
 
   const handleConfigUpdate = (path: string, value: any) => {
     const keys = path.split(".")
@@ -207,6 +210,197 @@ export function AnimationsPanel() {
                     className="h-8 text-xs pr-8 w-full"
                   />
                   <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 pointer-events-none">ms</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* DS Animations Section */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 pb-1 border-b">
+          <div className="w-2 h-2 bg-orange-600 rounded-full"></div>
+          <h3 className="text-sm font-semibold text-gray-900">DS Animations</h3>
+          <button
+            onClick={() => setDsAnimationsDropdownOpen(!dsAnimationsDropdownOpen)}
+            className="ml-auto p-1 hover:bg-gray-100 rounded transition-colors"
+          >
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              width="16" 
+              height="16" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+              className={`transform transition-transform ${dsAnimationsDropdownOpen ? 'rotate-180' : ''}`}
+            >
+              <path d="M6 9L12 15L18 9"/>
+            </svg>
+          </button>
+        </div>
+        
+        <div className="bg-orange-50 rounded-lg p-3 space-y-3">
+          {/* Animation Toggle - Always Visible */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-medium">Enable Animations</Label>
+              <Switch
+                checked={true} // Chart animations are typically enabled by default
+                onCheckedChange={(checked) => {
+                  // This would update the chart config for animations
+                  console.log('Animation toggle:', checked)
+                }}
+                className="data-[state=checked]:bg-orange-600"
+              />
+            </div>
+          </div>
+          
+          {dsAnimationsDropdownOpen && (
+            <div className="space-y-3 pt-2 border-t border-orange-200">
+              {/* Animation Settings */}
+              <div className="space-y-3">
+                <Label className="text-xs font-medium text-orange-800">Animation Properties</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Duration (ms)</Label>
+                    <Input
+                      type="number"
+                      defaultValue="1000"
+                      className="h-8 text-xs"
+                      placeholder="1000"
+                      min={0}
+                      max={5000}
+                      step={100}
+                    />
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Easing</Label>
+                    <Select defaultValue="easeOutQuart">
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="linear">Linear</SelectItem>
+                        <SelectItem value="easeOutQuart">Ease Out</SelectItem>
+                        <SelectItem value="easeInQuart">Ease In</SelectItem>
+                        <SelectItem value="easeInOutQuart">Ease In/Out</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Interaction Settings */}
+              <div className="space-y-3">
+                <Label className="text-xs font-medium text-orange-800">Interactions</Label>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-medium">Hover Effects</Label>
+                    <Switch
+                      defaultChecked={true}
+                      className="data-[state=checked]:bg-orange-600"
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-medium">Click Events</Label>
+                    <Switch
+                      defaultChecked={true}
+                      className="data-[state=checked]:bg-orange-600"
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-medium">Tooltips</Label>
+                    <Switch
+                      defaultChecked={true}
+                      className="data-[state=checked]:bg-orange-600"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Performance Settings */}
+              <div className="space-y-3">
+                <Label className="text-xs font-medium text-orange-800">Performance</Label>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-medium">Responsive</Label>
+                    <Switch
+                      defaultChecked={true}
+                      className="data-[state=checked]:bg-orange-600"
+                    />
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Device Pixel Ratio</Label>
+                    <Select defaultValue="auto">
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="auto">Auto</SelectItem>
+                        <SelectItem value="1">1x</SelectItem>
+                        <SelectItem value="2">2x</SelectItem>
+                        <SelectItem value="3">3x</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Data Transformation */}
+              <div className="space-y-3">
+                <Label className="text-xs font-medium text-orange-800">Data Processing</Label>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-medium">Skip Null Values</Label>
+                    <Switch
+                      defaultChecked={false}
+                      className="data-[state=checked]:bg-orange-600"
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-medium">Normalize Data</Label>
+                    <Switch
+                      defaultChecked={false}
+                      className="data-[state=checked]:bg-orange-600"
+                    />
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Index Axis</Label>
+                    <Select defaultValue="x">
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="x">X-Axis</SelectItem>
+                        <SelectItem value="y">Y-Axis</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="space-y-3">
+                <Label className="text-xs font-medium text-orange-800">Actions</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="outline" size="sm" className="h-8 text-xs">
+                    <Settings className="h-3 w-3 mr-1" />
+                    Export Config
+                  </Button>
+                  <Button variant="outline" size="sm" className="h-8 text-xs">
+                    <Plus className="h-3 w-3 mr-1" />
+                    Import Config
+                  </Button>
                 </div>
               </div>
             </div>

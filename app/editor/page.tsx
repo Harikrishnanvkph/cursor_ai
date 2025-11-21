@@ -471,7 +471,14 @@ function EditorPageContent() {
         <div className="flex-1 flex items-start justify-center p-2 pb-20 overflow-hidden">
           <div className="w-full max-w-full overflow-auto" style={{ maxHeight: 'calc(100vh - 120px)' }}>
             {hasJSON ? (
-              <ChartPreview />
+              <ChartPreview
+                activeTab={mobilePanel || activeTab}
+                onTabChange={(tab) => {
+                  setMobilePanel(tab);
+                  setActiveTab(tab);
+                }}
+                onNewChart={handleNewChart}
+              />
             ) : (
               <EditorWelcomeScreen 
                 onDatasetClick={() => setMobilePanel('datasets_slices')} 
@@ -579,6 +586,9 @@ function EditorPageContent() {
               isLeftSidebarCollapsed={leftSidebarCollapsed}
               onToggleSidebar={() => setRightSidebarCollapsed((v) => !v)}
               isSidebarCollapsed={rightSidebarCollapsed}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              onNewChart={handleNewChart}
             />
           ) : (
             <EditorWelcomeScreen 
@@ -658,7 +668,7 @@ function EditorPageContent() {
                 <div className="flex items-center gap-0 bg-gray-50 rounded-lg p-1">
                   <button
                     onClick={() => router.push('/board')}
-                    className="flex items-center justify-center px-3 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-all"
+                    className="flex items-center justify-center px-3 py-2 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-all border border-blue-200"
                     title="Dashboard"
                   >
                     <LayoutDashboard className="w-4 h-4" />
@@ -756,7 +766,7 @@ function EditorPageContent() {
               <div className="flex items-center gap-0 bg-gray-50 rounded-lg p-1">
                 <button
                   onClick={() => router.push('/board')}
-                  className="flex items-center justify-center px-3 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-all"
+                  className="flex items-center justify-center px-3 py-2 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-all border border-blue-200"
                   title="Board"
                 >
                   <LayoutDashboard className="w-4 h-4" />
@@ -795,6 +805,9 @@ function EditorPageContent() {
             isLeftSidebarCollapsed={leftSidebarCollapsed}
             onToggleSidebar={() => setRightSidebarCollapsed((v) => !v)}
             isSidebarCollapsed={rightSidebarCollapsed}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            onNewChart={handleNewChart}
           />
         ) : (
           <EditorWelcomeScreen 

@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect } from "react"
+import { useSidebarPortal } from "@/components/sidebar-portal-context"
 
 export interface ConfirmDialogProps {
   open: boolean
@@ -27,6 +28,8 @@ export function ConfirmDialog({
   onAlternate,
   dismissible = true,
 }: ConfirmDialogProps) {
+  const { sidebarContainer } = useSidebarPortal()
+
   useEffect(() => {
     if (!open) return
     function onKey(e: KeyboardEvent) {
@@ -41,7 +44,10 @@ export function ConfirmDialog({
 
   if (!open) return null
 
-  return (
+  // If we're in a sidebar context, render inside the sidebar container
+  const container = sidebarContainer || (typeof document !== 'undefined' ? document.body : null)
+
+  const dialogContent = (
     <div
       className="fixed inset-0 z-[130] flex items-center justify-center"
       role="dialog"
@@ -86,6 +92,13 @@ export function ConfirmDialog({
       </div>
     </div>
   )
+
+  // Portal to sidebar container if available, otherwise render normally
+  if (sidebarContainer && typeof window !== 'undefined') {
+    return createPortal(dialogContent, sidebarContainer)
+  }
+
+  return dialogContent
 }
 
 export default ConfirmDialog

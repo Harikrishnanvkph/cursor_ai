@@ -5,7 +5,7 @@ import { useChartStore } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
 import { Button } from "@/components/ui/button"
 import { Download, RefreshCw, Maximize2, Minimize2, RotateCcw, X,
-   FileCode, FileDown, FileImage, FileText, ImageIcon, Settings, Ellipsis, Eye, ZoomIn, ZoomOut, Hand } from "lucide-react"
+   FileCode, FileDown, FileImage, FileText, ImageIcon, Settings, Menu, Ellipsis, Eye, ZoomIn, ZoomOut, Hand, ChevronLeft } from "lucide-react"
 import { BarChart3,ChartColumnStacked,ChartColumnBig,ChartBarBig,ChartLine,ChartPie,ChartScatter,ChartArea,Radar, Database, Dot, Edit3, LogOut } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { downloadChartAsHTML } from "@/lib/html-exporter"
@@ -19,20 +19,30 @@ import { useAuth } from "@/components/auth/AuthProvider"
 import Image from "next/image"
 import { DropdownMenu as ProfileDropdownMenu, DropdownMenuContent as ProfileDropdownMenuContent, DropdownMenuItem as ProfileDropdownMenuItem, DropdownMenuSeparator as ProfileDropdownMenuSeparator, DropdownMenuTrigger as ProfileDropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
+import { Sidebar } from "@/components/sidebar"
+import { ConfigPanel } from "@/components/config-panel"
+import { PanelLeft, PanelRight } from "lucide-react"
+import { SidebarPortalProvider } from "@/components/sidebar-portal-context"
+import { SidebarContainer } from "@/components/sidebar-container"
 
-export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeftSidebar, isLeftSidebarCollapsed, isTablet = false }: {
+export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeftSidebar, isLeftSidebarCollapsed, isTablet = false, activeTab, onTabChange, onNewChart }: {
   onToggleSidebar?: () => void,
   isSidebarCollapsed?: boolean,
   onToggleLeftSidebar?: () => void,
   isLeftSidebarCollapsed?: boolean,
-  isTablet?: boolean
+  isTablet?: boolean,
+  activeTab?: string,
+  onTabChange?: (tab: string) => void,
+  onNewChart?: () => void
 }) {
   const { chartConfig, chartData, chartType, resetChart, setHasJSON, globalChartRef, showLabels, showImages, fillArea, showBorder, toggleShowBorder } = useChartStore()
-  const { shouldShowTemplate, editorMode, templateInBackground, setEditorMode } = useTemplateStore()
+  const { shouldShowTemplate, editorMode, templateInBackground, currentTemplate, setEditorMode } = useTemplateStore()
   const { user } = useAuth()
 
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
+  const leftSidebarPanelRef = useRef<HTMLDivElement>(null);
+  const rightSidebarPanelRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [isDragging, setIsDragging] = useState(false);
@@ -40,7 +50,35 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [panMode, setPanMode] = useState(false);
   const { clearMessages } = useChatStore();
+  const [showLeftOverlay, setShowLeftOverlay] = useState(false);
+  const [showRightOverlay, setShowRightOverlay] = useState(false);
+  const [fullscreenActiveTab, setFullscreenActiveTab] = useState(activeTab || "types_toggles");
 
+  // Sync fullscreenActiveTab with activeTab prop
+  useEffect(() => {
+    if (activeTab) {
+      setFullscreenActiveTab(activeTab);
+    }
+  }, [activeTab]);
+
+  // Reset pan offset when switching to chart mode
+  useEffect(() => {
+    if (editorMode === 'chart' && !shouldShowTemplate()) {
+      setPanOffset({ x: 0, y: 0 });
+      setZoom(1);
+      
+      // Also explicitly center the container after a short delay
+      setTimeout(() => {
+        if (chartContainerRef.current) {
+          const container = chartContainerRef.current;
+          const scrollLeft = (container.scrollWidth - container.clientWidth) / 2;
+          const scrollTop = (container.scrollHeight - container.clientHeight) / 2;
+          container.scrollLeft = scrollLeft;
+          container.scrollTop = scrollTop;
+        }
+      }, 5);
+    }
+  }, [editorMode, shouldShowTemplate]);
 
   // Responsive check for <576px
   const [isMobile, setIsMobile] = useState(false);
@@ -177,7 +215,13 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   // Handle fullscreen change events
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      const isNowFullscreen = !!document.fullscreenElement;
+      setIsFullscreen(isNowFullscreen);
+      // Close overlays when exiting fullscreen
+      if (!isNowFullscreen) {
+        setShowLeftOverlay(false);
+        setShowRightOverlay(false);
+      }
     };
     
     document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -539,6 +583,9 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
         isSidebarCollapsed={isSidebarCollapsed}
         onToggleLeftSidebar={onToggleLeftSidebar}
         isLeftSidebarCollapsed={isLeftSidebarCollapsed}
+        activeTab={activeTab}
+        onTabChange={onTabChange}
+        onNewChart={onNewChart}
       />
     )
   }
@@ -557,30 +604,33 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
             <div className="min-w-0 flex-1 flex flex-row items-center xs576:justify-between gap-x-2">
               <div className="flex items-center gap-2">
                 <h1 className="text-lg font-bold text-gray-900 truncate xs400:text-base"><span className="xs400:hidden">Chart</span> Preview</h1>
-                {templateInBackground && (
-                  <div className="flex items-center gap-1 bg-gray-100 rounded-full p-0.5 border border-gray-200">
-                    <button
-                      onClick={() => setEditorMode('chart')}
-                      className={`px-2 py-1 text-xs font-medium rounded-full transition-all ${
-                        editorMode === 'chart' 
-                          ? 'bg-blue-500 text-white shadow-sm' 
-                          : 'bg-transparent text-gray-500 hover:text-gray-700'
-                      }`}
-                    >
-                      Chart
-                    </button>
-                    <button
-                      onClick={() => setEditorMode('template')}
-                      className={`px-2 py-1 text-xs font-medium rounded-full transition-all ${
-                        editorMode === 'template' 
-                          ? 'bg-blue-500 text-white shadow-sm' 
-                          : 'bg-transparent text-gray-500 hover:text-gray-700'
-                      }`}
-                    >
-                      Template
-                    </button>
-                  </div>
-                )}
+                <div 
+                  className="flex items-center gap-1 bg-gray-100 rounded-full p-0.5 border border-gray-200"
+                  style={{ display: 'flex', visibility: 'visible', opacity: 1 }}
+                >
+                  <button
+                    onClick={() => setEditorMode('chart')}
+                    className={`px-2 py-1 text-xs font-medium rounded-full transition-all ${
+                      editorMode === 'chart' 
+                        ? 'bg-blue-500 text-white shadow-sm' 
+                        : 'bg-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                    style={{ display: 'inline-block', visibility: 'visible', opacity: 1 }}
+                  >
+                    Chart
+                  </button>
+                  <button
+                    onClick={() => setEditorMode('template')}
+                    className={`px-2 py-1 text-xs font-medium rounded-full transition-all ${
+                      editorMode === 'template' 
+                        ? 'bg-blue-500 text-white shadow-sm' 
+                        : 'bg-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                    style={{ display: 'inline-block', visibility: 'visible', opacity: 1 }}
+                  >
+                    Template
+                  </button>
+                </div>
               </div>
               <div className="flex items-center gap-2 text-xs text-gray-500 min-w-0 flex-nowrap overflow-x-auto">
                 <ChartColumnBig  className="h-4 w-4 mr-1" />
@@ -595,30 +645,33 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <h1 className="text-lg lap1280:text-base font-bold text-gray-900 truncate">Chart Preview</h1>
-                {templateInBackground && (
-                  <div className="flex items-center gap-1 bg-gray-100 rounded-full p-0.5 border border-gray-200">
-                    <button
-                      onClick={() => setEditorMode('chart')}
-                      className={`px-2 py-1 text-xs font-medium rounded-full transition-all ${
-                        editorMode === 'chart' 
-                          ? 'bg-blue-500 text-white shadow-sm' 
-                          : 'bg-transparent text-gray-500 hover:text-gray-700'
-                      }`}
-                    >
-                      Chart
-                    </button>
-                    <button
-                      onClick={() => setEditorMode('template')}
-                      className={`px-2 py-1 text-xs font-medium rounded-full transition-all ${
-                        editorMode === 'template' 
-                          ? 'bg-blue-500 text-white shadow-sm' 
-                          : 'bg-transparent text-gray-500 hover:text-gray-700'
-                      }`}
-                    >
-                      Template
-                    </button>
-                  </div>
-                )}
+                <div 
+                  className="flex items-center gap-1 bg-gray-100 rounded-full p-0.5 border border-gray-200"
+                  style={{ display: 'flex', visibility: 'visible', opacity: 1 }}
+                >
+                  <button
+                    onClick={() => setEditorMode('chart')}
+                    className={`px-2 py-1 text-xs font-medium rounded-full transition-all ${
+                      editorMode === 'chart' 
+                        ? 'bg-blue-500 text-white shadow-sm' 
+                        : 'bg-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                    style={{ display: 'inline-block', visibility: 'visible', opacity: 1 }}
+                  >
+                    Chart
+                  </button>
+                  <button
+                    onClick={() => setEditorMode('template')}
+                    className={`px-2 py-1 text-xs font-medium rounded-full transition-all ${
+                      editorMode === 'template' 
+                        ? 'bg-blue-500 text-white shadow-sm' 
+                        : 'bg-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                    style={{ display: 'inline-block', visibility: 'visible', opacity: 1 }}
+                  >
+                    Template
+                  </button>
+                </div>
               </div>
               <div className="flex items-center gap-2 text-xs text-gray-500 flex-wrap min-w-0">
                 <span className="flex flex-row">
@@ -666,10 +719,9 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
               variant={panMode ? "default" : "outline"}
               size="sm"
               onClick={() => setPanMode(!panMode)}
-              className="h-7 px-2"
               title={panMode ? "Disable Pan Mode" : "Enable Pan Mode"}
             >
-              <Hand className="h-3.5 w-3.5" />
+              <Hand className="h-4 w-4" />
             </Button>
             {/* Actions Dropdown */}
             <DropdownMenu>
@@ -949,35 +1001,182 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       
       {/* Fullscreen Toolbar */}
       {isFullscreen && (
-        <div className="fixed top-4 right-4 z-50 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-2 flex gap-2 border border-gray-200 animate-in fade-in duration-200">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={handleExport}
-            title="Download"
-            className="hover:bg-gray-100"
-          >
-            <Download className="h-5 w-5" />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={handleFullscreen}
-            title="Exit fullscreen"
-            className="hover:bg-gray-100"
-          >
-            <Minimize2 className="h-5 w-5" />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => document.exitFullscreen()}
-            title="Close"
-            className="hover:bg-gray-100 text-red-500 hover:bg-red-50"
-          >
-            <X className="h-5 w-5" />
-          </Button>
-        </div>
+        <>
+          {/* Top Left Button - Open Left Sidebar */}
+          {activeTab && onTabChange && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowLeftOverlay(true)}
+              className="fixed top-4 left-4 z-50 bg-white/95 backdrop-blur-md rounded-xl shadow-xl border border-gray-300/50 hover:bg-white hover:shadow-2xl hover:border-gray-400/60 transition-all duration-200 h-11 w-11"
+              title="Open Options"
+            >
+              <Menu className="h-5 w-5 text-gray-700" />
+            </Button>
+          )}
+
+          {/* Top Right Toolbar */}
+          <div className="fixed top-4 right-4 z-50 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-2 flex gap-2 border border-gray-200 animate-in fade-in duration-200">
+            {/* Zoom Controls */}
+            <div className="flex items-center gap-1 border rounded-md p-0.5 bg-white mr-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleZoomOut}
+                disabled={zoom <= 0.1}
+                className="h-7 w-7 p-0"
+                title="Zoom Out"
+              >
+                <ZoomOut className="h-3.5 w-3.5" />
+              </Button>
+              <span className="text-xs text-gray-600 min-w-[45px] text-center px-1">
+                {Math.round(zoom * 100)}%
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleZoomIn}
+                disabled={zoom >= 3}
+                className="h-7 w-7 p-0"
+                title="Zoom In"
+              >
+                <ZoomIn className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+            {/* Pan Mode Toggle */}
+            <Button
+              variant={panMode ? "default" : "ghost"}
+              size="icon"
+              onClick={() => setPanMode(!panMode)}
+              title={panMode ? "Disable Pan Mode" : "Enable Pan Mode"}
+              className="h-8 w-8"
+            >
+              <Hand className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleExport}
+              title="Download"
+              className="hover:bg-gray-100 h-8 w-8"
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleFullscreen}
+              title="Exit fullscreen"
+              className="hover:bg-gray-100 h-8 w-8"
+            >
+              <Minimize2 className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => document.exitFullscreen()}
+              title="Close"
+              className="hover:bg-gray-100 text-red-500 hover:bg-red-50 h-8 w-8"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Left Sidebar Overlay */}
+          {showLeftOverlay && activeTab && onTabChange && (
+            <SidebarPortalProvider>
+              <SidebarContainer containerRef={leftSidebarPanelRef}>
+                <div className="fixed inset-0 z-[60] flex">
+                  {/* Sidebar Panel */}
+                  <div ref={leftSidebarPanelRef} className="w-80 bg-white shadow-2xl border-r border-gray-200 flex flex-col h-full">
+                <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
+                  <h2 className="text-lg font-semibold text-gray-900">Options</h2>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowLeftOverlay(false)}
+                    className="h-8 w-8"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                  <Sidebar
+                    activeTab={fullscreenActiveTab}
+                    onTabChange={(tab) => {
+                      setFullscreenActiveTab(tab);
+                      if (onTabChange) onTabChange(tab);
+                      setShowRightOverlay(true); // Auto-open right panel when tab is selected
+                    }}
+                    onToggleLeftSidebar={() => setShowLeftOverlay(false)}
+                    isLeftSidebarCollapsed={false}
+                  />
+                </div>
+              </div>
+              {/* Backdrop */}
+              <div 
+                className="flex-1 bg-black/20 backdrop-blur-sm"
+                onClick={() => setShowLeftOverlay(false)}
+              />
+            </div>
+              </SidebarContainer>
+            </SidebarPortalProvider>
+          )}
+
+          {/* Right Tools Panel Overlay */}
+          {showRightOverlay && activeTab && onTabChange && (
+            <SidebarPortalProvider>
+              <SidebarContainer containerRef={rightSidebarPanelRef}>
+                <div className="fixed inset-0 z-[70] flex">
+                  {/* Tools Panel - Positioned on left, stacked on top of options sidebar */}
+                  <div ref={rightSidebarPanelRef} className="w-80 bg-white shadow-2xl border-r border-gray-200 flex flex-col h-full">
+                <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
+                  <h2 className="text-lg font-semibold text-gray-900">Tools</h2>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowRightOverlay(false)}
+                      className="h-8 w-8"
+                      title="Close Tools"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setShowRightOverlay(false);
+                        setShowLeftOverlay(false);
+                      }}
+                      className="h-8 w-8"
+                      title="Close All"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                  <ConfigPanel
+                    activeTab={fullscreenActiveTab}
+                    onTabChange={(tab) => {
+                      setFullscreenActiveTab(tab);
+                      if (onTabChange) onTabChange(tab);
+                    }}
+                    onNewChart={onNewChart}
+                  />
+                </div>
+              </div>
+              {/* Backdrop */}
+              <div 
+                className="flex-1 bg-black/20 backdrop-blur-sm"
+                onClick={() => setShowRightOverlay(false)}
+              />
+            </div>
+              </SidebarContainer>
+            </SidebarPortalProvider>
+          )}
+        </>
       )}
     </div>
   )

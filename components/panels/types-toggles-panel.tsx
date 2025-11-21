@@ -1,12 +1,11 @@
 "use client"
 
 import { useChartStore, type SupportedChartType } from "@/lib/chart-store"
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { useTemplateStore } from "@/lib/template-store"
+import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
-import { BarChart3 } from "lucide-react"
 import { ResponsiveAnimationsPanel } from "@/components/panels/responsive-animations-panel"
 
 export function TypesTogglesPanel() {
@@ -23,6 +22,7 @@ export function TypesTogglesPanel() {
     toggleShowImages,
     toggleShowLabels,
   } = useChartStore()
+  const { editorMode, setEditorMode } = useTemplateStore()
 
   const handleChartTypeChange = (type: string) => {
     if (type === 'stackedBar') {
@@ -41,14 +41,8 @@ export function TypesTogglesPanel() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle className="text-sm flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Chart Configuration
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
+        <CardContent className="space-y-4 pt-4">
+          <div className="space-y-2">
             <Label>Chart Type</Label>
             <Select value={chartType} onValueChange={handleChartTypeChange}>
               <SelectTrigger>
@@ -91,6 +85,38 @@ export function TypesTogglesPanel() {
             <div className="flex items-center space-x-2">
               <Switch id="show-labels-toggle" checked={showLabels} onCheckedChange={toggleShowLabels} />
               <Label htmlFor="show-labels-toggle">Label</Label>
+            </div>
+          </div>
+
+          {/* Mode Toggle - Chart/Template */}
+          <div className="flex items-center justify-between gap-3 pt-2 border-t">
+            <span className="text-sm font-medium text-gray-700">Mode</span>
+            <div 
+              className="flex items-center gap-1 bg-gray-100 rounded-full p-1 border border-gray-200"
+              style={{ display: 'flex', visibility: 'visible', opacity: 1 }}
+            >
+              <button
+                onClick={() => setEditorMode('chart')}
+                className={`px-4 py-1.5 text-xs font-medium rounded-full transition-all min-w-[70px] ${
+                  editorMode === 'chart' 
+                    ? 'bg-blue-500 text-white shadow-sm' 
+                    : 'bg-transparent text-gray-500 hover:text-gray-700'
+                }`}
+                style={{ display: 'inline-block', visibility: 'visible', opacity: 1 }}
+              >
+                Chart
+              </button>
+              <button
+                onClick={() => setEditorMode('template')}
+                className={`px-4 py-1.5 text-xs font-medium rounded-full transition-all min-w-[70px] ${
+                  editorMode === 'template' 
+                    ? 'bg-blue-500 text-white shadow-sm' 
+                    : 'bg-transparent text-gray-500 hover:text-gray-700'
+                }`}
+                style={{ display: 'inline-block', visibility: 'visible', opacity: 1 }}
+              >
+                Template
+              </button>
             </div>
           </div>
         </CardContent>
