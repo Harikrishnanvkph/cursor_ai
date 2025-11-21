@@ -431,12 +431,9 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
   // Build custom labels config for the current chart
   const customLabelsConfig = ((chartConfig.plugins as any)?.customLabelsConfig) || {};
   const customLabels = showLabels ? filteredDatasetsPatched.map((ds, datasetIdx) =>
-    ds.data.map((value, filteredPointIdx) => {
-      // Map filtered index back to original index
-      const originalPointIdx = enabledSliceIndices[filteredPointIdx];
-      
+    ds.data.map((value, pointIdx) => {
       // If this slice is hidden by legend, also hide its label
-      if (originalPointIdx === undefined || !isSliceVisible(originalPointIdx)) {
+      if (!isSliceVisible(pointIdx)) {
         return { text: '' };
       }
       if (customLabelsConfig.display === false) return { text: '' };
@@ -444,12 +441,10 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
       
       if (customLabelsConfig.labelContent === 'label') {
         // For both single and grouped modes, use sliceLabels from the dataset if available
-        // Use original index to access labels
-        const originalDs = modeFilteredDatasets[datasetIdx];
-        if (originalDs?.sliceLabels && Array.isArray(originalDs.sliceLabels)) {
-          text = String(originalDs.sliceLabels[originalPointIdx] ?? text);
+        if (ds.sliceLabels && Array.isArray(ds.sliceLabels)) {
+          text = String(ds.sliceLabels[pointIdx] ?? text);
         } else {
-          text = String(chartData.labels?.[originalPointIdx] ?? text);
+          text = String(chartData.labels?.[pointIdx] ?? text);
         }
       } else if (customLabelsConfig.labelContent === 'percentage') {
         const total = ds.data.reduce((a: number, b: any) => {
@@ -462,7 +457,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
         else if (value && typeof value === 'object' && 'y' in value && typeof value.y === 'number') val = value.y;
         text = ((val / total) * 100).toFixed(1) + '%';
       } else if (customLabelsConfig.labelContent === 'index') {
-        text = String(originalPointIdx + 1);
+        text = String(pointIdx + 1);
       } else if (customLabelsConfig.labelContent === 'dataset') {
         text = ds.label ?? text;
       }
