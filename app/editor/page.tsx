@@ -668,10 +668,10 @@ function EditorPageContent() {
                 <div className="flex items-center gap-0 bg-gray-50 rounded-lg p-1">
                   <button
                     onClick={() => router.push('/board')}
-                    className="flex items-center justify-center px-3 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-all"
+                    className="flex items-center justify-center px-3 py-2 text-xs font-semibold text-blue-700 bg-blue-50 rounded-md shadow-sm transition-all relative hover:bg-blue-100"
                     title="Dashboard"
                   >
-                    <LayoutDashboard className="w-4 h-4" />
+                    <LayoutDashboard className="w-4 h-4 text-blue-600" />
                   </button>
                   <button
                     onClick={() => router.push('/landing')}
@@ -766,10 +766,10 @@ function EditorPageContent() {
               <div className="flex items-center gap-0 bg-gray-50 rounded-lg p-1">
                 <button
                   onClick={() => router.push('/board')}
-                  className="flex items-center justify-center px-3 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-all"
+                  className="flex items-center justify-center px-3 py-2 text-xs font-semibold text-blue-700 bg-blue-50 rounded-md shadow-sm transition-all relative hover:bg-blue-100"
                   title="Board"
                 >
-                  <LayoutDashboard className="w-4 h-4" />
+                  <LayoutDashboard className="w-4 h-4 text-blue-600" />
                 </button>
                 <button
                   onClick={() => router.push('/landing')}
@@ -949,3 +949,7 @@ function EditorPageContent() {
     </div>
   )
 } 
+
+
+
+

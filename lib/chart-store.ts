@@ -843,11 +843,18 @@ const universalImagePlugin = {
       chart.data.datasets.forEach((dataset: any, datasetIndex: number) => {
         if (!dataset.pointImageConfig) return
 
-        dataset.pointImageConfig.forEach((config: any, pointIndex: number) => {
-          if (config && config.position === "callout" && dataset.pointImages[pointIndex]) {
-            const meta = chart.getDatasetMeta(datasetIndex)
-            const element = meta.data[pointIndex]
+        const meta = chart.getDatasetMeta(datasetIndex)
+        if (!meta || !meta.data) return
 
+        // Iterate over visible elements only (meta.data is already filtered)
+        meta.data.forEach((element: any, filteredPointIndex: number) => {
+          // Map filtered index back to original index for accessing pointImageConfig
+          // Since datasets are filtered, we need to find the original index
+          // For now, use filteredPointIndex directly as the datasets are already filtered
+          const pointIndex = filteredPointIndex
+          const config = dataset.pointImageConfig?.[pointIndex]
+          
+          if (config && config.position === "callout" && dataset.pointImages?.[pointIndex]) {
             if (!element) return
 
             const calloutX = config.calloutX !== undefined ? config.calloutX : element.x + (config.offset || 40)
@@ -940,11 +947,15 @@ const universalImagePlugin = {
       chart.data.datasets.forEach((dataset: any, datasetIndex: number) => {
         if (!dataset.pointImageConfig) return
 
-        dataset.pointImageConfig.forEach((config: any, pointIndex: number) => {
-          if (config && config.position === "callout" && dataset.pointImages[pointIndex]) {
-            const meta = chart.getDatasetMeta(datasetIndex)
-            const element = meta.data[pointIndex]
+        const meta = chart.getDatasetMeta(datasetIndex)
+        if (!meta || !meta.data) return
 
+        // Iterate over visible elements only (meta.data is already filtered)
+        meta.data.forEach((element: any, filteredPointIndex: number) => {
+          const pointIndex = filteredPointIndex
+          const config = dataset.pointImageConfig?.[pointIndex]
+          
+          if (config && config.position === "callout" && dataset.pointImages?.[pointIndex]) {
             if (!element) return
 
             const calloutX = config.calloutX !== undefined ? config.calloutX : element.x + (config.offset || 40)

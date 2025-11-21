@@ -2,14 +2,17 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
+import { Button } from "@/components/ui/button";
 import { useChartStore } from "@/lib/chart-store";
 import { useTemplateStore } from "@/lib/template-store";
 import React, { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 
 export function ResponsiveAnimationsPanel() {
-  const { chartConfig, updateChartConfig } = useChartStore();
+  const { chartData, chartConfig, updateChartConfig, legendFilter, toggleSliceVisibility } = useChartStore();
   const { editorMode, setEditorMode } = useTemplateStore();
   const [responsiveDropdownOpen, setResponsiveDropdownOpen] = useState(true);
+  const [sliceVisibilityOpen, setSliceVisibilityOpen] = useState(false);
   
   // Check if template mode is active
   const isTemplateMode = editorMode === 'template';
@@ -50,8 +53,75 @@ export function ResponsiveAnimationsPanel() {
     updateChartConfig(newConfig);
   };
 
+  // Toggle slice visibility using the store's function
+  const handleToggleSliceVisibility = (sliceIndex: number) => {
+    toggleSliceVisibility(sliceIndex);
+  };
+
+  // Get slice labels
+  const sliceLabels = chartData.labels || [];
+
   return (
     <div className="space-y-3 mt-4">
+      {/* Quick Slice Visibility */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 pb-1 border-b">
+          <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
+          <h3 className="text-sm font-semibold text-gray-900">Quick Slice Visibility</h3>
+          <button
+            onClick={() => setSliceVisibilityOpen(!sliceVisibilityOpen)}
+            className="ml-auto p-1 hover:bg-gray-100 rounded transition-colors"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={`transform transition-transform ${sliceVisibilityOpen ? 'rotate-180' : ''}`}
+            >
+              <path d="M6 9L12 15L18 9" />
+            </svg>
+          </button>
+        </div>
+        
+        {sliceVisibilityOpen && (
+          <div className="bg-purple-50 rounded-lg p-3 space-y-2">
+            <p className="text-xs text-gray-600 mb-2">Click to hide/show slices from the chart</p>
+            <div className="flex flex-wrap gap-2">
+              {sliceLabels.map((label: any, index: number) => {
+                // Check if slice is hidden using legendFilter
+                const isHidden = legendFilter.slices[index] === false;
+                
+                return (
+                  <Button
+                    key={index}
+                    variant={isHidden ? "outline" : "default"}
+                    size="sm"
+                    onClick={() => handleToggleSliceVisibility(index)}
+                    className={`h-8 text-xs ${
+                      isHidden 
+                        ? 'bg-gray-100 text-gray-500 hover:bg-gray-200 border-gray-300' 
+                        : 'bg-purple-600 hover:bg-purple-700 text-white'
+                    }`}
+                  >
+                    {isHidden ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
+                    {String(label)}
+                  </Button>
+                );
+              })}
+            </div>
+            {sliceLabels.length === 0 && (
+              <p className="text-xs text-gray-500 italic">No slices available</p>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Layout and Dimensions - Expanded by default */}
       <div className="flex items-center gap-2 pb-1 border-b">
         <div className="w-2 h-2 bg-green-600 rounded-full"></div>
