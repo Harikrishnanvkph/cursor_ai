@@ -34,6 +34,8 @@ interface ChatWindowProps {
   currentChartState: ChartSnapshot | null
   className?: string
   compact?: boolean
+  isChatDisabled?: boolean
+  disabledMessage?: string
 }
 
 export function ChatWindow({
@@ -50,7 +52,9 @@ export function ChatWindow({
   handleInputChange,
   handlePaste,
   className = "",
-  currentChartState
+  currentChartState,
+  isChatDisabled = false,
+  disabledMessage = "Please attach a template to start the conversation."
 }: ChatWindowProps) {
 
   // Enhanced input change handler with auto-resize
@@ -118,6 +122,22 @@ export function ChatWindow({
     <div className={`flex flex-col h-full ${className}`}>
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2 bg-gradient-to-b from-white/80 to-slate-50/80 font-sans">
+        {/* Show disabled message if chat is disabled and no messages */}
+        {isChatDisabled && messages.length === 0 && (
+          <div className="flex items-center justify-center h-full px-4">
+            <div className="bg-gradient-to-br from-amber-100 to-orange-100 border-3 border-amber-400 rounded-2xl px-8 py-6 max-w-md text-center shadow-2xl ring-4 ring-amber-200/50">
+              <div className="flex flex-col items-center gap-4">
+                <div className="p-4 bg-gradient-to-br from-amber-400 to-orange-400 rounded-full shadow-lg">
+                  <MessageSquare className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-amber-900 mb-2">Template Required</p>
+                  <p className="text-base text-amber-800 font-medium leading-relaxed">{disabledMessage}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         {messages.map((msg, idx) => (
           <div
             key={idx}

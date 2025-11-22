@@ -9,6 +9,7 @@ import { dataService } from "@/lib/data-service"
 import { ChartLayout } from "@/components/chart-layout"
 import { ChartPreview } from "@/components/chart-preview"
 import { useHistoryStore } from "@/lib/history-store"
+import { useTemplateStore } from "@/lib/template-store"
 
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/components/auth/AuthProvider"
@@ -42,12 +43,41 @@ function LandingPageContent() {
     isProcessing,
     continueConversation,
     startNewConversation,
-    clearMessages
+    clearMessages,
+    setMessages
   } = useChatStore()
   const { addConversation, loadConversationsFromBackend } = useHistoryStore()
+  const { generateMode, currentTemplate } = useTemplateStore()
   const [input, setInput] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  
+  // Check if chat should be disabled (template mode but no template attached)
+  const isChatDisabled = generateMode === 'template' && !currentTemplate
+  
+  // Update initial message when template mode changes
+  useEffect(() => {
+    // Only update if we have just the initial message
+    if (messages.length === 1 && messages[0].role === 'assistant') {
+      const templateMessage = 'Please attach a template to start the conversation. Select a template from the options via "Choose From Templates".';
+      const defaultMessage = 'Hi! Describe the chart you want to create, or ask me to modify an existing chart.';
+      
+      const shouldShowTemplateMessage = generateMode === 'template' && !currentTemplate;
+      const currentMessage = messages[0].content;
+      
+      if (shouldShowTemplateMessage && currentMessage !== templateMessage) {
+        setMessages([{
+          ...messages[0],
+          content: templateMessage
+        }]);
+      } else if (!shouldShowTemplateMessage && currentMessage === templateMessage) {
+        setMessages([{
+          ...messages[0],
+          content: defaultMessage
+        }]);
+      }
+    }
+  }, [generateMode, currentTemplate, messages, setMessages])
   const [showActiveBanner, setShowActiveBanner] = useState(false)
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true)
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true)
@@ -110,7 +140,7 @@ function LandingPageContent() {
 
   const handleSend = useCallback(async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
-    if (!input.trim() || isProcessing) return
+    if (!input.trim() || isProcessing || isChatDisabled) return
 
     const userInput = input.trim()
     setInput("")
@@ -124,7 +154,7 @@ function LandingPageContent() {
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
     }, 100)
-  }, [input, isProcessing, continueConversation])
+  }, [input, isProcessing, continueConversation, isChatDisabled])
 
   const handleTemplateClick = useCallback(() => {
     setInput(chartTemplate)
@@ -525,6 +555,8 @@ function LandingPageContent() {
                      setShowActiveBanner={setShowActiveBanner}
                      messagesEndRef={messagesEndRef}
                      textareaRef={textareaRef}
+                     isChatDisabled={isChatDisabled}
+                     disabledMessage="Please attach a template to start the conversation."
                      handleInputChange={handleInputChange}
                      handlePaste={handlePaste}
                      compact={true}
@@ -746,6 +778,8 @@ function LandingPageContent() {
                     hasActiveChart={hasActiveChart}
                     showActiveBanner={showActiveBanner}
                     setShowActiveBanner={setShowActiveBanner}
+                    isChatDisabled={isChatDisabled}
+                    disabledMessage="Please attach a template to start the conversation."
                     messagesEndRef={messagesEndRef}
                     textareaRef={textareaRef}
                     currentChartState={currentChartState}
@@ -862,24 +896,26 @@ function LandingPageContent() {
              >
                <textarea
                  ref={textareaRef}
-                 className="flex-1 rounded-lg border border-slate-200/100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white/80 resize-none max-h-24 min-h-[40px] leading-relaxed transition-colors font-sans shadow-sm backdrop-blur-sm"
-                 placeholder={hasActiveChart ? "Modify the chart..." : "Describe your chart..."}
+                 className="flex-1 rounded-lg border border-slate-200/100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white/80 resize-none max-h-24 min-h-[40px] leading-relaxed transition-colors font-sans shadow-sm backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                 placeholder={isChatDisabled ? "Attach a template to start..." : (hasActiveChart ? "Modify the chart..." : "Describe your chart...")}
                  value={input}
                  onChange={handleInputChange}
                  onPaste={handlePaste}
-                 disabled={isProcessing}
+                 disabled={isProcessing || isChatDisabled}
                  rows={1}
                  onKeyDown={e => {
                    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                      e.preventDefault();
-                     handleSend(e)
+                     if (!isChatDisabled) {
+                       handleSend(e)
+                     }
                    }
                  }}
                />
                <button
                  type="submit"
                  className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-3 py-2 rounded-lg shadow-lg disabled:opacity-50 transition-all duration-200 transform hover:scale-105 focus:scale-105 disabled:hover:scale-100"
-                 disabled={isProcessing || !input.trim()}
+                 disabled={isProcessing || !input.trim() || isChatDisabled}
                  style={{ alignSelf: "flex-end", height: 40 }}
                >
                  <Send className="inline-block w-4 h-4" />

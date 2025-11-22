@@ -169,6 +169,14 @@ export const useHistoryStore = create<HistoryStore>()(
         set({ loading: true });
         try {
           const response = await dataService.getConversations();
+          
+          // Check if there was an error in the response
+          if (response.error) {
+            console.warn('Failed to load conversations from backend:', response.error);
+            set({ loading: false, conversations: [] });
+            return;
+          }
+          
           if (response.data && response.data.length > 0) {
             // For each conversation, we need to get its messages and current snapshot
             const conversationsWithDetails = await Promise.all(
@@ -230,7 +238,8 @@ export const useHistoryStore = create<HistoryStore>()(
           }
         } catch (error) {
           console.error('Failed to load conversations from backend:', error);
-          set({ loading: false });
+          // Set empty conversations array on error to prevent UI issues
+          set({ loading: false, conversations: [] });
         }
       },
     }),

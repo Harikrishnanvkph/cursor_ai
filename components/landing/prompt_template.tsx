@@ -1,7 +1,11 @@
 "use client"
 
-import React from "react"
-import { BarChart2, Bot, Brain, Forward } from "lucide-react"
+import React, { useState } from "react"
+import { BarChart2, Bot, Brain, Forward, FileText, Layout, X } from "lucide-react"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { Button } from "@/components/ui/button"
+import { TemplateSelectionModal } from "./template-selection-modal"
+import { useTemplateStore } from "@/lib/template-store"
 
 const chartTemplate = "Create a bar chart comparing the top 5 countries by smartphone usage in 2025. Include country names on the x-axis and number of users on the y-axis."
 
@@ -16,10 +20,27 @@ export function PromptTemplate({
   className = "", 
   size = 'default' 
 }: PromptTemplateProps) {
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
+  const { currentTemplate, setCurrentTemplate, templates, applyTemplate, generateMode, setGenerateMode } = useTemplateStore()
   
   const handleSampleClick = () => {
     if (onSampleClick) {
       onSampleClick(chartTemplate)
+    }
+  }
+
+  const handleChooseTemplates = () => {
+    setIsTemplateModalOpen(true)
+  }
+
+  const handleCancelTemplate = () => {
+    setCurrentTemplate(null)
+  }
+
+  const handleStandardTemplate = () => {
+    // Apply the first template (Standard Report)
+    if (templates.length > 0) {
+      applyTemplate(templates[0].id)
     }
   }
 
@@ -70,26 +91,118 @@ export function PromptTemplate({
         </div>
         
         <div className="space-y-3 w-full">
-          <button
-            onClick={handleSampleClick}
-            className="w-full bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-slate-800 font-medium px-4 py-3 rounded-xl border border-indigo-200/50 transition-all duration-200 text-left hover:shadow-lg group text-sm"
-          >
-            <div className="font-semibold flex items-center gap-2 mb-1">
-              <div className="p-1 bg-indigo-100 rounded group-hover:bg-indigo-200 transition-colors">
-                <Forward className="w-4 h-4 text-indigo-600" />
-              </div>
-              Sample Request
-            </div>
-            <div className="text-xs text-slate-600 leading-relaxed">{chartTemplate}</div>
-          </button>
-          
-          <div className="text-center">
-            <div className="text-xs text-slate-500">
-              Or type your own request in the chat panel →
-            </div>
+          {/* Generate Toggle Button */}
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-slate-700">Generate As</label>
+            <ToggleGroup 
+              type="single" 
+              value={generateMode} 
+              onValueChange={(value) => {
+                if (value) setGenerateMode(value as 'chart' | 'template')
+              }}
+              className="w-full bg-gray-50 rounded-lg p-1 border border-gray-200"
+            >
+              <ToggleGroupItem 
+                value="chart" 
+                aria-label="Chart"
+                className="flex-1 data-[state=on]:bg-indigo-500 data-[state=on]:text-white data-[state=on]:shadow-sm"
+              >
+                <BarChart2 className="w-4 h-4 mr-2" />
+                Chart
+              </ToggleGroupItem>
+              <ToggleGroupItem 
+                value="template" 
+                aria-label="Template"
+                className="flex-1 data-[state=on]:bg-indigo-500 data-[state=on]:text-white data-[state=on]:shadow-sm"
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                Template
+              </ToggleGroupItem>
+            </ToggleGroup>
           </div>
+
+          {/* Conditional Content Based on Generate Mode */}
+          {generateMode === 'chart' ? (
+            <>
+              <button
+                onClick={handleSampleClick}
+                className="w-full bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-slate-800 font-medium px-4 py-3 rounded-xl border border-indigo-200/50 transition-all duration-200 text-left hover:shadow-lg group text-sm"
+              >
+                <div className="font-semibold flex items-center gap-2 mb-1">
+                  <div className="p-1 bg-indigo-100 rounded group-hover:bg-indigo-200 transition-colors">
+                    <Forward className="w-4 h-4 text-indigo-600" />
+                  </div>
+                  Sample Request
+                </div>
+                <div className="text-xs text-slate-600 leading-relaxed">{chartTemplate}</div>
+              </button>
+              
+              <div className="text-center">
+                <div className="text-xs text-slate-500">
+                  Or type your own request in the chat panel →
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {currentTemplate ? (
+                <>
+                  {/* Status Indicator */}
+                  <div className="text-xs text-slate-600 mb-2">
+                    Status: <span className="font-semibold text-green-600">Attached Template</span>
+                  </div>
+                  
+                  {/* Template Name with Cancel Button */}
+                  <div className="flex items-center gap-2 w-full">
+                    <div className="flex-1 bg-green-50 border-2 border-green-500 rounded-lg px-4 py-3 flex items-center">
+                      <Layout className="w-4 h-4 text-green-600 mr-2 flex-shrink-0" />
+                      <span className="font-semibold text-green-900 text-sm truncate">
+                        {currentTemplate.name}
+                      </span>
+                    </div>
+                    <button
+                      onClick={handleCancelTemplate}
+                      className="w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 flex items-center justify-center transition-all duration-200 hover:scale-105 flex-shrink-0"
+                      aria-label="Remove template"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Button
+                    onClick={handleStandardTemplate}
+                    className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-medium px-4 py-3 rounded-xl transition-all duration-200 hover:shadow-lg"
+                  >
+                    <Layout className="w-4 h-4 mr-2" />
+                    Standard Template
+                  </Button>
+                  
+                  <div className="text-center">
+                    <div className="text-xs text-slate-500">or</div>
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    onClick={handleChooseTemplates}
+                    className="w-full border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:border-indigo-300 font-medium px-4 py-3 rounded-xl transition-all duration-200"
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Choose From Templates
+                  </Button>
+                </>
+              )}
+            </>
+          )}
         </div>
       </div>
+
+      {/* Template Selection Modal */}
+      <TemplateSelectionModal
+        open={isTemplateModalOpen}
+        onClose={() => setIsTemplateModalOpen(false)}
+      />
     </div>
   )
 }

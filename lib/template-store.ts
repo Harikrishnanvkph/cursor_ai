@@ -70,6 +70,10 @@ interface TemplateStore {
   setDraftTemplate: (template: TemplateLayout | null) => void
   clearDraft: () => void
   
+  // Generate mode (chart or template)
+  generateMode: 'chart' | 'template'
+  setGenerateMode: (mode: 'chart' | 'template') => void
+  
   // Editor mode state
   editorMode: EditorMode
   templateInBackground: TemplateLayout | null // Keep template when in chart mode
@@ -396,6 +400,7 @@ export const useTemplateStore = create<TemplateStore>()(
       currentTemplate: null,
       selectedTextAreaId: null,
       draftTemplate: null,
+      generateMode: 'chart',
       templates: defaultTemplates,
       editorMode: 'chart',
       templateInBackground: null,
@@ -403,6 +408,9 @@ export const useTemplateStore = create<TemplateStore>()(
       
       setDraftTemplate: (template) => set({ draftTemplate: template }),
       clearDraft: () => set({ draftTemplate: null }),
+      setGenerateMode: (mode) => set({ generateMode: mode }),
+      
+      setGenerateMode: (mode) => set({ generateMode: mode }),
 
       setCurrentTemplate: (template) => set({ currentTemplate: template }),
       

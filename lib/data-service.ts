@@ -61,8 +61,17 @@ class DataService {
       return { data };
     } catch (error) {
       console.error(`API request failed: ${endpoint}`, error);
+      
+      // Provide more specific error messages
+      let errorMessage = 'Unknown error';
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        errorMessage = `Cannot connect to server at ${this.baseUrl}. Please ensure the backend server is running.`;
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
       return { 
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: errorMessage,
         message: 'Request failed'
       };
     }

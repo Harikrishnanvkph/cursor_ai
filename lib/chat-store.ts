@@ -1,7 +1,32 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { useChartStore, type SupportedChartType, type ExtendedChartData } from './chart-store';
+import { useTemplateStore } from './template-store';
+import { extractTemplateStructure, type TemplateStructureMetadata } from './template-utils';
 import type { ChartOptions } from 'chart.js';
+
+// Helper function to get the appropriate initial message based on template mode
+const getInitialMessage = (): ChatMessage => {
+  try {
+    const templateStore = useTemplateStore.getState();
+    if (templateStore.generateMode === 'template' && !templateStore.currentTemplate) {
+      return {
+        role: 'assistant',
+        content: 'Please attach a template to start the conversation. Select a template from the options above to proceed.',
+        timestamp: Date.now()
+      };
+    }
+  } catch (error) {
+    // If template store is not available, fall back to default
+    console.warn('Could not access template store for initial message:', error);
+  }
+  
+  return {
+    role: 'assistant',
+    content: 'Hi! Describe the chart you want to create, or ask me to modify an existing chart.',
+    timestamp: Date.now()
+  };
+};
 
 // Server API base (proxy through Next.js to avoid CORS/preflight)
 const globalServerAPILink = "/api/chart"
@@ -135,7 +160,8 @@ interface ChatStore {
   captureUndoPoint: (operation: Omit<UndoableOperation, 'id' | 'timestamp' | 'conversationId' | 'userMessage' | 'assistantMessage'>) => void;
 }
 
-const initialMessage: ChatMessage = {
+// Default initial message (fallback)
+const defaultInitialMessage: ChatMessage = {
   role: 'assistant',
   content: 'Hi! Describe the chart you want to create, or ask me to modify an existing chart.',
   timestamp: Date.now()
@@ -169,7 +195,7 @@ const captureUndoPoint = (operation: Omit<UndoableOperation, 'id' | 'timestamp' 
 export const useChatStore = create<ChatStore>()(
   persist(
     (set, get) => ({
-      messages: [initialMessage],
+      messages: [getInitialMessage()],
       currentConversationId: generateId(),
       currentChartState: null,
       conversationContext: null,
@@ -190,11 +216,11 @@ export const useChatStore = create<ChatStore>()(
       
       setMessages: (msgs) => set({ messages: msgs }),
       
-      clearMessages: () => set({ messages: [initialMessage] }),
+      clearMessages: () => set({ messages: [getInitialMessage()] }),
       
       startNewConversation: () => {
         set({
-          messages: [initialMessage],
+          messages: [getInitialMessage()],
           currentConversationId: generateId(),
           currentChartState: null,
           conversationContext: null,
@@ -254,6 +280,12 @@ export const useChatStore = create<ChatStore>()(
         };
         if (currentChartState) {
           requestBody.currentChartState = currentChartState;
+        }
+        
+        // Include template structure if a template is selected
+        const templateStore = useTemplateStore.getState();
+        if (templateStore.currentTemplate) {
+          requestBody.templateStructure = extractTemplateStructure(templateStore.currentTemplate);
         }
 
         try {
@@ -326,6 +358,20 @@ export const useChatStore = create<ChatStore>()(
           if (assistantMsg.chartSnapshot) {
             useChartStore.getState().setFullChart(assistantMsg.chartSnapshot);
             useChartStore.getState().setHasJSON(true);
+            
+            // Populate template text areas if template structure was provided and response includes template content
+            const templateStore = useTemplateStore.getState();
+            if (result.templateContent && templateStore.currentTemplate) {
+              const template = templateStore.currentTemplate;
+              
+              // Update each text area with AI-generated content
+              template.textAreas.forEach((textArea) => {
+                const content = result.templateContent[textArea.type];
+                if (content) {
+                  templateStore.updateTextArea(textArea.id, { content });
+                }
+              });
+            }
             
             // Capture undo point for AI-generated changes, but only if there are actual changes
             if (result.action === 'create' || result.action === 'modify' || result.action === 'update') {
