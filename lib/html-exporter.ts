@@ -198,6 +198,7 @@ function syncImagePositionsToConfig(chartData: any, dragState: any) {
 
 export interface HTMLExportOptions {
   title?: string;
+  subtitle?: string;
   width?: number;
   height?: number;
   backgroundColor?: string;
@@ -336,7 +337,10 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
   };
 
   const {
-    title = "Chart Export",
+    title = chartConfig?.plugins?.title?.text || "Chart Export",
+    subtitle = (chartConfig?.plugins?.subtitle?.display && chartConfig?.plugins?.subtitle?.text) 
+      ? chartConfig.plugins.subtitle.text 
+      : undefined,
     width = 800,
     height = 600,
     backgroundColor = "#ffffff",

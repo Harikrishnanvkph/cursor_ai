@@ -396,6 +396,10 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
         display: true,
         text: "My Chart",
       },
+      subtitle: {
+        display: true,
+        text: "Custom Chart Subtitle",
+      },
       legend: {
         display: true,
         position: "top",

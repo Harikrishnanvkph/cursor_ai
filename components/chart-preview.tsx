@@ -134,6 +134,9 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     try {
       const result = await downloadChartAsHTML({
         title: (chartConfig.plugins?.title?.text as string) || "Chart Export",
+        subtitle: (chartConfig.plugins?.subtitle?.display && chartConfig.plugins?.subtitle?.text) 
+          ? (chartConfig.plugins?.subtitle?.text as string) 
+          : undefined,
         width: 800,
         height: 600,
         backgroundColor: getBackgroundConfig().color || "#ffffff",

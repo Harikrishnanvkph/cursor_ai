@@ -27,7 +27,7 @@ export const modernTemplate: HTMLTemplate = {
   name: "Modern Responsive",
   description: "Clean, modern design with responsive layout and smooth animations",
   generate: (chartData, chartConfig, chartType, options) => {
-    const { title, width, height, backgroundColor, includeAnimations, includeTooltips, includeLegend } = options;
+    const { title, subtitle, width, height, backgroundColor, includeAnimations, includeTooltips, includeLegend } = options;
     const legendConfig = resolveLegendConfig(options, () => ({
       display: true,
       position: 'top',
@@ -92,11 +92,20 @@ export const modernTemplate: HTMLTemplate = {
         
         .title {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: ${subtitle ? '10px' : '30px'};
             color: #2d3748;
             font-size: 28px;
             font-weight: 700;
             letter-spacing: -0.5px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #718096;
+            font-size: 16px;
+            font-weight: 400;
+            font-style: italic;
         }
         
         .chart-wrapper {
@@ -208,6 +217,7 @@ export const modernTemplate: HTMLTemplate = {
 <body>
     <div class="container">
         <h1 class="title">${title}</h1>
+        ${subtitle ? `<p class="subtitle">${subtitle}</p>` : ''}
         
         <div class="chart-wrapper">
             <canvas id="chartCanvas" class="chart-canvas"></canvas>
@@ -426,11 +436,20 @@ export const darkTemplate: HTMLTemplate = {
         
         .title {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: ${subtitle ? '10px' : '30px'};
             color: #ffffff;
             font-size: 28px;
             font-weight: 700;
             text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+        }
+        
+        .subtitle {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #a0aec0;
+            font-size: 16px;
+            font-weight: 400;
+            font-style: italic;
         }
         
         .chart-wrapper {
@@ -531,6 +550,7 @@ export const darkTemplate: HTMLTemplate = {
 <body>
     <div class="container">
         <h1 class="title">${title}</h1>
+        ${subtitle ? `<p class="subtitle">${subtitle}</p>` : ''}
         
         <div class="chart-wrapper">
             <canvas id="chartCanvas" class="chart-canvas"></canvas>
@@ -656,7 +676,7 @@ export const minimalTemplate: HTMLTemplate = {
   name: "Minimal",
   description: "Simple, clean template with minimal styling",
   generate: (chartData, chartConfig, chartType, options) => {
-    const { title, width, height, includeAnimations, includeTooltips, includeLegend } = options;
+    const { title, subtitle, width, height, includeAnimations, includeTooltips, includeLegend } = options;
     const legendConfig = resolveLegendConfig(options, () => ({
       display: true,
       position: 'top',
@@ -729,6 +749,7 @@ export const minimalTemplate: HTMLTemplate = {
 <body>
     <div class="container">
         <h1>${title}</h1>
+        ${subtitle ? `<p style="text-align: center; margin-bottom: 20px; color: #666; font-size: 14px; font-style: italic;">${subtitle}</p>` : ''}
         
         <div class="chart-container">
             <canvas id="chartCanvas"></canvas>
@@ -1055,7 +1076,7 @@ export const standardTemplate: HTMLTemplate = {
   name: "Standard",
   description: "Clean chart with overlay images and text - no extra styling",
   generate: (chartData, chartConfig, chartType, options) => {
-    const { title, width, height, includeAnimations, includeTooltips, includeLegend } = options;
+    const { title, subtitle, width, height, includeAnimations, includeTooltips, includeLegend } = options;
     const legendConfig = resolveLegendConfig(options, () => ({
       display: true,
       position: 'top',

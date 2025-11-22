@@ -31,6 +31,7 @@ import { universalImagePlugin } from "./chart-store"
 import { customLabelPlugin } from "./custom-label-plugin"
 import exportPlugin from "./export-plugin"
 import { overlayPlugin } from "./overlay-plugin"
+import { subtitlePlugin } from "./subtitle-plugin"
 
 // Register all Chart.js components globally
 ChartJS.register(
@@ -59,7 +60,8 @@ ChartJS.register(
   universalImagePlugin,
   customLabelPlugin,
   exportPlugin,
-  overlayPlugin
+  overlayPlugin,
+  subtitlePlugin
 )
 
 // Verify registration in development

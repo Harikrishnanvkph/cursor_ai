@@ -548,6 +548,46 @@ export function DesignPanel() {
               )}
             </CardContent>
           </Card>
+
+          {/* Subtitle Settings Card */}
+          <Card className="mt-4">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Type className="h-4 w-4" />
+                Subtitle Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-medium">Show Subtitle</Label>
+                <Switch
+                  checked={chartConfig.plugins?.subtitle?.display || false}
+                  onCheckedChange={(checked) => handleConfigUpdate("plugins.subtitle.display", checked)}
+                />
+              </div>
+
+              {!chartConfig.plugins?.subtitle?.display && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-xs text-blue-800 leading-relaxed">
+                    <strong>Enable Chart Subtitle</strong> to add a secondary heading below your chart title. 
+                    The subtitle appears right after the main title.
+                  </p>
+                </div>
+              )}
+
+              {chartConfig.plugins?.subtitle?.display && (
+                <div>
+                  <Label className="text-xs font-medium">Subtitle Text</Label>
+                  <Input
+                    value={chartConfig.plugins?.subtitle?.text || ""}
+                    onChange={(e) => handleConfigUpdate("plugins.subtitle.text", e.target.value)}
+                    placeholder="Custom Chart Subtitle"
+                    className="h-8 text-xs"
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="background" className="mt-4 space-y-3">

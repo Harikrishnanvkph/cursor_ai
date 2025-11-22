@@ -35,6 +35,7 @@ import exportPlugin from "@/lib/export-plugin"
 import { customLabelPlugin } from "@/lib/custom-label-plugin"
 import { overlayPlugin } from "@/lib/overlay-plugin"
 import { enhancedTitlePlugin } from "@/lib/enhanced-title-plugin"
+import { subtitlePlugin } from "@/lib/subtitle-plugin"
 import { ResizableChartArea } from "@/components/resizable-chart-area"
 import { OverlayContextMenu } from "@/components/overlay-context-menu"
 
@@ -65,7 +66,8 @@ ChartJS.register(
   customLabelPlugin,
   exportPlugin,
   overlayPlugin,
-  enhancedTitlePlugin
+  enhancedTitlePlugin,
+  subtitlePlugin
 );
 
 // Verify plugin registration
