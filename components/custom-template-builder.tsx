@@ -4,10 +4,15 @@ import React, { useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Eye, EyeOff, RotateCcw, Save, X, Hash, ZoomIn, ZoomOut, Plus, Heading1, Heading2, Text, MonitorSmartphone, Trash2, FileText as FileTextIcon, Ellipsis, Maximize2, AlertCircle } from "lucide-react"
+import { Eye, EyeOff, RotateCcw, Save, X, Hash, ZoomIn, ZoomOut, Plus, Heading1, Heading2, Text, MonitorSmartphone, Trash2, FileText as FileTextIcon, Ellipsis, Maximize2, AlertCircle, Info } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useTemplateStore, type TemplateTextArea } from "@/lib/template-store"
 import DraggableResizable from "@/components/reusable/DraggableResizable"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
+import { dataService } from "@/lib/data-service"
+import { useAuth } from "@/components/auth/AuthProvider"
+import { toast } from "sonner"
 
 type SectionKind = "canvas" | TemplateTextArea["type"]
 
@@ -16,6 +21,10 @@ const DEFAULT_TEMPLATE_HEIGHT = 1024
 
 export function CustomTemplateBuilder() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const source = searchParams.get('source')
+  const templateIdParam = searchParams.get('id')
+  const { user } = useAuth()
   const {
     draftTemplate,
     setDraftTemplate,
@@ -27,6 +36,8 @@ export function CustomTemplateBuilder() {
     addTemplate,
     updateTemplate,
     templates,
+    setCurrentTemplate,
+    syncTemplatesFromCloud,
   } = useTemplateStore()
 
   // Local editing state (draft)
@@ -40,10 +51,21 @@ export function CustomTemplateBuilder() {
   const [widthInput, setWidthInput] = useState('')
   const [heightInput, setHeightInput] = useState('')
   const [dimensionError, setDimensionError] = useState('')
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
 
   // Initialize draft template if none
   useEffect(() => {
     if (!draftTemplate && !isExiting) {
+      // If template ID is provided, try to load it from templates
+      if (templateIdParam) {
+        const existingTemplate = templates.find(t => t.id === templateIdParam)
+        if (existingTemplate) {
+          setDraftTemplate(existingTemplate)
+          return
+        }
+      }
+      
+      // Otherwise create a new draft
       setDraftTemplate({
         id: `custom-${Date.now()}`,
         name: "Custom Template (Draft)",
@@ -76,9 +98,19 @@ export function CustomTemplateBuilder() {
         isCustom: true
       })
     }
-  }, [draftTemplate, setDraftTemplate, isExiting])
+  }, [draftTemplate, setDraftTemplate, isExiting, templateIdParam, templates])
 
   const template = useTemplateStore(state => state.draftTemplate)
+  
+  // Check if editing "Current Cloud Template" (from snapshot, not regular cloud synced template)
+  const isEditingCurrentCloudTemplate = useMemo(() => {
+    // Check if source is 'current-cloud' (editing from Current Cloud Template)
+    if (source === 'current-cloud') return true
+    // Check if template ID is 'current-cloud-template'
+    if (template?.id === 'current-cloud-template') return true
+    return false
+  }, [template, source])
+  
   const isEditing = useMemo(() => {
     if (!template) return false
     return templates.some(t => t.id === template.id)
@@ -201,15 +233,16 @@ export function CustomTemplateBuilder() {
     }
   }
 
-  const finalize = async () => {
-    if (!template) return
+  // Validate template before save/create
+  const validateTemplate = () => {
+    if (!template) return false
     // Validate uniqueness
     const onceTypes: TemplateTextArea["type"][] = ["title", "heading", "main"]
     for (const t of onceTypes) {
       const count = template.textAreas.filter(ta => ta.type === t).length
       if (count > 1) {
         alert(`${t} can appear only once`)
-        return
+        return false
       }
     }
     // Ensure chartArea inside bounds
@@ -217,27 +250,236 @@ export function CustomTemplateBuilder() {
       r.x >= 0 && r.y >= 0 && r.x + r.width <= template.width && r.y + r.height <= template.height
     if (!inBounds(template.chartArea)) {
       alert("Canvas must be within template bounds")
-      return
+      return false
     }
+    return true
+  }
+
+  const handleSaveClick = () => {
+    if (!validateTemplate()) return
+    
+    // If editing "Current Cloud Template", show dialog
+    if (isEditingCurrentCloudTemplate) {
+      setShowSaveDialog(true)
+    } else {
+      // Otherwise proceed with normal create/update flow
+      finalize()
+    }
+  }
+
+  const finalize = async () => {
+    if (!template || !validateTemplate()) return
+    
     setIsExiting(true)
     setIsBusy(true)
-    if (isEditing) {
-      // Save edits to existing template (no new creation)
-      const { id, ...rest } = template
-      updateTemplate(id, { ...rest })
-      applyTemplate(id)
-    } else {
-      const newTemplate = { ...template, id: template.id || `custom-${Date.now()}`, name: template.name || `Custom Template ${new Date().toLocaleString()}`, description: template.description || "User custom template", isCustom: true }
-      addTemplate(newTemplate)
-      applyTemplate(newTemplate.id)
+    
+    try {
+      if (isEditing) {
+        // Update existing template
+        const { id, ...rest } = template
+        const updatedTemplate = { ...rest, isCustom: true }
+        
+        // Update in local store
+        updateTemplate(id, updatedTemplate)
+        
+        // Save to cloud if authenticated
+        if (user) {
+          try {
+            const response = await dataService.updateTemplate(id, {
+              name: updatedTemplate.name,
+              description: updatedTemplate.description || undefined,
+              templateStructure: updatedTemplate
+            })
+            
+            if (response.error) {
+              console.error('Failed to update template in cloud:', response.error)
+              toast.error('Template updated locally but failed to sync to cloud')
+            } else {
+              toast.success('Template updated and saved to cloud')
+            }
+          } catch (error) {
+            console.error('Error updating template in cloud:', error)
+            toast.error('Template updated locally but failed to sync to cloud')
+          }
+        }
+        
+        applyTemplate(id)
+      } else {
+        // Create new template
+        const newTemplate = { 
+          ...template, 
+          id: template.id || `custom-${Date.now()}`, 
+          name: template.name || `Custom Template ${new Date().toLocaleString()}`, 
+          description: template.description || "User custom template", 
+          isCustom: true 
+        }
+        
+        // Save to local store first
+        addTemplate(newTemplate)
+        
+        // Save to cloud if authenticated
+        if (user) {
+          try {
+            const response = await dataService.createTemplate(
+              newTemplate.name,
+              newTemplate.description || null,
+              newTemplate // Complete template structure
+            )
+            
+            if (response.error) {
+              console.error('Failed to save template to cloud:', response.error)
+              toast.error('Template saved locally but failed to sync to cloud')
+            } else if (response.data) {
+              // Update local template with cloud ID
+              if (response.data.id) {
+                updateTemplate(newTemplate.id, { id: response.data.id })
+                newTemplate.id = response.data.id
+              }
+              toast.success('Template saved to cloud')
+            }
+          } catch (error) {
+            console.error('Error saving template to cloud:', error)
+            toast.error('Template saved locally but failed to sync to cloud')
+          }
+        } else {
+          toast.info('Template saved locally. Sign in to sync to cloud')
+        }
+        
+        applyTemplate(newTemplate.id)
+      }
+    } catch (error) {
+      console.error('Error finalizing template:', error)
+      toast.error('Failed to save template')
+      setIsBusy(false)
+      setIsExiting(false)
+      return
     }
     // Ensure overlay is painted before navigating (2 RAFs)
     await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
-    router.push("/editor")
+    const target = source === 'current-cloud' ? "/editor?tab=templates" : "/editor"
+    router.push(target)
     // Clear the draft after navigation is initiated so overlay remains visible until unmount
     setTimeout(() => {
       try { clearDraft() } catch {}
     }, 0)
+  }
+
+  // Save - Updates currentTemplate locally (no cloud save)
+  // User can save to cloud later via the main Save button in editor
+  const saveLocalOnly = async () => {
+    if (!template || !isEditingCurrentCloudTemplate) return
+    
+    setShowSaveDialog(false)
+    setIsExiting(true)
+    setIsBusy(true)
+    
+    try {
+      // Update currentTemplate in template store (local only)
+      // This will be saved to cloud when user clicks main Save button in editor
+      const updatedTemplate = { 
+        ...template, 
+        id: 'current-cloud-template', // Keep the same ID
+        isCustom: false,
+        isCloudTemplate: true
+      }
+      
+      // Set as current template (applies immediately)
+      setCurrentTemplate(updatedTemplate)
+      
+      toast.success('Template updated. Use Save button in editor to save to cloud.')
+      
+      // Navigate back to editor templates tab
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+      router.push("/editor?tab=templates")
+      setTimeout(() => {
+        try { clearDraft() } catch {}
+      }, 0)
+    } catch (error) {
+      console.error('Error saving template locally:', error)
+      toast.error('Failed to update template')
+      setIsBusy(false)
+      setIsExiting(false)
+    }
+  }
+
+  // Create and Save - Updates current chart locally AND saves as new template in cloud
+  const createAndSaveToCloud = async () => {
+    if (!template) return
+    
+    setShowSaveDialog(false)
+    setIsExiting(true)
+    setIsBusy(true)
+    
+    try {
+      // 1. Update current chart's template locally (same as "Save")
+      const updatedCurrentTemplate = { 
+        ...template, 
+        id: 'current-cloud-template',
+        isCustom: false,
+        isCloudTemplate: true
+      }
+      setCurrentTemplate(updatedCurrentTemplate)
+      
+      // 2. Create new template entry for cloud storage
+      const baseName = template.name || 'Template'
+      const newTemplate = { 
+        ...template, 
+        id: `custom-${Date.now()}`, 
+        name: baseName.includes('Current Cloud') ? `Custom Template ${new Date().toLocaleString()}` : baseName, 
+        description: template.description || "User custom template", 
+        isCustom: true 
+      }
+      
+      // Add to local templates list
+      addTemplate(newTemplate)
+      
+      // Save to cloud (user_templates in database)
+      if (user) {
+        try {
+          const response = await dataService.createTemplate(
+            newTemplate.name,
+            newTemplate.description || null,
+            newTemplate // Complete template structure
+          )
+          
+          if (response.error) {
+            console.error('Failed to save template to cloud:', response.error)
+            toast.error('Template applied locally but failed to save to cloud')
+          } else if (response.data) {
+            // Update local template with cloud ID
+            if (response.data.id) {
+              updateTemplate(newTemplate.id, { id: response.data.id })
+              newTemplate.id = response.data.id
+            }
+            toast.success('Template applied and saved to cloud')
+            
+            // Sync templates list to show the newly created template
+            syncTemplatesFromCloud()
+          }
+        } catch (error) {
+          console.error('Error saving template to cloud:', error)
+          toast.error('Template applied locally but failed to save to cloud')
+        }
+      } else {
+        toast.error('Please sign in to save templates to cloud')
+        setIsBusy(false)
+        setIsExiting(false)
+        setShowSaveDialog(true)
+        return
+      }
+      
+      // Navigate back to editor templates tab
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+      router.push("/editor?tab=templates")
+      setTimeout(() => {
+        try { clearDraft() } catch {}
+      }, 0)
+    } catch (error) {
+      console.error('Error creating new template:', error)
+      toast.error('Failed to create template')
+      setIsBusy(false)
+      setIsExiting(false)
+    }
   }
 
   const cancel = async () => {
@@ -245,7 +487,8 @@ export function CustomTemplateBuilder() {
     setIsExiting(true)
     setIsBusy(true)
     await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
-    router.push("/editor")
+    const target = source === 'current-cloud' ? "/editor?tab=templates" : "/editor"
+    router.push(target)
     setTimeout(() => {
       try { clearDraft() } catch {}
     }, 0)
@@ -329,8 +572,8 @@ export function CustomTemplateBuilder() {
             <Button variant="outline" size="sm" onClick={cancel} disabled={isBusy}>
               <X className="h-4 w-4 mr-1" /> Cancel
             </Button>
-            <Button size="sm" onClick={finalize} disabled={isBusy}>
-              <Save className="h-4 w-4 mr-1" /> {isEditing ? 'Save' : 'Create'}
+            <Button size="sm" onClick={handleSaveClick} disabled={isBusy}>
+              <Save className="h-4 w-4 mr-1" /> {isEditingCurrentCloudTemplate ? 'Save' : (isEditing ? 'Save' : 'Create')}
             </Button>
           </div>
         </div>
@@ -607,6 +850,79 @@ export function CustomTemplateBuilder() {
           - Custom text: any number.
         </div>
       </div>
+
+      {/* Save Dialog for Current Cloud Template */}
+      <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Save Template Changes</DialogTitle>
+            <DialogDescription>
+              You&apos;re editing the current chart&apos;s template. Choose how to save:
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex flex-col gap-3 py-4">
+            <Button
+              onClick={saveLocalOnly}
+              className="w-full h-auto py-4 flex flex-col items-start gap-2"
+              variant="default"
+              disabled={isBusy}
+            >
+              <div className="flex items-center gap-2 w-full">
+                <Save className="h-5 w-5" />
+                <span className="font-semibold flex-1 text-left">Save</span>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-4 w-4 text-white/60 hover:text-white" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs max-w-[200px]">Updates the current chart&apos;s template locally. Use the main Save button in editor to save to cloud.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <span className="text-xs text-left text-white/70">
+                Update current chart&apos;s template (local only, not saved to cloud yet)
+              </span>
+            </Button>
+            
+            <Button
+              onClick={createAndSaveToCloud}
+              className="w-full h-auto py-4 flex flex-col items-start gap-2"
+              variant="outline"
+              disabled={isBusy}
+            >
+              <div className="flex items-center gap-2 w-full">
+                <Plus className="h-5 w-5" />
+                <span className="font-semibold flex-1 text-left">Create and Save</span>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs max-w-[200px]">Updates current chart AND creates a new template in your library (saved to cloud).</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <span className="text-xs text-left text-gray-500">
+                Update current chart + create new template in library (saved to cloud)
+              </span>
+            </Button>
+            
+            <Button
+              onClick={() => setShowSaveDialog(false)}
+              variant="ghost"
+              className="w-full"
+              disabled={isBusy}
+            >
+              Cancel
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -44,7 +44,14 @@ class DataService {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP ${response.status}`);
+        const errorMessage = errorData.error || errorData.message || `HTTP ${response.status}`;
+        console.error(`❌ API request failed: ${endpoint}`, {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorMessage,
+          errorData
+        });
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -123,7 +130,9 @@ class DataService {
     conversationId: string, 
     chartType: string, 
     chartData: any, 
-    chartConfig: any
+    chartConfig: any,
+    templateStructure?: any,  // Optional: full template layout structure
+    templateContent?: any      // Optional: text content for template areas
   ): Promise<ApiResponse<{ id: string }>> {
     return this.request('/api/data/chart-snapshots', {
       method: 'POST',
@@ -131,7 +140,9 @@ class DataService {
         conversationId,
         chartType,
         chartData,
-        chartConfig
+        chartConfig,
+        templateStructure: templateStructure || null,
+        templateContent: templateContent || null
       }),
     }, false);
   }
@@ -200,6 +211,68 @@ class DataService {
     return this.request('/api/data/projects', {
       method: 'POST',
       body: JSON.stringify({ name, description }),
+    }, false);
+  }
+
+  // =============================================
+  // TEMPLATE MANAGEMENT (Blueprint Templates)
+  // =============================================
+  
+  async getTemplates(includePublic = true): Promise<ApiResponse<any[]>> {
+    return this.request(`/api/data/templates?includePublic=${includePublic}`);
+  }
+
+  async getTemplate(id: string): Promise<ApiResponse<any>> {
+    return this.request(`/api/data/templates/${id}`);
+  }
+
+  async createTemplate(
+    name: string,
+    description: string | null,
+    templateStructure: any
+  ): Promise<ApiResponse<any>> {
+    return this.request('/api/data/templates', {
+      method: 'POST',
+      body: JSON.stringify({
+        name,
+        description,
+        templateStructure
+      }),
+    }, false);
+  }
+
+  async updateTemplate(
+    id: string,
+    updates: {
+      name?: string;
+      description?: string;
+      templateStructure?: any;
+    }
+  ): Promise<ApiResponse<any>> {
+    return this.request(`/api/data/templates/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    }, false);
+  }
+
+  async deleteTemplate(id: string): Promise<ApiResponse<void>> {
+    try {
+      return await this.request(`/api/data/templates/${id}`, {
+        method: 'DELETE',
+      }, false);
+    } catch (error: any) {
+      console.error('Error in deleteTemplate:', error);
+      return { 
+        error: error.message || 'Failed to delete template',
+        data: undefined 
+      };
+    }
+  }
+
+  async setTemplateVisibility(id: string, isPublic: boolean): Promise<ApiResponse<any>> {
+    return this.request(`/api/data/templates/${id}/visibility`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isPublic }),
     }, false);
   }
 

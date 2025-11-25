@@ -2,9 +2,12 @@
 
 import React, { useState, useEffect } from "react"
 import { useTemplateStore, type TemplateLayout } from "@/lib/template-store"
+import { useChatStore } from "@/lib/chat-store"
+import { useChartStore } from "@/lib/chart-store"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Pencil, Trash2 } from "lucide-react"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Input } from "@/components/ui/input"
@@ -22,8 +25,15 @@ import {
   AlignRight, 
   AlignJustify,
   Palette,
-  ALargeSmall
+  ALargeSmall,
+  Cloud,
+  ChevronDown,
+  ChevronUp,
+  LayoutTemplate,
+  Database,
+  Type
 } from "lucide-react"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 
 export function TemplatesPanel() {
   const { 
@@ -33,8 +43,33 @@ export function TemplatesPanel() {
     applyTemplate, 
     resetTemplate, 
     updateTextArea, 
-    setSelectedTextAreaId
+    setSelectedTextAreaId,
+    unusedContents,
+    removeUnusedContent,
+    updateUnusedContent,
+    setOriginalCloudTemplateContent,
+    modifiedCloudTemplateContent,
+    setModifiedCloudTemplateContent,
+    clearUnusedContents,
+    setDraftTemplate
   } = useTemplateStore()
+  const router = useRouter()
+  const [isUnusedContentsExpanded, setIsUnusedContentsExpanded] = React.useState(true)
+  const [activeTab, setActiveTab] = React.useState("templates")
+  
+  const { currentChartState } = useChatStore()
+  
+  // Get current cloud template from snapshot
+  const currentCloudTemplate = currentChartState?.template_structure 
+    ? {
+        ...currentChartState.template_structure,
+        id: 'current-cloud-template',
+        name: 'Current Cloud Template',
+        description: 'Original template structure from backend snapshot',
+        isCustom: false,
+        isCloudTemplate: true
+      }
+    : null
 
   const [confirmOpen, setConfirmOpen] = React.useState(false)
   const [pendingDeleteId, setPendingDeleteId] = React.useState<string | null>(null)
@@ -45,9 +80,15 @@ export function TemplatesPanel() {
     setConfirmOpen(true)
   }
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (pendingDeleteId) {
-      useTemplateStore.getState().deleteTemplate(pendingDeleteId)
+      try {
+        await useTemplateStore.getState().deleteTemplate(pendingDeleteId)
+        // Success feedback is handled in the store
+      } catch (error) {
+        console.error('Error deleting template:', error)
+        // Error feedback is handled in the store
+      }
     }
     setConfirmOpen(false)
     setPendingDeleteId(null)
@@ -114,67 +155,201 @@ export function TemplatesPanel() {
     }
   }
 
+  // Helper function to determine template type
+  const getTemplateType = (template: TemplateLayout) => {
+    // Check if it's a default template (template-1, template-2, etc.)
+    const isDefault = /^template-\d+$/.test(template.id)
+    
+    // Check if it's a cloud template (UUID format)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    const isCloudSynced = uuidRegex.test(template.id)
+    
+    if (isDefault) return 'default'
+    if (isCloudSynced) return 'cloud'
+    return 'custom'
+  }
+
   return (
-    <div className="space-y-6">
-      {/* Template Selection */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            Chart Templates
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 gap-3">
+    <div className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="templates" className="flex items-center gap-2">
+            <LayoutTemplate className="h-4 w-4" />
+            Templates
+          </TabsTrigger>
+          <TabsTrigger value="content" className="flex items-center gap-2">
+            <Type className="h-4 w-4" />
+            Content
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Templates Tab */}
+        <TabsContent value="templates" className="space-y-4 mt-4">
+          <Card>
+            <CardContent className="space-y-2 p-4">
+          <div className="grid grid-cols-1 gap-2">
+            {/* Current Cloud Template - Show above all templates if available */}
+            {currentCloudTemplate && (
+              <div
+                className={`group p-3 rounded-lg cursor-pointer transition-all duration-200 border ${
+                  currentTemplate?.id === 'current-cloud-template'
+                    ? 'border-blue-300 bg-blue-50 ring-1 ring-blue-200 shadow-sm'
+                    : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/40'
+                }`}
+                onClick={() => {
+                  const templateStore = useTemplateStore.getState()
+                  
+                  // Check if there's a modified version stored from before switching away
+                  // If user modified Current Cloud Template, then switched to Standard Report,
+                  // then comes back, we restore the modified version instead of original snapshot
+                  let templateToApply = currentCloudTemplate
+                  
+                  if (modifiedCloudTemplateContent && modifiedCloudTemplateContent.id === 'current-cloud-template') {
+                    // Restore the modified version (preserves text content, styles, etc.)
+                    templateToApply = modifiedCloudTemplateContent
+                  }
+                  
+                  // Store original source (first time only)
+                  if (!templateStore.originalCloudTemplateContent) {
+                    setOriginalCloudTemplateContent(currentCloudTemplate)
+                  }
+                  
+                  templateStore.setCurrentTemplate(templateToApply)
+                  templateStore.setEditorMode('template')
+                  clearUnusedContents() // Clear unused when selecting source
+                  
+                  // Update chart dimensions to match template chart area
+                  const chartStore = useChartStore.getState()
+                  chartStore.updateChartConfig({
+                    ...chartStore.chartConfig,
+                    manualDimensions: true,
+                    width: `${templateToApply.chartArea.width}px`,
+                    height: `${templateToApply.chartArea.height}px`,
+                    responsive: false,
+                    maintainAspectRatio: false
+                  })
+                }}
+              >
+                <div className="min-w-0 flex-1">
+                  {/* Row 1: Icon and Name */}
+                  <div className="flex items-center gap-2 mb-1.5">
+                    {currentTemplate?.id === 'current-cloud-template' && (
+                      <span className="inline-block h-2.5 w-2.5 rounded-full bg-blue-600 ring-2 ring-blue-200 flex-shrink-0" title="Active" />
+                    )}
+                    <Cloud className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                    <h4 className="font-semibold text-sm text-gray-900 truncate flex-1">{currentCloudTemplate.name}</h4>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 flex-shrink-0"
+                      title="Edit structure"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        const draftId = `cloud-edit-${Date.now()}`
+                    setDraftTemplate({
+                          ...currentCloudTemplate,
+                          id: draftId,
+                          isCustom: true
+                        })
+                    setOriginalCloudTemplateContent(currentCloudTemplate)
+                        router.push('/editor/custom-template?source=current-cloud')
+                      }}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {/* Row 2: Cloud tag */}
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-blue-700 bg-blue-100 border border-blue-200 rounded-full">
+                      <Cloud className="h-3 w-3" />
+                      Cloud Snapshot
+                    </span>
+                  </div>
+
+                  {currentCloudTemplate.description && (
+                    <p className="text-xs text-gray-600 line-clamp-2">{currentCloudTemplate.description}</p>
+                  )}
+                </div>
+              </div>
+            )}
+            
             {templates.map((template) => {
               const isActive = currentTemplate?.id === template.id
-              const showDescription = !(template.isCustom && /draft/i.test(String(template.description || '')))
+              const templateType = getTemplateType(template)
+              const textAreaCount = template.textAreas?.length || 0
+              
               return (
                 <div
                   key={template.id}
-                  className={`group p-4 rounded-lg cursor-pointer transition-all duration-200 border ${
+                  className={`group p-3 rounded-lg cursor-pointer transition-all duration-200 border ${
                     isActive
                       ? 'border-blue-300 bg-blue-50 ring-1 ring-blue-200 shadow-sm'
-                      : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/40'
+                      : templateType === 'default'
+                      ? 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
+                      : templateType === 'cloud'
+                      ? 'border-purple-200 bg-purple-50/30 hover:border-purple-300 hover:bg-purple-50/50'
+                      : 'border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50/30'
                   }`}
                   onClick={() => handleTemplateSelect(template.id)}
                 >
                   <div className="min-w-0 flex-1">
-                    {/* Row 1: Name */}
-                    <div className="flex items-center gap-2">
+                    {/* Row 1: Icon and Name */}
+                    <div className="flex items-center gap-2 mb-1.5">
                       {isActive && (
                         <span className="inline-block h-2.5 w-2.5 rounded-full bg-blue-600 ring-2 ring-blue-200 flex-shrink-0" title="Active" />
                       )}
-                      <h4 className="font-semibold text-sm text-gray-900 truncate">{template.name}</h4>
-                    </div>
-
-                    {/* Row 2: Custom tag on the left, edit/delete on the right */}
-                    <div className="mt-2 flex items-center justify-between">
-                      <div className="min-w-0">
-                        {template.isCustom && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-purple-700 bg-purple-100 border border-purple-200 rounded-full">
-                            Custom
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {template.isCustom && (
-                          <>
-                            <Link href={`/editor/custom-template?id=${template.id}`} onClick={(e:any)=> e.stopPropagation()}>
-                              <Button size="icon" variant="ghost" className="h-8 w-8" title="Edit">
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            </Link>
-                            <Button size="icon" variant="ghost" className="h-8 w-8" title="Delete" onClick={(e:any)=> askDelete(e, template.id)}>
-                              <Trash2 className="h-4 w-4" />
+                      {templateType === 'default' ? (
+                        <LayoutTemplate className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                      ) : templateType === 'cloud' ? (
+                        <Database className="h-4 w-4 text-purple-600 flex-shrink-0" />
+                      ) : (
+                        <FileText className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                      )}
+                      <h4 className="font-semibold text-sm text-gray-900 truncate flex-1">{template.name}</h4>
+                      {template.isCustom && (
+                        <div className="flex items-center gap-0.5 flex-shrink-0">
+                          <Link href={`/editor/custom-template?id=${template.id}`} onClick={(e:any)=> e.stopPropagation()}>
+                            <Button size="icon" variant="ghost" className="h-7 w-7" title="Edit">
+                              <Pencil className="h-3.5 w-3.5" />
                             </Button>
-                          </>
-                        )}
-                      </div>
+                          </Link>
+                          <Button size="icon" variant="ghost" className="h-7 w-7" title="Delete" onClick={(e:any)=> askDelete(e, template.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
 
-                    {showDescription && (
-                      <p className="text-xs text-gray-600 mt-2 line-clamp-2">{template.description}</p>
+                    {/* Row 2: Tags and Info */}
+                    <div className="flex items-center gap-2 mb-1">
+                      {templateType === 'default' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-full">
+                          {/* <LayoutTemplate className="h-3 w-3" /> */}
+                          Default
+                        </span>
+                      )}
+                      {templateType === 'cloud' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-purple-700 bg-purple-100 border border-purple-200 rounded-full">
+                          <Database className="h-3 w-3" />
+                          Cloud Synced
+                        </span>
+                      )}
+                      {templateType === 'custom' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-purple-700 bg-purple-100 border border-purple-200 rounded-full">
+                          Custom
+                        </span>
+                      )}
+                      {textAreaCount > 0 && (
+                        <span className="text-[10px] text-gray-500">
+                          {textAreaCount} text area{textAreaCount !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Row 3: Description */}
+                    {template.description && (
+                      <p className="text-xs text-gray-600 line-clamp-2 mt-0.5">{template.description}</p>
                     )}
                   </div>
                 </div>
@@ -196,9 +371,9 @@ export function TemplatesPanel() {
           <div className="mt-2">
             <a
               href="/editor/custom-template"
-              className="inline-flex items-center px-3 py-2 border border-dashed border-blue-400 rounded-md text-sm text-blue-700 hover:bg-blue-50"
+              className="inline-flex items-center px-3 py-1.5 border border-dashed border-blue-400 rounded-md text-sm text-blue-700 hover:bg-blue-50 transition-colors"
             >
-              <span className="mr-2">＋</span>
+              <span className="mr-1.5">＋</span>
               Create custom template
             </a>
             <p className="text-xs text-gray-500 mt-1">
@@ -207,30 +382,92 @@ export function TemplatesPanel() {
           </div>
 
           {!currentTemplate && (
-            <div className="mt-4 pt-4 border-t">
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-600">
+            <div className="mt-3 pt-3 border-t">
+              <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <FileText className="h-6 w-6 text-gray-400 mx-auto mb-2" />
+                <p className="text-xs text-gray-600">
                   Select a template above to start customizing your chart with text areas and styling.
                 </p>
               </div>
             </div>
           )}
+            </CardContent>
+          </Card>
 
+          {/* Unused Contents Section - Content from Current Cloud Template that doesn't fit in current template */}
+          {currentTemplate && unusedContents.length > 0 && (
+            <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Unused Contents
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsUnusedContentsExpanded(!isUnusedContentsExpanded)}
+                className="h-6 px-2"
+              >
+                {isUnusedContentsExpanded ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+          </CardHeader>
+          {isUnusedContentsExpanded && (
+            <CardContent className="space-y-2">
+              {unusedContents.map((item, index) => (
+                <div
+                  key={index}
+                  className="p-3 border border-gray-200 rounded-md bg-gray-50"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className={`p-1.5 rounded ${getTextAreaTypeColor(item.type)}`}>
+                        {getTextAreaTypeIcon(item.type)}
+                      </div>
+                      <span className="text-xs font-medium capitalize text-gray-700">
+                        {item.type}
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeUnusedContent(index)}
+                      className="h-6 w-6 p-0"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <textarea
+                    value={item.content}
+                    onChange={(e) => updateUnusedContent(index, e.target.value)}
+                    className="w-full min-h-[60px] p-2 text-xs border border-gray-300 rounded resize-y focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    placeholder="Content from Current Cloud Template..."
+                  />
+                </div>
+              ))}
+            </CardContent>
+          )}
+            </Card>
+          )}
+        </TabsContent>
 
-        </CardContent>
-      </Card>
-
-             {/* Text Areas Management */}
-       {currentTemplate && (
-         <Card>
-           <CardHeader className="pb-3">
-             <CardTitle className="text-sm flex items-center gap-2">
-               <Edit3 className="h-4 w-4" />
-               Text Areas
-             </CardTitle>
-           </CardHeader>
-           <CardContent className="space-y-3">
+        {/* Content Tab */}
+        <TabsContent value="content" className="space-y-4 mt-4">
+          {/* Text Areas Management */}
+          {currentTemplate && (
+            <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Edit3 className="h-4 w-4" />
+              Text Areas
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
              <div className="space-y-2 max-h-48 overflow-y-auto">
                {currentTemplate.textAreas.map((textArea) => (
                  <div
@@ -285,27 +522,59 @@ export function TemplatesPanel() {
         </Card>
       )}
 
-             {/* Text Editor */}
-       {currentTemplate && selectedTextArea && (
-         <Card>
-           <CardHeader className="pb-3">
-             <CardTitle className="text-sm flex items-center gap-2">
-               <Edit3 className="h-4 w-4" />
-               Text Editor - {selectedTextArea.type}
-             </CardTitle>
-           </CardHeader>
-           <CardContent className="space-y-3 max-h-64 overflow-y-auto">
+          {/* Text Editor */}
+          {currentTemplate && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Edit3 className="h-4 w-4" />
+                  Text Editor{selectedTextArea ? ` - ${selectedTextArea.type}` : ''}
+                </CardTitle>
+              </CardHeader>
+              {selectedTextArea ? (
+                <CardContent className="space-y-3 max-h-64 overflow-y-auto">
+                         {/* Content Type Toggle */}
+             <div className="flex items-center justify-between">
+               <Label htmlFor="contentType" className="text-xs">Content Type</Label>
+               <div className="flex items-center gap-2">
+                 <span className={`text-xs ${(selectedTextArea.contentType || 'text') === 'text' ? 'font-semibold' : 'text-gray-500'}`}>
+                   Text
+                 </span>
+                 <Switch
+                   id="contentType"
+                   checked={selectedTextArea.contentType === 'html'}
+                   onCheckedChange={(checked) => {
+                     handleTextAreaUpdate('contentType', checked ? 'html' : 'text')
+                   }}
+                 />
+                 <span className={`text-xs ${selectedTextArea.contentType === 'html' ? 'font-semibold' : 'text-gray-500'}`}>
+                   HTML
+                 </span>
+               </div>
+             </div>
+
                          {/* Content */}
              <div>
-               <Label htmlFor="content" className="text-xs">Content</Label>
+               <Label htmlFor="content" className="text-xs">
+                 Content {selectedTextArea.contentType === 'html' ? '(HTML)' : '(Text)'}
+               </Label>
                <textarea
                  id="content"
                  value={selectedTextArea.content}
                  onChange={(e) => handleTextAreaUpdate('content', e.target.value)}
-                 className="w-full mt-1 p-2 border rounded-md text-xs"
-                 rows={2}
-                 placeholder="Enter text content..."
+                 className="w-full mt-1 p-2 border rounded-md text-xs font-mono"
+                 rows={selectedTextArea.contentType === 'html' ? 8 : 4}
+                 placeholder={
+                   selectedTextArea.contentType === 'html' 
+                     ? 'Enter HTML content...\nExample: <p>Hello <strong>World</strong></p>' 
+                     : 'Enter text content...'
+                 }
                />
+               {selectedTextArea.contentType === 'html' && (
+                 <p className="text-xs text-gray-500 mt-1">
+                   HTML is rendered in preview. Use HTML tags like &lt;p&gt;, &lt;strong&gt;, &lt;em&gt;, &lt;br&gt;, etc.
+                 </p>
+               )}
              </div>
 
             <Separator />
@@ -464,9 +733,34 @@ export function TemplatesPanel() {
                />
                <Label className="text-xs">Visible</Label>
              </div>
-          </CardContent>
-        </Card>
-      )}
+                </CardContent>
+              ) : (
+                <CardContent className="pt-6">
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <Edit3 className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-600">
+                      Select a text area from above to edit its content and styling.
+                    </p>
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+          )}
+
+          {!currentTemplate && (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center p-4 bg-gray-50 rounded-lg">
+                  <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600">
+                    Select a template from the Templates tab to edit content.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   )
 } 

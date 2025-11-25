@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { useChatStore, ChatMessage, ChartSnapshot } from "@/lib/chat-store";
 import { useChartStore, type SupportedChartType, type ExtendedChartData } from "@/lib/chart-store";
+import { useTemplateStore } from "@/lib/template-store";
 import { dataService } from "@/lib/data-service";
 import type { ChartOptions } from "chart.js";
 
@@ -98,11 +99,14 @@ export const useHistoryStore = create<HistoryStore>()(
                 id: response.data.id,
                 title: response.data.title,
                 messages: transformedMessages,
-                snapshot: snapshotResponse.data ? {
-                  chartType: snapshotResponse.data.chart_type,
-                  chartData: snapshotResponse.data.chart_data,
-                  chartConfig: snapshotResponse.data.chart_config
-                } : null,
+                    snapshot: snapshotResponse.data ? {
+                      chartType: snapshotResponse.data.chart_type,
+                      chartData: snapshotResponse.data.chart_data,
+                      chartConfig: snapshotResponse.data.chart_config,
+                      template_structure: snapshotResponse.data.template_structure, // Map template fields
+                      template_content: snapshotResponse.data.template_content,     // Map template fields
+                      is_template_mode: snapshotResponse.data.is_template_mode      // Map template fields
+                    } : null,
                 timestamp: new Date(response.data.created_at).getTime()
               };
               
@@ -132,12 +136,66 @@ export const useHistoryStore = create<HistoryStore>()(
 
         // Restore chart snapshot
         const { setFullChart, setHasJSON } = useChartStore.getState();
+        const { setCurrentTemplate, setEditorMode } = useTemplateStore.getState();
+        
         if (conv.snapshot) {
           setFullChart(conv.snapshot);
           setHasJSON(true);
           
           // Update current chart state in chat store
           updateChartState(conv.snapshot);
+          
+          // Restore template mode if snapshot has template data
+          if (conv.snapshot.template_structure || conv.snapshot.is_template_mode) {
+            if (conv.snapshot.template_structure) {
+              // Create Current Cloud Template structure
+              const cloudTemplate = {
+                ...conv.snapshot.template_structure,
+                id: 'current-cloud-template',
+                name: 'Current Cloud Template',
+                description: 'Original template structure from backend snapshot',
+                isCustom: false,
+                isCloudTemplate: true
+              }
+              
+              // Restore text area content if available
+              if (conv.snapshot.template_content) {
+                const template = conv.snapshot.template_structure;
+                const content = conv.snapshot.template_content;
+                
+                // Update text areas with saved content
+                const updatedTextAreas = template.textAreas.map(area => {
+                  const areaContent = content[area.type];
+                  if (areaContent !== undefined) {
+                    // Handle multiple areas of same type (array) or single content
+                    if (Array.isArray(areaContent)) {
+                      // Find index of this area among areas of same type
+                      const sameTypeAreas = template.textAreas.filter(ta => ta.type === area.type);
+                      const index = sameTypeAreas.indexOf(area);
+                      return { 
+                        ...area, 
+                        content: areaContent[index] || areaContent[0] || area.content 
+                      };
+                    } else {
+                      return { ...area, content: areaContent };
+                    }
+                  }
+                  return area;
+                });
+                
+                cloudTemplate.textAreas = updatedTextAreas;
+              }
+              
+              // Store as original cloud template content for content transfer
+              const templateStore = useTemplateStore.getState()
+              templateStore.setOriginalCloudTemplateContent(cloudTemplate)
+              templateStore.setCurrentTemplate(cloudTemplate)
+              templateStore.setEditorMode('template');
+              templateStore.clearUnusedContents()
+              
+              console.log('✅ Restored template mode from snapshot');
+            }
+          }
         }
       },
       clearAllConversations: async () => {
@@ -209,7 +267,10 @@ export const useHistoryStore = create<HistoryStore>()(
                     snapshot: snapshotResponse.data ? {
                       chartType: snapshotResponse.data.chart_type,
                       chartData: snapshotResponse.data.chart_data,
-                      chartConfig: snapshotResponse.data.chart_config
+                      chartConfig: snapshotResponse.data.chart_config,
+                      template_structure: snapshotResponse.data.template_structure, // Map template fields
+                      template_content: snapshotResponse.data.template_content,     // Map template fields
+                      is_template_mode: snapshotResponse.data.is_template_mode      // Map template fields
                     } : null,
                     timestamp: new Date(conv.created_at).getTime()
                   };

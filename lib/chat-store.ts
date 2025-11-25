@@ -48,6 +48,9 @@ export type ChatMessage = {
 export type ChartSnapshot = {
   chartType: SupportedChartType;
   chartData: ExtendedChartData;
+  template_structure?: any; // Optional: full template layout structure
+  template_content?: any;   // Optional: text content for template areas
+  is_template_mode?: boolean; // Optional: indicates if this is template mode
   chartConfig: ChartOptions;
 };
 

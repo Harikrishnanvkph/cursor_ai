@@ -17,7 +17,7 @@ import { ResizableChartArea } from "@/components/resizable-chart-area"
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import { useChatStore } from "@/lib/chat-store"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { clearCurrentChart } from "@/lib/storage-utils"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
@@ -101,9 +101,10 @@ function EditorPageContent() {
 
   const { user, signOut } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState("types_toggles")
   const { chartConfig, updateChartConfig, chartType, chartData, hasJSON, resetChart, setHasJSON } = useChartStore()
-  const { setEditorMode } = useTemplateStore()
+  const { setEditorMode, currentTemplate, editorMode, syncTemplatesFromCloud } = useTemplateStore()
   const { messages, clearMessages, startNewConversation, setBackendConversationId } = useChatStore()
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false)
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false)
@@ -122,6 +123,25 @@ function EditorPageContent() {
       setRightSidebarCollapsed(true);
     }
   }, [isTablet]);
+
+  // Respect ?tab= query parameter (e.g., /editor?tab=templates)
+  useEffect(() => {
+    const tabParam = searchParams.get('tab')
+    if (tabParam) {
+      setActiveTab(tabParam)
+      // Clean the URL so it goes back to /editor without query params
+      router.replace("/editor")
+    }
+  }, [searchParams, router])
+
+  // Auto-sync templates from cloud when user logs in
+  useEffect(() => {
+    if (user) {
+      syncTemplatesFromCloud().catch((error) => {
+        console.error('Failed to sync templates from cloud:', error);
+      });
+    }
+  }, [user, syncTemplatesFromCloud]);
 
   // Auto-apply mobile dimensions when Manual Dimensions is enabled on mobile
   useEffect(() => {
@@ -247,12 +267,39 @@ function EditorPageContent() {
         return config;
       })();
 
+      // Extract template data if in template mode
+      let templateStructureToSave: any = null
+      const templateContentToSave: Record<string, any> = {}
+      let hasTemplateContent = false
+
+      if (editorMode === 'template' && currentTemplate) {
+        // Save complete template structure (independent copy)
+        templateStructureToSave = currentTemplate
+        
+        // Extract text area content
+        currentTemplate.textAreas.forEach(area => {
+          if (templateContentToSave[area.type]) {
+            // Handle multiple areas of same type
+            if (Array.isArray(templateContentToSave[area.type])) {
+              templateContentToSave[area.type].push(area.content)
+            } else {
+              templateContentToSave[area.type] = [templateContentToSave[area.type], area.content]
+            }
+          } else {
+            templateContentToSave[area.type] = area.content
+          }
+          hasTemplateContent = true
+        })
+      }
+
       // Save chart snapshot (creates new version)
       const snapshotResult = await dataService.saveChartSnapshot(
         conversationId,
-            chartType,
-            chartData,
-            normalizedConfig
+        chartType,
+        chartData,
+        normalizedConfig,
+        templateStructureToSave,
+        hasTemplateContent ? templateContentToSave : null
       )
 
       if (snapshotResult.error) {

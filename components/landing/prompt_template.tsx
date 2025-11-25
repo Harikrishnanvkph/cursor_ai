@@ -21,7 +21,7 @@ export function PromptTemplate({
   size = 'default' 
 }: PromptTemplateProps) {
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
-  const { currentTemplate, setCurrentTemplate, templates, applyTemplate, generateMode, setGenerateMode } = useTemplateStore()
+  const { currentTemplate, setCurrentTemplate, templates, applyTemplate, generateMode, setGenerateMode, setEditorMode } = useTemplateStore()
   
   const handleSampleClick = () => {
     if (onSampleClick) {
@@ -98,7 +98,12 @@ export function PromptTemplate({
               type="single" 
               value={generateMode} 
               onValueChange={(value) => {
-                if (value) setGenerateMode(value as 'chart' | 'template')
+                if (value) {
+                  const mode = value as 'chart' | 'template'
+                  setGenerateMode(mode)
+                  // Also update editorMode so template data gets saved correctly
+                  setEditorMode(mode)
+                }
               }}
               className="w-full bg-gray-50 rounded-lg p-1 border border-gray-200"
             >
@@ -124,24 +129,24 @@ export function PromptTemplate({
           {/* Conditional Content Based on Generate Mode */}
           {generateMode === 'chart' ? (
             <>
-              <button
-                onClick={handleSampleClick}
-                className="w-full bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-slate-800 font-medium px-4 py-3 rounded-xl border border-indigo-200/50 transition-all duration-200 text-left hover:shadow-lg group text-sm"
-              >
-                <div className="font-semibold flex items-center gap-2 mb-1">
-                  <div className="p-1 bg-indigo-100 rounded group-hover:bg-indigo-200 transition-colors">
-                    <Forward className="w-4 h-4 text-indigo-600" />
-                  </div>
-                  Sample Request
-                </div>
-                <div className="text-xs text-slate-600 leading-relaxed">{chartTemplate}</div>
-              </button>
-              
-              <div className="text-center">
-                <div className="text-xs text-slate-500">
-                  Or type your own request in the chat panel →
-                </div>
+          <button
+            onClick={handleSampleClick}
+            className="w-full bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-slate-800 font-medium px-4 py-3 rounded-xl border border-indigo-200/50 transition-all duration-200 text-left hover:shadow-lg group text-sm"
+          >
+            <div className="font-semibold flex items-center gap-2 mb-1">
+              <div className="p-1 bg-indigo-100 rounded group-hover:bg-indigo-200 transition-colors">
+                <Forward className="w-4 h-4 text-indigo-600" />
               </div>
+              Sample Request
+            </div>
+            <div className="text-xs text-slate-600 leading-relaxed">{chartTemplate}</div>
+          </button>
+          
+          <div className="text-center">
+            <div className="text-xs text-slate-500">
+              Or type your own request in the chat panel →
+            </div>
+          </div>
             </>
           ) : (
             <>

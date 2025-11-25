@@ -308,48 +308,72 @@ export function TemplateChartPreview({
 
     return template.textAreas
       .filter(textArea => textArea.visible)
-      .map((textArea) => (
-        <div
-          key={textArea.id}
-          className={`absolute template-text-area cursor-pointer transition-all duration-200 ${
-            selectedTextAreaId === textArea.id 
-              ? 'ring-2 ring-blue-500 ring-opacity-50' 
-              : 'hover:ring-1 hover:ring-gray-300'
-          }`}
-          style={{
-            left: textArea.position.x,
-            top: textArea.position.y,
-            width: textArea.position.width,
-            height: textArea.position.height,
-            fontSize: `${textArea.style.fontSize}px`,
-            fontFamily: textArea.style.fontFamily,
-            fontWeight: textArea.style.fontWeight,
-            color: textArea.style.color,
-            textAlign: textArea.style.textAlign,
-            lineHeight: textArea.style.lineHeight,
-            letterSpacing: `${textArea.style.letterSpacing}px`,
-            wordBreak: 'break-word',
-            whiteSpace: 'pre-wrap',
-            padding: '8px',
-            overflow: 'hidden',
-            border: showGuides ? '1px dashed #e5e7eb' : 'none',
-            backgroundColor: showGuides ? 'rgba(255, 255, 255, 0.8)' : 'transparent'
-          }}
-          onClick={() => handleTextAreaClick(textArea.id)}
-        >
-          {/* Text area type label - more subtle */}
-          {showGuides && (
-            <div
-              className="absolute -top-3 left-0 text-xs text-gray-400 bg-white bg-opacity-90 px-1 py-0.5 rounded pointer-events-none border border-gray-200"
-              style={{ fontSize: '8px', zIndex: 10 }}
-            >
-              {textArea.type}
-            </div>
-          )}
-          
-          {textArea.content || 'Click to edit text'}
-        </div>
-      ))
+      .map((textArea) => {
+        const isHTML = textArea.contentType === 'html'
+        const baseStyle: React.CSSProperties = {
+          left: textArea.position.x,
+          top: textArea.position.y,
+          width: textArea.position.width,
+          height: textArea.position.height,
+          fontSize: `${textArea.style.fontSize}px`,
+          fontFamily: textArea.style.fontFamily,
+          fontWeight: textArea.style.fontWeight,
+          color: textArea.style.color,
+          textAlign: textArea.style.textAlign,
+          lineHeight: textArea.style.lineHeight,
+          letterSpacing: `${textArea.style.letterSpacing}px`,
+          wordBreak: 'break-word' as const,
+          whiteSpace: isHTML ? 'normal' : 'pre-wrap',
+          padding: '8px',
+          overflow: isHTML ? 'auto' : 'hidden',
+          border: showGuides ? '1px dashed #e5e7eb' : 'none',
+          backgroundColor: showGuides ? 'rgba(255, 255, 255, 0.8)' : 'transparent'
+        }
+        
+        return (
+          <div
+            key={textArea.id}
+            className={`absolute template-text-area cursor-pointer transition-all duration-200 ${
+              selectedTextAreaId === textArea.id 
+                ? 'ring-2 ring-blue-500 ring-opacity-50' 
+                : 'hover:ring-1 hover:ring-gray-300'
+            }`}
+            style={baseStyle}
+            onClick={() => handleTextAreaClick(textArea.id)}
+          >
+            {/* Text area type label - more subtle */}
+            {showGuides && (
+              <div
+                className="absolute -top-3 left-0 text-xs text-gray-400 bg-white bg-opacity-90 px-1 py-0.5 rounded pointer-events-none border border-gray-200"
+                style={{ fontSize: '8px', zIndex: 10 }}
+              >
+                {textArea.type} {isHTML ? '(HTML)' : ''}
+              </div>
+            )}
+            
+            {/* Render HTML or plain text based on contentType */}
+            {isHTML ? (
+              <div 
+                dangerouslySetInnerHTML={{ __html: textArea.content || 'Click to edit HTML' }}
+                style={{ 
+                  width: '100%', 
+                  height: '100%',
+                  // Inherit text styling from template settings
+                  fontSize: 'inherit',
+                  fontFamily: 'inherit',
+                  fontWeight: 'inherit',
+                  color: 'inherit',
+                  textAlign: 'inherit',
+                  lineHeight: 'inherit',
+                  letterSpacing: 'inherit'
+                }}
+              />
+            ) : (
+              textArea.content || 'Click to edit text'
+            )}
+          </div>
+        )
+      })
   }
 
   // Render chart area using ChartGenerator

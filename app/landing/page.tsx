@@ -47,7 +47,7 @@ function LandingPageContent() {
     setMessages
   } = useChatStore()
   const { addConversation, loadConversationsFromBackend } = useHistoryStore()
-  const { generateMode, currentTemplate } = useTemplateStore()
+  const { generateMode, currentTemplate, syncTemplatesFromCloud } = useTemplateStore()
   const [input, setInput] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -113,8 +113,11 @@ function LandingPageContent() {
   // Auto-sync backend data when user logs in
   useEffect(() => {
     if (user && !hasLoadedBackendData) {
-      console.log('🔄 User logged in, loading conversations from backend...');
-      loadConversationsFromBackend()
+      console.log('🔄 User logged in, loading conversations and templates from backend...');
+      Promise.all([
+        loadConversationsFromBackend(),
+        syncTemplatesFromCloud()
+      ])
         .then(() => {
           setHasLoadedBackendData(true);
           console.log('✅ Backend data loaded successfully');
@@ -128,7 +131,7 @@ function LandingPageContent() {
     if (!user && hasLoadedBackendData) {
       setHasLoadedBackendData(false);
     }
-  }, [user, hasLoadedBackendData, loadConversationsFromBackend])
+  }, [user, hasLoadedBackendData, loadConversationsFromBackend, syncTemplatesFromCloud])
   
   // Tablet-specific states
   const [tabletRightSidebarOpen, setTabletRightSidebarOpen] = useState(false)

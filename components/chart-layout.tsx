@@ -4,6 +4,7 @@ import { ChartPreview } from "@/components/chart-preview"
 import { ConfigSidebar } from "@/components/config-sidebar"
 import { useChartStore } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
+import { useTemplateStore } from "@/lib/template-store"
 import { cn } from "@/lib/utils"
 import { useState, useEffect } from "react"
 import { ChevronLeft, ChevronRight, Settings, Save, X, Loader2 } from "lucide-react"
@@ -20,6 +21,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
   const { chartData, chartType, chartConfig, hasJSON } = useChartStore()
   const { user, signOut } = useAuth()
   const { startNewConversation, clearMessages } = useChatStore()
+  const { editorMode, currentTemplate } = useTemplateStore()
   const router = useRouter()
   const hasChartData = chartData.datasets.length > 0
   const [isCollapsed, setIsCollapsed] = useState(false)
@@ -123,13 +125,39 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
         return config;
       })();
 
+      // Extract template data if in template mode
+      let templateStructureToSave = null
+      let templateContentToSave = null
+
+      if (editorMode === 'template' && currentTemplate) {
+        // Save complete template structure (independent copy)
+        templateStructureToSave = currentTemplate
+        
+        // Extract text area content
+        templateContentToSave = {}
+        currentTemplate.textAreas.forEach(area => {
+          if (templateContentToSave[area.type]) {
+            // Handle multiple areas of same type
+            if (Array.isArray(templateContentToSave[area.type])) {
+              templateContentToSave[area.type].push(area.content)
+            } else {
+              templateContentToSave[area.type] = [templateContentToSave[area.type], area.content]
+            }
+          } else {
+            templateContentToSave[area.type] = area.content
+          }
+        })
+      }
+
       // Save chart snapshot (creates new version)
       const snapshotResult = await dataService.saveChartSnapshot(
         conversationId,
-          chartType,
-          chartData,
-          normalizedConfig
-        )
+        chartType,
+        chartData,
+        normalizedConfig,
+        templateStructureToSave,
+        templateContentToSave
+      )
         
       if (snapshotResult.error) {
         console.error('Failed to save chart snapshot:', snapshotResult.error)
