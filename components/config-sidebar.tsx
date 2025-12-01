@@ -9,15 +9,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ResponsiveAnimationsPanel } from "@/components/panels/responsive-animations-panel"
 import { DatasetsSlicesPanel } from "@/components/panels/datasets-slices-panel"
-import { FileText, Layout, BarChart3, Edit3 } from "lucide-react"
+import { FileText, Layout, BarChart3, Edit3, Cloud } from "lucide-react"
 import { useState, useCallback } from "react"
 import { Plus, Trash2, Eye, EyeOff } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 export function ConfigSidebar() {
+  const router = useRouter()
+
   const { 
     chartType, 
     chartData, 
@@ -42,8 +46,15 @@ export function ConfigSidebar() {
     editorMode,
     setEditorMode,
     applyTemplate, 
-    resetTemplate 
+    resetTemplate,
+    setCurrentTemplate,
+    originalCloudTemplateContent,
   } = useTemplateStore()
+
+  // Determine if we have a "Current Cloud Template" available from snapshot
+  const currentCloudTemplate = originalCloudTemplateContent?.id === "current-cloud-template"
+    ? originalCloudTemplateContent
+    : null
 
   const handleToggleFillArea = useCallback((checked: boolean) => {
     toggleFillArea()
@@ -201,6 +212,62 @@ export function ConfigSidebar() {
             <div className="space-y-4">
               <div className="text-sm font-medium text-gray-900 mb-3">Chart Templates</div>
               <div className="grid grid-cols-1 gap-3">
+                {/* Current Cloud Template section, shown above other templates when available */}
+                {currentCloudTemplate && (
+                  <div
+                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
+                      currentTemplate?.id === "current-cloud-template"
+                        ? "border-blue-500 bg-blue-50 shadow-md"
+                        : "border-blue-200 bg-blue-50/40 hover:border-blue-400 hover:bg-blue-50"
+                    }`}
+                    onClick={() => {
+                      // Apply the cloud template as the active template in landing
+                      setCurrentTemplate(currentCloudTemplate as any)
+                      setEditorMode("template")
+                    }}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          {currentTemplate?.id === "current-cloud-template" && (
+                            <span
+                              className="inline-block h-2.5 w-2.5 rounded-full bg-blue-600 ring-2 ring-blue-200 flex-shrink-0"
+                              title="Active"
+                            />
+                          )}
+                          <Cloud className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                          <h4 className="font-semibold text-sm text-gray-900 truncate flex-1">
+                            Current Cloud Template
+                          </h4>
+                        </div>
+                        {currentCloudTemplate.description && (
+                          <p className="text-xs text-gray-600 line-clamp-2">
+                            {currentCloudTemplate.description}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center gap-1 flex-shrink-0"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toast("Open in Advanced Editor", {
+                            description:
+                              "To edit this template's structure, please use the Advanced Editor.",
+                            action: {
+                              label: "Go to Editor",
+                              onClick: () => router.push("/editor?tab=templates"),
+                            },
+                          })
+                        }}
+                      >
+                        <Edit3 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 {templates.map((template) => (
                   <div
                     key={template.id}
@@ -233,16 +300,16 @@ export function ConfigSidebar() {
                 {/* Dummy card to go to editor page */}
                 <div className="p-4 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50/40 transition-all duration-200">
                   <div className="flex flex-col items-center justify-center text-center space-y-3">
-                    <Edit3 className="h-6 w-6 text-gray-400" />
+                    {/* <Edit3 className="h-6 w-6 text-gray-400" /> */}
                     <div>
-                      <p className="text-sm font-medium text-gray-700 mb-1">
-                        Go to Editor Page to Create Custom Templates
+                      <p className="text-sm font-medium text-gray-700 mb-1 mt-1">
+                        Go to Editor Page to Edit or Create Custom Templates
                       </p>
-                      <p className="text-xs text-gray-500">
+                      {/* <p className="text-xs text-gray-500">
                         Use the advanced editor to design your own templates
-                      </p>
+                      </p> */}
                     </div>
-                    <Link href="/editor">
+                    <Link href="/editor?tab=templates">
                       <Button variant="default" size="sm" className="mt-1">
                         <Edit3 className="h-4 w-4 mr-2" />
                         Go to Editor

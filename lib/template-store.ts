@@ -822,23 +822,25 @@ export const useTemplateStore = create<TemplateStore>()(
         }
 
         if (mode === 'chart') {
-          const dimensionBackup = state.chartDimensionBackup || captureDimensions()
-
-          chartStore.updateChartConfig({
-            ...chartConfig,
-            manualDimensions: dimensionBackup.manualDimensions ?? false,
-            responsive: dimensionBackup.responsive ?? !dimensionBackup.manualDimensions,
-            dynamicDimension: dimensionBackup.dynamicDimension ?? false,
-            width: dimensionBackup.width,
-            height: dimensionBackup.height,
-            maintainAspectRatio: dimensionBackup.maintainAspectRatio ?? true
-          })
+          // When switching back to chart mode, we want to KEEP the dimensions
+          // that were applied in template mode (which already copied the
+          // template's chartArea width/height into chartConfig and enabled
+          // manualDimensions). This ensures that in the Layout & Dimensions
+          // section the Manual Dimensions option remains selected with the
+          // template's width/height.
+          //
+          // So we intentionally DO NOT restore the previous backup dimensions here.
+          // We simply switch the logical editorMode flag and preserve:
+          // - chartConfig.width / height (already set from template)
+          // - chartConfig.manualDimensions = true (from template mode)
+          // - chartDimensionBackup (in case we need it for a future flow)
+          // - currentTemplate (so saves still include template structure)
 
           return {
             editorMode: mode,
             templateInBackground: state.currentTemplate || state.templateInBackground,
-            currentTemplate: null,
-            chartDimensionBackup: null
+            currentTemplate: state.currentTemplate,
+            chartDimensionBackup: state.chartDimensionBackup
           }
         }
 
