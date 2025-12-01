@@ -42,7 +42,7 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
     includeTooltips: true,
     includeLegend: true,
     fileName: `chart-${new Date().toISOString().slice(0, 10)}.html`,
-    template: "standard"
+    template: "plain"
   })
   // Force Auto mode when global template mode is active
   useEffect(() => {
@@ -550,6 +550,51 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
         </CardContent>
       </Card>
 
+      <Card className="border-orange-100 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <FileCode className="h-4 w-4 text-orange-600" />
+            HTML Export
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div>
+            <Label className="text-xs font-medium text-gray-700">File Name</Label>
+            <Input
+              value={htmlOptions.fileName}
+              onChange={(e) => setHtmlOptions({ ...htmlOptions, fileName: e.target.value })}
+              placeholder="chart.html"
+              className="h-8 text-xs"
+            />
+          </div>
+
+          <div>
+            <Label className="text-xs font-medium text-gray-700">Style</Label>
+            <Select value={htmlOptions.template} onValueChange={(value) => setHtmlOptions({ ...htmlOptions, template: value })}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {templateList.map((template) => (
+                  <SelectItem key={template.id} value={template.id}>
+                    <span className="text-xs">{template.name}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Button 
+            onClick={handleExportHTML} 
+            className="w-full h-9 text-xs bg-orange-600 hover:bg-orange-700 mt-3"
+            disabled={exportMode === "template" && !currentTemplate}
+          >
+            <Download className="h-3 w-3 mr-2" />
+            Download {exportMode === "template" ? "Template" : "Chart"} HTML
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card className="border-purple-100 shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm flex items-center gap-2">
@@ -591,79 +636,6 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
           <Button variant="outline" onClick={handleExportData} className="w-full h-9 text-xs">
             <FileText className="h-3 w-3 mr-2" />
             Export as CSV
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card className="border-orange-100 shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <FileCode className="h-4 w-4 text-orange-600" />
-            HTML Export
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div>
-            <Label className="text-xs font-medium text-gray-700">Title</Label>
-            <Input
-              value={htmlOptions.title}
-              onChange={(e) => setHtmlOptions({ ...htmlOptions, title: e.target.value })}
-              placeholder="Chart Title"
-              className="h-8 text-xs"
-            />
-          </div>
-
-          <div>
-            <Label className="text-xs font-medium text-gray-700">File Name</Label>
-            <Input
-              value={htmlOptions.fileName}
-              onChange={(e) => setHtmlOptions({ ...htmlOptions, fileName: e.target.value })}
-              placeholder="chart.html"
-              className="h-8 text-xs"
-            />
-          </div>
-
-          <div>
-            <Label className="text-xs font-medium text-gray-700">Background</Label>
-            <div className="flex gap-2">
-              <input
-                type="color"
-                value={htmlOptions.backgroundColor}
-                onChange={(e) => setHtmlOptions({ ...htmlOptions, backgroundColor: e.target.value })}
-                className="w-10 h-8 rounded border cursor-pointer"
-              />
-              <Input
-                value={htmlOptions.backgroundColor}
-                onChange={(e) => setHtmlOptions({ ...htmlOptions, backgroundColor: e.target.value })}
-                placeholder="#ffffff"
-                className="h-8 text-xs flex-1"
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label className="text-xs font-medium text-gray-700">Template</Label>
-            <Select value={htmlOptions.template} onValueChange={(value) => setHtmlOptions({ ...htmlOptions, template: value })}>
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {templateList.map((template) => (
-                  <SelectItem key={template.id} value={template.id}>
-                    <span className="text-xs">{template.name}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Button 
-            onClick={handleExportHTML} 
-            className="w-full h-9 text-xs bg-orange-600 hover:bg-orange-700 mt-3"
-            disabled={exportMode === "template" && !currentTemplate}
-          >
-            <Download className="h-3 w-3 mr-2" />
-            Download {exportMode === "template" ? "Template" : "Chart"} HTML
           </Button>
         </CardContent>
       </Card>

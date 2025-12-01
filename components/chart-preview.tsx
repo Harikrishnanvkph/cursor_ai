@@ -131,20 +131,35 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       }
     }
 
+    // Get dimensions from canvas (same logic as export panel)
+    const getExportDimensions = (): { width: number; height: number } => {
+      if (globalChartRef?.current?.canvas) {
+        return {
+          width: globalChartRef.current.canvas.width,
+          height: globalChartRef.current.canvas.height
+        }
+      }
+      // Fallback
+      return { width: 800, height: 600 }
+    }
+
+    const dimensions = getExportDimensions();
+
     try {
       const result = await downloadChartAsHTML({
         title: (chartConfig.plugins?.title?.text as string) || "Chart Export",
         subtitle: (chartConfig.plugins?.subtitle?.display && chartConfig.plugins?.subtitle?.text) 
           ? (chartConfig.plugins?.subtitle?.text as string) 
           : undefined,
-        width: 800,
-        height: 600,
+        width: dimensions.width,
+        height: dimensions.height,
         backgroundColor: getBackgroundConfig().color || "#ffffff",
         includeResponsive: true,
         includeAnimations: true,
         includeTooltips: true,
         includeLegend: true,
         fileName: `chart-${chartType}-${new Date().toISOString().slice(0, 10)}.html`,
+        template: "plain",
         dragState: currentDragState, // Pass the captured drag state
         showImages: showImages,
         showLabels: showLabels,

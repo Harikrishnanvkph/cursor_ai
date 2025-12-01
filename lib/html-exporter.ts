@@ -353,7 +353,7 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
     customCSS = "",
     customJS = "",
     fileName = `chart-${new Date().toISOString().slice(0, 10)}.html`,
-    template = "modern"
+    template = "plain"
   } = options;
 
   const legendForExport = buildLegendConfigForExport(enhancedChartConfig, includeLegend);
