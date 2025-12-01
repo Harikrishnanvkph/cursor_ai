@@ -184,19 +184,13 @@ export function ResponsiveAnimationsPanel() {
                 name="chart-mode-anim"
                 checked={chartConfig.dynamicDimension === true}
                 onChange={() => {
-                  // Initialize width/height if they don't exist
-                  const currentWidth = (chartConfig as any)?.width;
-                  const currentHeight = (chartConfig as any)?.height;
-                  const width = currentWidth || '600px';
-                  const height = currentHeight || '500px';
-                  
                   updateChartConfig({
                     ...chartConfig,
                     dynamicDimension: true,
                     responsive: false,
                     manualDimensions: false,
-                    width: width,
-                    height: height
+                    width: '400px',
+                    height: '400px'
                   });
                 }}
                 className="text-green-600 focus:ring-green-500"
