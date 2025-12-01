@@ -31,6 +31,7 @@ import {
 } from "chart.js"
 import { Chart } from "react-chartjs-2"
 import { useChartStore, universalImagePlugin } from "@/lib/chart-store"
+import { useTemplateStore } from "@/lib/template-store"
 import exportPlugin from "@/lib/export-plugin"
 import { customLabelPlugin } from "@/lib/custom-label-plugin"
 import { overlayPlugin } from "@/lib/overlay-plugin"
@@ -687,6 +688,9 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
 
   // Function to load sample data based on current mode
   const loadSampleGroupedData = () => {
+    // Set editor mode to chart when loading sample data
+    useTemplateStore.getState().setEditorMode('chart');
+    
     const { getDefaultDataForMode } = require('@/lib/chart-store');
     const groupedData = getDefaultDataForMode('grouped');
     
@@ -702,6 +706,9 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
   };
 
   const loadSampleSingleData = () => {
+    // Set editor mode to chart when loading sample data
+    useTemplateStore.getState().setEditorMode('chart');
+    
     const { getDefaultDataForMode } = require('@/lib/chart-store');
     const singleData = getDefaultDataForMode('single');
     

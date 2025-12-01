@@ -457,6 +457,8 @@ function EditorPageContent() {
 
   const handleLoadSampleData = () => {
     setShowNewChartInfoDialog(false)
+    // Set editor mode to chart when loading sample data
+    setEditorMode('chart')
     // Load sample data
     const sampleData = {
       labels: ['January', 'February', 'March', 'April', 'May', 'June'],

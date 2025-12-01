@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { BarChart3, Database, Sparkles, TrendingUp, PieChart, LineChart } from "lucide-react"
 import { useChartStore } from "@/lib/chart-store"
+import { useTemplateStore } from "@/lib/template-store"
 import { toast } from "sonner"
 
 interface EditorWelcomeScreenProps {
@@ -14,8 +15,11 @@ interface EditorWelcomeScreenProps {
 
 export function EditorWelcomeScreen({ onDatasetClick, size = "default", className = "" }: EditorWelcomeScreenProps) {
   const { setFullChart, setHasJSON, setChartMode } = useChartStore()
+  const { setEditorMode } = useTemplateStore()
 
   const handleLoadSampleData = () => {
+    // Set editor mode to chart when loading sample data
+    setEditorMode('chart')
     // Load sample bar chart data for SINGLE mode
     const sampleData = {
       labels: ['January', 'February', 'March', 'April', 'May', 'June'],
