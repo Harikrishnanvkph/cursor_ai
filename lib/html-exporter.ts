@@ -81,9 +81,10 @@ function buildLegendConfigForExport(chartConfig: any, includeLegend: boolean) {
   const labelsConfig = legendConfig.labels ?? {};
   const fontConfig = labelsConfig.font ?? {};
   const usePointStyle = labelsConfig.usePointStyle ?? true;
+  const legendType = (chartConfig?.plugins as any)?.legendType || 'dataset';
 
   if (!includeLegend) {
-    return { display: false };
+    return { display: false, legendType };
   }
 
   return {
@@ -100,6 +101,7 @@ function buildLegendConfigForExport(chartConfig: any, includeLegend: boolean) {
         size: fontConfig.size ?? 12,
       },
     },
+    legendType, // Preserve legendType for generateLabels function
   };
 }
 
@@ -516,6 +518,10 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
         const chartData = ${JSON.stringify(processedChartData, null, 8)};
         const chartType = "${mappedChartType}";
         
+        // Extract legendType for generateLabels function
+        const legendType = ${JSON.stringify(legendForExport.legendType || 'dataset')};
+        const legendLabelsConfig = ${JSON.stringify(legendForExport.labels || {})};
+        
         // Enhanced configuration for standalone HTML
         const enhancedConfig = {
             ...chartConfig,
@@ -540,7 +546,71 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
                     displayColors: true,
                     padding: 12
                 } : { enabled: false },
-                legend: ${JSON.stringify(legendForExport, null, 8)}
+                legend: {
+                    ...${JSON.stringify(legendForExport, null, 8)},
+                    labels: {
+                        ...legendLabelsConfig,
+                        generateLabels: function(chart) {
+                            const usePointStyle = legendLabelsConfig.usePointStyle || false;
+                            const pointStyle = legendLabelsConfig.pointStyle || 'rect';
+                            const fontColor = legendLabelsConfig.font?.color || legendLabelsConfig.color || '#000000';
+                            
+                            const createItem = (props) => ({
+                                ...props,
+                                pointStyle: usePointStyle ? pointStyle : undefined,
+                                fontColor: fontColor
+                            });
+                            
+                            const items = [];
+                            const labels = chart.data.labels || [];
+                            const datasets = chart.data.datasets || [];
+                            
+                            if (legendType === 'slice' || legendType === 'both') {
+                                for (let i = 0; i < labels.length; ++i) {
+                                    const dataset = datasets[0];
+                                    if (dataset) {
+                                        const backgroundColor = Array.isArray(dataset.backgroundColor) 
+                                            ? dataset.backgroundColor[i] 
+                                            : dataset.backgroundColor || '#ccc';
+                                        const borderColor = Array.isArray(dataset.borderColor) 
+                                            ? dataset.borderColor[i] 
+                                            : dataset.borderColor || '#333';
+                                        items.push(createItem({
+                                            text: String(labels[i]),
+                                            fillStyle: backgroundColor,
+                                            strokeStyle: borderColor,
+                                            hidden: false,
+                                            index: i,
+                                            datasetIndex: 0,
+                                            type: 'slice',
+                                        }));
+                                    }
+                                }
+                            }
+                            if (legendType === 'dataset' || legendType === 'both') {
+                                for (let i = 0; i < datasets.length; ++i) {
+                                    const dataset = datasets[i];
+                                    const backgroundColor = Array.isArray(dataset.backgroundColor) 
+                                        ? dataset.backgroundColor[0] 
+                                        : dataset.backgroundColor || '#ccc';
+                                    const borderColor = Array.isArray(dataset.borderColor) 
+                                        ? dataset.borderColor[0] 
+                                        : dataset.borderColor || '#333';
+                                    items.push(createItem({
+                                        text: dataset.label || \`Dataset \${i + 1}\`,
+                                        fillStyle: backgroundColor,
+                                        strokeStyle: borderColor,
+                                        hidden: false,
+                                        datasetIndex: i,
+                                        index: i,
+                                        type: 'dataset',
+                                    }));
+                                }
+                            }
+                            return items;
+                        }
+                    }
+                }
             }
         };
         
@@ -948,6 +1018,10 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
     const chartData = ${JSON.stringify(processedChartData, null, 8)};
     const chartType = "${mappedChartType}";
     
+    // Extract legendType for generateLabels function
+    const legendType = ${JSON.stringify(legendForExport.legendType || 'slice')};
+    const legendLabelsConfig = ${JSON.stringify(legendForExport.labels || {})};
+    
     // Enhanced configuration for standalone HTML
     const enhancedConfig = {
         ...chartConfig,
@@ -972,7 +1046,71 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
                 displayColors: true,
                 padding: 12
             } : { enabled: false },
-            legend: ${JSON.stringify(legendForExport, null, 8)}
+            legend: {
+                ...${JSON.stringify(legendForExport, null, 8)},
+                labels: {
+                    ...legendLabelsConfig,
+                    generateLabels: function(chart) {
+                        const usePointStyle = legendLabelsConfig.usePointStyle || false;
+                        const pointStyle = legendLabelsConfig.pointStyle || 'rect';
+                        const fontColor = legendLabelsConfig.font?.color || legendLabelsConfig.color || '#000000';
+                        
+                        const createItem = (props) => ({
+                            ...props,
+                            pointStyle: usePointStyle ? pointStyle : undefined,
+                            fontColor: fontColor
+                        });
+                        
+                        const items = [];
+                        const labels = chart.data.labels || [];
+                        const datasets = chart.data.datasets || [];
+                        
+                        if (legendType === 'slice' || legendType === 'both') {
+                            for (let i = 0; i < labels.length; ++i) {
+                                const dataset = datasets[0];
+                                if (dataset) {
+                                    const backgroundColor = Array.isArray(dataset.backgroundColor) 
+                                        ? dataset.backgroundColor[i] 
+                                        : dataset.backgroundColor || '#ccc';
+                                    const borderColor = Array.isArray(dataset.borderColor) 
+                                        ? dataset.borderColor[i] 
+                                        : dataset.borderColor || '#333';
+                                    items.push(createItem({
+                                        text: String(labels[i]),
+                                        fillStyle: backgroundColor,
+                                        strokeStyle: borderColor,
+                                        hidden: false,
+                                        index: i,
+                                        datasetIndex: 0,
+                                        type: 'slice',
+                                    }));
+                                }
+                            }
+                        }
+                        if (legendType === 'dataset' || legendType === 'both') {
+                            for (let i = 0; i < datasets.length; ++i) {
+                                const dataset = datasets[i];
+                                const backgroundColor = Array.isArray(dataset.backgroundColor) 
+                                    ? dataset.backgroundColor[0] 
+                                    : dataset.backgroundColor || '#ccc';
+                                const borderColor = Array.isArray(dataset.borderColor) 
+                                    ? dataset.borderColor[0] 
+                                    : dataset.borderColor || '#333';
+                                items.push(createItem({
+                                    text: dataset.label || \`Dataset \${i + 1}\`,
+                                    fillStyle: backgroundColor,
+                                    strokeStyle: borderColor,
+                                    hidden: false,
+                                    datasetIndex: i,
+                                    index: i,
+                                    type: 'dataset',
+                                }));
+                            }
+                        }
+                        return items;
+                    }
+                }
+            }
         }
     };
     

@@ -757,7 +757,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
             {chartConfig.dynamicDimension ? (
               <ResizableChartArea>
                 <Chart
-                  key={`${chartType}-${chartWidth}-${chartHeight}-${isResponsive}-${chartConfig.manualDimensions}`}
+                  key={`${chartType}-${chartWidth}-${chartHeight}-${isResponsive}-${chartConfig.manualDimensions}-${(chartConfig.plugins as any)?.legendType || 'dataset'}`}
                   ref={chartRef}
                   type={chartTypeForChart as any}
                   data={chartDataForChart}
@@ -806,7 +806,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                         labels: {
                           ...(((chartConfig.plugins as any)?.legend)?.labels || {}),
                           generateLabels: (chart: any) => {
-                            const legendType = ((chartConfig.plugins as any)?.legendType) || 'slice';
+                            const legendType = ((chartConfig.plugins as any)?.legendType) || 'dataset';
                             const usePointStyle = (chartConfig.plugins?.legend as any)?.labels?.usePointStyle || false;
                             const pointStyle = (chartConfig.plugins?.legend as any)?.labels?.pointStyle || 'rect';
                             const fontColor = (chartConfig.plugins?.legend?.labels as any)?.color || '#000000';
@@ -918,7 +918,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                 }}
               >
                 <Chart
-                  key={`${chartType}-${chartWidth}-${chartHeight}-${isResponsive}-${chartConfig.manualDimensions}`}
+                  key={`${chartType}-${chartWidth}-${chartHeight}-${isResponsive}-${chartConfig.manualDimensions}-${(chartConfig.plugins as any)?.legendType || 'dataset'}`}
                   ref={chartRef}
                   type={chartTypeForChart as any}
                   data={chartDataForChart}
@@ -967,6 +967,47 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                       ...((chartConfig.plugins as any)?.legend),
                       labels: {
                         ...(((chartConfig.plugins as any)?.legend)?.labels || {}),
+                        generateLabels: (chart: any) => {
+                          const legendType = ((chartConfig.plugins as any)?.legendType) || 'dataset';
+                          const usePointStyle = (chartConfig.plugins?.legend as any)?.labels?.usePointStyle || false;
+                          const pointStyle = (chartConfig.plugins?.legend as any)?.labels?.pointStyle || 'rect';
+                          const fontColor = (chartConfig.plugins?.legend?.labels as any)?.color || '#000000';
+
+                          const createItem = (props: any) => ({
+                            ...props,
+                            pointStyle: usePointStyle ? pointStyle : undefined,
+                            fontColor: fontColor
+                          });
+
+                          const items = [] as any[];
+                          if (legendType === 'slice' || legendType === 'both') {
+                            for (let i = 0; i < filteredLabels.length; ++i) {
+                              items.push(createItem({
+                                text: String(filteredLabels[i]),
+                                fillStyle: filteredDatasets[0]?.backgroundColor?.[i] || '#ccc',
+                                strokeStyle: filteredDatasets[0]?.borderColor?.[i] || '#333',
+                                hidden: false,
+                                index: i,
+                                datasetIndex: 0,
+                                type: 'slice',
+                              }));
+                            }
+                          }
+                          if (legendType === 'dataset' || legendType === 'both') {
+                            for (let i = 0; i < filteredDatasets.length; ++i) {
+                              items.push(createItem({
+                                text: filteredDatasets[i].label || `Dataset ${i + 1}`,
+                                fillStyle: Array.isArray(filteredDatasets[i].backgroundColor) ? (filteredDatasets[i].backgroundColor as string[])[0] : (filteredDatasets[i].backgroundColor as string) || '#ccc',
+                                strokeStyle: Array.isArray(filteredDatasets[i].borderColor) ? (filteredDatasets[i].borderColor as string[])[0] : (filteredDatasets[i].borderColor as string) || '#333',
+                                hidden: false,
+                                datasetIndex: i,
+                                index: i,
+                                type: 'dataset',
+                              }));
+                            }
+                          }
+                          return items;
+                        },
                       },
                     },
                     tooltip: {
