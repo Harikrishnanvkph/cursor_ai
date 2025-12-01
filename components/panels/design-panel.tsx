@@ -878,7 +878,7 @@ export function DesignPanel() {
                   <div>
                     <Label className="text-xs font-medium">Legend Type</Label>
                     <Select
-                      value={chartConfig.plugins?.legendType || "slice"}
+                      value={chartConfig.plugins?.legendType || "dataset"}
                       onValueChange={(value) => handleConfigUpdate("plugins.legendType", value)}
                     >
                       <SelectTrigger className="h-8 text-xs">

@@ -795,6 +795,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                     },
                     plugins: ({
                       ...chartConfig.plugins,
+                      legendType: ((chartConfig.plugins as any)?.legendType) || 'dataset',
                       customLabels: { shapeSize: 32, labels: customLabels },
                       overlayPlugin: {
                         overlayImages,
@@ -803,45 +804,68 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                       },
                       legend: {
                         ...((chartConfig.plugins as any)?.legend),
+                        display: ((chartConfig.plugins as any)?.legend?.display !== false),
                         labels: {
                           ...(((chartConfig.plugins as any)?.legend)?.labels || {}),
                           generateLabels: (chart: any) => {
-                            const legendType = ((chartConfig.plugins as any)?.legendType) || 'slice';
+                            // Read legendType from the chart's config at runtime
+                            const legendType = (chart.config?.options?.plugins?.legendType) || 
+                                             ((chartConfig.plugins as any)?.legendType) || 
+                                             'dataset';
                             const usePointStyle = (chartConfig.plugins?.legend as any)?.labels?.usePointStyle || false;
                             const pointStyle = (chartConfig.plugins?.legend as any)?.labels?.pointStyle || 'rect';
                             const fontColor = (chartConfig.plugins?.legend?.labels as any)?.color || '#000000';
 
-                            const createItem = (props: any) => ({
-                              ...props,
-                              pointStyle: usePointStyle ? pointStyle : undefined,
-                              fontColor: fontColor
-                            });
+                            const createItem = (props: any, isHidden: boolean) => {
+                              // For a cleaner visual, we avoid heavy Unicode strikethrough
+                              // and instead gray out the label and prefix with a subtle "×"
+                              // when hidden. This renders much more cleanly on canvas.
+                              const text = props.text as string | undefined;
+                              const decoratedText =
+                                isHidden && text ? `${text}` : text;
+
+                              return {
+                                ...props,
+                                text: decoratedText,
+                                pointStyle: usePointStyle ? pointStyle : undefined,
+                                fontColor: isHidden ? '#999999' : fontColor,
+                                hidden: isHidden,
+                              };
+                            };
 
                             const items = [] as any[];
                             if (legendType === 'slice' || legendType === 'both') {
                               for (let i = 0; i < filteredLabels.length; ++i) {
+                                // Check if this slice is hidden
+                                const isHidden = typeof chart.getDataVisibility === 'function' 
+                                  ? !chart.getDataVisibility(i) 
+                                  : false;
+                                
                                 items.push(createItem({
                                   text: String(filteredLabels[i]),
                                   fillStyle: filteredDatasets[0]?.backgroundColor?.[i] || '#ccc',
                                   strokeStyle: filteredDatasets[0]?.borderColor?.[i] || '#333',
-                                  hidden: false,
                                   index: i,
                                   datasetIndex: 0,
                                   type: 'slice',
-                                }));
+                                }, isHidden));
                               }
                             }
                             if (legendType === 'dataset' || legendType === 'both') {
                               for (let i = 0; i < filteredDatasets.length; ++i) {
+                                // Check if this dataset is hidden
+                                const isHidden = typeof chart.isDatasetVisible === 'function' 
+                                  ? !chart.isDatasetVisible(i) 
+                                  : false;
+                                
                                 items.push(createItem({
                                   text: filteredDatasets[i].label || `Dataset ${i + 1}`,
                                   fillStyle: Array.isArray(filteredDatasets[i].backgroundColor) ? (filteredDatasets[i].backgroundColor as string[])[0] : (filteredDatasets[i].backgroundColor as string) || '#ccc',
                                   strokeStyle: Array.isArray(filteredDatasets[i].borderColor) ? (filteredDatasets[i].borderColor as string[])[0] : (filteredDatasets[i].borderColor as string) || '#333',
-                                  hidden: false,
                                   datasetIndex: i,
                                   index: i,
                                   type: 'dataset',
-                                }));
+                                }, isHidden));
                               }
                             }
                             return items;
@@ -956,6 +980,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                   },
                   plugins: ({
                     ...chartConfig.plugins,
+                    legendType: ((chartConfig.plugins as any)?.legendType) || 'dataset',
                     customLabels: { shapeSize: 32, labels: customLabels },
                     overlayPlugin: {
                       overlayImages,
@@ -965,8 +990,69 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                     },
                     legend: {
                       ...((chartConfig.plugins as any)?.legend),
+                      display: ((chartConfig.plugins as any)?.legend?.display !== false),
                       labels: {
                         ...(((chartConfig.plugins as any)?.legend)?.labels || {}),
+                        generateLabels: (chart: any) => {
+                          // Read legendType from the chart's config at runtime
+                          const legendType = (chart.config?.options?.plugins?.legendType) || 
+                                           ((chartConfig.plugins as any)?.legendType) || 
+                                           'dataset';
+                          const usePointStyle = (chartConfig.plugins?.legend as any)?.labels?.usePointStyle || false;
+                          const pointStyle = (chartConfig.plugins?.legend as any)?.labels?.pointStyle || 'rect';
+                          const fontColor = (chartConfig.plugins?.legend?.labels as any)?.color || '#000000';
+
+                          const createItem = (props: any, isHidden: boolean) => {
+                            const text = props.text as string | undefined;
+                            const decoratedText =
+                              isHidden && text ? `${text}` : text;
+
+                            return {
+                              ...props,
+                              text: decoratedText,
+                              pointStyle: usePointStyle ? pointStyle : undefined,
+                              fontColor: isHidden ? '#999999' : fontColor,
+                              hidden: isHidden,
+                            };
+                          };
+
+                          const items = [] as any[];
+                          if (legendType === 'slice' || legendType === 'both') {
+                            for (let i = 0; i < filteredLabels.length; ++i) {
+                              // Check if this slice is hidden
+                              const isHidden = typeof chart.getDataVisibility === 'function' 
+                                ? !chart.getDataVisibility(i) 
+                                : false;
+                              
+                              items.push(createItem({
+                                text: String(filteredLabels[i]),
+                                fillStyle: filteredDatasets[0]?.backgroundColor?.[i] || '#ccc',
+                                strokeStyle: filteredDatasets[0]?.borderColor?.[i] || '#333',
+                                index: i,
+                                datasetIndex: 0,
+                                type: 'slice',
+                              }, isHidden));
+                            }
+                          }
+                          if (legendType === 'dataset' || legendType === 'both') {
+                            for (let i = 0; i < filteredDatasets.length; ++i) {
+                              // Check if this dataset is hidden
+                              const isHidden = typeof chart.isDatasetVisible === 'function' 
+                                ? !chart.isDatasetVisible(i) 
+                                : false;
+                              
+                              items.push(createItem({
+                                text: filteredDatasets[i].label || `Dataset ${i + 1}`,
+                                fillStyle: Array.isArray(filteredDatasets[i].backgroundColor) ? (filteredDatasets[i].backgroundColor as string[])[0] : (filteredDatasets[i].backgroundColor as string) || '#ccc',
+                                strokeStyle: Array.isArray(filteredDatasets[i].borderColor) ? (filteredDatasets[i].borderColor as string[])[0] : (filteredDatasets[i].borderColor as string) || '#333',
+                                datasetIndex: i,
+                                index: i,
+                                type: 'dataset',
+                              }, isHidden));
+                            }
+                          }
+                          return items;
+                        },
                       },
                     },
                     tooltip: {

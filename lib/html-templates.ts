@@ -1,6 +1,98 @@
 import { type HTMLExportOptions } from "./html-exporter";
 import { generateCompletePluginSystem } from "./html-plugins";
 
+/**
+ * Generate legend config with generateLabels function for HTML export
+ */
+function generateLegendConfigWithGenerateLabels(legendConfig: any): string {
+  const legendType = legendConfig.legendType || 'dataset';
+  const legendLabelsConfig = legendConfig.labels || {};
+  
+  return `{
+    ...${JSON.stringify(legendConfig, null, 20)},
+    labels: {
+      ...${JSON.stringify(legendLabelsConfig, null, 20)},
+      generateLabels: function(chart) {
+        const usePointStyle = ${JSON.stringify(legendLabelsConfig.usePointStyle || false)};
+        const pointStyle = ${JSON.stringify(legendLabelsConfig.pointStyle || 'rect')};
+        const fontColor = ${JSON.stringify(legendLabelsConfig.font?.color || legendLabelsConfig.color || '#000000')};
+        
+        const createItem = (props, isHidden) => {
+          const baseItem = {
+            ...props,
+            pointStyle: usePointStyle ? pointStyle : undefined,
+            fontColor: isHidden ? '#999' : fontColor,
+            hidden: isHidden
+          };
+          
+          // Add clean strikethrough indicator when hidden
+          if (isHidden && baseItem.text) {
+            baseItem.text = '' + baseItem.text;
+          }
+          
+          return baseItem;
+        };
+        
+        const items = [];
+        const labels = chart.data.labels || [];
+        const datasets = chart.data.datasets || [];
+        
+        if (${JSON.stringify(legendType)} === 'slice' || ${JSON.stringify(legendType)} === 'both') {
+          for (let i = 0; i < labels.length; ++i) {
+            const dataset = datasets[0];
+            if (dataset) {
+              // Check if this slice is hidden
+              const isHidden = typeof chart.getDataVisibility === 'function' 
+                ? !chart.getDataVisibility(i) 
+                : false;
+              
+              const backgroundColor = Array.isArray(dataset.backgroundColor) 
+                ? dataset.backgroundColor[i] 
+                : dataset.backgroundColor || '#ccc';
+              const borderColor = Array.isArray(dataset.borderColor) 
+                ? dataset.borderColor[i] 
+                : dataset.borderColor || '#333';
+              items.push(createItem({
+                text: String(labels[i]),
+                fillStyle: backgroundColor,
+                strokeStyle: borderColor,
+                index: i,
+                datasetIndex: 0,
+                type: 'slice',
+              }, isHidden));
+            }
+          }
+        }
+        if (${JSON.stringify(legendType)} === 'dataset' || ${JSON.stringify(legendType)} === 'both') {
+          for (let i = 0; i < datasets.length; ++i) {
+            // Check if this dataset is hidden
+            const isHidden = typeof chart.isDatasetVisible === 'function' 
+              ? !chart.isDatasetVisible(i) 
+              : false;
+            
+            const dataset = datasets[i];
+            const backgroundColor = Array.isArray(dataset.backgroundColor) 
+              ? dataset.backgroundColor[0] 
+              : dataset.backgroundColor || '#ccc';
+            const borderColor = Array.isArray(dataset.borderColor) 
+              ? dataset.borderColor[0] 
+              : dataset.borderColor || '#333';
+            items.push(createItem({
+              text: dataset.label || \`Dataset \${i + 1}\`,
+              fillStyle: backgroundColor,
+              strokeStyle: borderColor,
+              datasetIndex: i,
+              index: i,
+              type: 'dataset',
+            }, isHidden));
+          }
+        }
+        return items;
+      }
+    }
+  }`;
+}
+
 export interface HTMLTemplate {
   name: string;
   description: string;
@@ -296,7 +388,7 @@ export const modernTemplate: HTMLTemplate = {
                     titleFont: { size: 14, weight: '600' },
                     bodyFont: { size: 13 }
                 } : { enabled: false },
-                legend: ${JSON.stringify(legendConfig, null, 20)}
+                legend: ${generateLegendConfigWithGenerateLabels(legendConfig)}
             }
         };
         
@@ -623,7 +715,7 @@ export const darkTemplate: HTMLTemplate = {
                     displayColors: true,
                     padding: 16
                 } : { enabled: false },
-                legend: ${JSON.stringify(legendConfig, null, 20)}
+                legend: ${generateLegendConfigWithGenerateLabels(legendConfig)}
             }
         };
         
@@ -790,7 +882,7 @@ export const minimalTemplate: HTMLTemplate = {
                     displayColors: true,
                     padding: 12
                 } : { enabled: false },
-                legend: ${JSON.stringify(legendConfig, null, 20)}
+                legend: ${generateLegendConfigWithGenerateLabels(legendConfig)}
             }
         };
         
@@ -1034,7 +1126,7 @@ export const professionalTemplate: HTMLTemplate = {
                     displayColors: true,
                     padding: 12
                 } : { enabled: false },
-                legend: ${JSON.stringify(legendConfig, null, 20)}
+                legend: ${generateLegendConfigWithGenerateLabels(legendConfig)}
             }
         };
         
@@ -1177,7 +1269,7 @@ export const standardTemplate: HTMLTemplate = {
                     displayColors: true,
                     padding: 12
                 } : { enabled: false },
-                legend: ${JSON.stringify(legendConfig, null, 20)}
+                legend: ${generateLegendConfigWithGenerateLabels(legendConfig)}
             }
         };
         
