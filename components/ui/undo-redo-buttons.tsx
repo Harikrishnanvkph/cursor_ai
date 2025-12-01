@@ -4,6 +4,7 @@ import React, { useEffect } from 'react'
 import { Undo, Redo } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useChatStore } from '@/lib/chat-store'
+import { useChartStore } from '@/lib/chart-store'
 
 interface UndoRedoButtonsProps {
   variant?: 'default' | 'compact' | 'ghost'
@@ -18,7 +19,21 @@ export function UndoRedoButtons({
   showLabels = true,
   className = '' 
 }: UndoRedoButtonsProps) {
-  const { canUndo, canRedo, undo, redo } = useChatStore()
+  const { canUndo, canRedo, undo, redo, currentChartState, updateChartState } = useChatStore()
+  const { chartType, chartData, chartConfig, hasJSON } = useChartStore()
+
+  // Sync currentChartState from chart-store when chart is loaded but currentChartState is null
+  useEffect(() => {
+    if (hasJSON && chartType && chartData && chartConfig && !currentChartState) {
+      // Only sync if currentChartState is null (initial load)
+      updateChartState({
+        chartType,
+        chartData,
+        chartConfig
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasJSON])
 
   // Keyboard shortcuts
   useEffect(() => {

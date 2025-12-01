@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { dataService } from './data-service';
 import { useUndoStore } from './undo-store';
+import { createExpiringStorage } from './storage-utils';
 
 export type ChatMessage = {
   role: 'assistant' | 'user';
@@ -361,6 +362,8 @@ export const useEnhancedChatStore = create<EnhancedChatStore>()(
         }
         return 'enhanced-chat-store-anonymous';
       })(),
+      // Use expiring storage - auto-updates timestamp on save, expires after 12 hours
+      storage: typeof window !== 'undefined' ? createExpiringStorage('enhanced-chat-store') : undefined,
       version: 1,
       // Only persist certain fields
       partialize: (state) => ({

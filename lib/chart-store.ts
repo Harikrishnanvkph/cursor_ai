@@ -2,7 +2,7 @@
 
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
-import type { Chart, ChartConfiguration, ChartData, ChartType, ChartDataset, ChartOptions, ChartTypeRegistry } from "chart.js" // Removed PluginOptionsByType from here
+import type { Chart, ChartConfiguration, ChartData, ChartType, ChartDataset, ChartOptions, ChartTypeRegistry } from "chart.js"
 
 // Extend ChartTypeRegistry to include 'horizontalBar' type
 // We'll handle 'area' as a string literal type in our application
@@ -241,6 +241,8 @@ interface ChartStore {
   showImages: boolean;
   showLabels: boolean;
   hasJSON: boolean;
+  currentSnapshotId: string | null; // Track current snapshot ID for updates
+  setCurrentSnapshotId: (id: string | null) => void; // Setter for current snapshot ID
   // Overlay state
   overlayImages: OverlayImage[];
   overlayTexts: OverlayText[];
@@ -264,7 +266,7 @@ interface ChartStore {
       toggleShowBorder: () => void;
       toggleShowImages: () => void;
       toggleShowLabels: () => void;
-  setFullChart: (chart: { chartType: SupportedChartType; chartData: ExtendedChartData; chartConfig: ExtendedChartOptions }) => void;
+  setFullChart: (chart: { chartType: SupportedChartType; chartData: ExtendedChartData; chartConfig: ExtendedChartOptions; id?: string }) => void;
   setHasJSON: (value: boolean) => void;
   // Overlay actions
   addOverlayImage: (image: Omit<OverlayImage, 'id'>) => void;
@@ -2029,6 +2031,7 @@ export const useChartStore = create<ChartStore>()(
       showImages: true,
       showLabels: true,
       hasJSON: false,
+      currentSnapshotId: null, // Initialize to null
       // Initialize overlay state
         overlayImages: [],
   overlayTexts: [],
@@ -2834,42 +2837,97 @@ export const useChartStore = create<ChartStore>()(
         
         return { showLabels: newShowLabels };
       }),
-      setFullChart: ({ chartType, chartData, chartConfig }) => set((state) => {
-        // Determine the mode based on the datasets
-        const hasGroupedDatasets = chartData.datasets.some(ds => ds.mode === 'grouped');
-        const hasSingleDatasets = chartData.datasets.some(ds => ds.mode === 'single' || !ds.mode);
+      setFullChart: ({ chartType, chartData, chartConfig, id }) => set((state) => {
+        // Process datasets to ensure they have mode property set
+        const datasetCount = chartData.datasets?.length || 0;
+        const processedDatasets = chartData.datasets?.map((ds: any) => {
+          // If dataset already has mode set, keep it
+          if (ds.mode === 'grouped' || ds.mode === 'single') {
+            return ds;
+          }
+          // If no mode is set, determine based on dataset count
+          // Multiple datasets (2+) should be grouped, single dataset should be single
+          const inferredMode = datasetCount > 1 ? 'grouped' : 'single';
+          return { ...ds, mode: inferredMode };
+        }) || [];
+        
+        // Create processed chart data with mode properties set
+        const processedChartData = {
+          ...chartData,
+          datasets: processedDatasets
+        };
+        
+        // Sync currentChartState to chat-store
+        try {
+          const { useChatStore } = require('./chat-store');
+          const chatStore = useChatStore.getState();
+          chatStore.updateChartState({
+            chartType,
+            chartData: processedChartData,
+            chartConfig
+          });
+        } catch (error) {
+          console.warn('Could not sync chart state to chat-store:', error);
+        }
+        
+        // Determine the mode based on the processed datasets
+        const hasGroupedDatasets = processedDatasets.some(ds => ds.mode === 'grouped');
+        const hasSingleDatasets = processedDatasets.some(ds => ds.mode === 'single');
         
         let newMode = state.chartMode;
         let newSingleModeData = state.singleModeData;
         let newGroupedModeData = state.groupedModeData;
         
-        // If we have both types of datasets, preserve the current mode
-        // If we only have one type, switch to that mode
-        if (hasGroupedDatasets && !hasSingleDatasets) {
+        // Auto-detect mode based on dataset count if no explicit mode is set
+        // Multiple datasets (2+) = grouped mode, single dataset = single mode
+        if (datasetCount > 1 && !hasGroupedDatasets && !hasSingleDatasets) {
+          // All datasets are new and multiple - set as grouped
           newMode = 'grouped';
-          newGroupedModeData = chartData;
-        } else if (hasSingleDatasets && !hasGroupedDatasets) {
+          newGroupedModeData = processedChartData;
+        } else if (datasetCount === 1 && !hasGroupedDatasets && !hasSingleDatasets) {
+          // Single dataset - set as single
           newMode = 'single';
-          newSingleModeData = chartData;
+          newSingleModeData = processedChartData;
+        } else if (hasGroupedDatasets && !hasSingleDatasets) {
+          // All datasets are grouped
+          newMode = 'grouped';
+          newGroupedModeData = processedChartData;
+        } else if (hasSingleDatasets && !hasGroupedDatasets) {
+          // All datasets are single
+          newMode = 'single';
+          newSingleModeData = processedChartData;
         } else if (hasGroupedDatasets && hasSingleDatasets) {
           // Mixed datasets - preserve current mode and update appropriate storage
           if (state.chartMode === 'grouped') {
-            newGroupedModeData = chartData;
+            newGroupedModeData = processedChartData;
           } else {
-            newSingleModeData = chartData;
+            newSingleModeData = processedChartData;
+          }
+        } else {
+          // Fallback: use dataset count to determine mode
+          if (datasetCount > 1) {
+            newMode = 'grouped';
+            newGroupedModeData = processedChartData;
+          } else {
+            newMode = 'single';
+            newSingleModeData = processedChartData;
           }
         }
         
         return {
           chartType,
-          chartData,
+          chartData: processedDatasets.length ? processedChartData : chartData,
           chartConfig,
           chartMode: newMode,
           singleModeData: newSingleModeData,
           groupedModeData: newGroupedModeData,
           activeDatasetIndex: 0, // Reset to first dataset
+          // Only override snapshot ID if a new one is explicitly provided.
+          // This preserves the currently loaded snapshot when we just tweak the chart.
+          currentSnapshotId: id !== undefined ? id || null : state.currentSnapshotId,
         };
       }),
+      setCurrentSnapshotId: (id: string | null) => set({ currentSnapshotId: id }),
       // Overlay actions implementation
       addOverlayImage: (image) => set((state) => ({
         overlayImages: [...state.overlayImages, { ...image, id: Date.now().toString() + Math.random().toString(36).substr(2, 9) }]

@@ -57,11 +57,18 @@ export function TemplatesPanel() {
   const [isUnusedContentsExpanded, setIsUnusedContentsExpanded] = React.useState(true)
   const [activeTab, setActiveTab] = React.useState("templates")
   
-  const { currentChartState } = useChatStore()
+  // Use selector for better reactivity - subscribe specifically to currentChartState
+  const currentChartState = useChatStore((state) => state.currentChartState)
   
-  // Get current cloud template from snapshot
-  const currentCloudTemplate = currentChartState?.template_structure 
-    ? {
+  // Also check the current template in template store (set during restore)
+  const originalCloudTemplateContent = useTemplateStore((state) => state.originalCloudTemplateContent)
+  
+  // Get current cloud template from snapshot OR from template store's originalCloudTemplateContent
+  // This ensures the template shows even if currentChartState.template_structure is not immediately available
+  const currentCloudTemplate = React.useMemo(() => {
+    // First check currentChartState.template_structure (primary source)
+    if (currentChartState?.template_structure) {
+      return {
         ...currentChartState.template_structure,
         id: 'current-cloud-template',
         name: 'Current Cloud Template',
@@ -69,7 +76,16 @@ export function TemplatesPanel() {
         isCustom: false,
         isCloudTemplate: true
       }
-    : null
+    }
+    
+    // Fallback: check originalCloudTemplateContent from template store
+    // This is set during restoreConversation and should have the template data
+    if (originalCloudTemplateContent?.id === 'current-cloud-template') {
+      return originalCloudTemplateContent
+    }
+    
+    return null
+  }, [currentChartState?.template_structure, originalCloudTemplateContent])
 
   const [confirmOpen, setConfirmOpen] = React.useState(false)
   const [pendingDeleteId, setPendingDeleteId] = React.useState<string | null>(null)
@@ -432,6 +448,12 @@ export function TemplatesPanel() {
                       <span className="text-xs font-medium capitalize text-gray-700">
                         {item.type}
                       </span>
+                      {/* Show HTML badge if content type is html */}
+                      {item.contentType === 'html' && (
+                        <span className="text-[10px] px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded font-medium">
+                          HTML
+                        </span>
+                      )}
                     </div>
                     <Button
                       variant="ghost"

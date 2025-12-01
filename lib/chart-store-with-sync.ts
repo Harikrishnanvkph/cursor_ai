@@ -2,6 +2,7 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { dataService } from './data-service'
+import { createUserSpecificStorage } from './storage-utils'
 import type { Chart, ChartConfiguration, ChartData, ChartType, ChartDataset, ChartOptions, ChartTypeRegistry } from "chart.js"
 
 // Extend ChartTypeRegistry to include 'horizontalBar' type
@@ -578,6 +579,8 @@ export const useChartStoreWithSync = create<ChartStore>()(
         }
         return 'chart-store-with-sync-anonymous';
       })(),
+      // Use regular user-specific storage (no expiry - charts persist until explicitly cleared)
+      storage: typeof window !== 'undefined' ? createUserSpecificStorage('chart-store-with-sync') : undefined,
       version: 1,
       // Only persist certain fields
       partialize: (state) => ({

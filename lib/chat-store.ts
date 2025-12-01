@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { useChartStore, type SupportedChartType, type ExtendedChartData } from './chart-store';
 import { useTemplateStore } from './template-store';
 import { extractTemplateStructure, type TemplateStructureMetadata } from './template-utils';
+import { createExpiringStorage } from './storage-utils';
 import type { ChartOptions } from 'chart.js';
 
 // Helper function to get the appropriate initial message based on template mode
@@ -175,23 +176,60 @@ const captureUndoPoint = (operation: Omit<UndoableOperation, 'id' | 'timestamp' 
   const { useChatStore } = require('./chat-store');
   const chatStore = useChatStore.getState();
   
-  if (chatStore.currentChartState) {
+  // Get current state from chart-store if chat-store doesn't have it
+  let currentState = chatStore.currentChartState;
+  if (!currentState) {
+    try {
+      const { useChartStore } = require('./chart-store');
+      const chartStore = useChartStore.getState();
+      if (chartStore.hasJSON && chartStore.chartType && chartStore.chartData && chartStore.chartConfig) {
+        currentState = {
+          chartType: chartStore.chartType,
+          chartData: chartStore.chartData,
+          chartConfig: chartStore.chartConfig
+        };
+        // Update chat-store's currentChartState
+        chatStore.updateChartState(currentState);
+      }
+    } catch (error) {
+      console.warn('Could not get chart state from chart-store:', error);
+    }
+  }
+  
+  // Use the currentState from operation if we still don't have one
+  if (!currentState && operation.currentState) {
+    currentState = operation.currentState;
+    chatStore.updateChartState(currentState);
+  }
+  
+  // Only proceed if we have a current state
+  if (currentState) {
     // Check if there are actual changes by comparing the states
     const hasChanges = !operation.previousState || 
-      JSON.stringify(operation.previousState.chartData) !== JSON.stringify(operation.currentState.chartData) ||
-      JSON.stringify(operation.previousState.chartConfig) !== JSON.stringify(operation.currentState.chartConfig) ||
-      operation.previousState.chartType !== operation.currentState.chartType;
+      JSON.stringify(operation.previousState?.chartData) !== JSON.stringify(operation.currentState.chartData) ||
+      JSON.stringify(operation.previousState?.chartConfig) !== JSON.stringify(operation.currentState.chartConfig) ||
+      operation.previousState?.chartType !== operation.currentState.chartType;
     
     if (hasChanges) {
+      // Ensure previousState is set from currentState if not provided
+      const previousState = operation.previousState || currentState;
+      
       chatStore.addToUndoStack({
         ...operation,
+        previousState: previousState,
+        currentState: operation.currentState,
         conversationId: chatStore.currentConversationId,
         userMessage: operation.changeDescription || 'Manual chart change',
         assistantMessage: 'Chart updated via UI tools'
       });
+      
+      // Update currentChartState to the new state
+      chatStore.updateChartState(operation.currentState);
     } else {
       console.log('Skipping undo point - no actual changes detected');
     }
+  } else {
+    console.warn('Cannot capture undo point - no current chart state available');
   }
 };
 
@@ -288,7 +326,14 @@ export const useChatStore = create<ChatStore>()(
         // Include template structure if a template is selected
         const templateStore = useTemplateStore.getState();
         if (templateStore.currentTemplate) {
-          requestBody.templateStructure = extractTemplateStructure(templateStore.currentTemplate);
+          // Pass content type preferences and section notes to extractTemplateStructure
+          requestBody.templateStructure = extractTemplateStructure(
+            templateStore.currentTemplate,
+            {
+              contentTypes: templateStore.contentTypePreferences,
+              notes: templateStore.sectionNotes
+            }
+          );
         }
 
         try {
@@ -366,12 +411,19 @@ export const useChatStore = create<ChatStore>()(
             const templateStore = useTemplateStore.getState();
             if (result.templateContent && templateStore.currentTemplate) {
               const template = templateStore.currentTemplate;
+              const contentTypePrefs = templateStore.contentTypePreferences;
               
-              // Update each text area with AI-generated content
+              // Update each text area with AI-generated content AND apply contentType from preferences
               template.textAreas.forEach((textArea) => {
                 const content = result.templateContent[textArea.type];
                 if (content) {
-                  templateStore.updateTextArea(textArea.id, { content });
+                  // Get the contentType preference for this text area (default to 'text')
+                  const contentType = contentTypePrefs[textArea.id] || 'text';
+                  // Update both content and contentType to ensure HTML is rendered properly
+                  templateStore.updateTextArea(textArea.id, { 
+                    content,
+                    contentType 
+                  });
                 }
               });
             }
@@ -624,6 +676,8 @@ export const useChatStore = create<ChatStore>()(
         }
         return 'chat-store-anonymous';
       })(),
+      // Use expiring storage - auto-updates timestamp on save, expires after 12 hours
+      storage: typeof window !== 'undefined' ? createExpiringStorage('chat-store') : undefined,
       version: 2, // Increment version for undo functionality
       migrate: (persistedState: any, version: number) => {
         if (version === 1) {

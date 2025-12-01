@@ -70,12 +70,7 @@ ChartJS.register(
   subtitlePlugin
 );
 
-// Verify plugin registration
-console.log('🟢🟢🟢 CHART-GENERATOR: CHART.JS REGISTRATION STARTING 🟢🟢🟢');
-console.log('🟢 Registered controllers:', Object.keys(ChartJS.registry.controllers));
-console.log('🟢 Registered plugins:', Object.keys(ChartJS.registry.plugins));
-console.log('🟢 Looking for overlayPlugin:', ChartJS.registry.plugins.overlayPlugin ? 'FOUND' : 'NOT FOUND');
-console.log('🟢🟢🟢 CHART-GENERATOR: CHART.JS REGISTRATION COMPLETED 🟢🟢🟢');
+// Plugin registration verified
 
 // Utility to fade any color to a given alpha
 function fadeColor(color: any, alpha = 0.15) {
@@ -280,15 +275,6 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     }
   }, [updateOverlayImage, updateOverlayText, setSelectedImageId, setSelectedTextId, chartType, chartConfig]);
 
-  // Debug overlay data
-  useEffect(() => {
-    if (overlayImages.length > 0 || overlayTexts.length > 0) {
-      console.log('ChartGenerator - Overlay data:', { 
-        overlayImages: overlayImages.length, 
-        overlayTexts: overlayTexts.length
-      })
-    }
-  }, [overlayImages, overlayTexts]);
 
   // Get enabled datasets (respect single/grouped mode and legendFilter)
   const enabledDatasets = chartMode === 'single'

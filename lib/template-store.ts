@@ -119,6 +119,16 @@ interface TemplateStore {
   // Mode management
   setEditorMode: (mode: EditorMode) => void
   shouldShowTemplate: () => boolean
+  
+  // Content type preferences for AI generation
+  contentTypePreferences: Record<string, 'text' | 'html'> // { textAreaId: 'text' | 'html' }
+  setContentTypePreferences: (preferences: Record<string, 'text' | 'html'>) => void
+  
+  // Section notes for AI generation guidance
+  sectionNotes: Record<string, string> // { textAreaId: "note text" }
+  setSectionNotes: (notes: Record<string, string>) => void
+  updateSectionNote: (textAreaId: string, note: string) => void
+  clearSectionNote: (textAreaId: string) => void
 }
 
 // Default templates based on the wireframes
@@ -423,6 +433,8 @@ export const useTemplateStore = create<TemplateStore>()(
       isSyncing: false,
       originalCloudTemplateContent: null,
       modifiedCloudTemplateContent: null,
+      contentTypePreferences: {},
+      sectionNotes: {},
       unusedContents: [],
       
       setDraftTemplate: (template) => set({ draftTemplate: template }),
@@ -431,6 +443,15 @@ export const useTemplateStore = create<TemplateStore>()(
 
       setCurrentTemplate: (template) => {
         const state = get()
+        // If setting to null, also clear content type preferences and section notes
+        if (template === null) {
+          set({ 
+            currentTemplate: null,
+            contentTypePreferences: {},
+            sectionNotes: {}
+          })
+          return
+        }
         // If this is the Current Cloud Template, store it as original source
         if (template?.id === 'current-cloud-template' && !state.originalCloudTemplateContent) {
           set({ 
@@ -670,7 +691,7 @@ export const useTemplateStore = create<TemplateStore>()(
         })
         
         // Transfer content and collect unused
-        const unusedContents: Array<{ type: string; content: string; style?: any }> = []
+        const unusedContents: Array<{ type: string; content: string; style?: any; contentType?: 'text' | 'html' }> = []
         const updatedTextAreas = destinationTextAreas.map(destArea => {
           const sourceAreas = sourceByType[destArea.type] || []
           
@@ -680,10 +701,11 @@ export const useTemplateStore = create<TemplateStore>()(
             // Remove used source area
             sourceByType[destArea.type] = sourceAreas.slice(1)
             
-            // Preserve styles from source but adapt position to destination
+            // Preserve styles, content, AND contentType from source but adapt position to destination
             return {
               ...destArea,
               content: sourceArea.content,
+              contentType: sourceArea.contentType, // IMPORTANT: Preserve contentType (html/text) from source
               style: sourceArea.style, // Preserve style from source
               // Position stays as destination (already set in template structure)
             }
@@ -693,13 +715,14 @@ export const useTemplateStore = create<TemplateStore>()(
           return destArea
         })
         
-        // Collect remaining unused content
+        // Collect remaining unused content (including contentType for proper rendering later)
         Object.keys(sourceByType).forEach(type => {
           sourceByType[type].forEach(area => {
             unusedContents.push({
               type,
               content: area.content,
-              style: area.style
+              style: area.style,
+              contentType: area.contentType // Include contentType in unused contents
             })
           })
         })
@@ -741,7 +764,10 @@ export const useTemplateStore = create<TemplateStore>()(
               currentTemplate: {
                 ...state.currentTemplate,
                 textAreas: [...originalTemplate.textAreas] // Restore original text areas
-              }
+              },
+              // Also reset content type preferences and section notes to defaults
+              contentTypePreferences: {},
+              sectionNotes: {}
             })
           }
         }
@@ -828,6 +854,23 @@ export const useTemplateStore = create<TemplateStore>()(
       setOriginalCloudTemplateContent: (template) => set({ originalCloudTemplateContent: template }),
       setModifiedCloudTemplateContent: (template) => set({ modifiedCloudTemplateContent: template }),
       clearUnusedContents: () => set({ unusedContents: [] }),
+      
+      // Content type preferences for AI generation
+      setContentTypePreferences: (preferences) => set({ contentTypePreferences: preferences }),
+      
+      // Section notes for AI generation
+      setSectionNotes: (notes) => set({ sectionNotes: notes }),
+      updateSectionNote: (textAreaId, note) => set((state) => ({
+        sectionNotes: {
+          ...state.sectionNotes,
+          [textAreaId]: note
+        }
+      })),
+      clearSectionNote: (textAreaId) => set((state) => {
+        const { [textAreaId]: _, ...rest } = state.sectionNotes
+        return { sectionNotes: rest }
+      }),
+      
       removeUnusedContent: (index) => set((state) => ({
         unusedContents: state.unusedContents.filter((_, i) => i !== index)
       })),

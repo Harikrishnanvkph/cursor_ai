@@ -103,7 +103,7 @@ function EditorPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState("types_toggles")
-  const { chartConfig, updateChartConfig, chartType, chartData, hasJSON, resetChart, setHasJSON } = useChartStore()
+  const { chartConfig, updateChartConfig, chartType, chartData, hasJSON, resetChart, setHasJSON, currentSnapshotId, setCurrentSnapshotId } = useChartStore()
   const { setEditorMode, currentTemplate, editorMode, syncTemplatesFromCloud } = useTemplateStore()
   const { messages, clearMessages, startNewConversation, setBackendConversationId } = useChatStore()
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false)
@@ -176,7 +176,21 @@ function EditorPageContent() {
   }, []);
 
   // Handle mode switching based on active tab
+  // BUT preserve template mode if currentTemplate exists (loaded from history)
   useEffect(() => {
+    // If we have a currentTemplate (loaded from history), preserve template mode
+    if (currentTemplate) {
+      // Only switch to chart mode if explicitly on a non-template tab AND user wants to edit chart
+      // Otherwise, keep template mode to preserve template data when saving
+      const templateTabs = ['templates'];
+      if (!templateTabs.includes(activeTab)) {
+        // User is on a chart tab, but we have a template loaded
+        // Keep template mode to preserve template data when saving
+        // The UI will still show chart editing capabilities
+        return; // Don't change editorMode - keep it as 'template'
+      }
+    }
+    
     // Template-specific tabs: only templates
     const templateTabs = ['templates'];
     
@@ -184,9 +198,12 @@ function EditorPageContent() {
       setEditorMode('template');
     } else {
       // Chart-specific tabs: types_toggles, datasets_slices, design, axes, labels, overlay, animations, advanced, export
-      setEditorMode('chart');
+      // Only set to chart if we don't have a currentTemplate
+      if (!currentTemplate) {
+        setEditorMode('chart');
+      }
     }
-  }, [activeTab, setEditorMode]);
+  }, [activeTab, setEditorMode, currentTemplate]);
 
   const handleSave = async () => {
     if (!hasJSON || !user) {
@@ -267,12 +284,14 @@ function EditorPageContent() {
         return config;
       })();
 
-      // Extract template data if in template mode
+      // Extract template data if in template mode OR if currentTemplate exists (loaded from history)
+      // This ensures templates loaded from history are saved as templates even if editorMode was changed
       let templateStructureToSave: any = null
       const templateContentToSave: Record<string, any> = {}
       let hasTemplateContent = false
 
-      if (editorMode === 'template' && currentTemplate) {
+      // Check if we have a template (either from editorMode or from loaded history)
+      if (currentTemplate && (editorMode === 'template' || currentTemplate.id === 'current-cloud-template')) {
         // Save complete template structure (independent copy)
         templateStructureToSave = currentTemplate
         
@@ -290,16 +309,21 @@ function EditorPageContent() {
           }
           hasTemplateContent = true
         })
+        
       }
 
-      // Save chart snapshot (creates new version)
+      // Get current snapshot ID for updates
+      const { currentSnapshotId, setCurrentSnapshotId } = useChartStore.getState()
+      
+      // Save chart snapshot (updates if snapshotId exists, otherwise creates new)
       const snapshotResult = await dataService.saveChartSnapshot(
         conversationId,
         chartType,
         chartData,
         normalizedConfig,
         templateStructureToSave,
-        hasTemplateContent ? templateContentToSave : null
+        hasTemplateContent ? templateContentToSave : null,
+        currentSnapshotId || undefined
       )
 
       if (snapshotResult.error) {
@@ -309,11 +333,15 @@ function EditorPageContent() {
       }
 
       const snapshotId = snapshotResult.data?.id
+      
+      // Update current snapshot ID in store after save
+      if (snapshotId) {
+        setCurrentSnapshotId(snapshotId)
+      }
 
       if (isUpdate) {
         // For updates, we don't need to add any automatic messages
         // The chart snapshot is saved as a new version, which is sufficient
-        console.log('✅ Chart snapshot updated (no additional message needed)')
       } else {
         const messagesToSave = chatMessages.filter(m => {
           return !(m.role === 'assistant' && m.content.includes('Hi! Describe the chart'));
@@ -340,11 +368,9 @@ function EditorPageContent() {
             console.error(`Failed to save message ${i}:`, msgError)
           }
         }
-        console.log(`✅ Saved ${savedCount}/${messagesToSave.length} messages`)
       }
 
       toast.success(isUpdate ? "Chart updated successfully!" : "Chart saved successfully!")
-      console.log(`✅ Chart ${isUpdate ? 'updated' : 'saved'} to backend:`, conversationId)
 
       clearCurrentChart()
 

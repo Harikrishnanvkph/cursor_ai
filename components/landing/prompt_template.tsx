@@ -1,9 +1,15 @@
 "use client"
 
 import React, { useState } from "react"
-import { BarChart2, Bot, Brain, Forward, FileText, Layout, X } from "lucide-react"
+import { BarChart2, Bot, Brain, Forward, FileText, Layout, X, Settings, Info } from "lucide-react"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { TemplateSelectionModal } from "./template-selection-modal"
 import { useTemplateStore } from "@/lib/template-store"
 
@@ -21,7 +27,19 @@ export function PromptTemplate({
   size = 'default' 
 }: PromptTemplateProps) {
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
-  const { currentTemplate, setCurrentTemplate, templates, applyTemplate, generateMode, setGenerateMode, setEditorMode } = useTemplateStore()
+  const { 
+    currentTemplate, 
+    setCurrentTemplate, 
+    templates, 
+    applyTemplate, 
+    generateMode, 
+    setGenerateMode, 
+    setEditorMode,
+    contentTypePreferences,
+    setContentTypePreferences
+  } = useTemplateStore()
+  
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   
   const handleSampleClick = () => {
     if (onSampleClick) {
@@ -34,7 +52,10 @@ export function PromptTemplate({
   }
 
   const handleCancelTemplate = () => {
+    // Setting to null will also clear contentTypePreferences and sectionNotes in the store
     setCurrentTemplate(null)
+    // Close settings popover if open
+    setIsSettingsOpen(false)
   }
 
   const handleStandardTemplate = () => {
@@ -42,6 +63,27 @@ export function PromptTemplate({
     if (templates.length > 0) {
       applyTemplate(templates[0].id)
     }
+  }
+
+  // Toggle content type for a specific text area
+  const toggleContentType = (textAreaId: string) => {
+    const currentType = contentTypePreferences[textAreaId] || 'text'
+    const newType = currentType === 'text' ? 'html' : 'text'
+    
+    // Update preferences for AI generation
+    setContentTypePreferences({
+      ...contentTypePreferences,
+      [textAreaId]: newType
+    })
+    
+    // Also update the actual template text area's contentType for Templates -> Content panel sync
+    const { updateTextArea } = useTemplateStore.getState()
+    updateTextArea(textAreaId, { contentType: newType })
+  }
+
+  // Get content type for a text area (from preferences or default)
+  const getContentType = (textAreaId: string): 'text' | 'html' => {
+    return contentTypePreferences[textAreaId] || 'text'
   }
 
   // Size variants
@@ -157,7 +199,7 @@ export function PromptTemplate({
                     Status: <span className="font-semibold text-green-600">Attached Template</span>
                   </div>
                   
-                  {/* Template Name with Cancel Button */}
+                  {/* Template Name with Settings and Cancel Buttons */}
                   <div className="flex items-center gap-2 w-full">
                     <div className="flex-1 bg-green-50 border-2 border-green-500 rounded-lg px-4 py-3 flex items-center">
                       <Layout className="w-4 h-4 text-green-600 mr-2 flex-shrink-0" />
@@ -165,6 +207,66 @@ export function PromptTemplate({
                         {currentTemplate.name}
                       </span>
                     </div>
+                    
+                    {/* Settings Button */}
+                    <Popover open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+                      <PopoverTrigger asChild>
+                        <button
+                          className="w-10 h-10 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 flex items-center justify-center transition-all duration-200 hover:scale-105 flex-shrink-0 border border-blue-200"
+                          aria-label="Template output settings"
+                        >
+                          <Settings className="w-5 h-5" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-80 p-0" align="end">
+                        <div className="p-3 border-b bg-slate-50">
+                          <h4 className="font-semibold text-sm text-slate-900">Output Settings</h4>
+                          <p className="text-xs text-slate-500 mt-1">Configure output format for each section</p>
+                        </div>
+                        
+                        <div className="p-3 space-y-3 max-h-64 overflow-y-auto">
+                          {currentTemplate.textAreas.map((textArea) => {
+                            const isHTML = getContentType(textArea.id) === 'html'
+                            return (
+                              <div key={textArea.id} className="flex items-center justify-between py-2 px-3 bg-slate-50 rounded-lg">
+                                <div className="flex-1">
+                                  <span className="text-sm font-medium text-slate-700 capitalize">
+                                    {textArea.type}
+                                  </span>
+                                  <span className="text-xs text-slate-500 ml-2">
+                                    ({isHTML ? 'HTML' : 'Plain Text'})
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-xs ${!isHTML ? 'font-semibold text-slate-700' : 'text-slate-400'}`}>
+                                    Text
+                                  </span>
+                                  <Switch
+                                    checked={isHTML}
+                                    onCheckedChange={() => toggleContentType(textArea.id)}
+                                  />
+                                  <span className={`text-xs ${isHTML ? 'font-semibold text-purple-700' : 'text-slate-400'}`}>
+                                    HTML
+                                  </span>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                        
+                        {/* Info Note */}
+                        <div className="p-3 border-t bg-amber-50">
+                          <div className="flex gap-2">
+                            <Info className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                            <p className="text-xs text-amber-700">
+                              <span className="font-medium">Note:</span> HTML output allows rich formatting like lists, bold text, and links. Use it for sections that need structured content.
+                            </p>
+                          </div>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                    
+                    {/* Cancel Button */}
                     <button
                       onClick={handleCancelTemplate}
                       className="w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 flex items-center justify-center transition-all duration-200 hover:scale-105 flex-shrink-0"

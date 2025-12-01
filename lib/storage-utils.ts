@@ -3,7 +3,68 @@
  * 
  * Provides helper functions to ensure localStorage keys are user-specific,
  * preventing data contamination between different user accounts.
+ * 
+ * EXPIRY LOGIC:
+ * Data is cleared when BOTH conditions are met:
+ * 1. Data is older than 12 hours (from creation/last update)
+ * 2. AND user is logged out OR inactive
+ * 
+ * This means:
+ * - If data is < 12 hours old → always keep it
+ * - If data is >= 12 hours old AND user is actively using → keep it
+ * - If data is >= 12 hours old AND user is logged out/inactive → clear it
  */
+
+// =============================================
+// EXPIRY CONFIGURATION
+// =============================================
+
+/**
+ * Data age threshold (12 hours in milliseconds)
+ * Data older than this MAY be cleared (if user is also inactive)
+ */
+export const DATA_AGE_THRESHOLD_MS = 12 * 60 * 60 * 1000; // 12 hours
+
+/**
+ * Activity threshold - consider user inactive if no activity for this long
+ * (5 minutes of no interaction = inactive)
+ */
+export const ACTIVITY_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Stores that can be cleared (when old + user inactive/logged out)
+ */
+const CLEARABLE_STORES = [
+  'chart-store-with-sync',
+  'chart-store',
+  'chat-store',
+  'enhanced-chat-store',
+  'chat-history',
+  'offline-conversations',
+  'offline-chart-data',
+  'undo-store',
+  'template-store',
+];
+
+/**
+ * Simple keys that should NEVER expire (user preferences)
+ */
+const PERMANENT_KEYS = [
+  'theme',
+  'language', 
+  'cookies-accepted',
+  'user-id',
+];
+
+/**
+ * Key for storing last activity timestamp
+ */
+const LAST_ACTIVITY_KEY = 'last-activity-timestamp';
+
+/**
+ * Key for storing data creation timestamps
+ */
+const STORAGE_TIMESTAMPS_KEY = 'storage-timestamps';
 
 /**
  * Gets a user-specific storage key
@@ -262,13 +323,18 @@ export async function saveChartToBackend(): Promise<boolean> {
     }
     
     // Get current chart data from localStorage
-    const chartData = getUserStorageValue('chart-store-with-sync', null);
+    const chartData = getUserStorageValue<{ state?: { chartType?: string; chartData?: unknown; chartConfig?: Record<string, unknown> } } | null>('chart-store-with-sync', null);
     if (!chartData || !chartData.state) {
       console.log('No chart data to save');
       return false;
     }
     
     const { chartType, chartData: chartDataValue, chartConfig } = chartData.state;
+    
+    if (!chartType) {
+      console.log('No chart type found');
+      return false;
+    }
     
     // Create conversation
     const conversationResponse = await dataService.createConversation(
@@ -352,6 +418,8 @@ export function clearCurrentChart(): void {
     const key = `${name}-${userId}`;
     try {
       localStorage.removeItem(key);
+      // Also remove the timestamp for this key
+      removeStorageTimestamp(key);
     } catch (error) {
       console.warn(`Failed to remove ${key}:`, error);
     }
@@ -359,4 +427,431 @@ export function clearCurrentChart(): void {
   
   console.log('✅ Current chart cleared from localStorage');
 }
+// =============================================
+// ACTIVITY TRACKING
+// =============================================
+
+/**
+ * Updates the last activity timestamp (call this on user interactions)
+ */
+export function updateLastActivity(): void {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    localStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
+  } catch (error) {
+    console.warn('Failed to update last activity:', error);
+  }
+}
+
+/**
+ * Gets the last activity timestamp
+ */
+export function getLastActivity(): number {
+  if (typeof window === 'undefined') return Date.now();
+  
+  try {
+    const timestamp = localStorage.getItem(LAST_ACTIVITY_KEY);
+    return timestamp ? parseInt(timestamp, 10) : Date.now();
+  } catch {
+    return Date.now();
+  }
+}
+
+/**
+ * Checks if user is currently active (had activity within threshold)
+ */
+export function isUserActive(): boolean {
+  const lastActivity = getLastActivity();
+  const timeSinceActivity = Date.now() - lastActivity;
+  return timeSinceActivity < ACTIVITY_THRESHOLD_MS;
+}
+
+// =============================================
+// STORAGE TIMESTAMP SYSTEM
+// =============================================
+
+/**
+ * Interface for storage timestamps (tracks when data was created/updated)
+ */
+interface StorageTimestamps {
+  [key: string]: number; // key -> timestamp when created/last updated
+}
+
+/**
+ * Gets the storage timestamps object
+ */
+function getStorageTimestamps(): StorageTimestamps {
+  if (typeof window === 'undefined') return {};
+  
+  try {
+    const data = localStorage.getItem(STORAGE_TIMESTAMPS_KEY);
+    return data ? JSON.parse(data) : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Saves the storage timestamps object
+ */
+function saveStorageTimestamps(timestamps: StorageTimestamps): void {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    localStorage.setItem(STORAGE_TIMESTAMPS_KEY, JSON.stringify(timestamps));
+  } catch (error) {
+    console.warn('Failed to save storage timestamps:', error);
+  }
+}
+
+/**
+ * Updates the timestamp for a storage key (call this when data is saved)
+ */
+export function updateStorageTimestamp(key: string): void {
+  if (typeof window === 'undefined') return;
+  
+  const timestamps = getStorageTimestamps();
+  timestamps[key] = Date.now();
+  saveStorageTimestamps(timestamps);
+  
+  // Also update activity timestamp (user is actively using the app)
+  updateLastActivity();
+}
+
+/**
+ * Removes the timestamp for a storage key
+ */
+export function removeStorageTimestamp(key: string): void {
+  if (typeof window === 'undefined') return;
+  
+  const timestamps = getStorageTimestamps();
+  delete timestamps[key];
+  saveStorageTimestamps(timestamps);
+}
+
+/**
+ * Gets the age of a storage key in milliseconds
+ * @returns Age in ms, or Infinity if no timestamp found
+ */
+export function getStorageAge(key: string): number {
+  const timestamps = getStorageTimestamps();
+  const timestamp = timestamps[key];
+  
+  if (!timestamp) {
+    return Infinity; // No timestamp means it's old/unknown
+  }
+  
+  return Date.now() - timestamp;
+}
+
+/**
+ * Checks if a storage key should be cleared
+ * BOTH conditions must be true:
+ * 1. Data is older than 12 hours
+ * 2. User is inactive OR logged out
+ */
+export function shouldClearStorage(key: string, isLogout: boolean = false): boolean {
+  // Never clear permanent keys
+  if (PERMANENT_KEYS.includes(key) || key === STORAGE_TIMESTAMPS_KEY || key === LAST_ACTIVITY_KEY) {
+    return false;
+  }
+  
+  // Check if this is a clearable store
+  const isClearableStore = CLEARABLE_STORES.some(store => key.includes(store));
+  if (!isClearableStore) {
+    return false;
+  }
+  
+  // Check condition 1: Data is older than 12 hours
+  const age = getStorageAge(key);
+  const isDataOld = age > DATA_AGE_THRESHOLD_MS;
+  
+  if (!isDataOld) {
+    return false; // Data is fresh, don't clear it
+  }
+  
+  // Check condition 2: User is inactive OR logging out
+  if (isLogout) {
+    return true; // User is logging out and data is old, clear it
+  }
+  
+  // User is not logging out, check if they're inactive
+  return !isUserActive();
+}
+
+/**
+ * Cleans up old localStorage data
+ * Only clears data that is BOTH:
+ * 1. Older than 12 hours
+ * 2. AND user is inactive or logging out
+ * 
+ * @param isLogout - True if this is being called during logout
+ * @returns Object with cleanup statistics
+ */
+export function cleanupOldStorage(isLogout: boolean = false): { 
+  checkedCount: number; 
+  clearedCount: number; 
+  clearedKeys: string[];
+  keptKeys: string[];
+  reason: string;
+} {
+  if (typeof window === 'undefined') {
+    return { checkedCount: 0, clearedCount: 0, clearedKeys: [], keptKeys: [], reason: 'SSR' };
+  }
+  
+  const allKeys = Object.keys(localStorage);
+  const timestamps = getStorageTimestamps();
+  const clearedKeys: string[] = [];
+  const keptKeys: string[] = [];
+  let checkedCount = 0;
+  
+  const userActive = isUserActive();
+  const reason = isLogout 
+    ? 'User logout' 
+    : (userActive ? 'User is active - keeping all data' : 'User inactive');
+  
+  // If user is active and not logging out, don't clear anything
+  if (userActive && !isLogout) {
+    console.log('👤 User is active - skipping storage cleanup');
+    return { 
+      checkedCount: 0, 
+      clearedCount: 0, 
+      clearedKeys: [], 
+      keptKeys: allKeys, 
+      reason 
+    };
+  }
+  
+  allKeys.forEach(key => {
+    // Skip system keys
+    if (PERMANENT_KEYS.includes(key) || key === STORAGE_TIMESTAMPS_KEY || key === LAST_ACTIVITY_KEY) {
+      return;
+    }
+    
+    // Check if this is a clearable store
+    const isClearableStore = CLEARABLE_STORES.some(store => key.includes(store));
+    if (!isClearableStore) {
+      return; // Unknown store - keep it
+    }
+    
+    checkedCount++;
+    
+    // Check if data is old enough to clear
+    const timestamp = timestamps[key];
+    const age = timestamp ? (Date.now() - timestamp) : Infinity;
+    const isDataOld = age > DATA_AGE_THRESHOLD_MS;
+    
+    if (isDataOld) {
+      try {
+        localStorage.removeItem(key);
+        delete timestamps[key];
+        clearedKeys.push(key);
+        const ageHours = Math.round(age / 1000 / 60 / 60 * 10) / 10;
+        console.log(`🗑️ Cleared old storage: ${key} (age: ${ageHours} hours, reason: ${reason})`);
+      } catch (error) {
+        console.warn(`Failed to clear key ${key}:`, error);
+      }
+    } else {
+      keptKeys.push(key);
+    }
+  });
+  
+  // Save updated timestamps
+  saveStorageTimestamps(timestamps);
+  
+  if (clearedKeys.length > 0) {
+    console.log(`✅ Storage cleanup complete: cleared ${clearedKeys.length}/${checkedCount} old keys (${reason})`);
+  }
+  
+  return {
+    checkedCount,
+    clearedCount: clearedKeys.length,
+    clearedKeys,
+    keptKeys,
+    reason
+  };
+}
+
+/**
+ * Call this on logout to clear old data
+ */
+export function cleanupOnLogout(): void {
+  console.log('🚪 User logging out - checking for old data to clear...');
+  cleanupOldStorage(true); // Pass true to indicate logout
+}
+
+/**
+ * Initializes storage timestamps for existing data
+ * Call this once to add timestamps to existing data that doesn't have them
+ */
+export function initializeStorageTimestamps(): void {
+  if (typeof window === 'undefined') return;
+  
+  const allKeys = Object.keys(localStorage);
+  const timestamps = getStorageTimestamps();
+  let addedCount = 0;
+  
+  allKeys.forEach(key => {
+    // Skip system keys
+    if (PERMANENT_KEYS.includes(key) || key === STORAGE_TIMESTAMPS_KEY || key === LAST_ACTIVITY_KEY) {
+      return;
+    }
+    
+    // Check if this is a clearable store and doesn't have a timestamp
+    const isClearableStore = CLEARABLE_STORES.some(store => key.includes(store));
+    if (isClearableStore && !timestamps[key]) {
+      // Initialize with current time (gives it a fresh 12 hours)
+      timestamps[key] = Date.now();
+      addedCount++;
+    }
+  });
+  
+  if (addedCount > 0) {
+    saveStorageTimestamps(timestamps);
+    console.log(`📝 Initialized timestamps for ${addedCount} existing storage keys`);
+  }
+}
+
+/**
+ * Full storage initialization and conditional cleanup
+ * Call this on app startup
+ */
+export function initializeStorageWithExpiry(): void {
+  if (typeof window === 'undefined') return;
+  
+  console.log('🔄 Initializing storage with expiry system...');
+  
+  // Update activity (user is opening the app)
+  updateLastActivity();
+  
+  // Initialize timestamps for any existing data without timestamps
+  initializeStorageTimestamps();
+  
+  // Try to clean up old data (will only work if user was inactive)
+  const result = cleanupOldStorage(false);
+  
+  if (result.clearedCount > 0) {
+    console.log(`🧹 Cleaned up ${result.clearedCount} old storage items`);
+  } else if (result.reason.includes('active')) {
+    console.log('✅ User is active - all data preserved');
+  } else {
+    console.log('✅ No old storage items to clear');
+  }
+}
+
+/**
+ * Creates a storage wrapper that automatically updates timestamps
+ * Use this with Zustand persist for automatic timestamp tracking
+ */
+export function createExpiringStorage(baseName: string) {
+  return {
+    getItem: (name: string) => {
+      const key = getUserStorageKey(baseName);
+      return localStorage.getItem(key);
+    },
+    setItem: (name: string, value: string) => {
+      const key = getUserStorageKey(baseName);
+      localStorage.setItem(key, value);
+      // Update timestamp when data is saved (also updates activity)
+      updateStorageTimestamp(key);
+    },
+    removeItem: (name: string) => {
+      const key = getUserStorageKey(baseName);
+      localStorage.removeItem(key);
+      removeStorageTimestamp(key);
+    },
+  };
+}
+
+/**
+ * Gets remaining time before storage can be cleared
+ * Note: Data will only be cleared if BOTH conditions met:
+ * 1. Data is older than this remaining time
+ * 2. AND user is inactive/logged out
+ * 
+ * @returns Remaining time until data becomes "clearable" (but won't be cleared if user is active)
+ */
+export function getStorageRemainingTime(key: string): number {
+  // Check if permanent
+  if (PERMANENT_KEYS.includes(key) || key === STORAGE_TIMESTAMPS_KEY || key === LAST_ACTIVITY_KEY) {
+    return Infinity;
+  }
+  
+  const isClearableStore = CLEARABLE_STORES.some(store => key.includes(store));
+  if (!isClearableStore) {
+    return Infinity;
+  }
+  
+  const age = getStorageAge(key);
+  const remaining = DATA_AGE_THRESHOLD_MS - age;
+  return remaining > 0 ? remaining : 0;
+}
+
+/**
+ * Gets storage expiry info for debugging/display
+ */
+export function getStorageExpiryInfo(): Array<{
+  key: string;
+  age: string;
+  status: string;
+  isPermanent: boolean;
+  canBeClearedNow: boolean;
+}> {
+  if (typeof window === 'undefined') return [];
+  
+  const allKeys = Object.keys(localStorage);
+  const userActive = isUserActive();
+  const info: Array<{
+    key: string;
+    age: string;
+    status: string;
+    isPermanent: boolean;
+    canBeClearedNow: boolean;
+  }> = [];
+  
+  allKeys.forEach(key => {
+    if (key === STORAGE_TIMESTAMPS_KEY || key === LAST_ACTIVITY_KEY) return;
+    
+    const isPermanent = PERMANENT_KEYS.includes(key);
+    const isClearable = CLEARABLE_STORES.some(store => key.includes(store));
+    
+    if (!isPermanent && !isClearable) return; // Skip unknown keys
+    
+    const age = getStorageAge(key);
+    const remaining = getStorageRemainingTime(key);
+    const isDataOld = age > DATA_AGE_THRESHOLD_MS;
+    const canBeClearedNow = !isPermanent && isDataOld && !userActive;
+    
+    const formatTime = (ms: number) => {
+      if (ms === Infinity) return 'Never';
+      if (ms <= 0) return '0m';
+      const hours = Math.floor(ms / (1000 * 60 * 60));
+      const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+      return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+    };
+    
+    let status: string;
+    if (isPermanent) {
+      status = 'Permanent';
+    } else if (!isDataOld) {
+      status = `Fresh (${formatTime(remaining)} until clearable)`;
+    } else if (userActive) {
+      status = 'Old but protected (user active)';
+    } else {
+      status = 'Can be cleared (old + user inactive)';
+    }
+    
+    info.push({
+      key,
+      age: formatTime(age),
+      status,
+      isPermanent,
+      canBeClearedNow
+    });
+  });
+  
+  return info;
+}
+
 

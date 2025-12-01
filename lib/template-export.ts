@@ -3,6 +3,7 @@
 import { useTemplateStore, type TemplateLayout } from "@/lib/template-store"
 import { useChartStore } from "@/lib/chart-store"
 import { generateChartHTML, generateChartHTMLForTemplate, type HTMLExportOptions } from "@/lib/html-exporter"
+import html2canvas from 'html2canvas'
 
 export interface TemplateExportOptions {
   format?: 'png' | 'jpeg' | 'html'
@@ -11,6 +12,163 @@ export interface TemplateExportOptions {
   includeTextAreas?: boolean
   scale?: number
   htmlOptions?: HTMLExportOptions
+}
+
+/**
+ * Renders HTML content to a canvas using html2canvas for PIXEL-PERFECT matching
+ * This captures the actual rendered HTML exactly as it appears in the browser
+ */
+async function renderHTMLToCanvas(
+  htmlContent: string,
+  width: number,
+  height: number,
+  style: {
+    fontSize: number
+    fontFamily: string
+    fontWeight: string | number
+    color: string
+    textAlign: string
+    lineHeight: number
+    letterSpacing: number
+  },
+  scale: number = 1
+): Promise<HTMLCanvasElement> {
+  // Create a temporary container that matches the text area styling exactly
+  const container = document.createElement('div')
+  container.style.cssText = `
+    position: fixed;
+    left: -9999px;
+    top: 0;
+    width: ${width}px;
+    height: ${height}px;
+    font-size: ${style.fontSize}px;
+    font-family: ${style.fontFamily};
+    font-weight: ${style.fontWeight};
+    color: ${style.color};
+    text-align: ${style.textAlign};
+    line-height: ${style.lineHeight};
+    letter-spacing: ${style.letterSpacing}px;
+    padding: 8px;
+    box-sizing: border-box;
+    overflow: hidden;
+    word-wrap: break-word;
+    white-space: normal;
+    background: transparent;
+  `
+  container.innerHTML = htmlContent
+  document.body.appendChild(container)
+
+  try {
+    // Use html2canvas to capture the exact rendering
+    const canvas = await html2canvas(container, {
+      scale: scale,
+      backgroundColor: null, // Transparent background
+      logging: false,
+      useCORS: true,
+      allowTaint: true,
+      width: width,
+      height: height,
+    })
+    
+    return canvas
+  } finally {
+    // Clean up the temporary container
+    document.body.removeChild(container)
+  }
+}
+
+/**
+ * Draw plain text content on canvas with word wrapping
+ */
+function drawPlainText(
+  ctx: CanvasRenderingContext2D,
+  content: string,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  style: {
+    fontSize: number
+    fontFamily: string
+    fontWeight: string | number
+    color: string
+    textAlign: string
+    lineHeight: number
+    letterSpacing: number
+  },
+  padding: number
+): void {
+  const fontSize = style.fontSize
+  const lineHeight = fontSize * style.lineHeight
+  
+  // Set text styles
+  ctx.font = `${style.fontWeight} ${fontSize}px ${style.fontFamily}`
+  ctx.fillStyle = style.color
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'top'
+  
+  // Apply letter spacing if supported
+  const letterSpacing = style.letterSpacing || 0
+  if ('letterSpacing' in ctx && letterSpacing !== 0) {
+    (ctx as any).letterSpacing = `${letterSpacing}px`
+  }
+  
+  // Split content by newlines
+  const lines = content.split('\n')
+  let currentY = y + padding
+
+  lines.forEach((line) => {
+    const words = line.split(' ')
+    let currentLine = ''
+
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i]
+      const testLine = currentLine + (currentLine ? ' ' : '') + word
+      const metrics = ctx.measureText(testLine)
+      const availableWidth = width - (padding * 2)
+      
+      if (metrics.width > availableWidth && currentLine) {
+        const lineText = currentLine.trim()
+        if (lineText) {
+          let textX = x + padding
+          if (style.textAlign === 'center') {
+            const lineWidth = ctx.measureText(lineText).width
+            textX = x + (width - lineWidth) / 2
+          } else if (style.textAlign === 'right') {
+            const lineWidth = ctx.measureText(lineText).width
+            textX = x + width - lineWidth - padding
+          }
+          
+          ctx.fillText(lineText, textX, currentY)
+        }
+        
+        currentLine = word
+        currentY += lineHeight
+        
+        if (currentY + lineHeight > y + height - padding) {
+          return
+        }
+      } else {
+        currentLine = testLine
+      }
+    }
+    
+    const lineText = currentLine.trim()
+    if (lineText) {
+      let textX = x + padding
+      if (style.textAlign === 'center') {
+        const lineWidth = ctx.measureText(lineText).width
+        textX = x + (width - lineWidth) / 2
+      } else if (style.textAlign === 'right') {
+        const lineWidth = ctx.measureText(lineText).width
+        textX = x + width - lineWidth - padding
+      }
+      
+      ctx.fillText(lineText, textX, currentY)
+    }
+    
+    currentY += lineHeight
+  })
 }
 
 /**
@@ -148,96 +306,40 @@ export const exportTemplateAsImage = async (
   }
 
   // Draw text areas with high quality (matching HTML rendering exactly)
-  template.textAreas.forEach(textArea => {
-    if (!textArea.visible) return
+  // Process text areas - use different methods for HTML vs plain text
+  for (const textArea of template.textAreas) {
+    if (!textArea.visible) continue
 
     const { x, y, width, height } = textArea.position
     const style = textArea.style
-
-    // Use exact font size and line height as HTML
-    const fontSize = style.fontSize
-    // Line height in CSS is unitless multiplier applied to font size
-    const lineHeight = fontSize * style.lineHeight
+    const isHTML = textArea.contentType === 'html'
     const padding = 8
-    
-    // Set text styles to match HTML exactly
-    ctx.font = `${style.fontWeight} ${fontSize}px ${style.fontFamily}`
-    ctx.fillStyle = style.color
-    ctx.textAlign = 'left' // Always start with left, adjust position instead
-    ctx.textBaseline = 'top'
-    
-    // Disable smoothing for crisp text matching HTML
-    ctx.imageSmoothingEnabled = false
-    
-    // Apply letter spacing if supported
-    const letterSpacing = style.letterSpacing || 0
-    if ('letterSpacing' in ctx && letterSpacing !== 0) {
-      (ctx as any).letterSpacing = `${letterSpacing}px`
+
+    if (isHTML && textArea.content) {
+      // For HTML content, use html2canvas for pixel-perfect rendering
+      try {
+        const htmlCanvas = await renderHTMLToCanvas(
+          textArea.content,
+          width,
+          height,
+          style,
+          scale
+        )
+        // Save context, reset transform, draw at scaled coordinates, restore
+        ctx.save()
+        ctx.setTransform(1, 0, 0, 1, 0, 0) // Reset to identity matrix
+        ctx.drawImage(htmlCanvas, x * scale, y * scale, width * scale, height * scale)
+        ctx.restore()
+      } catch (error) {
+        console.warn('Failed to render HTML content, falling back to plain text:', error)
+        // Fallback to plain text rendering
+        drawPlainText(ctx, textArea.content, x, y, width, height, style, padding)
+      }
+    } else {
+      // For plain text, use canvas text rendering
+      drawPlainText(ctx, textArea.content, x, y, width, height, style, padding)
     }
-    
-    // Split content by newlines (preserve line breaks like HTML white-space: pre-wrap)
-    const lines = textArea.content.split('\n')
-    let currentY = y + padding
-
-    lines.forEach((line) => {
-      // Handle word wrapping for each line
-      const words = line.split(' ')
-      let currentLine = ''
-
-      for (let i = 0; i < words.length; i++) {
-        const word = words[i]
-        const testLine = currentLine + (currentLine ? ' ' : '') + word
-        const metrics = ctx.measureText(testLine)
-        const availableWidth = width - (padding * 2)
-        
-        // Check if line exceeds available width
-        if (metrics.width > availableWidth && currentLine) {
-          // Draw the current line
-          const lineText = currentLine.trim()
-          if (lineText) {
-            // Calculate x position based on text alignment
-            let textX = x + padding
-            if (style.textAlign === 'center') {
-              const lineWidth = ctx.measureText(lineText).width
-              textX = x + (width - lineWidth) / 2
-            } else if (style.textAlign === 'right') {
-              const lineWidth = ctx.measureText(lineText).width
-              textX = x + width - lineWidth - padding
-            }
-            
-            ctx.fillText(lineText, textX, currentY)
-          }
-          
-          currentLine = word
-          currentY += lineHeight
-          
-          // Check if we've exceeded the height
-          if (currentY + lineHeight > y + height - padding) {
-            return
-          }
-        } else {
-          currentLine = testLine
-        }
-      }
-      
-      // Draw the last line
-      const lineText = currentLine.trim()
-      if (lineText) {
-        let textX = x + padding
-        if (style.textAlign === 'center') {
-          const lineWidth = ctx.measureText(lineText).width
-          textX = x + (width - lineWidth) / 2
-        } else if (style.textAlign === 'right') {
-          const lineWidth = ctx.measureText(lineText).width
-          textX = x + width - lineWidth - padding
-        }
-        
-        ctx.fillText(lineText, textX, currentY)
-      }
-      
-      currentY += lineHeight
-    })
-  })
+  }
 
   // Convert to data URL with high quality
   return canvas.toDataURL(`image/${format}`, quality)
@@ -325,10 +427,18 @@ export const exportTemplateAsHTML = async (
             position: absolute;
             overflow: hidden;
             word-wrap: break-word;
-            white-space: pre-wrap;
             padding: 8px;
             box-sizing: border-box;
             border-radius: 4px;
+        }
+        
+        .text-area.text-content {
+            white-space: pre-wrap;
+        }
+        
+        .text-area.html-content {
+            white-space: normal;
+            overflow: auto;
         }
         
         .text-area:hover {
@@ -384,8 +494,11 @@ export const exportTemplateAsHTML = async (
         </div>
         ${template.textAreas
           .filter(ta => ta.visible)
-          .map(textArea => `
-            <div class="text-area" style="
+          .map(textArea => {
+            const isHTML = textArea.contentType === 'html'
+            const contentClass = isHTML ? 'html-content' : 'text-content'
+            return `
+            <div class="text-area ${contentClass}" style="
                 left: ${textArea.position.x}px;
                 top: ${textArea.position.y}px;
                 width: ${textArea.position.width}px;
@@ -398,7 +511,7 @@ export const exportTemplateAsHTML = async (
                 line-height: ${textArea.style.lineHeight};
                 letter-spacing: ${textArea.style.letterSpacing}px;
             ">${textArea.content}</div>
-          `).join('')}
+          `}).join('')}
     </div>
 
     <script>
@@ -498,10 +611,18 @@ export const exportTemplateAsUnifiedHTML = async (
             position: absolute;
             overflow: hidden;
             word-wrap: break-word;
-            white-space: pre-wrap;
             padding: 8px;
             box-sizing: border-box;
             border-radius: 4px;
+        }
+        
+        .text-area.text-content {
+            white-space: pre-wrap;
+        }
+        
+        .text-area.html-content {
+            white-space: normal;
+            overflow: auto;
         }
         
         .text-area:hover {
@@ -557,8 +678,11 @@ export const exportTemplateAsUnifiedHTML = async (
         </div>
         ${template.textAreas
           .filter(ta => ta.visible)
-          .map(textArea => `
-            <div class="text-area" style="
+          .map(textArea => {
+            const isHTML = textArea.contentType === 'html'
+            const contentClass = isHTML ? 'html-content' : 'text-content'
+            return `
+            <div class="text-area ${contentClass}" style="
                 left: ${textArea.position.x}px;
                 top: ${textArea.position.y}px;
                 width: ${textArea.position.width}px;
@@ -571,7 +695,7 @@ export const exportTemplateAsUnifiedHTML = async (
                 line-height: ${textArea.style.lineHeight};
                 letter-spacing: ${textArea.style.letterSpacing}px;
             ">${textArea.content}</div>
-          `).join('')}
+          `}).join('')}
     </div>
 
     <script>

@@ -64,11 +64,6 @@ ChartJS.register(
   subtitlePlugin
 )
 
-// Verify registration in development
-console.log('🟢🟢🟢 CHART.JS REGISTRATION STARTING 🟢🟢🟢')
-console.log('🟢 Registered controllers:', Object.keys(ChartJS.registry.controllers))
-console.log('🟢 Registered plugins:', Object.keys(ChartJS.registry.plugins))
-console.log('🟢 Looking for overlayPlugin:', ChartJS.registry.plugins.overlayPlugin ? 'FOUND' : 'NOT FOUND')
-console.log('🟢🟢🟢 CHART.JS REGISTRATION COMPLETED 🟢🟢🟢')
+// Chart.js registration completed
 
 export default ChartJS 

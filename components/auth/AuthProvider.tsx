@@ -180,37 +180,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = useCallback(async () => {
     setLoading(true)
     try {
-      // Get user ID before clearing
-      const userId = user?.id || localStorage.getItem('user-id');
-      
       const res = await authApi.signOut()
       
       // Always clear the user locally regardless of server response
       setUser(null)
       
-      // Clear user-specific localStorage
-      if (typeof window !== 'undefined' && userId) {
+      // Clean up old localStorage data (only clears data older than 12 hours)
+      if (typeof window !== 'undefined') {
         try {
-          const storeNames = [
-            'chart-store-with-sync',
-            'chart-store',
-            'chat-store',
-            'enhanced-chat-store',
-            'template-store',
-            'undo-store',
-            'chat-history',
-            'offline-conversations',
-            'offline-chart-data',
-          ];
-          
-          storeNames.forEach(name => {
-            const key = `${name}-${userId}`;
-            if (localStorage.getItem(key)) {
-              localStorage.removeItem(key);
-            }
-          });
+          const { cleanupOnLogout } = await import('@/lib/storage-utils')
+          cleanupOnLogout()
         } catch (err) {
-          console.warn('Failed to clear user-specific storage:', err);
+          console.warn('Failed to run logout cleanup:', err);
         }
       }
       

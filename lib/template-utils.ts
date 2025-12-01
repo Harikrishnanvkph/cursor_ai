@@ -10,6 +10,8 @@ export interface TemplateStructureMetadata {
   sections: {
     type: 'title' | 'heading' | 'custom' | 'main' | 'chart'
     name: string
+    contentType?: 'text' | 'html' // Content type preference for AI generation
+    note?: string // Optional small note to guide AI generation for this section
     position?: {
       x: number
       y: number
@@ -26,9 +28,30 @@ export interface TemplateStructureMetadata {
 }
 
 /**
- * Converts a TemplateLayout to a simplified structure for API requests
+ * Content generation preferences for template sections
  */
-export function extractTemplateStructure(template: TemplateLayout): TemplateStructureMetadata {
+export interface ContentGenerationPreferences {
+  contentTypes?: Record<string, 'text' | 'html'>
+  notes?: Record<string, string> // { textAreaId: "note text" }
+}
+
+/**
+ * Converts a TemplateLayout to a simplified structure for API requests
+ * @param template - The template layout
+ * @param preferences - Optional content generation preferences (content types and notes)
+ */
+export function extractTemplateStructure(
+  template: TemplateLayout, 
+  preferences?: ContentGenerationPreferences | Record<string, 'text' | 'html'>
+): TemplateStructureMetadata {
+  // Handle both old format (just content types) and new format (preferences object)
+  const contentTypeOverrides = preferences && 'contentTypes' in preferences 
+    ? preferences.contentTypes 
+    : preferences as Record<string, 'text' | 'html'> | undefined
+  const noteOverrides = preferences && 'notes' in preferences 
+    ? preferences.notes 
+    : undefined
+
   return {
     width: template.width,
     height: template.height,
@@ -39,10 +62,12 @@ export function extractTemplateStructure(template: TemplateLayout): TemplateStru
         name: 'Chart Area',
         position: template.chartArea
       },
-      // Then all text areas
+      // Then all text areas with content type preferences and notes
       ...template.textAreas.map(area => ({
         type: area.type,
         name: `${area.type.charAt(0).toUpperCase() + area.type.slice(1)} Area`,
+        contentType: contentTypeOverrides?.[area.id] || area.contentType || 'text',
+        note: noteOverrides?.[area.id] || undefined,
         position: area.position
       }))
     ],

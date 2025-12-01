@@ -1,6 +1,7 @@
 // Client-side undo store with Zustand - stays local only
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { updateStorageTimestamp, removeStorageTimestamp, getUserStorageKey } from './storage-utils';
 
 export type UndoableOperation = {
   id: string;
@@ -175,11 +176,12 @@ export const useUndoStore = create<UndoStore>()(
         return 'undo-store-anonymous';
       })(),
       version: 1,
-      // Custom storage that handles Map serialization
+      // Custom storage that handles Map serialization + expiry timestamps
       storage: {
         getItem: (name) => {
           try {
-            const str = localStorage.getItem(name);
+            const key = getUserStorageKey('undo-store');
+            const str = localStorage.getItem(key);
             if (!str) return null;
             const parsed = JSON.parse(str);
             return {
@@ -195,6 +197,7 @@ export const useUndoStore = create<UndoStore>()(
         },
         setItem: (name, value) => {
           try {
+            const key = getUserStorageKey('undo-store');
             const serialized = {
               state: {
                 ...value.state,
@@ -202,12 +205,18 @@ export const useUndoStore = create<UndoStore>()(
               },
               version: value.version
             };
-            localStorage.setItem(name, JSON.stringify(serialized));
+            localStorage.setItem(key, JSON.stringify(serialized));
+            // Update timestamp for expiry tracking
+            updateStorageTimestamp(key);
           } catch (error) {
             console.error('Failed to save undo store:', error);
           }
         },
-        removeItem: (name) => localStorage.removeItem(name),
+        removeItem: (name) => {
+          const key = getUserStorageKey('undo-store');
+          localStorage.removeItem(key);
+          removeStorageTimestamp(key);
+        },
       },
       partialize: (state) => ({ undoStacks: state.undoStacks }),
     }

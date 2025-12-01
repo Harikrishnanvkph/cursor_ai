@@ -6,6 +6,7 @@ import { useChatStore, ChatMessage, ChartSnapshot } from "@/lib/chat-store";
 import { useChartStore, type SupportedChartType, type ExtendedChartData } from "@/lib/chart-store";
 import { useTemplateStore } from "@/lib/template-store";
 import { dataService } from "@/lib/data-service";
+import { createExpiringStorage } from "@/lib/storage-utils";
 import type { ChartOptions } from "chart.js";
 
 export type Conversation = {
@@ -68,6 +69,18 @@ export const useHistoryStore = create<HistoryStore>()(
         // Try to find conversation in local store first
         let conv = get().conversations.find((c) => c.id === id);
         
+        // If found locally but snapshot doesn't have ID, fetch from backend to get snapshot ID
+        if (conv && conv.snapshot && !conv.snapshot.id) {
+          try {
+            const snapshotResponse = await dataService.getCurrentChartSnapshot(id);
+            if (snapshotResponse.data?.id) {
+              conv.snapshot.id = snapshotResponse.data.id;
+            }
+          } catch (error) {
+            console.warn('Could not fetch snapshot ID from backend:', error);
+          }
+        }
+        
         // If not found locally, try to fetch from backend
         if (!conv) {
           console.log('Conversation not in local store, fetching from backend...');
@@ -100,6 +113,7 @@ export const useHistoryStore = create<HistoryStore>()(
                 title: response.data.title,
                 messages: transformedMessages,
                     snapshot: snapshotResponse.data ? {
+                      id: snapshotResponse.data.id, // Include snapshot ID for updates
                       chartType: snapshotResponse.data.chart_type,
                       chartData: snapshotResponse.data.chart_data,
                       chartConfig: snapshotResponse.data.chart_config,
@@ -132,14 +146,21 @@ export const useHistoryStore = create<HistoryStore>()(
         
         // Set backend conversation ID so Save button knows to update instead of create
         setBackendConversationId(conv.id);
-        console.log('✅ Restored chart from backend conversation:', conv.id);
 
         // Restore chart snapshot
-        const { setFullChart, setHasJSON } = useChartStore.getState();
+        const { setFullChart, setHasJSON, setCurrentSnapshotId } = useChartStore.getState();
         const { setCurrentTemplate, setEditorMode } = useTemplateStore.getState();
         
         if (conv.snapshot) {
-          setFullChart(conv.snapshot);
+          // Get snapshot ID from the snapshot object (already fetched above)
+          const snapshotId = conv.snapshot.id;
+          
+          if (snapshotId) {
+            setCurrentSnapshotId(snapshotId);
+          }
+          
+          // Pass snapshot ID to setFullChart so it can be stored
+          setFullChart({ ...conv.snapshot, id: snapshotId || undefined });
           setHasJSON(true);
           
           // Update current chart state in chat store
@@ -192,8 +213,6 @@ export const useHistoryStore = create<HistoryStore>()(
               templateStore.setCurrentTemplate(cloudTemplate)
               templateStore.setEditorMode('template');
               templateStore.clearUnusedContents()
-              
-              console.log('✅ Restored template mode from snapshot');
             }
           }
         }
@@ -265,6 +284,7 @@ export const useHistoryStore = create<HistoryStore>()(
                     title: conv.title,
                     messages: transformedMessages,
                     snapshot: snapshotResponse.data ? {
+                      id: snapshotResponse.data.id, // Include snapshot ID for updates
                       chartType: snapshotResponse.data.chart_type,
                       chartData: snapshotResponse.data.chart_data,
                       chartConfig: snapshotResponse.data.chart_config,
@@ -313,6 +333,8 @@ export const useHistoryStore = create<HistoryStore>()(
         }
         return "chat-history-anonymous";
       })(),
+      // Use expiring storage - auto-updates timestamp on save, expires after 12 hours
+      storage: typeof window !== 'undefined' ? createExpiringStorage('chat-history') : undefined,
       version: 1,
       migrate: (persistedState: any, version: number) => {
         if (version === 0) {

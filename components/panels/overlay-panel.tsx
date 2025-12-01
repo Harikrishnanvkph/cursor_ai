@@ -64,21 +64,14 @@ export function OverlayPanel() {
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
     if (!files) {
-      console.log('❌ No files selected')
       return
     }
 
-    console.log('📁 handleImageUpload called with files:', files.length)
-
     Array.from(files).forEach((file, index) => {
-      console.log(`📁 Processing file ${index + 1}:`, file.name, file.type, file.size + ' bytes')
-      
       const reader = new FileReader()
       
       reader.onload = (e) => {
         const url = e.target?.result as string
-        console.log('✅ File loaded, URL length:', url.length)
-        console.log('📷 Adding overlay image at position:', { x: 50 + index * 10, y: 50 + index * 10 })
         
         addOverlayImage({
           url,
@@ -94,8 +87,6 @@ export function OverlayPanel() {
           imageFit: 'fill', // Default for rectangles
           zIndex: 1 + index
         })
-        
-        console.log('📷 Image added to store, new count should be:', overlayImages.length + 1)
       }
       
       reader.onerror = (e) => {
@@ -191,7 +182,6 @@ export function OverlayPanel() {
                     </Button>
                     <Button 
                       onClick={() => {
-                        console.log('Adding test image')
                         addOverlayImage({
                           url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzAwNzVmZiIvPjx0ZXh0IHg9IjUwIiB5PSI1NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+VEVTVDwvdGV4dD48L3N2Zz4=',
                           x: 50,
@@ -205,7 +195,6 @@ export function OverlayPanel() {
                           shape: 'rectangle',
                           zIndex: 1
                         })
-                        console.log('Test image added, count:', overlayImages.length + 1)
                       }}
                       variant="default"
                       size="sm"

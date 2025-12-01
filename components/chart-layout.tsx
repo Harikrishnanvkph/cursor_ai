@@ -55,14 +55,9 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
       
       // Check if this chart is already saved to backend
       if (existingBackendId) {
-        console.log('📝 Updating existing conversation:', existingBackendId)
         conversationId = existingBackendId
         isUpdate = true
-        
-        // No need to update conversation title - it was already set when created
-        // Just save the new chart snapshot version
       } else {
-        console.log('💾 Creating new conversation')
         
         // Create new conversation
         const firstUserMessage = chatMessages.find(m => m.role === 'user')
@@ -109,8 +104,6 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
           // Ensure width and height are preserved
           if (!config.width) config.width = '800px';
           if (!config.height) config.height = '600px';
-          
-          console.log('📊 Converted dynamicDimension to manualDimensions for storage');
         } else {
           // Clean up - ensure only responsive OR manualDimensions is set
           delete config.dynamicDimension;
@@ -125,11 +118,13 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
         return config;
       })();
 
-      // Extract template data if in template mode
+      // Extract template data if in template mode OR if currentTemplate exists (loaded from history)
+      // This ensures templates loaded from history are saved as templates even if editorMode was changed
       let templateStructureToSave = null
       let templateContentToSave = null
 
-      if (editorMode === 'template' && currentTemplate) {
+      // Check if we have a template (either from editorMode or from loaded history)
+      if (currentTemplate && (editorMode === 'template' || currentTemplate.id === 'current-cloud-template')) {
         // Save complete template structure (independent copy)
         templateStructureToSave = currentTemplate
         
@@ -149,14 +144,33 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
         })
       }
 
-      // Save chart snapshot (creates new version)
+      // Get current snapshot ID for updates
+      const { currentSnapshotId, setCurrentSnapshotId } = useChartStore.getState()
+
+      // Fallback: if we don't have a snapshot ID in memory but this conversation
+      // already exists, fetch the current snapshot from backend to get its ID.
+      let snapshotIdForUpdate: string | undefined = currentSnapshotId || undefined
+      if (!snapshotIdForUpdate && isUpdate) {
+        try {
+          const currentSnapshot = await dataService.getCurrentChartSnapshot(conversationId)
+          if (currentSnapshot.data?.id) {
+            snapshotIdForUpdate = currentSnapshot.data.id
+            setCurrentSnapshotId(snapshotIdForUpdate)
+          }
+        } catch {
+          // If this fails, we'll fall back to creating a new snapshot
+        }
+      }
+
+      // Save chart snapshot (updates if snapshotId exists, otherwise creates new)
       const snapshotResult = await dataService.saveChartSnapshot(
         conversationId,
         chartType,
         chartData,
         normalizedConfig,
         templateStructureToSave,
-        templateContentToSave
+        templateContentToSave,
+        snapshotIdForUpdate
       )
         
       if (snapshotResult.error) {
@@ -167,11 +181,15 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
       
       // Get the snapshot ID for linking messages
       const snapshotId = snapshotResult.data?.id
+
+      // Update current snapshot ID in store after save
+      if (snapshotId) {
+        setCurrentSnapshotId(snapshotId)
+      }
       
       if (isUpdate) {
         // For updates, we don't need to add any automatic messages
         // The chart snapshot is saved as a new version, which is sufficient
-        console.log('✅ Chart snapshot updated (no additional message needed)')
       } else {
         // For new saves, save all actual chat messages
         const messagesToSave = chatMessages.filter(m => {

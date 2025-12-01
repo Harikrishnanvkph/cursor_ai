@@ -19,6 +19,7 @@ import { useAuth } from "@/components/auth/AuthProvider"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import { useChartStore } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
+import { useTemplateStore } from "@/lib/template-store"
 import { dataService } from "@/lib/data-service"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -62,14 +63,9 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
       let isUpdate = false
 
       if (existingBackendId) {
-        console.log('📝 Updating existing conversation:', existingBackendId)
         conversationId = existingBackendId
         isUpdate = true
-
-        // No need to update conversation title - it was already set when created
-        // Just save the new chart snapshot version
       } else {
-        console.log('💾 Creating new conversation')
         const firstUserMessage = chatMessages.find(m => m.role === 'user')
         const conversationTitle = firstUserMessage
           ? (firstUserMessage.content.length > 60
@@ -110,8 +106,6 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
           // Ensure width and height are preserved
           if (!config.width) config.width = '800px';
           if (!config.height) config.height = '600px';
-          
-          console.log('📊 Converted dynamicDimension to manualDimensions for storage');
         } else {
           // Clean up - ensure only responsive OR manualDimensions is set
           delete config.dynamicDimension;
@@ -126,12 +120,46 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
         return config;
       })();
 
-      // Save chart snapshot (creates new version)
+      // Extract template data if in template mode OR if currentTemplate exists (loaded from history)
+      const { currentTemplate, editorMode } = useTemplateStore.getState();
+      let templateStructureToSave: any = null
+      const templateContentToSave: Record<string, any> = {}
+      let hasTemplateContent = false
+
+      // Check if we have a template (either from editorMode or from loaded history)
+      if (currentTemplate && (editorMode === 'template' || currentTemplate.id === 'current-cloud-template')) {
+        // Save complete template structure (independent copy)
+        templateStructureToSave = currentTemplate
+        
+        // Extract text area content
+        currentTemplate.textAreas.forEach(area => {
+          if (templateContentToSave[area.type]) {
+            // Handle multiple areas of same type
+            if (Array.isArray(templateContentToSave[area.type])) {
+              templateContentToSave[area.type].push(area.content)
+            } else {
+              templateContentToSave[area.type] = [templateContentToSave[area.type], area.content]
+            }
+          } else {
+            templateContentToSave[area.type] = area.content
+          }
+          hasTemplateContent = true
+        })
+        
+      }
+
+      // Get current snapshot ID for updates
+      const { currentSnapshotId } = useChartStore.getState();
+      
+      // Save chart snapshot (updates if snapshotId exists, otherwise creates new)
       const snapshotResult = await dataService.saveChartSnapshot(
         conversationId,
         chartType,
         chartData,
-        normalizedConfig
+        normalizedConfig,
+        templateStructureToSave,
+        hasTemplateContent ? templateContentToSave : null,
+        currentSnapshotId || undefined
       )
 
       if (snapshotResult.error) {
@@ -141,11 +169,15 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
       }
 
       const snapshotId = snapshotResult.data?.id
+      
+      // Update current snapshot ID in store after save
+      if (snapshotId) {
+        useChartStore.getState().setCurrentSnapshotId(snapshotId)
+      }
 
       if (isUpdate) {
         // For updates, we don't need to add any automatic messages
         // The chart snapshot is saved as a new version, which is sufficient
-        console.log('✅ Chart snapshot updated (no additional message needed)')
       } else {
         const messagesToSave = chatMessages.filter(m => {
           return !(m.role === 'assistant' && m.content.includes('Hi! Describe the chart'));
@@ -172,11 +204,9 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
             console.error(`Failed to save message ${i}:`, msgError)
           }
         }
-        console.log(`✅ Saved ${savedCount}/${messagesToSave.length} messages`)
       }
 
       toast.success(isUpdate ? "Chart updated successfully!" : "Chart saved successfully!")
-      console.log(`✅ Chart ${isUpdate ? 'updated' : 'saved'} to backend:`, conversationId)
 
       clearCurrentChart()
 

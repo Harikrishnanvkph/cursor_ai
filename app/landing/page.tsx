@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useRef, useCallback, useEffect } from "react"
+
 import { useRouter } from "next/navigation"
 import { Send, BarChart2, Plus, SquarePen ,PencilRuler ,RotateCcw, Edit3, MessageSquare, Sparkles, ArrowRight, X, ChevronLeft, ChevronRight, PanelLeft, PanelRight, Settings, Brain, Info, LayoutDashboard } from "lucide-react"
 import { useChartStore } from "@/lib/chart-store"
@@ -44,13 +45,37 @@ function LandingPageContent() {
     continueConversation,
     startNewConversation,
     clearMessages,
-    setMessages
+    setMessages,
+    backendConversationId
   } = useChatStore()
-  const { addConversation, loadConversationsFromBackend } = useHistoryStore()
+  
+  const { addConversation, loadConversationsFromBackend, restoreConversation } = useHistoryStore()
   const { generateMode, currentTemplate, syncTemplatesFromCloud } = useTemplateStore()
   const [input, setInput] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const hasRestoredRef = useRef(false)
+  const lastSyncedChartStateRef = useRef<string | null>(null)
+  
+  // If chart store has data but currentChartState is null, try to restore from chart store
+  // Use a ref to prevent infinite loops
+  useEffect(() => {
+    if (hasJSON && chartData && !currentChartState && !hasRestoredRef.current) {
+      hasRestoredRef.current = true
+      const chatStore = useChatStore.getState()
+      if (chatStore.updateChartState) {
+        chatStore.updateChartState({
+          chartType: chartType as any,
+          chartData: chartData as any,
+          chartConfig: chartConfig as any
+        })
+      }
+    }
+    // Reset ref when currentChartState becomes available
+    if (currentChartState) {
+      hasRestoredRef.current = false
+    }
+  }, [hasJSON, chartType, chartData, currentChartState, chartConfig])
   
   // Check if chat should be disabled (template mode but no template attached)
   const isChatDisabled = generateMode === 'template' && !currentTemplate
@@ -113,17 +138,23 @@ function LandingPageContent() {
   // Auto-sync backend data when user logs in
   useEffect(() => {
     if (user && !hasLoadedBackendData) {
-      console.log('🔄 User logged in, loading conversations and templates from backend...');
       Promise.all([
         loadConversationsFromBackend(),
         syncTemplatesFromCloud()
       ])
         .then(() => {
           setHasLoadedBackendData(true);
-          console.log('✅ Backend data loaded successfully');
+          
+          // If there's a backend conversation ID, restore it to load the chart
+          const chatStore = useChatStore.getState();
+          if (chatStore.backendConversationId && !currentChartState) {
+            restoreConversation(chatStore.backendConversationId).catch(() => {
+              // Silently fail - chart will load from localStorage if available
+            });
+          }
         })
-        .catch((error) => {
-          console.error('❌ Failed to load backend data:', error);
+        .catch(() => {
+          // Silently fail - user can still use the app
         });
     }
     
@@ -131,7 +162,7 @@ function LandingPageContent() {
     if (!user && hasLoadedBackendData) {
       setHasLoadedBackendData(false);
     }
-  }, [user, hasLoadedBackendData, loadConversationsFromBackend, syncTemplatesFromCloud])
+  }, [user, hasLoadedBackendData, loadConversationsFromBackend, syncTemplatesFromCloud, currentChartState, restoreConversation])
   
   // Tablet-specific states
   const [tabletRightSidebarOpen, setTabletRightSidebarOpen] = useState(false)
@@ -274,6 +305,32 @@ function LandingPageContent() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
+
+  // Sync currentChartState from chat store to chart store when it changes
+  useEffect(() => {
+    if (currentChartState) {
+      // Create a hash of the chart state to detect actual changes
+      const chartStateHash = JSON.stringify({
+        type: currentChartState.chartType,
+        dataHash: JSON.stringify(currentChartState.chartData?.datasets?.[0]?.data || []),
+        configHash: JSON.stringify(currentChartState.chartConfig?.plugins || {})
+      })
+      
+      // Only sync if this is a different chart state to prevent infinite loops
+      if (lastSyncedChartStateRef.current !== chartStateHash) {
+        lastSyncedChartStateRef.current = chartStateHash
+        setFullChart({
+          chartType: currentChartState.chartType,
+          chartData: currentChartState.chartData,
+          chartConfig: currentChartState.chartConfig
+        })
+        setHasJSON(true)
+      }
+    } else {
+      // Reset ref when currentChartState is cleared
+      lastSyncedChartStateRef.current = null
+    }
+  }, [currentChartState, setFullChart, setHasJSON])
 
   const hasActiveChart = currentChartState !== null && hasJSON
 

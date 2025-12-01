@@ -280,10 +280,7 @@ function calculateSmartDimensions(naturalWidth: number, naturalHeight: number, c
 
 // Function to render overlay image
 function renderOverlayImage(ctx: CanvasRenderingContext2D, image: OverlayImage, chartArea: any, chart?: any): void {
-  console.log('renderOverlayImage called:', image)
-  
   if (!image.visible) {
-    console.log('Image not visible, skipping')
     return
   }
 
@@ -292,25 +289,19 @@ function renderOverlayImage(ctx: CanvasRenderingContext2D, image: OverlayImage, 
   ctx.fillStyle = 'red'
   ctx.fillRect(chartArea.left + image.x, chartArea.top + image.y, image.width, image.height)
   ctx.restore()
-  console.log('Drew test rectangle at:', { x: chartArea.left + image.x, y: chartArea.top + image.y, w: image.width, h: image.height })
 
   // Check if image is already cached
   let img = imageCache.get(image.url)
   
   if (img && img.complete) {
-    console.log('Using cached image')
     // Image is loaded, draw it immediately
     drawImageOnCanvas(ctx, img, image, chartArea)
   } else {
-    console.log('Loading new image:', image.url)
     // Load and cache the image
     img = new Image()
     img.crossOrigin = "anonymous"
     
     img.onload = () => {
-      console.log('Image loaded successfully:', image.url)
-      console.log('Natural dimensions:', img!.naturalWidth, 'x', img!.naturalHeight)
-      
       // Cache the loaded image
       imageCache.set(image.url, img!)
       
@@ -555,12 +546,10 @@ export const overlayPlugin = {
   id: 'overlayPlugin',
   
   beforeInit: () => {
-    console.log('🔴🔴🔴 OVERLAY PLUGIN REGISTERED AND INITIALIZED! 🔴🔴🔴')
+    // Plugin initialized
   },
   
   afterDraw: (chart: Chart) => {
-    console.log('🔴 OVERLAY PLUGIN afterDraw called!')
-    
     const ctx = chart.ctx
     const chartArea = chart.chartArea
     
@@ -568,10 +557,6 @@ export const overlayPlugin = {
     const pluginConfig = (chart.options as any)?.plugins?.overlayPlugin || {}
     const overlayImages = pluginConfig.overlayImages || []
     const overlayTexts = pluginConfig.overlayTexts || []
-    
-    console.log('🔴 Plugin config found:', pluginConfig)
-    console.log('🔴 Overlay images:', overlayImages.length, overlayImages)
-    console.log('🔴 Overlay texts:', overlayTexts.length, overlayTexts)
     
     // Handle overlay images
     if (overlayImages.length > 0) {
@@ -631,9 +616,6 @@ export const overlayPlugin = {
               img.crossOrigin = "anonymous"
               
               img.onload = () => {
-                console.log('🖼️ Image loaded successfully:', image.url.substring(0, 50) + '...')
-                console.log('📏 Natural dimensions:', img!.naturalWidth, 'x', img!.naturalHeight)
-                
                 imageCache.set(image.url, img!)
                 
                 // Update store with natural dimensions and size if needed
@@ -662,16 +644,11 @@ export const overlayPlugin = {
                 }
                 
                 // Multiple approaches to trigger chart redraw
-                console.log('🔄 Triggering chart update...')
-                
                 // Approach 1: Direct chart update
                 if (chart && typeof chart.update === 'function') {
                   requestAnimationFrame(() => {
                     chart.update('none')
-                    console.log('✅ Direct chart update completed')
                   })
-                } else {
-                  console.warn('⚠️ Direct chart update not available')
                 }
                 
                 // Approach 2: Dispatch custom event to component level
@@ -680,14 +657,12 @@ export const overlayPlugin = {
                     detail: { imageUrl: image.url }
                   })
                   chart.canvas.dispatchEvent(event)
-                  console.log('📡 Custom event dispatched')
                 }
                 
                 // Approach 3: Force redraw by calling the plugin again
                 setTimeout(() => {
                   if (chart && chart.draw) {
                     chart.draw()
-                    console.log('🎨 Forced redraw completed')
                   }
                 }, 10)
               }
@@ -697,7 +672,6 @@ export const overlayPlugin = {
               }
               
               img.src = image.url
-              console.log('🔄 Started loading image:', image.url.substring(0, 50) + '...')
             }
           }
         }
@@ -1009,7 +983,6 @@ export const overlayPlugin = {
         const selectedTextId = overlayData.selectedTextId
         
         if (selectedImageId) {
-          console.log('🔄 Deselecting image:', selectedImageId)
           // Deselect the image
           const deselectEvent = new CustomEvent('overlayImageSelected', {
             detail: { imageId: null }
@@ -1018,7 +991,6 @@ export const overlayPlugin = {
         }
         
         if (selectedTextId) {
-          console.log('🔄 Deselecting text:', selectedTextId)
           // Deselect the text
           const deselectTextEvent = new CustomEvent('overlayTextSelected', {
             detail: { textId: null }
@@ -1030,7 +1002,6 @@ export const overlayPlugin = {
         if (chart && chart.update) {
           setTimeout(() => {
             chart.update('none')
-            console.log('✅ Chart updated after deselection')
           }, 10)
         }
       }

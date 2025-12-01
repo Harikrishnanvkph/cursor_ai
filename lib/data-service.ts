@@ -132,17 +132,22 @@ class DataService {
     chartData: any, 
     chartConfig: any,
     templateStructure?: any,  // Optional: full template layout structure
-    templateContent?: any      // Optional: text content for template areas
+    templateContent?: any,     // Optional: text content for template areas
+    snapshotId?: string        // Optional: snapshot ID for updates
   ): Promise<ApiResponse<{ id: string }>> {
-    return this.request('/api/data/chart-snapshots', {
-      method: 'POST',
+    const method = snapshotId ? 'PUT' : 'POST';
+    const url = snapshotId ? `/api/data/chart-snapshots/${snapshotId}` : '/api/data/chart-snapshots';
+    
+    return this.request(url, {
+      method,
       body: JSON.stringify({
         conversationId,
         chartType,
         chartData,
         chartConfig,
         templateStructure: templateStructure || null,
-        templateContent: templateContent || null
+        templateContent: templateContent || null,
+        snapshotId: snapshotId || null
       }),
     }, false);
   }
