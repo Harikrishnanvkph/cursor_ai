@@ -178,7 +178,52 @@ export const plainTemplate: HTMLTemplate = {
         color: '#000000'
       }
     }));
-
+    
+    // Get background configuration from chartConfig
+    const background = (chartConfig as any)?.background || { type: 'color', color: '#ffffff' };
+    let backgroundLayerHTML = '';
+    let chartContainerStyle = '';
+    
+    if (background.type === "image" && background.imageUrl) {
+      const opacity = background.opacity || 100;
+      const imageFit = background.imageFit || 'cover';
+      const backgroundSize = imageFit === 'fill' ? '100% 100%' : 
+                            imageFit === 'contain' ? 'contain' : 'cover';
+      // Use the imageUrl directly without JSON.stringify to avoid double-quoting data URLs
+      const imageUrl = background.imageUrl.startsWith('data:') 
+        ? background.imageUrl 
+        : JSON.stringify(background.imageUrl);
+      backgroundLayerHTML = `<div class="chart-background" style="position: absolute; inset: 0; z-index: 0; background-image: url(${imageUrl}); background-size: ${backgroundSize}; background-position: center; background-repeat: no-repeat; opacity: ${opacity / 100}; pointer-events: none;"></div>`;
+    } else if (background.type === "gradient") {
+      const color1 = background.gradientColor1 || '#ffffff';
+      const color2 = background.gradientColor2 || '#000000';
+      const opacity = background.opacity || 100;
+      const gradientType = background.gradientType || 'linear';
+      const direction = background.gradientDirection || 'to right';
+      let gradient;
+      if (gradientType === 'radial') {
+        gradient = `radial-gradient(circle, ${color1}, ${color2})`;
+      } else {
+        gradient = `linear-gradient(${direction}, ${color1}, ${color2})`;
+      }
+      backgroundLayerHTML = `<div class="chart-background" style="position: absolute; inset: 0; z-index: 0; background-image: ${gradient}; opacity: ${opacity / 100}; pointer-events: none;"></div>`;
+    } else if (background.type === "color" || background.type === undefined) {
+      const color = background.color || "#ffffff";
+      const opacity = background.opacity || 100;
+      // Convert hex color to rgba if opacity is not 100%
+      if (opacity < 100 && color.startsWith('#')) {
+        const r = parseInt(color.slice(1, 3), 16);
+        const g = parseInt(color.slice(3, 5), 16);
+        const b = parseInt(color.slice(5, 7), 16);
+        const alpha = opacity / 100;
+        chartContainerStyle = `background-color: rgba(${r}, ${g}, ${b}, ${alpha});`;
+      } else {
+        chartContainerStyle = `background-color: ${color};`;
+      }
+    } else if (background.type === "transparent") {
+      chartContainerStyle = `background-color: transparent;`;
+    }
+    
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -189,9 +234,39 @@ export const plainTemplate: HTMLTemplate = {
     <script>
         ${generateCompletePluginSystem(chartConfig)}
     </script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        .chart-container {
+            position: relative;
+            width: ${width}px;
+            height: ${height}px;
+            ${chartContainerStyle}
+        }
+        .chart-wrapper {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+        }
+        #chartCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
 </head>
 <body>
-    <canvas id="chartCanvas" width="${width}" height="${height}"></canvas>
+    <div class="chart-container">
+        ${backgroundLayerHTML}
+        <div class="chart-wrapper">
+            <canvas id="chartCanvas" width="${width}" height="${height}"></canvas>
+        </div>
+    </div>
     <script>${generateChartScript(chartData, chartConfig, chartType, options, legendConfig)}</script>
 </body>
 </html>`;

@@ -322,11 +322,18 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
     }
   }
   const customLabels = generateCustomLabelsFromConfig(effectiveConfig, processedChartData, legendFilter, currentDragState);
+  
+  // Process background image URL to base64 if needed
+  const processedChartConfig = JSON.parse(JSON.stringify(chartConfig));
+  if (processedChartConfig.background?.type === 'image' && processedChartConfig.background?.imageUrl) {
+    processedChartConfig.background.imageUrl = await convertImageToBase64(processedChartConfig.background.imageUrl);
+  }
+  
   const enhancedChartConfig = {
-    ...chartConfig,
+    ...processedChartConfig,
     data: processedChartData, // required for plugins code generation
     plugins: {
-      ...chartConfig.plugins,
+      ...processedChartConfig.plugins,
       customLabels: (options.showLabels === false) ? undefined : (customLabels.length > 0 ? { 
         shapeSize: 32, 
         labels: customLabels 
