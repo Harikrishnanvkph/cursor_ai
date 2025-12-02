@@ -31,9 +31,12 @@ import {
   ChevronUp,
   LayoutTemplate,
   Database,
-  Type
+  Type,
+  FileEdit
 } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { RichTextEditor } from "@/components/rich-text-editor"
 
 export function TemplatesPanel() {
   const { 
@@ -56,6 +59,8 @@ export function TemplatesPanel() {
   const router = useRouter()
   const [isUnusedContentsExpanded, setIsUnusedContentsExpanded] = React.useState(true)
   const [activeTab, setActiveTab] = React.useState("templates")
+  const [richEditorOpen, setRichEditorOpen] = React.useState(false)
+  const [richEditorContent, setRichEditorContent] = React.useState('')
   
   // Use selector for better reactivity - subscribe specifically to currentChartState
   const currentChartState = useChatStore((state) => state.currentChartState)
@@ -575,29 +580,45 @@ export function TemplatesPanel() {
                </div>
              </div>
 
-                         {/* Content */}
-             <div>
-               <Label htmlFor="content" className="text-xs">
-                 Content {selectedTextArea.contentType === 'html' ? '(HTML)' : '(Text)'}
-               </Label>
-               <textarea
-                 id="content"
-                 value={selectedTextArea.content}
-                 onChange={(e) => handleTextAreaUpdate('content', e.target.value)}
-                 className="w-full mt-1 p-2 border rounded-md text-xs font-mono"
-                 rows={selectedTextArea.contentType === 'html' ? 8 : 4}
-                 placeholder={
-                   selectedTextArea.contentType === 'html' 
-                     ? 'Enter HTML content...\nExample: <p>Hello <strong>World</strong></p>' 
-                     : 'Enter text content...'
-                 }
-               />
-               {selectedTextArea.contentType === 'html' && (
-                 <p className="text-xs text-gray-500 mt-1">
-                   HTML is rendered in preview. Use HTML tags like &lt;p&gt;, &lt;strong&gt;, &lt;em&gt;, &lt;br&gt;, etc.
-                 </p>
-               )}
-             </div>
+                        {/* Content */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <Label htmlFor="content" className="text-xs">
+                  Content {selectedTextArea.contentType === 'html' ? '(HTML)' : '(Text)'}
+                </Label>
+                {selectedTextArea.contentType === 'html' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setRichEditorContent(selectedTextArea.content || '')
+                      setRichEditorOpen(true)
+                    }}
+                    className="h-6 text-xs"
+                  >
+                    <FileEdit className="h-3 w-3 mr-1" />
+                    Rich Editor
+                  </Button>
+                )}
+              </div>
+              <textarea
+                id="content"
+                value={selectedTextArea.content}
+                onChange={(e) => handleTextAreaUpdate('content', e.target.value)}
+                className="w-full mt-1 p-2 border rounded-md text-xs font-mono"
+                rows={selectedTextArea.contentType === 'html' ? 8 : 4}
+                placeholder={
+                  selectedTextArea.contentType === 'html' 
+                    ? 'Enter HTML content...\nExample: <p>Hello <strong>World</strong></p>' 
+                    : 'Enter text content...'
+                }
+              />
+              {selectedTextArea.contentType === 'html' && (
+                <p className="text-xs text-gray-500 mt-1">
+                  HTML is rendered in preview. Use HTML tags like &lt;p&gt;, &lt;strong&gt;, &lt;em&gt;, &lt;br&gt;, etc.
+                </p>
+              )}
+            </div>
 
             <Separator />
 
@@ -783,6 +804,93 @@ export function TemplatesPanel() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Rich Text Editor Dialog */}
+      {selectedTextAreaId && currentTemplate && (
+        <Dialog open={richEditorOpen} onOpenChange={(open) => {
+          if (!open) {
+            // Reset to original content on cancel
+            const selectedTextArea = currentTemplate.textAreas.find(ta => ta.id === selectedTextAreaId)
+            if (selectedTextArea) {
+              setRichEditorContent(selectedTextArea.content || '')
+            }
+          }
+          setRichEditorOpen(open)
+        }}>
+          <DialogContent className="max-w-[90vw] h-[90vh] flex flex-col p-0">
+            <DialogHeader className="p-6 pb-4 border-b shrink-0">
+              <DialogTitle>Rich Text Editor</DialogTitle>
+            </DialogHeader>
+            <div className="flex gap-4 p-6 flex-1 overflow-hidden min-h-0">
+              {/* Editor */}
+              <div className="flex-1 overflow-auto">
+                <RichTextEditor
+                  initialHtml={richEditorContent}
+                  onChange={(html) => {
+                    setRichEditorContent(html)
+                  }}
+                  className="h-full"
+                />
+              </div>
+
+              {/* Live Preview */}
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <div className="text-xs font-medium text-gray-700 mb-3 shrink-0">Live Preview</div>
+                <div className="flex-1 overflow-auto border rounded-lg bg-gray-50 p-4">
+                  {(() => {
+                    const selectedTextArea = currentTemplate.textAreas.find(ta => ta.id === selectedTextAreaId)
+                    if (!selectedTextArea) return null
+
+                    const width = selectedTextArea.position.width
+                    const height = selectedTextArea.position.height
+
+                    return (
+                      <div 
+                        className="bg-white border rounded shadow-sm overflow-auto"
+                        style={{
+                          width: `${width}px`,
+                          height: `${height}px`,
+                          fontSize: selectedTextArea.style.fontSize ? `${selectedTextArea.style.fontSize}px` : '14px',
+                          fontFamily: selectedTextArea.style.fontFamily || 'inherit',
+                          fontWeight: selectedTextArea.style.fontWeight || 'normal',
+                          color: selectedTextArea.style.color || '#000000',
+                          textAlign: selectedTextArea.style.textAlign || 'left',
+                          lineHeight: selectedTextArea.style.lineHeight || 'normal',
+                          letterSpacing: selectedTextArea.style.letterSpacing ? `${selectedTextArea.style.letterSpacing}px` : 'normal',
+                          padding: '8px'
+                        }}
+                        dangerouslySetInnerHTML={{ __html: richEditorContent || 'Preview will appear here...' }}
+                      />
+                    )
+                  })()}
+                </div>
+              </div>
+            </div>
+            <div className="p-4 border-t flex justify-end gap-2 shrink-0">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  // Reset to original content
+                  const selectedTextArea = currentTemplate.textAreas.find(ta => ta.id === selectedTextAreaId)
+                  if (selectedTextArea) {
+                    setRichEditorContent(selectedTextArea.content || '')
+                  }
+                  setRichEditorOpen(false)
+                }}
+              >
+                Cancel
+              </Button>
+              <Button onClick={() => {
+                // Save the changes
+                handleTextAreaUpdate('content', richEditorContent)
+                setRichEditorOpen(false)
+              }}>
+                Save
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 } 

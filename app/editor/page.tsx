@@ -200,8 +200,8 @@ function EditorPageContent() {
       // Chart-specific tabs: types_toggles, datasets_slices, design, axes, labels, overlay, animations, advanced, export
       // Only set to chart if we don't have a currentTemplate
       if (!currentTemplate) {
-        setEditorMode('chart');
-      }
+      setEditorMode('chart');
+    }
     }
   }, [activeTab, setEditorMode, currentTemplate]);
 

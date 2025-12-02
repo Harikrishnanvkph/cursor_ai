@@ -832,9 +832,9 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                                 isHidden && text ? `${text}` : text;
 
                               return {
-                                ...props,
+                              ...props,
                                 text: decoratedText,
-                                pointStyle: usePointStyle ? pointStyle : undefined,
+                              pointStyle: usePointStyle ? pointStyle : undefined,
                                 fontColor: isHidden ? '#999999' : fontColor,
                                 hidden: isHidden,
                               };
