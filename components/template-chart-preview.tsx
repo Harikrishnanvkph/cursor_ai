@@ -306,10 +306,106 @@ export function TemplateChartPreview({
     const template = currentTemplate || templateInBackground
     if (!template) return null
 
+    // Helper to map imageFit values to CSS background-size
+    const getBackgroundSize = (fit?: string): string => {
+      switch (fit) {
+        case 'fill':
+          return '100% 100%' // Stretch to fill
+        case 'contain':
+          return 'contain' // Fit inside
+        case 'cover':
+          return 'cover' // Cover entire area
+        case 'none':
+          return 'auto' // Original size
+        case 'scale-down':
+          return 'auto' // Original size (CSS doesn't have scale-down for backgrounds)
+        default:
+          return 'cover'
+      }
+    }
+
     return template.textAreas
       .filter(textArea => textArea.visible)
       .map((textArea) => {
         const isHTML = textArea.contentType === 'html'
+        
+        // Helper to convert hex color to rgba with opacity
+        const hexToRgba = (hex: string, opacity: number): string => {
+          // Remove # if present
+          hex = hex.replace('#', '')
+          
+          // Parse hex values
+          const r = parseInt(hex.substring(0, 2), 16)
+          const g = parseInt(hex.substring(2, 4), 16)
+          const b = parseInt(hex.substring(4, 6), 16)
+          
+          return `rgba(${r}, ${g}, ${b}, ${opacity})`
+        }
+
+        // Generate background style based on background settings
+        const getBackgroundStyle = (): React.CSSProperties => {
+          const bg = textArea.background
+          if (!bg || bg.type === 'transparent') {
+            return {
+              backgroundColor: showGuides ? 'rgba(255, 255, 255, 0.8)' : 'transparent'
+            }
+          }
+
+          const opacity = (bg.opacity ?? 100) / 100
+
+          if (bg.type === 'color') {
+            // Use rgba to apply opacity only to background, not text
+            const color = bg.color || '#ffffff'
+            return {
+              backgroundColor: hexToRgba(color, opacity)
+            }
+          }
+
+          if (bg.type === 'gradient') {
+            const color1 = bg.gradientColor1 || '#ffffff'
+            const color2 = bg.gradientColor2 || '#000000'
+            const gradientType = bg.gradientType || 'linear'
+            const direction = bg.gradientDirection || 'to right'
+
+            // Apply opacity to gradient colors themselves
+            const rgbaColor1 = hexToRgba(color1, opacity)
+            const rgbaColor2 = hexToRgba(color2, opacity)
+
+            if (gradientType === 'radial') {
+              return {
+                backgroundImage: `radial-gradient(circle, ${rgbaColor1}, ${rgbaColor2})`
+              }
+            } else {
+              return {
+                backgroundImage: `linear-gradient(${direction}, ${rgbaColor1}, ${rgbaColor2})`
+              }
+            }
+          }
+
+          if (bg.type === 'image' && bg.imageUrl) {
+            // For images, we need to use a workaround with linear-gradient overlay
+            if (opacity < 1) {
+              return {
+                backgroundImage: `linear-gradient(rgba(255, 255, 255, ${1 - opacity}), rgba(255, 255, 255, ${1 - opacity})), url(${bg.imageUrl})`,
+                backgroundSize: getBackgroundSize(bg.imageFit),
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat'
+              }
+            } else {
+              return {
+                backgroundImage: `url(${bg.imageUrl})`,
+                backgroundSize: getBackgroundSize(bg.imageFit),
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat'
+              }
+            }
+          }
+
+          return { backgroundColor: 'transparent' }
+        }
+
+        const backgroundStyle = getBackgroundStyle()
+
         const baseStyle: React.CSSProperties = {
           left: textArea.position.x,
           top: textArea.position.y,
@@ -327,7 +423,7 @@ export function TemplateChartPreview({
           padding: '8px',
           overflow: isHTML ? 'auto' : 'hidden',
           border: showGuides ? '1px dashed #e5e7eb' : 'none',
-          backgroundColor: showGuides ? 'rgba(255, 255, 255, 0.8)' : 'transparent'
+          ...backgroundStyle
         }
         
         return (
@@ -421,13 +517,112 @@ export function TemplateChartPreview({
     const template = currentTemplate || templateInBackground
     if (!template) return null
 
+    // Helper to map imageFit values to CSS background-size
+    const getBackgroundSize = (fit?: string): string => {
+      switch (fit) {
+        case 'fill':
+          return '100% 100%' // Stretch to fill
+        case 'contain':
+          return 'contain' // Fit inside
+        case 'cover':
+          return 'cover' // Cover entire area
+        case 'none':
+          return 'auto' // Original size
+        case 'scale-down':
+          return 'auto' // Original size (CSS doesn't have scale-down for backgrounds)
+        default:
+          return 'cover'
+      }
+    }
+
+    // Helper to convert hex color to rgba with opacity
+    const hexToRgba = (hex: string, opacity: number): string => {
+      // Remove # if present
+      hex = hex.replace('#', '')
+      
+      // Parse hex values
+      const r = parseInt(hex.substring(0, 2), 16)
+      const g = parseInt(hex.substring(2, 4), 16)
+      const b = parseInt(hex.substring(4, 6), 16)
+      
+      return `rgba(${r}, ${g}, ${b}, ${opacity})`
+    }
+
+    // Generate template background style
+    const getTemplateBackgroundStyle = (): React.CSSProperties => {
+      const bg = template.background
+      
+      // Default to solid color if no background is set
+      if (!bg || bg.type === 'transparent') {
+        return {
+          backgroundColor: template.backgroundColor || '#ffffff'
+        }
+      }
+
+      const opacity = (bg.opacity ?? 100) / 100
+
+      if (bg.type === 'color') {
+        // Use rgba to apply opacity only to background
+        const color = bg.color || '#ffffff'
+        return {
+          backgroundColor: hexToRgba(color, opacity)
+        }
+      }
+
+      if (bg.type === 'gradient') {
+        const color1 = bg.gradientColor1 || '#ffffff'
+        const color2 = bg.gradientColor2 || '#000000'
+        const gradientType = bg.gradientType || 'linear'
+        const direction = bg.gradientDirection || 'to right'
+
+        // Apply opacity to gradient colors themselves
+        const rgbaColor1 = hexToRgba(color1, opacity)
+        const rgbaColor2 = hexToRgba(color2, opacity)
+
+        if (gradientType === 'radial') {
+          return {
+            backgroundImage: `radial-gradient(circle, ${rgbaColor1}, ${rgbaColor2})`
+          }
+        } else {
+          return {
+            backgroundImage: `linear-gradient(${direction}, ${rgbaColor1}, ${rgbaColor2})`
+          }
+        }
+      }
+
+      if (bg.type === 'image' && bg.imageUrl) {
+        // For images, we need to use a workaround with linear-gradient overlay
+        if (opacity < 1) {
+          return {
+            backgroundImage: `linear-gradient(rgba(255, 255, 255, ${1 - opacity}), rgba(255, 255, 255, ${1 - opacity})), url(${bg.imageUrl})`,
+            backgroundSize: getBackgroundSize(bg.imageFit),
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat'
+          }
+        } else {
+          return {
+            backgroundImage: `url(${bg.imageUrl})`,
+            backgroundSize: getBackgroundSize(bg.imageFit),
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat'
+          }
+        }
+      }
+
+      return {
+        backgroundColor: template.backgroundColor || '#ffffff'
+      }
+    }
+
+    const backgroundStyle = getTemplateBackgroundStyle()
+
     return (
       <>
         {/* Main template background */}
         <div
           className="absolute inset-0"
           style={{
-            backgroundColor: template.backgroundColor,
+            ...backgroundStyle,
             border: `${template.borderWidth}px solid ${template.borderColor}`,
             borderRadius: '8px',
             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'

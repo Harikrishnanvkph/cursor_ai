@@ -37,6 +37,56 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { RichTextEditor } from "@/components/rich-text-editor"
+import { toast } from "sonner"
+
+// Image compression helper function
+const compressImage = (
+  file: File,
+  maxWidth: number = 1200,
+  quality: number = 0.85
+): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    // No file size limit - compress any size file
+    
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        let width = img.width
+        let height = img.height
+
+        // Resize if image is too large
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width
+          width = maxWidth
+        }
+
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+
+        if (ctx) {
+          // Enable high-quality image smoothing
+          ctx.imageSmoothingEnabled = true
+          ctx.imageSmoothingQuality = 'high'
+          ctx.drawImage(img, 0, 0, width, height)
+        }
+
+        // Use JPEG for better compression, PNG for transparency
+        const format = file.type === 'image/png' ? 'image/png' : 'image/jpeg'
+        const compressedDataUrl = canvas.toDataURL(format, quality)
+
+        // Always resolve with compressed image (no size checks)
+        resolve(compressedDataUrl)
+      }
+      img.onerror = () => reject(new Error('Failed to load image'))
+      img.src = e.target?.result as string
+    }
+    reader.onerror = () => reject(new Error('Failed to read file'))
+    reader.readAsDataURL(file)
+  })
+}
 
 export function TemplatesPanel() {
   const { 
@@ -485,6 +535,336 @@ export function TemplatesPanel() {
 
         {/* Content Tab */}
         <TabsContent value="content" className="space-y-4 mt-4">
+          {/* Template Background */}
+          {currentTemplate && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Palette className="h-4 w-4" />
+                  Template Background
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {/* Background Type */}
+                <div>
+                  <Label className="text-xs font-medium">Background Type</Label>
+                  <Select
+                    value={currentTemplate.background?.type || 'transparent'}
+                    onValueChange={(value) => {
+                      const templateStore = useTemplateStore.getState()
+                      templateStore.updateTemplate(currentTemplate.id, {
+                        background: {
+                          ...currentTemplate.background,
+                          type: value as 'color' | 'gradient' | 'image' | 'transparent'
+                        }
+                      })
+                    }}
+                  >
+                    <SelectTrigger className="h-7 text-xs mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="transparent">Transparent</SelectItem>
+                      <SelectItem value="color">Color</SelectItem>
+                      <SelectItem value="gradient">Gradient</SelectItem>
+                      <SelectItem value="image">Image</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Color Background */}
+                {currentTemplate.background?.type === 'color' && (
+                  <>
+                    <div>
+                      <Label className="text-xs">Background Color</Label>
+                      <div className="flex gap-2 mt-1">
+                        <Input
+                          type="color"
+                          value={currentTemplate.background?.color || '#ffffff'}
+                          onChange={(e) => {
+                            const templateStore = useTemplateStore.getState()
+                            templateStore.updateTemplate(currentTemplate.id, {
+                              background: {
+                                ...currentTemplate.background,
+                                color: e.target.value
+                              }
+                            })
+                          }}
+                          className="w-10 h-7 p-1"
+                        />
+                        <Input
+                          type="text"
+                          value={currentTemplate.background?.color || '#ffffff'}
+                          onChange={(e) => {
+                            const templateStore = useTemplateStore.getState()
+                            templateStore.updateTemplate(currentTemplate.id, {
+                              background: {
+                                ...currentTemplate.background,
+                                color: e.target.value
+                              }
+                            })
+                          }}
+                          className="flex-1 h-7 text-xs"
+                          placeholder="#ffffff"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Opacity</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={currentTemplate.background?.opacity || 100}
+                          onChange={(e) => {
+                            const templateStore = useTemplateStore.getState()
+                            templateStore.updateTemplate(currentTemplate.id, {
+                              background: {
+                                ...currentTemplate.background,
+                                opacity: parseInt(e.target.value)
+                              }
+                            })
+                          }}
+                          className="flex-1"
+                        />
+                        <span className="text-xs w-12 text-right">
+                          {currentTemplate.background?.opacity || 100}%
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Gradient Background */}
+                {currentTemplate.background?.type === 'gradient' && (
+                  <>
+                    <div>
+                      <Label className="text-xs">Gradient Type</Label>
+                      <Select
+                        value={currentTemplate.background?.gradientType || 'linear'}
+                        onValueChange={(value) => {
+                          const templateStore = useTemplateStore.getState()
+                          templateStore.updateTemplate(currentTemplate.id, {
+                            background: {
+                              ...currentTemplate.background,
+                              gradientType: value as 'linear' | 'radial'
+                            }
+                          })
+                        }}
+                      >
+                        <SelectTrigger className="h-7 text-xs mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="linear">Linear</SelectItem>
+                          <SelectItem value="radial">Radial</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Gradient Direction</Label>
+                      <Select
+                        value={currentTemplate.background?.gradientDirection || 'to right'}
+                        onValueChange={(value) => {
+                          const templateStore = useTemplateStore.getState()
+                          templateStore.updateTemplate(currentTemplate.id, {
+                            background: {
+                              ...currentTemplate.background,
+                              gradientDirection: value as any
+                            }
+                          })
+                        }}
+                        disabled={currentTemplate.background?.gradientType === 'radial'}
+                      >
+                        <SelectTrigger className="h-7 text-xs mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="to right">Left → Right</SelectItem>
+                          <SelectItem value="to left">Right → Left</SelectItem>
+                          <SelectItem value="to bottom">Top → Bottom</SelectItem>
+                          <SelectItem value="to top">Bottom → Top</SelectItem>
+                          <SelectItem value="135deg">Diagonal (135°)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Gradient Colors</Label>
+                      <div className="flex gap-2 mt-1">
+                        <Input
+                          type="color"
+                          value={currentTemplate.background?.gradientColor1 || '#ffffff'}
+                          onChange={(e) => {
+                            const templateStore = useTemplateStore.getState()
+                            templateStore.updateTemplate(currentTemplate.id, {
+                              background: {
+                                ...currentTemplate.background,
+                                gradientColor1: e.target.value
+                              }
+                            })
+                          }}
+                          className="w-10 h-7 p-1"
+                        />
+                        <Input
+                          type="color"
+                          value={currentTemplate.background?.gradientColor2 || '#000000'}
+                          onChange={(e) => {
+                            const templateStore = useTemplateStore.getState()
+                            templateStore.updateTemplate(currentTemplate.id, {
+                              background: {
+                                ...currentTemplate.background,
+                                gradientColor2: e.target.value
+                              }
+                            })
+                          }}
+                          className="w-10 h-7 p-1"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Opacity</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={currentTemplate.background?.opacity || 100}
+                          onChange={(e) => {
+                            const templateStore = useTemplateStore.getState()
+                            templateStore.updateTemplate(currentTemplate.id, {
+                              background: {
+                                ...currentTemplate.background,
+                                opacity: parseInt(e.target.value)
+                              }
+                            })
+                          }}
+                          className="flex-1"
+                        />
+                        <span className="text-xs w-12 text-right">
+                          {currentTemplate.background?.opacity || 100}%
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Image Background */}
+                {currentTemplate.background?.type === 'image' && (
+                  <>
+                    <div>
+                      <Label className="text-xs">Image URL</Label>
+                      <Input
+                        type="text"
+                        value={currentTemplate.background?.imageUrl || ''}
+                        onChange={(e) => {
+                          const templateStore = useTemplateStore.getState()
+                          templateStore.updateTemplate(currentTemplate.id, {
+                            background: {
+                              ...currentTemplate.background,
+                              imageUrl: e.target.value
+                            }
+                          })
+                        }}
+                        placeholder="https://example.com/image.jpg"
+                        className="h-7 text-xs mt-1"
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Upload Image</Label>
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            try {
+                              toast.info('Compressing image...', { duration: 1000 })
+                              // Compress image for template background (max 1200px width)
+                              const compressedDataUrl = await compressImage(file, 1200, 0.85)
+                              
+                              const templateStore = useTemplateStore.getState()
+                              templateStore.updateTemplate(currentTemplate.id, {
+                                background: {
+                                  ...currentTemplate.background,
+                                  imageUrl: compressedDataUrl
+                                }
+                              })
+                              toast.success('Image uploaded successfully!')
+                            } catch (error: any) {
+                              console.error('Image compression failed:', error)
+                              toast.error(error.message || 'Failed to process image')
+                              e.target.value = '' // Clear the input
+                            }
+                          }
+                        }}
+                        className="h-7 text-xs mt-1"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Images will be automatically compressed and resized.
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Image Fit</Label>
+                      <Select
+                        value={currentTemplate.background?.imageFit || 'cover'}
+                        onValueChange={(value) => {
+                          const templateStore = useTemplateStore.getState()
+                          templateStore.updateTemplate(currentTemplate.id, {
+                            background: {
+                              ...currentTemplate.background,
+                              imageFit: value as any
+                            }
+                          })
+                        }}
+                      >
+                        <SelectTrigger className="h-7 text-xs mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="fill">Fill</SelectItem>
+                          <SelectItem value="contain">Contain</SelectItem>
+                          <SelectItem value="cover">Cover</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Opacity</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={currentTemplate.background?.opacity || 100}
+                          onChange={(e) => {
+                            const templateStore = useTemplateStore.getState()
+                            templateStore.updateTemplate(currentTemplate.id, {
+                              background: {
+                                ...currentTemplate.background,
+                                opacity: parseInt(e.target.value)
+                              }
+                            })
+                          }}
+                          className="flex-1"
+                        />
+                        <span className="text-xs w-12 text-right">
+                          {currentTemplate.background?.opacity || 100}%
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Text Areas Management */}
           {currentTemplate && (
             <Card>
@@ -765,17 +1145,280 @@ export function TemplatesPanel() {
                  >
                    <AlignJustify className="h-2.5 w-2.5" />
                  </Button>
-               </div>
-             </div>
+              </div>
+            </div>
 
-             <div className="flex items-center space-x-2">
-               <Switch
-                 checked={selectedTextArea.visible}
-                 onCheckedChange={(checked) => handleTextAreaUpdate('visible', checked)}
-                 className="scale-75"
-               />
-               <Label className="text-xs">Visible</Label>
-             </div>
+            <Separator />
+
+            {/* Background Settings */}
+            <div>
+              <Label className="text-xs font-medium mb-2 flex items-center gap-2">
+                <Palette className="h-3 w-3" />
+                Background
+              </Label>
+              
+              <div className="space-y-3 mt-2">
+                {/* Background Type */}
+                <div>
+                  <Label className="text-xs">Background Type</Label>
+                  <Select
+                    value={selectedTextArea.background?.type || 'transparent'}
+                    onValueChange={(value) => handleTextAreaUpdate('background', {
+                      ...selectedTextArea.background,
+                      type: value as 'color' | 'gradient' | 'image' | 'transparent'
+                    })}
+                  >
+                    <SelectTrigger className="h-7 text-xs mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="transparent">Transparent</SelectItem>
+                      <SelectItem value="color">Color</SelectItem>
+                      <SelectItem value="gradient">Gradient</SelectItem>
+                      <SelectItem value="image">Image</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Color Background */}
+                {selectedTextArea.background?.type === 'color' && (
+                  <div>
+                    <Label className="text-xs">Background Color</Label>
+                    <div className="flex gap-2 mt-1">
+                      <Input
+                        type="color"
+                        value={selectedTextArea.background?.color || '#ffffff'}
+                        onChange={(e) => handleTextAreaUpdate('background', {
+                          ...selectedTextArea.background,
+                          color: e.target.value
+                        })}
+                        className="w-10 h-7 p-1"
+                      />
+                      <Input
+                        type="text"
+                        value={selectedTextArea.background?.color || '#ffffff'}
+                        onChange={(e) => handleTextAreaUpdate('background', {
+                          ...selectedTextArea.background,
+                          color: e.target.value
+                        })}
+                        className="flex-1 h-7 text-xs"
+                        placeholder="#ffffff"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Gradient Background */}
+                {selectedTextArea.background?.type === 'gradient' && (
+                  <>
+                    <div>
+                      <Label className="text-xs">Gradient Type</Label>
+                      <Select
+                        value={selectedTextArea.background?.gradientType || 'linear'}
+                        onValueChange={(value) => handleTextAreaUpdate('background', {
+                          ...selectedTextArea.background,
+                          gradientType: value as 'linear' | 'radial'
+                        })}
+                      >
+                        <SelectTrigger className="h-7 text-xs mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="linear">Linear</SelectItem>
+                          <SelectItem value="radial">Radial</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Gradient Direction</Label>
+                      <Select
+                        value={selectedTextArea.background?.gradientDirection || 'to right'}
+                        onValueChange={(value) => handleTextAreaUpdate('background', {
+                          ...selectedTextArea.background,
+                          gradientDirection: value as any
+                        })}
+                        disabled={selectedTextArea.background?.gradientType === 'radial'}
+                      >
+                        <SelectTrigger className="h-7 text-xs mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="to right">Left → Right</SelectItem>
+                          <SelectItem value="to left">Right → Left</SelectItem>
+                          <SelectItem value="to bottom">Top → Bottom</SelectItem>
+                          <SelectItem value="to top">Bottom → Top</SelectItem>
+                          <SelectItem value="135deg">Diagonal (135°)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Gradient Colors</Label>
+                      <div className="flex gap-2 mt-1">
+                        <Input
+                          type="color"
+                          value={selectedTextArea.background?.gradientColor1 || '#ffffff'}
+                          onChange={(e) => handleTextAreaUpdate('background', {
+                            ...selectedTextArea.background,
+                            gradientColor1: e.target.value
+                          })}
+                          className="w-10 h-7 p-1"
+                        />
+                        <Input
+                          type="color"
+                          value={selectedTextArea.background?.gradientColor2 || '#000000'}
+                          onChange={(e) => handleTextAreaUpdate('background', {
+                            ...selectedTextArea.background,
+                            gradientColor2: e.target.value
+                          })}
+                          className="w-10 h-7 p-1"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Opacity</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={selectedTextArea.background?.opacity || 100}
+                          onChange={(e) => handleTextAreaUpdate('background', {
+                            ...selectedTextArea.background,
+                            opacity: parseInt(e.target.value)
+                          })}
+                          className="flex-1"
+                        />
+                        <span className="text-xs w-12 text-right">{selectedTextArea.background?.opacity || 100}%</span>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Image Background */}
+                {selectedTextArea.background?.type === 'image' && (
+                  <>
+                    <div>
+                      <Label className="text-xs">Image URL</Label>
+                      <Input
+                        type="text"
+                        value={selectedTextArea.background?.imageUrl || ''}
+                        onChange={(e) => handleTextAreaUpdate('background', {
+                          ...selectedTextArea.background,
+                          imageUrl: e.target.value
+                        })}
+                        placeholder="https://example.com/image.jpg"
+                        className="h-7 text-xs mt-1"
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Upload Image</Label>
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            try {
+                              toast.info('Compressing image...', { duration: 1000 })
+                              // Compress image for text area background (max 800px width)
+                              const compressedDataUrl = await compressImage(file, 800, 0.85)
+                              
+                              handleTextAreaUpdate('background', {
+                                ...selectedTextArea.background,
+                                imageUrl: compressedDataUrl
+                              });
+                              toast.success('Image uploaded successfully!')
+                            } catch (error: any) {
+                              console.error('Image compression failed:', error)
+                              toast.error(error.message || 'Failed to process image')
+                              e.target.value = '' // Clear the input
+                            }
+                          }
+                        }}
+                        className="h-7 text-xs mt-1"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Images will be automatically compressed and resized.
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Image Fit</Label>
+                      <Select
+                        value={selectedTextArea.background?.imageFit || 'cover'}
+                        onValueChange={(value) => handleTextAreaUpdate('background', {
+                          ...selectedTextArea.background,
+                          imageFit: value as any
+                        })}
+                      >
+                        <SelectTrigger className="h-7 text-xs mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="fill">Fill</SelectItem>
+                          <SelectItem value="contain">Contain</SelectItem>
+                          <SelectItem value="cover">Cover</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Opacity</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={selectedTextArea.background?.opacity || 100}
+                          onChange={(e) => handleTextAreaUpdate('background', {
+                            ...selectedTextArea.background,
+                            opacity: parseInt(e.target.value)
+                          })}
+                          className="flex-1"
+                        />
+                        <span className="text-xs w-12 text-right">{selectedTextArea.background?.opacity || 100}%</span>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Opacity for Color background */}
+                {selectedTextArea.background?.type === 'color' && (
+                  <div>
+                    <Label className="text-xs">Opacity</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={selectedTextArea.background?.opacity || 100}
+                        onChange={(e) => handleTextAreaUpdate('background', {
+                          ...selectedTextArea.background,
+                          opacity: parseInt(e.target.value)
+                        })}
+                        className="flex-1"
+                      />
+                      <span className="text-xs w-12 text-right">{selectedTextArea.background?.opacity || 100}%</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="flex items-center space-x-2">
+              <Switch
+                checked={selectedTextArea.visible}
+                onCheckedChange={(checked) => handleTextAreaUpdate('visible', checked)}
+                className="scale-75"
+              />
+              <Label className="text-xs">Visible</Label>
+            </div>
                 </CardContent>
               ) : (
                 <CardContent className="pt-6">

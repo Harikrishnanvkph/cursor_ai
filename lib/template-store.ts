@@ -25,6 +25,17 @@ export interface TemplateTextArea {
     lineHeight: number
     letterSpacing: number
   }
+  background?: {
+    type: 'color' | 'gradient' | 'image' | 'transparent'
+    color?: string
+    gradientType?: 'linear' | 'radial'
+    gradientDirection?: 'to right' | 'to left' | 'to top' | 'to bottom' | '135deg'
+    gradientColor1?: string
+    gradientColor2?: string
+    opacity?: number
+    imageUrl?: string
+    imageFit?: 'fill' | 'contain' | 'cover' | 'none' | 'scale-down'
+  }
   visible: boolean
 }
 
@@ -47,6 +58,17 @@ export interface TemplateLayout {
   borderColor: string
   borderWidth: number
   padding: number
+  background?: {
+    type: 'color' | 'gradient' | 'image' | 'transparent'
+    color?: string
+    gradientType?: 'linear' | 'radial'
+    gradientDirection?: 'to right' | 'to left' | 'to top' | 'to bottom' | '135deg'
+    gradientColor1?: string
+    gradientColor2?: string
+    opacity?: number
+    imageUrl?: string
+    imageFit?: 'fill' | 'contain' | 'cover' | 'none' | 'scale-down'
+  }
 }
 
 // Editor mode types

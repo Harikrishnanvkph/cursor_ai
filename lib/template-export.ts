@@ -15,6 +15,163 @@ export interface TemplateExportOptions {
 }
 
 /**
+ * Helper to convert hex color to rgba with opacity
+ */
+function hexToRgba(hex: string, opacity: number): string {
+  hex = hex.replace('#', '')
+  const r = parseInt(hex.substring(0, 2), 16)
+  const g = parseInt(hex.substring(2, 4), 16)
+  const b = parseInt(hex.substring(4, 6), 16)
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`
+}
+
+/**
+ * Map imageFit values to CSS background-size
+ */
+function getBackgroundSize(fit?: string): string {
+  switch (fit) {
+    case 'fill':
+      return '100% 100%'
+    case 'contain':
+      return 'contain'
+    case 'cover':
+      return 'cover'
+    default:
+      return 'cover'
+  }
+}
+
+/**
+ * Render template or text area background on canvas
+ */
+async function renderBackgroundOnCanvas(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  background?: {
+    type: 'color' | 'gradient' | 'image' | 'transparent'
+    color?: string
+    gradientType?: 'linear' | 'radial'
+    gradientDirection?: 'to right' | 'to left' | 'to top' | 'to bottom' | '135deg'
+    gradientColor1?: string
+    gradientColor2?: string
+    opacity?: number
+    imageUrl?: string
+    imageFit?: string
+  }
+): Promise<void> {
+  if (!background || background.type === 'transparent') {
+    return
+  }
+
+  const opacity = (background.opacity ?? 100) / 100
+
+  if (background.type === 'color' && background.color) {
+    ctx.fillStyle = hexToRgba(background.color, opacity)
+    ctx.fillRect(x, y, width, height)
+  }
+
+  else if (background.type === 'gradient') {
+    const color1 = background.gradientColor1 || '#ffffff'
+    const color2 = background.gradientColor2 || '#000000'
+    const gradientType = background.gradientType || 'linear'
+    
+    let gradient: CanvasGradient
+    
+    if (gradientType === 'radial') {
+      const centerX = x + width / 2
+      const centerY = y + height / 2
+      const radius = Math.max(width, height) / 2
+      gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius)
+    } else {
+      // Linear gradient
+      const direction = background.gradientDirection || 'to right'
+      let x0 = x, y0 = y, x1 = x, y1 = y
+      
+      switch (direction) {
+        case 'to right':
+          x1 = x + width
+          break
+        case 'to left':
+          x0 = x + width
+          break
+        case 'to bottom':
+          y1 = y + height
+          break
+        case 'to top':
+          y0 = y + height
+          break
+        case '135deg':
+          x1 = x + width
+          y1 = y + height
+          break
+      }
+      
+      gradient = ctx.createLinearGradient(x0, y0, x1, y1)
+    }
+    
+    gradient.addColorStop(0, hexToRgba(color1, opacity))
+    gradient.addColorStop(1, hexToRgba(color2, opacity))
+    
+    ctx.fillStyle = gradient
+    ctx.fillRect(x, y, width, height)
+  }
+
+  else if (background.type === 'image' && background.imageUrl) {
+    return new Promise((resolve) => {
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      
+      img.onload = () => {
+        ctx.save()
+        
+        // Apply opacity by setting global alpha
+        if (opacity < 1) {
+          ctx.globalAlpha = opacity
+        }
+        
+        // Calculate dimensions based on imageFit
+        const fit = background.imageFit || 'cover'
+        let dx = x, dy = y, dw = width, dh = height
+        
+        if (fit === 'fill') {
+          // Stretch to fill
+          ctx.drawImage(img, dx, dy, dw, dh)
+        } else if (fit === 'contain') {
+          // Fit inside
+          const scale = Math.min(width / img.width, height / img.height)
+          dw = img.width * scale
+          dh = img.height * scale
+          dx = x + (width - dw) / 2
+          dy = y + (height - dh) / 2
+          ctx.drawImage(img, dx, dy, dw, dh)
+        } else { // cover
+          // Cover entire area
+          const scale = Math.max(width / img.width, height / img.height)
+          dw = img.width * scale
+          dh = img.height * scale
+          dx = x + (width - dw) / 2
+          dy = y + (height - dh) / 2
+          ctx.drawImage(img, dx, dy, dw, dh)
+        }
+        
+        ctx.restore()
+        resolve()
+      }
+      
+      img.onerror = () => {
+        console.warn('Failed to load background image:', background.imageUrl)
+        resolve()
+      }
+      
+      img.src = background.imageUrl
+    })
+  }
+}
+
+/**
  * Renders HTML content to a canvas using html2canvas for PIXEL-PERFECT matching
  * This captures the actual rendered HTML exactly as it appears in the browser
  */
@@ -213,7 +370,8 @@ export const getHighQualityChartCanvas = async (
 export const exportTemplateAsImage = async (
   template: TemplateLayout,
   chartCanvas: HTMLCanvasElement,
-  options: TemplateExportOptions
+  options: TemplateExportOptions,
+  chartConfig?: any
 ): Promise<string> => {
   const { format = 'png', quality = 1, fileName = 'chart-template', scale = 4 } = options
 
@@ -244,9 +402,14 @@ export const exportTemplateAsImage = async (
   // Scale the context for high resolution
   ctx.scale(scale, scale)
 
-  // Draw background
-  ctx.fillStyle = template.backgroundColor
-  ctx.fillRect(0, 0, template.width, template.height)
+  // Draw template background (new feature - with color/gradient/image support)
+  if (template.background && template.background.type !== 'transparent') {
+    await renderBackgroundOnCanvas(ctx, 0, 0, template.width, template.height, template.background)
+  } else {
+    // Fallback to old backgroundColor for backwards compatibility
+    ctx.fillStyle = template.backgroundColor
+    ctx.fillRect(0, 0, template.width, template.height)
+  }
 
   // Draw border
   if (template.borderWidth > 0) {
@@ -258,6 +421,27 @@ export const exportTemplateAsImage = async (
   // Draw chart area with high quality
   if (chartCanvas) {
     try {
+      // Draw chart background first (if configured)
+      if (chartConfig?.background) {
+        await renderBackgroundOnCanvas(
+          ctx,
+          template.chartArea.x,
+          template.chartArea.y,
+          template.chartArea.width,
+          template.chartArea.height,
+          chartConfig.background
+        )
+      } else {
+        // Default white background for chart area
+        ctx.fillStyle = '#ffffff'
+        ctx.fillRect(
+          template.chartArea.x,
+          template.chartArea.y,
+          template.chartArea.width,
+          template.chartArea.height
+        )
+      }
+      
       // Get a high-quality version of the chart canvas
       const highQualityChartCanvas = await getHighQualityChartCanvas(
         chartCanvas,
@@ -276,6 +460,27 @@ export const exportTemplateAsImage = async (
       )
     } catch (error) {
       console.warn('Failed to create high-quality chart canvas, falling back to original:', error)
+      
+      // Draw chart background first (even in fallback)
+      if (chartConfig?.background) {
+        await renderBackgroundOnCanvas(
+          ctx,
+          template.chartArea.x,
+          template.chartArea.y,
+          template.chartArea.width,
+          template.chartArea.height,
+          chartConfig.background
+        )
+      } else {
+        // Default white background for chart area
+        ctx.fillStyle = '#ffffff'
+        ctx.fillRect(
+          template.chartArea.x,
+          template.chartArea.y,
+          template.chartArea.width,
+          template.chartArea.height
+        )
+      }
       
       // Fallback to original method
       const chartCanvasScaled = document.createElement('canvas')
@@ -314,6 +519,11 @@ export const exportTemplateAsImage = async (
     const style = textArea.style
     const isHTML = textArea.contentType === 'html'
     const padding = 8
+
+    // Draw text area background first (new feature)
+    if (textArea.background) {
+      await renderBackgroundOnCanvas(ctx, x, y, width, height, textArea.background)
+    }
 
     if (isHTML && textArea.content) {
       // For HTML content, use html2canvas for pixel-perfect rendering
@@ -371,6 +581,108 @@ export const exportTemplateAsHTML = async (
   // Generate the chart components using the new template-specific function
   const chartComponents = await generateChartHTMLForTemplate(baseHtmlOptions)
 
+  // Generate template background CSS
+  const getTemplateBackgroundCSS = (): string => {
+    const bg = template.background
+    if (!bg || bg.type === 'transparent') {
+      return `background-color: ${template.backgroundColor};`
+    }
+
+    const opacity = (bg.opacity ?? 100) / 100
+
+    if (bg.type === 'color') {
+      return `background-color: ${hexToRgba(bg.color || '#ffffff', opacity)};`
+    }
+
+    if (bg.type === 'gradient') {
+      const color1 = bg.gradientColor1 || '#ffffff'
+      const color2 = bg.gradientColor2 || '#000000'
+      const gradientType = bg.gradientType || 'linear'
+      const direction = bg.gradientDirection || 'to right'
+      
+      const rgbaColor1 = hexToRgba(color1, opacity)
+      const rgbaColor2 = hexToRgba(color2, opacity)
+
+      if (gradientType === 'radial') {
+        return `background: radial-gradient(circle, ${rgbaColor1}, ${rgbaColor2});`
+      } else {
+        return `background: linear-gradient(${direction}, ${rgbaColor1}, ${rgbaColor2});`
+      }
+    }
+
+    if (bg.type === 'image' && bg.imageUrl) {
+      const size = getBackgroundSize(bg.imageFit)
+      if (opacity < 1) {
+        return `
+          background: linear-gradient(rgba(255, 255, 255, ${1 - opacity}), rgba(255, 255, 255, ${1 - opacity})), url(${bg.imageUrl});
+          background-size: ${size};
+          background-position: center;
+          background-repeat: no-repeat;
+        `
+      } else {
+        return `
+          background: url(${bg.imageUrl});
+          background-size: ${size};
+          background-position: center;
+          background-repeat: no-repeat;
+        `
+      }
+    }
+
+    return `background-color: ${template.backgroundColor};`
+  }
+
+  // Generate text area background CSS
+  const getTextAreaBackgroundCSS = (textArea: any): string => {
+    const bg = textArea.background
+    if (!bg || bg.type === 'transparent') {
+      return ''
+    }
+
+    const opacity = (bg.opacity ?? 100) / 100
+
+    if (bg.type === 'color') {
+      return `background-color: ${hexToRgba(bg.color || '#ffffff', opacity)};`
+    }
+
+    if (bg.type === 'gradient') {
+      const color1 = bg.gradientColor1 || '#ffffff'
+      const color2 = bg.gradientColor2 || '#000000'
+      const gradientType = bg.gradientType || 'linear'
+      const direction = bg.gradientDirection || 'to right'
+      
+      const rgbaColor1 = hexToRgba(color1, opacity)
+      const rgbaColor2 = hexToRgba(color2, opacity)
+
+      if (gradientType === 'radial') {
+        return `background: radial-gradient(circle, ${rgbaColor1}, ${rgbaColor2});`
+      } else {
+        return `background: linear-gradient(${direction}, ${rgbaColor1}, ${rgbaColor2});`
+      }
+    }
+
+    if (bg.type === 'image' && bg.imageUrl) {
+      const size = getBackgroundSize(bg.imageFit)
+      if (opacity < 1) {
+        return `
+          background: linear-gradient(rgba(255, 255, 255, ${1 - opacity}), rgba(255, 255, 255, ${1 - opacity})), url(${bg.imageUrl});
+          background-size: ${size};
+          background-position: center;
+          background-repeat: no-repeat;
+        `
+      } else {
+        return `
+          background: url(${bg.imageUrl});
+          background-size: ${size};
+          background-position: center;
+          background-repeat: no-repeat;
+        `
+      }
+    }
+
+    return ''
+  }
+
   // Create template-specific HTML structure
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -402,7 +714,7 @@ export const exportTemplateAsHTML = async (
             position: relative;
             width: ${template.width}px;
             height: ${template.height}px;
-            background-color: ${template.backgroundColor};
+            ${getTemplateBackgroundCSS()}
             border: ${template.borderWidth}px solid ${template.borderColor};
             margin: 0 auto;
             border-radius: 8px;
@@ -497,6 +809,7 @@ export const exportTemplateAsHTML = async (
           .map(textArea => {
             const isHTML = textArea.contentType === 'html'
             const contentClass = isHTML ? 'html-content' : 'text-content'
+            const backgroundCSS = getTextAreaBackgroundCSS(textArea)
             return `
             <div class="text-area ${contentClass}" style="
                 left: ${textArea.position.x}px;
@@ -510,6 +823,7 @@ export const exportTemplateAsHTML = async (
                 text-align: ${textArea.style.textAlign};
                 line-height: ${textArea.style.lineHeight};
                 letter-spacing: ${textArea.style.letterSpacing}px;
+                ${backgroundCSS}
             ">${textArea.content}</div>
           `}).join('')}
     </div>
@@ -555,6 +869,108 @@ export const exportTemplateAsUnifiedHTML = async (
     // Generate the chart components using the unified export system
     const chartComponents = await generateChartHTMLForTemplate(baseHtmlOptions)
 
+    // Generate template background CSS
+    const getTemplateBackgroundCSS = (): string => {
+      const bg = template.background
+      if (!bg || bg.type === 'transparent') {
+        return `background-color: ${template.backgroundColor};`
+      }
+
+      const opacity = (bg.opacity ?? 100) / 100
+
+      if (bg.type === 'color') {
+        return `background-color: ${hexToRgba(bg.color || '#ffffff', opacity)};`
+      }
+
+      if (bg.type === 'gradient') {
+        const color1 = bg.gradientColor1 || '#ffffff'
+        const color2 = bg.gradientColor2 || '#000000'
+        const gradientType = bg.gradientType || 'linear'
+        const direction = bg.gradientDirection || 'to right'
+        
+        const rgbaColor1 = hexToRgba(color1, opacity)
+        const rgbaColor2 = hexToRgba(color2, opacity)
+
+        if (gradientType === 'radial') {
+          return `background: radial-gradient(circle, ${rgbaColor1}, ${rgbaColor2});`
+        } else {
+          return `background: linear-gradient(${direction}, ${rgbaColor1}, ${rgbaColor2});`
+        }
+      }
+
+      if (bg.type === 'image' && bg.imageUrl) {
+        const size = getBackgroundSize(bg.imageFit)
+        if (opacity < 1) {
+          return `
+            background: linear-gradient(rgba(255, 255, 255, ${1 - opacity}), rgba(255, 255, 255, ${1 - opacity})), url(${bg.imageUrl});
+            background-size: ${size};
+            background-position: center;
+            background-repeat: no-repeat;
+          `
+        } else {
+          return `
+            background: url(${bg.imageUrl});
+            background-size: ${size};
+            background-position: center;
+            background-repeat: no-repeat;
+          `
+        }
+      }
+
+      return `background-color: ${template.backgroundColor};`
+    }
+
+    // Generate text area background CSS
+    const getTextAreaBackgroundCSS = (textArea: any): string => {
+      const bg = textArea.background
+      if (!bg || bg.type === 'transparent') {
+        return ''
+      }
+
+      const opacity = (bg.opacity ?? 100) / 100
+
+      if (bg.type === 'color') {
+        return `background-color: ${hexToRgba(bg.color || '#ffffff', opacity)};`
+      }
+
+      if (bg.type === 'gradient') {
+        const color1 = bg.gradientColor1 || '#ffffff'
+        const color2 = bg.gradientColor2 || '#000000'
+        const gradientType = bg.gradientType || 'linear'
+        const direction = bg.gradientDirection || 'to right'
+        
+        const rgbaColor1 = hexToRgba(color1, opacity)
+        const rgbaColor2 = hexToRgba(color2, opacity)
+
+        if (gradientType === 'radial') {
+          return `background: radial-gradient(circle, ${rgbaColor1}, ${rgbaColor2});`
+        } else {
+          return `background: linear-gradient(${direction}, ${rgbaColor1}, ${rgbaColor2});`
+        }
+      }
+
+      if (bg.type === 'image' && bg.imageUrl) {
+        const size = getBackgroundSize(bg.imageFit)
+        if (opacity < 1) {
+          return `
+            background: linear-gradient(rgba(255, 255, 255, ${1 - opacity}), rgba(255, 255, 255, ${1 - opacity})), url(${bg.imageUrl});
+            background-size: ${size};
+            background-position: center;
+            background-repeat: no-repeat;
+          `
+        } else {
+          return `
+            background: url(${bg.imageUrl});
+            background-size: ${size};
+            background-position: center;
+            background-repeat: no-repeat;
+          `
+        }
+      }
+
+      return ''
+    }
+
     // Create template-specific HTML structure
     const html = `<!DOCTYPE html>
 <html lang="en">
@@ -586,7 +1002,7 @@ export const exportTemplateAsUnifiedHTML = async (
             position: relative;
             width: ${template.width}px;
             height: ${template.height}px;
-            background-color: ${template.backgroundColor};
+            ${getTemplateBackgroundCSS()}
             border: ${template.borderWidth}px solid ${template.borderColor};
             margin: 0 auto;
             border-radius: 8px;
@@ -681,6 +1097,7 @@ export const exportTemplateAsUnifiedHTML = async (
           .map(textArea => {
             const isHTML = textArea.contentType === 'html'
             const contentClass = isHTML ? 'html-content' : 'text-content'
+            const backgroundCSS = getTextAreaBackgroundCSS(textArea)
             return `
             <div class="text-area ${contentClass}" style="
                 left: ${textArea.position.x}px;
@@ -694,6 +1111,7 @@ export const exportTemplateAsUnifiedHTML = async (
                 text-align: ${textArea.style.textAlign};
                 line-height: ${textArea.style.lineHeight};
                 letter-spacing: ${textArea.style.letterSpacing}px;
+                ${backgroundCSS}
             ">${textArea.content}</div>
           `}).join('')}
     </div>
@@ -746,7 +1164,7 @@ export const downloadTemplateExport = async (
         throw new Error('Chart canvas is required for image export')
       }
 
-      dataUrl = await exportTemplateAsImage(template, chartCanvas, options)
+      dataUrl = await exportTemplateAsImage(template, chartCanvas, options, chartConfig)
       mimeType = `image/${format}`
       extension = format
     }
