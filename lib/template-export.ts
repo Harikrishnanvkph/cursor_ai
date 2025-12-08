@@ -77,9 +77,9 @@ async function renderBackgroundOnCanvas(
     const color1 = background.gradientColor1 || '#ffffff'
     const color2 = background.gradientColor2 || '#000000'
     const gradientType = background.gradientType || 'linear'
-    
+
     let gradient: CanvasGradient
-    
+
     if (gradientType === 'radial') {
       const centerX = x + width / 2
       const centerY = y + height / 2
@@ -89,7 +89,7 @@ async function renderBackgroundOnCanvas(
       // Linear gradient
       const direction = background.gradientDirection || 'to right'
       let x0 = x, y0 = y, x1 = x, y1 = y
-      
+
       switch (direction) {
         case 'to right':
           x1 = x + width
@@ -108,13 +108,13 @@ async function renderBackgroundOnCanvas(
           y1 = y + height
           break
       }
-      
+
       gradient = ctx.createLinearGradient(x0, y0, x1, y1)
     }
-    
+
     gradient.addColorStop(0, hexToRgba(color1, opacity))
     gradient.addColorStop(1, hexToRgba(color2, opacity))
-    
+
     ctx.fillStyle = gradient
     ctx.fillRect(x, y, width, height)
   }
@@ -123,19 +123,19 @@ async function renderBackgroundOnCanvas(
     return new Promise((resolve) => {
       const img = new Image()
       img.crossOrigin = 'anonymous'
-      
+
       img.onload = () => {
         ctx.save()
-        
+
         // Apply opacity by setting global alpha
         if (opacity < 1) {
           ctx.globalAlpha = opacity
         }
-        
+
         // Calculate dimensions based on imageFit
         const fit = background.imageFit || 'cover'
         let dx = x, dy = y, dw = width, dh = height
-        
+
         if (fit === 'fill') {
           // Stretch to fill
           ctx.drawImage(img, dx, dy, dw, dh)
@@ -156,16 +156,16 @@ async function renderBackgroundOnCanvas(
           dy = y + (height - dh) / 2
           ctx.drawImage(img, dx, dy, dw, dh)
         }
-        
+
         ctx.restore()
         resolve()
       }
-      
+
       img.onerror = () => {
         console.warn('Failed to load background image:', background.imageUrl)
         resolve()
       }
-      
+
       img.src = background.imageUrl
     })
   }
@@ -226,7 +226,7 @@ async function renderHTMLToCanvas(
       width: width,
       height: height,
     })
-    
+
     return canvas
   } finally {
     // Clean up the temporary container
@@ -257,19 +257,19 @@ function drawPlainText(
 ): void {
   const fontSize = style.fontSize
   const lineHeight = fontSize * style.lineHeight
-  
+
   // Set text styles
   ctx.font = `${style.fontWeight} ${fontSize}px ${style.fontFamily}`
   ctx.fillStyle = style.color
   ctx.textAlign = 'left'
   ctx.textBaseline = 'top'
-  
+
   // Apply letter spacing if supported
   const letterSpacing = style.letterSpacing || 0
   if ('letterSpacing' in ctx && letterSpacing !== 0) {
     (ctx as any).letterSpacing = `${letterSpacing}px`
   }
-  
+
   // Split content by newlines
   const lines = content.split('\n')
   let currentY = y + padding
@@ -283,7 +283,7 @@ function drawPlainText(
       const testLine = currentLine + (currentLine ? ' ' : '') + word
       const metrics = ctx.measureText(testLine)
       const availableWidth = width - (padding * 2)
-      
+
       if (metrics.width > availableWidth && currentLine) {
         const lineText = currentLine.trim()
         if (lineText) {
@@ -295,13 +295,13 @@ function drawPlainText(
             const lineWidth = ctx.measureText(lineText).width
             textX = x + width - lineWidth - padding
           }
-          
+
           ctx.fillText(lineText, textX, currentY)
         }
-        
+
         currentLine = word
         currentY += lineHeight
-        
+
         if (currentY + lineHeight > y + height - padding) {
           return
         }
@@ -309,7 +309,7 @@ function drawPlainText(
         currentLine = testLine
       }
     }
-    
+
     const lineText = currentLine.trim()
     if (lineText) {
       let textX = x + padding
@@ -320,10 +320,10 @@ function drawPlainText(
         const lineWidth = ctx.measureText(lineText).width
         textX = x + width - lineWidth - padding
       }
-      
+
       ctx.fillText(lineText, textX, currentY)
     }
-    
+
     currentY += lineHeight
   })
 }
@@ -341,7 +341,7 @@ export const getHighQualityChartCanvas = async (
   // Create a high-resolution canvas
   const highResCanvas = document.createElement('canvas')
   const highResCtx = highResCanvas.getContext('2d')
-  
+
   if (!highResCtx) {
     throw new Error('Could not get high-resolution canvas context')
   }
@@ -378,7 +378,7 @@ export const exportTemplateAsImage = async (
   // Create a canvas with the template dimensions
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')
-  
+
   if (!ctx) {
     throw new Error('Could not get canvas context')
   }
@@ -390,7 +390,7 @@ export const exportTemplateAsImage = async (
   // Enable high-quality rendering
   ctx.imageSmoothingEnabled = true
   ctx.imageSmoothingQuality = 'high'
-  
+
   // Improve text rendering quality
   if ('textRendering' in ctx) {
     (ctx as any).textRendering = 'optimizeLegibility'
@@ -441,7 +441,7 @@ export const exportTemplateAsImage = async (
           template.chartArea.height
         )
       }
-      
+
       // Get a high-quality version of the chart canvas
       const highQualityChartCanvas = await getHighQualityChartCanvas(
         chartCanvas,
@@ -449,7 +449,7 @@ export const exportTemplateAsImage = async (
         template.chartArea.height,
         scale * 2 // Double the scale for chart quality
       )
-      
+
       // Draw the high-quality chart onto the template
       ctx.drawImage(
         highQualityChartCanvas,
@@ -460,7 +460,7 @@ export const exportTemplateAsImage = async (
       )
     } catch (error) {
       console.warn('Failed to create high-quality chart canvas, falling back to original:', error)
-      
+
       // Draw chart background first (even in fallback)
       if (chartConfig?.background) {
         await renderBackgroundOnCanvas(
@@ -481,24 +481,24 @@ export const exportTemplateAsImage = async (
           template.chartArea.height
         )
       }
-      
+
       // Fallback to original method
       const chartCanvasScaled = document.createElement('canvas')
       const chartCtx = chartCanvasScaled.getContext('2d')
-      
+
       if (chartCtx) {
         chartCanvasScaled.width = template.chartArea.width
         chartCanvasScaled.height = template.chartArea.height
-        
+
         chartCtx.imageSmoothingEnabled = true
         chartCtx.imageSmoothingQuality = 'high'
-        
+
         chartCtx.drawImage(
           chartCanvas,
           0, 0, chartCanvas.width, chartCanvas.height,
           0, 0, template.chartArea.width, template.chartArea.height
         )
-        
+
         ctx.drawImage(
           chartCanvasScaled,
           template.chartArea.x,
@@ -599,7 +599,7 @@ export const exportTemplateAsHTML = async (
       const color2 = bg.gradientColor2 || '#000000'
       const gradientType = bg.gradientType || 'linear'
       const direction = bg.gradientDirection || 'to right'
-      
+
       const rgbaColor1 = hexToRgba(color1, opacity)
       const rgbaColor2 = hexToRgba(color2, opacity)
 
@@ -650,7 +650,7 @@ export const exportTemplateAsHTML = async (
       const color2 = bg.gradientColor2 || '#000000'
       const gradientType = bg.gradientType || 'linear'
       const direction = bg.gradientDirection || 'to right'
-      
+
       const rgbaColor1 = hexToRgba(color1, opacity)
       const rgbaColor2 = hexToRgba(color2, opacity)
 
@@ -805,12 +805,12 @@ export const exportTemplateAsHTML = async (
             ${chartComponents.chartContainer}
         </div>
         ${template.textAreas
-          .filter(ta => ta.visible)
-          .map(textArea => {
-            const isHTML = textArea.contentType === 'html'
-            const contentClass = isHTML ? 'html-content' : 'text-content'
-            const backgroundCSS = getTextAreaBackgroundCSS(textArea)
-            return `
+      .filter(ta => ta.visible)
+      .map(textArea => {
+        const isHTML = textArea.contentType === 'html'
+        const contentClass = isHTML ? 'html-content' : 'text-content'
+        const backgroundCSS = getTextAreaBackgroundCSS(textArea)
+        return `
             <div class="text-area ${contentClass}" style="
                 left: ${textArea.position.x}px;
                 top: ${textArea.position.y}px;
@@ -887,7 +887,7 @@ export const exportTemplateAsUnifiedHTML = async (
         const color2 = bg.gradientColor2 || '#000000'
         const gradientType = bg.gradientType || 'linear'
         const direction = bg.gradientDirection || 'to right'
-        
+
         const rgbaColor1 = hexToRgba(color1, opacity)
         const rgbaColor2 = hexToRgba(color2, opacity)
 
@@ -938,7 +938,7 @@ export const exportTemplateAsUnifiedHTML = async (
         const color2 = bg.gradientColor2 || '#000000'
         const gradientType = bg.gradientType || 'linear'
         const direction = bg.gradientDirection || 'to right'
-        
+
         const rgbaColor1 = hexToRgba(color1, opacity)
         const rgbaColor2 = hexToRgba(color2, opacity)
 
@@ -1093,12 +1093,12 @@ export const exportTemplateAsUnifiedHTML = async (
             ${chartComponents.chartContainer}
         </div>
         ${template.textAreas
-          .filter(ta => ta.visible)
-          .map(textArea => {
-            const isHTML = textArea.contentType === 'html'
-            const contentClass = isHTML ? 'html-content' : 'text-content'
-            const backgroundCSS = getTextAreaBackgroundCSS(textArea)
-            return `
+        .filter(ta => ta.visible)
+        .map(textArea => {
+          const isHTML = textArea.contentType === 'html'
+          const contentClass = isHTML ? 'html-content' : 'text-content'
+          const backgroundCSS = getTextAreaBackgroundCSS(textArea)
+          return `
             <div class="text-area ${contentClass}" style="
                 left: ${textArea.position.x}px;
                 top: ${textArea.position.y}px;
@@ -1145,11 +1145,11 @@ export const downloadTemplateExport = async (
 
     if (format === 'html') {
       const html = await exportTemplateAsHTML(template, chartData, chartConfig, options)
-      
+
       // Create blob and download
       const blob = new Blob([html], { type: 'text/html' })
       const url = URL.createObjectURL(blob)
-      
+
       const link = document.createElement('a')
       link.href = url
       link.download = `${fileName}.html`
@@ -1157,7 +1157,7 @@ export const downloadTemplateExport = async (
       link.click()
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
-      
+
       return
     } else {
       if (!chartCanvas) {

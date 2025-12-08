@@ -15,10 +15,10 @@ import { LinkNode, AutoLinkNode } from '@lexical/link'
 import { ListPlugin } from '@lexical/react/LexicalListPlugin'
 import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin'
 import { AutoLinkPlugin } from '@lexical/react/LexicalAutoLinkPlugin'
-import { 
-  $getRoot, 
-  $getSelection, 
-  $createParagraphNode, 
+import {
+  $getRoot,
+  $getSelection,
+  $createParagraphNode,
   $createTextNode,
   EditorState,
   LexicalEditor,
@@ -26,12 +26,12 @@ import {
   $isTextNode
 } from 'lexical'
 import { $generateHtmlFromNodes, $generateNodesFromDOM } from '@lexical/html'
-import { 
-  Bold, 
-  Italic, 
-  Underline, 
-  List, 
-  ListOrdered, 
+import {
+  Bold,
+  Italic,
+  Underline,
+  List,
+  ListOrdered,
   Link as LinkIcon,
   Code,
   Quote,
@@ -53,7 +53,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { 
+import {
   FORMAT_TEXT_COMMAND,
   FORMAT_ELEMENT_COMMAND,
   UNDO_COMMAND,
@@ -333,7 +333,7 @@ function ToolbarPlugin() {
 
   const insertImage = () => {
     if (!imageUrl) return
-    
+
     editor.update(() => {
       const selection = $getSelection()
       if ($isRangeSelection(selection)) {
@@ -342,12 +342,12 @@ function ToolbarPlugin() {
         img.src = imageUrl
         const textNode = $createTextNode('')
         textNode.setStyle(`background: url(${imageUrl}); background-size: contain; background-repeat: no-repeat; display: inline-block; width: 200px; height: 150px;`)
-        
+
         // Insert as HTML instead
         const parser = new DOMParser()
         const dom = parser.parseFromString(`<p><img src="${imageUrl}" style="max-width: 100%; height: auto; display: block; margin: 8px 0;" /></p>`, 'text/html')
         const nodes = $generateNodesFromDOM(editor, dom)
-        
+
         selection.insertNodes(nodes)
       }
     })
@@ -708,19 +708,56 @@ function LoadHTMLPlugin({ html }: { html: string }) {
 
   useEffect(() => {
     if (!isFirstRender || !html) return
-    
+
     editor.update(() => {
       const parser = new DOMParser()
       const dom = parser.parseFromString(html, 'text/html')
       const nodes = $generateNodesFromDOM(editor, dom)
-      
+
       const root = $getRoot()
       root.clear()
-      
+
       nodes.forEach(node => {
         root.append(node)
       })
-      
+
+      // After importing, traverse all nodes and apply inline styles
+      root.getAllTextNodes().forEach(textNode => {
+        // Get the corresponding DOM element to extract inline styles
+        const key = textNode.getKey()
+        const domNode = editor.getElementByKey(key)
+
+        if (domNode) {
+          const parentElement = domNode.parentElement
+          if (parentElement) {
+            const style = parentElement.getAttribute('style')
+            if (style) {
+              // Parse and apply inline styles
+              const styleObj: Record<string, string> = {}
+              style.split(';').forEach(rule => {
+                const [prop, value] = rule.split(':').map(s => s.trim())
+                if (prop && value) {
+                  styleObj[prop] = value
+                }
+              })
+
+              // Build style string for Lexical
+              let lexicalStyle = ''
+              if (styleObj['color']) lexicalStyle += `color: ${styleObj['color']}; `
+              if (styleObj['font-style']) lexicalStyle += `font-style: ${styleObj['font-style']}; `
+              if (styleObj['font-weight']) lexicalStyle += `font-weight: ${styleObj['font-weight']}; `
+              if (styleObj['background-color']) lexicalStyle += `background-color: ${styleObj['background-color']}; `
+              if (styleObj['text-decoration']) lexicalStyle += `text-decoration: ${styleObj['text-decoration']}; `
+              if (styleObj['font-size']) lexicalStyle += `font-size: ${styleObj['font-size']}; `
+
+              if (lexicalStyle) {
+                textNode.setStyle(lexicalStyle.trim())
+              }
+            }
+          }
+        }
+      })
+
       setIsFirstRender(false)
     })
   }, [editor, html, isFirstRender])
