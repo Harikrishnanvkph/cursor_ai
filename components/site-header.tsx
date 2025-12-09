@@ -4,10 +4,10 @@ import Link from "next/link"
 import { useAuth } from "@/components/auth/AuthProvider"
 import { Button } from "@/components/ui/button"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
-import { 
-  MessageSquare, 
-  Edit3, 
-  BarChart3, 
+import {
+  MessageSquare,
+  Edit3,
+  BarChart3,
 } from "lucide-react"
 
 export function SiteHeader() {
@@ -36,13 +36,13 @@ export function SiteHeader() {
                 Pricing
               </Link>
             </Button>
-            
+
             <Button variant="ghost" size="sm" asChild className="text-gray-600 hover:text-gray-900 hover:bg-gray-100/80 px-4 py-2 rounded-lg font-medium transition-all duration-200 hover:shadow-sm">
-              <Link href="/docs">
+              <Link href="/documentation">
                 Docs
               </Link>
             </Button>
-            
+
             {/* User-specific navigation - Only show when user is signed in */}
             {user && (
               <>
@@ -53,7 +53,7 @@ export function SiteHeader() {
                     AI Chat
                   </Link>
                 </Button>
-                
+
                 <Button size="sm" asChild className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white px-5 py-2 rounded-lg font-medium shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5">
                   <Link href="/editor">
                     <Edit3 className="h-4 w-4 mr-2" />
@@ -69,9 +69,9 @@ export function SiteHeader() {
             {user ? (
               <SimpleProfileDropdown size="md" />
             ) : (
-              <Button 
-                size="lg" 
-                asChild 
+              <Button
+                size="lg"
+                asChild
                 className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white px-8 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               >
                 <Link href="/signin">

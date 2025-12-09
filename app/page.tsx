@@ -8,12 +8,13 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
- 
+
 import { Badge } from "@/components/ui/badge"
 import {
   ArrowRight,
   BarChart3,
   Edit3,
+  FileText,
   History,
   LayoutDashboard,
   MessageSquare,
@@ -40,7 +41,7 @@ export default function HomePage() {
       sessionStorage.setItem('welcomeShown', '1')
     }
   }, [])
-  
+
   // Handle OAuth success redirect
   useEffect(() => {
     const oauthSuccess = searchParams.get('oauth')
@@ -49,26 +50,26 @@ export default function HomePage() {
       const url = new URL(window.location.href)
       url.searchParams.delete('oauth')
       window.history.replaceState({}, '', url.toString())
-      
+
       // Show success message
       toast.success('Successfully signed in with Google!')
-      
+
       // Auto-hide welcome banner after 5 seconds
       const timer = setTimeout(() => {
         setShowWelcome(false)
       }, 5000)
-      
+
       return () => clearTimeout(timer)
     }
   }, [searchParams])
-  
+
   // Auto-hide welcome banner after 5 seconds for existing users
   useEffect(() => {
     if (user && showWelcome) {
       const timer = setTimeout(() => {
         setShowWelcome(false)
       }, 5000)
-      
+
       return () => clearTimeout(timer)
     }
   }, [user, showWelcome])
@@ -183,9 +184,9 @@ export default function HomePage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center text-green-800">
                     {user.avatar_url && (
-                      <Image 
-                        src={user.avatar_url} 
-                        alt="Profile" 
+                      <Image
+                        src={user.avatar_url}
+                        alt="Profile"
                         width={36}
                         height={36}
                         className="rounded-full mr-3"
@@ -241,20 +242,25 @@ export default function HomePage() {
                     ))}
                   </ul>
                   <div className="mt-8 flex flex-col sm:flex-row gap-3">
-                     <Link href="/landing">
+                    <Link href="/landing">
                       <Button size="lg" className="px-7 bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-700 hover:to-cyan-700">
                         <Play className="h-5 w-5 mr-2" /> Start with AI
                         <ArrowRight className="h-5 w-5 ml-2" />
                       </Button>
                     </Link>
-                     <Link href="/board">
+                    <Link href="/board">
                       <Button size="lg" variant="outline" className="px-7">
                         <LayoutDashboard className="h-5 w-5 mr-2" /> View Dashboard
                       </Button>
                     </Link>
-                     <Link href="/editor">
+                    <Link href="/editor">
                       <Button size="lg" variant="outline" className="px-7">
                         <Settings className="h-5 w-5 mr-2" /> Open editor
+                      </Button>
+                    </Link>
+                    <Link href="/documentation">
+                      <Button size="lg" variant="outline" className="px-7">
+                        <FileText className="h-5 w-5 mr-2" /> Documentation
                       </Button>
                     </Link>
                   </div>
@@ -282,20 +288,20 @@ export default function HomePage() {
               <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {valueProps.map((item, index) => (
                   <Card key={index} className="border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-200">
-                <CardHeader>
-                  <div className="p-2.5 rounded-lg bg-indigo-50 w-fit">
+                    <CardHeader>
+                      <div className="p-2.5 rounded-lg bg-indigo-50 w-fit">
                         <item.icon className="h-5 w-5 text-indigo-700" />
-                  </div>
+                      </div>
                       <CardTitle className="text-lg text-gray-900">{item.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
+                    </CardHeader>
+                    <CardContent>
                       <CardDescription className="text-sm leading-relaxed text-gray-600">{item.description}</CardDescription>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </section>
 
           {/* Workflow Section */}
           <section className="py-16 sm:py-20">
@@ -303,18 +309,18 @@ export default function HomePage() {
               <div className="mb-12 max-w-2xl">
                 <h2 className="text-3xl md:text-4xl font-bold text-gray-900">From prompt to publish in minutes</h2>
                 <p className="mt-3 text-gray-600 text-lg">AI handles the heavy lifting while you keep full creative control. Each step is designed for modern data teams, designers and product writers.</p>
-          </div>
+              </div>
               <div className="grid gap-6 md:grid-cols-3">
                 {workflowSteps.map((step) => (
                   <div key={step.step} className="relative border border-gray-200 rounded-2xl bg-white p-6 shadow-sm hover:shadow-md transition-all">
                     <span className="text-sm font-semibold text-indigo-600">Step {step.step}</span>
                     <h3 className="mt-3 text-xl font-semibold text-gray-900">{step.title}</h3>
                     <p className="mt-3 text-sm text-gray-600 leading-relaxed">{step.body}</p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
+            </div>
+          </section>
 
           {/* Export Section */}
           <section className="py-16 sm:py-20 bg-gray-50">
@@ -367,41 +373,41 @@ export default function HomePage() {
             </div>
           </section>
 
-      {/* CTA Section */}
-      <section className="py-16 bg-gradient-to-r from-indigo-600 to-cyan-600">
-        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl md:text-4xl font-bold text-white">Ready to transform your data?</h2>
-          <p className="mt-3 text-indigo-100 text-lg">Create a chart with AI or open the full editor.</p>
-          <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/landing">
-              <Button size="lg" className="bg-white text-gray-900 hover:bg-gray-100">
-                <Sparkles className="h-5 w-5 mr-2" /> Generate with AI
-              </Button>
-            </Link>
-            <Link href="/editor">
-              <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10">
-                <Edit3 className="h-5 w-5 mr-2" /> Open editor
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <div className="p-2 bg-gradient-to-br from-indigo-600 to-cyan-600 rounded-lg">
-                <BarChart3 className="h-5 w-5 text-white" />
+          {/* CTA Section */}
+          <section className="py-16 bg-gradient-to-r from-indigo-600 to-cyan-600">
+            <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
+              <h2 className="text-3xl md:text-4xl font-bold text-white">Ready to transform your data?</h2>
+              <p className="mt-3 text-indigo-100 text-lg">Create a chart with AI or open the full editor.</p>
+              <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+                <Link href="/landing">
+                  <Button size="lg" className="bg-white text-gray-900 hover:bg-gray-100">
+                    <Sparkles className="h-5 w-5 mr-2" /> Generate with AI
+                  </Button>
+                </Link>
+                <Link href="/editor">
+                  <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10">
+                    <Edit3 className="h-5 w-5 mr-2" /> Open editor
+                  </Button>
+                </Link>
               </div>
-              <span className="font-semibold">AIChartor</span>
             </div>
-            <div className="text-sm text-gray-400">© 2024 AIChartor. All rights reserved.</div>
-          </div>
-        </div>
-      </footer>
-    </>
+          </section>
+
+          {/* Footer */}
+          <footer className="bg-gray-900 text-white">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-gradient-to-br from-indigo-600 to-cyan-600 rounded-lg">
+                    <BarChart3 className="h-5 w-5 text-white" />
+                  </div>
+                  <span className="font-semibold">AIChartor</span>
+                </div>
+                <div className="text-sm text-gray-400">© 2024 AIChartor. All rights reserved.</div>
+              </div>
+            </div>
+          </footer>
+        </>
       )}
     </div>
   )
