@@ -753,6 +753,81 @@ export const exportTemplateAsHTML = async (
             overflow: auto;
         }
         
+        /* List styles for HTML content */
+        .text-area.html-content ul {
+            list-style-type: disc;
+            padding-left: 1.5em;
+            margin: 0.5em 0;
+        }
+        
+        .text-area.html-content ol {
+            list-style-type: decimal;
+            padding-left: 1.5em;
+            margin: 0.5em 0;
+        }
+        
+        .text-area.html-content li {
+            margin: 0.25em 0;
+        }
+        
+        .text-area.html-content ul ul {
+            list-style-type: circle;
+        }
+        
+        .text-area.html-content ul ul ul {
+            list-style-type: square;
+        }
+        
+        .text-area.html-content ol ol {
+            list-style-type: lower-alpha;
+        }
+        
+        .text-area.html-content ol ol ol {
+            list-style-type: lower-roman;
+        }
+        
+        /* Heading styles for HTML content */
+        .text-area.html-content h1 {
+            font-size: 2em;
+            font-weight: bold;
+            margin: 8px 0;
+        }
+        
+        .text-area.html-content h2 {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin: 8px 0;
+        }
+        
+        .text-area.html-content h3 {
+            font-size: 1.17em;
+            font-weight: bold;
+            margin: 8px 0;
+        }
+        
+        .text-area.html-content h4 {
+            font-size: 1em;
+            font-weight: bold;
+            margin: 8px 0;
+        }
+        
+        .text-area.html-content h5 {
+            font-size: 0.83em;
+            font-weight: bold;
+            margin: 8px 0;
+        }
+        
+        .text-area.html-content h6 {
+            font-size: 0.67em;
+            font-weight: bold;
+            margin: 8px 0;
+        }
+        
+        /* Paragraph and other text styles */
+        .text-area.html-content p {
+            margin: 0.5em 0;
+        }
+        
         .text-area:hover {
             background-color: rgba(0, 0, 0, 0.02);
         }
@@ -1039,6 +1114,81 @@ export const exportTemplateAsUnifiedHTML = async (
         .text-area.html-content {
             white-space: normal;
             overflow: auto;
+        }
+        
+        /* List styles for HTML content */
+        .text-area.html-content ul {
+            list-style-type: disc;
+            padding-left: 1.5em;
+            margin: 0.5em 0;
+        }
+        
+        .text-area.html-content ol {
+            list-style-type: decimal;
+            padding-left: 1.5em;
+            margin: 0.5em 0;
+        }
+        
+        .text-area.html-content li {
+            margin: 0.25em 0;
+        }
+        
+        .text-area.html-content ul ul {
+            list-style-type: circle;
+        }
+        
+        .text-area.html-content ul ul ul {
+            list-style-type: square;
+        }
+        
+        .text-area.html-content ol ol {
+            list-style-type: lower-alpha;
+        }
+        
+        .text-area.html-content ol ol ol {
+            list-style-type: lower-roman;
+        }
+        
+        /* Heading styles for HTML content */
+        .text-area.html-content h1 {
+            font-size: 2em;
+            font-weight: bold;
+            margin: 8px 0;
+        }
+        
+        .text-area.html-content h2 {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin: 8px 0;
+        }
+        
+        .text-area.html-content h3 {
+            font-size: 1.17em;
+            font-weight: bold;
+            margin: 8px 0;
+        }
+        
+        .text-area.html-content h4 {
+            font-size: 1em;
+            font-weight: bold;
+            margin: 8px 0;
+        }
+        
+        .text-area.html-content h5 {
+            font-size: 0.83em;
+            font-weight: bold;
+            margin: 8px 0;
+        }
+        
+        .text-area.html-content h6 {
+            font-size: 0.67em;
+            font-weight: bold;
+            margin: 8px 0;
+        }
+        
+        /* Paragraph and other text styles */
+        .text-area.html-content p {
+            margin: 0.5em 0;
         }
         
         .text-area:hover {

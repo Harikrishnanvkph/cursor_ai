@@ -1326,7 +1326,7 @@ export function TemplatesPanel() {
           }
           setRichEditorOpen(open)
         }}>
-          <DialogContent className="max-w-[95vw] h-[95vh] flex flex-col p-0">
+          <DialogContent className="max-w-[95vw] h-[95vh] flex flex-col p-0" hideCloseButton>
             {/* Header with title and action buttons */}
             <DialogHeader className="px-3 py-2 border-b shrink-0 flex flex-row items-center justify-between">
               <DialogTitle className="text-sm font-semibold">Rich Text Editor</DialogTitle>

@@ -266,3 +266,60 @@ body {
   padding: 0;
   color: inherit;
 }
+
+/* Smart scrollbar for template text areas - hidden by default, visible on hover when needed */
+.template-text-area {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  /* Hide scrollbar by default but keep scroll functionality */
+  scrollbar-width: none !important;
+  /* Firefox */
+  -ms-overflow-style: none !important;
+  /* IE/Edge */
+}
+
+/* Chrome/Safari/Edge - hide scrollbar by default */
+.template-text-area::-webkit-scrollbar {
+  width: 6px;
+  height: 0;
+}
+
+.template-text-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.template-text-area::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+  transition: background 0.2s ease;
+}
+
+/* Show scrollbar only on hover */
+.template-text-area:hover {
+  scrollbar-width: thin !important;
+  /* Firefox - show on hover */
+}
+
+.template-text-area:hover::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.template-text-area:hover::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* Ensure inner HTML content area doesn't create its own scrollbar */
+.template-text-area .html-content-area {
+  overflow: visible !important;
+}
+
+/* Remove margins from first and last children to prevent unwanted scrollbars */
+.template-text-area>*:first-child,
+.template-text-area .html-content-area>*:first-child {
+  margin-top: 0 !important;
+}
+
+.template-text-area>*:last-child,
+.template-text-area .html-content-area>*:last-child {
+  margin-bottom: 0 !important;
+}

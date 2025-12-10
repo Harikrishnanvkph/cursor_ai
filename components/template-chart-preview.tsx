@@ -421,7 +421,7 @@ export function TemplateChartPreview({
           wordBreak: 'break-word' as const,
           whiteSpace: isHTML ? 'normal' : 'pre-wrap',
           padding: '8px',
-          overflow: isHTML ? 'auto' : 'hidden',
+          // overflow is now handled by CSS class .template-text-area for smart scrollbar behavior
           border: showGuides ? '1px dashed #e5e7eb' : 'none',
           ...backgroundStyle
         }
