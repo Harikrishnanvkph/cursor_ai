@@ -828,6 +828,27 @@ export const exportTemplateAsHTML = async (
             margin: 0.5em 0;
         }
         
+        /* Remove top margin from first element, bottom margin from last element */
+        .text-area.html-content > h1:first-child,
+        .text-area.html-content > h2:first-child,
+        .text-area.html-content > h3:first-child,
+        .text-area.html-content > h4:first-child,
+        .text-area.html-content > h5:first-child,
+        .text-area.html-content > h6:first-child,
+        .text-area.html-content > p:first-child {
+            margin-top: 0;
+        }
+        
+        .text-area.html-content > h1:last-child,
+        .text-area.html-content > h2:last-child,
+        .text-area.html-content > h3:last-child,
+        .text-area.html-content > h4:last-child,
+        .text-area.html-content > h5:last-child,
+        .text-area.html-content > h6:last-child,
+        .text-area.html-content > p:last-child {
+            margin-bottom: 0;
+        }
+        
         .text-area:hover {
             background-color: rgba(0, 0, 0, 0.02);
         }
@@ -1189,6 +1210,27 @@ export const exportTemplateAsUnifiedHTML = async (
         /* Paragraph and other text styles */
         .text-area.html-content p {
             margin: 0.5em 0;
+        }
+        
+        /* Remove top margin from first element, bottom margin from last element */
+        .text-area.html-content > h1:first-child,
+        .text-area.html-content > h2:first-child,
+        .text-area.html-content > h3:first-child,
+        .text-area.html-content > h4:first-child,
+        .text-area.html-content > h5:first-child,
+        .text-area.html-content > h6:first-child,
+        .text-area.html-content > p:first-child {
+            margin-top: 0;
+        }
+        
+        .text-area.html-content > h1:last-child,
+        .text-area.html-content > h2:last-child,
+        .text-area.html-content > h3:last-child,
+        .text-area.html-content > h4:last-child,
+        .text-area.html-content > h5:last-child,
+        .text-area.html-content > h6:last-child,
+        .text-area.html-content > p:last-child {
+            margin-bottom: 0;
         }
         
         .text-area:hover {

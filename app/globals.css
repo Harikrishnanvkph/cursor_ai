@@ -177,6 +177,34 @@ body {
   margin: 8px 0;
 }
 
+/* Remove top margin from first heading, bottom margin from last heading */
+.html-content-area>h1:first-child,
+.html-content-area>h2:first-child,
+.html-content-area>h3:first-child,
+.html-content-area>h4:first-child,
+.html-content-area>h5:first-child,
+.html-content-area>h6:first-child {
+  margin-top: 0;
+}
+
+.html-content-area>h1:last-child,
+.html-content-area>h2:last-child,
+.html-content-area>h3:last-child,
+.html-content-area>h4:last-child,
+.html-content-area>h5:last-child,
+.html-content-area>h6:last-child {
+  margin-bottom: 0;
+}
+
+/* Also handle paragraphs */
+.html-content-area>p:first-child {
+  margin-top: 0;
+}
+
+.html-content-area>p:last-child {
+  margin-bottom: 0;
+}
+
 /* Tiptap Editor Styles */
 .tiptap {
   outline: none;
