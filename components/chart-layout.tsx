@@ -49,72 +49,72 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
       // Get actual messages from chat store
       const chatMessages = useChatStore.getState().messages
       const existingBackendId = useChatStore.getState().backendConversationId
-      
+
       let conversationId: string
       let isUpdate = false
-      
+
       // Check if this chart is already saved to backend
       if (existingBackendId) {
         conversationId = existingBackendId
         isUpdate = true
       } else {
-        
+
         // Create new conversation
         const firstUserMessage = chatMessages.find(m => m.role === 'user')
-        const conversationTitle = firstUserMessage 
-          ? (firstUserMessage.content.length > 60 
-              ? firstUserMessage.content.slice(0, 57) + '...' 
-              : firstUserMessage.content)
+        const conversationTitle = firstUserMessage
+          ? (firstUserMessage.content.length > 60
+            ? firstUserMessage.content.slice(0, 57) + '...'
+            : firstUserMessage.content)
           : `Chart saved on ${new Date().toLocaleDateString()}`
-        
-      const response = await dataService.createConversation(
-        conversationTitle,
+
+        const response = await dataService.createConversation(
+          conversationTitle,
           'Chart saved from editor'
         )
-        
+
         if (response.error) {
           console.error('Failed to create conversation:', response.error)
           toast.error("Failed to save chart. Please try again.")
           return
         }
-        
+
         if (!response.data) {
           toast.error("Failed to create conversation.")
           return
         }
-        
+
         conversationId = response.data.id
-        
+
         // Store the backend conversation ID
         useChatStore.getState().setBackendConversationId(conversationId)
       }
-      
+
       // Now we have conversationId (either existing or newly created)
-      
+
       // Normalize chartConfig before saving: convert dynamicDimension to manualDimensions
       const normalizedConfig = (() => {
         const config = { ...chartConfig };
-        
+
         // If dynamicDimension is active, convert it to manualDimensions
         if (config.dynamicDimension === true) {
           config.manualDimensions = true;
           config.responsive = false;
           delete config.dynamicDimension; // Remove the dynamicDimension flag
-          
+
           // Ensure width and height are preserved
           if (!config.width) config.width = '800px';
           if (!config.height) config.height = '600px';
         } else {
           // Clean up - ensure only responsive OR manualDimensions is set
           delete config.dynamicDimension;
-          
+
           if (config.responsive === true) {
             config.manualDimensions = false;
           } else if (config.manualDimensions === true) {
             config.responsive = false;
           }
         }
-        
+
         return config;
       })();
 
@@ -127,7 +127,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
       if (currentTemplate && (editorMode === 'template' || currentTemplate.id === 'current-cloud-template')) {
         // Save complete template structure (independent copy)
         templateStructureToSave = currentTemplate
-        
+
         // Extract text area content
         templateContentToSave = {}
         currentTemplate.textAreas.forEach(area => {
@@ -172,13 +172,13 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
         templateContentToSave,
         snapshotIdForUpdate
       )
-        
+
       if (snapshotResult.error) {
         console.error('Failed to save chart snapshot:', snapshotResult.error)
         toast.error("Failed to save chart snapshot. Please try again.")
         return
       }
-      
+
       // Get the snapshot ID for linking messages
       const snapshotId = snapshotResult.data?.id
 
@@ -186,7 +186,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
       if (snapshotId) {
         setCurrentSnapshotId(snapshotId)
       }
-      
+
       if (isUpdate) {
         // For updates, we don't need to add any automatic messages
         // The chart snapshot is saved as a new version, which is sufficient
@@ -196,17 +196,17 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
           // Skip the generic initial message since backend already creates it
           return !(m.role === 'assistant' && m.content.includes('Hi! Describe the chart'));
         })
-        
+
         // Save each message to backend in order
         let savedCount = 0
         for (let i = 0; i < messagesToSave.length; i++) {
           const msg = messagesToSave[i]
           try {
             // For assistant messages with chart snapshots, link to the saved snapshot
-            const chartSnapshotId = (msg.role === 'assistant' && msg.chartSnapshot) 
-              ? snapshotId 
+            const chartSnapshotId = (msg.role === 'assistant' && msg.chartSnapshot)
+              ? snapshotId
               : undefined
-            
+
             await dataService.addMessage(
               conversationId,
               msg.role,
@@ -223,13 +223,13 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
         }
         console.log(`✅ Saved ${savedCount}/${messagesToSave.length} messages`)
       }
-      
+
       toast.success(isUpdate ? "Chart updated successfully!" : "Chart saved successfully!")
       console.log(`✅ Chart ${isUpdate ? 'updated' : 'saved'} to backend:`, conversationId)
-      
+
       // Clear the chart from localStorage after successful save
       clearCurrentChart()
-      
+
       // Also clear localStorage history to prevent duplicates
       // The backend now contains the authoritative history
       if (typeof window !== 'undefined') {
@@ -251,7 +251,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
           console.warn('Failed to clear history:', error)
         }
       }
-      
+
       // Don't clear or route - keep the user on the same page with their saved chart
       // Just update the backend conversation ID so next save will update instead of create
       useChatStore.getState().setBackendConversationId(conversationId)
@@ -267,17 +267,20 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
   const handleCancel = () => {
     // Clear all chart data from localStorage using storage-utils
     clearCurrentChart()
-    
+
     // Clear messages and reset stores
     clearMessages()
     startNewConversation()
-    
+
     // Reset chart store
     useChartStore.getState().resetChart()
     useChartStore.getState().setHasJSON(false)
-    
+
+    // Clear all template state to prevent data cascading to new charts
+    useTemplateStore.getState().clearAllTemplateState()
+
     toast.success("Chart cleared from localStorage")
-    
+
     // Navigate to new chart creation (landing page)
     router.push('/landing')
   }
@@ -287,7 +290,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
     const handleResize = () => {
       window.dispatchEvent(new Event('resize'))
     }
-    
+
     const timer = setTimeout(handleResize, 300) // Match this with your transition duration
     return () => clearTimeout(timer)
   }, [isCollapsed, leftSidebarOpen])
@@ -295,7 +298,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
   return (
     <div className="flex flex-1 h-full overflow-hidden relative">
       {/* Chart Area */}
-      <div 
+      <div
         className={cn(
           "transition-all duration-300 p-4 overflow-auto absolute inset-0 right-auto",
           isCollapsed ? "right-16" : "right-[280px]"
@@ -305,8 +308,8 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
           width: isCollapsed ? 'calc(100% - 64px)' : 'calc(100% - 280px)'
         }}
       >
-        <ChartPreview 
-          onToggleSidebar={toggleSidebar} 
+        <ChartPreview
+          onToggleSidebar={toggleSidebar}
           isSidebarCollapsed={isCollapsed}
           onToggleLeftSidebar={() => setLeftSidebarOpen(!leftSidebarOpen)}
           isLeftSidebarCollapsed={!leftSidebarOpen}
@@ -314,7 +317,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
       </div>
 
       {/* Right Sidebar (Config Panel) - Collapsible */}
-      <div 
+      <div
         className={cn(
           "absolute landing-right-sidebar right-0 top-0 bottom-0 border-l bg-white shadow-lg transition-all duration-300 flex flex-col z-10",
           isCollapsed ? "w-16" : "w-[280px]"
@@ -329,20 +332,20 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
             <div className="p-2 border-b border-gray-200 w-full flex justify-center">
               <SimpleProfileDropdown size="md" />
             </div>
-            
+
             {/* Expand Button - Below Profile */}
             <div className="p-2 w-full flex justify-center">
               <Button
                 variant="ghost"
                 size="sm"
-              onClick={toggleSidebar}
+                onClick={toggleSidebar}
                 className="h-10 w-10 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg"
-              title="Expand Settings"
-            >
+                title="Expand Settings"
+              >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
             </div>
-            
+
             {/* Action Buttons: Save, Cancel, History - Below expand button */}
             <div className="flex flex-col items-center gap-2 px-2 w-full">
               <Button
@@ -369,7 +372,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
                 <HistoryDropdown variant="compact" />
               </div>
             </div>
-            
+
             {/* Spacer to push buttons to top */}
             <div className="flex-1"></div>
           </div>
@@ -410,10 +413,10 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
                 </Button>
                 <HistoryDropdown variant="inline" />
               </div>
-              
+
               {/* Spacer to push profile to the right */}
               <div className="flex-1"></div>
-              
+
               {/* Profile Icon - Dropdown Menu - Always visible */}
               <div className="flex-shrink-0">
                 <SimpleProfileDropdown size="sm" />

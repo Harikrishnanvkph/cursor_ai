@@ -190,8 +190,124 @@ async function renderHTMLToCanvas(
   },
   scale: number = 1
 ): Promise<HTMLCanvasElement> {
+  // Create a style element with all the necessary CSS
+  const styleEl = document.createElement('style')
+  styleEl.textContent = `
+    .export-html-container ul,
+    .export-html-container ol {
+      list-style: none;
+      padding-left: 0;
+      margin: 0.5em 0;
+    }
+    .export-html-container li {
+      margin: 0.25em 0;
+      padding-left: 1.5em;
+      position: relative;
+    }
+    .export-html-container ul > li::before {
+      content: "•";
+      position: absolute;
+      left: 0;
+      top: 0;
+      font-size: 1em;
+      line-height: inherit;
+    }
+    .export-html-container ol {
+      counter-reset: list-counter;
+    }
+    .export-html-container ol > li {
+      counter-increment: list-counter;
+    }
+    .export-html-container ol > li::before {
+      content: counter(list-counter) ".";
+      position: absolute;
+      left: 0;
+      top: 0;
+      font-size: 1em;
+      line-height: inherit;
+    }
+    /* Nested list styling */
+    .export-html-container ul ul > li::before { content: "◦"; }
+    .export-html-container ul ul ul > li::before { content: "▪"; }
+    .export-html-container ol ol { counter-reset: nested-counter; }
+    .export-html-container ol ol > li { counter-increment: nested-counter; }
+    .export-html-container ol ol > li::before { content: counter(nested-counter, lower-alpha) "."; }
+    .export-html-container h1 {
+      font-size: 2em;
+      font-weight: bold;
+      margin: 8px 0;
+      display: block;
+    }
+    .export-html-container h2 {
+      font-size: 1.5em;
+      font-weight: bold;
+      margin: 8px 0;
+      display: block;
+    }
+    .export-html-container h3 {
+      font-size: 1.17em;
+      font-weight: bold;
+      margin: 8px 0;
+      display: block;
+    }
+    .export-html-container h4 {
+      font-size: 1em;
+      font-weight: bold;
+      margin: 8px 0;
+      display: block;
+    }
+    .export-html-container h5 {
+      font-size: 0.83em;
+      font-weight: bold;
+      margin: 8px 0;
+      display: block;
+    }
+    .export-html-container h6 {
+      font-size: 0.67em;
+      font-weight: bold;
+      margin: 8px 0;
+      display: block;
+    }
+    .export-html-container p {
+      margin: 0.5em 0;
+      display: block;
+    }
+    /* Image styling to prevent overlay */
+    .export-html-container img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 0.5em 0;
+    }
+    /* Remove top margin from first element, bottom margin from last element */
+    .export-html-container > h1:first-child,
+    .export-html-container > h2:first-child,
+    .export-html-container > h3:first-child,
+    .export-html-container > h4:first-child,
+    .export-html-container > h5:first-child,
+    .export-html-container > h6:first-child,
+    .export-html-container > p:first-child,
+    .export-html-container > ul:first-child,
+    .export-html-container > ol:first-child {
+      margin-top: 0;
+    }
+    .export-html-container > h1:last-child,
+    .export-html-container > h2:last-child,
+    .export-html-container > h3:last-child,
+    .export-html-container > h4:last-child,
+    .export-html-container > h5:last-child,
+    .export-html-container > h6:last-child,
+    .export-html-container > p:last-child,
+    .export-html-container > ul:last-child,
+    .export-html-container > ol:last-child {
+      margin-bottom: 0;
+    }
+  `
+  document.head.appendChild(styleEl)
+
   // Create a temporary container that matches the text area styling exactly
   const container = document.createElement('div')
+  container.className = 'export-html-container'
   container.style.cssText = `
     position: fixed;
     left: -9999px;
@@ -207,7 +323,7 @@ async function renderHTMLToCanvas(
     letter-spacing: ${style.letterSpacing}px;
     padding: 8px;
     box-sizing: border-box;
-    overflow: hidden;
+    overflow: visible;
     word-wrap: break-word;
     white-space: normal;
     background: transparent;
@@ -229,8 +345,9 @@ async function renderHTMLToCanvas(
 
     return canvas
   } finally {
-    // Clean up the temporary container
+    // Clean up the temporary container and style element
     document.body.removeChild(container)
+    document.head.removeChild(styleEl)
   }
 }
 

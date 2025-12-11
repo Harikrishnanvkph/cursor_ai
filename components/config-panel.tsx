@@ -69,8 +69,8 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
         const firstUserMessage = chatMessages.find(m => m.role === 'user')
         const conversationTitle = firstUserMessage
           ? (firstUserMessage.content.length > 60
-              ? firstUserMessage.content.slice(0, 57) + '...'
-              : firstUserMessage.content)
+            ? firstUserMessage.content.slice(0, 57) + '...'
+            : firstUserMessage.content)
           : `Chart saved on ${new Date().toLocaleDateString()}`
 
         const response = await dataService.createConversation(
@@ -96,27 +96,27 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
       // Normalize chartConfig before saving: convert dynamicDimension to manualDimensions
       const normalizedConfig = (() => {
         const config = { ...chartConfig };
-        
+
         // If dynamicDimension is active, convert it to manualDimensions
         if (config.dynamicDimension === true) {
           config.manualDimensions = true;
           config.responsive = false;
           delete config.dynamicDimension; // Remove the dynamicDimension flag
-          
+
           // Ensure width and height are preserved
           if (!config.width) config.width = '800px';
           if (!config.height) config.height = '600px';
         } else {
           // Clean up - ensure only responsive OR manualDimensions is set
           delete config.dynamicDimension;
-          
+
           if (config.responsive === true) {
             config.manualDimensions = false;
           } else if (config.manualDimensions === true) {
             config.responsive = false;
           }
         }
-        
+
         return config;
       })();
 
@@ -130,7 +130,7 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
       if (currentTemplate && (editorMode === 'template' || currentTemplate.id === 'current-cloud-template')) {
         // Save complete template structure (independent copy)
         templateStructureToSave = currentTemplate
-        
+
         // Extract text area content
         currentTemplate.textAreas.forEach(area => {
           if (templateContentToSave[area.type]) {
@@ -145,12 +145,12 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
           }
           hasTemplateContent = true
         })
-        
+
       }
 
       // Get current snapshot ID for updates
       const { currentSnapshotId } = useChartStore.getState();
-      
+
       // Save chart snapshot (updates if snapshotId exists, otherwise creates new)
       const snapshotResult = await dataService.saveChartSnapshot(
         conversationId,
@@ -169,7 +169,7 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
       }
 
       const snapshotId = snapshotResult.data?.id
-      
+
       // Update current snapshot ID in store after save
       if (snapshotId) {
         useChartStore.getState().setCurrentSnapshotId(snapshotId)
@@ -246,6 +246,8 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
     resetChart()
     setHasJSON(false)
     setBackendConversationId(null)
+    // Clear all template state to prevent data cascading to new charts
+    useTemplateStore.getState().clearAllTemplateState()
     toast.success("Chart cleared")
     // Stay on editor page - don't route away
   };
@@ -331,17 +333,17 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
             </Button>
             <HistoryDropdown variant="inline" />
           </div>
-          
+
           {/* Spacer to push profile to the right */}
           <div className="flex-1"></div>
-          
+
           {/* Profile Icon - Dropdown Menu - Always visible */}
           <div className="flex-shrink-0">
             <SimpleProfileDropdown size="sm" />
           </div>
         </div>
       )}
-      
+
       {/* Panel Content */}
       <div className="flex-1 overflow-y-auto p-4 bg-white">
         <div className="animate-in fade-in duration-200">

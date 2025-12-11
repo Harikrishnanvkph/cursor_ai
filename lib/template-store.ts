@@ -92,27 +92,27 @@ interface TemplateStore {
   draftTemplate: TemplateLayout | null
   setDraftTemplate: (template: TemplateLayout | null) => void
   clearDraft: () => void
-  
+
   // Generate mode (chart or template)
   generateMode: 'chart' | 'template'
   setGenerateMode: (mode: 'chart' | 'template') => void
-  
+
   // Editor mode state
   editorMode: EditorMode
   templateInBackground: TemplateLayout | null // Keep template when in chart mode
   chartDimensionBackup: ChartDimensionState | null // Preserve chart dimensions when switching modes
-  
+
   // Template management
   templates: TemplateLayout[]
   setCurrentTemplate: (template: TemplateLayout | null) => void
   addTemplate: (template: TemplateLayout) => void
   updateTemplate: (id: string, updates: Partial<TemplateLayout>) => void
   deleteTemplate: (id: string) => Promise<void>
-  
+
   // Cloud sync
   syncTemplatesFromCloud: () => Promise<void>
   isSyncing: boolean
-  
+
   // Text area management
   addTextArea: (textArea: Omit<TemplateTextArea, 'id'>) => void
   updateTextArea: (id: string, updates: Partial<TemplateTextArea>) => void
@@ -123,11 +123,11 @@ interface TemplateStore {
   addDraftTextArea: (textArea: Omit<TemplateTextArea, 'id'>) => void
   updateDraftTextArea: (id: string, updates: Partial<TemplateTextArea>) => void
   deleteDraftTextArea: (id: string) => void
-  
+
   // Template operations
   applyTemplate: (templateId: string) => void
   resetTemplate: () => void
-  
+
   // Content transfer from Current Cloud Template
   originalCloudTemplateContent: TemplateLayout | null // Store original Current Cloud Template content
   modifiedCloudTemplateContent: TemplateLayout | null // Store modified Current Cloud Template (if modified before switching)
@@ -137,20 +137,23 @@ interface TemplateStore {
   clearUnusedContents: () => void
   removeUnusedContent: (index: number) => void
   updateUnusedContent: (index: number, content: string) => void
-  
+
   // Mode management
   setEditorMode: (mode: EditorMode) => void
   shouldShowTemplate: () => boolean
-  
+
   // Content type preferences for AI generation
   contentTypePreferences: Record<string, 'text' | 'html'> // { textAreaId: 'text' | 'html' }
   setContentTypePreferences: (preferences: Record<string, 'text' | 'html'>) => void
-  
+
   // Section notes for AI generation guidance
   sectionNotes: Record<string, string> // { textAreaId: "note text" }
   setSectionNotes: (notes: Record<string, string>) => void
   updateSectionNote: (textAreaId: string, note: string) => void
   clearSectionNote: (textAreaId: string) => void
+
+  // Clear all template state (used when clearing chart and starting new)
+  clearAllTemplateState: () => void
 }
 
 // Default templates based on the wireframes
@@ -458,7 +461,7 @@ export const useTemplateStore = create<TemplateStore>()(
       contentTypePreferences: {},
       sectionNotes: {},
       unusedContents: [],
-      
+
       setDraftTemplate: (template) => set({ draftTemplate: template }),
       clearDraft: () => set({ draftTemplate: null }),
       setGenerateMode: (mode) => set({ generateMode: mode }),
@@ -467,7 +470,7 @@ export const useTemplateStore = create<TemplateStore>()(
         const state = get()
         // If setting to null, also clear content type preferences and section notes
         if (template === null) {
-          set({ 
+          set({
             currentTemplate: null,
             contentTypePreferences: {},
             sectionNotes: {}
@@ -476,7 +479,7 @@ export const useTemplateStore = create<TemplateStore>()(
         }
         // If this is the Current Cloud Template, store it as original source
         if (template?.id === 'current-cloud-template' && !state.originalCloudTemplateContent) {
-          set({ 
+          set({
             currentTemplate: template,
             originalCloudTemplateContent: { ...template } // Store original for content transfer
           })
@@ -484,36 +487,36 @@ export const useTemplateStore = create<TemplateStore>()(
           set({ currentTemplate: template })
         }
       },
-      
+
       addTemplate: (template) => set((state) => ({
         templates: [...state.templates, template]
       })),
-      
+
       updateTemplate: (id, updates) => set((state) => ({
         templates: state.templates.map(t => t.id === id ? { ...t, ...updates } : t),
-        currentTemplate: state.currentTemplate?.id === id 
+        currentTemplate: state.currentTemplate?.id === id
           ? { ...state.currentTemplate, ...updates }
           : state.currentTemplate
       })),
-      
+
       deleteTemplate: async (id) => {
         const state = get()
         const template = state.templates.find(t => t.id === id)
-        
+
         // Check if this is a cloud template (UUID format)
         // If the ID is a UUID, it's definitely from cloud (Supabase generates UUIDs)
         const idStr = String(id || '').trim()
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
         const isCloudTemplate = uuidRegex.test(idStr)
-        
+
         // Delete from cloud if it's a cloud template
         if (isCloudTemplate) {
           try {
             const { dataService } = await import('./data-service')
             const { toast } = await import('sonner')
-            
+
             const response = await dataService.deleteTemplate(id)
-            
+
             if (response.error) {
               console.error('Failed to delete template from cloud:', response.error)
               toast.error('Template deleted locally but failed to delete from cloud')
@@ -530,7 +533,7 @@ export const useTemplateStore = create<TemplateStore>()(
           const { toast } = await import('sonner')
           toast.success('Template deleted successfully')
         }
-        
+
         // Delete from local state
         const remaining = state.templates.filter(t => t.id !== id)
         const deletedWasCurrent = state.currentTemplate?.id === id
@@ -558,11 +561,11 @@ export const useTemplateStore = create<TemplateStore>()(
 
         set(next)
       },
-      
+
       addTextArea: (textArea) => set((state) => {
         const newTextArea = { ...textArea, id: `text-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` }
         // Enforce uniqueness of singletons
-        if (["title","heading","main"].includes(textArea.type)) {
+        if (["title", "heading", "main"].includes(textArea.type)) {
           if (state.currentTemplate?.textAreas.some(t => t.type === textArea.type)) {
             return state
           }
@@ -577,13 +580,13 @@ export const useTemplateStore = create<TemplateStore>()(
         }
         return state
       }),
-      
+
       updateTextArea: (id, updates) => set((state) => {
         const updateTextAreas = (template: TemplateLayout | null) => {
           if (!template) return null
           return {
             ...template,
-            textAreas: template.textAreas.map(ta => 
+            textAreas: template.textAreas.map(ta =>
               ta.id === id ? { ...ta, ...updates } : ta
             )
           }
@@ -595,7 +598,7 @@ export const useTemplateStore = create<TemplateStore>()(
           templateInBackground: updateTextAreas(state.templateInBackground)
         }
       }),
-      
+
       deleteTextArea: (id) => set((state) => {
         if (state.currentTemplate) {
           return {
@@ -607,14 +610,14 @@ export const useTemplateStore = create<TemplateStore>()(
         }
         return state
       }),
-      
+
       setSelectedTextAreaId: (id) => set({ selectedTextAreaId: id }),
 
       // Draft text area operations
       addDraftTextArea: (textArea) => set((state) => {
         const newTextArea = { ...textArea, id: `text-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` }
         // Enforce uniqueness of singletons
-        if (["title","heading","main"].includes(textArea.type)) {
+        if (["title", "heading", "main"].includes(textArea.type)) {
           if (state.draftTemplate?.textAreas.some(t => t.type === textArea.type)) {
             return state
           }
@@ -634,7 +637,7 @@ export const useTemplateStore = create<TemplateStore>()(
           return {
             draftTemplate: {
               ...state.draftTemplate,
-              textAreas: state.draftTemplate.textAreas.map(ta => 
+              textAreas: state.draftTemplate.textAreas.map(ta =>
                 ta.id === id ? { ...ta, ...updates } : ta
               )
             }
@@ -653,30 +656,30 @@ export const useTemplateStore = create<TemplateStore>()(
         }
         return state
       }),
-      
+
       applyTemplate: (templateId) => {
         const state = get()
         const template = state.templates.find(t => t.id === templateId)
         if (!template) return
-        
+
         // Before switching, if current template is Current Cloud Template, save its modified state
         if (state.currentTemplate?.id === 'current-cloud-template') {
           // Store the current modified version before switching away
           set({ modifiedCloudTemplateContent: { ...state.currentTemplate } })
         }
-        
+
         // Get source content (always from Current Cloud Template if available)
         const sourceTemplate = state.originalCloudTemplateContent || state.modifiedCloudTemplateContent
-        
+
         // If no source template, just apply the template without content transfer
         if (!sourceTemplate) {
-          set({ 
+          set({
             currentTemplate: { ...template },
             templateInBackground: { ...template },
             editorMode: 'template',
             unusedContents: [] // Clear unused contents
           })
-          
+
           // Update chart dimensions
           const chartStore = useChartStore.getState()
           chartStore.updateChartConfig({
@@ -689,11 +692,11 @@ export const useTemplateStore = create<TemplateStore>()(
           })
           return
         }
-        
+
         // Transfer content from source to destination
         const sourceTextAreas = sourceTemplate.textAreas || []
         const destinationTextAreas = template.textAreas || []
-        
+
         // Group source areas by type
         const sourceByType: Record<string, TemplateTextArea[]> = {}
         sourceTextAreas.forEach(area => {
@@ -702,7 +705,7 @@ export const useTemplateStore = create<TemplateStore>()(
           }
           sourceByType[area.type].push(area)
         })
-        
+
         // Group destination areas by type
         const destByType: Record<string, TemplateTextArea[]> = {}
         destinationTextAreas.forEach(area => {
@@ -711,18 +714,18 @@ export const useTemplateStore = create<TemplateStore>()(
           }
           destByType[area.type].push(area)
         })
-        
+
         // Transfer content and collect unused
         const unusedContents: Array<{ type: string; content: string; style?: any; contentType?: 'text' | 'html' }> = []
         const updatedTextAreas = destinationTextAreas.map(destArea => {
           const sourceAreas = sourceByType[destArea.type] || []
-          
+
           if (sourceAreas.length > 0) {
             // Use first source area for this destination area
             const sourceArea = sourceAreas[0]
             // Remove used source area
             sourceByType[destArea.type] = sourceAreas.slice(1)
-            
+
             // Preserve styles, content, AND contentType from source but adapt position to destination
             return {
               ...destArea,
@@ -732,11 +735,11 @@ export const useTemplateStore = create<TemplateStore>()(
               // Position stays as destination (already set in template structure)
             }
           }
-          
+
           // No matching source, keep destination as is (empty content)
           return destArea
         })
-        
+
         // Collect remaining unused content (including contentType for proper rendering later)
         Object.keys(sourceByType).forEach(type => {
           sourceByType[type].forEach(area => {
@@ -748,21 +751,21 @@ export const useTemplateStore = create<TemplateStore>()(
             })
           })
         })
-        
+
         // Apply template with transferred content
-        set({ 
-          currentTemplate: { 
-            ...template, 
-            textAreas: updatedTextAreas 
+        set({
+          currentTemplate: {
+            ...template,
+            textAreas: updatedTextAreas
           },
-          templateInBackground: { 
-            ...template, 
-            textAreas: updatedTextAreas 
+          templateInBackground: {
+            ...template,
+            textAreas: updatedTextAreas
           },
           editorMode: 'template',
           unusedContents
         })
-        
+
         // Update chart dimensions to match template chart area
         const chartStore = useChartStore.getState()
         chartStore.updateChartConfig({
@@ -774,7 +777,7 @@ export const useTemplateStore = create<TemplateStore>()(
           maintainAspectRatio: false
         })
       },
-      
+
       resetTemplate: () => {
         const state = get()
         if (state.currentTemplate) {
@@ -794,7 +797,7 @@ export const useTemplateStore = create<TemplateStore>()(
           }
         }
       },
-      
+
       setEditorMode: (mode) => set((state) => {
         if (mode === state.editorMode) {
           return state
@@ -868,20 +871,20 @@ export const useTemplateStore = create<TemplateStore>()(
 
         return { editorMode: mode }
       }),
-      
+
       shouldShowTemplate: () => {
         const state = get()
         return state.editorMode === 'template' && (state.currentTemplate !== null || state.templateInBackground !== null)
       },
-      
+
       // Content transfer management
       setOriginalCloudTemplateContent: (template) => set({ originalCloudTemplateContent: template }),
       setModifiedCloudTemplateContent: (template) => set({ modifiedCloudTemplateContent: template }),
       clearUnusedContents: () => set({ unusedContents: [] }),
-      
+
       // Content type preferences for AI generation
       setContentTypePreferences: (preferences) => set({ contentTypePreferences: preferences }),
-      
+
       // Section notes for AI generation
       setSectionNotes: (notes) => set({ sectionNotes: notes }),
       updateSectionNote: (textAreaId, note) => set((state) => ({
@@ -894,35 +897,35 @@ export const useTemplateStore = create<TemplateStore>()(
         const { [textAreaId]: _, ...rest } = state.sectionNotes
         return { sectionNotes: rest }
       }),
-      
+
       removeUnusedContent: (index) => set((state) => ({
         unusedContents: state.unusedContents.filter((_, i) => i !== index)
       })),
       updateUnusedContent: (index, content) => set((state) => ({
-        unusedContents: state.unusedContents.map((item, i) => 
+        unusedContents: state.unusedContents.map((item, i) =>
           i === index ? { ...item, content } : item
         )
       })),
-      
+
       // Sync templates from cloud (merge with local, cloud takes precedence)
       syncTemplatesFromCloud: async () => {
         const state = get()
         if (state.isSyncing) return
-        
+
         set({ isSyncing: true })
-        
+
         try {
           // Dynamic import to avoid circular dependencies
           const { dataService } = await import('./data-service')
-          
+
           const response = await dataService.getTemplates(true)
-          
+
           if (response.error) {
             console.warn('Failed to sync templates from cloud:', response.error)
             set({ isSyncing: false })
             return
           }
-          
+
           if (response.data && response.data.length > 0) {
             // Merge cloud templates with local templates
             // Cloud templates take precedence (they have cloud IDs)
@@ -939,10 +942,10 @@ export const useTemplateStore = create<TemplateStore>()(
               console.log('☁️ Syncing cloud template:', { cloudId: t.id, templateId: template.id, name: template.name })
               return template
             })
-            
+
             // Get default template IDs to preserve them
             const defaultIds = new Set(defaultTemplates.map(t => t.id))
-            
+
             // Keep default templates and merge with cloud templates
             // If a template with same ID exists in cloud, use cloud version
             const localTemplates = state.templates.filter(t => defaultIds.has(t.id))
@@ -950,19 +953,19 @@ export const useTemplateStore = create<TemplateStore>()(
             const localCustomTemplates = state.templates.filter(
               t => !defaultIds.has(t.id) && !cloudTemplateIds.has(t.id)
             )
-            
+
             // Combine: defaults + cloud + local-only custom templates
             const mergedTemplates = [
               ...localTemplates,
               ...cloudTemplates,
               ...localCustomTemplates
             ]
-            
-            set({ 
+
+            set({
               templates: mergedTemplates,
-              isSyncing: false 
+              isSyncing: false
             })
-            
+
             console.log(`✅ Synced ${cloudTemplates.length} templates from cloud`)
           } else {
             set({ isSyncing: false })
@@ -971,6 +974,22 @@ export const useTemplateStore = create<TemplateStore>()(
           console.error('Error syncing templates from cloud:', error)
           set({ isSyncing: false })
         }
+      },
+
+      // Clear all template state (used when clearing chart and starting new)
+      clearAllTemplateState: () => {
+        console.log('🧹 Clearing all template state')
+        set({
+          currentTemplate: null,
+          selectedTextAreaId: null,
+          templateInBackground: null,
+          originalCloudTemplateContent: null,
+          modifiedCloudTemplateContent: null,
+          unusedContents: [],
+          contentTypePreferences: {},
+          sectionNotes: {},
+          editorMode: 'chart'
+        })
       }
     }),
     {

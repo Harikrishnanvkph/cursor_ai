@@ -51,7 +51,7 @@ const CLEARABLE_STORES = [
  */
 const PERMANENT_KEYS = [
   'theme',
-  'language', 
+  'language',
   'cookies-accepted',
   'user-id',
 ];
@@ -75,12 +75,12 @@ export function getUserStorageKey(baseName: string): string {
   if (typeof window === 'undefined') {
     return `${baseName}-anonymous`;
   }
-  
+
   const userId = localStorage.getItem('user-id');
   if (!userId || userId === 'null' || userId === 'undefined') {
     return `${baseName}-anonymous`;
   }
-  
+
   return `${baseName}-${userId}`;
 }
 
@@ -92,7 +92,7 @@ export function getCurrentUserId(): string {
   if (typeof window === 'undefined') {
     return 'anonymous';
   }
-  
+
   const userId = localStorage.getItem('user-id');
   return userId && userId !== 'null' && userId !== 'undefined' ? userId : 'anonymous';
 }
@@ -103,7 +103,7 @@ export function getCurrentUserId(): string {
  */
 export function clearUserSpecificStorage(userId: string): void {
   if (typeof window === 'undefined') return;
-  
+
   const storeNames = [
     'chart-store-with-sync',
     'chart-store',
@@ -115,9 +115,9 @@ export function clearUserSpecificStorage(userId: string): void {
     'offline-conversations',
     'offline-chart-data',
   ];
-  
+
   const keysToRemove = storeNames.map(name => `${name}-${userId}`);
-  
+
   let removedCount = 0;
   keysToRemove.forEach(key => {
     try {
@@ -129,7 +129,7 @@ export function clearUserSpecificStorage(userId: string): void {
       console.warn(`Failed to remove ${key}:`, error);
     }
   });
-  
+
   console.log(`✅ Cleared ${removedCount} localStorage keys for user: ${userId}`);
 }
 
@@ -138,17 +138,17 @@ export function clearUserSpecificStorage(userId: string): void {
  */
 export function clearAllStorage(): void {
   if (typeof window === 'undefined') return;
-  
+
   try {
     const keysToKeep = ['theme', 'language', 'cookies-accepted'];
     const allKeys = Object.keys(localStorage);
-    
+
     allKeys.forEach(key => {
       if (!keysToKeep.includes(key)) {
         localStorage.removeItem(key);
       }
     });
-    
+
     console.log('✅ Cleared all user-specific localStorage');
   } catch (error) {
     console.error('Failed to clear all storage:', error);
@@ -162,7 +162,7 @@ export function clearAllStorage(): void {
  */
 export function getUserStorageKeys(userId: string): string[] {
   if (typeof window === 'undefined') return [];
-  
+
   const allKeys = Object.keys(localStorage);
   return allKeys.filter(key => key.includes(`-${userId}`));
 }
@@ -206,7 +206,7 @@ export function createUserSpecificStorage(baseName: string) {
  */
 export function getUserStorageValue<T>(baseName: string, defaultValue: T): T {
   if (typeof window === 'undefined') return defaultValue;
-  
+
   try {
     const key = getUserStorageKey(baseName);
     const item = localStorage.getItem(key);
@@ -224,7 +224,7 @@ export function getUserStorageValue<T>(baseName: string, defaultValue: T): T {
  */
 export function setUserStorageValue<T>(baseName: string, value: T): void {
   if (typeof window === 'undefined') return;
-  
+
   try {
     const key = getUserStorageKey(baseName);
     localStorage.setItem(key, JSON.stringify(value));
@@ -239,10 +239,10 @@ export function setUserStorageValue<T>(baseName: string, value: T): void {
  */
 export function getAllStoredUserIds(): string[] {
   if (typeof window === 'undefined') return [];
-  
+
   const userIds = new Set<string>();
   const allKeys = Object.keys(localStorage);
-  
+
   allKeys.forEach(key => {
     const parts = key.split('-');
     if (parts.length >= 3) {
@@ -252,7 +252,7 @@ export function getAllStoredUserIds(): string[] {
       }
     }
   });
-  
+
   return Array.from(userIds);
 }
 
@@ -261,10 +261,10 @@ export function getAllStoredUserIds(): string[] {
  */
 export function clearAnonymousData(): void {
   if (typeof window === 'undefined') return;
-  
+
   const allKeys = Object.keys(localStorage);
   const anonymousKeys = allKeys.filter(key => key.endsWith('-anonymous'));
-  
+
   anonymousKeys.forEach(key => {
     try {
       localStorage.removeItem(key);
@@ -272,7 +272,7 @@ export function clearAnonymousData(): void {
       console.warn(`Failed to remove anonymous key ${key}:`, error);
     }
   });
-  
+
   if (anonymousKeys.length > 0) {
     console.log(`✅ Cleared ${anonymousKeys.length} anonymous storage keys`);
   }
@@ -286,10 +286,10 @@ export function getUserStorageStats() {
   if (typeof window === 'undefined') {
     return { keys: 0, bytes: 0, megabytes: 0 };
   }
-  
+
   const userId = getCurrentUserId();
   const userKeys = getUserStorageKeys(userId);
-  
+
   let totalBytes = 0;
   userKeys.forEach(key => {
     const value = localStorage.getItem(key);
@@ -297,7 +297,7 @@ export function getUserStorageStats() {
       totalBytes += value.length * 2;
     }
   });
-  
+
   return {
     keys: userKeys.length,
     bytes: totalBytes,
@@ -314,67 +314,67 @@ export async function saveChartToBackend(): Promise<boolean> {
   try {
     const { dataService } = await import('./data-service');
     const { authApi } = await import('@/lib/auth-client');
-    
+
     // Check if user is authenticated
     const authCheck = await authApi.me();
     if (!authCheck.user) {
       console.log('User not authenticated, cannot save to backend');
       return false;
     }
-    
+
     // Get current chart data from localStorage
     const chartData = getUserStorageValue<{ state?: { chartType?: string; chartData?: unknown; chartConfig?: Record<string, unknown> } } | null>('chart-store-with-sync', null);
     if (!chartData || !chartData.state) {
       console.log('No chart data to save');
       return false;
     }
-    
+
     const { chartType, chartData: chartDataValue, chartConfig } = chartData.state;
-    
+
     if (!chartType) {
       console.log('No chart type found');
       return false;
     }
-    
+
     // Create conversation
     const conversationResponse = await dataService.createConversation(
       'Saved Chart',
       'Manually saved chart'
     );
-    
+
     if (conversationResponse.error) {
       console.error('Failed to create conversation:', conversationResponse.error);
       return false;
     }
-    
+
     const conversationId = conversationResponse.data.id;
-    
+
     // Normalize chartConfig before saving: convert dynamicDimension to manualDimensions
     const normalizedConfig = (() => {
       const config = { ...chartConfig };
-      
+
       // If dynamicDimension is active, convert it to manualDimensions
       if (config.dynamicDimension === true) {
         config.manualDimensions = true;
         config.responsive = false;
         delete config.dynamicDimension; // Remove the dynamicDimension flag
-        
+
         // Ensure width and height are preserved
         if (!config.width) config.width = '800px';
         if (!config.height) config.height = '600px';
-        
+
         console.log('📊 Converted dynamicDimension to manualDimensions for storage');
       } else {
         // Clean up - ensure only responsive OR manualDimensions is set
         delete config.dynamicDimension;
-        
+
         if (config.responsive === true) {
           config.manualDimensions = false;
         } else if (config.manualDimensions === true) {
           config.responsive = false;
         }
       }
-      
+
       return config;
     })();
 
@@ -385,15 +385,15 @@ export async function saveChartToBackend(): Promise<boolean> {
       chartDataValue,
       normalizedConfig
     );
-    
+
     if (snapshotResult.error) {
       console.error('Failed to save chart snapshot:', snapshotResult.error);
       return false;
     }
-    
+
     console.log('✅ Chart saved to backend successfully');
     return true;
-    
+
   } catch (error) {
     console.error('Error saving chart to backend:', error);
     return false;
@@ -405,15 +405,16 @@ export async function saveChartToBackend(): Promise<boolean> {
  */
 export function clearCurrentChart(): void {
   if (typeof window === 'undefined') return;
-  
+
   const userId = getCurrentUserId();
   const chartKeys = [
     'chart-store-with-sync',
     'chart-store',
     'chat-store',
     'enhanced-chat-store',
+    'template-store', // Also clear template data to prevent cascading to new charts
   ];
-  
+
   chartKeys.forEach(name => {
     const key = `${name}-${userId}`;
     try {
@@ -424,7 +425,7 @@ export function clearCurrentChart(): void {
       console.warn(`Failed to remove ${key}:`, error);
     }
   });
-  
+
   console.log('✅ Current chart cleared from localStorage');
 }
 // =============================================
@@ -436,7 +437,7 @@ export function clearCurrentChart(): void {
  */
 export function updateLastActivity(): void {
   if (typeof window === 'undefined') return;
-  
+
   try {
     localStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
   } catch (error) {
@@ -449,7 +450,7 @@ export function updateLastActivity(): void {
  */
 export function getLastActivity(): number {
   if (typeof window === 'undefined') return Date.now();
-  
+
   try {
     const timestamp = localStorage.getItem(LAST_ACTIVITY_KEY);
     return timestamp ? parseInt(timestamp, 10) : Date.now();
@@ -483,7 +484,7 @@ interface StorageTimestamps {
  */
 function getStorageTimestamps(): StorageTimestamps {
   if (typeof window === 'undefined') return {};
-  
+
   try {
     const data = localStorage.getItem(STORAGE_TIMESTAMPS_KEY);
     return data ? JSON.parse(data) : {};
@@ -497,7 +498,7 @@ function getStorageTimestamps(): StorageTimestamps {
  */
 function saveStorageTimestamps(timestamps: StorageTimestamps): void {
   if (typeof window === 'undefined') return;
-  
+
   try {
     localStorage.setItem(STORAGE_TIMESTAMPS_KEY, JSON.stringify(timestamps));
   } catch (error) {
@@ -510,11 +511,11 @@ function saveStorageTimestamps(timestamps: StorageTimestamps): void {
  */
 export function updateStorageTimestamp(key: string): void {
   if (typeof window === 'undefined') return;
-  
+
   const timestamps = getStorageTimestamps();
   timestamps[key] = Date.now();
   saveStorageTimestamps(timestamps);
-  
+
   // Also update activity timestamp (user is actively using the app)
   updateLastActivity();
 }
@@ -524,7 +525,7 @@ export function updateStorageTimestamp(key: string): void {
  */
 export function removeStorageTimestamp(key: string): void {
   if (typeof window === 'undefined') return;
-  
+
   const timestamps = getStorageTimestamps();
   delete timestamps[key];
   saveStorageTimestamps(timestamps);
@@ -537,11 +538,11 @@ export function removeStorageTimestamp(key: string): void {
 export function getStorageAge(key: string): number {
   const timestamps = getStorageTimestamps();
   const timestamp = timestamps[key];
-  
+
   if (!timestamp) {
     return Infinity; // No timestamp means it's old/unknown
   }
-  
+
   return Date.now() - timestamp;
 }
 
@@ -556,26 +557,26 @@ export function shouldClearStorage(key: string, isLogout: boolean = false): bool
   if (PERMANENT_KEYS.includes(key) || key === STORAGE_TIMESTAMPS_KEY || key === LAST_ACTIVITY_KEY) {
     return false;
   }
-  
+
   // Check if this is a clearable store
   const isClearableStore = CLEARABLE_STORES.some(store => key.includes(store));
   if (!isClearableStore) {
     return false;
   }
-  
+
   // Check condition 1: Data is older than 12 hours
   const age = getStorageAge(key);
   const isDataOld = age > DATA_AGE_THRESHOLD_MS;
-  
+
   if (!isDataOld) {
     return false; // Data is fresh, don't clear it
   }
-  
+
   // Check condition 2: User is inactive OR logging out
   if (isLogout) {
     return true; // User is logging out and data is old, clear it
   }
-  
+
   // User is not logging out, check if they're inactive
   return !isUserActive();
 }
@@ -589,9 +590,9 @@ export function shouldClearStorage(key: string, isLogout: boolean = false): bool
  * @param isLogout - True if this is being called during logout
  * @returns Object with cleanup statistics
  */
-export function cleanupOldStorage(isLogout: boolean = false): { 
-  checkedCount: number; 
-  clearedCount: number; 
+export function cleanupOldStorage(isLogout: boolean = false): {
+  checkedCount: number;
+  clearedCount: number;
   clearedKeys: string[];
   keptKeys: string[];
   reason: string;
@@ -599,49 +600,49 @@ export function cleanupOldStorage(isLogout: boolean = false): {
   if (typeof window === 'undefined') {
     return { checkedCount: 0, clearedCount: 0, clearedKeys: [], keptKeys: [], reason: 'SSR' };
   }
-  
+
   const allKeys = Object.keys(localStorage);
   const timestamps = getStorageTimestamps();
   const clearedKeys: string[] = [];
   const keptKeys: string[] = [];
   let checkedCount = 0;
-  
+
   const userActive = isUserActive();
-  const reason = isLogout 
-    ? 'User logout' 
+  const reason = isLogout
+    ? 'User logout'
     : (userActive ? 'User is active - keeping all data' : 'User inactive');
-  
+
   // If user is active and not logging out, don't clear anything
   if (userActive && !isLogout) {
     console.log('👤 User is active - skipping storage cleanup');
-    return { 
-      checkedCount: 0, 
-      clearedCount: 0, 
-      clearedKeys: [], 
-      keptKeys: allKeys, 
-      reason 
+    return {
+      checkedCount: 0,
+      clearedCount: 0,
+      clearedKeys: [],
+      keptKeys: allKeys,
+      reason
     };
   }
-  
+
   allKeys.forEach(key => {
     // Skip system keys
     if (PERMANENT_KEYS.includes(key) || key === STORAGE_TIMESTAMPS_KEY || key === LAST_ACTIVITY_KEY) {
       return;
     }
-    
+
     // Check if this is a clearable store
     const isClearableStore = CLEARABLE_STORES.some(store => key.includes(store));
     if (!isClearableStore) {
       return; // Unknown store - keep it
     }
-    
+
     checkedCount++;
-    
+
     // Check if data is old enough to clear
     const timestamp = timestamps[key];
     const age = timestamp ? (Date.now() - timestamp) : Infinity;
     const isDataOld = age > DATA_AGE_THRESHOLD_MS;
-    
+
     if (isDataOld) {
       try {
         localStorage.removeItem(key);
@@ -656,14 +657,14 @@ export function cleanupOldStorage(isLogout: boolean = false): {
       keptKeys.push(key);
     }
   });
-  
+
   // Save updated timestamps
   saveStorageTimestamps(timestamps);
-  
+
   if (clearedKeys.length > 0) {
     console.log(`✅ Storage cleanup complete: cleared ${clearedKeys.length}/${checkedCount} old keys (${reason})`);
   }
-  
+
   return {
     checkedCount,
     clearedCount: clearedKeys.length,
@@ -687,17 +688,17 @@ export function cleanupOnLogout(): void {
  */
 export function initializeStorageTimestamps(): void {
   if (typeof window === 'undefined') return;
-  
+
   const allKeys = Object.keys(localStorage);
   const timestamps = getStorageTimestamps();
   let addedCount = 0;
-  
+
   allKeys.forEach(key => {
     // Skip system keys
     if (PERMANENT_KEYS.includes(key) || key === STORAGE_TIMESTAMPS_KEY || key === LAST_ACTIVITY_KEY) {
       return;
     }
-    
+
     // Check if this is a clearable store and doesn't have a timestamp
     const isClearableStore = CLEARABLE_STORES.some(store => key.includes(store));
     if (isClearableStore && !timestamps[key]) {
@@ -706,7 +707,7 @@ export function initializeStorageTimestamps(): void {
       addedCount++;
     }
   });
-  
+
   if (addedCount > 0) {
     saveStorageTimestamps(timestamps);
     console.log(`📝 Initialized timestamps for ${addedCount} existing storage keys`);
@@ -719,18 +720,18 @@ export function initializeStorageTimestamps(): void {
  */
 export function initializeStorageWithExpiry(): void {
   if (typeof window === 'undefined') return;
-  
+
   console.log('🔄 Initializing storage with expiry system...');
-  
+
   // Update activity (user is opening the app)
   updateLastActivity();
-  
+
   // Initialize timestamps for any existing data without timestamps
   initializeStorageTimestamps();
-  
+
   // Try to clean up old data (will only work if user was inactive)
   const result = cleanupOldStorage(false);
-  
+
   if (result.clearedCount > 0) {
     console.log(`🧹 Cleaned up ${result.clearedCount} old storage items`);
   } else if (result.reason.includes('active')) {
@@ -777,12 +778,12 @@ export function getStorageRemainingTime(key: string): number {
   if (PERMANENT_KEYS.includes(key) || key === STORAGE_TIMESTAMPS_KEY || key === LAST_ACTIVITY_KEY) {
     return Infinity;
   }
-  
+
   const isClearableStore = CLEARABLE_STORES.some(store => key.includes(store));
   if (!isClearableStore) {
     return Infinity;
   }
-  
+
   const age = getStorageAge(key);
   const remaining = DATA_AGE_THRESHOLD_MS - age;
   return remaining > 0 ? remaining : 0;
@@ -799,7 +800,7 @@ export function getStorageExpiryInfo(): Array<{
   canBeClearedNow: boolean;
 }> {
   if (typeof window === 'undefined') return [];
-  
+
   const allKeys = Object.keys(localStorage);
   const userActive = isUserActive();
   const info: Array<{
@@ -809,20 +810,20 @@ export function getStorageExpiryInfo(): Array<{
     isPermanent: boolean;
     canBeClearedNow: boolean;
   }> = [];
-  
+
   allKeys.forEach(key => {
     if (key === STORAGE_TIMESTAMPS_KEY || key === LAST_ACTIVITY_KEY) return;
-    
+
     const isPermanent = PERMANENT_KEYS.includes(key);
     const isClearable = CLEARABLE_STORES.some(store => key.includes(store));
-    
+
     if (!isPermanent && !isClearable) return; // Skip unknown keys
-    
+
     const age = getStorageAge(key);
     const remaining = getStorageRemainingTime(key);
     const isDataOld = age > DATA_AGE_THRESHOLD_MS;
     const canBeClearedNow = !isPermanent && isDataOld && !userActive;
-    
+
     const formatTime = (ms: number) => {
       if (ms === Infinity) return 'Never';
       if (ms <= 0) return '0m';
@@ -830,7 +831,7 @@ export function getStorageExpiryInfo(): Array<{
       const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
       return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
     };
-    
+
     let status: string;
     if (isPermanent) {
       status = 'Permanent';
@@ -841,7 +842,7 @@ export function getStorageExpiryInfo(): Array<{
     } else {
       status = 'Can be cleared (old + user inactive)';
     }
-    
+
     info.push({
       key,
       age: formatTime(age),
@@ -850,7 +851,7 @@ export function getStorageExpiryInfo(): Array<{
       canBeClearedNow
     });
   });
-  
+
   return info;
 }
 

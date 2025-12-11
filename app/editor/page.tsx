@@ -55,7 +55,7 @@ function useIsMobile576() {
 // Custom hook to get screen dimensions
 function useScreenDimensions() {
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-  
+
   useEffect(() => {
     function updateDimensions() {
       setDimensions({
@@ -63,12 +63,12 @@ function useScreenDimensions() {
         height: window.innerHeight
       });
     }
-    
+
     updateDimensions();
     window.addEventListener("resize", updateDimensions);
     return () => window.removeEventListener("resize", updateDimensions);
   }, []);
-  
+
   return dimensions;
 }
 
@@ -149,7 +149,7 @@ function EditorPageContent() {
       // Automatically enable Manual Dimensions on mobile devices
       const mobileWidth = `${screenWidth}px`;
       const mobileHeight = `${screenWidth}px`; // Same as width for square aspect
-      
+
       updateChartConfig({
         ...chartConfig,
         manualDimensions: true,
@@ -190,18 +190,18 @@ function EditorPageContent() {
         return; // Don't change editorMode - keep it as 'template'
       }
     }
-    
+
     // Template-specific tabs: only templates
     const templateTabs = ['templates'];
-    
+
     if (templateTabs.includes(activeTab)) {
       setEditorMode('template');
     } else {
       // Chart-specific tabs: types_toggles, datasets_slices, design, axes, labels, overlay, animations, advanced, export
       // Only set to chart if we don't have a currentTemplate
       if (!currentTemplate) {
-      setEditorMode('chart');
-    }
+        setEditorMode('chart');
+      }
     }
   }, [activeTab, setEditorMode, currentTemplate]);
 
@@ -231,8 +231,8 @@ function EditorPageContent() {
         const firstUserMessage = chatMessages.find(m => m.role === 'user')
         const conversationTitle = firstUserMessage
           ? (firstUserMessage.content.length > 60
-              ? firstUserMessage.content.slice(0, 57) + '...'
-              : firstUserMessage.content)
+            ? firstUserMessage.content.slice(0, 57) + '...'
+            : firstUserMessage.content)
           : `Chart saved on ${new Date().toLocaleDateString()}`
 
         const response = await dataService.createConversation(
@@ -258,29 +258,29 @@ function EditorPageContent() {
       // Normalize chartConfig before saving: convert dynamicDimension to manualDimensions
       const normalizedConfig = (() => {
         const config = { ...chartConfig };
-        
+
         // If dynamicDimension is active, convert it to manualDimensions
         if (config.dynamicDimension === true) {
           config.manualDimensions = true;
           config.responsive = false;
           delete config.dynamicDimension; // Remove the dynamicDimension flag
-          
+
           // Ensure width and height are preserved
           if (!config.width) config.width = '800px';
           if (!config.height) config.height = '600px';
-          
+
           console.log('📊 Converted dynamicDimension to manualDimensions for storage');
         } else {
           // Clean up - ensure only responsive OR manualDimensions is set
           delete config.dynamicDimension;
-          
+
           if (config.responsive === true) {
             config.manualDimensions = false;
           } else if (config.manualDimensions === true) {
             config.responsive = false;
           }
         }
-        
+
         return config;
       })();
 
@@ -294,7 +294,7 @@ function EditorPageContent() {
       if (currentTemplate && (editorMode === 'template' || currentTemplate.id === 'current-cloud-template')) {
         // Save complete template structure (independent copy)
         templateStructureToSave = currentTemplate
-        
+
         // Extract text area content
         currentTemplate.textAreas.forEach(area => {
           if (templateContentToSave[area.type]) {
@@ -309,12 +309,12 @@ function EditorPageContent() {
           }
           hasTemplateContent = true
         })
-        
+
       }
 
       // Get current snapshot ID for updates
       const { currentSnapshotId, setCurrentSnapshotId } = useChartStore.getState()
-      
+
       // Save chart snapshot (updates if snapshotId exists, otherwise creates new)
       const snapshotResult = await dataService.saveChartSnapshot(
         conversationId,
@@ -333,7 +333,7 @@ function EditorPageContent() {
       }
 
       const snapshotId = snapshotResult.data?.id
-      
+
       // Update current snapshot ID in store after save
       if (snapshotId) {
         setCurrentSnapshotId(snapshotId)
@@ -386,8 +386,8 @@ function EditorPageContent() {
               localStorage.setItem(historyKey, JSON.stringify(parsed))
               console.log('✅ Cleared localStorage history to prevent duplicates')
             }
-        }
-      } catch (error) {
+          }
+        } catch (error) {
           console.warn('Failed to clear history:', error)
         }
       }
@@ -410,6 +410,8 @@ function EditorPageContent() {
     resetChart()
     setHasJSON(false)
     setBackendConversationId(null)
+    // Clear all template state to prevent data cascading to new charts
+    useTemplateStore.getState().clearAllTemplateState()
     toast.success("Chart cleared")
     // Stay on editor page - don't route away
   };
@@ -417,14 +419,14 @@ function EditorPageContent() {
   // Handle new chart creation
   const handleNewChart = () => {
     // Check if there's meaningful existing chart data
-    const hasMeaningfulData = hasJSON || 
-      (chartData.datasets.length > 0 && 
-       chartData.datasets.some(dataset => 
-         dataset.data && 
-         dataset.data.length > 0 && 
-         dataset.data.some(value => value !== 0 && value !== null && value !== undefined)
-       ));
-    
+    const hasMeaningfulData = hasJSON ||
+      (chartData.datasets.length > 0 &&
+        chartData.datasets.some(dataset =>
+          dataset.data &&
+          dataset.data.length > 0 &&
+          dataset.data.some(value => value !== 0 && value !== null && value !== undefined)
+        ));
+
     if (hasMeaningfulData) {
       // Show confirmation dialog
       setShowSaveConfirmDialog(true)
@@ -451,6 +453,8 @@ function EditorPageContent() {
     resetChart()
     setHasJSON(false)
     setBackendConversationId(null)
+    // Clear all template state to prevent data cascading to new charts
+    useTemplateStore.getState().clearAllTemplateState()
     // Show new chart info
     setShowNewChartInfoDialog(true)
   };
@@ -555,8 +559,8 @@ function EditorPageContent() {
                 onNewChart={handleNewChart}
               />
             ) : (
-              <EditorWelcomeScreen 
-                onDatasetClick={() => setMobilePanel('datasets_slices')} 
+              <EditorWelcomeScreen
+                onDatasetClick={() => setMobilePanel('datasets_slices')}
                 size="compact"
               />
             )}
@@ -601,12 +605,12 @@ function EditorPageContent() {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-1">
-                          <ConfigPanel 
-              activeTab={mobilePanel} 
-              onToggleSidebar={() => setMobilePanel(null)}
-              isSidebarCollapsed={false}
-              onTabChange={setMobilePanel}
-            />
+              <ConfigPanel
+                activeTab={mobilePanel}
+                onToggleSidebar={() => setMobilePanel(null)}
+                isSidebarCollapsed={false}
+                onTabChange={setMobilePanel}
+              />
             </div>
           </div>
         )}
@@ -626,7 +630,7 @@ function EditorPageContent() {
               <Sparkles className="h-4 w-4" />
             </Button>
           </Link>
-          
+
           {/* Expand Left Sidebar Button */}
           <Button
             variant="ghost"
@@ -637,7 +641,7 @@ function EditorPageContent() {
           >
             <ChevronRight className="h-4 w-4 rotate-180" />
           </Button>
-          
+
           {TABS.map((tab) => {
             const Icon = tab.icon
             return (
@@ -666,8 +670,8 @@ function EditorPageContent() {
               onNewChart={handleNewChart}
             />
           ) : (
-            <EditorWelcomeScreen 
-              onDatasetClick={() => setActiveTab('datasets_slices')} 
+            <EditorWelcomeScreen
+              onDatasetClick={() => setActiveTab('datasets_slices')}
             />
           )}
         </div>
@@ -680,7 +684,7 @@ function EditorPageContent() {
               <SimpleProfileDropdown size="md" />
             </div>
           </div>
-          
+
           {/* Expand Button */}
           <div className="p-2">
             <Button
@@ -693,7 +697,7 @@ function EditorPageContent() {
               <ChevronLeft className="h-4 w-4 rotate-180" />
             </Button>
           </div>
-          
+
           {/* Action Buttons: New, Save, Cancel, History - Below collapse button */}
           <div className="flex flex-col items-center gap-2 px-2">
             <Button
@@ -729,7 +733,7 @@ function EditorPageContent() {
               <HistoryDropdown variant="compact" />
             </div>
           </div>
-          
+
           {/* Spacer to push buttons to top */}
           <div className="flex-1"></div>
         </div>
@@ -765,8 +769,8 @@ function EditorPageContent() {
                 </div>
               </div>
               <div className="border-b mb-4"></div>
-              <Sidebar 
-                activeTab={activeTab} 
+              <Sidebar
+                activeTab={activeTab}
                 onTabChange={setActiveTab}
                 onToggleLeftSidebar={() => setLeftSidebarCollapsed(true)}
                 isLeftSidebarCollapsed={false}
@@ -778,12 +782,12 @@ function EditorPageContent() {
         {/* Right Sidebar Overlay when expanded */}
         {(!rightSidebarCollapsed) && (
           <div className="fixed top-0 right-0 h-full w-80 z-40 bg-white shadow-2xl border-l border-gray-200 transition-all duration-300 flex flex-col">
-                      <ConfigPanel
-            activeTab={activeTab}
-            onToggleSidebar={() => setRightSidebarCollapsed(true)}
-            isSidebarCollapsed={false}
-            onTabChange={setActiveTab}
-          />
+            <ConfigPanel
+              activeTab={activeTab}
+              onToggleSidebar={() => setRightSidebarCollapsed(true)}
+              isSidebarCollapsed={false}
+              onTabChange={setActiveTab}
+            />
           </div>
         )}
 
@@ -807,7 +811,7 @@ function EditorPageContent() {
               <Sparkles className="h-4 w-4" />
             </Button>
           </Link>
-          
+
           {/* Collapse Left Sidebar Button - Above active tab */}
           <Button
             variant="ghost"
@@ -818,7 +822,7 @@ function EditorPageContent() {
           >
             <ChevronRight className="h-4 w-4 rotate-180" />
           </Button>
-          
+
           {TABS.map((tab) => {
             const Icon = tab.icon
             return (
@@ -863,8 +867,8 @@ function EditorPageContent() {
               </div>
             </div>
             <div className="border-b mb-4"></div>
-            <Sidebar 
-              activeTab={activeTab} 
+            <Sidebar
+              activeTab={activeTab}
               onTabChange={setActiveTab}
               onToggleLeftSidebar={() => setLeftSidebarCollapsed((v) => !v)}
               isLeftSidebarCollapsed={leftSidebarCollapsed}
@@ -885,8 +889,8 @@ function EditorPageContent() {
             onNewChart={handleNewChart}
           />
         ) : (
-          <EditorWelcomeScreen 
-            onDatasetClick={() => setActiveTab('datasets_slices')} 
+          <EditorWelcomeScreen
+            onDatasetClick={() => setActiveTab('datasets_slices')}
           />
         )}
       </div>
@@ -899,7 +903,7 @@ function EditorPageContent() {
               <SimpleProfileDropdown size="md" />
             </div>
           </div>
-          
+
           {/* Collapse/Expand Button - Below Profile */}
           <div className="p-2">
             <Button
@@ -912,7 +916,7 @@ function EditorPageContent() {
               <ChevronLeft className="h-4 w-4 rotate-180" />
             </Button>
           </div>
-          
+
           {/* Action Buttons: New, Save, Cancel, History - Below collapse button */}
           <div className="flex flex-col items-center gap-2 px-2">
             <Button
@@ -948,14 +952,14 @@ function EditorPageContent() {
               <HistoryDropdown variant="compact" />
             </div>
           </div>
-          
+
           {/* Spacer to push buttons to top */}
           <div className="flex-1"></div>
         </div>
       ) : (
         <div className="w-80 flex-shrink-0 border-l bg-white overflow-hidden">
-          <ConfigPanel 
-            activeTab={activeTab} 
+          <ConfigPanel
+            activeTab={activeTab}
             onToggleSidebar={() => setRightSidebarCollapsed((v) => !v)}
             isSidebarCollapsed={rightSidebarCollapsed}
             onTabChange={setActiveTab}
@@ -989,7 +993,7 @@ function EditorPageContent() {
               Choose how you'd like to start creating your chart:
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="flex flex-col gap-3 py-4">
             <Button
               onClick={handleLoadSampleData}
@@ -1004,7 +1008,7 @@ function EditorPageContent() {
                 Start with pre-loaded example data to explore chart features
               </span>
             </Button>
-            
+
             <Button
               onClick={handleGoToDataset}
               className="w-full h-auto py-4 flex flex-col items-start gap-1"
@@ -1023,7 +1027,7 @@ function EditorPageContent() {
       </Dialog>
     </div>
   )
-} 
+}
 
 
 
