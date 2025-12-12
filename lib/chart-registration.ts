@@ -17,6 +17,7 @@ import {
   PolarAreaController,
   RadarController,
   Title,
+  SubTitle,
   Tooltip,
   Legend,
   RadialLinearScale,
@@ -31,7 +32,6 @@ import { universalImagePlugin } from "./chart-store"
 import { customLabelPlugin } from "./custom-label-plugin"
 import exportPlugin from "./export-plugin"
 import { overlayPlugin } from "./overlay-plugin"
-import { subtitlePlugin } from "./subtitle-plugin"
 
 // Register all Chart.js components globally
 ChartJS.register(
@@ -50,6 +50,7 @@ ChartJS.register(
   PolarAreaController,
   RadarController,
   Title,
+  SubTitle,
   Tooltip,
   Legend,
   RadialLinearScale,
@@ -60,10 +61,9 @@ ChartJS.register(
   universalImagePlugin,
   customLabelPlugin,
   exportPlugin,
-  overlayPlugin,
-  subtitlePlugin
+  overlayPlugin
 )
 
 // Chart.js registration completed
 
-export default ChartJS 
+export default ChartJS

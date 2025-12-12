@@ -15,6 +15,7 @@ import {
   PointElement,
   ArcElement,
   Title,
+  SubTitle,
   Tooltip,
   Legend,
   RadialLinearScale,
@@ -36,7 +37,6 @@ import exportPlugin from "@/lib/export-plugin"
 import { customLabelPlugin } from "@/lib/custom-label-plugin"
 import { overlayPlugin } from "@/lib/overlay-plugin"
 import { enhancedTitlePlugin } from "@/lib/enhanced-title-plugin"
-import { subtitlePlugin } from "@/lib/subtitle-plugin"
 import { ResizableChartArea } from "@/components/resizable-chart-area"
 import { OverlayContextMenu } from "@/components/overlay-context-menu"
 
@@ -50,6 +50,7 @@ ChartJS.register(
   PointElement,
   ArcElement,
   Title,
+  SubTitle,
   Tooltip,
   Legend,
   RadialLinearScale,
@@ -67,8 +68,7 @@ ChartJS.register(
   customLabelPlugin,
   exportPlugin,
   overlayPlugin,
-  enhancedTitlePlugin,
-  subtitlePlugin
+  enhancedTitlePlugin
 );
 
 // Plugin registration verified
@@ -104,21 +104,21 @@ export interface ChartGeneratorProps {
 }
 
 export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
-  const { 
-    chartConfig, 
-    chartData, 
-    chartType, 
-    legendFilter, 
-    fillArea, 
-    showBorder, 
-    showImages, 
-    showLabels, 
-    chartMode, 
-    activeDatasetIndex, 
-    uniformityMode, 
-    overlayImages, 
-    overlayTexts, 
-    selectedImageId, 
+  const {
+    chartConfig,
+    chartData,
+    chartType,
+    legendFilter,
+    fillArea,
+    showBorder,
+    showImages,
+    showLabels,
+    chartMode,
+    activeDatasetIndex,
+    uniformityMode,
+    overlayImages,
+    overlayTexts,
+    selectedImageId,
     selectedTextId,
     updateOverlayImage,
     updateOverlayText,
@@ -126,7 +126,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     setSelectedTextId,
     removeOverlayImage,
     removeOverlayText,
-    setGlobalChartRef 
+    setGlobalChartRef
   } = useChartStore();
 
   const chartRef = useRef<ChartJS>(null);
@@ -176,17 +176,17 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
 
     const handleOverlayPositionUpdate = (event: CustomEvent) => {
       const { type, id, x, y } = event.detail
-      
+
       if (type === 'image') {
         updateOverlayImage(id, { x, y })
       } else if (type === 'text') {
         updateOverlayText(id, { x, y })
       }
-      
+
       // Update chart to reflect new position
       chartRef.current?.update('none')
     }
-    
+
     const handleImageLoaded = (event: CustomEvent) => {
       console.log('🔄 Image loaded event received, forcing chart update')
       if (chartRef.current) {
@@ -199,7 +199,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
       const { imageId, updateData } = event.detail
       console.log('📏 Dimensions update event received:', { imageId, updateData })
       updateOverlayImage(imageId, updateData)
-      
+
       // Update chart to reflect new dimensions
       if (chartRef.current) {
         chartRef.current.update('none')
@@ -210,7 +210,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
       const { imageId } = event.detail
       console.log('🎯 Image selected/deselected:', imageId)
       setSelectedImageId(imageId)
-      
+
       // Update chart to show/hide selection handles
       if (chartRef.current) {
         chartRef.current.update('none')
@@ -222,7 +222,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
       const { textId } = event.detail
       console.log('🎯 Text selected/deselected:', textId)
       setSelectedTextId(textId)
-      
+
       // Update chart to show/hide selection handles
       if (chartRef.current) {
         chartRef.current.update('none')
@@ -234,7 +234,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
       const { id, x, y, width, height, useNaturalSize } = event.detail
       console.log('🔄 Image resize:', { id, x, y, width, height, useNaturalSize })
       updateOverlayImage(id, { x, y, width, height, useNaturalSize })
-      
+
       // Update chart to reflect new size
       if (chartRef.current) {
         chartRef.current.update('none')
@@ -244,7 +244,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     const handleContextMenu = (event: CustomEvent) => {
       const { type, id, x, y, data } = event.detail
       console.log('🎯 Context menu triggered:', { type, id, x, y })
-      
+
       setContextMenu({
         isOpen: true,
         x,
@@ -262,9 +262,9 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     canvas.addEventListener('overlayTextSelected', handleTextSelected as EventListener)
     canvas.addEventListener('overlayImageResize', handleImageResize as EventListener)
     canvas.addEventListener('overlayContextMenu', handleContextMenu as EventListener)
-    
+
     console.log('✅ Event listeners attached to chart canvas')
-    
+
     return () => {
       canvas.removeEventListener('overlayPositionUpdate', handleOverlayPositionUpdate as EventListener)
       canvas.removeEventListener('overlayImageLoaded', handleImageLoaded as EventListener)
@@ -281,8 +281,8 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
   const enabledDatasets = chartMode === 'single'
     ? chartData.datasets.filter((_, i) => i === activeDatasetIndex)
     : chartData.datasets
-        .map((ds, i) => (legendFilter.datasets[i] === false ? null : ds))
-        .filter((ds): ds is typeof chartData.datasets[number] => ds !== null);
+      .map((ds, i) => (legendFilter.datasets[i] === false ? null : ds))
+      .filter((ds): ds is typeof chartData.datasets[number] => ds !== null);
 
   // Filter datasets based on mode
   const modeFilteredDatasets = enabledDatasets.filter(dataset => {
@@ -310,14 +310,14 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
 
   // Filter x-axis labels to only include enabled slices
   let filteredLabels: string[] = [];
-  
+
   // For both single and grouped modes, check for sliceLabels in datasets first
   if (modeFilteredDatasets.length > 0) {
     // Check if any dataset has sliceLabels (prioritize the first one found)
-    const datasetWithSliceLabels = modeFilteredDatasets.find(ds => 
+    const datasetWithSliceLabels = modeFilteredDatasets.find(ds =>
       ds.sliceLabels && Array.isArray(ds.sliceLabels)
     );
-    
+
     if (datasetWithSliceLabels) {
       filteredLabels = enabledSliceIndices.map(idx => String(datasetWithSliceLabels.sliceLabels![idx]));
     } else if (Array.isArray(chartData.labels)) {
@@ -333,13 +333,13 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
       if (!arr) return [];
       return enabledSliceIndices.map(idx => arr?.[idx]);
     };
-    
+
     let newData = filterSlice(ds.data);
-    let newBackgroundColor = Array.isArray(ds.backgroundColor) 
-      ? filterSlice(ds.backgroundColor) 
+    let newBackgroundColor = Array.isArray(ds.backgroundColor)
+      ? filterSlice(ds.backgroundColor)
       : [];
-    let newBorderColor = Array.isArray(ds.borderColor) 
-      ? filterSlice(ds.borderColor) 
+    let newBorderColor = Array.isArray(ds.borderColor)
+      ? filterSlice(ds.borderColor)
       : [];
     let newPointImages = ds.pointImages ? filterSlice(ds.pointImages) : [];
     let newPointImageConfig = ds.pointImageConfig ? filterSlice(ds.pointImageConfig) : [];
@@ -384,12 +384,12 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
 
   // Always ensure datasets have valid Chart.js types
   let filteredDatasetsPatched = [...filteredDatasets];
-  
+
   filteredDatasetsPatched = filteredDatasetsPatched.map((ds, i) => {
     const datasetType = ds.chartType || chartType || 'bar';
-    const validType = datasetType === 'stackedBar' || datasetType === 'horizontalBar' ? 'bar' : 
-                     (datasetType === 'area' ? 'line' : datasetType);
-    
+    const validType = datasetType === 'stackedBar' || datasetType === 'horizontalBar' ? 'bar' :
+      (datasetType === 'area' ? 'line' : datasetType);
+
     let patched = { ...ds, type: validType };
     if (
       chartConfig.hoverFadeEffect !== false &&
@@ -423,14 +423,14 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     ds.data.map((value, filteredPointIdx) => {
       // Map filtered index back to original index
       const originalPointIdx = enabledSliceIndices[filteredPointIdx];
-      
+
       // If this slice is hidden by legend, also hide its label
       if (originalPointIdx === undefined || !isSliceVisible(originalPointIdx)) {
         return { text: '' };
       }
       if (customLabelsConfig.display === false) return { text: '' };
       let text = String(value);
-      
+
       if (customLabelsConfig.labelContent === 'label') {
         // For both single and grouped modes, use sliceLabels from the dataset if available
         // Use original index to access labels
@@ -455,14 +455,14 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
       } else if (customLabelsConfig.labelContent === 'dataset') {
         text = ds.label ?? text;
       }
-      
+
       if (customLabelsConfig.prefix) text = customLabelsConfig.prefix + text;
       if (customLabelsConfig.suffix) text = text + customLabelsConfig.suffix;
-      
+
       let color = customLabelsConfig.color || '#222';
       let backgroundColor = customLabelsConfig.shape === 'none' ? undefined : (customLabelsConfig.backgroundColor || '#fff');
       let borderColor = customLabelsConfig.shape === 'none' ? undefined : (customLabelsConfig.borderColor || '#333');
-      
+
       if (
         chartConfig.hoverFadeEffect !== false &&
         chartMode === 'grouped' && hoveredDatasetIndex !== null && datasetIdx !== hoveredDatasetIndex
@@ -471,7 +471,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
         backgroundColor = 'rgba(0,0,0,0.04)';
         borderColor = 'rgba(0,0,0,0.04)';
       }
-      
+
       return {
         text,
         anchor: customLabelsConfig.anchor || 'center',
@@ -497,22 +497,22 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
   ) : [];
 
   // Determine chart type for Chart.js
-  let chartTypeForChart = chartType === 'area' ? 'line' : 
-                          (chartType === 'stackedBar' ? 'bar' : 
-                          (chartType === 'horizontalBar' ? 'bar' : chartType));
-  
+  let chartTypeForChart = chartType === 'area' ? 'line' :
+    (chartType === 'stackedBar' ? 'bar' :
+      (chartType === 'horizontalBar' ? 'bar' : chartType));
+
   if (chartMode === 'single') {
     const activeDs = chartData.datasets[activeDatasetIndex];
     if (activeDs?.chartType) {
       const dsChartType = activeDs.chartType;
-      chartTypeForChart = dsChartType === 'stackedBar' ? 'bar' : 
-                         (dsChartType === 'horizontalBar' ? 'bar' : dsChartType);
+      chartTypeForChart = dsChartType === 'stackedBar' ? 'bar' :
+        (dsChartType === 'horizontalBar' ? 'bar' : dsChartType);
     }
   } else {
     if (uniformityMode === 'uniform') {
-      chartTypeForChart = chartType === 'area' ? 'line' : 
-                         (chartType === 'stackedBar' ? 'bar' : 
-                         (chartType === 'horizontalBar' ? 'bar' : chartType));
+      chartTypeForChart = chartType === 'area' ? 'line' :
+        (chartType === 'stackedBar' ? 'bar' :
+          (chartType === 'horizontalBar' ? 'bar' : chartType));
     } else {
       chartTypeForChart = 'bar';
     }
@@ -544,8 +544,8 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
             inset: 0,
             zIndex: 0,
             backgroundImage: `url(${background.imageUrl})`,
-            backgroundSize: background.imageFit === 'fill' ? '100% 100%' : 
-                          background.imageFit === 'contain' ? 'contain' : 'cover',
+            backgroundSize: background.imageFit === 'fill' ? '100% 100%' :
+              background.imageFit === 'contain' ? 'contain' : 'cover',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',
             objectFit: background.imageFit || 'cover',
@@ -603,7 +603,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
 
   // Chart size logic
   const isResponsive = (chartConfig as any)?.responsive !== false;
-  
+
   const parseDimension = (value: any): number => {
     if (typeof value === 'number') {
       return isNaN(value) ? 500 : value;
@@ -614,7 +614,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     }
     return 500;
   };
-  
+
   const chartWidth = !isResponsive ? parseDimension((chartConfig as any)?.width) : undefined;
   const chartHeight = !isResponsive ? parseDimension((chartConfig as any)?.height) : undefined;
 
@@ -651,12 +651,12 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
   } as any;
   const appliedOptions = chartType === 'stackedBar'
     ? {
-        ...baseOptions,
-        scales: {
-          x: { ...optionsScales.x, stacked: true },
-          y: { ...optionsScales.y, stacked: true },
-        },
-      }
+      ...baseOptions,
+      scales: {
+        x: { ...optionsScales.x, stacked: true },
+        y: { ...optionsScales.y, stacked: true },
+      },
+    }
     : baseOptions;
 
   // Context menu handlers
@@ -690,17 +690,17 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
   const loadSampleGroupedData = () => {
     // Set editor mode to chart when loading sample data
     useTemplateStore.getState().setEditorMode('chart');
-    
+
     const { getDefaultDataForMode } = require('@/lib/chart-store');
     const groupedData = getDefaultDataForMode('grouped');
-    
+
     // Update the chart with grouped mode sample data
     useChartStore.getState().setFullChart({
       chartType: chartType,
       chartData: groupedData,
       chartConfig: chartConfig
     });
-    
+
     // Mark as having JSON data
     useChartStore.getState().setHasJSON(true);
   };
@@ -708,17 +708,17 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
   const loadSampleSingleData = () => {
     // Set editor mode to chart when loading sample data
     useTemplateStore.getState().setEditorMode('chart');
-    
+
     const { getDefaultDataForMode } = require('@/lib/chart-store');
     const singleData = getDefaultDataForMode('single');
-    
+
     // Update the chart with single mode sample data
     useChartStore.getState().setFullChart({
       chartType: chartType,
       chartData: singleData,
       chartConfig: chartConfig
     });
-    
+
     // Mark as having JSON data
     useChartStore.getState().setHasJSON(true);
   };
@@ -734,7 +734,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
   return (
     <div className="p-0 h-full w-full">
       {chartData.datasets.length > 0 ? (
-        <div 
+        <div
           className={`h-full w-full ${isResponsive ? '' : 'flex items-start justify-center'} relative`}
           style={{
             ...(!isMobile && isResponsive ? { minHeight: 300, minWidth: 400, height: '100%', width: '100%' } : { height: '100%', width: '100%' }),
@@ -816,9 +816,9 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                           ...(((chartConfig.plugins as any)?.legend)?.labels || {}),
                           generateLabels: (chart: any) => {
                             // Read legendType from the chart's config at runtime
-                            const legendType = (chart.config?.options?.plugins?.legendType) || 
-                                             ((chartConfig.plugins as any)?.legendType) || 
-                                             'dataset';
+                            const legendType = (chart.config?.options?.plugins?.legendType) ||
+                              ((chartConfig.plugins as any)?.legendType) ||
+                              'dataset';
                             const usePointStyle = (chartConfig.plugins?.legend as any)?.labels?.usePointStyle || false;
                             const pointStyle = (chartConfig.plugins?.legend as any)?.labels?.pointStyle || 'rect';
                             const fontColor = (chartConfig.plugins?.legend?.labels as any)?.color || '#000000';
@@ -832,9 +832,9 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                                 isHidden && text ? `${text}` : text;
 
                               return {
-                              ...props,
+                                ...props,
                                 text: decoratedText,
-                              pointStyle: usePointStyle ? pointStyle : undefined,
+                                pointStyle: usePointStyle ? pointStyle : undefined,
                                 fontColor: isHidden ? '#999999' : fontColor,
                                 hidden: isHidden,
                               };
@@ -844,10 +844,10 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                             if (legendType === 'slice' || legendType === 'both') {
                               for (let i = 0; i < filteredLabels.length; ++i) {
                                 // Check if this slice is hidden
-                                const isHidden = typeof chart.getDataVisibility === 'function' 
-                                  ? !chart.getDataVisibility(i) 
+                                const isHidden = typeof chart.getDataVisibility === 'function'
+                                  ? !chart.getDataVisibility(i)
                                   : false;
-                                
+
                                 items.push(createItem({
                                   text: String(filteredLabels[i]),
                                   fillStyle: filteredDatasets[0]?.backgroundColor?.[i] || '#ccc',
@@ -861,10 +861,10 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                             if (legendType === 'dataset' || legendType === 'both') {
                               for (let i = 0; i < filteredDatasets.length; ++i) {
                                 // Check if this dataset is hidden
-                                const isHidden = typeof chart.isDatasetVisible === 'function' 
-                                  ? !chart.isDatasetVisible(i) 
+                                const isHidden = typeof chart.isDatasetVisible === 'function'
+                                  ? !chart.isDatasetVisible(i)
                                   : false;
-                                
+
                                 items.push(createItem({
                                   text: filteredDatasets[i].label || `Dataset ${i + 1}`,
                                   fillStyle: Array.isArray(filteredDatasets[i].backgroundColor) ? (filteredDatasets[i].backgroundColor as string[])[0] : (filteredDatasets[i].backgroundColor as string) || '#ccc',
@@ -883,7 +883,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                         ...((chartConfig.plugins as any)?.tooltip),
                         callbacks: {
                           ...((chartConfig.plugins as any)?.tooltip?.callbacks),
-                          label: function(context: any) {
+                          label: function (context: any) {
                             const mode = (chartConfig.plugins as any)?.tooltip?.customDisplayMode || 'slice';
                             const chart = context.chart;
                             const data = chart.data;
@@ -894,7 +894,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                             const value = dataset.data[dataIndex];
                             const datasetLabel = dataset.label || `Dataset ${datasetIndex + 1}`;
                             const datasetColor = Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor[dataIndex] : dataset.backgroundColor;
-                            
+
                             if (mode === 'slice') {
                               return `${label}: ${value}`;
                             }
@@ -961,165 +961,165 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                     ...appliedOptions,
                     responsive: chartConfig.manualDimensions ? false : isResponsive,
                     maintainAspectRatio: !(isResponsive),
-                  overlayImages,
-                  overlayTexts,
-                  layout: {
-                    padding: chartConfig.layout?.padding || 0
-                  },
-                  hover: {
-                    intersect: chartConfig.hover?.intersect ?? false,
-                    animationDuration: chartConfig.hover?.animationDuration ?? 400,
-                  },
-                  interaction: {
-                    intersect: chartConfig.interaction?.intersect ?? true,
-                    mode: chartConfig.interaction?.mode ?? 'point',
-                  },
-                  onHover: (event: any, elements: any[]) => {
-                    if (!chartConfig.interaction?.mode) {
-                      setHoveredDatasetIndex(null);
-                      return;
-                    }
-                    if (chartMode === 'grouped' && elements && elements.length > 0) {
-                      setHoveredDatasetIndex(elements[0].datasetIndex);
-                    } else {
-                      setHoveredDatasetIndex(null);
-                    }
-                  },
-                  plugins: ({
-                    ...chartConfig.plugins,
-                    legendType: ((chartConfig.plugins as any)?.legendType) || 'dataset',
-                    customLabels: { shapeSize: 32, labels: customLabels },
-                    overlayPlugin: {
-                      overlayImages,
-                      overlayTexts,
-                      selectedImageId,
-                      selectedTextId
+                    overlayImages,
+                    overlayTexts,
+                    layout: {
+                      padding: chartConfig.layout?.padding || 0
                     },
-                    legend: {
-                      ...((chartConfig.plugins as any)?.legend),
-                      display: ((chartConfig.plugins as any)?.legend?.display !== false),
-                      labels: {
-                        ...(((chartConfig.plugins as any)?.legend)?.labels || {}),
-                        generateLabels: (chart: any) => {
-                          // Read legendType from the chart's config at runtime
-                          const legendType = (chart.config?.options?.plugins?.legendType) || 
-                                           ((chartConfig.plugins as any)?.legendType) || 
-                                           'dataset';
-                          const usePointStyle = (chartConfig.plugins?.legend as any)?.labels?.usePointStyle || false;
-                          const pointStyle = (chartConfig.plugins?.legend as any)?.labels?.pointStyle || 'rect';
-                          const fontColor = (chartConfig.plugins?.legend?.labels as any)?.color || '#000000';
-
-                          const createItem = (props: any, isHidden: boolean) => {
-                            const text = props.text as string | undefined;
-                            const decoratedText =
-                              isHidden && text ? `${text}` : text;
-
-                            return {
-                              ...props,
-                              text: decoratedText,
-                              pointStyle: usePointStyle ? pointStyle : undefined,
-                              fontColor: isHidden ? '#999999' : fontColor,
-                              hidden: isHidden,
-                            };
-                          };
-
-                          const items = [] as any[];
-                          if (legendType === 'slice' || legendType === 'both') {
-                            for (let i = 0; i < filteredLabels.length; ++i) {
-                              // Check if this slice is hidden
-                              const isHidden = typeof chart.getDataVisibility === 'function' 
-                                ? !chart.getDataVisibility(i) 
-                                : false;
-                              
-                              items.push(createItem({
-                                text: String(filteredLabels[i]),
-                                fillStyle: filteredDatasets[0]?.backgroundColor?.[i] || '#ccc',
-                                strokeStyle: filteredDatasets[0]?.borderColor?.[i] || '#333',
-                                index: i,
-                                datasetIndex: 0,
-                                type: 'slice',
-                              }, isHidden));
-                            }
-                          }
-                          if (legendType === 'dataset' || legendType === 'both') {
-                            for (let i = 0; i < filteredDatasets.length; ++i) {
-                              // Check if this dataset is hidden
-                              const isHidden = typeof chart.isDatasetVisible === 'function' 
-                                ? !chart.isDatasetVisible(i) 
-                                : false;
-                              
-                              items.push(createItem({
-                                text: filteredDatasets[i].label || `Dataset ${i + 1}`,
-                                fillStyle: Array.isArray(filteredDatasets[i].backgroundColor) ? (filteredDatasets[i].backgroundColor as string[])[0] : (filteredDatasets[i].backgroundColor as string) || '#ccc',
-                                strokeStyle: Array.isArray(filteredDatasets[i].borderColor) ? (filteredDatasets[i].borderColor as string[])[0] : (filteredDatasets[i].borderColor as string) || '#333',
-                                datasetIndex: i,
-                                index: i,
-                                type: 'dataset',
-                              }, isHidden));
-                            }
-                          }
-                          return items;
-                        },
-                      },
+                    hover: {
+                      intersect: chartConfig.hover?.intersect ?? false,
+                      animationDuration: chartConfig.hover?.animationDuration ?? 400,
                     },
-                    tooltip: {
-                      ...((chartConfig.plugins as any)?.tooltip),
-                      callbacks: {
-                        ...((chartConfig.plugins as any)?.tooltip?.callbacks),
-                        label: function(context: any) {
-                          const mode = (chartConfig.plugins as any)?.tooltip?.customDisplayMode || 'slice';
-                          const chart = context.chart;
-                          const data = chart.data;
-                          const datasetIndex = context.datasetIndex;
-                          const dataIndex = context.dataIndex;
-                          const dataset = data.datasets[datasetIndex];
-                          const label = data.labels?.[dataIndex];
-                          const value = dataset.data[dataIndex];
-                          const datasetLabel = dataset.label || `Dataset ${datasetIndex + 1}`;
-                          const datasetColor = Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor[dataIndex] : dataset.backgroundColor;
-                          
-                          if (mode === 'slice') {
-                            return `${label}: ${value}`;
-                          }
-                          if (mode === 'dataset') {
-                            let lines = [`%c${datasetLabel}`, ...dataset.data.map((v: any, i: number) => {
-                              const sliceLabel = data.labels?.[i] || `Slice ${i + 1}`;
-                              const sliceColor = Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor[i] : dataset.backgroundColor;
-                              return `%c${sliceLabel}: ${v}`;
-                            })];
-                            return lines;
-                          }
-                          if (mode === 'xaxis') {
-                            let lines = [`${label}`];
-                            data.datasets.forEach((ds: any, i: number) => {
-                              const dsLabel = ds.label || `Dataset ${i + 1}`;
-                              const dsColor = Array.isArray(ds.backgroundColor) ? ds.backgroundColor[dataIndex] : ds.backgroundColor;
-                              lines.push(`${dsLabel}: ${ds.data[dataIndex]}`);
-                            });
-                            return lines;
-                          }
-                          if (mode === 'yaxis') {
-                            let lines: string[] = [];
-                            data.datasets.forEach((ds: any, i: number) => {
-                              ds.data.forEach((v: any, j: number) => {
-                                if (v === value) {
-                                  const dsLabel = ds.label || `Dataset ${i + 1}`;
-                                  const sliceLabel = data.labels?.[j] || `Slice ${j + 1}`;
-                                  lines.push(`${dsLabel} - ${sliceLabel}: ${v}`);
-                                }
-                              });
-                            });
-                            return lines.length ? lines : [`${label}: ${value}`];
-                          }
-                          return `${label}: ${value}`;
-                        }
+                    interaction: {
+                      intersect: chartConfig.interaction?.intersect ?? true,
+                      mode: chartConfig.interaction?.mode ?? 'point',
+                    },
+                    onHover: (event: any, elements: any[]) => {
+                      if (!chartConfig.interaction?.mode) {
+                        setHoveredDatasetIndex(null);
+                        return;
+                      }
+                      if (chartMode === 'grouped' && elements && elements.length > 0) {
+                        setHoveredDatasetIndex(elements[0].datasetIndex);
+                      } else {
+                        setHoveredDatasetIndex(null);
                       }
                     },
-                  } as any),
-                }}
-                width={((chartConfig.manualDimensions || chartConfig.dynamicDimension) ? chartWidth : undefined)}
-                height={((chartConfig.manualDimensions || chartConfig.dynamicDimension) ? chartHeight : undefined)}
-              />
+                    plugins: ({
+                      ...chartConfig.plugins,
+                      legendType: ((chartConfig.plugins as any)?.legendType) || 'dataset',
+                      customLabels: { shapeSize: 32, labels: customLabels },
+                      overlayPlugin: {
+                        overlayImages,
+                        overlayTexts,
+                        selectedImageId,
+                        selectedTextId
+                      },
+                      legend: {
+                        ...((chartConfig.plugins as any)?.legend),
+                        display: ((chartConfig.plugins as any)?.legend?.display !== false),
+                        labels: {
+                          ...(((chartConfig.plugins as any)?.legend)?.labels || {}),
+                          generateLabels: (chart: any) => {
+                            // Read legendType from the chart's config at runtime
+                            const legendType = (chart.config?.options?.plugins?.legendType) ||
+                              ((chartConfig.plugins as any)?.legendType) ||
+                              'dataset';
+                            const usePointStyle = (chartConfig.plugins?.legend as any)?.labels?.usePointStyle || false;
+                            const pointStyle = (chartConfig.plugins?.legend as any)?.labels?.pointStyle || 'rect';
+                            const fontColor = (chartConfig.plugins?.legend?.labels as any)?.color || '#000000';
+
+                            const createItem = (props: any, isHidden: boolean) => {
+                              const text = props.text as string | undefined;
+                              const decoratedText =
+                                isHidden && text ? `${text}` : text;
+
+                              return {
+                                ...props,
+                                text: decoratedText,
+                                pointStyle: usePointStyle ? pointStyle : undefined,
+                                fontColor: isHidden ? '#999999' : fontColor,
+                                hidden: isHidden,
+                              };
+                            };
+
+                            const items = [] as any[];
+                            if (legendType === 'slice' || legendType === 'both') {
+                              for (let i = 0; i < filteredLabels.length; ++i) {
+                                // Check if this slice is hidden
+                                const isHidden = typeof chart.getDataVisibility === 'function'
+                                  ? !chart.getDataVisibility(i)
+                                  : false;
+
+                                items.push(createItem({
+                                  text: String(filteredLabels[i]),
+                                  fillStyle: filteredDatasets[0]?.backgroundColor?.[i] || '#ccc',
+                                  strokeStyle: filteredDatasets[0]?.borderColor?.[i] || '#333',
+                                  index: i,
+                                  datasetIndex: 0,
+                                  type: 'slice',
+                                }, isHidden));
+                              }
+                            }
+                            if (legendType === 'dataset' || legendType === 'both') {
+                              for (let i = 0; i < filteredDatasets.length; ++i) {
+                                // Check if this dataset is hidden
+                                const isHidden = typeof chart.isDatasetVisible === 'function'
+                                  ? !chart.isDatasetVisible(i)
+                                  : false;
+
+                                items.push(createItem({
+                                  text: filteredDatasets[i].label || `Dataset ${i + 1}`,
+                                  fillStyle: Array.isArray(filteredDatasets[i].backgroundColor) ? (filteredDatasets[i].backgroundColor as string[])[0] : (filteredDatasets[i].backgroundColor as string) || '#ccc',
+                                  strokeStyle: Array.isArray(filteredDatasets[i].borderColor) ? (filteredDatasets[i].borderColor as string[])[0] : (filteredDatasets[i].borderColor as string) || '#333',
+                                  datasetIndex: i,
+                                  index: i,
+                                  type: 'dataset',
+                                }, isHidden));
+                              }
+                            }
+                            return items;
+                          },
+                        },
+                      },
+                      tooltip: {
+                        ...((chartConfig.plugins as any)?.tooltip),
+                        callbacks: {
+                          ...((chartConfig.plugins as any)?.tooltip?.callbacks),
+                          label: function (context: any) {
+                            const mode = (chartConfig.plugins as any)?.tooltip?.customDisplayMode || 'slice';
+                            const chart = context.chart;
+                            const data = chart.data;
+                            const datasetIndex = context.datasetIndex;
+                            const dataIndex = context.dataIndex;
+                            const dataset = data.datasets[datasetIndex];
+                            const label = data.labels?.[dataIndex];
+                            const value = dataset.data[dataIndex];
+                            const datasetLabel = dataset.label || `Dataset ${datasetIndex + 1}`;
+                            const datasetColor = Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor[dataIndex] : dataset.backgroundColor;
+
+                            if (mode === 'slice') {
+                              return `${label}: ${value}`;
+                            }
+                            if (mode === 'dataset') {
+                              let lines = [`%c${datasetLabel}`, ...dataset.data.map((v: any, i: number) => {
+                                const sliceLabel = data.labels?.[i] || `Slice ${i + 1}`;
+                                const sliceColor = Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor[i] : dataset.backgroundColor;
+                                return `%c${sliceLabel}: ${v}`;
+                              })];
+                              return lines;
+                            }
+                            if (mode === 'xaxis') {
+                              let lines = [`${label}`];
+                              data.datasets.forEach((ds: any, i: number) => {
+                                const dsLabel = ds.label || `Dataset ${i + 1}`;
+                                const dsColor = Array.isArray(ds.backgroundColor) ? ds.backgroundColor[dataIndex] : ds.backgroundColor;
+                                lines.push(`${dsLabel}: ${ds.data[dataIndex]}`);
+                              });
+                              return lines;
+                            }
+                            if (mode === 'yaxis') {
+                              let lines: string[] = [];
+                              data.datasets.forEach((ds: any, i: number) => {
+                                ds.data.forEach((v: any, j: number) => {
+                                  if (v === value) {
+                                    const dsLabel = ds.label || `Dataset ${i + 1}`;
+                                    const sliceLabel = data.labels?.[j] || `Slice ${j + 1}`;
+                                    lines.push(`${dsLabel} - ${sliceLabel}: ${v}`);
+                                  }
+                                });
+                              });
+                              return lines.length ? lines : [`${label}: ${value}`];
+                            }
+                            return `${label}: ${value}`;
+                          }
+                        }
+                      },
+                    } as any),
+                  }}
+                  width={((chartConfig.manualDimensions || chartConfig.dynamicDimension) ? chartWidth : undefined)}
+                  height={((chartConfig.manualDimensions || chartConfig.dynamicDimension) ? chartHeight : undefined)}
+                />
               </div>
             )}
           </div>
@@ -1133,7 +1133,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
               </svg>
               <p className="text-lg font-semibold text-gray-600 mb-2">No chart data available</p>
             </div>
-            
+
             {chartMode === 'grouped' && (
               <>
                 <p className="text-sm text-gray-500 mb-6">
@@ -1158,7 +1158,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                 </div>
               </>
             )}
-            
+
             {chartMode === 'single' && (
               <>
                 <p className="text-sm text-gray-500 mb-6">
@@ -1186,7 +1186,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
           </div>
         </div>
       )}
-      
+
       {/* Context Menu */}
       <OverlayContextMenu
         isOpen={contextMenu.isOpen}

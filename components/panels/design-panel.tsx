@@ -83,23 +83,23 @@ export function DesignPanel() {
         return `hsl(${h}, ${s}%, ${newL}%)`
       }
     }
-    
+
     // Handle hex colors
     if (color.startsWith("#")) {
       const hex = color.replace("#", "")
       const r = parseInt(hex.substring(0, 2), 16)
       const g = parseInt(hex.substring(2, 4), 16)
       const b = parseInt(hex.substring(4, 6), 16)
-      
+
       // Darken by reducing RGB values
       const factor = 1 - percent / 100
       const newR = Math.max(0, Math.round(r * factor))
       const newG = Math.max(0, Math.round(g * factor))
       const newB = Math.max(0, Math.round(b * factor))
-      
+
       return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`
     }
-    
+
     // Handle rgba/rgb colors
     if (color.startsWith("rgba") || color.startsWith("rgb")) {
       const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/)
@@ -109,14 +109,14 @@ export function DesignPanel() {
         const newR = Math.max(0, Math.round(parseInt(r) * factor))
         const newG = Math.max(0, Math.round(parseInt(g) * factor))
         const newB = Math.max(0, Math.round(parseInt(b) * factor))
-        
+
         if (a !== undefined) {
           return `rgba(${newR}, ${newG}, ${newB}, ${a})`
         }
         return `rgb(${newR}, ${newG}, ${newB})`
       }
     }
-    
+
     return color
   }
 
@@ -129,7 +129,7 @@ export function DesignPanel() {
             <TabsTrigger value="title" className="flex-shrink-0">Title</TabsTrigger>
             <TabsTrigger value="background" className="flex-shrink-0">Background</TabsTrigger>
             <TabsTrigger value="legend" className="flex-shrink-0">Legend</TabsTrigger>
-        </TabsList>
+          </TabsList>
         </div>
 
         <TabsContent value="styling" className="mt-4 space-y-3">
@@ -139,7 +139,7 @@ export function DesignPanel() {
               <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
               <h3 className="text-[0.80rem] font-semibold text-gray-900">Border Styling</h3>
             </div>
-            
+
             {/* Border Width */}
             <div className="space-y-1">
               <div className="flex items-center justify-between">
@@ -164,7 +164,7 @@ export function DesignPanel() {
                 </div>
               </div>
             </div>
-            
+
             {/* Border Color */}
             <div className="space-y-2">
               <Label className="text-xs font-medium">Border Color</Label>
@@ -177,8 +177,8 @@ export function DesignPanel() {
                     setBorderColorMode('auto')
                     // Apply auto border colors (darkened background colors)
                     chartData.datasets.forEach((dataset, index) => {
-                      const bgColors = Array.isArray(dataset.backgroundColor) 
-                        ? dataset.backgroundColor 
+                      const bgColors = Array.isArray(dataset.backgroundColor)
+                        ? dataset.backgroundColor
                         : [dataset.backgroundColor]
                       const autoBorderColors = bgColors.map(color => darkenColor(String(color), 20))
                       handleUpdateDataset(index, 'borderColor', autoBorderColors)
@@ -196,10 +196,10 @@ export function DesignPanel() {
                   Manual
                 </Button>
               </div>
-              
+
               {borderColorMode === 'manual' && (
                 <div className="flex items-center gap-2 p-2 bg-white rounded border border-purple-200">
-                  <div 
+                  <div
                     className="w-10 h-10 rounded border-2 border-white shadow-sm cursor-pointer hover:scale-105 transition-transform"
                     style={{ backgroundColor: manualBorderColor }}
                     onClick={() => document.getElementById('manual-border-color-picker')?.click()}
@@ -225,7 +225,7 @@ export function DesignPanel() {
                 </div>
               )}
             </div>
-            
+
             {/* Border Radius */}
             <div className="space-y-1">
               <Label className="text-xs font-medium">Border Radius (Slices)</Label>
@@ -243,7 +243,7 @@ export function DesignPanel() {
               <div className="text-xs text-gray-500 mt-1">{Number(chartData.datasets[0]?.borderRadius ?? 0)}px</div>
             </div>
           </div>
-          
+
           <div className="bg-purple-50 rounded-lg p-3 space-y-3">
             {/* Point Edit */}
             <div className="flex items-center gap-2 pb-1 border-b border-purple-200">
@@ -252,7 +252,7 @@ export function DesignPanel() {
                 Point Edit <span className="text-xs text-gray-500">(Line, Area, Radar Charts Only)</span>
               </h3>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs font-medium">Point Radius</Label>
@@ -272,7 +272,7 @@ export function DesignPanel() {
                   step={1}
                 />
               </div>
-              
+
               <div className="space-y-1">
                 <Label className="text-xs font-medium">Hover Radius</Label>
                 <Input
@@ -291,7 +291,7 @@ export function DesignPanel() {
                   step={1}
                 />
               </div>
-              
+
               <div className="space-y-1">
                 <Label className="text-xs font-medium">Point Border Width</Label>
                 <Input
@@ -310,7 +310,7 @@ export function DesignPanel() {
                   step={1}
                 />
               </div>
-              
+
               <div className="space-y-1">
                 <Label className="text-xs font-medium">Hover Border Width</Label>
                 <Input
@@ -331,7 +331,7 @@ export function DesignPanel() {
               </div>
             </div>
           </div>
-          
+
           {/* Line Properties */}
           <div className="bg-purple-50 rounded-lg p-3 space-y-3">
             <div className="flex items-center gap-2 pb-1 border-b border-purple-200">
@@ -340,7 +340,7 @@ export function DesignPanel() {
                 Line Properties <span className="text-xs text-gray-500">(Line, Area Chart Only)</span>
               </h3>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs font-medium">Line Tension</Label>
@@ -358,12 +358,12 @@ export function DesignPanel() {
                 />
                 <div className="text-xs text-gray-500 mt-1">{Number((chartData.datasets[0] as any)?.tension ?? 0.4).toFixed(1)}</div>
               </div>
-              
+
               <div className="space-y-1">
                 <Label className="text-xs font-medium">Line Style</Label>
-                <Select 
+                <Select
                   value={
-                    (chartData.datasets[0] as any)?.borderDash 
+                    (chartData.datasets[0] as any)?.borderDash
                       ? (JSON.stringify((chartData.datasets[0] as any).borderDash) === JSON.stringify([5, 5]) ? 'dashed' : 'dotted')
                       : 'solid'
                   }
@@ -408,7 +408,7 @@ export function DesignPanel() {
               {!chartConfig.plugins?.title?.display && (
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-xs text-blue-800 leading-relaxed">
-                    <strong>Enable Chart Title</strong> to add a prominent heading above your chart. 
+                    <strong>Enable Chart Title</strong> to add a prominent heading above your chart.
                     You can customize the text, font, size, color, alignment, and position.
                   </p>
                 </div>
@@ -534,11 +534,11 @@ export function DesignPanel() {
 
                   <div>
                     <Label className="text-xs font-medium">Padding</Label>
-                    <Slider 
-                      value={[(chartConfig.plugins?.title as any)?.padding || 10]} 
+                    <Slider
+                      value={[(chartConfig.plugins?.title as any)?.padding || 10]}
                       onValueChange={([value]) => handleConfigUpdate("plugins.title.padding", value)}
-                      max={50} 
-                      min={0} 
+                      max={50}
+                      min={0}
                       step={1}
                       className="mt-2"
                     />
@@ -569,22 +569,144 @@ export function DesignPanel() {
               {!chartConfig.plugins?.subtitle?.display && (
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-xs text-blue-800 leading-relaxed">
-                    <strong>Enable Chart Subtitle</strong> to add a secondary heading below your chart title. 
+                    <strong>Enable Chart Subtitle</strong> to add a secondary heading below your chart title.
                     The subtitle appears right after the main title.
                   </p>
                 </div>
               )}
 
               {chartConfig.plugins?.subtitle?.display && (
-                <div>
-                  <Label className="text-xs font-medium">Subtitle Text</Label>
-                  <Input
-                    value={chartConfig.plugins?.subtitle?.text || ""}
-                    onChange={(e) => handleConfigUpdate("plugins.subtitle.text", e.target.value)}
-                    placeholder="Custom Chart Subtitle"
-                    className="h-8 text-xs"
-                  />
-                </div>
+                <>
+                  <div>
+                    <Label className="text-xs font-medium">Subtitle Text</Label>
+                    <Input
+                      value={chartConfig.plugins?.subtitle?.text || ""}
+                      onChange={(e) => handleConfigUpdate("plugins.subtitle.text", e.target.value)}
+                      placeholder="Custom Chart Subtitle"
+                      className="h-8 text-xs"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs font-medium">Font Family</Label>
+                      <Select
+                        value={(chartConfig.plugins?.subtitle?.font as any)?.family || "Arial"}
+                        onValueChange={(value) => handleConfigUpdate("plugins.subtitle.font.family", value)}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Default" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Arial">Arial</SelectItem>
+                          <SelectItem value="Helvetica">Helvetica</SelectItem>
+                          <SelectItem value="Times">Times New Roman</SelectItem>
+                          <SelectItem value="Courier">Courier New</SelectItem>
+                          <SelectItem value="Georgia">Georgia</SelectItem>
+                          <SelectItem value="Verdana">Verdana</SelectItem>
+                          <SelectItem value="Impact">Impact</SelectItem>
+                          <SelectItem value="Comic Sans MS">Comic Sans MS</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs font-medium">Font Weight</Label>
+                      <Select
+                        value={(chartConfig.plugins?.subtitle?.font as any)?.weight || "400"}
+                        onValueChange={(value) => handleConfigUpdate("plugins.subtitle.font.weight", value)}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Normal" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="400">Normal</SelectItem>
+                          <SelectItem value="500">Medium</SelectItem>
+                          <SelectItem value="600">Semi-Bold</SelectItem>
+                          <SelectItem value="700">Bold</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-xs font-medium">Font Size</Label>
+                    <Slider
+                      value={[(chartConfig.plugins?.subtitle?.font as any)?.size || 12]}
+                      onValueChange={([value]) => handleConfigUpdate("plugins.subtitle.font.size", value)}
+                      max={36}
+                      min={8}
+                      step={1}
+                      className="mt-2"
+                    />
+                    <div className="text-xs text-gray-500 mt-1">{(chartConfig.plugins?.subtitle?.font as any)?.size || 12}px</div>
+                  </div>
+
+                  <div>
+                    <Label className="text-xs font-medium">Text Color</Label>
+                    <div className="flex gap-2">
+                      <input
+                        type="color"
+                        value={chartConfig.plugins?.subtitle?.color || "#666666"}
+                        onChange={(e) => handleConfigUpdate("plugins.subtitle.color", e.target.value)}
+                        className="w-12 h-8 rounded border cursor-pointer"
+                      />
+                      <Input
+                        value={chartConfig.plugins?.subtitle?.color || "#666666"}
+                        onChange={(e) => handleConfigUpdate("plugins.subtitle.color", e.target.value)}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs font-medium">Alignment</Label>
+                      <Select
+                        value={(chartConfig.plugins?.subtitle as any)?.align || "center"}
+                        onValueChange={(value) => handleConfigUpdate("plugins.subtitle.align", value)}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Center" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="start">Left</SelectItem>
+                          <SelectItem value="center">Center</SelectItem>
+                          <SelectItem value="end">Right</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs font-medium">Position</Label>
+                      <Select
+                        value={(chartConfig.plugins?.subtitle as any)?.position || "top"}
+                        onValueChange={(value) => handleConfigUpdate("plugins.subtitle.position", value)}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Top" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="top">Top (Below Title)</SelectItem>
+                          <SelectItem value="bottom">Bottom</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-xs font-medium">Padding</Label>
+                    <Slider
+                      value={[(chartConfig.plugins?.subtitle as any)?.padding || 10]}
+                      onValueChange={([value]) => handleConfigUpdate("plugins.subtitle.padding", value)}
+                      max={50}
+                      min={0}
+                      step={1}
+                      className="mt-2"
+                    />
+                    <div className="text-xs text-gray-500 mt-1">{(chartConfig.plugins?.subtitle as any)?.padding || 10}px</div>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
@@ -599,31 +721,31 @@ export function DesignPanel() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-                <div>
+              <div>
                 <Label className="text-xs font-medium">Background Type</Label>
-                  <Select
-                    value={(chartConfig as any)?.background?.type || "color"}
-                    onValueChange={(value) => handleConfigUpdate("background.type", value)}
-                  >
+                <Select
+                  value={(chartConfig as any)?.background?.type || "color"}
+                  onValueChange={(value) => handleConfigUpdate("background.type", value)}
+                >
                   <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Select background type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="color">Color</SelectItem>
-                      <SelectItem value="gradient">Gradient</SelectItem>
-                      <SelectItem value="image">Image</SelectItem>
-                      <SelectItem value="transparent">Transparent</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                    <SelectValue placeholder="Select background type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="color">Color</SelectItem>
+                    <SelectItem value="gradient">Gradient</SelectItem>
+                    <SelectItem value="image">Image</SelectItem>
+                    <SelectItem value="transparent">Transparent</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-                {/* Color background */}
-                {((chartConfig as any)?.background?.type === undefined || (chartConfig as any)?.background?.type === "color") && (
-                  <div>
+              {/* Color background */}
+              {((chartConfig as any)?.background?.type === undefined || (chartConfig as any)?.background?.type === "color") && (
+                <div>
                   <Label className="text-xs font-medium">Background Color</Label>
                   <div className="flex gap-2">
                     <input
-                      type="color" 
+                      type="color"
                       value={((chartConfig as any)?.background?.color as string) || "#ffffff"}
                       onChange={(e) => handleConfigUpdate("background.color", e.target.value)}
                       className="w-12 h-8 rounded border"
@@ -634,145 +756,145 @@ export function DesignPanel() {
                       className="h-8 text-xs"
                     />
                   </div>
-                  </div>
-                )}
+                </div>
+              )}
 
-                {/* Gradient background */}
-                {(chartConfig as any)?.background?.type === "gradient" && (
-                  <>
-                    <div>
+              {/* Gradient background */}
+              {(chartConfig as any)?.background?.type === "gradient" && (
+                <>
+                  <div>
                     <Label className="text-xs font-medium">Gradient Type</Label>
-                      <Select
-                        value={((chartConfig as any)?.background?.gradientType as string) || "linear"}
-                        onValueChange={(value) => handleConfigUpdate("background.gradientType", value)}
-                      >
+                    <Select
+                      value={((chartConfig as any)?.background?.gradientType as string) || "linear"}
+                      onValueChange={(value) => handleConfigUpdate("background.gradientType", value)}
+                    >
                       <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="Linear" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="linear">Linear</SelectItem>
-                          <SelectItem value="radial">Radial</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
+                        <SelectValue placeholder="Linear" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="linear">Linear</SelectItem>
+                        <SelectItem value="radial">Radial</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
                     <Label className="text-xs font-medium">Gradient Direction (for Linear)</Label>
-                      <Select
-                        value={((chartConfig as any)?.background?.gradientDirection as string) || "to right"}
-                        onValueChange={(value) => handleConfigUpdate("background.gradientDirection", value)}
-                        disabled={((chartConfig as any)?.background?.gradientType as string) === "radial"}
-                      >
+                    <Select
+                      value={((chartConfig as any)?.background?.gradientDirection as string) || "to right"}
+                      onValueChange={(value) => handleConfigUpdate("background.gradientDirection", value)}
+                      disabled={((chartConfig as any)?.background?.gradientType as string) === "radial"}
+                    >
                       <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="to right" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="to right">Left → Right</SelectItem>
-                          <SelectItem value="to left">Right → Left</SelectItem>
-                          <SelectItem value="to bottom">Top → Bottom</SelectItem>
-                          <SelectItem value="to top">Bottom → Top</SelectItem>
-                          <SelectItem value="135deg">Diagonal (135°)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
+                        <SelectValue placeholder="to right" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="to right">Left → Right</SelectItem>
+                        <SelectItem value="to left">Right → Left</SelectItem>
+                        <SelectItem value="to bottom">Top → Bottom</SelectItem>
+                        <SelectItem value="to top">Bottom → Top</SelectItem>
+                        <SelectItem value="135deg">Diagonal (135°)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
                     <Label className="text-xs font-medium">Gradient Colors</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          type="color"
-                          value={((chartConfig as any)?.background?.gradientColor1 as string) || "#ffffff"}
-                          onChange={(e) => handleConfigUpdate("background.gradientColor1", e.target.value)}
+                    <div className="flex gap-2">
+                      <Input
+                        type="color"
+                        value={((chartConfig as any)?.background?.gradientColor1 as string) || "#ffffff"}
+                        onChange={(e) => handleConfigUpdate("background.gradientColor1", e.target.value)}
                         className="h-8"
-                        />
-                        <Input
-                          type="color"
-                          value={((chartConfig as any)?.background?.gradientColor2 as string) || "#000000"}
-                          onChange={(e) => handleConfigUpdate("background.gradientColor2", e.target.value)}
+                      />
+                      <Input
+                        type="color"
+                        value={((chartConfig as any)?.background?.gradientColor2 as string) || "#000000"}
+                        onChange={(e) => handleConfigUpdate("background.gradientColor2", e.target.value)}
                         className="h-8"
-                        />
-                      </div>
+                      />
                     </div>
-                    <div>
+                  </div>
+                  <div>
                     <Label className="text-xs font-medium">Background Opacity</Label>
-                      <Slider 
-                        value={[((chartConfig as any)?.background?.opacity as number) || 100]} 
-                        onValueChange={([value]) => handleConfigUpdate("background.opacity", value)}
-                        max={100} 
-                        min={0} 
-                        step={1} 
-                      />
-                      <div className="text-xs text-gray-500 mt-1">{((chartConfig as any)?.background?.opacity as number) || 100}%</div>
-                    </div>
-                  </>
-                )}
+                    <Slider
+                      value={[((chartConfig as any)?.background?.opacity as number) || 100]}
+                      onValueChange={([value]) => handleConfigUpdate("background.opacity", value)}
+                      max={100}
+                      min={0}
+                      step={1}
+                    />
+                    <div className="text-xs text-gray-500 mt-1">{((chartConfig as any)?.background?.opacity as number) || 100}%</div>
+                  </div>
+                </>
+              )}
 
-                {(chartConfig as any)?.background?.type === "image" && (
-                  <>
-                    <div>
+              {(chartConfig as any)?.background?.type === "image" && (
+                <>
+                  <div>
                     <Label className="text-xs font-medium">Image URL</Label>
-                      <Input 
-                        type="text" 
-                        placeholder="Enter image URL"
-                        value={((chartConfig as any)?.background?.imageUrl as string) || ""}
-                        onChange={(e) => handleConfigUpdate("background.imageUrl", e.target.value)}
+                    <Input
+                      type="text"
+                      placeholder="Enter image URL"
+                      value={((chartConfig as any)?.background?.imageUrl as string) || ""}
+                      onChange={(e) => handleConfigUpdate("background.imageUrl", e.target.value)}
                       className="h-8 text-xs"
-                      />
-                    </div>
-                    <div>
+                    />
+                  </div>
+                  <div>
                     <Label className="text-xs font-medium">Upload Image</Label>
-                      <Input 
-                        type="file" 
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            const reader = new FileReader();
-                            reader.onload = (event) => {
-                              handleConfigUpdate("background.imageUrl", event.target?.result as string);
-                            };
-                            reader.readAsDataURL(file);
-                          }
-                        }}
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            handleConfigUpdate("background.imageUrl", event.target?.result as string);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
                       className="h-8 text-xs"
-                      />
-                    </div>
+                    />
+                  </div>
                   <div className="flex items-center justify-between">
                     <Label className="text-xs font-medium">White background under image</Label>
-                      <Switch
-                        checked={((chartConfig as any)?.background?.imageWhiteBase ?? true)}
-                        onCheckedChange={(checked) => handleConfigUpdate("background.imageWhiteBase", checked)}
-                      />
-                    </div>
+                    <Switch
+                      checked={((chartConfig as any)?.background?.imageWhiteBase ?? true)}
+                      onCheckedChange={(checked) => handleConfigUpdate("background.imageWhiteBase", checked)}
+                    />
+                  </div>
                   <div>
                     <Label className="text-xs font-medium">Image Fit</Label>
-                      <Select
-                        value={((chartConfig as any)?.background?.imageFit as string) || "cover"}
-                        onValueChange={(value) => handleConfigUpdate("background.imageFit", value)}
-                      >
+                    <Select
+                      value={((chartConfig as any)?.background?.imageFit as string) || "cover"}
+                      onValueChange={(value) => handleConfigUpdate("background.imageFit", value)}
+                    >
                       <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="cover" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="cover">Cover (crop)</SelectItem>
-                          <SelectItem value="contain">Contain (fit inside)</SelectItem>
-                          <SelectItem value="fill">Fill (stretch)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
+                        <SelectValue placeholder="cover" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cover">Cover (crop)</SelectItem>
+                        <SelectItem value="contain">Contain (fit inside)</SelectItem>
+                        <SelectItem value="fill">Fill (stretch)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
                     <Label className="text-xs font-medium">Image Opacity</Label>
-                      <Slider 
-                        value={[((chartConfig as any)?.background?.opacity as number) || 100]} 
-                        onValueChange={([value]) => handleConfigUpdate("background.opacity", value)}
-                        max={100} 
-                        min={0} 
-                        step={1} 
-                      />
-                      <div className="text-xs text-gray-500 mt-1">{((chartConfig as any)?.background?.opacity as number) || 100}%</div>
-                    </div>
-                  </>
-                )}
+                    <Slider
+                      value={[((chartConfig as any)?.background?.opacity as number) || 100]}
+                      onValueChange={([value]) => handleConfigUpdate("background.opacity", value)}
+                      max={100}
+                      min={0}
+                      step={1}
+                    />
+                    <div className="text-xs text-gray-500 mt-1">{((chartConfig as any)?.background?.opacity as number) || 100}%</div>
+                  </div>
+                </>
+              )}
 
-              </CardContent>
+            </CardContent>
           </Card>
 
           <Card>
@@ -787,7 +909,7 @@ export function DesignPanel() {
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-medium">Show Border</Label>
-                <Switch 
+                <Switch
                   checked={!!chartConfig.borderWidth && chartConfig.borderWidth > 0}
                   onCheckedChange={(checked) => handleConfigUpdate('borderWidth', checked ? 2 : 0)}
                 />
@@ -796,7 +918,7 @@ export function DesignPanel() {
               {!chartConfig.borderWidth && (
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-xs text-blue-800 leading-relaxed">
-                    <strong>Enable Chart Border</strong> to add a decorative frame around your entire chart. 
+                    <strong>Enable Chart Border</strong> to add a decorative frame around your entire chart.
                     You can customize the border color, width, and corner radius to match your design.
                   </p>
                 </div>
@@ -823,11 +945,11 @@ export function DesignPanel() {
 
                   <div>
                     <Label className="text-xs font-medium">Border Width</Label>
-                    <Slider 
-                      value={[chartConfig.borderWidth || 0]} 
+                    <Slider
+                      value={[chartConfig.borderWidth || 0]}
                       onValueChange={([value]) => handleConfigUpdate("borderWidth", value)}
-                      max={20} 
-                      min={0} 
+                      max={20}
+                      min={0}
                       step={1}
                       className="mt-2"
                     />
@@ -866,8 +988,8 @@ export function DesignPanel() {
               {chartConfig.plugins?.legend?.display === false && (
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-xs text-blue-800 leading-relaxed">
-                    <strong>Enable Legend</strong> to display a color-coded key that helps viewers understand what each data series represents. 
-                    You can customize the position, alignment, font styles, and choose between slice, dataset, or both legend types. 
+                    <strong>Enable Legend</strong> to display a color-coded key that helps viewers understand what each data series represents.
+                    You can customize the position, alignment, font styles, and choose between slice, dataset, or both legend types.
                     Essential for charts with multiple datasets or categories.
                   </p>
                 </div>
@@ -1014,7 +1136,7 @@ export function DesignPanel() {
                     <Label className="text-xs font-medium">Font Color</Label>
                     <div className="flex gap-2">
                       <input
-                      type="color" 
+                        type="color"
                         value={chartConfig.plugins?.legend?.labels?.color || "#000000"}
                         onChange={(e) => handleConfigUpdate("plugins.legend.labels.color", e.target.value)}
                         className="w-12 h-8 rounded border"
@@ -1067,37 +1189,37 @@ export function DesignPanel() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
-                    <Label className="text-xs font-medium">Box Width</Label>
-                    <Slider 
-                      value={[((chartConfig.plugins?.legend?.labels as any)?.boxWidth as number) || 40]} 
-                      onValueChange={([value]: number[]) => {
-                        // Update both the root level and labels level for compatibility
-                        // handleConfigUpdate("plugins.legend.boxWidth", value);
-                        handleConfigUpdate("plugins.legend.labels.boxWidth", value);
-                      }}
-                      max={100} 
-                      min={10} 
-                      step={1}
-                      className="mt-2"
-                    />
-                    <div className="text-xs text-gray-500 mt-1">
-                      {((chartConfig.plugins?.legend?.labels as any)?.boxWidth as number) || 40}px
-                    </div>
+                      <Label className="text-xs font-medium">Box Width</Label>
+                      <Slider
+                        value={[((chartConfig.plugins?.legend?.labels as any)?.boxWidth as number) || 40]}
+                        onValueChange={([value]: number[]) => {
+                          // Update both the root level and labels level for compatibility
+                          // handleConfigUpdate("plugins.legend.boxWidth", value);
+                          handleConfigUpdate("plugins.legend.labels.boxWidth", value);
+                        }}
+                        max={100}
+                        min={10}
+                        step={1}
+                        className="mt-2"
+                      />
+                      <div className="text-xs text-gray-500 mt-1">
+                        {((chartConfig.plugins?.legend?.labels as any)?.boxWidth as number) || 40}px
+                      </div>
                     </div>
 
                     <div>
                       <Label className="text-xs font-medium">Box Height</Label>
-                      <Slider 
-                      value={[((chartConfig.plugins?.legend?.labels as any)?.boxHeight as number) || 12]} 
+                      <Slider
+                        value={[((chartConfig.plugins?.legend?.labels as any)?.boxHeight as number) || 12]}
                         onValueChange={([value]: number[]) => {
                           // Update both the root level and labels level for compatibility
                           //handleConfigUpdate("plugins.legend.boxHeight", value);
                           handleConfigUpdate("plugins.legend.labels.boxHeight", value);
                         }}
-                        max={50} 
-                        min={5} 
-                      step={1}
-                      className="mt-2"
+                        max={50}
+                        min={5}
+                        step={1}
+                        className="mt-2"
                       />
                       <div className="text-xs text-gray-500 mt-1">
                         {((chartConfig.plugins?.legend?.labels as any)?.boxHeight as number) || 12}px
@@ -1108,11 +1230,11 @@ export function DesignPanel() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                       <Label className="text-xs font-medium">Padding</Label>
-                      <Slider 
-                        value={[((chartConfig.plugins?.legend?.labels as any)?.padding as number) || 10]} 
+                      <Slider
+                        value={[((chartConfig.plugins?.legend?.labels as any)?.padding as number) || 10]}
                         onValueChange={([value]: number[]) => handleConfigUpdate("plugins.legend.labels.padding", value)}
-                        max={50} 
-                        min={0} 
+                        max={50}
+                        min={0}
                         step={1}
                         className="mt-2"
                       />
@@ -1121,12 +1243,12 @@ export function DesignPanel() {
 
                     <div>
                       <Label className="text-xs font-medium">Max Columns</Label>
-                      <Input 
-                        type="number" 
+                      <Input
+                        type="number"
                         value={((chartConfig.plugins?.legend as any)?.maxColumns as number) || 1}
                         onChange={(e) => handleConfigUpdate("plugins.legend.maxColumns", parseInt(e.target.value))}
-                        min="1" 
-                        max="10" 
+                        min="1"
+                        max="10"
                         className="h-8 text-xs mt-2 md:mt-0"
                       />
                     </div>

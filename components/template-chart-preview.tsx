@@ -5,7 +5,7 @@ import { useTemplateStore } from "@/lib/template-store"
 import { useChartStore } from "@/lib/chart-store"
 
 import { Button } from "@/components/ui/button"
-import { ZoomIn, ZoomOut, RotateCcw, Eye, EyeOff, Ellipsis, Maximize2, Minimize2, Settings, Menu, X, ChevronLeft, Download } from "lucide-react"
+import { ZoomIn, ZoomOut, RotateCcw, Eye, EyeOff, Ellipsis, Maximize2, Minimize2, Settings, Menu, X, ChevronLeft, Download, Hand } from "lucide-react"
 import { downloadTemplateExport } from "@/lib/template-export"
 import { FileDown, FileImage, FileCode } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -53,6 +53,7 @@ export function TemplateChartPreview({
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
   const [showGuides, setShowGuides] = useState(true)
   const [isUpdatingDimensions, setIsUpdatingDimensions] = useState(false)
+  const [panMode, setPanMode] = useState(false)
 
   // Fullscreen state
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -215,17 +216,22 @@ export function TemplateChartPreview({
 
   // Handle mouse/touch events for panning
   const handleMouseDown = (e: React.MouseEvent) => {
-    const target = e.target as HTMLElement
-    // Do not start template panning when interacting with chart canvas or text areas
-    if (
-      target.closest('.template-chart-area') ||
-      target.closest('.template-text-area') ||
-      target.tagName.toLowerCase() === 'canvas'
-    ) {
+    // Only allow panning when pan mode is active
+    if (!panMode) {
       return
     }
+
+    const target = e.target as HTMLElement
+
+    // When pan mode is active, allow dragging from anywhere including canvas
     setIsDragging(true)
-    setDragStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y })
+    // Store the initial mouse position and current pan offset
+    setDragStart({
+      x: e.clientX - panOffset.x,
+      y: e.clientY - panOffset.y
+    })
+    e.preventDefault() // Prevent text selection while dragging
+    e.stopPropagation() // Prevent event bubbling
   }
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -429,11 +435,17 @@ export function TemplateChartPreview({
         return (
           <div
             key={textArea.id}
-            className={`absolute template-text-area cursor-pointer transition-all duration-200 ${selectedTextAreaId === textArea.id
+            className={`absolute template-text-area transition-all duration-200 ${selectedTextAreaId === textArea.id
               ? 'ring-2 ring-blue-500 ring-opacity-50'
               : 'hover:ring-1 hover:ring-gray-300'
               }`}
-            style={baseStyle}
+            style={{
+              ...baseStyle,
+              cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'pointer'
+            }}
+            onMouseDown={(e) => { if (!panMode) e.stopPropagation() }}
+            onMouseMove={(e) => { if (!panMode) e.stopPropagation() }}
+            onMouseUp={(e) => { if (!panMode) e.stopPropagation() }}
             onClick={() => handleTextAreaClick(textArea.id)}
           >
             {/* Text area type label - more subtle */}
@@ -490,11 +502,12 @@ export function TemplateChartPreview({
           height: template.chartArea.height,
           border: showGuides ? '2px solid #3b82f6' : 'none',
           backgroundColor: showGuides ? 'rgba(59, 130, 246, 0.05)' : 'transparent',
-          borderRadius: '4px'
+          borderRadius: '4px',
+          cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'default'
         }}
-        onMouseDown={(e) => { e.stopPropagation() }}
-        onMouseMove={(e) => { e.stopPropagation() }}
-        onMouseUp={(e) => { e.stopPropagation() }}
+        onMouseDown={(e) => { if (!panMode) e.stopPropagation() }}
+        onMouseMove={(e) => { if (!panMode) e.stopPropagation() }}
+        onMouseUp={(e) => { if (!panMode) e.stopPropagation() }}
         onContextMenu={(e) => { e.stopPropagation() }}
       >
         {/* Chart area label */}
@@ -507,7 +520,9 @@ export function TemplateChartPreview({
           </div>
         )}
 
-        <ChartGenerator key={`template-${template.id}-${template.chartArea.width}-${template.chartArea.height}-${isUpdatingDimensions}`} />
+        <div style={{ pointerEvents: panMode ? 'none' : 'auto', width: '100%', height: '100%' }}>
+          <ChartGenerator key={`template-${template.id}-${template.chartArea.width}-${template.chartArea.height}-${isUpdatingDimensions}`} />
+        </div>
       </div>
     )
   }
@@ -723,6 +738,15 @@ export function TemplateChartPreview({
           >
             <ZoomIn className="h-4 w-4" />
           </Button>
+          {/* Pan Mode Toggle */}
+          <Button
+            variant={panMode ? "default" : "outline"}
+            size="sm"
+            onClick={() => setPanMode(!panMode)}
+            title={panMode ? "Disable Pan Mode" : "Enable Pan Mode"}
+          >
+            <Hand className="h-4 w-4" />
+          </Button>
           {/* Actions Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -782,7 +806,7 @@ export function TemplateChartPreview({
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
           style={{
-            cursor: isDragging ? 'grabbing' : 'grab'
+            cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'default'
           }}
         >
           <div
@@ -850,6 +874,16 @@ export function TemplateChartPreview({
                 <ZoomIn className="h-3.5 w-3.5" />
               </Button>
             </div>
+            {/* Pan Mode Toggle */}
+            <Button
+              variant={panMode ? "default" : "ghost"}
+              size="icon"
+              onClick={() => setPanMode(!panMode)}
+              title={panMode ? "Disable Pan Mode" : "Enable Pan Mode"}
+              className="h-8 w-8"
+            >
+              <Hand className="h-4 w-4" />
+            </Button>
             <Button
               variant="ghost"
               size="icon"

@@ -28,14 +28,14 @@ export function generateCustomLabelPluginCode(customLabelsConfig: CustomLabelPlu
 
   return `
 // Global drag state for HTML export
-window.labelDragState = ${JSON.stringify(customLabelsConfig.labels?.map((dataset, datasetIdx) => 
-  dataset?.map((label, pointIdx) => {
-    if (label.x != null && label.y != null) {
-      return { [`${datasetIdx}_${pointIdx}`]: { x: label.x, y: label.y } };
-    }
-    return null;
-  }).filter(Boolean)
-).flat().reduce((acc, item) => ({ ...acc, ...item }), {}) || {})};
+window.labelDragState = ${JSON.stringify(customLabelsConfig.labels?.map((dataset, datasetIdx) =>
+    dataset?.map((label, pointIdx) => {
+      if (label.x != null && label.y != null) {
+        return { [`${datasetIdx}_${pointIdx}`]: { x: label.x, y: label.y } };
+      }
+      return null;
+    }).filter(Boolean)
+  ).flat().reduce((acc, item) => ({ ...acc, ...item }), {}) || {})};
 
 // Custom Label Plugin for HTML Export
 const customLabelPlugin = {
@@ -1855,10 +1855,8 @@ export function generateCompletePluginSystem(chartConfig: any): string {
     pluginCode += generateOverlayPluginCode(overlayConfig);
   }
 
-  // Add subtitle plugin if needed
-  if (hasSubtitle) {
-    pluginCode += generateSubtitlePluginCode(subtitleConfig, titleConfig);
-  }
+  // Note: SubTitle plugin is built into Chart.js (chart.umd.js includes it)
+  // No need to generate custom subtitle plugin code
 
   return pluginCode;
 } 
