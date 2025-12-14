@@ -3,7 +3,7 @@
 import React, { useState, useRef, useCallback, useEffect } from "react"
 
 import { useRouter } from "next/navigation"
-import { Send, BarChart2, Plus, SquarePen ,PencilRuler ,RotateCcw, Edit3, MessageSquare, Sparkles, ArrowRight, X, ChevronLeft, ChevronRight, PanelLeft, PanelRight, Settings, Brain, Info, LayoutDashboard } from "lucide-react"
+import { Send, BarChart2, Plus, SquarePen, PencilRuler, RotateCcw, Edit3, MessageSquare, Sparkles, ArrowRight, X, ChevronLeft, ChevronRight, PanelLeft, PanelRight, Settings, Brain, Info, LayoutDashboard } from "lucide-react"
 import { useChartStore } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
 import { dataService } from "@/lib/data-service"
@@ -38,8 +38,8 @@ function LandingPageContent() {
   const { user, signOut } = useAuth()
   const router = useRouter()
   const { chartConfig, chartData, chartType, setFullChart, resetChart, hasJSON, setHasJSON } = useChartStore()
-  const { 
-    messages, 
+  const {
+    messages,
     currentChartState,
     isProcessing,
     continueConversation,
@@ -48,7 +48,7 @@ function LandingPageContent() {
     setMessages,
     backendConversationId
   } = useChatStore()
-  
+
   const { addConversation, loadConversationsFromBackend, restoreConversation } = useHistoryStore()
   const { generateMode, currentTemplate, syncTemplatesFromCloud } = useTemplateStore()
   const [input, setInput] = useState("")
@@ -56,7 +56,7 @@ function LandingPageContent() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const hasRestoredRef = useRef(false)
   const lastSyncedChartStateRef = useRef<string | null>(null)
-  
+
   // If chart store has data but currentChartState is null, try to restore from chart store
   // Use a ref to prevent infinite loops
   useEffect(() => {
@@ -76,20 +76,20 @@ function LandingPageContent() {
       hasRestoredRef.current = false
     }
   }, [hasJSON, chartType, chartData, currentChartState, chartConfig])
-  
+
   // Check if chat should be disabled (template mode but no template attached)
   const isChatDisabled = generateMode === 'template' && !currentTemplate
-  
+
   // Update initial message when template mode changes
   useEffect(() => {
     // Only update if we have just the initial message
     if (messages.length === 1 && messages[0].role === 'assistant') {
       const templateMessage = 'Please attach a template to start the conversation. Select a template from the options via "Choose From Templates".';
       const defaultMessage = 'Hi! Describe the chart you want to create, or ask me to modify an existing chart.';
-      
+
       const shouldShowTemplateMessage = generateMode === 'template' && !currentTemplate;
       const currentMessage = messages[0].content;
-      
+
       if (shouldShowTemplateMessage && currentMessage !== templateMessage) {
         setMessages([{
           ...messages[0],
@@ -107,30 +107,30 @@ function LandingPageContent() {
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true)
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true)
   const [hasLoadedBackendData, setHasLoadedBackendData] = useState(false)
-  
+
   // Custom hook for tablet detection (577px-1024px)
   const [isTablet, setIsTablet] = useState(false)
   // Custom hook for mobile detection (<576px)
   const [isMobile, setIsMobile] = useState(false)
   const [isClient, setIsClient] = useState(false)
-  
+
   useEffect(() => {
     // Immediate synchronous detection before any render
     const width = window.innerWidth
     const tabletSize = width >= 577 && width <= 1024
     const mobileSize = width < 576
-    
+
     // Set states synchronously first
     setIsClient(true)
     setIsTablet(tabletSize)
     setIsMobile(mobileSize)
-    
+
     const checkScreenSize = () => {
       const width = window.innerWidth
       setIsTablet(width >= 577 && width <= 1024)
       setIsMobile(width < 576)
     }
-    
+
     window.addEventListener('resize', checkScreenSize)
     return () => window.removeEventListener('resize', checkScreenSize)
   }, [])
@@ -144,7 +144,7 @@ function LandingPageContent() {
       ])
         .then(() => {
           setHasLoadedBackendData(true);
-          
+
           // If there's a backend conversation ID, restore it to load the chart
           const chatStore = useChatStore.getState();
           if (chatStore.backendConversationId && !currentChartState) {
@@ -157,13 +157,13 @@ function LandingPageContent() {
           // Silently fail - user can still use the app
         });
     }
-    
+
     // Reset flag when user logs out
     if (!user && hasLoadedBackendData) {
       setHasLoadedBackendData(false);
     }
   }, [user, hasLoadedBackendData, loadConversationsFromBackend, syncTemplatesFromCloud, currentChartState, restoreConversation])
-  
+
   // Tablet-specific states
   const [tabletRightSidebarOpen, setTabletRightSidebarOpen] = useState(false)
   const [tabletRightSidebarContent, setTabletRightSidebarContent] = useState<'messages' | 'tools' | 'history' | null>(null)
@@ -203,14 +203,14 @@ function LandingPageContent() {
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value)
-    
+
     // Optimized height update with debouncing
     if (textareaRef.current) {
       // Clear any existing timeout
       if (textareaRef.current.dataset.resizeTimeout) {
         clearTimeout(Number(textareaRef.current.dataset.resizeTimeout))
       }
-      
+
       const updateHeight = () => {
         if (textareaRef.current) {
           if (e.target.value === "") {
@@ -224,7 +224,7 @@ function LandingPageContent() {
           }
         }
       }
-      
+
       // Debounce the height update to reduce performance impact
       const timeoutId = setTimeout(updateHeight, 16) // ~60fps
       textareaRef.current.dataset.resizeTimeout = timeoutId.toString()
@@ -268,7 +268,7 @@ function LandingPageContent() {
       }
     })
   }, [clearMessages, resetChart, setHasJSON])
-  
+
   // Tablet sidebar handlers
   const handleTabletIconClick = useCallback((contentType: 'messages' | 'tools' | 'history') => {
     if (tabletRightSidebarContent === contentType && tabletRightSidebarOpen) {
@@ -279,7 +279,7 @@ function LandingPageContent() {
       setTabletRightSidebarOpen(true)
     }
   }, [tabletRightSidebarContent, tabletRightSidebarOpen])
-  
+
   const closeTabletSidebar = useCallback(() => {
     setTabletRightSidebarOpen(false)
     setTabletRightSidebarContent(null)
@@ -295,7 +295,7 @@ function LandingPageContent() {
       setMobileRightSidebarOpen(true)
     }
   }, [mobileRightSidebarContent, mobileRightSidebarOpen])
-  
+
   const closeMobileSidebar = useCallback(() => {
     setMobileRightSidebarOpen(false)
     setMobileRightSidebarContent(null)
@@ -315,7 +315,7 @@ function LandingPageContent() {
         dataHash: JSON.stringify(currentChartState.chartData?.datasets?.[0]?.data || []),
         configHash: JSON.stringify(currentChartState.chartConfig?.plugins || {})
       })
-      
+
       // Only sync if this is a different chart state to prevent infinite loops
       if (lastSyncedChartStateRef.current !== chartStateHash) {
         lastSyncedChartStateRef.current = chartStateHash
@@ -341,7 +341,7 @@ function LandingPageContent() {
       const chartDataHash = JSON.stringify(currentChartState?.chartData?.datasets?.[0]?.data || [])
       const bannerShownKey = `chartBannerShown_${currentChartState?.chartType}_${chartDataHash}`
       const hasBannerBeenShown = sessionStorage.getItem(bannerShownKey)
-      
+
       if (!hasBannerBeenShown) {
         setShowActiveBanner(true)
         // Mark this banner as shown for this chart session with timestamp
@@ -375,7 +375,7 @@ function LandingPageContent() {
     const cleanupOldBannerFlags = () => {
       const currentTime = Date.now()
       const maxAge = 24 * 60 * 60 * 1000 // 24 hours
-      
+
       Object.keys(sessionStorage).forEach(key => {
         if (key.startsWith('chartBannerShown_')) {
           try {
@@ -395,10 +395,10 @@ function LandingPageContent() {
 
     // Clean up on mount and when chart changes
     cleanupOldBannerFlags()
-    
+
     // Set up interval to clean up old flags
     const interval = setInterval(cleanupOldBannerFlags, 60 * 60 * 1000) // Every hour
-    
+
     return () => clearInterval(interval)
   }, [currentChartState])
 
@@ -438,31 +438,24 @@ function LandingPageContent() {
                 <BarChart2 className="h-6 w-6 text-white" />
               </div>
             </div>
-            
+
             {/* Center: Main Title */}
             <div className="flex-1 flex justify-center">
               <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent tracking-wide text-center">
                 Generate AI Charts
               </h1>
             </div>
-            
-            {/* Right: Advanced Editor Button */}
+
+            {/* Right: Profile */}
             <div className="flex items-center gap-3 min-w-0">
-              <button
-                onClick={() => router.push("/editor")}
-                className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl text-sm font-semibold transition-all duration-200 hover:scale-105 shadow-lg"
-              >
-                <PencilRuler className="w-4 h-4" />
-                <span className="hidden sm:inline">Advanced Editor</span>
-                <span className="sm:hidden">ADV Editor</span>
-              </button>
+              <SimpleProfileDropdown size="md" />
             </div>
           </div>
         </header>
 
         {/* Left Icon Sidebar */}
         <aside className="fixed left-0 top-16 bottom-0 w-16 bg-white/90 backdrop-blur-xl border-r border-white/20 shadow-lg z-30 flex flex-col items-center py-4 space-y-4">
-          
+
           {/* New Chat Icon */}
           <button
             onClick={() => {
@@ -476,48 +469,45 @@ function LandingPageContent() {
           >
             <SquarePen className="w-5 h-5" />
           </button>
-          
+
           {/* Message Icon */}
           <button
             onClick={() => handleTabletIconClick('messages')}
-            className={`p-2 rounded-lg transition-all duration-200 ${
-              tabletRightSidebarContent === 'messages' && tabletRightSidebarOpen
-                ? 'text-blue-600 bg-blue-50' 
-                : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
-            }`}
+            className={`p-2 rounded-lg transition-all duration-200 ${tabletRightSidebarContent === 'messages' && tabletRightSidebarOpen
+              ? 'text-blue-600 bg-blue-50'
+              : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+              }`}
             title="Messages"
           >
             <MessageSquare className="w-5 h-5" />
           </button>
-          
+
           {/* Tools Icon */}
           <button
             onClick={() => handleTabletIconClick('tools')}
-            className={`p-2 rounded-lg transition-all duration-200 ${
-              tabletRightSidebarContent === 'tools' && tabletRightSidebarOpen
-                ? 'text-blue-600 bg-blue-50' 
-                : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
-            }`}
+            className={`p-2 rounded-lg transition-all duration-200 ${tabletRightSidebarContent === 'tools' && tabletRightSidebarOpen
+              ? 'text-blue-600 bg-blue-50'
+              : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+              }`}
             title="Tools"
           >
             <Settings className="w-5 h-5" />
           </button>
-          
-                     {/* History Icon */}
-           <button
-             onClick={() => handleTabletIconClick('history')}
-             className={`p-2 rounded-lg transition-all duration-200 ${
-               tabletRightSidebarContent === 'history' && tabletRightSidebarOpen
-                 ? 'text-blue-600 bg-blue-50' 
-                 : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
-             }`}
-             title="History"
-           >
-             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-             </svg>
-           </button>
-          
+
+          {/* History Icon */}
+          <button
+            onClick={() => handleTabletIconClick('history')}
+            className={`p-2 rounded-lg transition-all duration-200 ${tabletRightSidebarContent === 'history' && tabletRightSidebarOpen
+              ? 'text-blue-600 bg-blue-50'
+              : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+              }`}
+            title="History"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
+
           {/* Profile Icon at bottom */}
           <div className="flex-1"></div>
           <SimpleProfileDropdown size="md" />
@@ -529,10 +519,10 @@ function LandingPageContent() {
           <div className="flex-1 p-4 flex flex-col">
             {chartData?.datasets?.length > 0 && hasJSON ? (
               <div className="flex-1 h-full">
-                <ChartPreview 
-                  onToggleSidebar={() => {}} 
+                <ChartPreview
+                  onToggleSidebar={() => { }}
                   isSidebarCollapsed={true}
-                  onToggleLeftSidebar={() => {}}
+                  onToggleLeftSidebar={() => { }}
                   isLeftSidebarCollapsed={true}
                 />
               </div>
@@ -553,12 +543,12 @@ function LandingPageContent() {
         {tabletRightSidebarOpen && (
           <div className="fixed inset-0 z-50">
             {/* Backdrop */}
-            <div 
+            <div
               className="absolute inset-0 bg-black/20 backdrop-blur-sm"
               onClick={closeTabletSidebar}
             />
-            
-                        {/* Sidebar */}
+
+            {/* Sidebar */}
             <div className="absolute right-0 top-0 bottom-0 w-80 bg-white shadow-2xl border-l border-white/20 transform transition-transform duration-300 flex flex-col">
               {/* Sidebar Header */}
               <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
@@ -572,65 +562,65 @@ function LandingPageContent() {
                   <X className="w-5 h-5 text-gray-500" />
                 </button>
               </div>
-              
+
               {/* Sidebar Content */}
               <div className="flex-1 min-h-0 flex flex-col">
-                 {tabletRightSidebarContent === 'messages' && (
-                   <>
-                     {/* Navigation Section - Tablet */}
-                     <div className="p-3 bg-white/95 flex-shrink-0">
-                       <div className="flex items-center gap-0 bg-gray-50 rounded-lg p-1">
-                         <button
-                           onClick={() => router.push('/board')}
-                           className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-all relative"
-                           title="Dashboard"
-                         >
-                           <LayoutDashboard className="w-3.5 h-3.5" />
-                           <span>Board</span>
-                         </button>
-                         <button
-                           className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-semibold text-indigo-700 bg-white rounded-md shadow-sm transition-all relative"
-                         >
-                           <MessageSquare className="w-3.5 h-3.5" />
-                           <span>AI Chat</span>
-                           <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-indigo-600 rounded-full"></div>
-                         </button>
-                         <button
-                           onClick={() => router.push('/editor')}
-                           className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-all relative"
-                         >
-                           <Edit3 className="w-3.5 h-3.5" />
-                           <span>Editor</span>
-                         </button>
-                       </div>
-                     </div>
-                   <ChatWindow
-                     messages={messages}
-                     input={input}
-                     setInput={setInput}
-                     onSend={handleSend}
-                     isProcessing={isProcessing}
-                     hasActiveChart={hasActiveChart}
-                     showActiveBanner={showActiveBanner}
-                     setShowActiveBanner={setShowActiveBanner}
-                     messagesEndRef={messagesEndRef}
-                     textareaRef={textareaRef}
-                     isChatDisabled={isChatDisabled}
-                     disabledMessage="Please attach a template to start the conversation."
-                     handleInputChange={handleInputChange}
-                     handlePaste={handlePaste}
-                     compact={true}
-                     currentChartState={currentChartState}
-                   />
-                   </>
-                 )}
-                
-                                 {tabletRightSidebarContent === 'tools' && (
-                   <div className="h-full overflow-auto">
-                     <ConfigSidebar />
-                   </div>
-                 )}
-                
+                {tabletRightSidebarContent === 'messages' && (
+                  <>
+                    {/* Navigation Section - Tablet */}
+                    <div className="p-3 bg-white/95 flex-shrink-0">
+                      <div className="flex items-center gap-0 bg-gray-50 rounded-lg p-1">
+                        <button
+                          onClick={() => router.push('/board')}
+                          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-all relative"
+                          title="Dashboard"
+                        >
+                          <LayoutDashboard className="w-3.5 h-3.5" />
+                          <span>Board</span>
+                        </button>
+                        <button
+                          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-semibold text-indigo-700 bg-white rounded-md shadow-sm transition-all relative"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span>AI Chat</span>
+                          <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-indigo-600 rounded-full"></div>
+                        </button>
+                        <button
+                          onClick={() => router.push('/editor')}
+                          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-all relative"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span>Editor</span>
+                        </button>
+                      </div>
+                    </div>
+                    <ChatWindow
+                      messages={messages}
+                      input={input}
+                      setInput={setInput}
+                      onSend={handleSend}
+                      isProcessing={isProcessing}
+                      hasActiveChart={hasActiveChart}
+                      showActiveBanner={showActiveBanner}
+                      setShowActiveBanner={setShowActiveBanner}
+                      messagesEndRef={messagesEndRef}
+                      textareaRef={textareaRef}
+                      isChatDisabled={isChatDisabled}
+                      disabledMessage="Please attach a template to start the conversation."
+                      handleInputChange={handleInputChange}
+                      handlePaste={handlePaste}
+                      compact={true}
+                      currentChartState={currentChartState}
+                    />
+                  </>
+                )}
+
+                {tabletRightSidebarContent === 'tools' && (
+                  <div className="h-full overflow-auto">
+                    <ConfigSidebar />
+                  </div>
+                )}
+
                 {tabletRightSidebarContent === 'history' && (
                   <div className="p-4">
                     <HistoryDropdown />
@@ -657,23 +647,17 @@ function LandingPageContent() {
                 <BarChart2 className="h-5 w-5 text-white" />
               </div>
             </div>
-            
+
             {/* Center: Main Title */}
             <div className="flex-1 flex justify-center">
               <h1 className="text-lg font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent tracking-wide text-center">
                 AI Charts
               </h1>
             </div>
-            
-            {/* Right: Advanced Editor Button */}
+
+            {/* Right: Profile */}
             <div className="flex items-center gap-2 min-w-0">
-              <button
-                onClick={() => router.push("/editor")}
-                className="flex items-center gap-1.5 p-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg text-xs font-semibold transition-all duration-200 hover:scale-105 shadow-lg"
-              >
-                <PencilRuler className="w-3.5 h-3.5" />
-                <span>ADV Editor</span>
-              </button>
+              <SimpleProfileDropdown size="sm" />
             </div>
           </div>
         </header>
@@ -684,10 +668,10 @@ function LandingPageContent() {
           <div className="flex-1 p-3 flex flex-col">
             {chartData?.datasets?.length > 0 && hasJSON ? (
               <div className="flex-1 h-full">
-                <ChartPreview 
-                  onToggleSidebar={() => {}} 
+                <ChartPreview
+                  onToggleSidebar={() => { }}
                   isSidebarCollapsed={true}
-                  onToggleLeftSidebar={() => {}}
+                  onToggleLeftSidebar={() => { }}
                   isLeftSidebarCollapsed={true}
                 />
               </div>
@@ -707,7 +691,7 @@ function LandingPageContent() {
         {/* Bottom Navigation Bar */}
         <nav className="fixed bottom-0 left-0 right-0 z-30 h-16 bg-white/95 backdrop-blur-xl border-t border-white/30 shadow-lg">
           <div className="flex items-center justify-around h-full px-2">
-            
+
             {/* New Chat Icon */}
             <button
               onClick={() => {
@@ -722,64 +706,61 @@ function LandingPageContent() {
               <SquarePen className="w-5 h-5 mb-1" />
               <span className="text-xs font-medium">New</span>
             </button>
-            
+
             {/* Messages Icon */}
             <button
               onClick={() => handleMobileIconClick('messages')}
-              className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all duration-200 min-w-0 ${
-                mobileRightSidebarContent === 'messages' && mobileRightSidebarOpen
-                  ? 'text-blue-600 bg-blue-50' 
-                  : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
-              }`}
+              className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all duration-200 min-w-0 ${mobileRightSidebarContent === 'messages' && mobileRightSidebarOpen
+                ? 'text-blue-600 bg-blue-50'
+                : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                }`}
               title="Messages"
             >
               <MessageSquare className="w-5 h-5 mb-1" />
               <span className="text-xs font-medium">Chat</span>
             </button>
-            
+
             {/* Tools Icon */}
             <button
               onClick={() => handleMobileIconClick('tools')}
-              className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all duration-200 min-w-0 ${
-                mobileRightSidebarContent === 'tools' && mobileRightSidebarOpen
-                  ? 'text-blue-600 bg-blue-50' 
-                  : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
-              }`}
+              className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all duration-200 min-w-0 ${mobileRightSidebarContent === 'tools' && mobileRightSidebarOpen
+                ? 'text-blue-600 bg-blue-50'
+                : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                }`}
               title="Tools"
             >
               <Settings className="w-5 h-5 mb-1" />
               <span className="text-xs font-medium">Tools</span>
             </button>
-            
-                         {/* History Icon */}
-             <button
-               onClick={() => handleMobileIconClick('history')}
-               className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all duration-200 min-w-0 ${
-                 mobileRightSidebarContent === 'history' && mobileRightSidebarOpen
-                   ? 'text-blue-600 bg-blue-50' 
-                   : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
-               }`}
-               title="History"
-             >
-               <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-               </svg>
-               <span className="text-xs font-medium">History</span>
-             </button>
+
+            {/* History Icon */}
+            <button
+              onClick={() => handleMobileIconClick('history')}
+              className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all duration-200 min-w-0 ${mobileRightSidebarContent === 'history' && mobileRightSidebarOpen
+                ? 'text-blue-600 bg-blue-50'
+                : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                }`}
+              title="History"
+            >
+              <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-xs font-medium">History</span>
+            </button>
 
             {/* Profile Icon */}
             <div className="flex flex-col items-center justify-center p-2 min-w-0">
               <SimpleProfileDropdown size="md" variant="avatar" className="mb-1" />
               <span className="text-xs font-medium text-gray-600">Profile</span>
             </div>
-            
+
           </div>
         </nav>
 
         {/* Right Overlay Sidebar for Mobile */}
         {mobileRightSidebarOpen && (
           <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm" onClick={closeMobileSidebar}>
-            <div 
+            <div
               className="absolute right-0 top-0 bottom-0 w-80 max-w-[85vw] bg-white/95 backdrop-blur-xl shadow-2xl border-l border-white/30 flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
@@ -827,32 +808,32 @@ function LandingPageContent() {
                         </button>
                       </div>
                     </div>
-                  <ChatWindow
-                    messages={messages}
-                    input={input}
-                    setInput={setInput}
-                    onSend={handleSend}
-                    handleInputChange={handleInputChange}
-                    handlePaste={handlePaste}
-                    isProcessing={isProcessing}
-                    hasActiveChart={hasActiveChart}
-                    showActiveBanner={showActiveBanner}
-                    setShowActiveBanner={setShowActiveBanner}
-                    isChatDisabled={isChatDisabled}
-                    disabledMessage="Please attach a template to start the conversation."
-                    messagesEndRef={messagesEndRef}
-                    textareaRef={textareaRef}
-                    currentChartState={currentChartState}
-                  />
+                    <ChatWindow
+                      messages={messages}
+                      input={input}
+                      setInput={setInput}
+                      onSend={handleSend}
+                      handleInputChange={handleInputChange}
+                      handlePaste={handlePaste}
+                      isProcessing={isProcessing}
+                      hasActiveChart={hasActiveChart}
+                      showActiveBanner={showActiveBanner}
+                      setShowActiveBanner={setShowActiveBanner}
+                      isChatDisabled={isChatDisabled}
+                      disabledMessage="Please attach a template to start the conversation."
+                      messagesEndRef={messagesEndRef}
+                      textareaRef={textareaRef}
+                      currentChartState={currentChartState}
+                    />
                   </>
                 )}
-                
+
                 {mobileRightSidebarContent === 'tools' && (
                   <div className="h-full">
                     <ConfigSidebar />
                   </div>
                 )}
-                
+
                 {mobileRightSidebarContent === 'history' && (
                   <div className="p-4">
                     <HistoryDropdown variant="full" />
@@ -869,12 +850,12 @@ function LandingPageContent() {
   // Desktop Layout (default)
   return (
     <div className="flex h-screen w-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 relative overflow-hidden">
-             {/* Floating global header for history and avatar, only when no chart is created - Desktop only */}
-       {(!chartData?.datasets?.length || !hasJSON) && !isTablet && !isMobile && (
-         <div className="fixed top-4 right-4 z-50 flex items-center gap-3">
-           
-           <HistoryDropdown variant="full" />
-           <SimpleProfileDropdown size="md" />
+      {/* Floating global header for history and avatar, only when no chart is created - Desktop only */}
+      {(!chartData?.datasets?.length || !hasJSON) && !isTablet && !isMobile && (
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-3">
+
+          <HistoryDropdown variant="full" />
+          <SimpleProfileDropdown size="md" />
         </div>
       )}
       {/* Background decoration */}
@@ -912,12 +893,12 @@ function LandingPageContent() {
                 </button>
               </div>
             </div>
-            
+
             {/* Header */}
             <div className="flex items-center justify-between p-3 border-b border-white/20 bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg">
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => router.push('/board')}
+                  onClick={() => router.push('/')}
                   className="p-1 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-sm transition-colors"
                   aria-label="Home"
                 >
@@ -932,13 +913,6 @@ function LandingPageContent() {
                 >
                   <SquarePen className="w-3.5 h-3.5" />
                 </button>
-                
-                <button
-                  className="bg-white/20 hover:bg-white/30 text-white font-semibold px-3 py-1.5 rounded-lg backdrop-blur-sm transition-all duration-200 text-xs border border-white/20 hover:scale-105 flex items-center gap-1"
-                  onClick={() => router.push("/editor")}
-                >
-                  Advanced Editor <PencilRuler className="w-3.5 h-3.5 ml-1" />
-                </button>
                 <button
                   className="bg-white/20 hover:bg-white/30 text-white font-semibold px-2 py-1.5 rounded-lg backdrop-blur-sm transition-all duration-200 text-xs border border-white/20 hover:scale-105"
                   onClick={() => setLeftSidebarOpen(false)}
@@ -948,50 +922,49 @@ function LandingPageContent() {
                 </button>
               </div>
             </div>
-            
+
             {/* Input */}
-             <form
-               onSubmit={handleSend}
-               className="p-2 border-t border-white/20 bg-gradient-to-br from-blue/90 to-blue-50/90 flex gap-2 shadow-inner backdrop-blur-sm flex-shrink-0"
-             >
-               <textarea
-                 ref={textareaRef}
-                 className="flex-1 rounded-lg border border-slate-200/100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white/80 resize-none max-h-24 min-h-[40px] leading-relaxed transition-colors font-sans shadow-sm backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                 placeholder={isChatDisabled ? "Attach a template to start..." : (hasActiveChart ? "Modify the chart..." : "Describe your chart...")}
-                 value={input}
-                 onChange={handleInputChange}
-                 onPaste={handlePaste}
-                 disabled={isProcessing || isChatDisabled}
-                 rows={1}
-                 onKeyDown={e => {
-                   if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                     e.preventDefault();
-                     if (!isChatDisabled) {
-                       handleSend(e)
-                     }
-                   }
-                 }}
-               />
-               <button
-                 type="submit"
-                 className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-3 py-2 rounded-lg shadow-lg disabled:opacity-50 transition-all duration-200 transform hover:scale-105 focus:scale-105 disabled:hover:scale-100"
-                 disabled={isProcessing || !input.trim() || isChatDisabled}
-                 style={{ alignSelf: "flex-end", height: 40 }}
-               >
-                 <Send className="inline-block w-4 h-4" />
-               </button>
-             </form>
+            <form
+              onSubmit={handleSend}
+              className="p-2 border-t border-white/20 bg-gradient-to-br from-blue/90 to-blue-50/90 flex gap-2 shadow-inner backdrop-blur-sm flex-shrink-0"
+            >
+              <textarea
+                ref={textareaRef}
+                className="flex-1 rounded-lg border border-slate-200/100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white/80 resize-none max-h-24 min-h-[40px] leading-relaxed transition-colors font-sans shadow-sm backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                placeholder={isChatDisabled ? "Attach a template to start..." : (hasActiveChart ? "Modify the chart..." : "Describe your chart...")}
+                value={input}
+                onChange={handleInputChange}
+                onPaste={handlePaste}
+                disabled={isProcessing || isChatDisabled}
+                rows={1}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                    e.preventDefault();
+                    if (!isChatDisabled) {
+                      handleSend(e)
+                    }
+                  }
+                }}
+              />
+              <button
+                type="submit"
+                className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-3 py-2 rounded-lg shadow-lg disabled:opacity-50 transition-all duration-200 transform hover:scale-105 focus:scale-105 disabled:hover:scale-100"
+                disabled={isProcessing || !input.trim() || isChatDisabled}
+                style={{ alignSelf: "flex-end", height: 40 }}
+              >
+                <Send className="inline-block w-4 h-4" />
+              </button>
+            </form>
 
             {/* Messages */}
             <div className="lex-1 overflow-y-auto px-3 py-2 space-y-2 bg-gradient-to-b from-white/80 to-slate-50/80 font-sans">
               {messages.map((msg, idx) => (
                 <div
                   key={idx}
-                  className={`rounded-2xl px-4 py-3 max-w-[90%] whitespace-pre-wrap break-words shadow-lg font-medium text-sm ${
-                    msg.role === "user"
-                      ? "bg-gradient-to-br from-indigo-500 to-purple-600 text-white self-end ml-auto border border-indigo-400/30 shadow-indigo-500/25"
-                      : "bg-gradient-to-br from-white to-slate-50 text-slate-800 self-start mr-auto border border-slate-200/50 shadow-slate-500/10"
-                  }`}
+                  className={`rounded-2xl px-4 py-3 max-w-[90%] whitespace-pre-wrap break-words shadow-lg font-medium text-sm ${msg.role === "user"
+                    ? "bg-gradient-to-br from-indigo-500 to-purple-600 text-white self-end ml-auto border border-indigo-400/30 shadow-indigo-500/25"
+                    : "bg-gradient-to-br from-white to-slate-50 text-slate-800 self-start mr-auto border border-slate-200/50 shadow-slate-500/10"
+                    }`}
                   style={{ wordBreak: 'break-word' }}
                 >
                   <div className="flex items-start gap-3">
@@ -1078,15 +1051,15 @@ function LandingPageContent() {
         ) : (
           // Collapsed Sidebar - Icon Only
           <div className="flex flex-col items-center h-full py-4 space-y-4 group">
-            {/* Application Logo - Always shows logo, routes to board */}
+            {/* Application Logo - Always shows logo, routes to home */}
             <button
-              onClick={() => router.push("/board")}
+              onClick={() => router.push("/")}
               className="p-2 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-md"
-              title="Go to Board"
+              title="Go to Home"
             >
               <BarChart2 className="w-6 h-6 text-white" />
             </button>
-            
+
             {/* Expand Sidebar Icon - Separate ChevronRight icon */}
             <button
               onClick={() => setLeftSidebarOpen(true)}
@@ -1095,7 +1068,7 @@ function LandingPageContent() {
             >
               <ChevronRight className="w-5 h-5" />
             </button>
-            
+
             {/* New Chat Icon */}
             <button
               onClick={() => {
@@ -1107,7 +1080,7 @@ function LandingPageContent() {
             >
               <SquarePen className="w-5 h-5" />
             </button>
-            
+
             {/* Message Icon - Show current chat */}
             <button
               onClick={() => {
@@ -1115,40 +1088,39 @@ function LandingPageContent() {
                   setLeftSidebarOpen(true);
                 }
               }}
-              className={`p-2 rounded-lg transition-all duration-200 ${
-                hasActiveChart 
-                  ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' 
-                  : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
-              }`}
+              className={`p-2 rounded-lg transition-all duration-200 ${hasActiveChart
+                ? 'text-blue-600 bg-blue-50 hover:bg-blue-100'
+                : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+                }`}
               title={hasActiveChart ? "Current Chat" : "No active chat"}
               disabled={!hasActiveChart}
             >
               <MessageSquare className="w-5 h-5" />
             </button>
-            
-                         {/* History Icon */}
-             <button
-               onClick={() => {
-                 // This will trigger the history dropdown
-                 const historyButton = document.querySelector('[data-history-dropdown]') as HTMLButtonElement;
-                 if (historyButton) {
-                   historyButton.click();
-                 }
-               }}
-               className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-200 text-gray-600 hover:text-gray-800"
-               title="Chat History"
-             >
-               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-               </svg>
-             </button>
+
+            {/* History Icon */}
+            <button
+              onClick={() => {
+                // This will trigger the history dropdown
+                const historyButton = document.querySelector('[data-history-dropdown]') as HTMLButtonElement;
+                if (historyButton) {
+                  historyButton.click();
+                }
+              }}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-200 text-gray-600 hover:text-gray-800"
+              title="Chat History"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
           </div>
         )}
       </aside>
       {/* Main Content Area */}
       <div className="flex-1 relative z-10">
         {chartData?.datasets?.length > 0 && hasJSON ? (
-          <ChartLayout 
+          <ChartLayout
             leftSidebarOpen={leftSidebarOpen}
             setLeftSidebarOpen={setLeftSidebarOpen}
           />

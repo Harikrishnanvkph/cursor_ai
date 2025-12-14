@@ -18,7 +18,8 @@ import {
   ExternalLink,
   PencilRuler,
   Calendar,
-  BarChart3
+  BarChart3,
+  LayoutTemplate
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -28,7 +29,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Chart as ChartJS } from "chart.js"
-import { MiniChartPreview } from "./mini-chart-preview"
 
 interface ChartCardProps {
   conversation: Conversation
@@ -44,7 +44,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
 
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this chart?")) return
-    
+
     setIsDeleting(true)
     try {
       await deleteConversation(conversation.id)
@@ -100,7 +100,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
         a.click()
         document.body.removeChild(a)
         URL.revokeObjectURL(url)
-        
+
         chart.destroy()
         toast.success("Chart downloaded successfully!")
       })
@@ -118,10 +118,10 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp)
-    return date.toLocaleDateString("en-US", { 
-      month: "short", 
-      day: "numeric", 
-      year: "numeric" 
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric"
     })
   }
 
@@ -139,15 +139,20 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
     return colors[type] || "bg-gray-100 text-gray-700 border-gray-200"
   }
 
+  // Check if this is a template mode snapshot
+  const isTemplateMode = conversation.snapshot?.is_template_mode && conversation.snapshot?.template_structure
+
   if (viewMode === "list") {
     return (
       <Card className="border-gray-200 shadow-sm hover:shadow-md transition-shadow">
         <CardContent className="p-3">
           <div className="flex items-center gap-3">
             {/* Mini Preview */}
-            <div className="flex-shrink-0 w-20 h-20 bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
-              {conversation.snapshot && (
-                <MiniChartPreview snapshot={conversation.snapshot} />
+            <div className="flex-shrink-0 w-20 h-20 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200 overflow-hidden flex items-center justify-center">
+              {isTemplateMode ? (
+                <LayoutTemplate className="w-8 h-8 text-purple-400" />
+              ) : (
+                <BarChart3 className="w-8 h-8 text-blue-400" />
               )}
             </div>
 
@@ -227,12 +232,14 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
     <Card className="border-gray-200 shadow-sm hover:shadow-lg transition-all duration-200 group overflow-hidden">
       <CardContent className="space-y-2 p-3">
         {/* Chart Preview */}
-        <div 
-          className="aspect-video bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200 overflow-hidden cursor-pointer hover:border-blue-300 transition-colors"
+        <div
+          className="aspect-video bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200 overflow-hidden cursor-pointer hover:border-blue-300 transition-colors flex items-center justify-center"
           onClick={() => onPreview(conversation)}
         >
-          {conversation.snapshot && (
-            <MiniChartPreview snapshot={conversation.snapshot} />
+          {isTemplateMode ? (
+            <LayoutTemplate className="w-12 h-12 text-purple-400" />
+          ) : (
+            <BarChart3 className="w-12 h-12 text-blue-400" />
           )}
         </div>
 

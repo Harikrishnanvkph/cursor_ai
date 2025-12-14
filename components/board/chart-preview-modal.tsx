@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { type Conversation } from "@/lib/history-store"
 import { useChartStore } from "@/lib/chart-store"
+import { useTemplateStore } from "@/lib/template-store"
 import ChartGenerator from "@/lib/chart_generator"
+import { TemplateChartPreview } from "@/components/template-chart-preview"
 import { Chart as ChartJS } from "chart.js"
 import { toast } from "sonner"
 import {
@@ -21,7 +23,8 @@ import {
   PencilRuler,
   Calendar,
   MessageSquare,
-  Maximize2
+  Maximize2,
+  LayoutTemplate
 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
@@ -36,22 +39,55 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
   const [activeTab, setActiveTab] = useState("preview")
   const [shareUrl, setShareUrl] = useState("")
   const { setFullChart } = useChartStore()
+  const { setCurrentTemplate, setEditorMode, clearAllTemplateState } = useTemplateStore()
+
+  // Check if this is a template mode snapshot
+  const isTemplateMode = conversation.snapshot?.is_template_mode && conversation.snapshot?.template_structure
 
   useEffect(() => {
     // Generate share URL
     setShareUrl(`${window.location.origin}/chart/${conversation.id}`)
   }, [conversation.id])
 
-  // Load chart data into store when modal opens
+  // Load chart/template data into stores when modal opens
   useEffect(() => {
     if (conversation.snapshot && activeTab === "preview") {
+      // Always load chart data
       setFullChart({
         chartType: conversation.snapshot.chartType,
         chartData: conversation.snapshot.chartData,
         chartConfig: conversation.snapshot.chartConfig
       })
+
+      // If template mode, also load template into store
+      if (isTemplateMode) {
+        const template = conversation.snapshot.template_structure
+        const content = conversation.snapshot.template_content
+
+        // Update text areas with saved content if available
+        if (content && template.textAreas) {
+          const updatedTextAreas = template.textAreas.map((area: any) => {
+            const areaContent = content[area.type]
+            if (areaContent !== undefined) {
+              return { ...area, content: areaContent }
+            }
+            return area
+          })
+          setCurrentTemplate({ ...template, textAreas: updatedTextAreas })
+        } else {
+          setCurrentTemplate(template)
+        }
+        setEditorMode('template')
+      }
     }
-  }, [conversation.snapshot, activeTab, setFullChart])
+
+    // Cleanup when modal closes
+    return () => {
+      if (isTemplateMode) {
+        clearAllTemplateState()
+      }
+    }
+  }, [conversation.snapshot, activeTab, setFullChart, isTemplateMode, setCurrentTemplate, setEditorMode, clearAllTemplateState])
 
   const handleDownloadPNG = async () => {
     if (!conversation.snapshot) return
@@ -93,7 +129,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
         a.click()
         document.body.removeChild(a)
         URL.revokeObjectURL(url)
-        
+
         chart.destroy()
         toast.success("PNG downloaded successfully!")
       })
@@ -173,7 +209,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
-    
+
     toast.success("HTML downloaded successfully!")
   }
 
@@ -188,9 +224,9 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp)
-    return date.toLocaleDateString("en-US", { 
-      month: "long", 
-      day: "numeric", 
+    return date.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit"
@@ -211,6 +247,24 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
     return colors[type] || "bg-gray-100 text-gray-700 border-gray-200"
   }
 
+  // Get badge info based on mode
+  const getBadgeInfo = () => {
+    if (isTemplateMode) {
+      return {
+        label: "Template",
+        className: "bg-purple-100 text-purple-700 border-purple-200",
+        icon: <LayoutTemplate className="h-3 w-3 mr-1" />
+      }
+    }
+    return {
+      label: conversation.snapshot?.chartType || "Unknown",
+      className: getChartTypeColor(conversation.snapshot?.chartType || ""),
+      icon: null
+    }
+  }
+
+  const badgeInfo = getBadgeInfo()
+
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="w-[95vw] max-w-[95vw] h-[95vh] flex flex-col p-0 [&>button:last-child]:hidden">
@@ -220,8 +274,9 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                  <Badge className={`${getChartTypeColor(conversation.snapshot?.chartType || "")} border text-xs px-3 py-0.5`}>
-                    {conversation.snapshot?.chartType || "Unknown"}
+                  <Badge className={`${badgeInfo.className} border text-xs px-3 py-0.5 flex items-center`}>
+                    {badgeInfo.icon}
+                    {badgeInfo.label}
                   </Badge>
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
@@ -240,22 +295,22 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2">
                 <TabsList className="flex gap-2 rounded-md bg-gray-100 p-1 shadow-inner">
-                  <TabsTrigger 
-                    value="preview" 
+                  <TabsTrigger
+                    value="preview"
                     className="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm text-gray-600 transition-colors data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm"
                   >
                     <Maximize2 className="h-4 w-4" />
                     Preview
                   </TabsTrigger>
-                  <TabsTrigger 
-                    value="share" 
+                  <TabsTrigger
+                    value="share"
                     className="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm text-gray-600 transition-colors data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm"
                   >
                     <Share2 className="h-4 w-4" />
                     Share
                   </TabsTrigger>
-                  <TabsTrigger 
-                    value="export" 
+                  <TabsTrigger
+                    value="export"
                     className="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm text-gray-600 transition-colors data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm"
                   >
                     <Download className="h-4 w-4" />
@@ -298,7 +353,11 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
               <div className="h-full bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                 <div className="w-full h-full">
                   {conversation.snapshot && activeTab === "preview" && (
-                    <ChartGenerator />
+                    isTemplateMode ? (
+                      <TemplateChartPreview />
+                    ) : (
+                      <ChartGenerator />
+                    )
                   )}
                 </div>
               </div>
@@ -307,7 +366,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
             <TabsContent value="share" className="p-4 mt-0 space-y-4">
               <div>
                 <h3 className="text-base font-semibold text-gray-900 mb-3">Share this Chart</h3>
-                
+
                 <div className="space-y-3">
                   {/* Share Link */}
                   <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
@@ -348,7 +407,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
             <TabsContent value="export" className="p-4 mt-0 space-y-4">
               <div>
                 <h3 className="text-base font-semibold text-gray-900 mb-3">Export Options</h3>
-                
+
                 <div className="grid gap-3">
                   {/* PNG Export */}
                   <button
