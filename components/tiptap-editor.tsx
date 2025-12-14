@@ -31,7 +31,8 @@ import {
     Undo,
     Redo,
     RemoveFormatting,
-    Highlighter
+    Highlighter,
+    Maximize2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -100,6 +101,37 @@ const LineHeightExtension = Extension.create({
                 return this.options.types.every((type: string) =>
                     commands.resetAttributes(type, 'lineHeight')
                 )
+            }
+        }
+    }
+})
+
+// Custom Image extension with width/height support for resizing
+const ResizableImage = Image.extend({
+    addAttributes() {
+        return {
+            ...this.parent?.(),
+            width: {
+                default: null,
+                parseHTML: element => {
+                    const width = element.getAttribute('width') || element.style.width
+                    return width ? width.replace('px', '') : null
+                },
+                renderHTML: attributes => {
+                    if (!attributes.width) return {}
+                    return { width: attributes.width, style: `width: ${attributes.width}px` }
+                }
+            },
+            height: {
+                default: null,
+                parseHTML: element => {
+                    const height = element.getAttribute('height') || element.style.height
+                    return height ? height.replace('px', '') : null
+                },
+                renderHTML: attributes => {
+                    if (!attributes.height) return {}
+                    return { height: attributes.height, style: `height: ${attributes.height}px` }
+                }
             }
         }
     }
@@ -174,11 +206,11 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
                     class: 'text-blue-600 underline cursor-pointer'
                 }
             }),
-            Image.configure({
+            ResizableImage.configure({
                 inline: true,
                 allowBase64: true,
                 HTMLAttributes: {
-                    class: 'max-w-full h-auto',
+                    class: 'max-w-full h-auto cursor-pointer',
                     style: 'display: inline; vertical-align: middle;'
                 }
             }),
@@ -195,6 +227,21 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
         immediatelyRender: false,
         onUpdate: ({ editor }) => {
             onChange(editor.getHTML())
+        },
+        onSelectionUpdate: ({ editor }) => {
+            // Check if an image is selected
+            const { from, to } = editor.state.selection
+            const node = editor.state.doc.nodeAt(from)
+            if (node && node.type.name === 'image') {
+                setSelectedImage({
+                    src: node.attrs.src,
+                    width: node.attrs.width || '',
+                    height: node.attrs.height || '',
+                    pos: from
+                })
+            } else {
+                setSelectedImage(null)
+            }
         },
         editorProps: {
             attributes: {
@@ -229,6 +276,34 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
 
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [imageUrl, setImageUrl] = useState('')
+
+    // State for selected image resize
+    const [selectedImage, setSelectedImage] = useState<{
+        src: string
+        width: string
+        height: string
+        pos: number
+    } | null>(null)
+
+    // Update image dimensions
+    const updateImageSize = useCallback((width: string, height: string) => {
+        if (!editor || !selectedImage) return
+
+        const { pos } = selectedImage
+        const node = editor.state.doc.nodeAt(pos)
+        if (!node || node.type.name !== 'image') return
+
+        // Use transaction to update node attributes
+        const tr = editor.state.tr.setNodeMarkup(pos, undefined, {
+            ...node.attrs,
+            width: width || null,
+            height: height || null
+        })
+        editor.view.dispatch(tr)
+
+        // Update local state
+        setSelectedImage(prev => prev ? { ...prev, width, height } : null)
+    }, [editor, selectedImage])
 
     const addImageFromUrl = useCallback(() => {
         if (!editor || !imageUrl) return
@@ -548,6 +623,81 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
                         </div>
                     </PopoverContent>
                 </Popover>
+
+                {/* Image Resize - Only show when image is selected */}
+                {selectedImage && (
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button
+                                type="button"
+                                variant="default"
+                                size="sm"
+                                className="h-8 px-2 gap-1 bg-blue-600 hover:bg-blue-700"
+                                title="Resize Selected Image"
+                            >
+                                <Maximize2 className="h-4 w-4" />
+                                <span className="text-xs">Resize</span>
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-56">
+                            <div className="space-y-3">
+                                <Label className="text-xs font-medium">Resize Image</Label>
+
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <Label className="text-xs text-gray-500 w-12">Width</Label>
+                                        <Input
+                                            type="number"
+                                            placeholder="Auto"
+                                            value={selectedImage.width}
+                                            onChange={(e) => setSelectedImage(prev =>
+                                                prev ? { ...prev, width: e.target.value } : null
+                                            )}
+                                            className="h-8 text-xs flex-1"
+                                        />
+                                        <span className="text-xs text-gray-400">px</span>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <Label className="text-xs text-gray-500 w-12">Height</Label>
+                                        <Input
+                                            type="number"
+                                            placeholder="Auto"
+                                            value={selectedImage.height}
+                                            onChange={(e) => setSelectedImage(prev =>
+                                                prev ? { ...prev, height: e.target.value } : null
+                                            )}
+                                            className="h-8 text-xs flex-1"
+                                        />
+                                        <span className="text-xs text-gray-400">px</span>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-2">
+                                    <Button
+                                        size="sm"
+                                        onClick={() => updateImageSize(selectedImage.width, selectedImage.height)}
+                                        className="flex-1 h-8 text-xs"
+                                    >
+                                        Apply
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => updateImageSize('', '')}
+                                        className="h-8 text-xs"
+                                    >
+                                        Reset
+                                    </Button>
+                                </div>
+
+                                <p className="text-xs text-gray-400">
+                                    Leave empty for auto size. Click on an image to select it.
+                                </p>
+                            </div>
+                        </PopoverContent>
+                    </Popover>
+                )}
 
                 <Separator orientation="vertical" className="h-6 mx-1" />
 
