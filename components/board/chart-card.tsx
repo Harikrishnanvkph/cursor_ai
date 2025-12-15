@@ -1,11 +1,14 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { type Conversation } from "@/lib/history-store"
 import { useHistoryStore } from "@/lib/history-store"
+import { dataService } from "@/lib/data-service"
 import { toast } from "sonner"
 import {
   Eye,
@@ -19,7 +22,9 @@ import {
   PencilRuler,
   Calendar,
   BarChart3,
-  LayoutTemplate
+  LayoutTemplate,
+  Pencil,
+  Loader2
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -39,8 +44,49 @@ interface ChartCardProps {
 }
 
 export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInAdvanced }: ChartCardProps) {
-  const { deleteConversation } = useHistoryStore()
+  const { deleteConversation, updateConversation } = useHistoryStore()
   const [isDeleting, setIsDeleting] = useState(false)
+  const [showRenameDialog, setShowRenameDialog] = useState(false)
+  const [newName, setNewName] = useState(conversation.title)
+  const [isRenaming, setIsRenaming] = useState(false)
+  const renameInputRef = useRef<HTMLInputElement>(null)
+
+  // Focus input when rename dialog opens
+  useEffect(() => {
+    if (showRenameDialog && renameInputRef.current) {
+      setTimeout(() => {
+        renameInputRef.current?.focus()
+        renameInputRef.current?.select()
+      }, 100)
+    }
+  }, [showRenameDialog])
+
+  const handleRename = async () => {
+    if (!newName.trim() || newName === conversation.title) {
+      setShowRenameDialog(false)
+      return
+    }
+
+    setIsRenaming(true)
+    try {
+      // Update in backend
+      const result = await dataService.updateConversation(conversation.id, { title: newName.trim() })
+      if (result.error) {
+        throw new Error(result.error)
+      }
+
+      // Update local state using existing updateConversation method
+      updateConversation(conversation.id, { title: newName.trim() })
+
+      toast.success("Chart renamed successfully")
+      setShowRenameDialog(false)
+    } catch (error) {
+      console.error("Rename error:", error)
+      toast.error("Failed to rename chart")
+    } finally {
+      setIsRenaming(false)
+    }
+  }
 
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this chart?")) return
@@ -201,6 +247,10 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={() => setShowRenameDialog(true)}>
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Rename
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => onEditInAdvanced(conversation)}>
                     <PencilRuler className="h-4 w-4 mr-2" />
                     Advanced Editor
@@ -300,6 +350,10 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                 <Eye className="h-4 w-4 mr-2" />
                 Preview
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowRenameDialog(true)}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Rename
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onEdit(conversation)}>
                 <Edit3 className="h-4 w-4 mr-2" />
                 Edit in AI Chat
@@ -326,6 +380,80 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
           </DropdownMenu>
         </div>
       </CardContent>
+
+      {/* Rename Dialog */}
+      {showRenameDialog && (
+        <div
+          className="fixed inset-0 z-[130] flex items-center justify-center"
+          role="dialog"
+          aria-modal="true"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isRenaming) {
+              setShowRenameDialog(false)
+            }
+          }}
+        >
+          <div className="fixed inset-0 bg-black/40" />
+          <div className="relative z-[131] w-[92vw] max-w-md rounded-lg bg-white border border-gray-200 shadow-xl p-5">
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <Pencil className="h-5 w-5 text-blue-600" />
+                Rename Chart
+              </h3>
+              <p className="mt-1 text-sm text-gray-600">
+                Enter a new name for this chart.
+              </p>
+            </div>
+
+            <form onSubmit={(e) => { e.preventDefault(); handleRename(); }}>
+              <div className="mb-5">
+                <Label htmlFor="rename-input" className="text-sm font-medium text-gray-700">
+                  Chart Name
+                </Label>
+                <Input
+                  ref={renameInputRef}
+                  id="rename-input"
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="My Awesome Chart"
+                  className="mt-1.5"
+                  disabled={isRenaming}
+                  maxLength={100}
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  {newName.length}/100 characters
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowRenameDialog(false)}
+                  disabled={isRenaming}
+                  className="inline-flex items-center justify-center h-9 rounded-md border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isRenaming}
+                  className="inline-flex items-center justify-center h-9 rounded-md bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 shadow-sm transition-colors disabled:opacity-50"
+                >
+                  {isRenaming ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Renaming...
+                    </>
+                  ) : (
+                    'Rename'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </Card>
   )
 }

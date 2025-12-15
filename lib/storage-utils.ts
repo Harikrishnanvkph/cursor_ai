@@ -744,16 +744,24 @@ export function initializeStorageWithExpiry(): void {
 /**
  * Creates a storage wrapper that automatically updates timestamps
  * Use this with Zustand persist for automatic timestamp tracking
+ * Compatible with Zustand v4+ persist middleware
  */
 export function createExpiringStorage(baseName: string) {
   return {
     getItem: (name: string) => {
       const key = getUserStorageKey(baseName);
-      return localStorage.getItem(key);
+      const value = localStorage.getItem(key);
+      if (!value) return null;
+      try {
+        return JSON.parse(value);
+      } catch {
+        return null;
+      }
     },
-    setItem: (name: string, value: string) => {
+    setItem: (name: string, value: any) => {
       const key = getUserStorageKey(baseName);
-      localStorage.setItem(key, value);
+      const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
+      localStorage.setItem(key, stringValue);
       // Update timestamp when data is saved (also updates activity)
       updateStorageTimestamp(key);
     },

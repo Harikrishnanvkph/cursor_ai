@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { BarChart3, AlignEndHorizontal, Database,PanelLeft, Palette, Grid, Tag, Layers, Zap, SlidersHorizontal, Download, ChevronRight, FileText } from "lucide-react"
+import { BarChart3, AlignEndHorizontal, Database, PanelLeft, Palette, Grid, Tag, Layers, Zap, SlidersHorizontal, Download, ChevronRight, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface SidebarProps {
@@ -41,7 +41,7 @@ export function Sidebar({ activeTab, onTabChange, onToggleLeftSidebar, isLeftSid
             title={isLeftSidebarCollapsed ? "Expand Left Sidebar" : "Collapse Left Sidebar"}
           >
             {/* <PanelLeft className={`h-5 w-5 transition-colors ${isLeftSidebarCollapsed ? 'text-slate-300' : 'text-black'}`} /> */}
-            <ChevronRight className={`h-4 w-4 transition-transform duration-200 ${isLeftSidebarCollapsed ? 'rotate-180' : ''}`} />
+            <ChevronRight className={`h-4 w-4 transition-transform duration-200 ${isLeftSidebarCollapsed ? '' : 'rotate-180'}`} />
           </Button>
         )}
       </div>
@@ -54,10 +54,10 @@ export function Sidebar({ activeTab, onTabChange, onToggleLeftSidebar, isLeftSid
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
               className={cn(
-                "w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-left transition-all duration-200 text-sm",
+                "w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-left transition-all duration-200 text-sm border",
                 activeTab === tab.id
-                  ? "bg-blue-50 text-blue-700 border border-blue-200 shadow-sm"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                  ? "bg-blue-50 text-blue-700 border-blue-200 shadow-sm"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 border-transparent",
               )}
             >
               <Icon className="h-4 w-4 flex-shrink-0" />

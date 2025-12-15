@@ -701,6 +701,7 @@ export const useChatStore = create<ChatStore>()(
         conversationContext: state.conversationContext,
         isProcessing: state.isProcessing,
         historyConversationId: state.historyConversationId,
+        backendConversationId: state.backendConversationId,
         undoStack: state.undoStack,
         canUndo: state.canUndo,
         canRedo: state.canRedo

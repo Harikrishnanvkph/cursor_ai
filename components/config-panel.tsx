@@ -31,9 +31,10 @@ interface ConfigPanelProps {
   isSidebarCollapsed?: boolean
   onTabChange?: (tab: string) => void
   onNewChart?: () => void
+  onSaveClick?: () => void
 }
 
-export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, onTabChange, onNewChart }: ConfigPanelProps) {
+export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, onTabChange, onNewChart, onSaveClick }: ConfigPanelProps) {
   const [isMobile, setIsMobile] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const { user, signOut } = useAuth();
@@ -296,7 +297,7 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
               className="h-8 w-8 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg"
               title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
             >
-              <ChevronLeft className={`h-4 w-4 transition-transform duration-200 ${isSidebarCollapsed ? 'rotate-180' : ''}`} />
+              <ChevronLeft className={`h-4 w-4 transition-transform duration-200 ${isSidebarCollapsed ? '' : 'rotate-180'}`} />
             </Button>
           )}
 
@@ -314,7 +315,7 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
             <Button
               size="sm"
               variant="default"
-              onClick={handleSave}
+              onClick={onSaveClick || handleSave}
               disabled={!hasJSON || isSaving}
               className="h-8 px-3 text-xs bg-green-600 hover:bg-green-700 text-white"
               title="Save chart to online database"

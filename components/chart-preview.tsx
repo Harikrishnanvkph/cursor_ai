@@ -4,9 +4,11 @@ import { useRef, useEffect, useState } from "react"
 import { useChartStore } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
 import { Button } from "@/components/ui/button"
-import { Download, RefreshCw, Maximize2, Minimize2, RotateCcw, X,
-   FileCode, FileDown, FileImage, FileText, ImageIcon, Settings, Menu, Ellipsis, Eye, ZoomIn, ZoomOut, Hand, ChevronLeft } from "lucide-react"
-import { BarChart3,ChartColumnStacked,ChartColumnBig,ChartBarBig,ChartLine,ChartPie,ChartScatter,ChartArea,Radar, Database, Dot, Edit3, LogOut } from "lucide-react"
+import {
+  Download, RefreshCw, Maximize2, Minimize2, RotateCcw, X,
+  FileCode, FileDown, FileImage, FileText, ImageIcon, Settings, Menu, Ellipsis, Eye, ZoomIn, ZoomOut, Hand, ChevronLeft, Pencil, Check, Loader2
+} from "lucide-react"
+import { BarChart3, ChartColumnStacked, ChartColumnBig, ChartBarBig, ChartLine, ChartPie, ChartScatter, ChartArea, Radar, Database, Dot, Edit3, LogOut } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { downloadChartAsHTML } from "@/lib/html-exporter"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
@@ -24,6 +26,9 @@ import { ConfigPanel } from "@/components/config-panel"
 import { PanelLeft, PanelRight } from "lucide-react"
 import { SidebarPortalProvider } from "@/components/sidebar-portal-context"
 import { SidebarContainer } from "@/components/sidebar-container"
+import { useHistoryStore } from "@/lib/history-store"
+import { dataService } from "@/lib/data-service"
+import { toast } from "sonner"
 
 export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeftSidebar, isLeftSidebarCollapsed, isTablet = false, activeTab, onTabChange, onNewChart }: {
   onToggleSidebar?: () => void,
@@ -38,11 +43,20 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   const { chartConfig, chartData, chartType, resetChart, setHasJSON, globalChartRef, showLabels, showImages, fillArea, showBorder, toggleShowBorder } = useChartStore()
   const { shouldShowTemplate, editorMode, templateInBackground, currentTemplate, setEditorMode } = useTemplateStore()
   const { user } = useAuth()
+  const { backendConversationId } = useChatStore()
+  const { conversations, updateConversation } = useHistoryStore()
+
+  // Get the current chart title from history
+  const currentConversation = backendConversationId
+    ? conversations.find(c => c.id === backendConversationId)
+    : null
+  const chartTitle = currentConversation?.title || null
 
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const leftSidebarPanelRef = useRef<HTMLDivElement>(null);
   const rightSidebarPanelRef = useRef<HTMLDivElement>(null);
+  const renameInputRef = useRef<HTMLInputElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [isDragging, setIsDragging] = useState(false);
@@ -53,6 +67,59 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   const [showLeftOverlay, setShowLeftOverlay] = useState(false);
   const [showRightOverlay, setShowRightOverlay] = useState(false);
   const [fullscreenActiveTab, setFullscreenActiveTab] = useState(activeTab || "types_toggles");
+
+  // Rename state
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
+  const [isSavingRename, setIsSavingRename] = useState(false);
+
+  // Focus input when entering rename mode
+  useEffect(() => {
+    if (isRenaming && renameInputRef.current) {
+      renameInputRef.current.focus();
+      renameInputRef.current.select();
+    }
+  }, [isRenaming]);
+
+  // Start renaming
+  const handleStartRename = () => {
+    if (chartTitle && backendConversationId) {
+      setRenameValue(chartTitle);
+      setIsRenaming(true);
+    }
+  };
+
+  // Save rename
+  const handleSaveRename = async () => {
+    if (!renameValue.trim() || !backendConversationId || renameValue === chartTitle) {
+      setIsRenaming(false);
+      return;
+    }
+
+    setIsSavingRename(true);
+    try {
+      const result = await dataService.updateConversation(backendConversationId, { title: renameValue.trim() });
+      if (result.error) throw new Error(result.error);
+
+      updateConversation(backendConversationId, { title: renameValue.trim() });
+      toast.success("Title updated");
+      setIsRenaming(false);
+    } catch (error) {
+      console.error("Rename error:", error);
+      toast.error("Failed to update title");
+    } finally {
+      setIsSavingRename(false);
+    }
+  };
+
+  // Handle key press in rename input
+  const handleRenameKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveRename();
+    } else if (e.key === 'Escape') {
+      setIsRenaming(false);
+    }
+  };
 
   // Sync fullscreenActiveTab with activeTab prop
   useEffect(() => {
@@ -66,7 +133,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     if (editorMode === 'chart' && !shouldShowTemplate()) {
       setPanOffset({ x: 0, y: 0 });
       setZoom(1);
-      
+
       // Also explicitly center the container after a short delay
       setTimeout(() => {
         if (chartContainerRef.current) {
@@ -89,7 +156,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  
+
   const handleExport = () => {
     if (globalChartRef?.current) {
       const chartInstance = globalChartRef.current;
@@ -98,7 +165,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
         background: bgConfig,
         hasExportMethod: !!chartInstance.exportToImage
       });
-      
+
       // Use the export plugin
       if (chartInstance.exportToImage) {
         try {
@@ -148,8 +215,8 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     try {
       const result = await downloadChartAsHTML({
         title: (chartConfig.plugins?.title?.text as string) || "Chart Export",
-        subtitle: (chartConfig.plugins?.subtitle?.display && chartConfig.plugins?.subtitle?.text) 
-          ? (chartConfig.plugins?.subtitle?.text as string) 
+        subtitle: (chartConfig.plugins?.subtitle?.display && chartConfig.plugins?.subtitle?.text)
+          ? (chartConfig.plugins?.subtitle?.text as string)
           : undefined,
         width: dimensions.width,
         height: dimensions.height,
@@ -166,7 +233,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
         fillArea: fillArea,
         showBorder: showBorder
       });
-      
+
       if (result && result.success) {
         console.log(result.message);
       } else if (result) {
@@ -188,26 +255,26 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
 
     const container = fullscreenContainerRef.current;
     const canvas = globalChartRef?.current.canvas;
-    
+
     try {
       if (!document.fullscreenElement) {
         // Enter fullscreen
         await container.requestFullscreen();
         setIsFullscreen(true);
-        
+
         // Increase canvas resolution for better quality
         const dpr = window.devicePixelRatio || 1;
         const rect = container.getBoundingClientRect();
-        
+
         // Set canvas size to match display size
         canvas.style.width = '100%';
         canvas.style.height = '100%';
         canvas.style.objectFit = 'contain';
-        
+
         // Set actual pixel dimensions for crisp rendering
         canvas.width = rect.width * dpr;
         canvas.height = rect.height * dpr;
-        
+
         // Update chart to use new dimensions
         globalChartRef?.current.resize();
         globalChartRef?.current.render();
@@ -215,12 +282,12 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
         // Exit fullscreen
         await document.exitFullscreen();
         setIsFullscreen(false);
-        
+
         // Reset canvas size
         canvas.style.width = '';
         canvas.style.height = '';
         canvas.style.objectFit = '';
-        
+
         // Reset to original dimensions
         globalChartRef?.current.resize();
         globalChartRef?.current.render();
@@ -229,7 +296,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       console.error('Error toggling fullscreen:', err);
     }
   };
-  
+
   // Handle fullscreen change events
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -241,7 +308,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
         setShowRightOverlay(false);
       }
     };
-    
+
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
@@ -289,7 +356,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   const getBackgroundConfig = () => {
     const bgConfig = (chartConfig as any)?.background;
     console.log('Current background config from chart:', bgConfig);
-    
+
     let result;
     if (bgConfig) {
       // For gradient, ensure both start and end colors are present
@@ -320,14 +387,14 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
         opacity: 100
       };
     }
-    
+
     //console.log('Export background config:', JSON.stringify(result, null, 2));
     return result;
   };
 
   // Chart size logic
   const isResponsive = (chartConfig as any)?.responsive !== false;
-  
+
   // Parse width and height values, handling both numbers and strings with units
   const parseDimension = (value: any): number => {
     if (typeof value === 'number') {
@@ -340,7 +407,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     }
     return 500; // Default fallback
   };
-  
+
   const chartWidth = !isResponsive ? parseDimension((chartConfig as any)?.width) : undefined;
   const chartHeight = !isResponsive ? parseDimension((chartConfig as any)?.height) : undefined;
 
@@ -374,7 +441,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       }
     };
   }
-  
+
   if (chartType === 'stackedBar') {
     stackedBarConfig = {
       ...stackedBarConfig,
@@ -403,7 +470,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
 
   // Ensure hover effect is cleared if mouse leaves window or on unmount
   useEffect(() => {
-    const clearHover = () => {};
+    const clearHover = () => { };
 
     const handleWindowMouseLeave = (e: MouseEvent) => {
       if (e.relatedTarget === null) clearHover();
@@ -468,16 +535,13 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   };
 
   const handleExportSettings = () => {
-    // Navigate to export settings in the left sidebar
-    if (onToggleLeftSidebar) {
-      // First expand the left sidebar if it's collapsed
-      if (isLeftSidebarCollapsed) {
-        onToggleLeftSidebar();
-      }
-      // Then trigger a custom event to change the active tab to export
-      const event = new CustomEvent('changeActiveTab', { detail: { tab: 'export' } });
-      window.dispatchEvent(event);
+    // First expand the left sidebar if it's collapsed
+    if (onToggleLeftSidebar && isLeftSidebarCollapsed) {
+      onToggleLeftSidebar();
     }
+    // Always trigger a custom event to change the active tab to export
+    const event = new CustomEvent('changeActiveTab', { detail: { tab: 'export' } });
+    window.dispatchEvent(event);
   };
 
   // Handle zoom controls
@@ -494,15 +558,15 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     if (!panMode) {
       return
     }
-    
+
     const target = e.target as HTMLElement
-    
+
     // When pan mode is active, allow dragging from anywhere including canvas
     setIsDragging(true)
     // Store the initial mouse position and current pan offset
-    setDragStart({ 
-      x: e.clientX - panOffset.x, 
-      y: e.clientY - panOffset.y 
+    setDragStart({
+      x: e.clientX - panOffset.x,
+      y: e.clientY - panOffset.y
     })
     e.preventDefault() // Prevent text selection while dragging
     e.stopPropagation() // Prevent event bubbling
@@ -563,8 +627,8 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     }
   }, [zoom, panOffset.x, panOffset.y])
 
-  const getChartIcon = (chartName:string)=>{
-    switch(chartName){
+  const getChartIcon = (chartName: string) => {
+    switch (chartName) {
       case 'Bar':
         return <ChartColumnBig className="h-4 w-4 mr-1" />
       case 'Line':
@@ -622,28 +686,26 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
             <div className="min-w-0 flex-1 flex flex-row items-center xs576:justify-between gap-x-2">
               <div className="flex items-center gap-2">
                 <h1 className="text-lg font-bold text-gray-900 truncate xs400:text-base"><span className="xs400:hidden">Chart</span> Preview</h1>
-                <div 
+                <div
                   className="flex items-center gap-1 bg-gray-100 rounded-full p-0.5 border border-gray-200"
                   style={{ display: 'flex', visibility: 'visible', opacity: 1 }}
                 >
                   <button
                     onClick={() => setEditorMode('chart')}
-                    className={`px-2 py-1 text-xs font-medium rounded-full transition-all ${
-                      editorMode === 'chart' 
-                        ? 'bg-blue-500 text-white shadow-sm' 
-                        : 'bg-transparent text-gray-500 hover:text-gray-700'
-                    }`}
+                    className={`px-2 py-1 text-xs font-medium rounded-full transition-all ${editorMode === 'chart'
+                      ? 'bg-blue-500 text-white shadow-sm'
+                      : 'bg-transparent text-gray-500 hover:text-gray-700'
+                      }`}
                     style={{ display: 'inline-block', visibility: 'visible', opacity: 1 }}
                   >
                     Chart
                   </button>
                   <button
                     onClick={() => setEditorMode('template')}
-                    className={`px-2 py-1 text-xs font-medium rounded-full transition-all ${
-                      editorMode === 'template' 
-                        ? 'bg-blue-500 text-white shadow-sm' 
-                        : 'bg-transparent text-gray-500 hover:text-gray-700'
-                    }`}
+                    className={`px-2 py-1 text-xs font-medium rounded-full transition-all ${editorMode === 'template'
+                      ? 'bg-blue-500 text-white shadow-sm'
+                      : 'bg-transparent text-gray-500 hover:text-gray-700'
+                      }`}
                     style={{ display: 'inline-block', visibility: 'visible', opacity: 1 }}
                   >
                     Template
@@ -651,56 +713,90 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                 </div>
               </div>
               <div className="flex items-center gap-2 text-xs text-gray-500 min-w-0 flex-nowrap overflow-x-auto">
-                <ChartColumnBig  className="h-4 w-4 mr-1" />
+                <ChartColumnBig className="h-4 w-4 mr-1" />
                 <span className="truncate max-w-[80px]">{getChartDisplayName()}</span>
-                <Dot className="h-4 w-4 mx-1 xs400:hidden"/>
+                <Dot className="h-4 w-4 mx-1 xs400:hidden" />
                 <span>{chartData.datasets.length} Dataset(s)</span>
                 <Dot className="h-4 w-4 mx-1 xs400:hidden" />
                 <span className="font-medium">{chartData.labels?.length || 0} Points</span>
               </div>
             </div>
           ) : (
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h1 className="text-lg lap1280:text-base font-bold text-gray-900 truncate">Chart Preview</h1>
-                <div 
+            <div className="min-w-0 flex-1 max-w-[500px]">
+              {/* Chart Title with edit icon */}
+              {chartTitle && (
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <button
+                    onClick={handleStartRename}
+                    className="p-0.5 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+                    title="Rename"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                  <div className="flex items-center gap-1 flex-1">
+                    {isRenaming ? (
+                      <>
+                        <input
+                          ref={renameInputRef}
+                          type="text"
+                          value={renameValue}
+                          onChange={(e) => setRenameValue(e.target.value)}
+                          onKeyDown={handleRenameKeyDown}
+                          onBlur={() => setIsRenaming(false)}
+                          className="flex-1 font-semibold text-gray-900 text-base bg-transparent border-b-2 border-blue-400 outline-none w-full"
+                          disabled={isSavingRename}
+                        />
+                        <button
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={handleSaveRename}
+                          disabled={isSavingRename}
+                          className="p-0.5 hover:bg-green-50 rounded text-green-600 flex-shrink-0"
+                          title="Save"
+                        >
+                          {isSavingRename ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                        </button>
+                      </>
+                    ) : (
+                      <h4 className="font-semibold text-gray-900 text-base truncate border-b-2 border-transparent" title={chartTitle}>{chartTitle}</h4>
+                    )}
+                  </div>
+                </div>
+              )}
+              {/* Toggle and Chart info row */}
+              <div className="flex items-center gap-2">
+                <div
                   className="flex items-center gap-1 bg-gray-100 rounded-full p-0.5 border border-gray-200"
-                  style={{ display: 'flex', visibility: 'visible', opacity: 1 }}
                 >
                   <button
                     onClick={() => setEditorMode('chart')}
-                    className={`px-2 py-1 text-xs font-medium rounded-full transition-all ${
-                      editorMode === 'chart' 
-                        ? 'bg-blue-500 text-white shadow-sm' 
-                        : 'bg-transparent text-gray-500 hover:text-gray-700'
-                    }`}
-                    style={{ display: 'inline-block', visibility: 'visible', opacity: 1 }}
+                    className={`px-2 py-0.5 text-[10px] font-medium rounded-full transition-all ${editorMode === 'chart'
+                      ? 'bg-blue-500 text-white shadow-sm'
+                      : 'bg-transparent text-gray-500 hover:text-gray-700'
+                      }`}
                   >
                     Chart
                   </button>
                   <button
                     onClick={() => setEditorMode('template')}
-                    className={`px-2 py-1 text-xs font-medium rounded-full transition-all ${
-                      editorMode === 'template' 
-                        ? 'bg-blue-500 text-white shadow-sm' 
-                        : 'bg-transparent text-gray-500 hover:text-gray-700'
-                    }`}
-                    style={{ display: 'inline-block', visibility: 'visible', opacity: 1 }}
+                    className={`px-2 py-0.5 text-[10px] font-medium rounded-full transition-all ${editorMode === 'template'
+                      ? 'bg-blue-500 text-white shadow-sm'
+                      : 'bg-transparent text-gray-500 hover:text-gray-700'
+                      }`}
                   >
                     Template
                   </button>
                 </div>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-gray-500 flex-wrap min-w-0">
-                <span className="flex flex-row">
-                  {getChartIcon(getChartDisplayName())}
-                  {/* <ChartColumnBig className="h-4 w-4 mr-1" /> */}
-                  <span className="truncate max-w-[80px]">{getChartDisplayName()}</span>
-                </span>
-                <Dot className="h-4 w-4 mx-1 lap1280:hidden" />
-                <span className="">{chartData.datasets.length} Dataset(s)</span>
-                <Dot className="h-4 w-4 mx-1 lap1280:hidden" />
-                <span className="font-medium">{chartData.labels?.length || 0} Points</span>
+                {/* Chart info */}
+                <div className="flex items-center gap-1 text-xs text-gray-400">
+                  <span className="flex items-center">
+                    {getChartIcon(getChartDisplayName())}
+                    <span className="truncate max-w-[60px]">{getChartDisplayName()}</span>
+                  </span>
+                  <span>•</span>
+                  <span>{chartData.datasets.length} Dataset(s)</span>
+                  <span>•</span>
+                  <span>{chartData.labels?.length || 0} Points</span>
+                </div>
               </div>
             </div>
           )}
@@ -798,7 +894,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            
+
             {/* Undo/Redo Buttons */}
             <UndoRedoButtons variant="default" size="sm" showLabels={false} />
           </div>
@@ -831,10 +927,10 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                 }
                 return 800;
               };
-              
+
               const chartWidth = !isResponsive ? parseDimension((chartConfig as any)?.width) : 800;
               const chartHeight = !isResponsive ? parseDimension((chartConfig as any)?.height) : 600;
-              
+
               // When responsive, chart fills the entire scrollable container
               if (isResponsive) {
                 return (
@@ -861,7 +957,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                         onMouseDown={handleMouseDown}
                       />
                     )}
-                    
+
                     {/* Chart Area - Fills full container in responsive mode */}
                     <div
                       className="absolute inset-0"
@@ -881,7 +977,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                       }}
                       onMouseDown={panMode ? handleMouseDown : undefined}
                     >
-                      <div 
+                      <div
                         className="absolute inset-0"
                         style={{
                           width: '100%',
@@ -909,16 +1005,16 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                           }
                         }}
                       >
-                        <div 
+                        <div
                           className="absolute inset-0"
-                          style={{ 
+                          style={{
                             width: '100%',
                             height: '100%',
                             top: 0,
                             left: 0,
                             right: 0,
                             bottom: 0,
-                            pointerEvents: panMode ? 'none' : 'auto' 
+                            pointerEvents: panMode ? 'none' : 'auto'
                           }}
                         >
                           <ChartGenerator />
@@ -928,22 +1024,22 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                   </div>
                 );
               }
-              
+
               // Non-responsive mode: fixed dimensions with canvas padding
               const canvasPadding = 200;
               const canvasWidth = chartWidth + canvasPadding;
               const canvasHeight = chartHeight + canvasPadding;
-              
+
               // Calculate canvas size - needs to be large enough for zoomed chart + padding
               const scaledChartWidth = chartWidth * zoom;
               const scaledChartHeight = chartHeight * zoom;
               const effectiveCanvasWidth = Math.max(canvasWidth, scaledChartWidth + canvasPadding);
               const effectiveCanvasHeight = Math.max(canvasHeight, scaledChartHeight + canvasPadding);
-              
+
               // Calculate initial centered position within the canvas
               const initialLeft = effectiveCanvasWidth / 2 - scaledChartWidth / 2;
               const initialTop = effectiveCanvasHeight / 2 - scaledChartHeight / 2;
-              
+
               return (
                 <div
                   className="relative"
@@ -965,7 +1061,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                       onMouseDown={handleMouseDown}
                     />
                   )}
-                  
+
                   {/* Chart Area - Positioned */}
                   <div
                     className="absolute"
@@ -983,7 +1079,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                     }}
                     onMouseDown={panMode ? handleMouseDown : undefined}
                   >
-                    <div 
+                    <div
                       className="w-full h-full"
                       style={{
                         pointerEvents: panMode ? 'none' : 'auto',
@@ -1016,7 +1112,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
           </div>
         </CardContent>
       </Card>
-      
+
       {/* Fullscreen Toolbar */}
       {isFullscreen && (
         <>
@@ -1071,27 +1167,27 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
             >
               <Hand className="h-4 w-4" />
             </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={handleExport}
               title="Download"
               className="hover:bg-gray-100 h-8 w-8"
             >
               <Download className="h-4 w-4" />
             </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={handleFullscreen}
               title="Exit fullscreen"
               className="hover:bg-gray-100 h-8 w-8"
             >
               <Minimize2 className="h-4 w-4" />
             </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => document.exitFullscreen()}
               title="Close"
               className="hover:bg-gray-100 text-red-500 hover:bg-red-50 h-8 w-8"
@@ -1107,36 +1203,36 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                 <div className="fixed inset-0 z-[60] flex">
                   {/* Sidebar Panel */}
                   <div ref={leftSidebarPanelRef} className="w-80 bg-white shadow-2xl border-r border-gray-200 flex flex-col h-full">
-                <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
-                  <h2 className="text-lg font-semibold text-gray-900">Options</h2>
-                  <Button
-                    variant="ghost"
-                    size="icon"
+                    <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
+                      <h2 className="text-lg font-semibold text-gray-900">Options</h2>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setShowLeftOverlay(false)}
+                        className="h-8 w-8"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto">
+                      <Sidebar
+                        activeTab={fullscreenActiveTab}
+                        onTabChange={(tab) => {
+                          setFullscreenActiveTab(tab);
+                          if (onTabChange) onTabChange(tab);
+                          setShowRightOverlay(true); // Auto-open right panel when tab is selected
+                        }}
+                        onToggleLeftSidebar={() => setShowLeftOverlay(false)}
+                        isLeftSidebarCollapsed={false}
+                      />
+                    </div>
+                  </div>
+                  {/* Backdrop */}
+                  <div
+                    className="flex-1 bg-black/20 backdrop-blur-sm"
                     onClick={() => setShowLeftOverlay(false)}
-                    className="h-8 w-8"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="flex-1 overflow-y-auto">
-                  <Sidebar
-                    activeTab={fullscreenActiveTab}
-                    onTabChange={(tab) => {
-                      setFullscreenActiveTab(tab);
-                      if (onTabChange) onTabChange(tab);
-                      setShowRightOverlay(true); // Auto-open right panel when tab is selected
-                    }}
-                    onToggleLeftSidebar={() => setShowLeftOverlay(false)}
-                    isLeftSidebarCollapsed={false}
                   />
                 </div>
-              </div>
-              {/* Backdrop */}
-              <div 
-                className="flex-1 bg-black/20 backdrop-blur-sm"
-                onClick={() => setShowLeftOverlay(false)}
-              />
-            </div>
               </SidebarContainer>
             </SidebarPortalProvider>
           )}
@@ -1148,49 +1244,49 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                 <div className="fixed inset-0 z-[70] flex">
                   {/* Tools Panel - Positioned on left, stacked on top of options sidebar */}
                   <div ref={rightSidebarPanelRef} className="w-80 bg-white shadow-2xl border-r border-gray-200 flex flex-col h-full">
-                <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
-                  <h2 className="text-lg font-semibold text-gray-900">Tools</h2>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setShowRightOverlay(false)}
-                      className="h-8 w-8"
-                      title="Close Tools"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        setShowRightOverlay(false);
-                        setShowLeftOverlay(false);
-                      }}
-                      className="h-8 w-8"
-                      title="Close All"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
+                      <h2 className="text-lg font-semibold text-gray-900">Tools</h2>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setShowRightOverlay(false)}
+                          className="h-8 w-8"
+                          title="Close Tools"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setShowRightOverlay(false);
+                            setShowLeftOverlay(false);
+                          }}
+                          className="h-8 w-8"
+                          title="Close All"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex-1 overflow-y-auto">
+                      <ConfigPanel
+                        activeTab={fullscreenActiveTab}
+                        onTabChange={(tab) => {
+                          setFullscreenActiveTab(tab);
+                          if (onTabChange) onTabChange(tab);
+                        }}
+                        onNewChart={onNewChart}
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="flex-1 overflow-y-auto">
-                  <ConfigPanel
-                    activeTab={fullscreenActiveTab}
-                    onTabChange={(tab) => {
-                      setFullscreenActiveTab(tab);
-                      if (onTabChange) onTabChange(tab);
-                    }}
-                    onNewChart={onNewChart}
+                  {/* Backdrop */}
+                  <div
+                    className="flex-1 bg-black/20 backdrop-blur-sm"
+                    onClick={() => setShowRightOverlay(false)}
                   />
                 </div>
-              </div>
-              {/* Backdrop */}
-              <div 
-                className="flex-1 bg-black/20 backdrop-blur-sm"
-                onClick={() => setShowRightOverlay(false)}
-              />
-            </div>
               </SidebarContainer>
             </SidebarPortalProvider>
           )}

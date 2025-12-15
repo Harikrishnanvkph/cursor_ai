@@ -17,10 +17,12 @@ import { ResizableChartArea } from "@/components/resizable-chart-area"
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import { useChatStore } from "@/lib/chat-store"
+import { useHistoryStore } from "@/lib/history-store"
 import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { clearCurrentChart } from "@/lib/storage-utils"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { SaveChartDialog } from "@/components/ui/save-chart-dialog"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { EditorWelcomeScreen } from "@/components/editor-welcome-screen"
 
@@ -112,6 +114,8 @@ function EditorPageContent() {
   const [isSaving, setIsSaving] = useState(false)
   const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false)
   const [showNewChartInfoDialog, setShowNewChartInfoDialog] = useState(false)
+  const [showSaveChartDialog, setShowSaveChartDialog] = useState(false)
+  const [currentChartName, setCurrentChartName] = useState<string>("")
   const isMobile = useIsMobile576();
   const isTablet = useIsTablet();
   const { width: screenWidth, height: screenHeight } = useScreenDimensions();
@@ -134,14 +138,18 @@ function EditorPageContent() {
     }
   }, [searchParams, router])
 
-  // Auto-sync templates from cloud when user logs in
+  // Auto-sync templates and load conversations from cloud when user logs in
+  const { loadConversationsFromBackend } = useHistoryStore()
   useEffect(() => {
     if (user) {
       syncTemplatesFromCloud().catch((error) => {
         console.error('Failed to sync templates from cloud:', error);
       });
+      loadConversationsFromBackend().catch((error) => {
+        console.error('Failed to load conversations from backend:', error);
+      });
     }
-  }, [user, syncTemplatesFromCloud]);
+  }, [user, syncTemplatesFromCloud, loadConversationsFromBackend]);
 
   // Auto-apply mobile dimensions when Manual Dimensions is enabled on mobile
   useEffect(() => {
@@ -205,7 +213,39 @@ function EditorPageContent() {
     }
   }, [activeTab, setEditorMode, currentTemplate]);
 
-  const handleSave = async () => {
+  // Open save dialog instead of saving directly
+  const handleSaveClick = () => {
+    if (!hasJSON || !user) {
+      toast.error("No chart to save or user not authenticated");
+      return;
+    }
+
+    // Get the existing backend ID to check if this is an update
+    const existingBackendId = useChatStore.getState().backendConversationId
+
+    if (existingBackendId) {
+      // If updating, fetch the current title from history store (in case it was renamed from board)
+      const conversations = useHistoryStore.getState().conversations
+      const existingConversation = conversations.find(c => c.id === existingBackendId)
+      if (existingConversation) {
+        setCurrentChartName(existingConversation.title)
+      }
+      setShowSaveChartDialog(true)
+    } else {
+      // Generate a smart default name for new charts
+      const chatMessages = useChatStore.getState().messages
+      const firstUserMessage = chatMessages.find(m => m.role === 'user')
+      const defaultName = firstUserMessage
+        ? (firstUserMessage.content.length > 50
+          ? firstUserMessage.content.slice(0, 47) + '...'
+          : firstUserMessage.content)
+        : `My Chart - ${new Date().toLocaleDateString()}`
+      setCurrentChartName(defaultName)
+      setShowSaveChartDialog(true)
+    }
+  };
+
+  const handleSave = async (chartName: string) => {
     if (!hasJSON || !user) {
       toast.error("No chart to save or user not authenticated");
       return;
@@ -224,16 +264,15 @@ function EditorPageContent() {
         conversationId = existingBackendId
         isUpdate = true
 
-        // No need to update conversation title - it was already set when created
-        // Just save the new chart snapshot version
+        // Update conversation title if name changed
+        if (chartName && chartName !== currentChartName) {
+          await dataService.updateConversation(existingBackendId, { title: chartName })
+          setCurrentChartName(chartName)
+        }
       } else {
         console.log('💾 Creating new conversation')
-        const firstUserMessage = chatMessages.find(m => m.role === 'user')
-        const conversationTitle = firstUserMessage
-          ? (firstUserMessage.content.length > 60
-            ? firstUserMessage.content.slice(0, 57) + '...'
-            : firstUserMessage.content)
-          : `Chart saved on ${new Date().toLocaleDateString()}`
+        // Use the custom chart name provided by user
+        const conversationTitle = chartName || `Chart saved on ${new Date().toLocaleDateString()}`
 
         const response = await dataService.createConversation(
           conversationTitle,
@@ -252,6 +291,7 @@ function EditorPageContent() {
         }
 
         conversationId = response.data.id
+        setCurrentChartName(chartName) // Store the name for future updates
         useChatStore.getState().setBackendConversationId(conversationId)
       }
 
@@ -395,6 +435,9 @@ function EditorPageContent() {
       // Don't clear or route - keep the user on the same page with their saved chart
       // Just update the backend conversation ID so next save will update instead of create
       setBackendConversationId(conversationId)
+
+      // Close the save dialog
+      setShowSaveChartDialog(false)
     } catch (error) {
       console.error('Save failed:', error)
       toast.error("Failed to save chart. Please try again.")
@@ -419,13 +462,20 @@ function EditorPageContent() {
   // Handle new chart creation
   const handleNewChart = () => {
     // Check if there's meaningful existing chart data
-    const hasMeaningfulData = hasJSON ||
-      (chartData.datasets.length > 0 &&
-        chartData.datasets.some(dataset =>
-          dataset.data &&
-          dataset.data.length > 0 &&
-          dataset.data.some(value => value !== 0 && value !== null && value !== undefined)
-        ));
+    // First, check if we have any datasets with actual data values
+    const hasActualChartData = chartData.datasets.length > 0 &&
+      chartData.datasets.some(dataset =>
+        dataset.data &&
+        dataset.data.length > 0 &&
+        dataset.data.some(value => value !== 0 && value !== null && value !== undefined)
+      );
+
+    // Check if we have a template with actual content (text areas with content)
+    const hasTemplateContent = currentTemplate &&
+      currentTemplate.textAreas?.some(ta => ta.content && ta.content.trim().length > 0);
+
+    // Only show save dialog if there's BOTH hasJSON flag AND actual meaningful data
+    const hasMeaningfulData = hasJSON && (hasActualChartData || hasTemplateContent);
 
     if (hasMeaningfulData) {
       // Show confirmation dialog
@@ -438,10 +488,8 @@ function EditorPageContent() {
 
   const handleSaveAndClear = async () => {
     setShowSaveConfirmDialog(false)
-    // Trigger save
-    await handleSave()
-    // After save, show new chart info
-    setShowNewChartInfoDialog(true)
+    // Show the save dialog - once saved, the user will manually start a new chart
+    handleSaveClick()
   };
 
   const handleJustClear = () => {
@@ -610,10 +658,21 @@ function EditorPageContent() {
                 onToggleSidebar={() => setMobilePanel(null)}
                 isSidebarCollapsed={false}
                 onTabChange={setMobilePanel}
+                onSaveClick={handleSaveClick}
               />
             </div>
           </div>
         )}
+
+        {/* Save Chart Dialog with Name Input */}
+        <SaveChartDialog
+          open={showSaveChartDialog}
+          defaultName={currentChartName}
+          isUpdate={!!useChatStore.getState().backendConversationId}
+          isSaving={isSaving}
+          onSave={handleSave}
+          onCancel={() => setShowSaveChartDialog(false)}
+        />
       </div>
     )
   }
@@ -639,7 +698,7 @@ function EditorPageContent() {
             className="h-10 w-10 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg mb-4"
             title="Expand Left Sidebar"
           >
-            <ChevronRight className="h-4 w-4 rotate-180" />
+            <ChevronRight className="h-4 w-4" />
           </Button>
 
           {TABS.map((tab) => {
@@ -648,10 +707,11 @@ function EditorPageContent() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`mb-2 p-2 rounded hover:bg-gray-100 transition-all duration-200 ${activeTab === tab.id ? "bg-blue-50 text-blue-700 shadow-sm" : "text-gray-500"}`}
+                className={`mb-1 p-1.5 rounded flex flex-col items-center justify-center gap-0.5 w-full hover:bg-gray-100 transition-all duration-200 ${activeTab === tab.id ? "bg-blue-50 text-blue-700 shadow-sm" : "text-gray-500"}`}
                 title={tab.label}
               >
-                <Icon className="h-5 w-5" />
+                <Icon className="h-4 w-4" />
+                <span className="text-[9px] font-medium leading-tight truncate w-full text-center">{tab.label}</span>
               </button>
             )
           })}
@@ -677,7 +737,7 @@ function EditorPageContent() {
         </div>
 
         {/* Right Sidebar - Collapsed by default, shows profile, expand button, and action buttons */}
-        <div className="w-16 flex-shrink-0 flex flex-col h-full bg-white border-l border-gray-200 shadow-sm">
+        <div className="w-16 flex-shrink-0 flex flex-col h-full bg-white border-l border-gray-200 shadow-sm z-40 relative">
           {/* Profile Button - Top */}
           <div className="p-2 border-b border-gray-200">
             <div className="mx-auto">
@@ -694,7 +754,7 @@ function EditorPageContent() {
               className="h-10 w-10 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg mx-auto"
               title="Expand Sidebar"
             >
-              <ChevronLeft className="h-4 w-4 rotate-180" />
+              <ChevronLeft className="h-4 w-4" />
             </Button>
           </div>
 
@@ -712,7 +772,7 @@ function EditorPageContent() {
             <Button
               size="sm"
               variant="default"
-              onClick={handleSave}
+              onClick={handleSaveClick}
               disabled={!hasJSON || isSaving}
               className="h-10 w-10 p-0 bg-green-600 hover:bg-green-700 text-white"
               title="Save chart to online database"
@@ -768,7 +828,7 @@ function EditorPageContent() {
                   </button>
                 </div>
               </div>
-              <div className="border-b mb-4"></div>
+
               <Sidebar
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
@@ -787,6 +847,7 @@ function EditorPageContent() {
               onToggleSidebar={() => setRightSidebarCollapsed(true)}
               isSidebarCollapsed={false}
               onTabChange={setActiveTab}
+              onSaveClick={handleSaveClick}
             />
           </div>
         )}
@@ -795,6 +856,16 @@ function EditorPageContent() {
         {(!leftSidebarCollapsed || !rightSidebarCollapsed) && (
           <div className="fixed inset-0 z-30 bg-black/20 transition-opacity" onClick={() => { setLeftSidebarCollapsed(true); setRightSidebarCollapsed(true); }} />
         )}
+
+        {/* Save Chart Dialog with Name Input */}
+        <SaveChartDialog
+          open={showSaveChartDialog}
+          defaultName={currentChartName}
+          isUpdate={!!useChatStore.getState().backendConversationId}
+          isSaving={isSaving}
+          onSave={handleSave}
+          onCancel={() => setShowSaveChartDialog(false)}
+        />
       </div>
     );
   }
@@ -818,9 +889,9 @@ function EditorPageContent() {
             size="sm"
             onClick={() => setLeftSidebarCollapsed((v) => !v)}
             className="h-10 w-10 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg mb-4"
-            title="Expand Left Sidebar"
+            title={leftSidebarCollapsed ? "Expand Left Sidebar" : "Collapse Left Sidebar"}
           >
-            <ChevronRight className="h-4 w-4 rotate-180" />
+            <ChevronRight className={`h-4 w-4 transition-transform duration-200 ${leftSidebarCollapsed ? '' : 'rotate-180'}`} />
           </Button>
 
           {TABS.map((tab) => {
@@ -829,10 +900,11 @@ function EditorPageContent() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`mb-2 p-2 rounded hover:bg-gray-100 transition-all duration-200 ${activeTab === tab.id ? "bg-blue-50 text-blue-700 shadow-sm" : "text-gray-500"}`}
+                className={`mb-1 p-1.5 rounded flex flex-col items-center justify-center gap-0.5 w-full hover:bg-gray-100 transition-all duration-200 ${activeTab === tab.id ? "bg-blue-50 text-blue-700 shadow-sm" : "text-gray-500"}`}
                 title={tab.label}
               >
-                <Icon className="h-5 w-5" />
+                <Icon className="h-4 w-4" />
+                <span className="text-[9px] font-medium leading-tight truncate w-full text-center">{tab.label}</span>
               </button>
             )
           })}
@@ -866,7 +938,7 @@ function EditorPageContent() {
                 </button>
               </div>
             </div>
-            <div className="border-b mb-4"></div>
+
             <Sidebar
               activeTab={activeTab}
               onTabChange={setActiveTab}
@@ -911,9 +983,9 @@ function EditorPageContent() {
               size="sm"
               onClick={() => setRightSidebarCollapsed((v) => !v)}
               className="h-10 w-10 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg mx-auto"
-              title="Expand Sidebar"
+              title={rightSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
             >
-              <ChevronLeft className="h-4 w-4 rotate-180" />
+              <ChevronLeft className={`h-4 w-4 transition-transform duration-200 ${rightSidebarCollapsed ? '' : 'rotate-180'}`} />
             </Button>
           </div>
 
@@ -931,7 +1003,7 @@ function EditorPageContent() {
             <Button
               size="sm"
               variant="default"
-              onClick={handleSave}
+              onClick={handleSaveClick}
               disabled={!hasJSON || isSaving}
               className="h-10 w-10 p-0 bg-green-600 hover:bg-green-700 text-white"
               title="Save chart to online database"
@@ -964,6 +1036,7 @@ function EditorPageContent() {
             isSidebarCollapsed={rightSidebarCollapsed}
             onTabChange={setActiveTab}
             onNewChart={handleNewChart}
+            onSaveClick={handleSaveClick}
           />
         </div>
       )}
@@ -979,6 +1052,16 @@ function EditorPageContent() {
         cancelText="Cancel"
         onAlternate={handleJustClear}
         alternateText="Discard"
+      />
+
+      {/* Save Chart Dialog with Name Input */}
+      <SaveChartDialog
+        open={showSaveChartDialog}
+        defaultName={currentChartName}
+        isUpdate={!!useChatStore.getState().backendConversationId}
+        isSaving={isSaving}
+        onSave={handleSave}
+        onCancel={() => setShowSaveChartDialog(false)}
       />
 
       {/* Info Dialog for New Chart Options */}

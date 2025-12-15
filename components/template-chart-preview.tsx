@@ -3,16 +3,20 @@
 import React, { useRef, useState, useEffect } from "react"
 import { useTemplateStore } from "@/lib/template-store"
 import { useChartStore } from "@/lib/chart-store"
+import { useChatStore } from "@/lib/chat-store"
+import { useHistoryStore } from "@/lib/history-store"
 
 import { Button } from "@/components/ui/button"
-import { ZoomIn, ZoomOut, RotateCcw, Eye, EyeOff, Ellipsis, Maximize2, Minimize2, Settings, Menu, X, ChevronLeft, Download, Hand } from "lucide-react"
+import { ZoomIn, ZoomOut, RotateCcw, Eye, EyeOff, Ellipsis, Maximize2, Minimize2, Settings, Menu, X, ChevronLeft, Download, Hand, Pencil, Check, Loader2 } from "lucide-react"
 import { downloadTemplateExport } from "@/lib/template-export"
 import { FileDown, FileImage, FileCode } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { Sidebar } from "@/components/sidebar"
 import { ConfigPanel } from "@/components/config-panel"
 import { SidebarPortalProvider } from "@/components/sidebar-portal-context"
 import { SidebarContainer } from "@/components/sidebar-container"
+import { dataService } from "@/lib/data-service"
+import { toast } from "sonner"
 
 import ChartGenerator from "@/lib/chart_generator"
 
@@ -41,6 +45,14 @@ export function TemplateChartPreview({
     chartConfig,
     globalChartRef
   } = useChartStore()
+  const { backendConversationId } = useChatStore()
+  const { conversations, updateConversation } = useHistoryStore()
+
+  // Get the current chart title from history
+  const currentConversation = backendConversationId
+    ? conversations.find(c => c.id === backendConversationId)
+    : null
+  const chartTitle = currentConversation?.title || null
   const containerRef = useRef<HTMLDivElement>(null)
   const fullscreenContainerRef = useRef<HTMLDivElement>(null)
   const pendingTabRef = useRef<string | null>(null)
@@ -61,12 +73,66 @@ export function TemplateChartPreview({
   const [showRightOverlay, setShowRightOverlay] = useState(false)
   const [fullscreenActiveTab, setFullscreenActiveTab] = useState(activeTab || "templates")
 
+  // Rename state
+  const [isRenaming, setIsRenaming] = useState(false)
+  const [renameValue, setRenameValue] = useState("")
+  const [isSavingRename, setIsSavingRename] = useState(false)
+  const renameInputRef = useRef<HTMLInputElement>(null)
+
   // Sync fullscreenActiveTab with activeTab prop
   useEffect(() => {
     if (activeTab) {
       setFullscreenActiveTab(activeTab)
     }
   }, [activeTab])
+
+  // Focus input when entering rename mode
+  useEffect(() => {
+    if (isRenaming && renameInputRef.current) {
+      renameInputRef.current.focus()
+      renameInputRef.current.select()
+    }
+  }, [isRenaming])
+
+  // Start renaming
+  const handleStartRename = () => {
+    if (chartTitle && backendConversationId) {
+      setRenameValue(chartTitle)
+      setIsRenaming(true)
+    }
+  }
+
+  // Save rename
+  const handleSaveRename = async () => {
+    if (!renameValue.trim() || !backendConversationId || renameValue === chartTitle) {
+      setIsRenaming(false)
+      return
+    }
+
+    setIsSavingRename(true)
+    try {
+      const result = await dataService.updateConversation(backendConversationId, { title: renameValue.trim() })
+      if (result.error) throw new Error(result.error)
+
+      updateConversation(backendConversationId, { title: renameValue.trim() })
+      toast.success("Title updated")
+      setIsRenaming(false)
+    } catch (error) {
+      console.error("Rename error:", error)
+      toast.error("Failed to update title")
+    } finally {
+      setIsSavingRename(false)
+    }
+  }
+
+  // Handle key press in rename input
+  const handleRenameKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveRename()
+    } else if (e.key === 'Escape') {
+      setIsRenaming(false)
+    }
+  }
 
   // Simple centering effect when template is first loaded
   useEffect(() => {
@@ -692,13 +758,53 @@ export function TemplateChartPreview({
       )}
       {/* Template Controls */}
       <div className="flex items-center justify-between mb-2">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h4 className="font-semibold text-gray-900">{template.name}</h4>
+        <div className="flex-1 max-w-[500px]">
+          {/* Chart Title (from history) - Primary heading with edit */}
+          {chartTitle && (
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <button
+                onClick={handleStartRename}
+                className="p-0.5 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+                title="Rename"
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+              <div className="flex items-center gap-1 flex-1">
+                {isRenaming ? (
+                  <>
+                    <input
+                      ref={renameInputRef}
+                      type="text"
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onKeyDown={handleRenameKeyDown}
+                      onBlur={() => setIsRenaming(false)}
+                      className="flex-1 font-semibold text-gray-900 text-base bg-transparent border-b-2 border-blue-400 outline-none w-full"
+                      disabled={isSavingRename}
+                    />
+                    <button
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={handleSaveRename}
+                      disabled={isSavingRename}
+                      className="p-0.5 hover:bg-green-50 rounded text-green-600 flex-shrink-0"
+                      title="Save"
+                    >
+                      {isSavingRename ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                    </button>
+                  </>
+                ) : (
+                  <h4 className="font-semibold text-gray-900 text-base truncate border-b-2 border-transparent" title={chartTitle}>{chartTitle}</h4>
+                )}
+              </div>
+            </div>
+          )}
+          {/* Toggle and Dimensions row */}
+          <div className="flex items-center gap-2">
+            {/* Chart/Template Mode Toggle */}
             <div className="flex items-center gap-1 bg-gray-100 rounded-full p-0.5 border border-gray-200">
               <button
                 onClick={() => setEditorMode('chart')}
-                className={`px-2 py-1 text-xs font-medium rounded-full transition-all ${editorMode === 'chart'
+                className={`px-2 py-0.5 text-[10px] font-medium rounded-full transition-all ${editorMode === 'chart'
                   ? 'bg-blue-500 text-white shadow-sm'
                   : 'bg-transparent text-gray-500 hover:text-gray-700'
                   }`}
@@ -707,7 +813,7 @@ export function TemplateChartPreview({
               </button>
               <button
                 onClick={() => setEditorMode('template')}
-                className={`px-2 py-1 text-xs font-medium rounded-full transition-all ${editorMode === 'template'
+                className={`px-2 py-0.5 text-[10px] font-medium rounded-full transition-all ${editorMode === 'template'
                   ? 'bg-blue-500 text-white shadow-sm'
                   : 'bg-transparent text-gray-500 hover:text-gray-700'
                   }`}
@@ -715,29 +821,37 @@ export function TemplateChartPreview({
                 Template
               </button>
             </div>
+            {/* Template dimensions */}
+            <span className="text-xs text-gray-400">{template.width} × {template.height}px</span>
           </div>
-          <p className="text-xs text-gray-500">Template: {template.width} × {template.height}px</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleZoomOut}
-            disabled={zoom <= 0.1}
-          >
-            <ZoomOut className="h-4 w-4" />
-          </Button>
-          <span className="text-sm text-gray-600 min-w-[60px] text-center">
-            {Math.round(zoom * 100)}%
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleZoomIn}
-            disabled={zoom >= 3}
-          >
-            <ZoomIn className="h-4 w-4" />
-          </Button>
+          {/* Zoom Controls - Compact grouped style */}
+          <div className="flex items-center gap-1 border rounded-md p-0.5 bg-white">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleZoomOut}
+              disabled={zoom <= 0.1}
+              className="h-7 w-7 p-0"
+              title="Zoom Out"
+            >
+              <ZoomOut className="h-3.5 w-3.5" />
+            </Button>
+            <span className="text-xs text-gray-600 min-w-[45px] text-center px-1">
+              {Math.round(zoom * 100)}%
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleZoomIn}
+              disabled={zoom >= 3}
+              className="h-7 w-7 p-0"
+              title="Zoom In"
+            >
+              <ZoomIn className="h-3.5 w-3.5" />
+            </Button>
+          </div>
           {/* Pan Mode Toggle */}
           <Button
             variant={panMode ? "default" : "outline"}
@@ -773,9 +887,8 @@ export function TemplateChartPreview({
           {/* Export Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="default">
-                <FileDown className="h-4 w-4 mr-1" />
-                Export
+              <Button size="sm" variant="default" title="Export">
+                <Download className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -790,6 +903,22 @@ export function TemplateChartPreview({
               <DropdownMenuItem onClick={() => handleExport('html')}>
                 <FileCode className="h-4 w-4 mr-2" />
                 HTML
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => {
+                  // Expand the left sidebar if it's collapsed
+                  if (onToggleLeftSidebar && isLeftSidebarCollapsed) {
+                    onToggleLeftSidebar();
+                  }
+                  // Trigger custom event to change active tab to export
+                  const event = new CustomEvent('changeActiveTab', { detail: { tab: 'export' } });
+                  window.dispatchEvent(event);
+                }}
+                className="bg-blue-50 hover:bg-blue-100"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Settings
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
