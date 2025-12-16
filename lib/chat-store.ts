@@ -426,6 +426,13 @@ export const useChatStore = create<ChatStore>()(
                   });
                 }
               });
+
+              // FIX: Store the AI-generated template as the source of truth for content transfer
+              // This ensures content is preserved when switching to a different template
+              const updatedTemplate = useTemplateStore.getState().currentTemplate;
+              if (updatedTemplate) {
+                templateStore.setOriginalCloudTemplateContent(updatedTemplate);
+              }
             }
 
             // Capture undo point for AI-generated changes, but only if there are actual changes
