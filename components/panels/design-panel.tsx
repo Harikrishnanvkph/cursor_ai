@@ -385,6 +385,114 @@ export function DesignPanel() {
                 </Select>
               </div>
             </div>
+
+            {/* Area Fill Settings */}
+            <div className="pt-2 border-t border-purple-200 space-y-3">
+              <div className="text-xs font-medium text-purple-700">Area Fill Settings</div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium">Fill Target</Label>
+                  <Select
+                    value={
+                      (chartData.datasets[0] as any)?.fill === false ? 'none' :
+                        (chartData.datasets[0] as any)?.fill === '-1' ? 'stack' :
+                          (chartData.datasets[0] as any)?.fill === 'end' ? 'end' :
+                            (chartData.datasets[0] as any)?.fill === true || (chartData.datasets[0] as any)?.fill === 'origin' ? 'origin' : 'none'
+                    }
+                    onValueChange={(value) => {
+                      const fillValue = value === 'none' ? false : value === 'stack' ? '-1' : value === 'origin' ? 'origin' : value
+                      chartData.datasets.forEach((_, index) => {
+                        handleUpdateDataset(index, 'fill', fillValue)
+                      })
+                    }}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="origin">Origin (Baseline)</SelectItem>
+                      <SelectItem value="stack">Stacked (Previous Dataset)</SelectItem>
+                      <SelectItem value="end">End (Top)</SelectItem>
+                      <SelectItem value="none">None (Line Only)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium">Fill Opacity</Label>
+                  <Slider
+                    value={[(() => {
+                      const bgColor = (chartData.datasets[0] as any)?.backgroundColor
+                      const firstColor = Array.isArray(bgColor) ? bgColor[0] : bgColor
+                      if (typeof firstColor === 'string') {
+                        if (firstColor.startsWith('rgba')) {
+                          const match = firstColor.match(/rgba?\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)/)
+                          return match ? Math.round(parseFloat(match[1]) * 100) : 60
+                        }
+                        // Hex colors are fully opaque
+                        if (firstColor.startsWith('#')) return 100
+                      }
+                      return 60
+                    })()]}
+                    onValueChange={([value]) => {
+                      const opacity = value / 100
+
+                      // Helper to convert a single color to rgba with opacity
+                      const convertColorToRgba = (color: string): string => {
+                        if (!color) return `rgba(59, 130, 246, ${opacity})`
+
+                        let r = 59, g = 130, b = 246
+                        if (color.startsWith('#')) {
+                          const hex = color.replace('#', '')
+                          r = parseInt(hex.substring(0, 2), 16)
+                          g = parseInt(hex.substring(2, 4), 16)
+                          b = parseInt(hex.substring(4, 6), 16)
+                        } else if (color.startsWith('rgba') || color.startsWith('rgb')) {
+                          const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
+                          if (match) {
+                            r = parseInt(match[1])
+                            g = parseInt(match[2])
+                            b = parseInt(match[3])
+                          }
+                        }
+                        return `rgba(${r}, ${g}, ${b}, ${opacity})`
+                      }
+
+                      chartData.datasets.forEach((dataset, index) => {
+                        const bgColors = (dataset as any)?.backgroundColor
+
+                        // Preserve array structure if colors are an array
+                        if (Array.isArray(bgColors)) {
+                          const newColors = bgColors.map((c: string) => convertColorToRgba(c))
+                          handleUpdateDataset(index, 'backgroundColor', newColors)
+                        } else {
+                          handleUpdateDataset(index, 'backgroundColor', convertColorToRgba(bgColors))
+                        }
+                      })
+                    }}
+                    min={0}
+                    max={100}
+                    step={5}
+                    className="mt-2"
+                  />
+                  <div className="text-xs text-gray-500 mt-1">
+                    {(() => {
+                      const bgColor = (chartData.datasets[0] as any)?.backgroundColor
+                      const firstColor = Array.isArray(bgColor) ? bgColor[0] : bgColor
+                      if (typeof firstColor === 'string') {
+                        if (firstColor.startsWith('rgba')) {
+                          const match = firstColor.match(/rgba?\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)/)
+                          return match ? Math.round(parseFloat(match[1]) * 100) : 60
+                        }
+                        if (firstColor.startsWith('#')) return 100
+                      }
+                      return 60
+                    })()}%
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </TabsContent>
 

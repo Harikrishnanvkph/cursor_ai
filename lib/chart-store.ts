@@ -51,7 +51,7 @@ declare module 'chart.js' {
     textShadowColor?: string | ((context: Context) => string);
   }
 
-  interface DatalabelsLabelOptions extends DatalabelsPluginOptions {}
+  interface DatalabelsLabelOptions extends DatalabelsPluginOptions { }
 
   // Augment the existing PluginOptionsByType from Chart.js by redeclaring it.
   // TypeScript's declaration merging will add our 'datalabels' property.
@@ -143,15 +143,15 @@ export interface ExtendedChartData extends Omit<ChartData, "datasets"> {
 type CustomChartType = 'stackedBar' | 'area';
 
 // Define supported chart types as a union of Chart.js types and our custom types
-type SupportedChartTypeLocal = 
-  | 'bar' 
-  | 'line' 
-  | 'scatter' 
-  | 'bubble' 
-  | 'pie' 
-  | 'doughnut' 
-  | 'polarArea' 
-  | 'radar' 
+type SupportedChartTypeLocal =
+  | 'bar'
+  | 'line'
+  | 'scatter'
+  | 'bubble'
+  | 'pie'
+  | 'doughnut'
+  | 'polarArea'
+  | 'radar'
   | 'horizontalBar';
 
 export type SupportedChartType = SupportedChartTypeLocal | CustomChartType;
@@ -262,10 +262,10 @@ interface ChartStore {
   setActiveDatasetIndex: (index: number) => void;
   setUniformityMode: (mode: 'uniform' | 'mixed') => void;
   updateLabels: (labels: string[]) => void;
-        toggleFillArea: () => void;
-      toggleShowBorder: () => void;
-      toggleShowImages: () => void;
-      toggleShowLabels: () => void;
+  toggleFillArea: () => void;
+  toggleShowBorder: () => void;
+  toggleShowImages: () => void;
+  toggleShowLabels: () => void;
   setFullChart: (chart: { chartType: SupportedChartType; chartData: ExtendedChartData; chartConfig: ExtendedChartOptions; id?: string }) => void;
   setHasJSON: (value: boolean) => void;
   // Overlay actions
@@ -510,10 +510,10 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
         r: {
           type: 'radialLinear', // Required for Chart.js to recognize radial scale
           beginAtZero: true,
-          min: 0, 
+          min: 0,
           ticks: {
-            stepSize: undefined, 
-            display: true, 
+            stepSize: undefined,
+            display: true,
             color: '#666666',
             backdropColor: 'rgba(0,0,0,0)',
           },
@@ -661,6 +661,81 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
     return baseConfig
   }
 
+  // Special configuration for area charts - use 'nearest' interaction mode
+  if (type === ('area' as CustomChartType)) {
+    return {
+      ...baseConfig,
+      interaction: {
+        intersect: false,
+        mode: 'nearest' as const,
+      },
+      scales: {
+        x: {
+          display: true,
+          grace: 5,
+          grid: {
+            display: true,
+            color: "#e5e7eb",
+            lineWidth: 1,
+            drawOnChartArea: true,
+            drawTicks: true,
+            tickLength: 6,
+            tickWidth: 1,
+            tickColor: "#666666",
+          },
+          ticks: {
+            display: true,
+            font: { size: 12 },
+            color: "#666666",
+            padding: 8,
+          },
+          title: {
+            display: false,
+            text: "",
+            font: { size: 14 },
+            color: "#333333",
+          },
+          border: {
+            display: true,
+            color: "#666666",
+            width: 1,
+          },
+        },
+        y: {
+          display: true,
+          grace: 5,
+          grid: {
+            display: true,
+            color: "#e5e7eb",
+            lineWidth: 1,
+            drawOnChartArea: true,
+            drawTicks: true,
+            tickLength: 6,
+            tickWidth: 1,
+            tickColor: "#666666",
+          },
+          ticks: {
+            display: true,
+            font: { size: 12 },
+            color: "#666666",
+            padding: 8,
+          },
+          title: {
+            display: false,
+            text: "",
+            font: { size: 14 },
+            color: "#333333",
+          },
+          border: {
+            display: true,
+            color: "#666666",
+            width: 1,
+          },
+        },
+      },
+    }
+  }
+
   return {
     ...baseConfig,
     scales: {
@@ -766,7 +841,7 @@ const universalImagePlugin = {
         // For pie/doughnut/polarArea, respect per-slice visibility toggled by legend
         const type = chart.config?.type;
         if ((type === 'pie' || type === 'doughnut' || type === 'polarArea') &&
-            typeof chart.getDataVisibility === 'function' && chart.getDataVisibility(pointIndex) === false) {
+          typeof chart.getDataVisibility === 'function' && chart.getDataVisibility(pointIndex) === false) {
           return;
         }
         const imageUrl = dataset.pointImages[pointIndex];
@@ -859,7 +934,7 @@ const universalImagePlugin = {
           // For now, use filteredPointIndex directly as the datasets are already filtered
           const pointIndex = filteredPointIndex
           const config = dataset.pointImageConfig?.[pointIndex]
-          
+
           if (config && config.position === "callout" && dataset.pointImages?.[pointIndex]) {
             if (!element) return
 
@@ -960,7 +1035,7 @@ const universalImagePlugin = {
         meta.data.forEach((element: any, filteredPointIndex: number) => {
           const pointIndex = filteredPointIndex
           const config = dataset.pointImageConfig?.[pointIndex]
-          
+
           if (config && config.position === "callout" && dataset.pointImages?.[pointIndex]) {
             if (!element) return
 
@@ -1021,7 +1096,7 @@ const universalImagePlugin = {
     canvas.addEventListener("mousedown", handleMouseDown)
     canvas.addEventListener("mousemove", handleMouseMove)
     canvas.addEventListener("mouseup", handleMouseUp)
-    
+
     // Touch event listeners for mobile/tablet support
     canvas.addEventListener("touchstart", handleTouchStart, { passive: false })
     canvas.addEventListener("touchmove", handleTouchMove, { passive: false })
@@ -1442,47 +1517,47 @@ function renderCalloutImage(
         prevY = (bendY as number)
       }
       const angle = Math.atan2(endY - prevY, endX - prevX)
-    const arrowLength = 12
-    ctx.beginPath()
+      const arrowLength = 12
+      ctx.beginPath()
       ctx.moveTo(endX, endY)
-    ctx.lineTo(
+      ctx.lineTo(
         endX - arrowLength * Math.cos(angle - Math.PI / 6),
         endY - arrowLength * Math.sin(angle - Math.PI / 6),
-    )
+      )
       ctx.moveTo(endX, endY)
-    ctx.lineTo(
+      ctx.lineTo(
         endX - arrowLength * Math.cos(angle + Math.PI / 6),
         endY - arrowLength * Math.sin(angle + Math.PI / 6),
-    )
-    ctx.stroke()
+      )
+      ctx.stroke()
     }
   }
 
   // Get image type/shape from config (default to circle)
   const imageType = config.type || "circle"
-  
+
   // Draw image with configurable clipping shape
   drawImageWithClipping(ctx, calloutX - size / 2, calloutY - size / 2, size, size, img, imageType)
 
   // Draw configurable border around callout
   const borderWidth = config.borderWidth !== undefined ? config.borderWidth : 3
   const borderColor = config.borderColor || "#ffffff"
-  
+
   if (borderWidth > 0) {
     ctx.strokeStyle = borderColor
     ctx.lineWidth = borderWidth
-    
+
     // Calculate actual image dimensions for regular type
     let borderX = calloutX - size / 2
     let borderY = calloutY - size / 2
     let borderW = size
     let borderH = size
-    
+
     if (imageType === "regular") {
       // Calculate the actual rendered dimensions (preserving aspect ratio)
       const imgAspectRatio = img.naturalWidth / img.naturalHeight
       const targetAspectRatio = size / size
-      
+
       if (imgAspectRatio > targetAspectRatio) {
         // Image is wider - fit to width
         borderH = size / imgAspectRatio
@@ -1493,7 +1568,7 @@ function renderCalloutImage(
         borderX = calloutX - borderW / 2
       }
     }
-    
+
     if (imageType === "circle") {
       ctx.beginPath()
       ctx.arc(calloutX, calloutY, size / 2, 0, 2 * Math.PI)
@@ -1519,7 +1594,7 @@ function renderCalloutImage(
     ctx.shadowBlur = 4
     ctx.shadowOffsetX = 2
     ctx.shadowOffsetY = 2
-    
+
     if (imageType === "circle") {
       ctx.beginPath()
       ctx.arc(calloutX, calloutY, size / 2, 0, 2 * Math.PI)
@@ -1538,7 +1613,7 @@ function renderCalloutImage(
       roundRect(ctx, calloutX - size / 2, calloutY - size / 2, size, size, radius)
       ctx.stroke()
     }
-    
+
     ctx.restore()
   }
 }
@@ -1551,12 +1626,12 @@ function drawImageWithClipping(ctx: any, x: any, y: any, width: any, height: any
     // Regular: Preserve aspect ratio, scale to fit within bounds, center it
     const imgAspectRatio = img.naturalWidth / img.naturalHeight
     const targetAspectRatio = width / height
-    
+
     let drawWidth = width
     let drawHeight = height
     let drawX = x
     let drawY = y
-    
+
     if (imgAspectRatio > targetAspectRatio) {
       // Image is wider - fit to width, scale height proportionally
       drawHeight = width / imgAspectRatio
@@ -1566,7 +1641,7 @@ function drawImageWithClipping(ctx: any, x: any, y: any, width: any, height: any
       drawWidth = height * imgAspectRatio
       drawX = x + (width - drawWidth) / 2 // Center horizontally
     }
-    
+
     // Draw image without clipping to preserve aspect ratio
     ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight)
   } else {
@@ -1588,7 +1663,7 @@ function drawImageWithClipping(ctx: any, x: any, y: any, width: any, height: any
 
     ctx.drawImage(img, x, y, width, height)
   }
-  
+
   ctx.restore()
 }
 
@@ -1718,21 +1793,21 @@ function renderSliceFillImage(ctx: any, element: any, img: any, config: any) {
           }
           // Rectangle corners in cartesian
           const corners = [
-            { dx: -w/2, dy: -h/2 },
-            { dx: w/2, dy: -h/2 },
-            { dx: w/2, dy: h/2 },
-            { dx: -w/2, dy: h/2 },
-          ].map(({dx,dy}) => {
+            { dx: -w / 2, dy: -h / 2 },
+            { dx: w / 2, dy: -h / 2 },
+            { dx: w / 2, dy: h / 2 },
+            { dx: -w / 2, dy: h / 2 },
+          ].map(({ dx, dy }) => {
             // Place center at (cx,cy)
             const cx = centerX + Math.cos(theta) * r
             const cy = centerY + Math.sin(theta) * r
             return { x: cx + dx, y: cy + dy }
           })
           // Check all corners are inside the sector
-          const allInside = corners.every(({x, y}) => {
+          const allInside = corners.every(({ x, y }) => {
             const relX = x - centerX
             const relY = y - centerY
-            const rad = Math.sqrt(relX*relX + relY*relY)
+            const rad = Math.sqrt(relX * relX + relY * relY)
             let ang = Math.atan2(relY, relX)
             if (ang < 0) ang += 2 * Math.PI
             let sA = startAngle, eA = endAngle
@@ -1755,7 +1830,7 @@ function renderSliceFillImage(ctx: any, element: any, img: any, config: any) {
           // Place center at (cx,cy)
           const cx = centerX + Math.cos(theta) * r
           const cy = centerY + Math.sin(theta) * r
-          best = { area: maxW * maxH, x: cx - maxW/2, y: cy - maxH/2, w: maxW, h: maxH }
+          best = { area: maxW * maxH, x: cx - maxW / 2, y: cy - maxH / 2, w: maxW, h: maxH }
         }
       }
     }
@@ -1970,12 +2045,12 @@ function areDatasetChangesMeaningful(previousDataset: any, newDataset: any): boo
   if (JSON.stringify(previousDataset.data) !== JSON.stringify(newDataset.data)) {
     return true;
   }
-  
+
   // Check if labels changed
   if (previousDataset.label !== newDataset.label) {
     return true;
   }
-  
+
   // Check if colors changed (but ignore fill/border width changes for toggles)
   const prevColors = JSON.stringify({
     backgroundColor: previousDataset.backgroundColor,
@@ -1985,19 +2060,19 @@ function areDatasetChangesMeaningful(previousDataset: any, newDataset: any): boo
     backgroundColor: newDataset.backgroundColor,
     borderColor: newDataset.borderColor
   });
-  
+
   if (prevColors !== newColors) {
     return true;
   }
-  
+
   // Check if point images changed
   if (JSON.stringify(previousDataset.pointImages) !== JSON.stringify(newDataset.pointImages)) {
     return true;
   }
-  
+
   // Fill and border width changes are considered trivial for toggles
   // Only capture undo points for more substantial changes
-  
+
   return false;
 }
 
@@ -2014,7 +2089,7 @@ export const useChartStore = create<ChartStore>()(
       // Global chart reference
       globalChartRef: null,
       setGlobalChartRef: (ref) => set({ globalChartRef: ref }),
-      
+
       chartType: 'bar',
       chartData: emptyChartData,
       chartConfig: getDefaultConfigForType('bar'),
@@ -2033,10 +2108,10 @@ export const useChartStore = create<ChartStore>()(
       hasJSON: false,
       currentSnapshotId: null, // Initialize to null
       // Initialize overlay state
-        overlayImages: [],
-  overlayTexts: [],
-  selectedImageId: null,
-  selectedTextId: null,
+      overlayImages: [],
+      overlayTexts: [],
+      selectedImageId: null,
+      selectedTextId: null,
       toggleDatasetVisibility: (index: number) => set((state) => {
         const current = (state.legendFilter.datasets as Record<number, boolean>)[index] ?? true;
         return { legendFilter: { ...state.legendFilter, datasets: { ...state.legendFilter.datasets, [index]: !current } } };
@@ -2048,14 +2123,14 @@ export const useChartStore = create<ChartStore>()(
       setChartType: (type) => set((state) => {
         // Only proceed if there's an actual change
         if (state.chartType === type) return state;
-        
+
         // Store the previous state for undo comparison
         const previousState = {
           chartType: state.chartType,
           chartData: JSON.parse(JSON.stringify(state.chartData)),
           chartConfig: JSON.parse(JSON.stringify(state.chartConfig))
         }
-        
+
         // Always fully reset config for new chart type
         const chartJsType = type === ('area' as CustomChartType) ? 'line' as const : type;
         const newDatasets = state.chartData.datasets.map((dataset) => {
@@ -2100,7 +2175,8 @@ export const useChartStore = create<ChartStore>()(
         const prevCustomLabelsConfig = (state.chartConfig.plugins as any)?.customLabelsConfig || {};
 
         // FULL RESET: Always deep clone default config for new chart type
-        let newConfig = JSON.parse(JSON.stringify(getDefaultConfigForType(chartJsType)));
+        // Use the original type (e.g., 'area') not chartJsType ('line') to get correct configs
+        let newConfig = JSON.parse(JSON.stringify(getDefaultConfigForType(type)));
         // Preserve existing background configuration
         if ((state.chartConfig as any)?.background) {
           (newConfig as any).background = (state.chartConfig as any).background;
@@ -2162,8 +2238,8 @@ export const useChartStore = create<ChartStore>()(
 
         // Auto-switch to uniform mode if changing to a chart type that doesn't support mixed mode
         const nonMixedModeCharts = ['pie', 'doughnut', 'radar', 'polarArea', 'scatter', 'bubble'];
-        const shouldSwitchToUniform = state.chartMode === 'grouped' && 
-          state.uniformityMode === 'mixed' && 
+        const shouldSwitchToUniform = state.chartMode === 'grouped' &&
+          state.uniformityMode === 'mixed' &&
           nonMixedModeCharts.includes(type);
 
         const newState = {
@@ -2175,7 +2251,7 @@ export const useChartStore = create<ChartStore>()(
           chartConfig: newConfig,
           ...(shouldSwitchToUniform && { uniformityMode: 'uniform' as const }),
         };
-        
+
         // Capture undo point AFTER the change is made
         if (state.hasJSON) {
           try {
@@ -2195,7 +2271,7 @@ export const useChartStore = create<ChartStore>()(
             console.warn('Failed to capture undo point for chart type change:', error);
           }
         }
-        
+
         return newState;
       }),
       addDataset: (dataset) => set((state) => {
@@ -2203,12 +2279,12 @@ export const useChartStore = create<ChartStore>()(
           ...state.chartData,
           datasets: [...state.chartData.datasets, dataset],
         };
-        
+
         // Update the appropriate mode-specific storage
-        const modeDataUpdate = state.chartMode === 'single' 
+        const modeDataUpdate = state.chartMode === 'single'
           ? { singleModeData: newChartData }
           : { groupedModeData: newChartData };
-        
+
         return {
           chartData: newChartData,
           ...modeDataUpdate,
@@ -2221,12 +2297,12 @@ export const useChartStore = create<ChartStore>()(
           ...state.chartData,
           datasets: state.chartData.datasets.filter((_, i) => i !== index),
         };
-        
+
         // Update the appropriate mode-specific storage
-        const modeDataUpdate = state.chartMode === 'single' 
+        const modeDataUpdate = state.chartMode === 'single'
           ? { singleModeData: newChartData }
           : { groupedModeData: newChartData };
-        
+
         return {
           chartData: newChartData,
           ...modeDataUpdate,
@@ -2235,20 +2311,20 @@ export const useChartStore = create<ChartStore>()(
       updateDataset: (index: number, updates: Partial<ExtendedChartDataset> & { addPoint?: boolean; removePoint?: boolean; randomizeColors?: boolean }) => set((state) => {
         const dataset = state.chartData.datasets[index] as ExtendedChartDataset
         if (!dataset) return state
-        
+
         // Store the previous state for undo comparison
         const previousState = {
           chartType: state.chartType,
           chartData: JSON.parse(JSON.stringify(state.chartData)),
           chartConfig: JSON.parse(JSON.stringify(state.chartConfig))
         }
-        
+
         // Prevent adding/removing points in Grouped Mode to maintain consistency (only if there are multiple datasets)
         if (state.chartMode === 'grouped' && state.chartData.datasets.length > 1 && (updates.addPoint || updates.removePoint)) {
           console.warn('Adding/removing points is not allowed in Grouped Mode to maintain dataset consistency')
           return state
         }
-        
+
         let updatedDataset = { ...dataset, ...updates } as ExtendedChartDataset
         // Add Point
         if (updates.addPoint) {
@@ -2272,7 +2348,7 @@ export const useChartStore = create<ChartStore>()(
           ]
           // Update labels
           const newLabels = [...(state.chartData.labels || []), `Slice ${dataset.data.length + 1}`]
-          
+
           // Create new state
           const newState = {
             ...state,
@@ -2282,7 +2358,7 @@ export const useChartStore = create<ChartStore>()(
               datasets: state.chartData.datasets.map((d, i) => i === index ? updatedDataset : d),
             },
           }
-          
+
           // Capture undo point AFTER the change is made
           if (state.hasJSON) {
             try {
@@ -2302,7 +2378,7 @@ export const useChartStore = create<ChartStore>()(
               console.warn('Failed to capture undo point for dataset change:', error);
             }
           }
-          
+
           return newState
         }
         // Remove Point
@@ -2318,7 +2394,7 @@ export const useChartStore = create<ChartStore>()(
           updatedDataset.pointImageConfig = (dataset.pointImageConfig || []).slice(0, -1)
           // Update labels
           const newLabels = (state.chartData.labels || []).slice(0, -1)
-          
+
           const newState = {
             ...state,
             chartData: {
@@ -2327,7 +2403,7 @@ export const useChartStore = create<ChartStore>()(
               datasets: state.chartData.datasets.map((d, i) => i === index ? updatedDataset : d),
             },
           }
-          
+
           // Capture undo point AFTER the change is made
           if (state.hasJSON) {
             try {
@@ -2347,7 +2423,7 @@ export const useChartStore = create<ChartStore>()(
               console.warn('Failed to capture undo point for dataset change:', error);
             }
           }
-          
+
           return newState
         }
         // Randomize Colors
@@ -2361,7 +2437,7 @@ export const useChartStore = create<ChartStore>()(
           updatedDataset.borderColor = colors.map(c => darkenColor(c, 20))
           updatedDataset.lastSliceColors = colors
         }
-        
+
         // Handle color mode changes (existing logic)
         if (updates.datasetColorMode) {
           if (updates.datasetColorMode === 'single') {
@@ -2403,7 +2479,7 @@ export const useChartStore = create<ChartStore>()(
             updatedDataset.borderColor = Array(dataset.data.length).fill(darkenColor(baseColor, 20))
           }
         }
-        
+
         // Update the dataset in the state
         const newDatasets = [...state.chartData.datasets]
         newDatasets[index] = updatedDataset
@@ -2411,24 +2487,24 @@ export const useChartStore = create<ChartStore>()(
           ...state.chartData,
           datasets: newDatasets,
         }
-        
+
         // Update the appropriate mode-specific storage
-        const modeDataUpdate = state.chartMode === 'single' 
+        const modeDataUpdate = state.chartMode === 'single'
           ? { singleModeData: newChartData }
           : { groupedModeData: newChartData }
-        
+
         // Check if we should set hasJSON based on chart data validity
-        const shouldSetHasJSON = newChartData.labels.length > 0 && 
-                                 newChartData.datasets.length > 0 && 
-                                 newChartData.datasets.some(d => d.data && d.data.length > 0);
-        
+        const shouldSetHasJSON = newChartData.labels.length > 0 &&
+          newChartData.datasets.length > 0 &&
+          newChartData.datasets.some(d => d.data && d.data.length > 0);
+
         const newState = {
           ...state,
           chartData: newChartData,
           ...modeDataUpdate,
           hasJSON: shouldSetHasJSON || state.hasJSON,
         }
-        
+
         // Capture undo point AFTER the change is made, but only if there are actual meaningful changes
         if (state.hasJSON || shouldSetHasJSON) {
           // Check if there are meaningful changes using our helper function
@@ -2436,7 +2512,7 @@ export const useChartStore = create<ChartStore>()(
             const previousDataset = state.chartData.datasets[idx];
             return areDatasetChangesMeaningful(previousDataset, newDataset);
           });
-          
+
           if (hasMeaningfulChanges) {
             try {
               const { captureUndoPoint } = require('./chat-store');
@@ -2456,7 +2532,7 @@ export const useChartStore = create<ChartStore>()(
             }
           }
         }
-        
+
         return newState
       }),
       updateDataPoint: (datasetIndex, pointIndex, field, value) => set((state) => {
@@ -2465,24 +2541,24 @@ export const useChartStore = create<ChartStore>()(
           datasets: state.chartData.datasets.map((dataset, i) =>
             i === datasetIndex
               ? {
-                  ...dataset,
-                  data: dataset.data.map((point, j) =>
-                    j === pointIndex
-                      ? typeof point === 'object' && point !== null
-                        ? { ...point, [field]: value }
-                        : value
-                      : point
-                  ),
-                } as ExtendedChartDataset
+                ...dataset,
+                data: dataset.data.map((point, j) =>
+                  j === pointIndex
+                    ? typeof point === 'object' && point !== null
+                      ? { ...point, [field]: value }
+                      : value
+                    : point
+                ),
+              } as ExtendedChartDataset
               : dataset
           ),
         };
-        
+
         // Update the appropriate mode-specific storage
-        const modeDataUpdate = state.chartMode === 'single' 
+        const modeDataUpdate = state.chartMode === 'single'
           ? { singleModeData: newChartData }
           : { groupedModeData: newChartData };
-        
+
         return {
           chartData: newChartData,
           ...modeDataUpdate,
@@ -2512,7 +2588,7 @@ export const useChartStore = create<ChartStore>()(
             console.warn('Failed to capture undo point for config change:', error);
           }
         }
-        
+
         if (state.chartType === 'radar') {
           const radarConfig = getDefaultConfigForType('radar');
           return { chartConfig: { ...radarConfig, ...config, scales: { ...radarConfig.scales, ...(config.scales || {}) } } };
@@ -2522,53 +2598,53 @@ export const useChartStore = create<ChartStore>()(
       updatePointImage: (datasetIndex, pointIndex, imageUrl, imageConfig) => set((state) => {
         const dataset = state.chartData.datasets[datasetIndex];
         if (!dataset) return state;
-        
+
         // Ensure arrays exist and are the correct length
         const dataLength = dataset.data.length;
         let pointImages = dataset.pointImages || [];
         let pointImageConfig = dataset.pointImageConfig || [];
-        
+
         // Initialize arrays if they don't exist or are the wrong length
         if (pointImages.length !== dataLength) {
-          pointImages = Array(dataLength).fill(null).map((_, idx) => 
+          pointImages = Array(dataLength).fill(null).map((_, idx) =>
             pointImages[idx] !== undefined ? pointImages[idx] : null
           );
         }
-        
+
         if (pointImageConfig.length !== dataLength) {
-          pointImageConfig = Array(dataLength).fill(null).map((_, idx) => 
+          pointImageConfig = Array(dataLength).fill(null).map((_, idx) =>
             pointImageConfig[idx] || getDefaultImageConfig(state.chartType)
           );
         }
-        
+
         // Update the specific point
         const updatedPointImages = [...pointImages];
         updatedPointImages[pointIndex] = imageUrl;
-        
+
         const updatedPointImageConfig = [...pointImageConfig];
-        updatedPointImageConfig[pointIndex] = { 
-          ...(updatedPointImageConfig[pointIndex] || getDefaultImageConfig(state.chartType)), 
-          ...imageConfig 
+        updatedPointImageConfig[pointIndex] = {
+          ...(updatedPointImageConfig[pointIndex] || getDefaultImageConfig(state.chartType)),
+          ...imageConfig
         };
-        
+
         const newChartData = {
           ...state.chartData,
           datasets: state.chartData.datasets.map((d, i) =>
             i === datasetIndex
               ? {
-                  ...d,
-                  pointImages: updatedPointImages,
-                  pointImageConfig: updatedPointImageConfig,
-                } as ExtendedChartDataset
+                ...d,
+                pointImages: updatedPointImages,
+                pointImageConfig: updatedPointImageConfig,
+              } as ExtendedChartDataset
               : d
           ),
         };
-        
+
         // Update the appropriate mode-specific storage
-        const modeDataUpdate = state.chartMode === 'single' 
+        const modeDataUpdate = state.chartMode === 'single'
           ? { singleModeData: newChartData }
           : { groupedModeData: newChartData };
-        
+
         return {
           chartData: newChartData,
           ...modeDataUpdate,
@@ -2576,10 +2652,10 @@ export const useChartStore = create<ChartStore>()(
       }),
       resetChart: () => set((state) => {
         const modeDefaultData = getDefaultDataForMode(state.chartMode);
-        
+
         // Create new config for bar chart
         let newConfig = getDefaultConfigForType('bar');
-        
+
         // Preserve manual/responsive/dimension settings for mobile devices
         const isMobile = typeof window !== 'undefined' && window.innerWidth <= 576;
         if (isMobile) {
@@ -2600,12 +2676,12 @@ export const useChartStore = create<ChartStore>()(
             newConfig.height = state.chartConfig.height;
           }
         }
-        
+
         // Update the appropriate mode-specific storage
-        const modeDataUpdate = state.chartMode === 'single' 
+        const modeDataUpdate = state.chartMode === 'single'
           ? { singleModeData: modeDefaultData }
           : { groupedModeData: modeDefaultData };
-        
+
         return {
           chartType: 'bar',
           chartData: modeDefaultData,
@@ -2651,17 +2727,17 @@ export const useChartStore = create<ChartStore>()(
             sliceLabels: labels // Update sliceLabels to match the new labels
           }))
         };
-        
+
         // Update the appropriate mode-specific storage
-        const modeDataUpdate = state.chartMode === 'single' 
+        const modeDataUpdate = state.chartMode === 'single'
           ? { singleModeData: newChartData }
           : { groupedModeData: newChartData };
-        
+
         // Set hasJSON to true if we have both labels and datasets with data
-        const shouldSetHasJSON = labels.length > 0 && 
-                                 newChartData.datasets.length > 0 && 
-                                 newChartData.datasets.some(d => d.data && d.data.length > 0);
-        
+        const shouldSetHasJSON = labels.length > 0 &&
+          newChartData.datasets.length > 0 &&
+          newChartData.datasets.some(d => d.data && d.data.length > 0);
+
         return {
           chartData: newChartData,
           ...modeDataUpdate,
@@ -2670,17 +2746,17 @@ export const useChartStore = create<ChartStore>()(
       }),
       toggleFillArea: () => set((state) => {
         const newFillArea = !state.fillArea;
-        
+
         // Update chart configuration to reflect fill changes
         const newChartConfig = { ...state.chartConfig };
-        
+
         // Update datasets to reflect the new fill state
         const newDatasets = state.chartData.datasets.map(dataset => ({
           ...dataset,
           fill: newFillArea,
           borderWidth: newFillArea ? (state.showBorder ? 2 : 0) : 2
         }));
-        
+
         const newState = {
           fillArea: newFillArea,
           showBorder: newFillArea ? state.showBorder : true,
@@ -2689,12 +2765,12 @@ export const useChartStore = create<ChartStore>()(
             datasets: newDatasets
           }
         };
-        
+
         // Capture undo point only if there are actual visual changes and we have chart data
         if (state.hasJSON && newDatasets.some(dataset => dataset.fill !== state.fillArea)) {
           try {
             const { captureUndoPoint, shouldDebounceUndoOperation } = require('./chat-store');
-            
+
             // Check if we should debounce this operation
             if (!shouldDebounceUndoOperation('manual_design_change', 'style-toggles')) {
               captureUndoPoint({
@@ -2717,22 +2793,22 @@ export const useChartStore = create<ChartStore>()(
             console.warn('Failed to capture undo point for fill toggle:', error);
           }
         }
-        
+
         return newState;
       }),
       toggleShowBorder: () => set((state) => {
         if (!state.fillArea) {
           return {}; // No change if fill is disabled
         }
-        
+
         const newShowBorder = !state.showBorder;
-        
+
         // Update datasets to reflect the new border state
         const newDatasets = state.chartData.datasets.map(dataset => ({
           ...dataset,
           borderWidth: newShowBorder ? 2 : 0
         }));
-        
+
         const newState = {
           showBorder: newShowBorder,
           chartData: {
@@ -2740,12 +2816,12 @@ export const useChartStore = create<ChartStore>()(
             datasets: newDatasets
           }
         };
-        
+
         // Capture undo point only if there are actual visual changes and we have chart data
         if (state.hasJSON && newShowBorder !== state.showBorder) {
           try {
             const { captureUndoPoint, shouldDebounceUndoOperation } = require('./chat-store');
-            
+
             // Check if we should debounce this operation
             if (!shouldDebounceUndoOperation('manual_design_change', 'style-toggles')) {
               captureUndoPoint({
@@ -2768,17 +2844,17 @@ export const useChartStore = create<ChartStore>()(
             console.warn('Failed to capture undo point for border toggle:', error);
           }
         }
-        
+
         return newState;
       }),
       toggleShowImages: () => set((state) => {
         const newShowImages = !state.showImages;
-        
+
         // Capture undo point only if there are actual overlay images and we have chart data
         if (state.hasJSON && state.overlayImages.length > 0) {
           try {
             const { captureUndoPoint, shouldDebounceUndoOperation } = require('./chat-store');
-            
+
             // Check if we should debounce this operation
             if (!shouldDebounceUndoOperation('manual_design_change', 'style-toggles')) {
               captureUndoPoint({
@@ -2801,17 +2877,17 @@ export const useChartStore = create<ChartStore>()(
             console.warn('Failed to capture undo point for image toggle:', error);
           }
         }
-        
+
         return { showImages: newShowImages };
       }),
       toggleShowLabels: () => set((state) => {
         const newShowLabels = !state.showLabels;
-        
+
         // Capture undo point only if we have chart data and labels are configured
         if (state.hasJSON && state.chartConfig.plugins?.datalabels) {
           try {
             const { captureUndoPoint, shouldDebounceUndoOperation } = require('./chat-store');
-            
+
             // Check if we should debounce this operation
             if (!shouldDebounceUndoOperation('manual_design_change', 'style-toggles')) {
               captureUndoPoint({
@@ -2834,7 +2910,7 @@ export const useChartStore = create<ChartStore>()(
             console.warn('Failed to capture undo point for label toggle:', error);
           }
         }
-        
+
         return { showLabels: newShowLabels };
       }),
       setFullChart: ({ chartType, chartData, chartConfig, id }) => set((state) => {
@@ -2850,13 +2926,13 @@ export const useChartStore = create<ChartStore>()(
           const inferredMode = datasetCount > 1 ? 'grouped' : 'single';
           return { ...ds, mode: inferredMode };
         }) || [];
-        
+
         // Create processed chart data with mode properties set
         const processedChartData = {
           ...chartData,
           datasets: processedDatasets
         };
-        
+
         // Sync currentChartState to chat-store
         try {
           const { useChatStore } = require('./chat-store');
@@ -2869,15 +2945,15 @@ export const useChartStore = create<ChartStore>()(
         } catch (error) {
           console.warn('Could not sync chart state to chat-store:', error);
         }
-        
+
         // Determine the mode based on the processed datasets
         const hasGroupedDatasets = processedDatasets.some(ds => ds.mode === 'grouped');
         const hasSingleDatasets = processedDatasets.some(ds => ds.mode === 'single');
-        
+
         let newMode = state.chartMode;
         let newSingleModeData = state.singleModeData;
         let newGroupedModeData = state.groupedModeData;
-        
+
         // Auto-detect mode based on dataset count if no explicit mode is set
         // Multiple datasets (2+) = grouped mode, single dataset = single mode
         if (datasetCount > 1 && !hasGroupedDatasets && !hasSingleDatasets) {
@@ -2913,7 +2989,7 @@ export const useChartStore = create<ChartStore>()(
             newSingleModeData = processedChartData;
           }
         }
-        
+
         return {
           chartType,
           chartData: processedDatasets.length ? processedChartData : chartData,
@@ -2944,16 +3020,16 @@ export const useChartStore = create<ChartStore>()(
       updateOverlayText: (id, updates) => set((state) => ({
         overlayTexts: state.overlayTexts.map(txt => txt.id === id ? { ...txt, ...updates } : txt)
       })),
-        removeOverlayText: (id) => set((state) => ({
-    overlayTexts: state.overlayTexts.filter(txt => txt.id !== id)
-  })),
-  setSelectedImageId: (id) => set(() => ({
-    selectedImageId: id
-  })),
-  setSelectedTextId: (id) => set(() => ({
-    selectedTextId: id
-  })),
-      
+      removeOverlayText: (id) => set((state) => ({
+        overlayTexts: state.overlayTexts.filter(txt => txt.id !== id)
+      })),
+      setSelectedImageId: (id) => set(() => ({
+        selectedImageId: id
+      })),
+      setSelectedTextId: (id) => set(() => ({
+        selectedTextId: id
+      })),
+
       // Data operations - temporary transformations with auto-backup
       datasetBackups: new Map(),
 
@@ -2981,7 +3057,7 @@ export const useChartStore = create<ChartStore>()(
           chartData: {
             ...chartData,
             labels: backup.labels,
-            datasets: chartData.datasets.map((d, i) => 
+            datasets: chartData.datasets.map((d, i) =>
               i === index ? {
                 ...d,
                 data: backup.data,
@@ -2993,7 +3069,7 @@ export const useChartStore = create<ChartStore>()(
             )
           }
         });
-        
+
         datasetBackups.delete(index);
       },
 
@@ -3030,7 +3106,7 @@ export const useChartStore = create<ChartStore>()(
           chartData: {
             ...chartData,
             labels: paired.map(p => p.label),
-            datasets: chartData.datasets.map((d, i) => 
+            datasets: chartData.datasets.map((d, i) =>
               i === index ? {
                 ...d,
                 data: paired.map(p => p.originalValue),
@@ -3059,7 +3135,7 @@ export const useChartStore = create<ChartStore>()(
           chartData: {
             ...chartData,
             labels: [...(chartData.labels || [])].reverse(),
-            datasets: chartData.datasets.map((d, i) => 
+            datasets: chartData.datasets.map((d, i) =>
               i === index ? {
                 ...d,
                 data: [...d.data].reverse(),
@@ -3101,7 +3177,7 @@ export const useChartStore = create<ChartStore>()(
           chartData: {
             ...chartData,
             labels: topN.map(p => p.label),
-            datasets: chartData.datasets.map((d, i) => 
+            datasets: chartData.datasets.map((d, i) =>
               i === index ? {
                 ...d,
                 data: topN.map(p => p.originalValue),
@@ -3140,7 +3216,7 @@ export const useChartStore = create<ChartStore>()(
           chartData: {
             ...chartData,
             labels: filtered.map(p => p.label),
-            datasets: chartData.datasets.map((d, i) => 
+            datasets: chartData.datasets.map((d, i) =>
               i === index ? {
                 ...d,
                 data: filtered.map(p => p.originalValue),
@@ -3179,7 +3255,7 @@ export const useChartStore = create<ChartStore>()(
           chartData: {
             ...chartData,
             labels: filtered.map(p => p.label),
-            datasets: chartData.datasets.map((d, i) => 
+            datasets: chartData.datasets.map((d, i) =>
               i === index ? {
                 ...d,
                 data: filtered.map(p => p.originalValue),
@@ -3218,7 +3294,7 @@ export const useChartStore = create<ChartStore>()(
         set({
           chartData: {
             ...chartData,
-            datasets: chartData.datasets.map((d, i) => 
+            datasets: chartData.datasets.map((d, i) =>
               i === index ? { ...d, data: normalized } : d
             )
           }
@@ -3247,7 +3323,7 @@ export const useChartStore = create<ChartStore>()(
         set({
           chartData: {
             ...chartData,
-            datasets: chartData.datasets.map((d, i) => 
+            datasets: chartData.datasets.map((d, i) =>
               i === index ? { ...d, data: percentages } : d
             )
           }
@@ -3271,7 +3347,7 @@ export const useChartStore = create<ChartStore>()(
         set({
           chartData: {
             ...chartData,
-            datasets: chartData.datasets.map((d, i) => 
+            datasets: chartData.datasets.map((d, i) =>
               i === index ? { ...d, data: rounded } : d
             )
           }
@@ -3295,7 +3371,7 @@ export const useChartStore = create<ChartStore>()(
         set({
           chartData: {
             ...chartData,
-            datasets: chartData.datasets.map((d, i) => 
+            datasets: chartData.datasets.map((d, i) =>
               i === index ? { ...d, data: scaled } : d
             )
           }
@@ -3319,7 +3395,7 @@ export const useChartStore = create<ChartStore>()(
         set({
           chartData: {
             ...chartData,
-            datasets: chartData.datasets.map((d, i) => 
+            datasets: chartData.datasets.map((d, i) =>
               i === index ? { ...d, data: offsetted } : d
             )
           }
@@ -3355,9 +3431,9 @@ export const useChartStore = create<ChartStore>()(
             fillArea: persistedState.fillArea ?? true,
             showBorder: persistedState.showBorder ?? true,
             hasJSON: persistedState.hasJSON ?? false,
-                    overlayImages: persistedState.overlayImages || [],
-        overlayTexts: persistedState.overlayTexts || [],
-        selectedImageId: null, // Don't persist selection state
+            overlayImages: persistedState.overlayImages || [],
+            overlayTexts: persistedState.overlayTexts || [],
+            selectedImageId: null, // Don't persist selection state
           };
         }
         return persistedState;
