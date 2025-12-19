@@ -118,16 +118,16 @@ export function PromptTemplate({
 
   return (
     <div className={`flex items-center justify-center h-full ${styles.padding} ${className}`}>
-      <div className={`flex flex-col items-center justify-center w-full ${styles.container} bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20`}>
+      <div className={`flex flex-col items-center justify-center w-full ${styles.container} bg-slate-800/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-purple-500/20`}>
         <div className="flex flex-col items-center justify-center mb-6">
           {/* <div className={`inline-flex items-center justify-center ${styles.icon} bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-xl mb-4`}>
               <BarChart2 className={`${styles.iconInner} text-white`} />
           </div> */}
-          <div className={`${styles.title} inline-flex items-center font-bold bg-gradient-to-r from-slate-900 via-indigo-800 to-purple-800 bg-clip-text text-transparent mb-3 text-center`}>
-              <span className="text-sm inline text-slate-500 mr-3"><Bot /></span>
+          <div className={`${styles.title} inline-flex items-center font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400 bg-clip-text text-transparent mb-3 text-center`}>
+              <span className="text-sm inline text-purple-400 mr-3"><Bot /></span>
               <h2>Create Your Chart with AI Prompt</h2>
             </div>
-          <p className={`text-slate-600 text-center max-w-md mx-auto leading-relaxed ${styles.description}`}>
+          <p className={`text-gray-300 text-center max-w-md mx-auto leading-relaxed ${styles.description}`}>
             Describe the chart you want to create in natural language. I'll generate it for you and you can ask me to modify it further!
           </p>
         </div>

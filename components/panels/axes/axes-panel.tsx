@@ -62,6 +62,7 @@ export function AxesPanel() {
           axis="x"
           config={chartConfig.scales?.x || {}}
           onUpdate={handleConfigUpdate}
+          chartType={chartType}
         />
       </TabsContent>
 
@@ -70,6 +71,7 @@ export function AxesPanel() {
           axis="y"
           config={chartConfig.scales?.y || {}}
           onUpdate={handleConfigUpdate}
+          chartType={chartType}
         />
       </TabsContent>
     </Tabs>

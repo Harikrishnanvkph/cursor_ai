@@ -121,7 +121,7 @@ export function ChatWindow({
   return (
     <div className={`flex flex-col h-full ${className}`}>
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2 bg-gradient-to-b from-white/80 to-slate-50/80 font-sans">
+      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2 bg-gradient-to-b from-slate-800/80 to-slate-900/80 font-sans">
         {/* Show disabled message if chat is disabled and no messages */}
         {isChatDisabled && messages.length === 0 && (
           <div className="flex items-center justify-center h-full px-4">
@@ -143,15 +143,15 @@ export function ChatWindow({
             key={idx}
             className={`rounded-2xl px-4 py-3 max-w-[90%] whitespace-pre-wrap break-words shadow-lg font-medium text-sm ${
               msg.role === "user"
-                ? "bg-gradient-to-br from-indigo-500 to-purple-600 text-white self-end ml-auto border border-indigo-400/30 shadow-indigo-500/25"
-                : "bg-gradient-to-br from-white to-slate-50 text-slate-800 self-start mr-auto border border-slate-200/50 shadow-slate-500/10"
+                ? "bg-gradient-to-br from-purple-500 to-pink-600 text-white self-end ml-auto border border-purple-400/30 shadow-purple-500/25"
+                : "bg-gradient-to-br from-slate-700 to-slate-600 text-gray-100 self-start mr-auto border border-slate-500/50 shadow-slate-900/20"
             }`}
             style={{ wordBreak: 'break-word' }}
           >
             <div className="flex items-start gap-3">
               {msg.role === 'assistant' && (
-                <div className="p-1.5 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-lg flex-shrink-0">
-                  <Brain className="w-4 h-4 text-blue-600" />
+                <div className="p-1.5 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-lg flex-shrink-0">
+                  <Brain className="w-4 h-4 text-purple-400" />
                 </div>
               )}
               <div className="flex-1">
