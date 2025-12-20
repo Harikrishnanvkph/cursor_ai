@@ -29,6 +29,8 @@ import { useChartStore } from "@/lib/chart-store"
 import { Button } from "@/components/ui/button"
 import { Download, RefreshCw } from "lucide-react"
 import { BarChart3 } from "lucide-react"
+// Date adapter for time scales
+import 'chartjs-adapter-date-fns'
 
 ChartJS.register(
   CategoryScale,

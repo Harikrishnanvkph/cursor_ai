@@ -1207,12 +1207,12 @@ export function AxisSettings({ axis, config, onUpdate, className, chartType }: A
     <button
       key={tab}
       className={cn(
-        "relative flex items-center gap-1 h-8 font-medium transition-all duration-200 flex-shrink-0 rounded-md",
-        isCompact ? "px-2 text-xs" : "px-3 text-sm gap-1.5 h-9",
-        "hover:text-foreground text-muted-foreground hover:bg-gray-100",
-        activeTab === tab && "text-white shadow-sm"
+        "relative flex items-center gap-1 font-medium transition-all duration-200 flex-shrink-0 bg-transparent border-b-2",
+        isCompact ? "px-2 py-2 text-xs" : "px-3 py-2 text-sm gap-1.5",
+        activeTab === tab
+          ? "text-blue-600 border-blue-500"
+          : "text-muted-foreground border-transparent hover:text-foreground hover:border-gray-300"
       )}
-      style={activeTab === tab ? { backgroundColor: 'rgb(55, 65, 81)' } : {}}
       onClick={() => setActiveTab(tab)}
     >
       {icon}
@@ -1249,8 +1249,7 @@ export function AxisSettings({ axis, config, onUpdate, className, chartType }: A
           </div>
         </div>
 
-        {/* Scroll Indicators */}
-        <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-white to-transparent pointer-events-none opacity-50"></div>
+        {/* Scroll Indicator - optional subtle fade */}
       </div>
 
       <div key={activeTab} className="flex-1 overflow-y-auto p-2">

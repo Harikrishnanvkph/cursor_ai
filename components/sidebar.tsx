@@ -16,7 +16,7 @@ const tabs = [
   { id: "datasets_slices", label: "Datasets and Slices", icon: Database },
   { id: "design", label: "Design", icon: Palette },
   { id: "axes", label: "Axes", icon: Grid },
-  { id: "labels", label: "Labels", icon: Tag },
+  { id: "labels", label: "Legend and Label", icon: Tag },
   { id: "overlay", label: "Overlay", icon: Layers },
   { id: "animations", label: "Animations", icon: Zap },
   { id: "advanced", label: "Advanced", icon: SlidersHorizontal },

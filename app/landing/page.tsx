@@ -419,8 +419,8 @@ function LandingPageContent() {
   // Show loading until client-side hydration
   if (!isClient) {
     return (
-      <div className="flex h-screen w-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400"></div>
+      <div className="flex h-screen w-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
     )
   }
@@ -428,20 +428,20 @@ function LandingPageContent() {
   // Tablet Layout (577px - 1024px)
   if (isTablet) {
     return (
-      <div className="flex h-screen w-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
+      <div className="flex h-screen w-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 relative overflow-hidden">
         {/* Header */}
-        <header className="fixed top-0 left-0 right-0 z-40 h-16 bg-slate-900/95 backdrop-blur-xl border-b border-purple-500/30 shadow-lg">
+        <header className="fixed top-0 left-0 right-0 z-40 h-16 bg-white/95 backdrop-blur-xl border-b border-white/30 shadow-lg">
           <div className="flex items-center justify-between h-full px-6">
             {/* Left: App Logo */}
             <div className="flex items-center gap-3 min-w-0">
-              <div className="p-2 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl shadow-lg">
+              <div className="p-2 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl shadow-lg">
                 <BarChart2 className="h-6 w-6 text-white" />
               </div>
             </div>
 
             {/* Center: Main Title */}
             <div className="flex-1 flex justify-center">
-              <h1 className="text-xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400 bg-clip-text text-transparent tracking-wide text-center">
+              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent tracking-wide text-center">
                 Generate AI Charts
               </h1>
             </div>
@@ -454,7 +454,7 @@ function LandingPageContent() {
         </header>
 
         {/* Left Icon Sidebar */}
-        <aside className="fixed left-0 top-16 bottom-0 w-16 bg-slate-800/90 backdrop-blur-xl border-r border-purple-500/20 shadow-lg z-30 flex flex-col items-center py-4 space-y-4">
+        <aside className="fixed left-0 top-16 bottom-0 w-16 bg-white/90 backdrop-blur-xl border-r border-white/20 shadow-lg z-30 flex flex-col items-center py-4 space-y-4">
 
           {/* New Chat Icon */}
           <button
@@ -464,7 +464,7 @@ function LandingPageContent() {
               setTabletRightSidebarContent('messages');
               setTabletRightSidebarOpen(true);
             }}
-            className="p-2 rounded-lg hover:bg-purple-500/20 transition-all duration-200 text-gray-300 hover:text-purple-400"
+            className="p-2 rounded-lg hover:bg-blue-50 transition-all duration-200 text-gray-600 hover:text-blue-600"
             title="New Chat"
           >
             <SquarePen className="w-5 h-5" />
@@ -474,8 +474,8 @@ function LandingPageContent() {
           <button
             onClick={() => handleTabletIconClick('messages')}
             className={`p-2 rounded-lg transition-all duration-200 ${tabletRightSidebarContent === 'messages' && tabletRightSidebarOpen
-              ? 'text-purple-400 bg-purple-500/20'
-              : 'text-gray-300 hover:text-purple-400 hover:bg-purple-500/20'
+              ? 'text-blue-600 bg-blue-50'
+              : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
               }`}
             title="Messages"
           >
@@ -486,8 +486,8 @@ function LandingPageContent() {
           <button
             onClick={() => handleTabletIconClick('tools')}
             className={`p-2 rounded-lg transition-all duration-200 ${tabletRightSidebarContent === 'tools' && tabletRightSidebarOpen
-              ? 'text-purple-400 bg-purple-500/20'
-              : 'text-gray-300 hover:text-purple-400 hover:bg-purple-500/20'
+              ? 'text-blue-600 bg-blue-50'
+              : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
               }`}
             title="Tools"
           >
@@ -498,8 +498,8 @@ function LandingPageContent() {
           <button
             onClick={() => handleTabletIconClick('history')}
             className={`p-2 rounded-lg transition-all duration-200 ${tabletRightSidebarContent === 'history' && tabletRightSidebarOpen
-              ? 'text-purple-400 bg-purple-500/20'
-              : 'text-gray-300 hover:text-purple-400 hover:bg-purple-500/20'
+              ? 'text-blue-600 bg-blue-50'
+              : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
               }`}
             title="History"
           >
@@ -549,17 +549,17 @@ function LandingPageContent() {
             />
 
             {/* Sidebar */}
-            <div className="absolute right-0 top-0 bottom-0 w-80 bg-slate-800/95 backdrop-blur-xl shadow-2xl border-l border-purple-500/20 transform transition-transform duration-300 flex flex-col">
+            <div className="absolute right-0 top-0 bottom-0 w-80 bg-white shadow-2xl border-l border-white/20 transform transition-transform duration-300 flex flex-col">
               {/* Sidebar Header */}
-              <div className="flex items-center justify-between p-4 border-b border-purple-500/20 flex-shrink-0">
-                <h3 className="font-semibold text-white capitalize">
+              <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
+                <h3 className="font-semibold text-gray-900 capitalize">
                   {tabletRightSidebarContent}
                 </h3>
                 <button
                   onClick={closeTabletSidebar}
-                  className="p-1 hover:bg-purple-500/20 rounded transition-colors"
+                  className="p-1 hover:bg-gray-100 rounded transition-colors"
                 >
-                  <X className="w-5 h-5 text-gray-300 hover:text-white" />
+                  <X className="w-5 h-5 text-gray-500" />
                 </button>
               </div>
 
@@ -637,20 +637,20 @@ function LandingPageContent() {
   // Mobile Layout (< 576px)
   if (isMobile) {
     return (
-      <div className="flex flex-col h-screen w-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
+      <div className="flex flex-col h-screen w-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 relative overflow-hidden">
         {/* Header */}
-        <header className="fixed top-0 left-0 right-0 z-40 h-14 bg-slate-900/95 backdrop-blur-xl border-b border-purple-500/30 shadow-lg">
+        <header className="fixed top-0 left-0 right-0 z-40 h-14 bg-white/95 backdrop-blur-xl border-b border-white/30 shadow-lg">
           <div className="flex items-center justify-between h-full px-4">
             {/* Left: App Logo */}
             <div className="flex items-center gap-2 min-w-0">
-              <div className="p-1.5 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg shadow-lg">
+              <div className="p-1.5 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg shadow-lg">
                 <BarChart2 className="h-5 w-5 text-white" />
               </div>
             </div>
 
             {/* Center: Main Title */}
             <div className="flex-1 flex justify-center">
-              <h1 className="text-lg font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400 bg-clip-text text-transparent tracking-wide text-center">
+              <h1 className="text-lg font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent tracking-wide text-center">
                 AI Charts
               </h1>
             </div>
@@ -689,7 +689,7 @@ function LandingPageContent() {
         </main>
 
         {/* Bottom Navigation Bar */}
-        <nav className="fixed bottom-0 left-0 right-0 z-30 h-16 bg-slate-800/95 backdrop-blur-xl border-t border-purple-500/30 shadow-lg">
+        <nav className="fixed bottom-0 left-0 right-0 z-30 h-16 bg-white/95 backdrop-blur-xl border-t border-white/30 shadow-lg">
           <div className="flex items-center justify-around h-full px-2">
 
             {/* New Chat Icon */}
@@ -849,7 +849,7 @@ function LandingPageContent() {
 
   // Desktop Layout (default)
   return (
-    <div className="flex h-screen w-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
+    <div className="flex h-screen w-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 relative overflow-hidden">
       {/* Floating global header for history and avatar, only when no chart is created - Desktop only */}
       {(!chartData?.datasets?.length || !hasJSON) && !isTablet && !isMobile && (
         <div className="fixed top-4 right-4 z-50 flex items-center gap-3">
@@ -863,7 +863,7 @@ function LandingPageContent() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(156,146,172,0.15)_1px,transparent_0)] bg-[length:20px_20px]"></div>
       </div>
       {/* Left Sidebar / Chat */}
-      <aside className={`transition-all duration-300 z-10 flex flex-col border-r border-purple-500/20 shadow-2xl bg-slate-800/90 backdrop-blur-xl ${leftSidebarOpen ? 'w-[320px]' : 'w-16'} rounded-tr-2xl rounded-br-2xl`}>
+      <aside className={`transition-all duration-300 z-10 flex flex-col border-r border-white/20 shadow-2xl bg-white/90 backdrop-blur-xl ${leftSidebarOpen ? 'w-[320px]' : 'w-16'} rounded-tl-2xl rounded-bl-2xl`}>
         {leftSidebarOpen ? (
           <>
             {/* Navigation Section */}

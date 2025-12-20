@@ -39,6 +39,8 @@ import { overlayPlugin } from "@/lib/overlay-plugin"
 import { enhancedTitlePlugin } from "@/lib/enhanced-title-plugin"
 import { ResizableChartArea } from "@/components/resizable-chart-area"
 import { OverlayContextMenu } from "@/components/overlay-context-menu"
+// Date adapter for time scales - auto-registers with Chart.js
+import 'chartjs-adapter-date-fns'
 
 // Register all Chart.js components and plugins
 ChartJS.register(
@@ -419,6 +421,146 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
 
   // Build custom labels config for the current chart
   const customLabelsConfig = ((chartConfig.plugins as any)?.customLabelsConfig) || {};
+
+  // Helper function to format numbers based on customLabelsConfig
+  const formatLabelValue = (rawValue: any, config: any): string => {
+    let numValue: number | null = null;
+
+    // Extract numeric value
+    if (typeof rawValue === 'number') {
+      numValue = rawValue;
+    } else if (rawValue && typeof rawValue === 'object' && 'y' in rawValue && typeof rawValue.y === 'number') {
+      numValue = rawValue.y;
+    } else {
+      return String(rawValue);
+    }
+
+    // Apply decimal places
+    const decimals = config.decimals ?? 0;
+    let formatted = numValue.toFixed(decimals);
+
+    // Apply thousands separator
+    const thousandsSep = config.thousandsSeparator ?? ',';
+    const decimalSep = config.decimalSeparator ?? '.';
+
+    if (thousandsSep) {
+      const parts = formatted.split('.');
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, thousandsSep);
+      formatted = parts.join(decimalSep !== '.' ? decimalSep : '.');
+    } else if (decimalSep !== '.') {
+      formatted = formatted.replace('.', decimalSep);
+    }
+
+    // Apply abbreviation for large numbers
+    if (config.abbreviateLargeNumbers && Math.abs(numValue) >= 1000) {
+      const absVal = Math.abs(numValue);
+      let abbrev = '';
+      let divisor = 1;
+
+      if (absVal >= 1e12) { abbrev = 'T'; divisor = 1e12; }
+      else if (absVal >= 1e9) { abbrev = 'B'; divisor = 1e9; }
+      else if (absVal >= 1e6) { abbrev = 'M'; divisor = 1e6; }
+      else if (absVal >= 1e3) { abbrev = 'K'; divisor = 1e3; }
+
+      formatted = (numValue / divisor).toFixed(decimals > 0 ? Math.min(decimals, 2) : 1) + abbrev;
+    }
+
+    // Apply number format
+    const numberFormat = config.numberFormat || 'default';
+    switch (numberFormat) {
+      case 'currency':
+        const currencySymbol = config.currencySymbol || '$';
+        formatted = currencySymbol + formatted;
+        break;
+      case 'percent':
+        formatted = formatted + '%';
+        break;
+      case 'scientific':
+        formatted = numValue.toExponential(decimals);
+        break;
+      case 'compact':
+        if (!config.abbreviateLargeNumbers) {
+          const absVal = Math.abs(numValue);
+          if (absVal >= 1e9) formatted = (numValue / 1e9).toFixed(1) + 'B';
+          else if (absVal >= 1e6) formatted = (numValue / 1e6).toFixed(1) + 'M';
+          else if (absVal >= 1e3) formatted = (numValue / 1e3).toFixed(1) + 'K';
+        }
+        break;
+    }
+
+    // Apply plus/minus signs
+    if (numValue > 0 && config.showPlusSign) {
+      formatted = '+' + formatted;
+    }
+    if (numValue < 0 && config.showNegativeSign !== false) {
+      // Already has minus, but ensure it's there
+    }
+
+    return formatted;
+  };
+
+  // Apply custom formatter function if provided
+  const applyCustomFormatter = (text: string, value: any, config: any): string => {
+    if (config.customFormatter && typeof config.customFormatter === 'string' && config.customFormatter.trim()) {
+      try {
+        // Create a safe function from the string
+        const formatterFn = new Function('value', 'text', `
+          try {
+            ${config.customFormatter}
+            return text;
+          } catch(e) {
+            return text;
+          }
+        `);
+        const result = formatterFn(value, text);
+        if (typeof result === 'string') return result;
+      } catch (e) {
+        console.warn('Custom formatter error:', e);
+      }
+    }
+    return text;
+  };
+
+  // Apply conditional formatting if provided
+  const applyConditionalFormatting = (text: string, value: any, config: any): {
+    text: string;
+    color?: string;
+    fontSize?: number;
+    fontWeight?: string;
+    backgroundColor?: string;
+    borderColor?: string;
+  } => {
+    if (config.conditionalFormatting && typeof config.conditionalFormatting === 'string' && config.conditionalFormatting.trim()) {
+      try {
+        const condFn = new Function('value', 'text', `
+          try {
+            ${config.conditionalFormatting}
+            return { text: text };
+          } catch(e) {
+            return { text: text };
+          }
+        `);
+        const result = condFn(typeof value === 'number' ? value : (value?.y ?? 0), text);
+        if (result && typeof result === 'object') {
+          return {
+            text: result.text || text,
+            color: result.color,
+            fontSize: result.fontSize,
+            fontWeight: result.fontWeight,
+            backgroundColor: result.backgroundColor,
+            borderColor: result.borderColor
+          };
+        }
+        if (typeof result === 'string') {
+          return { text: result };
+        }
+      } catch (e) {
+        console.warn('Conditional formatting error:', e);
+      }
+    }
+    return { text };
+  };
+
   const customLabels = showLabels ? filteredDatasetsPatched.map((ds, datasetIdx) =>
     ds.data.map((value, filteredPointIdx) => {
       // Map filtered index back to original index
@@ -429,16 +571,16 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
         return { text: '' };
       }
       if (customLabelsConfig.display === false) return { text: '' };
-      let text = String(value);
+
+      let text = '';
 
       if (customLabelsConfig.labelContent === 'label') {
         // For both single and grouped modes, use sliceLabels from the dataset if available
-        // Use original index to access labels
         const originalDs = modeFilteredDatasets[datasetIdx];
         if (originalDs?.sliceLabels && Array.isArray(originalDs.sliceLabels)) {
-          text = String(originalDs.sliceLabels[originalPointIdx] ?? text);
+          text = String(originalDs.sliceLabels[originalPointIdx] ?? value);
         } else {
-          text = String(chartData.labels?.[originalPointIdx] ?? text);
+          text = String(chartData.labels?.[originalPointIdx] ?? value);
         }
       } else if (customLabelsConfig.labelContent === 'percentage') {
         const total = ds.data.reduce((a: number, b: any) => {
@@ -449,19 +591,41 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
         let val = 0;
         if (typeof value === 'number') val = value;
         else if (value && typeof value === 'object' && 'y' in value && typeof value.y === 'number') val = value.y;
-        text = ((val / total) * 100).toFixed(1) + '%';
+        const pct = (val / total) * 100;
+        text = pct.toFixed(customLabelsConfig.decimals ?? 1) + '%';
       } else if (customLabelsConfig.labelContent === 'index') {
         text = String(originalPointIdx + 1);
       } else if (customLabelsConfig.labelContent === 'dataset') {
-        text = ds.label ?? text;
+        text = ds.label ?? String(value);
+      } else {
+        // Default: format the value
+        text = formatLabelValue(value, customLabelsConfig);
       }
 
+      // Apply custom formatter
+      text = applyCustomFormatter(text, value, customLabelsConfig);
+
+      // Apply conditional formatting
+      const condResult = applyConditionalFormatting(text, value, customLabelsConfig);
+      text = condResult.text;
+      const conditionalColor = condResult.color;
+      const conditionalFontSize = condResult.fontSize;
+      const conditionalFontWeight = condResult.fontWeight;
+      const conditionalBgColor = condResult.backgroundColor;
+      const conditionalBorderColor = condResult.borderColor;
+
+      // Apply prefix and suffix
       if (customLabelsConfig.prefix) text = customLabelsConfig.prefix + text;
       if (customLabelsConfig.suffix) text = text + customLabelsConfig.suffix;
 
-      let color = customLabelsConfig.color || '#222';
-      let backgroundColor = customLabelsConfig.shape === 'none' ? undefined : (customLabelsConfig.backgroundColor || '#fff');
-      let borderColor = customLabelsConfig.shape === 'none' ? undefined : (customLabelsConfig.borderColor || '#333');
+      // Build dynamic font string with conditional overrides
+      const fontSize = conditionalFontSize || customLabelsConfig.fontSize || 14;
+      const fontWeight = conditionalFontWeight || customLabelsConfig.fontWeight || 'bold';
+      const fontFamily = customLabelsConfig.fontFamily || 'Arial';
+
+      let color = conditionalColor || customLabelsConfig.color || '#222';
+      let backgroundColor = conditionalBgColor || (customLabelsConfig.shape === 'none' ? undefined : (customLabelsConfig.backgroundColor || '#fff'));
+      let borderColor = conditionalBorderColor || (customLabelsConfig.shape === 'none' ? undefined : (customLabelsConfig.borderColor || '#333'));
 
       if (
         chartConfig.hoverFadeEffect !== false &&
@@ -483,7 +647,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
         borderWidth: customLabelsConfig.shape === 'none' ? 0 : (customLabelsConfig.borderWidth ?? 2),
         borderRadius: customLabelsConfig.shape === 'none' ? 0 : (customLabelsConfig.borderRadius ?? 6),
         padding: customLabelsConfig.shape === 'none' ? 0 : (customLabelsConfig.padding ?? 6),
-        font: `${customLabelsConfig.fontWeight || 'bold'} ${customLabelsConfig.fontSize || 14}px ${customLabelsConfig.fontFamily || 'Arial'}`,
+        font: `${fontWeight} ${fontSize}px ${fontFamily}`,
         callout: customLabelsConfig.anchor === 'callout',
         calloutColor: customLabelsConfig.calloutColor || '#333',
         draggable: customLabelsConfig.anchor === 'callout',

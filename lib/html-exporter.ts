@@ -55,7 +55,7 @@ async function convertImageToBase64(imageUrl: string): Promise<string> {
 // Function to process chart data and convert images to base64
 async function processChartDataForExport(chartData: ExtendedChartData): Promise<ExtendedChartData> {
   const processedData = { ...chartData };
-  
+
   // Process datasets for images
   if (processedData.datasets) {
     for (const dataset of processedData.datasets) {
@@ -72,7 +72,7 @@ async function processChartDataForExport(chartData: ExtendedChartData): Promise<
       }
     }
   }
-  
+
   return processedData;
 }
 
@@ -108,23 +108,151 @@ function buildLegendConfigForExport(chartConfig: any, includeLegend: boolean) {
 // Shared function to generate custom labels
 function generateCustomLabelsFromConfig(chartConfig: any, chartData: any, legendFilter: any, dragState: any = {}) {
   const customLabelsConfig = ((chartConfig.plugins as any)?.customLabelsConfig) || {};
-  
+
   if (customLabelsConfig.display === false) {
     return [];
   }
 
+  // Helper function to format numbers based on customLabelsConfig
+  const formatLabelValue = (rawValue: any, config: any): string => {
+    let numValue: number | null = null;
+
+    if (typeof rawValue === 'number') {
+      numValue = rawValue;
+    } else if (rawValue && typeof rawValue === 'object' && 'y' in rawValue && typeof rawValue.y === 'number') {
+      numValue = rawValue.y;
+    } else {
+      return String(rawValue);
+    }
+
+    const decimals = config.decimals ?? 0;
+    let formatted = numValue.toFixed(decimals);
+
+    const thousandsSep = config.thousandsSeparator ?? ',';
+    const decimalSep = config.decimalSeparator ?? '.';
+
+    if (thousandsSep) {
+      const parts = formatted.split('.');
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, thousandsSep);
+      formatted = parts.join(decimalSep !== '.' ? decimalSep : '.');
+    } else if (decimalSep !== '.') {
+      formatted = formatted.replace('.', decimalSep);
+    }
+
+    if (config.abbreviateLargeNumbers && Math.abs(numValue) >= 1000) {
+      const absVal = Math.abs(numValue);
+      let abbrev = '';
+      let divisor = 1;
+
+      if (absVal >= 1e12) { abbrev = 'T'; divisor = 1e12; }
+      else if (absVal >= 1e9) { abbrev = 'B'; divisor = 1e9; }
+      else if (absVal >= 1e6) { abbrev = 'M'; divisor = 1e6; }
+      else if (absVal >= 1e3) { abbrev = 'K'; divisor = 1e3; }
+
+      formatted = (numValue / divisor).toFixed(decimals > 0 ? Math.min(decimals, 2) : 1) + abbrev;
+    }
+
+    const numberFormat = config.numberFormat || 'default';
+    switch (numberFormat) {
+      case 'currency':
+        formatted = (config.currencySymbol || '$') + formatted;
+        break;
+      case 'percent':
+        formatted = formatted + '%';
+        break;
+      case 'scientific':
+        formatted = numValue.toExponential(decimals);
+        break;
+      case 'compact':
+        if (!config.abbreviateLargeNumbers) {
+          const absVal = Math.abs(numValue);
+          if (absVal >= 1e9) formatted = (numValue / 1e9).toFixed(1) + 'B';
+          else if (absVal >= 1e6) formatted = (numValue / 1e6).toFixed(1) + 'M';
+          else if (absVal >= 1e3) formatted = (numValue / 1e3).toFixed(1) + 'K';
+        }
+        break;
+    }
+
+    if (numValue > 0 && config.showPlusSign) {
+      formatted = '+' + formatted;
+    }
+
+    return formatted;
+  };
+
+  // Apply custom formatter function if provided
+  const applyCustomFormatter = (text: string, value: any, config: any): string => {
+    if (config.customFormatter && typeof config.customFormatter === 'string' && config.customFormatter.trim()) {
+      try {
+        const formatterFn = new Function('value', 'text', `
+          try {
+            ${config.customFormatter}
+            return text;
+          } catch(e) {
+            return text;
+          }
+        `);
+        const result = formatterFn(value, text);
+        if (typeof result === 'string') return result;
+      } catch (e) {
+        console.warn('Custom formatter error:', e);
+      }
+    }
+    return text;
+  };
+
+  // Apply conditional formatting if provided
+  const applyConditionalFormatting = (text: string, value: any, config: any): {
+    text: string;
+    color?: string;
+    fontSize?: number;
+    fontWeight?: string;
+    backgroundColor?: string;
+    borderColor?: string;
+  } => {
+    if (config.conditionalFormatting && typeof config.conditionalFormatting === 'string' && config.conditionalFormatting.trim()) {
+      try {
+        const condFn = new Function('value', 'text', `
+          try {
+            ${config.conditionalFormatting}
+            return { text: text };
+          } catch(e) {
+            return { text: text };
+          }
+        `);
+        const result = condFn(typeof value === 'number' ? value : (value?.y ?? 0), text);
+        if (result && typeof result === 'object') {
+          return {
+            text: result.text || text,
+            color: result.color,
+            fontSize: result.fontSize,
+            fontWeight: result.fontWeight,
+            backgroundColor: result.backgroundColor,
+            borderColor: result.borderColor
+          };
+        }
+        if (typeof result === 'string') {
+          return { text: result };
+        }
+      } catch (e) {
+        console.warn('Conditional formatting error:', e);
+      }
+    }
+    return { text };
+  };
+
   // Filter datasets based on legend filter
-  const filteredDatasets = chartData.datasets.filter((_: any, index: number) => 
+  const filteredDatasets = chartData.datasets.filter((_: any, index: number) =>
     legendFilter.datasets[index] !== false
   );
 
   return filteredDatasets.map((ds: any, datasetIdx: number) =>
     ds.data.map((value: any, pointIdx: number) => {
-      let text = String(value);
-      
+      let text = '';
+
       // Label content logic
       if (customLabelsConfig.labelContent === 'label') {
-        text = String(chartData.labels?.[pointIdx] ?? text);
+        text = String(chartData.labels?.[pointIdx] ?? value);
       } else if (customLabelsConfig.labelContent === 'percentage') {
         const total = ds.data.reduce((a: number, b: any) => {
           if (typeof b === 'number') return a + b;
@@ -134,26 +262,47 @@ function generateCustomLabelsFromConfig(chartConfig: any, chartData: any, legend
         let val = 0;
         if (typeof value === 'number') val = value;
         else if (value && typeof value === 'object' && 'y' in value && typeof value.y === 'number') val = value.y;
-        text = ((val / total) * 100).toFixed(1) + '%';
+        const pct = (val / total) * 100;
+        text = pct.toFixed(customLabelsConfig.decimals ?? 1) + '%';
       } else if (customLabelsConfig.labelContent === 'index') {
         text = String(pointIdx + 1);
       } else if (customLabelsConfig.labelContent === 'dataset') {
-        text = ds.label ?? text;
+        text = ds.label ?? String(value);
+      } else {
+        // Default: format the value
+        text = formatLabelValue(value, customLabelsConfig);
       }
-      
+
+      // Apply custom formatter
+      text = applyCustomFormatter(text, value, customLabelsConfig);
+
+      // Apply conditional formatting
+      const condResult = applyConditionalFormatting(text, value, customLabelsConfig);
+      text = condResult.text;
+      const conditionalColor = condResult.color;
+      const conditionalFontSize = condResult.fontSize;
+      const conditionalFontWeight = condResult.fontWeight;
+      const conditionalBgColor = condResult.backgroundColor;
+      const conditionalBorderColor = condResult.borderColor;
+
       // Prefix/suffix
       if (customLabelsConfig.prefix) text = customLabelsConfig.prefix + text;
       if (customLabelsConfig.suffix) text = text + customLabelsConfig.suffix;
-      
+
+      // Build dynamic font string with conditional overrides
+      const fontSize = conditionalFontSize || customLabelsConfig.fontSize || 14;
+      const fontWeight = conditionalFontWeight || customLabelsConfig.fontWeight || 'bold';
+      const fontFamily = customLabelsConfig.fontFamily || 'Arial';
+
       // Styling
-      let color = customLabelsConfig.color || '#222';
-      let backgroundColor = customLabelsConfig.shape === 'none' ? undefined : (customLabelsConfig.backgroundColor || '#fff');
-      let borderColor = customLabelsConfig.shape === 'none' ? undefined : (customLabelsConfig.borderColor || '#333');
-      
+      let color = conditionalColor || customLabelsConfig.color || '#222';
+      let backgroundColor = conditionalBgColor || (customLabelsConfig.shape === 'none' ? undefined : (customLabelsConfig.backgroundColor || '#fff'));
+      let borderColor = conditionalBorderColor || (customLabelsConfig.shape === 'none' ? undefined : (customLabelsConfig.borderColor || '#333'));
+
       // Check if this label has a stored drag position
       const dragKey = `${datasetIdx}_${pointIdx}`;
       const storedPosition = dragState[dragKey];
-      
+
       return {
         text,
         anchor: customLabelsConfig.anchor || 'center',
@@ -165,7 +314,7 @@ function generateCustomLabelsFromConfig(chartConfig: any, chartData: any, legend
         borderWidth: customLabelsConfig.shape === 'none' ? 0 : (customLabelsConfig.borderWidth ?? 2),
         borderRadius: customLabelsConfig.shape === 'none' ? 0 : (customLabelsConfig.borderRadius ?? 6),
         padding: customLabelsConfig.shape === 'none' ? 0 : (customLabelsConfig.padding ?? 6),
-        font: `${customLabelsConfig.fontWeight || 'bold'} ${customLabelsConfig.fontSize || 14}px ${customLabelsConfig.fontFamily || 'Arial'}`,
+        font: `${fontWeight} ${fontSize}px ${fontFamily}`,
         // Enhanced callout properties
         callout: customLabelsConfig.anchor === 'callout',
         calloutColor: customLabelsConfig.calloutColor || '#333',
@@ -225,9 +374,9 @@ export interface HTMLExportOptions {
  * Generate a complete standalone HTML file with the chart
  */
 export async function generateChartHTML(options: HTMLExportOptions = {}) {
-  const { 
-    chartType, 
-    chartData, 
+  const {
+    chartType,
+    chartData,
     chartConfig,
     chartMode,
     activeDatasetIndex,
@@ -304,7 +453,7 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
 
   // Get overlay data from chart store
   const { overlayImages, overlayTexts } = useChartStore.getState();
-  
+
   // Process overlay images to convert URLs to base64
   const processedOverlayImages = await Promise.all(
     overlayImages.map(async (image) => ({
@@ -312,7 +461,7 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
       url: await convertImageToBase64(image.url)
     }))
   );
-  
+
   // Generate custom labels and enhance chart config
   // Apply runtime toggles: hide labels/images if disabled
   const effectiveConfig = JSON.parse(JSON.stringify(chartConfig));
@@ -322,21 +471,21 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
     }
   }
   const customLabels = generateCustomLabelsFromConfig(effectiveConfig, processedChartData, legendFilter, currentDragState);
-  
+
   // Process background image URL to base64 if needed
   const processedChartConfig = JSON.parse(JSON.stringify(chartConfig));
   if (processedChartConfig.background?.type === 'image' && processedChartConfig.background?.imageUrl) {
     processedChartConfig.background.imageUrl = await convertImageToBase64(processedChartConfig.background.imageUrl);
   }
-  
+
   const enhancedChartConfig = {
     ...processedChartConfig,
     data: processedChartData, // required for plugins code generation
     plugins: {
       ...processedChartConfig.plugins,
-      customLabels: (options.showLabels === false) ? undefined : (customLabels.length > 0 ? { 
-        shapeSize: 32, 
-        labels: customLabels 
+      customLabels: (options.showLabels === false) ? undefined : (customLabels.length > 0 ? {
+        shapeSize: 32,
+        labels: customLabels
       } : undefined),
       overlayPlugin: (options.showImages === false) ? undefined : {
         overlayImages: processedOverlayImages,
@@ -347,8 +496,8 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
 
   const {
     title = chartConfig?.plugins?.title?.text || "Chart Export",
-    subtitle = (chartConfig?.plugins?.subtitle?.display && chartConfig?.plugins?.subtitle?.text) 
-      ? chartConfig.plugins.subtitle.text 
+    subtitle = (chartConfig?.plugins?.subtitle?.display && chartConfig?.plugins?.subtitle?.text)
+      ? chartConfig.plugins.subtitle.text
       : undefined,
     width = 800,
     height = 600,
@@ -713,25 +862,25 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
 export async function downloadChartAsHTML(options: HTMLExportOptions = {}) {
   try {
     const { content, fileName, size } = await generateChartHTML(options);
-    
+
     // Create blob and download
     const blob = new Blob([content], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
-    
+
     const link = document.createElement('a');
     link.href = url;
     link.download = fileName;
     link.style.display = 'none';
-    
+
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
+
     // Clean up
     URL.revokeObjectURL(url);
-    
+
     console.log(`HTML chart exported successfully! File: ${fileName}, Size: ${(size / 1024).toFixed(2)} KB`);
-    
+
     return {
       success: true,
       fileName,
@@ -753,13 +902,13 @@ export async function downloadChartAsHTML(options: HTMLExportOptions = {}) {
  */
 export async function generateCustomChartHTML(template: string, options: HTMLExportOptions = {}) {
   const { chartType, chartData, chartConfig, chartMode, activeDatasetIndex, uniformityMode, legendFilter } = useChartStore.getState();
-  
+
   // Map custom chart types to actual Chart.js types
   const mappedChartType = chartTypeMapping[chartType as SupportedChartType] || chartType;
-  
+
   // Process chart data to convert images to base64
   const processedChartData = await processChartDataForExport(chartData);
-  
+
   const effectiveConfig2 = JSON.parse(JSON.stringify(chartConfig));
   if (options.showLabels === false && effectiveConfig2.plugins?.customLabelsConfig) {
     effectiveConfig2.plugins.customLabelsConfig.display = false;
@@ -769,13 +918,13 @@ export async function generateCustomChartHTML(template: string, options: HTMLExp
     ...chartConfig,
     plugins: {
       ...chartConfig.plugins,
-      customLabels: (options.showLabels === false) ? undefined : (customLabels.length > 0 ? { 
-        shapeSize: 32, 
-        labels: customLabels 
+      customLabels: (options.showLabels === false) ? undefined : (customLabels.length > 0 ? {
+        shapeSize: 32,
+        labels: customLabels
       } : undefined)
     }
   };
-  
+
   // Replace placeholders in template
   const htmlContent = template
     .replace(/\{\{chartType\}\}/g, mappedChartType)
@@ -787,7 +936,7 @@ export async function generateCustomChartHTML(template: string, options: HTMLExp
     .replace(/\{\{backgroundColor\}\}/g, options.backgroundColor || '#ffffff')
     .replace(/\{\{timestamp\}\}/g, new Date().toISOString())
     .replace(/\{\{date\}\}/g, new Date().toLocaleDateString());
-  
+
   return {
     content: htmlContent,
     fileName: options.fileName || `custom-chart-${new Date().toISOString().slice(0, 10)}.html`,
@@ -800,22 +949,22 @@ export async function generateCustomChartHTML(template: string, options: HTMLExp
  */
 export function generateMinimalChartHTML(options: HTMLExportOptions = {}) {
   const { chartType, chartData, chartConfig, chartMode, activeDatasetIndex, uniformityMode, legendFilter } = useChartStore.getState();
-  
+
   // Map custom chart types to actual Chart.js types
   const mappedChartType = chartTypeMapping[chartType as SupportedChartType] || chartType;
-  
+
   const customLabels = generateCustomLabelsFromConfig(chartConfig, chartData, legendFilter, options.dragState);
   const enhancedChartConfig = {
     ...chartConfig,
     plugins: {
       ...chartConfig.plugins,
-      customLabels: customLabels.length > 0 ? { 
-        shapeSize: 32, 
-        labels: customLabels 
+      customLabels: customLabels.length > 0 ? {
+        shapeSize: 32,
+        labels: customLabels
       } : undefined
     }
   };
-  
+
   const htmlContent = `<!DOCTYPE html>
 <html>
 <head>
@@ -834,7 +983,7 @@ export function generateMinimalChartHTML(options: HTMLExportOptions = {}) {
     </script>
 </body>
 </html>`;
-  
+
   return {
     content: htmlContent,
     fileName: options.fileName || `minimal-chart-${new Date().toISOString().slice(0, 10)}.html`,
@@ -847,10 +996,10 @@ export function generateMinimalChartHTML(options: HTMLExportOptions = {}) {
  */
 export function generateEmbeddedChartHTML(options: HTMLExportOptions = {}) {
   const { chartType, chartData, chartConfig } = useChartStore.getState();
-  
+
   // Map custom chart types to actual Chart.js types
   const mappedChartType = chartTypeMapping[chartType as SupportedChartType] || chartType;
-  
+
   // This would require embedding the entire Chart.js library
   // For now, we'll use CDN but with fallback
   const htmlContent = `<!DOCTYPE html>
@@ -895,13 +1044,13 @@ export function generateEmbeddedChartHTML(options: HTMLExportOptions = {}) {
     </script>
 </body>
 </html>`;
-  
+
   return {
     content: htmlContent,
     fileName: options.fileName || `embedded-chart-${new Date().toISOString().slice(0, 10)}.html`,
     size: new Blob([htmlContent]).size
   };
-} 
+}
 
 /**
  * Generate chart HTML content specifically for embedding in templates
@@ -913,16 +1062,16 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
   pluginsScript: string
   chartContainer: string
 }> {
-  const { 
-    chartType, 
-    chartData, 
+  const {
+    chartType,
+    chartData,
     chartConfig,
     chartMode,
     activeDatasetIndex,
     uniformityMode,
     legendFilter
   } = useChartStore.getState();
-  
+
   // Map custom chart types to actual Chart.js types
   const mappedChartType = chartTypeMapping[chartType as SupportedChartType] || chartType;
   const storeToggles = useChartStore.getState();
@@ -992,7 +1141,7 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
 
   // Get overlay data from chart store
   const { overlayImages, overlayTexts } = useChartStore.getState();
-  
+
   // Process overlay images to convert URLs to base64
   const processedOverlayImages = await Promise.all(
     overlayImages.map(async (image) => ({
@@ -1000,7 +1149,7 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
       url: await convertImageToBase64(image.url)
     }))
   );
-  
+
   // Generate custom labels and enhance chart config
   const effectiveConfig = JSON.parse(JSON.stringify(chartConfig));
   if (effectiveShowLabels === false) {
@@ -1014,9 +1163,9 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
     data: processedChartData,
     plugins: {
       ...chartConfig.plugins,
-      customLabels: (effectiveShowLabels === false) ? undefined : (customLabels.length > 0 ? { 
-        shapeSize: 32, 
-        labels: customLabels 
+      customLabels: (effectiveShowLabels === false) ? undefined : (customLabels.length > 0 ? {
+        shapeSize: 32,
+        labels: customLabels
       } : undefined),
       overlayPlugin: (effectiveShowImages === false) ? undefined : {
         overlayImages: processedOverlayImages,
