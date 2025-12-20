@@ -295,12 +295,13 @@ export const useChatStore = create<ChatStore>()(
         const messagesWithUser = [...messages, userMsg];
         set({ messages: messagesWithUser, isProcessing: true });
 
-        // Build compact history (last 2, no snapshots, truncate long messages)
+        // Build compact history (last 5, no snapshots, truncate long messages)
+        // Increased from 2→5 messages and 150→300 chars for better AI context
         const compactHistory = messages
-          .slice(-2)
+          .slice(-5)
           .map(({ role, content, timestamp }) => ({
             role,
-            content: content.length > 150 ? content.substring(0, 150) + '...' : content,
+            content: content.length > 300 ? content.substring(0, 300) + '...' : content,
             timestamp
           }));
 

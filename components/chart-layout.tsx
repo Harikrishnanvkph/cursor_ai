@@ -118,19 +118,22 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
         return config;
       })();
 
-      // Extract template data if in template mode OR if currentTemplate exists (loaded from history)
-      // This ensures templates loaded from history are saved as templates even if editorMode was changed
+      // Extract template data if ANY template exists (regardless of editorMode)
+      // This ensures templates are ALWAYS preserved even when user switches to chart mode
       let templateStructureToSave = null
       let templateContentToSave = null
 
-      // Check if we have a template (either from editorMode or from loaded history)
-      if (currentTemplate && (editorMode === 'template' || currentTemplate.id === 'current-cloud-template')) {
+      // Get template from either currentTemplate or templateInBackground
+      const templateToSave = currentTemplate || useTemplateStore.getState().templateInBackground
+
+      // Save template if it exists AND has content (text areas)
+      if (templateToSave && templateToSave.textAreas && templateToSave.textAreas.length > 0) {
         // Save complete template structure (independent copy)
-        templateStructureToSave = currentTemplate
+        templateStructureToSave = templateToSave
 
         // Extract text area content
         templateContentToSave = {}
-        currentTemplate.textAreas.forEach(area => {
+        templateToSave.textAreas.forEach(area => {
           if (templateContentToSave[area.type]) {
             // Handle multiple areas of same type
             if (Array.isArray(templateContentToSave[area.type])) {
@@ -142,6 +145,8 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
             templateContentToSave[area.type] = area.content
           }
         })
+
+        console.log('📄 Template data will be saved (exists in background)')
       }
 
       // Get current snapshot ID for updates

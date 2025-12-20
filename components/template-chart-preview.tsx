@@ -39,7 +39,7 @@ export function TemplateChartPreview({
   onTabChange,
   onNewChart
 }: TemplateChartPreviewProps) {
-  const { currentTemplate, templateInBackground, selectedTextAreaId, setSelectedTextAreaId, editorMode, setEditorMode } = useTemplateStore()
+  const { currentTemplate, templateInBackground, selectedTextAreaId, setSelectedTextAreaId, editorMode, setEditorMode, contentTypePreferences } = useTemplateStore()
   const {
     chartData,
     chartConfig,
@@ -399,7 +399,8 @@ export function TemplateChartPreview({
     return template.textAreas
       .filter(textArea => textArea.visible)
       .map((textArea) => {
-        const isHTML = textArea.contentType === 'html'
+        // Check both textArea.contentType AND persisted contentTypePreferences
+        const isHTML = textArea.contentType === 'html' || contentTypePreferences[textArea.id] === 'html'
 
         // Helper to convert hex color to rgba with opacity
         const hexToRgba = (hex: string, opacity: number): string => {

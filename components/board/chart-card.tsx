@@ -190,59 +190,91 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
 
   if (viewMode === "list") {
     return (
-      <Card className="border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-        <CardContent className="p-3">
-          <div className="flex items-center gap-3">
-            {/* Mini Preview */}
-            <div className="flex-shrink-0 w-20 h-20 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200 overflow-hidden flex items-center justify-center">
-              {isTemplateMode ? (
-                <LayoutTemplate className="w-8 h-8 text-purple-400" />
-              ) : (
-                <BarChart3 className="w-8 h-8 text-blue-400" />
-              )}
+      <Card className="group border-0 shadow-lg bg-white/90 backdrop-blur-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-4">
+            {/* Enhanced Mini Preview */}
+            <div 
+              className="flex-shrink-0 w-24 h-24 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200 overflow-hidden flex items-center justify-center cursor-pointer hover:border-blue-300 transition-all duration-300 group-hover:scale-105 relative"
+              onClick={() => onPreview(conversation)}
+            >
+              {/* Background Pattern */}
+              <div className="absolute inset-0 opacity-20">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(59,130,246,0.15)_1px,transparent_0)] bg-[length:12px_12px]"></div>
+              </div>
+              
+              {/* Icon */}
+              <div className="relative z-10">
+                {isTemplateMode ? (
+                  <LayoutTemplate className="w-8 h-8 text-purple-500" />
+                ) : (
+                  <BarChart3 className="w-8 h-8 text-blue-500" />
+                )}
+              </div>
+
+              {/* Hover Overlay */}
+              <div className="absolute inset-0 bg-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                <Eye className="w-5 h-5 text-blue-600" />
+              </div>
             </div>
 
-            {/* Info */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-2 mb-1.5">
+            {/* Enhanced Info Section */}
+            <div className="flex-1 min-w-0 space-y-2">
+              <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-semibold text-gray-900 truncate mb-0.5">
+                  <h3 className="text-lg font-semibold text-gray-900 truncate mb-1 group-hover:text-blue-900 transition-colors">
                     {conversation.title}
                   </h3>
-                  <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                    <Calendar className="h-3 w-3" />
-                    <span>{formatDate(conversation.timestamp)}</span>
+                  <div className="flex items-center gap-3 text-sm text-gray-500">
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-4 w-4" />
+                      <span>{formatDate(conversation.timestamp)}</span>
+                    </div>
+                    {conversation.messages.length > 0 && (
+                      <div className="flex items-center gap-1">
+                        <MessageSquare className="h-4 w-4" />
+                        <span>{conversation.messages.length} messages</span>
+                      </div>
+                    )}
                   </div>
                 </div>
-                <Badge className={`${getChartTypeColor(conversation.snapshot?.chartType || "")} border text-xs px-2 py-0.5`}>
-                  {conversation.snapshot?.chartType || "Unknown"}
+                
+                <Badge className={`${getChartTypeColor(conversation.snapshot?.chartType || "")} border text-sm px-3 py-1 font-medium flex-shrink-0`}>
+                  {isTemplateMode ? (
+                    <div className="flex items-center gap-1.5">
+                      <LayoutTemplate className="w-3.5 h-3.5" />
+                      Template
+                    </div>
+                  ) : (
+                    conversation.snapshot?.chartType || "Unknown"
+                  )}
                 </Badge>
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex items-center gap-1.5">
+            {/* Enhanced Actions */}
+            <div className="flex items-center gap-2 flex-shrink-0">
               <Button
                 onClick={() => onPreview(conversation)}
                 variant="outline"
                 size="sm"
-                className="gap-1 h-8 text-xs px-2"
+                className="gap-2 h-9 px-4 border-gray-200 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 transition-all"
               >
-                <Eye className="h-3.5 w-3.5" />
+                <Eye className="h-4 w-4" />
                 Preview
               </Button>
               <Button
                 onClick={() => onEdit(conversation)}
                 variant="outline"
                 size="sm"
-                className="gap-1 h-8 text-xs px-2"
+                className="gap-2 h-9 px-4 border-gray-200 hover:border-green-300 hover:bg-green-50 hover:text-green-700 transition-all"
               >
-                <Edit3 className="h-3.5 w-3.5" />
+                <Edit3 className="h-4 w-4" />
                 Edit
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-9 w-9 p-0">
+                  <Button variant="outline" size="sm" className="h-9 w-9 p-0 border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all">
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -255,6 +287,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                     <PencilRuler className="h-4 w-4 mr-2" />
                     Advanced Editor
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleDownload}>
                     <Download className="h-4 w-4 mr-2" />
                     Download PNG
@@ -264,7 +297,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                     Copy Share Link
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleDelete} className="text-red-600">
+                  <DropdownMenuItem onClick={handleDelete} className="text-red-600 focus:text-red-600">
                     <Trash2 className="h-4 w-4 mr-2" />
                     Delete
                   </DropdownMenuItem>
@@ -279,70 +312,97 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
 
   // Grid view
   return (
-    <Card className="border-gray-200 shadow-sm hover:shadow-lg transition-all duration-200 group overflow-hidden">
-      <CardContent className="space-y-2 p-3">
+    <Card className="group relative overflow-hidden border-0 shadow-lg bg-white/90 backdrop-blur-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+      {/* Gradient Border Effect */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 via-purple-500/20 to-indigo-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      
+      <CardContent className="relative space-y-4 p-5">
         {/* Chart Preview */}
         <div
-          className="aspect-video bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200 overflow-hidden cursor-pointer hover:border-blue-300 transition-colors flex items-center justify-center"
+          className="aspect-video bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200 overflow-hidden cursor-pointer hover:border-blue-300 transition-all duration-300 group-hover:scale-[1.02] flex items-center justify-center relative"
           onClick={() => onPreview(conversation)}
         >
-          {isTemplateMode ? (
-            <LayoutTemplate className="w-12 h-12 text-purple-400" />
-          ) : (
-            <BarChart3 className="w-12 h-12 text-blue-400" />
-          )}
-        </div>
+          {/* Preview Background Pattern */}
+          <div className="absolute inset-0 opacity-30">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(59,130,246,0.15)_1px,transparent_0)] bg-[length:20px_20px]"></div>
+          </div>
+          
+          {/* Chart Icon */}
+          <div className="relative z-10 p-4 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm">
+            {isTemplateMode ? (
+              <LayoutTemplate className="w-8 h-8 text-purple-500" />
+            ) : (
+              <BarChart3 className="w-8 h-8 text-blue-500" />
+            )}
+          </div>
 
-        {/* Title and Badge */}
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold text-gray-900 truncate mb-0.5">
-              {conversation.title}
-            </h3>
-            <div className="flex items-center gap-2">
-              <Badge className={`${getChartTypeColor(conversation.snapshot?.chartType || "")} border text-xs px-2 py-0.5`}>
-                {conversation.snapshot?.chartType || "Unknown"}
-              </Badge>
-              <div className="flex items-center gap-1 text-xs text-gray-500">
-                <Calendar className="h-3 w-3" />
-                <span>{formatDate(conversation.timestamp)}</span>
-              </div>
+          {/* Hover Overlay */}
+          <div className="absolute inset-0 bg-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+            <div className="bg-white/90 backdrop-blur-sm rounded-full p-2 transform scale-75 group-hover:scale-100 transition-transform duration-300">
+              <Eye className="w-5 h-5 text-blue-600" />
             </div>
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="flex gap-1.5 pt-1.5 border-t border-gray-100">
+        {/* Title and Metadata */}
+        <div className="space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="text-base font-semibold text-gray-900 truncate leading-tight group-hover:text-blue-900 transition-colors">
+              {conversation.title}
+            </h3>
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <Badge className={`${getChartTypeColor(conversation.snapshot?.chartType || "")} border text-xs px-3 py-1 font-medium`}>
+              {isTemplateMode ? (
+                <div className="flex items-center gap-1">
+                  <LayoutTemplate className="w-3 h-3" />
+                  Template
+                </div>
+              ) : (
+                conversation.snapshot?.chartType || "Unknown"
+              )}
+            </Badge>
+            
+            <div className="flex items-center gap-1 text-xs text-gray-500">
+              <Calendar className="h-3 w-3" />
+              <span>{formatDate(conversation.timestamp)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Enhanced Action Buttons */}
+        <div className="flex gap-2 pt-2 border-t border-gray-100">
           <Button
             onClick={() => onEdit(conversation)}
             variant="outline"
             size="sm"
-            className="flex-1 gap-1 h-7 text-xs px-2"
+            className="flex-1 gap-2 h-9 text-xs font-medium border-gray-200 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 transition-all"
           >
-            <Edit3 className="h-3 w-3" />
+            <Edit3 className="h-3.5 w-3.5" />
             Edit
           </Button>
           <Button
             onClick={handleDownload}
             variant="outline"
             size="sm"
-            className="flex-1 gap-1 h-7 text-xs px-2"
+            className="flex-1 gap-2 h-9 text-xs font-medium border-gray-200 hover:border-green-300 hover:bg-green-50 hover:text-green-700 transition-all"
           >
-            <Download className="h-3 w-3" />
-            Download
+            <Download className="h-3.5 w-3.5" />
+            Export
           </Button>
           <Button
             onClick={handleShare}
             variant="outline"
             size="sm"
-            className="h-7 w-7 p-0"
+            className="h-9 w-9 p-0 border-gray-200 hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700 transition-all"
           >
-            <Share2 className="h-3 w-3" />
+            <Share2 className="h-3.5 w-3.5" />
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-7 w-7 p-0">
-                <MoreVertical className="h-3 w-3" />
+              <Button variant="outline" size="sm" className="h-9 w-9 p-0 border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all">
+                <MoreVertical className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
@@ -372,7 +432,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                 Copy Share Link
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleDelete} className="text-red-600">
+              <DropdownMenuItem onClick={handleDelete} className="text-red-600 focus:text-red-600">
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete
               </DropdownMenuItem>

@@ -33,12 +33,12 @@ function drawResizeHandles(ctx: CanvasRenderingContext2D, x: number, y: number, 
   const halfHandle = handleSize / 2
   const midX = x + width / 2
   const midY = y + height / 2
-  
+
   ctx.save()
   ctx.fillStyle = '#007acc'
   ctx.strokeStyle = '#ffffff'
   ctx.lineWidth = 1
-  
+
   // Draw all 8 handles: 4 corners + 4 edges
   const handles = [
     // Corner handles
@@ -46,19 +46,19 @@ function drawResizeHandles(ctx: CanvasRenderingContext2D, x: number, y: number, 
     { x: x + width - halfHandle, y: y - halfHandle }, // NE
     { x: x - halfHandle, y: y + height - halfHandle }, // SW
     { x: x + width - halfHandle, y: y + height - halfHandle }, // SE
-    
+
     // Edge handles
     { x: midX - halfHandle, y: y - halfHandle }, // N (top)
     { x: x + width - halfHandle, y: midY - halfHandle }, // E (right)
     { x: midX - halfHandle, y: y + height - halfHandle }, // S (bottom)
     { x: x - halfHandle, y: midY - halfHandle }, // W (left)
   ]
-  
+
   handles.forEach(handle => {
     ctx.fillRect(handle.x, handle.y, handleSize, handleSize)
     ctx.strokeRect(handle.x, handle.y, handleSize, handleSize)
   })
-  
+
   ctx.restore()
 }
 
@@ -69,12 +69,12 @@ function drawCircularResizeHandles(ctx: CanvasRenderingContext2D, x: number, y: 
   const centerX = x + width / 2
   const centerY = y + height / 2
   const radius = Math.min(width, height) / 2
-  
+
   ctx.save()
   ctx.fillStyle = '#007acc'
   ctx.strokeStyle = '#ffffff'
   ctx.lineWidth = 1
-  
+
   // Draw 4 handles at cardinal directions (top, right, bottom, left)
   const handles = [
     { x: centerX - halfHandle, y: centerY - radius - halfHandle }, // Top
@@ -82,12 +82,12 @@ function drawCircularResizeHandles(ctx: CanvasRenderingContext2D, x: number, y: 
     { x: centerX - halfHandle, y: centerY + radius - halfHandle }, // Bottom
     { x: centerX - radius - halfHandle, y: centerY - halfHandle }, // Left
   ]
-  
+
   handles.forEach(handle => {
     ctx.fillRect(handle.x, handle.y, handleSize, handleSize)
     ctx.strokeRect(handle.x, handle.y, handleSize, handleSize)
   })
-  
+
   ctx.restore()
 }
 
@@ -96,12 +96,12 @@ function drawRoundedResizeHandles(ctx: CanvasRenderingContext2D, x: number, y: n
   const handleSize = 8
   const halfHandle = handleSize / 2
   const radius = Math.min(width, height) * 0.1
-  
+
   ctx.save()
   ctx.fillStyle = '#007acc'
   ctx.strokeStyle = '#ffffff'
   ctx.lineWidth = 1
-  
+
   // Draw handles at the corners and edges of the rounded rectangle
   const handles = [
     // Corner handles (adjusted for rounded corners)
@@ -109,19 +109,19 @@ function drawRoundedResizeHandles(ctx: CanvasRenderingContext2D, x: number, y: n
     { x: x + width - radius - halfHandle, y: y + radius - halfHandle }, // Top-right (adjusted)
     { x: x + radius - halfHandle, y: y + height - radius - halfHandle }, // Bottom-left (adjusted)
     { x: x + width - radius - halfHandle, y: y + height - radius - halfHandle }, // Bottom-right (adjusted)
-    
+
     // Edge handles (center of edges)
     { x: x + width / 2 - halfHandle, y: y - halfHandle }, // Top center
     { x: x + width - halfHandle, y: y + height / 2 - halfHandle }, // Right center
     { x: x + width / 2 - halfHandle, y: y + height - halfHandle }, // Bottom center
     { x: x - halfHandle, y: y + height / 2 - halfHandle }, // Left center
   ]
-  
+
   handles.forEach(handle => {
     ctx.fillRect(handle.x, handle.y, handleSize, handleSize)
     ctx.strokeRect(handle.x, handle.y, handleSize, handleSize)
   })
-  
+
   ctx.restore()
 }
 
@@ -139,22 +139,22 @@ function drawDashedBorder(ctx: CanvasRenderingContext2D, x: number, y: number, w
 function getResizeHandle(mouseX: number, mouseY: number, imageX: number, imageY: number, imageWidth: number, imageHeight: number, shape: string = 'rectangle'): 'nw' | 'ne' | 'sw' | 'se' | 'n' | 'e' | 's' | 'w' | null {
   const handleSize = 8
   const tolerance = 4
-  
+
   if (shape === 'circle') {
     // For circle, check 4 handles at cardinal directions
     const centerX = imageX + imageWidth / 2
     const centerY = imageY + imageHeight / 2
     const radius = Math.min(imageWidth, imageHeight) / 2
-    
+
     const handles = [
-      { type: 'n' as const, x: centerX - handleSize/2, y: centerY - radius - handleSize/2 }, // Top
-      { type: 'e' as const, x: centerX + radius - handleSize/2, y: centerY - handleSize/2 }, // Right
-      { type: 's' as const, x: centerX - handleSize/2, y: centerY + radius - handleSize/2 }, // Bottom
-      { type: 'w' as const, x: centerX - radius - handleSize/2, y: centerY - handleSize/2 }, // Left
+      { type: 'n' as const, x: centerX - handleSize / 2, y: centerY - radius - handleSize / 2 }, // Top
+      { type: 'e' as const, x: centerX + radius - handleSize / 2, y: centerY - handleSize / 2 }, // Right
+      { type: 's' as const, x: centerX - handleSize / 2, y: centerY + radius - handleSize / 2 }, // Bottom
+      { type: 'w' as const, x: centerX - radius - handleSize / 2, y: centerY - handleSize / 2 }, // Left
     ]
-    
+
     for (const handle of handles) {
-      if (isPointInRect(mouseX, mouseY, handle.x - tolerance, handle.y - tolerance, handleSize + tolerance*2, handleSize + tolerance*2)) {
+      if (isPointInRect(mouseX, mouseY, handle.x - tolerance, handle.y - tolerance, handleSize + tolerance * 2, handleSize + tolerance * 2)) {
         return handle.type
       }
     }
@@ -163,23 +163,23 @@ function getResizeHandle(mouseX: number, mouseY: number, imageX: number, imageY:
     const radius = Math.min(imageWidth, imageHeight) * 0.1
     const midX = imageX + imageWidth / 2
     const midY = imageY + imageHeight / 2
-    
+
     const handles = [
       // Corner handles (adjusted for rounded corners)
-      { type: 'nw' as const, x: imageX + radius - handleSize/2, y: imageY + radius - handleSize/2 },
-      { type: 'ne' as const, x: imageX + imageWidth - radius - handleSize/2, y: imageY + radius - handleSize/2 },
-      { type: 'sw' as const, x: imageX + radius - handleSize/2, y: imageY + imageHeight - radius - handleSize/2 },
-      { type: 'se' as const, x: imageX + imageWidth - radius - handleSize/2, y: imageY + imageHeight - radius - handleSize/2 },
-      
+      { type: 'nw' as const, x: imageX + radius - handleSize / 2, y: imageY + radius - handleSize / 2 },
+      { type: 'ne' as const, x: imageX + imageWidth - radius - handleSize / 2, y: imageY + radius - handleSize / 2 },
+      { type: 'sw' as const, x: imageX + radius - handleSize / 2, y: imageY + imageHeight - radius - handleSize / 2 },
+      { type: 'se' as const, x: imageX + imageWidth - radius - handleSize / 2, y: imageY + imageHeight - radius - handleSize / 2 },
+
       // Edge handles (center of edges)
-      { type: 'n' as const, x: midX - handleSize/2, y: imageY - handleSize/2 },
-      { type: 'e' as const, x: imageX + imageWidth - handleSize/2, y: midY - handleSize/2 },
-      { type: 's' as const, x: midX - handleSize/2, y: imageY + imageHeight - handleSize/2 },
-      { type: 'w' as const, x: imageX - handleSize/2, y: midY - handleSize/2 },
+      { type: 'n' as const, x: midX - handleSize / 2, y: imageY - handleSize / 2 },
+      { type: 'e' as const, x: imageX + imageWidth - handleSize / 2, y: midY - handleSize / 2 },
+      { type: 's' as const, x: midX - handleSize / 2, y: imageY + imageHeight - handleSize / 2 },
+      { type: 'w' as const, x: imageX - handleSize / 2, y: midY - handleSize / 2 },
     ]
-    
+
     for (const handle of handles) {
-      if (isPointInRect(mouseX, mouseY, handle.x - tolerance, handle.y - tolerance, handleSize + tolerance*2, handleSize + tolerance*2)) {
+      if (isPointInRect(mouseX, mouseY, handle.x - tolerance, handle.y - tolerance, handleSize + tolerance * 2, handleSize + tolerance * 2)) {
         return handle.type
       }
     }
@@ -187,28 +187,28 @@ function getResizeHandle(mouseX: number, mouseY: number, imageX: number, imageY:
     // Rectangle shape - original logic
     const midX = imageX + imageWidth / 2
     const midY = imageY + imageHeight / 2
-    
+
     const handles = [
       // Corner handles
-      { type: 'nw' as const, x: imageX - handleSize/2, y: imageY - handleSize/2 },
-      { type: 'ne' as const, x: imageX + imageWidth - handleSize/2, y: imageY - handleSize/2 },
-      { type: 'sw' as const, x: imageX - handleSize/2, y: imageY + imageHeight - handleSize/2 },
-      { type: 'se' as const, x: imageX + imageWidth - handleSize/2, y: imageY + imageHeight - handleSize/2 },
-      
+      { type: 'nw' as const, x: imageX - handleSize / 2, y: imageY - handleSize / 2 },
+      { type: 'ne' as const, x: imageX + imageWidth - handleSize / 2, y: imageY - handleSize / 2 },
+      { type: 'sw' as const, x: imageX - handleSize / 2, y: imageY + imageHeight - handleSize / 2 },
+      { type: 'se' as const, x: imageX + imageWidth - handleSize / 2, y: imageY + imageHeight - handleSize / 2 },
+
       // Edge handles
-      { type: 'n' as const, x: midX - handleSize/2, y: imageY - handleSize/2 },
-      { type: 'e' as const, x: imageX + imageWidth - handleSize/2, y: midY - handleSize/2 },
-      { type: 's' as const, x: midX - handleSize/2, y: imageY + imageHeight - handleSize/2 },
-      { type: 'w' as const, x: imageX - handleSize/2, y: midY - handleSize/2 },
+      { type: 'n' as const, x: midX - handleSize / 2, y: imageY - handleSize / 2 },
+      { type: 'e' as const, x: imageX + imageWidth - handleSize / 2, y: midY - handleSize / 2 },
+      { type: 's' as const, x: midX - handleSize / 2, y: imageY + imageHeight - handleSize / 2 },
+      { type: 'w' as const, x: imageX - handleSize / 2, y: midY - handleSize / 2 },
     ]
-    
+
     for (const handle of handles) {
-      if (isPointInRect(mouseX, mouseY, handle.x - tolerance, handle.y - tolerance, handleSize + tolerance*2, handleSize + tolerance*2)) {
+      if (isPointInRect(mouseX, mouseY, handle.x - tolerance, handle.y - tolerance, handleSize + tolerance * 2, handleSize + tolerance * 2)) {
         return handle.type
       }
     }
   }
-  
+
   return null
 }
 
@@ -230,7 +230,7 @@ function drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, wi
 // Helper function to clip image based on shape
 function clipImageToShape(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, shape: string): void {
   ctx.save()
-  
+
   if (shape === 'circle') {
     const centerX = x + width / 2
     const centerY = y + height / 2
@@ -257,10 +257,10 @@ const imageCache = new Map<string, HTMLImageElement>()
 function calculateSmartDimensions(naturalWidth: number, naturalHeight: number, canvasHeight: number): { width: number, height: number } {
   const targetHeight = Math.floor(canvasHeight * 0.2) // 20% of canvas height
   const aspectRatio = naturalWidth / naturalHeight
-  
+
   let smartWidth = Math.floor(targetHeight * aspectRatio)
   let smartHeight = targetHeight
-  
+
   // Ensure minimum size
   const minSize = 50
   if (smartWidth < minSize || smartHeight < minSize) {
@@ -274,7 +274,7 @@ function calculateSmartDimensions(naturalWidth: number, naturalHeight: number, c
       smartWidth = Math.floor(minSize * aspectRatio)
     }
   }
-  
+
   return { width: smartWidth, height: smartHeight }
 }
 
@@ -292,7 +292,7 @@ function renderOverlayImage(ctx: CanvasRenderingContext2D, image: OverlayImage, 
 
   // Check if image is already cached
   let img = imageCache.get(image.url)
-  
+
   if (img && img.complete) {
     // Image is loaded, draw it immediately
     drawImageOnCanvas(ctx, img, image, chartArea)
@@ -300,49 +300,49 @@ function renderOverlayImage(ctx: CanvasRenderingContext2D, image: OverlayImage, 
     // Load and cache the image
     img = new Image()
     img.crossOrigin = "anonymous"
-    
+
     img.onload = () => {
       // Cache the loaded image
       imageCache.set(image.url, img!)
-      
+
       // Update store with natural dimensions and size if needed
       const updateData: any = {}
       if (!image.naturalWidth || !image.naturalHeight) {
         updateData.naturalWidth = img!.naturalWidth
         updateData.naturalHeight = img!.naturalHeight
       }
-      
+
       // Calculate smart dimensions based on canvas size
       const canvasHeight = chart.canvas.height || 400 // fallback height
       const smartDimensions = calculateSmartDimensions(img!.naturalWidth, img!.naturalHeight, canvasHeight)
-      
+
       // If using natural size, use smart dimensions instead of full natural size
       if (image.useNaturalSize) {
         updateData.width = smartDimensions.width
         updateData.height = smartDimensions.height
       }
-      
+
       // Dispatch update event if needed
       if (Object.keys(updateData).length > 0) {
-        const updateEvent = new CustomEvent('overlayImageDimensionsUpdate', { 
+        const updateEvent = new CustomEvent('overlayImageDimensionsUpdate', {
           detail: { imageId: image.id, updateData }
         })
         chart.canvas.dispatchEvent(updateEvent)
       }
-      
+
       // Draw the image
       drawImageOnCanvas(ctx, img!, image, chartArea)
-      
+
       // Trigger chart redraw to show the image
       if (chart && chart.update) {
         chart.update('none')
       }
     }
-    
+
     img.onerror = () => {
       console.warn('Failed to load overlay image:', image.url)
     }
-    
+
     img.src = image.url
   }
 }
@@ -350,28 +350,28 @@ function renderOverlayImage(ctx: CanvasRenderingContext2D, image: OverlayImage, 
 // Helper function to draw image on canvas
 function drawImageOnCanvas(ctx: CanvasRenderingContext2D, img: HTMLImageElement, image: OverlayImage, chartArea: any): void {
   ctx.save()
-  
+
   // Determine dimensions to use
   let renderWidth = image.width
   let renderHeight = image.height
-  
+
   // Use natural size if specified and available
   if (image.useNaturalSize && img.naturalWidth && img.naturalHeight) {
     renderWidth = img.naturalWidth
     renderHeight = img.naturalHeight
   }
-  
+
   // Calculate image fitting for all shapes
   let drawX = chartArea.left + image.x
   let drawY = chartArea.top + image.y
   let drawWidth = renderWidth
   let drawHeight = renderHeight
-  
+
   // Apply image fitting if specified
   if (image.imageFit) {
     const imageAspectRatio = img.naturalWidth / img.naturalHeight
     const containerAspectRatio = renderWidth / renderHeight
-    
+
     switch (image.imageFit) {
       case 'fill':
         // Stretch to fill the container (default behavior)
@@ -406,20 +406,20 @@ function drawImageOnCanvas(ctx: CanvasRenderingContext2D, img: HTMLImageElement,
         break
     }
   }
-  
+
   // Apply clipping based on shape - use the original container dimensions for clipping
   clipImageToShape(ctx, chartArea.left + image.x, chartArea.top + image.y, renderWidth, renderHeight, image.shape)
-  
+
   // Draw the image with calculated dimensions
   ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight)
   ctx.restore()
-  
+
   // Draw border if specified
   if (image.borderWidth > 0) {
     ctx.save()
     ctx.strokeStyle = image.borderColor
     ctx.lineWidth = image.borderWidth
-    
+
     if (image.shape === 'circle') {
       const centerX = chartArea.left + image.x + renderWidth / 2
       const centerY = chartArea.top + image.y + renderHeight / 2
@@ -434,7 +434,7 @@ function drawImageOnCanvas(ctx: CanvasRenderingContext2D, img: HTMLImageElement,
     } else {
       ctx.strokeRect(chartArea.left + image.x, chartArea.top + image.y, renderWidth, renderHeight)
     }
-    
+
     ctx.restore()
   }
 }
@@ -464,26 +464,26 @@ function renderOverlayText(ctx: CanvasRenderingContext2D, text: OverlayText, cha
   if (!text.visible) return
 
   ctx.save()
-  
+
   // Set font properties
   ctx.font = `${text.fontSize}px ${text.fontFamily}`
   ctx.textAlign = 'left'
   ctx.textBaseline = 'top'
-  
+
   const x = chartArea.left + text.x
   const y = chartArea.top + text.y
-  
+
   // Apply rotation if specified
   if (text.rotation !== 0) {
     ctx.translate(x, y)
     ctx.rotate((text.rotation * Math.PI) / 180)
     ctx.translate(-x, -y)
   }
-  
+
   // Process text lines with wrapping
   const originalLines = text.text.split('\n')
   const allLines: string[] = []
-  
+
   originalLines.forEach(line => {
     if (text.maxWidth && text.maxWidth > 0) {
       // Apply text wrapping
@@ -494,77 +494,77 @@ function renderOverlayText(ctx: CanvasRenderingContext2D, text: OverlayText, cha
       allLines.push(line)
     }
   })
-  
+
   const lineHeight = text.fontSize * 1.2 // Line height with some spacing
-  
+
   // Calculate total dimensions for multi-line text
   let maxWidth = 0
   let totalHeight = 0
-  
+
   allLines.forEach(line => {
     const textMetrics = ctx.measureText(line)
     maxWidth = Math.max(maxWidth, textMetrics.width)
   })
-  
+
   totalHeight = allLines.length * lineHeight
-  
+
   // Get padding values (with fallbacks for existing text overlays)
   const paddingX = text.paddingX || 8
   const paddingY = text.paddingY || 4
-  
+
   // Calculate background/border rectangle with padding
   const bgX = x - paddingX
   const bgY = y - paddingY
   const bgWidth = maxWidth + (paddingX * 2)
   const bgHeight = totalHeight + (paddingY * 2)
-  
+
   // Draw background if not transparent
   if (!text.backgroundTransparent && text.backgroundColor) {
     ctx.fillStyle = text.backgroundColor
     ctx.fillRect(bgX, bgY, bgWidth, bgHeight)
   }
-  
+
   // Draw border if specified
   if (text.borderWidth > 0) {
     ctx.strokeStyle = text.borderColor
     ctx.lineWidth = text.borderWidth
     ctx.strokeRect(bgX, bgY, bgWidth, bgHeight)
   }
-  
+
   // Draw multi-line text
   ctx.fillStyle = text.color
   allLines.forEach((line, index) => {
     const lineY = y + (index * lineHeight)
     ctx.fillText(line, x, lineY)
   })
-  
+
   ctx.restore()
 }
 
 // The overlay plugin
 export const overlayPlugin = {
   id: 'overlayPlugin',
-  
+
   beforeInit: () => {
     // Plugin initialized
   },
-  
+
   afterDraw: (chart: Chart) => {
     const ctx = chart.ctx
     const chartArea = chart.chartArea
-    
+
     // Get overlay data from plugin options (Chart.js filters out non-standard root options)
     const pluginConfig = (chart.options as any)?.plugins?.overlayPlugin || {}
     const overlayImages = pluginConfig.overlayImages || []
     const overlayTexts = pluginConfig.overlayTexts || []
-    
+
     // Handle overlay images
     if (overlayImages.length > 0) {
       overlayImages.forEach((image: any, index: number) => {
         if (image.visible) {
           // Check if image is already cached
           let img = imageCache.get(image.url)
-          
+
           if (img && img.complete) {
             // Image is loaded, draw it using the sophisticated drawImageOnCanvas function
             drawImageOnCanvas(ctx, img, image, chartArea)
@@ -574,13 +574,13 @@ export const overlayPlugin = {
             const h = image.height
             const x = chartArea.left + image.x
             const y = chartArea.top + image.y
-            
+
             // Image not loaded yet, show placeholder
             ctx.save()
             ctx.fillStyle = image.borderColor || 'gray'
             ctx.strokeStyle = image.borderColor || 'blue'
             ctx.lineWidth = Math.max(2, image.borderWidth)
-            
+
             // Draw placeholder based on shape
             if (image.shape === 'circle') {
               const centerX = x + w / 2
@@ -600,49 +600,49 @@ export const overlayPlugin = {
               ctx.fillRect(x, y, w, h)
               ctx.strokeRect(x, y, w, h)
             }
-            
+
             // Draw loading text
             ctx.fillStyle = 'white'
             ctx.font = '14px Arial'
             ctx.textAlign = 'center'
-            ctx.fillText('Loading...', x + w/2, y + h/2)
+            ctx.fillText('Loading...', x + w / 2, y + h / 2)
             ctx.textAlign = 'left'
-            
+
             ctx.restore()
-            
+
             // Try to load the image if not already loading
             if (!img) {
               img = new Image()
               img.crossOrigin = "anonymous"
-              
+
               img.onload = () => {
                 imageCache.set(image.url, img!)
-                
+
                 // Update store with natural dimensions and size if needed
                 const updateData: any = {}
                 if (!image.naturalWidth || !image.naturalHeight) {
                   updateData.naturalWidth = img!.naturalWidth
                   updateData.naturalHeight = img!.naturalHeight
                 }
-                
+
                 // Calculate smart dimensions based on canvas size
                 const canvasHeight = chart.canvas.height || 400 // fallback height
                 const smartDimensions = calculateSmartDimensions(img!.naturalWidth, img!.naturalHeight, canvasHeight)
-                
+
                 // If using natural size, use smart dimensions instead of full natural size
                 if (image.useNaturalSize) {
                   updateData.width = smartDimensions.width
                   updateData.height = smartDimensions.height
                 }
-                
+
                 // Dispatch update event if needed
                 if (Object.keys(updateData).length > 0) {
-                  const updateEvent = new CustomEvent('overlayImageDimensionsUpdate', { 
+                  const updateEvent = new CustomEvent('overlayImageDimensionsUpdate', {
                     detail: { imageId: image.id, updateData }
                   })
                   chart.canvas.dispatchEvent(updateEvent)
                 }
-                
+
                 // Multiple approaches to trigger chart redraw
                 // Approach 1: Direct chart update
                 if (chart && typeof chart.update === 'function') {
@@ -650,7 +650,7 @@ export const overlayPlugin = {
                     chart.update('none')
                   })
                 }
-                
+
                 // Approach 2: Dispatch custom event to component level
                 if (chart && chart.canvas) {
                   const event = new CustomEvent('overlayImageLoaded', {
@@ -658,7 +658,7 @@ export const overlayPlugin = {
                   })
                   chart.canvas.dispatchEvent(event)
                 }
-                
+
                 // Approach 3: Force redraw by calling the plugin again
                 setTimeout(() => {
                   if (chart && chart.draw) {
@@ -666,18 +666,18 @@ export const overlayPlugin = {
                   }
                 }, 10)
               }
-              
+
               img.onerror = () => {
                 console.error('❌ Failed to load overlay image:', image.url.substring(0, 50) + '...')
               }
-              
+
               img.src = image.url
             }
           }
         }
       })
     }
-    
+
     // Draw overlay texts
     if (overlayTexts.length > 0) {
       overlayTexts.forEach((text: any) => {
@@ -686,7 +686,7 @@ export const overlayPlugin = {
         }
       })
     }
-    
+
     // Draw selection handles for selected image
     const selectedImageId = (chart.options as any)?.plugins?.overlayPlugin?.selectedImageId
     if (selectedImageId) {
@@ -694,17 +694,17 @@ export const overlayPlugin = {
       if (selectedImage && selectedImage.visible) {
         const x = chartArea.left + selectedImage.x
         const y = chartArea.top + selectedImage.y
-        
+
         // Determine dimensions to use
         let w = selectedImage.width
         let h = selectedImage.height
-        
+
         // Use natural size if specified and available
         if (selectedImage.useNaturalSize && selectedImage.naturalWidth && selectedImage.naturalHeight) {
           w = selectedImage.naturalWidth
           h = selectedImage.naturalHeight
         }
-        
+
         // Draw dashed border based on shape
         if (selectedImage.shape === 'circle') {
           const centerX = x + w / 2
@@ -731,7 +731,7 @@ export const overlayPlugin = {
           // Rectangle shape
           drawDashedBorder(ctx, x, y, w, h)
         }
-        
+
         // Draw resize handles based on shape
         if (selectedImage.shape === 'circle') {
           // For circle, draw handles around the circle perimeter
@@ -745,7 +745,7 @@ export const overlayPlugin = {
         }
       }
     }
-    
+
     // Draw selection handles for selected text
     const selectedTextId = (chart.options as any)?.plugins?.overlayPlugin?.selectedTextId
     if (selectedTextId) {
@@ -753,12 +753,12 @@ export const overlayPlugin = {
       if (selectedText && selectedText.visible) {
         const x = chartArea.left + selectedText.x
         const y = chartArea.top + selectedText.y
-        
+
         // Measure text dimensions for multi-line text with wrapping
         ctx.font = `${selectedText.fontSize}px ${selectedText.fontFamily}`
         const originalLines = selectedText.text.split('\n')
         const allLines: string[] = []
-        
+
         originalLines.forEach((line: string) => {
           if (selectedText.maxWidth && selectedText.maxWidth > 0) {
             // Apply text wrapping
@@ -769,27 +769,27 @@ export const overlayPlugin = {
             allLines.push(line)
           }
         })
-        
+
         const lineHeight = selectedText.fontSize * 1.2
-        
+
         // Calculate total dimensions for multi-line text
         let maxWidth = 0
         allLines.forEach((line: string) => {
           const textMetrics = ctx.measureText(line)
           maxWidth = Math.max(maxWidth, textMetrics.width)
         })
-        
+
         const totalHeight = allLines.length * lineHeight
-        
+
         // Account for padding
         const paddingX = selectedText.paddingX || 8
         const paddingY = selectedText.paddingY || 4
-        
+
         const bgX = x - paddingX
         const bgY = y - paddingY
         const bgWidth = maxWidth + (paddingX * 2)
         const bgHeight = totalHeight + (paddingY * 2)
-        
+
         // Draw dashed border around text
         ctx.save()
         ctx.strokeStyle = '#007acc'
@@ -800,10 +800,10 @@ export const overlayPlugin = {
       }
     }
   },
-  
+
   afterInit: (chart: Chart) => {
     const canvas = chart.canvas
-    
+
     // Mouse event handlers
     const handleMouseDown = (event: MouseEvent) => {
       const rect = canvas.getBoundingClientRect()
@@ -813,42 +813,42 @@ export const overlayPlugin = {
       const x = (event.clientX - rect.left) * scaleX
       const y = (event.clientY - rect.top) * scaleY
       const chartArea = chart.chartArea
-      
+
       // Get overlay data from plugin options
       const overlayDataRoot = (chart.options as any)?.plugins?.overlayPlugin || {}
       const overlayImages = overlayDataRoot.overlayImages || []
       const overlayTexts = overlayDataRoot.overlayTexts || []
-      
+
       // Check if clicking on any overlay (check in reverse zIndex order for top-most)
       const allOverlays = [
         ...overlayImages.map((img: OverlayImage) => ({ type: 'image', data: img })),
         ...overlayTexts.map((txt: OverlayText) => ({ type: 'text', data: txt }))
       ].sort((a, b) => b.data.zIndex - a.data.zIndex) // Reverse order for top-most first
-      
+
       let clickedOnOverlay = false
-      
+
       for (const overlay of allOverlays) {
         if (overlay.type === 'image') {
           const img = overlay.data as OverlayImage
           if (!img.visible) continue
-          
+
           const imgX = chartArea.left + img.x
           const imgY = chartArea.top + img.y
-          
+
           // Determine dimensions for hit detection
           let hitWidth = img.width
           let hitHeight = img.height
-          
+
           // Use natural size if specified and available
           if (img.useNaturalSize && img.naturalWidth && img.naturalHeight) {
             hitWidth = img.naturalWidth
             hitHeight = img.naturalHeight
           }
-          
+
           // Check if clicking on resize handle first (only for selected image)
           const overlayData = (chart.options as any)?.plugins?.overlayPlugin || {}
           const selectedImageId = overlayData.selectedImageId
-          
+
           if (selectedImageId === img.id) {
             const resizeHandle = getResizeHandle(x, y, imgX, imgY, hitWidth, hitHeight, img.shape)
             if (resizeHandle) {
@@ -860,7 +860,7 @@ export const overlayPlugin = {
               dragState.startY = imgY
               dragState.startWidth = hitWidth
               dragState.startHeight = hitHeight
-              
+
               // Set appropriate cursor based on handle type
               switch (resizeHandle) {
                 case 'nw':
@@ -885,7 +885,7 @@ export const overlayPlugin = {
               break
             }
           }
-          
+
           let isInside = false
           if (img.shape === 'circle') {
             const centerX = imgX + hitWidth / 2
@@ -895,14 +895,14 @@ export const overlayPlugin = {
           } else {
             isInside = isPointInRect(x, y, imgX, imgY, hitWidth, hitHeight)
           }
-          
+
           if (isInside) {
             // Select the image
             const selectEvent = new CustomEvent('overlayImageSelected', {
               detail: { imageId: img.id }
             })
             canvas.dispatchEvent(selectEvent)
-            
+
             // Start drag operation
             dragState.isDragging = true
             dragState.dragType = 'image'
@@ -917,13 +917,13 @@ export const overlayPlugin = {
         } else {
           const txt = overlay.data as OverlayText
           if (!txt.visible) continue
-          
+
           // Calculate text dimensions for multi-line text with padding and wrapping
           const ctx = chart.ctx
           ctx.font = `${txt.fontSize}px ${txt.fontFamily}`
           const originalLines = txt.text.split('\n')
           const allLines: string[] = []
-          
+
           originalLines.forEach(line => {
             if (txt.maxWidth && txt.maxWidth > 0) {
               // Apply text wrapping
@@ -934,34 +934,34 @@ export const overlayPlugin = {
               allLines.push(line)
             }
           })
-          
+
           const lineHeight = txt.fontSize * 1.2
-          
+
           // Calculate total dimensions for multi-line text
           let maxWidth = 0
           allLines.forEach(line => {
             const textMetrics = ctx.measureText(line)
             maxWidth = Math.max(maxWidth, textMetrics.width)
           })
-          
+
           const totalHeight = allLines.length * lineHeight
-          
+
           // Account for padding in hit detection
           const paddingX = txt.paddingX || 8
           const paddingY = txt.paddingY || 4
-          
+
           const txtX = chartArea.left + txt.x - paddingX
           const txtY = chartArea.top + txt.y - paddingY
           const hitWidth = maxWidth + (paddingX * 2)
           const hitHeight = totalHeight + (paddingY * 2)
-          
+
           if (isPointInRect(x, y, txtX, txtY, hitWidth, hitHeight)) {
             // Select the text
             const selectEvent = new CustomEvent('overlayTextSelected', {
               detail: { textId: txt.id }
             })
             canvas.dispatchEvent(selectEvent)
-            
+
             // Start drag operation
             dragState.isDragging = true
             dragState.dragType = 'text'
@@ -975,13 +975,13 @@ export const overlayPlugin = {
           }
         }
       }
-      
+
       // If clicked outside any overlay, deselect the current image and text
       if (!clickedOnOverlay) {
         const overlayData = (chart.options as any)?.plugins?.overlayPlugin || {}
         const selectedImageId = overlayData.selectedImageId
         const selectedTextId = overlayData.selectedTextId
-        
+
         if (selectedImageId) {
           // Deselect the image
           const deselectEvent = new CustomEvent('overlayImageSelected', {
@@ -989,7 +989,7 @@ export const overlayPlugin = {
           })
           canvas.dispatchEvent(deselectEvent)
         }
-        
+
         if (selectedTextId) {
           // Deselect the text
           const deselectTextEvent = new CustomEvent('overlayTextSelected', {
@@ -997,7 +997,7 @@ export const overlayPlugin = {
           })
           canvas.dispatchEvent(deselectTextEvent)
         }
-        
+
         // Force chart update to hide selection handles
         if (chart && chart.update) {
           setTimeout(() => {
@@ -1006,45 +1006,45 @@ export const overlayPlugin = {
         }
       }
     }
-    
+
     const handleContextMenu = (event: MouseEvent) => {
       event.preventDefault() // Prevent default browser context menu
-      
+
       const rect = canvas.getBoundingClientRect()
       const scaleX = canvas.width / rect.width
       const scaleY = canvas.height / rect.height
       const x = (event.clientX - rect.left) * scaleX
       const y = (event.clientY - rect.top) * scaleY
       const chartArea = chart.chartArea
-      
+
       // Get overlay data from plugin options
       const overlayDataRoot = (chart.options as any)?.plugins?.overlayPlugin || {}
       const overlayImages = overlayDataRoot.overlayImages || []
       const overlayTexts = overlayDataRoot.overlayTexts || []
-      
+
       // Check if right-clicking on any overlay
       const allOverlays = [
         ...overlayImages.map((img: OverlayImage) => ({ type: 'image', data: img })),
         ...overlayTexts.map((txt: OverlayText) => ({ type: 'text', data: txt }))
       ].sort((a, b) => b.data.zIndex - a.data.zIndex)
-      
+
       for (const overlay of allOverlays) {
         if (overlay.type === 'image') {
           const img = overlay.data as OverlayImage
           if (!img.visible) continue
-          
+
           const imgX = chartArea.left + img.x
           const imgY = chartArea.top + img.y
-          
+
           // Determine dimensions for hit detection
           let hitWidth = img.width
           let hitHeight = img.height
-          
+
           if (img.useNaturalSize && img.naturalWidth && img.naturalHeight) {
             hitWidth = img.naturalWidth
             hitHeight = img.naturalHeight
           }
-          
+
           let isInside = false
           if (img.shape === 'circle') {
             const centerX = imgX + hitWidth / 2
@@ -1054,14 +1054,14 @@ export const overlayPlugin = {
           } else {
             isInside = isPointInRect(x, y, imgX, imgY, hitWidth, hitHeight)
           }
-          
+
           if (isInside) {
             // Select the image first
             const selectEvent = new CustomEvent('overlayImageSelected', {
               detail: { imageId: img.id }
             })
             canvas.dispatchEvent(selectEvent)
-            
+
             // Use the exact click position - event.clientX/clientY are viewport coordinates
             // These work correctly with fixed positioning regardless of transforms
             const contextMenuEvent = new CustomEvent('overlayContextMenu', {
@@ -1079,13 +1079,13 @@ export const overlayPlugin = {
         } else {
           const txt = overlay.data as OverlayText
           if (!txt.visible) continue
-          
+
           // Calculate text dimensions for multi-line text with padding and wrapping
           const ctx = chart.ctx
           ctx.font = `${txt.fontSize}px ${txt.fontFamily}`
           const originalLines = txt.text.split('\n')
           const allLines: string[] = []
-          
+
           originalLines.forEach(line => {
             if (txt.maxWidth && txt.maxWidth > 0) {
               // Apply text wrapping
@@ -1096,26 +1096,26 @@ export const overlayPlugin = {
               allLines.push(line)
             }
           })
-          
+
           const lineHeight = txt.fontSize * 1.2
-          
+
           // Calculate total dimensions for multi-line text
           let maxWidth = 0
           allLines.forEach(line => {
             const textMetrics = ctx.measureText(line)
             maxWidth = Math.max(maxWidth, textMetrics.width)
           })
-          
+
           const totalHeight = allLines.length * lineHeight
-          
+
           const paddingX = txt.paddingX || 8
           const paddingY = txt.paddingY || 4
-          
+
           const txtX = chartArea.left + txt.x - paddingX
           const txtY = chartArea.top + txt.y - paddingY
           const hitWidth = maxWidth + (paddingX * 2)
           const hitHeight = totalHeight + (paddingY * 2)
-          
+
           if (isPointInRect(x, y, txtX, txtY, hitWidth, hitHeight)) {
             // Use the exact click position - event.clientX/clientY are viewport coordinates
             // These work correctly with fixed positioning regardless of transforms
@@ -1134,7 +1134,7 @@ export const overlayPlugin = {
         }
       }
     }
-    
+
     const handleMouseMove = (event: MouseEvent) => {
       const rect = canvas.getBoundingClientRect()
       const scaleX = canvas.width / rect.width
@@ -1142,37 +1142,37 @@ export const overlayPlugin = {
       const x = (event.clientX - rect.left) * scaleX
       const y = (event.clientY - rect.top) * scaleY
       const chartArea = chart.chartArea
-      
+
       if (dragState.isResizing) {
         // Handle resize operation
         const deltaX = x - (dragState.startX + dragState.dragOffsetX)
         const deltaY = y - (dragState.startY + dragState.dragOffsetY)
-        
+
         let newWidth = dragState.startWidth
         let newHeight = dragState.startHeight
         let newX = dragState.startX - chartArea.left
         let newY = dragState.startY - chartArea.top
-        
+
         // Get the image to check if it's a circle
         const overlayDataRoot = (chart.options as any)?.plugins?.overlayPlugin || {}
         const overlayImages = overlayDataRoot.overlayImages || []
         const currentImage = overlayImages.find((img: any) => img.id === dragState.dragId)
-        
+
         if (currentImage && currentImage.shape === 'circle') {
           // Special handling for circle resize
           const centerX = dragState.startX + dragState.startWidth / 2
           const centerY = dragState.startY + dragState.startHeight / 2
-          
+
           // Calculate distance from center to mouse position
           const distanceFromCenter = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2)
           const minRadius = 10 // Minimum radius
           const newRadius = Math.max(minRadius, distanceFromCenter)
-          
+
           // Calculate new diameter (both width and height should be equal for circle)
           const newDiameter = newRadius * 2
           newWidth = newDiameter
           newHeight = newDiameter
-          
+
           // Keep the center position fixed, adjust x and y to maintain center
           newX = centerX - chartArea.left - newRadius
           newY = centerY - chartArea.top - newRadius
@@ -1200,7 +1200,7 @@ export const overlayPlugin = {
               newX = dragState.startX - chartArea.left + (dragState.startWidth - newWidth)
               newY = dragState.startY - chartArea.top + (dragState.startHeight - newHeight)
               break
-              
+
             // Edge handles
             case 'n': // North - resize from top
               newHeight = Math.max(20, dragState.startHeight - (y - dragState.startY))
@@ -1218,7 +1218,7 @@ export const overlayPlugin = {
               break
           }
         }
-        
+
         // Dispatch resize event
         const resizeEvent = new CustomEvent('overlayImageResize', {
           detail: {
@@ -1231,13 +1231,13 @@ export const overlayPlugin = {
           }
         })
         canvas.dispatchEvent(resizeEvent)
-        
+
         event.preventDefault()
       } else if (dragState.isDragging) {
         // Calculate new position relative to chart area
         const newX = x - dragState.dragOffsetX - chartArea.left
         const newY = y - dragState.dragOffsetY - chartArea.top
-        
+
         // Dispatch custom event to update position
         const updateEvent = new CustomEvent('overlayPositionUpdate', {
           detail: {
@@ -1248,7 +1248,7 @@ export const overlayPlugin = {
           }
         })
         canvas.dispatchEvent(updateEvent)
-        
+
         event.preventDefault()
       } else {
         // Check if hovering over any overlay for cursor change
@@ -1258,24 +1258,24 @@ export const overlayPlugin = {
         const overlayImages = overlayData.overlayImages || []
         const overlayTexts = overlayData.overlayTexts || []
         const selectedImageId = overlayData.selectedImageId
-        
+
         // Check images
         for (const img of overlayImages) {
           if (!img.visible) continue
-          
+
           const imgX = chartArea.left + img.x
           const imgY = chartArea.top + img.y
-          
+
           // Determine dimensions for hover detection
           let hoverWidth = img.width
           let hoverHeight = img.height
-          
+
           // Use natural size if specified and available
           if (img.useNaturalSize && img.naturalWidth && img.naturalHeight) {
             hoverWidth = img.naturalWidth
             hoverHeight = img.naturalHeight
           }
-          
+
           // If this is the selected image, check for resize handle hover first
           if (selectedImageId === img.id) {
             const resizeHandle = getResizeHandle(x, y, imgX, imgY, hoverWidth, hoverHeight, img.shape)
@@ -1303,7 +1303,7 @@ export const overlayPlugin = {
               break
             }
           }
-          
+
           let isInside = false
           if (img.shape === 'circle') {
             const centerX = imgX + hoverWidth / 2
@@ -1313,7 +1313,7 @@ export const overlayPlugin = {
           } else {
             isInside = isPointInRect(x, y, imgX, imgY, hoverWidth, hoverHeight)
           }
-          
+
           if (isInside) {
             isOverOverlay = true
             if (hoverCursor === 'default') {
@@ -1322,38 +1322,38 @@ export const overlayPlugin = {
             break
           }
         }
-        
+
         // Check texts if not already over an image
         if (!isOverOverlay) {
           const ctx = chart.ctx
           for (const txt of overlayTexts) {
             if (!txt.visible) continue
-            
+
             ctx.font = `${txt.fontSize}px ${txt.fontFamily}`
             const textMetrics = ctx.measureText(txt.text)
             const textWidth = textMetrics.width
             const textHeight = txt.fontSize
-            
+
             // Account for padding in hover detection
             const paddingX = txt.paddingX || 8
             const paddingY = txt.paddingY || 4
-            
+
             const txtX = chartArea.left + txt.x - paddingX
             const txtY = chartArea.top + txt.y - paddingY
             const hitWidth = textWidth + (paddingX * 2)
             const hitHeight = textHeight + (paddingY * 2)
-            
+
             if (isPointInRect(x, y, txtX, txtY, hitWidth, hitHeight)) {
               isOverOverlay = true
               break
             }
           }
         }
-        
+
         canvas.style.cursor = hoverCursor
       }
     }
-    
+
     const handleMouseUp = () => {
       if (dragState.isDragging || dragState.isResizing) {
         dragState.isDragging = false
@@ -1364,7 +1364,7 @@ export const overlayPlugin = {
         canvas.style.cursor = 'default'
       }
     }
-    
+
     // Touch event handlers for mobile support
     const handleTouchStart = (event: TouchEvent) => {
       if (event.touches.length !== 1) return
@@ -1372,60 +1372,60 @@ export const overlayPlugin = {
       const rect = canvas.getBoundingClientRect()
       const x = touch.clientX - rect.left
       const y = touch.clientY - rect.top
-      
+
       // Convert to mouse event format and use same logic
       const mouseEvent = {
         clientX: touch.clientX,
         clientY: touch.clientY,
         preventDefault: () => event.preventDefault()
       } as MouseEvent
-      
+
       handleMouseDown(mouseEvent)
     }
-    
+
     const handleTouchMove = (event: TouchEvent) => {
       if (event.touches.length !== 1) return
       const touch = event.touches[0]
-      
+
       const mouseEvent = {
         clientX: touch.clientX,
         clientY: touch.clientY,
         preventDefault: () => event.preventDefault()
       } as MouseEvent
-      
+
       handleMouseMove(mouseEvent)
     }
-    
+
     const handleTouchEnd = (event: TouchEvent) => {
       handleMouseUp()
       event.preventDefault()
     }
-    
+
     // Add event listeners
     canvas.addEventListener('mousedown', handleMouseDown)
     canvas.addEventListener('mousemove', handleMouseMove)
     canvas.addEventListener('mouseup', handleMouseUp)
     canvas.addEventListener('mouseleave', handleMouseUp)
     canvas.addEventListener('contextmenu', handleContextMenu)
-    
+
     // Touch events for mobile
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false })
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false })
     canvas.addEventListener('touchend', handleTouchEnd, { passive: false })
-    
-    // Store references for cleanup
-    ;(chart as any)._overlayPluginListeners = {
-      mousedown: handleMouseDown,
-      mousemove: handleMouseMove,
-      mouseup: handleMouseUp,
-      mouseleave: handleMouseUp,
-      contextmenu: handleContextMenu,
-      touchstart: handleTouchStart,
-      touchmove: handleTouchMove,
-      touchend: handleTouchEnd
-    }
+
+      // Store references for cleanup
+      ; (chart as any)._overlayPluginListeners = {
+        mousedown: handleMouseDown,
+        mousemove: handleMouseMove,
+        mouseup: handleMouseUp,
+        mouseleave: handleMouseUp,
+        contextmenu: handleContextMenu,
+        touchstart: handleTouchStart,
+        touchmove: handleTouchMove,
+        touchend: handleTouchEnd
+      }
   },
-  
+
   beforeDestroy: (chart: Chart) => {
     // Clean up event listeners
     const listeners = (chart as any)._overlayPluginListeners
