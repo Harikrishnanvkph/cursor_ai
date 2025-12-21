@@ -101,6 +101,8 @@ interface TemplateStore {
   editorMode: EditorMode
   templateInBackground: TemplateLayout | null // Keep template when in chart mode
   chartDimensionBackup: ChartDimensionState | null // Preserve chart dimensions when switching modes
+  templateSavedToCloud: boolean // True only if template was loaded from a saved cloud conversation
+  setTemplateSavedToCloud: (value: boolean) => void
 
   // Template management
   templates: TemplateLayout[]
@@ -455,6 +457,7 @@ export const useTemplateStore = create<TemplateStore>()(
       editorMode: 'chart',
       templateInBackground: null,
       chartDimensionBackup: null,
+      templateSavedToCloud: false, // Only true if template was loaded from a saved cloud conversation
       isSyncing: false,
       originalCloudTemplateContent: null,
       modifiedCloudTemplateContent: null,
@@ -465,6 +468,7 @@ export const useTemplateStore = create<TemplateStore>()(
       setDraftTemplate: (template) => set({ draftTemplate: template }),
       clearDraft: () => set({ draftTemplate: null }),
       setGenerateMode: (mode) => set({ generateMode: mode }),
+      setTemplateSavedToCloud: (value) => set({ templateSavedToCloud: value }),
 
       setCurrentTemplate: (template) => {
         const state = get()
@@ -988,6 +992,7 @@ export const useTemplateStore = create<TemplateStore>()(
           unusedContents: [],
           contentTypePreferences: {},
           sectionNotes: {},
+          templateSavedToCloud: false,
           editorMode: 'chart'
         })
       }
@@ -1026,7 +1031,20 @@ export const useTemplateStore = create<TemplateStore>()(
           }
         }
         return persistedState
-      }
+      },
+      // Only persist templates and user preferences - NOT runtime state like editorMode
+      // Runtime state (editorMode, currentTemplate, etc.) should be set by conversation data
+      partialize: (state) => ({
+        templates: state.templates,
+        draftTemplate: state.draftTemplate,
+        templateSavedToCloud: state.templateSavedToCloud,
+        templateInBackground: state.templateInBackground,
+        editorMode: state.editorMode,
+        currentTemplate: state.currentTemplate,
+        originalCloudTemplateContent: state.originalCloudTemplateContent,
+        modifiedCloudTemplateContent: state.modifiedCloudTemplateContent
+        // Now persisting strictly all relevant state to ensure refresh reliability
+      })
     }
   )
 ) 

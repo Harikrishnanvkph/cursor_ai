@@ -163,6 +163,18 @@ export const useHistoryStore = create<HistoryStore>()(
           setFullChart({ ...conv.snapshot, id: snapshotId || undefined });
           setHasJSON(true);
 
+          // Save original cloud dimensions for restoration (for chart-only conversations)
+          const chartConfig = conv.snapshot.chartConfig as any;
+          if (chartConfig) {
+            const width = chartConfig.width ? String(chartConfig.width) : '600px';
+            const height = chartConfig.height ? String(chartConfig.height) : '500px';
+            const { setOriginalCloudDimensions } = useChartStore.getState();
+            setOriginalCloudDimensions({
+              width: width.includes('px') ? width : `${width}px`,
+              height: height.includes('px') ? height : `${height}px`
+            });
+          }
+
           // Update current chart state in chat store
           updateChartState(conv.snapshot);
 
@@ -212,8 +224,14 @@ export const useHistoryStore = create<HistoryStore>()(
               templateStore.setOriginalCloudTemplateContent(cloudTemplate)
               templateStore.setCurrentTemplate(cloudTemplate)
               templateStore.setEditorMode('template');
+              templateStore.setTemplateSavedToCloud(true); // Mark template as saved to cloud
               templateStore.clearUnusedContents()
             }
+          } else {
+            // No template data - explicitly clear ALL template state and set chart mode
+            console.log('📊 Loading chart-only conversation - clearing all template state')
+            const templateStore = useTemplateStore.getState()
+            templateStore.clearAllTemplateState() // This clears templateInBackground, currentTemplate, editorMode to 'chart', etc.
           }
         }
       },

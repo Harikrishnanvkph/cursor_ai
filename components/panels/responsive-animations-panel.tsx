@@ -13,7 +13,7 @@ export function ResponsiveAnimationsPanel() {
   const { editorMode, setEditorMode } = useTemplateStore();
   const [responsiveDropdownOpen, setResponsiveDropdownOpen] = useState(true);
   const [sliceVisibilityOpen, setSliceVisibilityOpen] = useState(false);
-  
+
   // Check if template mode is active
   const isTemplateMode = editorMode === 'template';
 
@@ -88,7 +88,7 @@ export function ResponsiveAnimationsPanel() {
             </svg>
           </button>
         </div>
-        
+
         {sliceVisibilityOpen && (
           <div className="bg-purple-50 rounded-lg p-3 space-y-2">
             <p className="text-xs text-gray-600 mb-2">Click to hide/show slices from the chart</p>
@@ -96,18 +96,17 @@ export function ResponsiveAnimationsPanel() {
               {sliceLabels.map((label: any, index: number) => {
                 // Check if slice is hidden using legendFilter
                 const isHidden = legendFilter.slices[index] === false;
-                
+
                 return (
                   <Button
                     key={index}
                     variant={isHidden ? "outline" : "default"}
                     size="sm"
                     onClick={() => handleToggleSliceVisibility(index)}
-                    className={`h-8 text-xs ${
-                      isHidden 
-                        ? 'bg-gray-100 text-gray-500 hover:bg-gray-200 border-gray-300' 
-                        : 'bg-purple-600 hover:bg-purple-700 text-white'
-                    }`}
+                    className={`h-8 text-xs ${isHidden
+                      ? 'bg-gray-100 text-gray-500 hover:bg-gray-200 border-gray-300'
+                      : 'bg-purple-600 hover:bg-purple-700 text-white'
+                      }`}
                   >
                     {isHidden ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
                     {String(label)}
@@ -162,19 +161,21 @@ export function ResponsiveAnimationsPanel() {
                 type="radio"
                 id="responsive-mode-anim"
                 name="chart-mode-anim"
-                checked={chartConfig.responsive === true}
+                checked={chartConfig.responsive === true && !chartConfig.templateDimensions && !(chartConfig as any).originalDimensions}
                 onChange={() => {
                   updateChartConfig({
                     ...chartConfig,
                     responsive: true,
                     manualDimensions: false,
-                    dynamicDimension: false
+                    dynamicDimension: false,
+                    templateDimensions: false,
+                    originalDimensions: false
                   });
                 }}
                 className="text-green-600 focus:ring-green-500"
               />
               <Label htmlFor="responsive-mode-anim" className="text-xs font-medium cursor-pointer">
-                Responsive {chartConfig.responsive === true ? '(Active)' : ''}
+                Responsive {chartConfig.responsive === true && !chartConfig.templateDimensions && !(chartConfig as any).originalDimensions ? '(Active)' : ''}
               </Label>
             </div>
             <div className="flex items-center space-x-2">
@@ -182,13 +183,15 @@ export function ResponsiveAnimationsPanel() {
                 type="radio"
                 id="dynamic-dimension-mode-anim"
                 name="chart-mode-anim"
-                checked={chartConfig.dynamicDimension === true}
+                checked={chartConfig.dynamicDimension === true && !chartConfig.templateDimensions && !(chartConfig as any).originalDimensions}
                 onChange={() => {
                   updateChartConfig({
                     ...chartConfig,
                     dynamicDimension: true,
                     responsive: false,
                     manualDimensions: false,
+                    templateDimensions: false,
+                    originalDimensions: false,
                     width: '400px',
                     height: '400px'
                   });
@@ -196,7 +199,7 @@ export function ResponsiveAnimationsPanel() {
                 className="text-green-600 focus:ring-green-500"
               />
               <Label htmlFor="dynamic-dimension-mode-anim" className="text-xs font-medium cursor-pointer">
-                Dynamic Dimension {chartConfig.dynamicDimension === true ? '(Active)' : ''}
+                Dynamic Dimension {chartConfig.dynamicDimension === true && !chartConfig.templateDimensions && !(chartConfig as any).originalDimensions ? '(Active)' : ''}
               </Label>
             </div>
             <div className="flex items-center space-x-2">
@@ -204,19 +207,21 @@ export function ResponsiveAnimationsPanel() {
                 type="radio"
                 id="manual-mode-anim"
                 name="chart-mode-anim"
-                checked={chartConfig.manualDimensions === true}
+                checked={chartConfig.manualDimensions === true && !(chartConfig as any).templateDimensions && !(chartConfig as any).originalDimensions}
                 onChange={() => {
                   // Initialize width/height if they don't exist
                   const currentWidth = (chartConfig as any)?.width;
                   const currentHeight = (chartConfig as any)?.height;
                   const width = currentWidth || '600px';
                   const height = currentHeight || '500px';
-                  
+
                   updateChartConfig({
                     ...chartConfig,
                     manualDimensions: true,
                     responsive: false,
                     dynamicDimension: false,
+                    templateDimensions: false,
+                    originalDimensions: false,
                     width: width,
                     height: height
                   });
@@ -224,9 +229,97 @@ export function ResponsiveAnimationsPanel() {
                 className="text-green-600 focus:ring-green-500"
               />
               <Label htmlFor="manual-mode-anim" className="text-xs font-medium cursor-pointer">
-                Manual Dimensions {chartConfig.manualDimensions === true ? '(Active)' : ''}
+                Manual Dimensions {chartConfig.manualDimensions === true && !(chartConfig as any).templateDimensions && !(chartConfig as any).originalDimensions ? '(Active)' : ''}
               </Label>
             </div>
+            {/* Template Dimensions - Only shown when a template with chartArea exists */}
+            {(() => {
+              const templateStore = useTemplateStore.getState();
+              const { originalCloudDimensions } = useChartStore.getState();
+
+              const templateWithDimensions = templateStore.currentTemplate || templateStore.templateInBackground;
+              const hasTemplateDimensions = templateWithDimensions?.chartArea?.width && templateWithDimensions?.chartArea?.height;
+              const isTemplateConversation = templateStore.templateSavedToCloud || templateStore.editorMode === 'template';
+              const hasOriginalDimensions = originalCloudDimensions !== null;
+
+              // For template conversations, show Template Dimension
+              if (isTemplateConversation && hasTemplateDimensions) {
+                return (
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="template-dimension-mode-anim"
+                      name="chart-mode-anim"
+                      checked={(chartConfig as any).templateDimensions === true}
+                      onChange={() => {
+                        const template = useTemplateStore.getState().currentTemplate || useTemplateStore.getState().templateInBackground;
+                        if (template?.chartArea) {
+                          updateChartConfig({
+                            ...chartConfig,
+                            templateDimensions: true,
+                            originalDimensions: false,
+                            manualDimensions: true,
+                            responsive: false,
+                            dynamicDimension: false,
+                            width: `${template.chartArea.width}px`,
+                            height: `${template.chartArea.height}px`
+                          });
+                        }
+                      }}
+                      className="text-blue-600 focus:ring-blue-500"
+                    />
+                    <Label htmlFor="template-dimension-mode-anim" className="text-xs font-medium cursor-pointer text-blue-700">
+                      Template Dimensions {(chartConfig as any).templateDimensions === true ? '(Active)' : ''}
+                      <span className="text-gray-500 ml-1">
+                        ({templateWithDimensions?.chartArea?.width}×{templateWithDimensions?.chartArea?.height})
+                      </span>
+                    </Label>
+                  </div>
+                );
+              }
+
+              // For chart-only conversations loaded from cloud, show Original Dimension
+              if (!isTemplateConversation && hasOriginalDimensions) {
+                const widthNum = parseInt(originalCloudDimensions.width);
+                const heightNum = parseInt(originalCloudDimensions.height);
+
+                return (
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="original-dimension-mode-anim"
+                      name="chart-mode-anim"
+                      checked={(chartConfig as any).originalDimensions === true}
+                      onChange={() => {
+                        const { originalCloudDimensions } = useChartStore.getState();
+                        if (originalCloudDimensions) {
+                          updateChartConfig({
+                            ...chartConfig,
+                            originalDimensions: true,
+                            templateDimensions: false,
+                            manualDimensions: true,
+                            responsive: false,
+                            dynamicDimension: false,
+                            width: originalCloudDimensions.width,
+                            height: originalCloudDimensions.height
+                          });
+                        }
+                      }}
+                      className="text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <Label htmlFor="original-dimension-mode-anim" className="text-xs font-medium cursor-pointer text-indigo-700">
+                      Original Dimensions {(chartConfig as any).originalDimensions === true ? '(Active)' : ''}
+                      <span className="text-gray-500 ml-1">
+                        ({widthNum}×{heightNum})
+                      </span>
+                    </Label>
+                  </div>
+                );
+              }
+
+              // For new charts (never saved to cloud), show nothing
+              return null;
+            })()}
           </div>
           {/* Width/Height Controls */}
           <div className={`grid grid-cols-2 gap-3 ${isTemplateMode ? 'opacity-50 pointer-events-none' : ''}`}>
@@ -237,7 +330,7 @@ export function ResponsiveAnimationsPanel() {
                 min={100}
                 max={2000}
                 value={widthValue}
-                disabled={!(chartConfig.manualDimensions || chartConfig.dynamicDimension) || isTemplateMode}
+                disabled={!(chartConfig.manualDimensions || chartConfig.dynamicDimension) || isTemplateMode || chartConfig.templateDimensions}
                 onChange={e => {
                   const newValue = e.target.value ? `${e.target.value}px` : undefined;
                   if (chartConfig.dynamicDimension) {
@@ -256,7 +349,7 @@ export function ResponsiveAnimationsPanel() {
                 min={100}
                 max={2000}
                 value={heightValue}
-                disabled={!(chartConfig.manualDimensions || chartConfig.dynamicDimension) || isTemplateMode}
+                disabled={!(chartConfig.manualDimensions || chartConfig.dynamicDimension) || isTemplateMode || chartConfig.templateDimensions}
                 onChange={e => {
                   const newValue = e.target.value ? `${e.target.value}px` : undefined;
                   if (chartConfig.dynamicDimension) {
@@ -321,7 +414,8 @@ export function ResponsiveAnimationsPanel() {
             </div>
           </div>
         </div>
-      )}
-    </div>
+      )
+      }
+    </div >
   );
 } 

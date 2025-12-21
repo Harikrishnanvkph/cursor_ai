@@ -16,24 +16,200 @@ import { dataService } from "@/lib/data-service"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { clearCurrentChart } from "@/lib/storage-utils"
+import { DimensionMismatchDialog } from "@/components/dialogs/dimension-mismatch-dialog"
+import { SaveChartDialog } from "@/components/ui/save-chart-dialog"
+import { useHistoryStore } from "@/lib/history-store"
+
+// Helper to parse dimension string (e.g., "800px" -> 800)
+function parseDimension(value: string | number | undefined): number {
+  if (typeof value === 'number') return value
+  if (typeof value === 'string') {
+    const num = parseInt(value.replace(/[^0-9]/g, ''), 10)
+    return isNaN(num) ? 0 : num
+  }
+  return 0
+}
 
 export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSidebarOpen: boolean, setLeftSidebarOpen: (open: boolean) => void }) {
   const { chartData, chartType, chartConfig, hasJSON } = useChartStore()
   const { user, signOut } = useAuth()
   const { startNewConversation, clearMessages } = useChatStore()
-  const { editorMode, currentTemplate } = useTemplateStore()
+  const { editorMode, currentTemplate, setEditorMode } = useTemplateStore()
   const router = useRouter()
   const hasChartData = chartData.datasets.length > 0
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isHovering, setIsHovering] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
+  // Dimension mismatch dialog state
+  const [showDimensionDialog, setShowDimensionDialog] = useState(false)
+  const [dimensionMismatchInfo, setDimensionMismatchInfo] = useState<{
+    templateDimensions: { width: number; height: number }
+    currentDimensions: { width: number; height: number }
+  } | null>(null)
+
+  // Save chart dialog state
+  const [showSaveChartDialog, setShowSaveChartDialog] = useState(false)
+  const [currentChartName, setCurrentChartName] = useState<string>("")
+
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed)
   }
 
-  // Save chart to backend
-  const handleSave = async () => {
+  // Check if there's a dimension mismatch between chart and template
+  const checkDimensionMismatch = (): boolean => {
+    const templateToCheck = currentTemplate || useTemplateStore.getState().templateInBackground
+
+    // No template = no mismatch check needed
+    if (!templateToCheck || !templateToCheck.chartArea) return false
+
+    // In template mode = no mismatch (dimensions are locked to template)
+    if (editorMode === 'template') return false
+
+    // In chart mode with template - check dimensions
+    const templateWidth = templateToCheck.chartArea.width
+    const templateHeight = templateToCheck.chartArea.height
+    const currentWidth = parseDimension(chartConfig.width)
+    const currentHeight = parseDimension(chartConfig.height)
+
+    // If responsive mode is active, it means the chart will NOT use fixed dimensions
+    // This is a mismatch because template requires specific dimensions
+    const isResponsiveMode = chartConfig.responsive === true && !chartConfig.manualDimensions && !chartConfig.templateDimensions
+
+    // Check if dimensions differ OR if responsive mode is on (which means flexible sizing)
+    if (isResponsiveMode || templateWidth !== currentWidth || templateHeight !== currentHeight) {
+      setDimensionMismatchInfo({
+        templateDimensions: { width: templateWidth, height: templateHeight },
+        currentDimensions: isResponsiveMode
+          ? { width: 0, height: 0 } // Responsive = unknown/variable dimensions
+          : { width: currentWidth, height: currentHeight }
+      })
+      return true
+    }
+
+    return false
+  }
+
+  // Handle "Go to Template Mode" from dialog
+  const handleGoToTemplateMode = () => {
+    setShowDimensionDialog(false)
+    setDimensionMismatchInfo(null)
+    setEditorMode('template')
+    toast.info("Switched to Template Mode. You can now save with correct dimensions.")
+  }
+
+  // Handle "Save as Chart Only" - creates NEW standalone chart copy
+  const handleSaveAsChartOnly = async () => {
+    if (!user) {
+      toast.error("Please sign in to save charts")
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      // Create NEW conversation (chart only)
+      const conversationTitle = `Chart copy - ${new Date().toLocaleDateString()}`
+      const response = await dataService.createConversation(
+        conversationTitle,
+        'Standalone chart copy (no template)'
+      )
+
+      if (response.error || !response.data) {
+        toast.error("Failed to create chart copy")
+        return
+      }
+
+      const newConversationId = response.data.id
+
+      // Save chart snapshot WITHOUT template
+      const snapshotResult = await dataService.saveChartSnapshot(
+        newConversationId,
+        chartType,
+        chartData,
+        chartConfig,
+        null,  // NO template structure
+        null   // NO template content
+      )
+
+      if (snapshotResult.error) {
+        toast.error("Failed to save chart snapshot")
+        return
+      }
+
+      // Clear local template state (clears both currentTemplate and templateInBackground)
+      useTemplateStore.getState().clearAllTemplateState()
+
+      // Update local state to point to new entry
+      useChatStore.getState().setBackendConversationId(newConversationId)
+      if (snapshotResult.data?.id) {
+        useChartStore.getState().setCurrentSnapshotId(snapshotResult.data.id)
+      }
+
+      // Close dialog
+      setShowDimensionDialog(false)
+      setDimensionMismatchInfo(null)
+
+      toast.success("Chart saved as standalone copy!")
+
+    } catch (error) {
+      console.error('Save as chart only failed:', error)
+      toast.error("Failed to save chart copy")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Pre-save check that may show dimension mismatch dialog
+  const handleSaveClick = () => {
+    if (!user) {
+      toast.error("Please sign in to save charts")
+      return
+    }
+
+    if (!hasJSON) {
+      toast.error("No chart to save")
+      return
+    }
+
+    // Check for dimension mismatch
+    if (checkDimensionMismatch()) {
+      setShowDimensionDialog(true)
+      return // Don't proceed with save, show dialog instead
+    }
+
+    // No mismatch - proceed to save dialog
+    proceedToSaveDialog()
+  }
+
+  // Proceed to save dialog (called after dimension check passes or user bypasses mismatch)
+  const proceedToSaveDialog = () => {
+    // Get the existing backend ID to check if this is an update
+    const existingBackendId = useChatStore.getState().backendConversationId
+
+    if (existingBackendId) {
+      // If updating, fetch the current title from history store (in case it was renamed from board)
+      const conversations = useHistoryStore.getState().conversations
+      const existingConversation = conversations.find(c => c.id === existingBackendId)
+      if (existingConversation) {
+        setCurrentChartName(existingConversation.title)
+      }
+      setShowSaveChartDialog(true)
+    } else {
+      // Generate a smart default name for new charts
+      const chatMessages = useChatStore.getState().messages
+      const firstUserMessage = chatMessages.find(m => m.role === 'user')
+      const defaultName = firstUserMessage
+        ? (firstUserMessage.content.length > 50
+          ? firstUserMessage.content.slice(0, 47) + '...'
+          : firstUserMessage.content)
+        : `My Chart - ${new Date().toLocaleDateString()}`
+      setCurrentChartName(defaultName)
+      setShowSaveChartDialog(true)
+    }
+  }
+
+  // Save chart to backend (actual save logic)
+  const handleSave = async (chartName?: string) => {
     if (!user) {
       toast.error("Please sign in to save charts")
       return
@@ -60,12 +236,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
       } else {
 
         // Create new conversation
-        const firstUserMessage = chatMessages.find(m => m.role === 'user')
-        const conversationTitle = firstUserMessage
-          ? (firstUserMessage.content.length > 60
-            ? firstUserMessage.content.slice(0, 57) + '...'
-            : firstUserMessage.content)
-          : `Chart saved on ${new Date().toLocaleDateString()}`
+        const conversationTitle = chartName || `Chart saved on ${new Date().toLocaleDateString()}`
 
         const response = await dataService.createConversation(
           conversationTitle,
@@ -356,7 +527,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
               <Button
                 size="sm"
                 variant="default"
-                onClick={handleSave}
+                onClick={handleSaveClick}
                 disabled={!hasJSON || isSaving}
                 className="h-10 w-10 p-0 bg-green-600 hover:bg-green-700 text-white"
                 title="Save chart to online database"
@@ -399,7 +570,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
                 <Button
                   size="sm"
                   variant="default"
-                  onClick={handleSave}
+                  onClick={handleSaveClick}
                   disabled={!hasJSON || isSaving}
                   className="h-8 px-3 text-xs bg-green-600 hover:bg-green-700 text-white"
                   title="Save chart to online database"
@@ -433,6 +604,35 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
           </>
         )}
       </div>
+
+      {/* Dimension Mismatch Dialog */}
+      {dimensionMismatchInfo && (
+        <DimensionMismatchDialog
+          isOpen={showDimensionDialog}
+          onClose={() => {
+            setShowDimensionDialog(false)
+            setDimensionMismatchInfo(null)
+          }}
+          templateDimensions={dimensionMismatchInfo.templateDimensions}
+          currentDimensions={dimensionMismatchInfo.currentDimensions}
+          onGoToTemplateMode={handleGoToTemplateMode}
+          onSaveAsChartOnly={handleSaveAsChartOnly}
+          isSaving={isSaving}
+        />
+      )}
+
+      {/* Save Chart Dialog with Name Input */}
+      <SaveChartDialog
+        open={showSaveChartDialog}
+        defaultName={currentChartName}
+        isUpdate={!!useChatStore.getState().backendConversationId}
+        isSaving={isSaving}
+        onSave={(name) => {
+          setShowSaveChartDialog(false)
+          handleSave(name)
+        }}
+        onCancel={() => setShowSaveChartDialog(false)}
+      />
     </div>
   )
 }

@@ -4,9 +4,6 @@ import type { NextRequest } from 'next/server'
 // Routes that require authentication
 const protectedRoutes = ['/landing', '/editor']
 
-// Routes that are always accessible
-const publicRoutes = ['/', '/signin', '/signup', '/about', '/pricing', '/docs']
-
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   

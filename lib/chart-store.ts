@@ -71,6 +71,8 @@ declare module 'chart.js' {
 export interface ExtendedChartOptions extends ChartOptions {
   manualDimensions?: boolean;
   dynamicDimension?: boolean;
+  templateDimensions?: boolean;  // When true, dimensions are synced to template chartArea
+  originalDimensions?: boolean;  // When true, dimensions are synced to original cloud-saved dimensions
   width?: number | string;
   height?: number | string;
   hoverFadeEffect?: boolean;
@@ -243,6 +245,9 @@ interface ChartStore {
   hasJSON: boolean;
   currentSnapshotId: string | null; // Track current snapshot ID for updates
   setCurrentSnapshotId: (id: string | null) => void; // Setter for current snapshot ID
+  // Original cloud dimensions - preserves dimensions when loaded from cloud
+  originalCloudDimensions: { width: string; height: string } | null;
+  setOriginalCloudDimensions: (dimensions: { width: string; height: string } | null) => void;
   // Overlay state
   overlayImages: OverlayImage[];
   overlayTexts: OverlayText[];
@@ -2107,6 +2112,9 @@ export const useChartStore = create<ChartStore>()(
       showLabels: true,
       hasJSON: false,
       currentSnapshotId: null, // Initialize to null
+      // Original cloud dimensions - null for new charts, set when loaded from cloud
+      originalCloudDimensions: null,
+      setOriginalCloudDimensions: (dimensions) => set({ originalCloudDimensions: dimensions }),
       // Initialize overlay state
       overlayImages: [],
       overlayTexts: [],
@@ -3454,6 +3462,7 @@ export const useChartStore = create<ChartStore>()(
         overlayImages: state.overlayImages,
         overlayTexts: state.overlayTexts,
         selectedImageId: state.selectedImageId,
+        originalCloudDimensions: state.originalCloudDimensions,
       }),
     }
   )

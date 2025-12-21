@@ -25,6 +25,17 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { SaveChartDialog } from "@/components/ui/save-chart-dialog"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { EditorWelcomeScreen } from "@/components/editor-welcome-screen"
+import { DimensionMismatchDialog } from "@/components/dialogs/dimension-mismatch-dialog"
+
+// Helper to parse dimension string (e.g., "800px" -> 800)
+function parseDimension(value: string | number | undefined): number {
+  if (typeof value === 'number') return value
+  if (typeof value === 'string') {
+    const num = parseInt(value.replace(/[^0-9]/g, ''), 10)
+    return isNaN(num) ? 0 : num
+  }
+  return 0
+}
 
 const TABS = [
   { id: "types_toggles", label: "Types", icon: AlignEndHorizontal },
@@ -116,6 +127,13 @@ function EditorPageContent() {
   const [showNewChartInfoDialog, setShowNewChartInfoDialog] = useState(false)
   const [showSaveChartDialog, setShowSaveChartDialog] = useState(false)
   const [currentChartName, setCurrentChartName] = useState<string>("")
+
+  // Dimension mismatch dialog state
+  const [showDimensionDialog, setShowDimensionDialog] = useState(false)
+  const [dimensionMismatchInfo, setDimensionMismatchInfo] = useState<{
+    templateDimensions: { width: number; height: number }
+    currentDimensions: { width: number; height: number }
+  } | null>(null)
   const isMobile = useIsMobile576();
   const isTablet = useIsTablet();
   const { width: screenWidth, height: screenHeight } = useScreenDimensions();
@@ -213,13 +231,115 @@ function EditorPageContent() {
     }
   }, [activeTab, setEditorMode, currentTemplate]);
 
-  // Open save dialog instead of saving directly
-  const handleSaveClick = () => {
-    if (!hasJSON || !user) {
-      toast.error("No chart to save or user not authenticated");
-      return;
+  // Check if there's a dimension mismatch between chart and template
+  const checkDimensionMismatch = (): boolean => {
+    const templateToCheck = currentTemplate || useTemplateStore.getState().templateInBackground
+    const templateSavedToCloud = useTemplateStore.getState().templateSavedToCloud
+
+    // No template = no mismatch check needed
+    if (!templateToCheck || !templateToCheck.chartArea) return false
+
+    // Template not saved to cloud = no mismatch check needed (user just browsed templates)
+    if (!templateSavedToCloud) return false
+
+    // In template mode = no mismatch (dimensions are locked to template)
+    if (editorMode === 'template') return false
+
+    // In chart mode with template - check dimensions
+    const templateWidth = templateToCheck.chartArea.width
+    const templateHeight = templateToCheck.chartArea.height
+    const currentWidth = parseDimension(chartConfig.width)
+    const currentHeight = parseDimension(chartConfig.height)
+
+    // If responsive mode is active, it means the chart will NOT use fixed dimensions
+    // This is a mismatch because template requires specific dimensions
+    const isResponsiveMode = chartConfig.responsive === true && !chartConfig.manualDimensions && !chartConfig.templateDimensions
+
+    // Check if dimensions differ OR if responsive mode is on (which means flexible sizing)
+    if (isResponsiveMode || templateWidth !== currentWidth || templateHeight !== currentHeight) {
+      setDimensionMismatchInfo({
+        templateDimensions: { width: templateWidth, height: templateHeight },
+        currentDimensions: isResponsiveMode
+          ? { width: 0, height: 0 } // Responsive = unknown/variable dimensions
+          : { width: currentWidth, height: currentHeight }
+      })
+      return true
     }
 
+    return false
+  }
+
+  // Handle "Go to Template Mode" from dialog
+  const handleGoToTemplateMode = () => {
+    setShowDimensionDialog(false)
+    setDimensionMismatchInfo(null)
+    setEditorMode('template')
+    toast.info("Switched to Template Mode. You can now save with correct dimensions.")
+  }
+
+  // Handle "Save as Chart Only" - creates NEW standalone chart copy
+  const handleSaveAsChartOnly = async () => {
+    if (!user) {
+      toast.error("Please sign in to save charts")
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      // Create NEW conversation (chart only)
+      const conversationTitle = `Chart copy - ${new Date().toLocaleDateString()}`
+      const response = await dataService.createConversation(
+        conversationTitle,
+        'Standalone chart copy (no template)'
+      )
+
+      if (response.error || !response.data) {
+        toast.error("Failed to create chart copy")
+        return
+      }
+
+      const newConversationId = response.data.id
+
+      // Save chart snapshot WITHOUT template
+      const snapshotResult = await dataService.saveChartSnapshot(
+        newConversationId,
+        chartType,
+        chartData,
+        chartConfig,
+        null,  // NO template structure
+        null   // NO template content
+      )
+
+      if (snapshotResult.error) {
+        toast.error("Failed to save chart snapshot")
+        return
+      }
+
+      // Clear local template state
+      useTemplateStore.getState().clearAllTemplateState()
+
+      // Update local state to point to new entry
+      setBackendConversationId(newConversationId)
+      if (snapshotResult.data?.id) {
+        setCurrentSnapshotId(snapshotResult.data.id)
+      }
+
+      // Close dialog
+      setShowDimensionDialog(false)
+      setDimensionMismatchInfo(null)
+
+      toast.success("Chart saved as standalone copy!")
+
+    } catch (error) {
+      console.error('Save as chart only failed:', error)
+      toast.error("Failed to save chart copy")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Proceed to save dialog (called after dimension check passes or user bypasses mismatch)
+  const proceedToSaveDialog = () => {
     // Get the existing backend ID to check if this is an update
     const existingBackendId = useChatStore.getState().backendConversationId
 
@@ -243,6 +363,23 @@ function EditorPageContent() {
       setCurrentChartName(defaultName)
       setShowSaveChartDialog(true)
     }
+  }
+
+  // Open save dialog instead of saving directly
+  const handleSaveClick = () => {
+    if (!hasJSON || !user) {
+      toast.error("No chart to save or user not authenticated");
+      return;
+    }
+
+    // Check for dimension mismatch FIRST
+    if (checkDimensionMismatch()) {
+      setShowDimensionDialog(true)
+      return // Don't proceed with save dialog, show mismatch dialog instead
+    }
+
+    // No mismatch - proceed to save dialog
+    proceedToSaveDialog()
   };
 
   const handleSave = async (chartName: string) => {
@@ -324,17 +461,23 @@ function EditorPageContent() {
         return config;
       })();
 
-      // Extract template data if ANY template exists (regardless of editorMode)
-      // This ensures templates are ALWAYS preserved even when user switches to chart mode
+      // Extract template data ONLY if:
+      // 1. User is explicitly in template mode, OR
+      // 2. templateSavedToCloud is true (conversation was originally saved with template)
+      // This prevents chart-only conversations from accidentally getting template data
       let templateStructureToSave: any = null
       const templateContentToSave: Record<string, any> = {}
       let hasTemplateContent = false
 
+      // Check if we should save template data
+      const templateSavedToCloud = useTemplateStore.getState().templateSavedToCloud
+      const shouldSaveTemplate = editorMode === 'template' || templateSavedToCloud
+
       // Get template from either currentTemplate or templateInBackground
       const templateToSave = currentTemplate || useTemplateStore.getState().templateInBackground
 
-      // Save template if it exists AND has content (text areas)
-      if (templateToSave && templateToSave.textAreas && templateToSave.textAreas.length > 0) {
+      // Save template if it exists AND has content AND we should save it
+      if (shouldSaveTemplate && templateToSave && templateToSave.textAreas && templateToSave.textAreas.length > 0) {
         // Save complete template structure (independent copy)
         templateStructureToSave = templateToSave
 
@@ -353,7 +496,9 @@ function EditorPageContent() {
           hasTemplateContent = true
         })
 
-        console.log('📄 Template data will be saved (exists in background)')
+        console.log('📄 Template data will be saved (editorMode:', editorMode, ', templateSavedToCloud:', templateSavedToCloud, ')')
+      } else if (templateToSave) {
+        console.log('📄 Template exists locally but NOT saving (editorMode:', editorMode, ', templateSavedToCloud:', templateSavedToCloud, ')')
       }
 
       // Get current snapshot ID for updates
@@ -677,6 +822,22 @@ function EditorPageContent() {
           onSave={handleSave}
           onCancel={() => setShowSaveChartDialog(false)}
         />
+
+        {/* Dimension Mismatch Dialog */}
+        {dimensionMismatchInfo && (
+          <DimensionMismatchDialog
+            isOpen={showDimensionDialog}
+            onClose={() => {
+              setShowDimensionDialog(false)
+              setDimensionMismatchInfo(null)
+            }}
+            templateDimensions={dimensionMismatchInfo.templateDimensions}
+            currentDimensions={dimensionMismatchInfo.currentDimensions}
+            onGoToTemplateMode={handleGoToTemplateMode}
+            onSaveAsChartOnly={handleSaveAsChartOnly}
+            isSaving={isSaving}
+          />
+        )}
       </div>
     )
   }
@@ -870,6 +1031,22 @@ function EditorPageContent() {
           onSave={handleSave}
           onCancel={() => setShowSaveChartDialog(false)}
         />
+
+        {/* Dimension Mismatch Dialog */}
+        {dimensionMismatchInfo && (
+          <DimensionMismatchDialog
+            isOpen={showDimensionDialog}
+            onClose={() => {
+              setShowDimensionDialog(false)
+              setDimensionMismatchInfo(null)
+            }}
+            templateDimensions={dimensionMismatchInfo.templateDimensions}
+            currentDimensions={dimensionMismatchInfo.currentDimensions}
+            onGoToTemplateMode={handleGoToTemplateMode}
+            onSaveAsChartOnly={handleSaveAsChartOnly}
+            isSaving={isSaving}
+          />
+        )}
       </div>
     );
   }
@@ -1067,6 +1244,22 @@ function EditorPageContent() {
         onSave={handleSave}
         onCancel={() => setShowSaveChartDialog(false)}
       />
+
+      {/* Dimension Mismatch Dialog */}
+      {dimensionMismatchInfo && (
+        <DimensionMismatchDialog
+          isOpen={showDimensionDialog}
+          onClose={() => {
+            setShowDimensionDialog(false)
+            setDimensionMismatchInfo(null)
+          }}
+          templateDimensions={dimensionMismatchInfo.templateDimensions}
+          currentDimensions={dimensionMismatchInfo.currentDimensions}
+          onGoToTemplateMode={handleGoToTemplateMode}
+          onSaveAsChartOnly={handleSaveAsChartOnly}
+          isSaving={isSaving}
+        />
+      )}
 
       {/* Info Dialog for New Chart Options */}
       <Dialog open={showNewChartInfoDialog} onOpenChange={setShowNewChartInfoDialog}>
