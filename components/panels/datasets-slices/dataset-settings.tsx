@@ -63,11 +63,11 @@ interface DatasetSettingsProps {
 type DatasetTab = 'general' | 'colors' | 'images'
 
 export function DatasetSettings({ className }: DatasetSettingsProps) {
-  const { 
-    chartData, 
-    chartType, 
-    addDataset, 
-    removeDataset, 
+  const {
+    chartData,
+    chartType,
+    addDataset,
+    removeDataset,
     updateDataset,
     updatePointImage,
     chartMode,
@@ -78,7 +78,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     setUniformityMode,
     updateLabels,
   } = useChartStore()
-  
+
   const [activeTab, setActiveTab] = useState<DatasetTab>('general')
   const [datasetsDropdownOpen, setDatasetsDropdownOpen] = useState(false)
   const [imagesDropdownOpen, setImagesDropdownOpen] = useState(false)
@@ -98,7 +98,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
   const [newDatasetName, setNewDatasetName] = useState("")
   const [newDatasetColor, setNewDatasetColor] = useState("#1E90FF") // DodgerBlue
   const [newDatasetPoints, setNewDatasetPoints] = useState(5)
-  const [newDatasetSlices, setNewDatasetSlices] = useState<Array<{name: string, value: number, color: string}>>([
+  const [newDatasetSlices, setNewDatasetSlices] = useState<Array<{ name: string, value: number, color: string }>>([
     { name: "Slice 1", value: 10, color: "#1E90FF" },
     { name: "Slice 2", value: 20, color: "#ff6b6b" },
     { name: "Slice 3", value: 15, color: "#4ecdc4" },
@@ -130,16 +130,16 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     if (chartMode === 'single') {
       return supportedChartTypes;
     }
-    
+
     // For grouped mode, only allow certain chart types
     if (uniformityMode === 'mixed') {
       // Mixed mode: only allow bar, line, area for grouped datasets
-      return supportedChartTypes.filter(type => 
+      return supportedChartTypes.filter(type =>
         ['bar', 'line', 'area'].includes(type.value)
       );
     } else {
       // Uniform mode: show all chart types except pie, doughnut
-      return supportedChartTypes.filter(type => 
+      return supportedChartTypes.filter(type =>
         !['pie', 'doughnut'].includes(type.value)
       );
     }
@@ -183,23 +183,23 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
         return `hsl(${h}, ${s}%, ${newL}%)`
       }
     }
-    
+
     // Handle hex colors
     if (color.startsWith("#")) {
       const hex = color.replace("#", "")
       const r = parseInt(hex.substring(0, 2), 16)
       const g = parseInt(hex.substring(2, 4), 16)
       const b = parseInt(hex.substring(4, 6), 16)
-      
+
       // Darken by reducing RGB values
       const factor = 1 - percent / 100
       const newR = Math.max(0, Math.round(r * factor))
       const newG = Math.max(0, Math.round(g * factor))
       const newB = Math.max(0, Math.round(b * factor))
-      
+
       return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`
     }
-    
+
     // Handle rgba/rgb colors
     if (color.startsWith("rgba") || color.startsWith("rgb")) {
       const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/)
@@ -209,14 +209,14 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
         const newR = Math.max(0, Math.round(parseInt(r) * factor))
         const newG = Math.max(0, Math.round(parseInt(g) * factor))
         const newB = Math.max(0, Math.round(parseInt(b) * factor))
-        
+
         if (a !== undefined) {
           return `rgba(${newR}, ${newG}, ${newB}, ${a})`
         }
         return `rgb(${newR}, ${newG}, ${newB})`
       }
     }
-    
+
     return color
   }
 
@@ -250,33 +250,33 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     // For Grouped Mode: if there are existing datasets, use their slice names and structure
     let finalSlices = newDatasetSlices;
     let finalDatasetName = newDatasetName;
-    
+
     // Determine the chart type to use based on uniformity mode
     let finalChartType = newDatasetChartType;
     if (chartMode === 'grouped' && uniformityMode === 'uniform') {
       finalChartType = chartType; // Use the global chart type from Types & Toggles
     }
-    
+
     if (chartMode === 'grouped' && filteredDatasets.length > 0) {
       // Get the first dataset's slice labels and structure
       const firstDataset = filteredDatasets[0];
       const existingSliceLabels = firstDataset.sliceLabels || firstDataset.data.map((_, i) => `Slice ${i + 1}`);
-      
+
       // Use the existing slice names but keep the user-entered values and colors
       finalSlices = existingSliceLabels.map((label, index) => ({
         name: label, // Inherit the name from existing dataset
         value: newDatasetSlices[index]?.value || 0, // Keep the user-entered value
         color: newDatasetSlices[index]?.color || "#1E90FF" // Keep the user-entered color
       }));
-      
+
       // Use the user-provided dataset name (no auto-generation)
       finalDatasetName = newDatasetName || "New Dataset";
     }
 
     const colors = finalSlices.map(slice => slice.color)
     const borderColors = colors.map(c => darkenColor(c, 20))
-          const newDataset: ExtendedChartDataset = {
-        label: finalDatasetName,
+    const newDataset: ExtendedChartDataset = {
+      label: finalDatasetName,
       data: finalSlices.map(slice => slice.value),
       backgroundColor: colors,
       borderColor: borderColors,
@@ -295,7 +295,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     setNewDatasetName("")
     setNewDatasetColor("#1E90FF")
     setNewDatasetPoints(5)
-    
+
     // Reset slices based on mode - but preserve structure for Grouped Mode with existing datasets
     if (chartMode === 'grouped' && filteredDatasets.length > 0) {
       // Keep the same structure as existing datasets, just reset values
@@ -333,7 +333,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     if (chartMode === 'grouped' && filteredDatasets.length > 0) {
       const firstDataset = filteredDatasets[0];
       const existingSliceLabels = firstDataset.sliceLabels || firstDataset.data.map((_, i) => `Slice ${i + 1}`);
-      
+
       setNewDatasetSlices(existingSliceLabels.map((label, index) => ({
         name: label,
         value: 0,
@@ -352,7 +352,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
   const rgbaToHex = (rgba: string): string => {
     // Handle hex colors (already in correct format)
     if (rgba.startsWith('#')) return rgba
-    
+
     // Handle rgba colors
     const match = rgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/)
     if (match) {
@@ -362,7 +362,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
         return hex.length === 1 ? '0' + hex : hex
       }).join('')}`
     }
-    
+
     // Fallback for other formats
     return rgba || '#3b82f6'
   }
@@ -370,14 +370,14 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
   const handleDatasetTileClick = (datasetIndex: number) => {
     const dataset = filteredDatasets[datasetIndex]
     if (!dataset) return
-    
+
     const currentSliceLabels = dataset.sliceLabels || chartData.labels || []
-    
+
     const rows: { label: string; value: number; color: string; imageUrl: string | null }[] = dataset.data.map((val, i) => {
-      const rawColor = Array.isArray(dataset.backgroundColor) 
-        ? (dataset.backgroundColor[i] as string) 
+      const rawColor = Array.isArray(dataset.backgroundColor)
+        ? (dataset.backgroundColor[i] as string)
         : (dataset.backgroundColor as string) || '#3b82f6'
-      
+
       return {
         label: String(currentSliceLabels[i] || `Slice ${i + 1}`),
         value: typeof val === 'number' ? val : (Array.isArray(val) ? (val[1] as number) : (val as any)?.y ?? 0),
@@ -385,34 +385,34 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
         imageUrl: dataset.pointImages?.[i] || null,
       }
     })
-    
+
     setFullEditRows(rows)
     setEditingDatasetIndex(datasetIndex)
     setEditingDatasetName(dataset.label || `Dataset ${datasetIndex + 1}`)
-    
+
     // Determine color mode and set dataset color
-    const isSingleColorMode = (dataset as any).datasetColorMode === 'single' || 
-                              (typeof dataset.backgroundColor === 'string')
+    const isSingleColorMode = (dataset as any).datasetColorMode === 'single' ||
+      (typeof dataset.backgroundColor === 'string')
     const currentColorMode = isSingleColorMode ? 'dataset' : 'slice'
-    
+
     setEditingColorMode(currentColorMode)
-    
+
     if (currentColorMode === 'dataset') {
-      const singleColor = typeof dataset.backgroundColor === 'string' 
-        ? dataset.backgroundColor 
+      const singleColor = typeof dataset.backgroundColor === 'string'
+        ? dataset.backgroundColor
         : (Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor[0] : '#3b82f6')
       setEditingDatasetColor(rgbaToHex(singleColor))
     } else {
       // For slice mode, extract the first color as default dataset color
-      const firstColor = Array.isArray(dataset.backgroundColor) 
-        ? dataset.backgroundColor[0] 
+      const firstColor = Array.isArray(dataset.backgroundColor)
+        ? dataset.backgroundColor[0]
         : dataset.backgroundColor || '#3b82f6'
       setEditingDatasetColor(rgbaToHex(firstColor))
     }
-    
+
     // Preserve original slice colors
     setPreservedSliceColors(rows.map(row => row.color))
-    
+
     setShowFullEditModal(true)
   }
 
@@ -436,7 +436,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
 
   const handleColorModeChange = (mode: 'slice' | 'dataset') => {
     setEditingColorMode(mode)
-    
+
     if (mode === 'slice') {
       // Restore preserved slice colors
       setFullEditRows(prev => prev.map((row, index) => ({
@@ -454,7 +454,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
 
   const handleDatasetColorChange = (color: string) => {
     setEditingDatasetColor(color)
-    
+
     if (editingColorMode === 'dataset') {
       // Update all slice colors to match dataset color
       setFullEditRows(prev => prev.map(row => ({
@@ -512,11 +512,11 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     if (chartMode === 'single' && activeDatasetIndex >= 0) {
       const activeDataset = chartData.datasets[activeDatasetIndex]
       if (!activeDataset) return
-      
-      const bgColor = Array.isArray(activeDataset.backgroundColor) 
-        ? activeDataset.backgroundColor[0] 
+
+      const bgColor = Array.isArray(activeDataset.backgroundColor)
+        ? activeDataset.backgroundColor[0]
         : activeDataset.backgroundColor
-      
+
       if (bgColor && bgColor.startsWith('rgba')) {
         const match = bgColor.match(/rgba?\(\d+,\s*\d+,\s*\d+,\s*([\d.]+)\)/)
         if (match) {
@@ -526,7 +526,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
       } else {
         setColorOpacity(100)
       }
-      
+
       // Sync selectedImageType with stored config
       const firstPointConfig = activeDataset.pointImageConfig?.[0]
       if (firstPointConfig?.type) {
@@ -548,7 +548,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
       <div className="mb-4">
         <div className="font-semibold text-[0.80rem] mb-2">Chart Mode</div>
         <div className="flex items-center gap-6 bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 shadow-sm">
-                      <label className={`flex items-center gap-2 cursor-pointer transition-colors text-[0.80rem] ${chartMode === 'single' ? 'text-blue-700 font-bold' : 'text-gray-500'}`}> 
+          <label className={`flex items-center gap-2 cursor-pointer transition-colors text-[0.80rem] ${chartMode === 'single' ? 'text-blue-700 font-bold' : 'text-gray-500'}`}>
             <input
               type="radio"
               className="accent-blue-600"
@@ -558,7 +558,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
             <BarChart2 className="h-4 w-4" />
             Single
           </label>
-          <label className={`flex items-center gap-2 cursor-pointer transition-colors text-[0.80rem] ${chartMode === 'grouped' ? 'text-blue-700 font-bold' : 'text-gray-500'}`}> 
+          <label className={`flex items-center gap-2 cursor-pointer transition-colors text-[0.80rem] ${chartMode === 'grouped' ? 'text-blue-700 font-bold' : 'text-gray-500'}`}>
             <input
               type="radio"
               className="accent-blue-600"
@@ -576,7 +576,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
         <div className="mb-4">
           <div className="font-semibold text-[0.80rem] mb-2">Uniformity</div>
           <div className="flex items-center gap-6 bg-purple-50 border border-purple-100 rounded-lg px-4 py-3 shadow-sm">
-            <label className={`flex items-center gap-2 cursor-pointer transition-colors text-[0.80rem] ${uniformityMode === 'uniform' ? 'text-purple-700 font-bold' : 'text-gray-500'}`}> 
+            <label className={`flex items-center gap-2 cursor-pointer transition-colors text-[0.80rem] ${uniformityMode === 'uniform' ? 'text-purple-700 font-bold' : 'text-gray-500'}`}>
               <input
                 type="radio"
                 className="accent-purple-600"
@@ -586,7 +586,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
               <BarChart2 className="h-4 w-4" />
               Uniform
             </label>
-            <label className={`flex items-center gap-2 cursor-pointer transition-colors text-[0.80rem] ${uniformityMode === 'mixed' ? 'text-purple-700 font-bold' : 'text-gray-500'} ${['pie', 'doughnut', 'radar', 'polarArea', 'scatter', 'bubble'].includes(chartType as any) ? 'opacity-50 cursor-not-allowed' : ''}`}> 
+            <label className={`flex items-center gap-2 cursor-pointer transition-colors text-[0.80rem] ${uniformityMode === 'mixed' ? 'text-purple-700 font-bold' : 'text-gray-500'} ${['pie', 'doughnut', 'radar', 'polarArea', 'scatter', 'bubble'].includes(chartType as any) ? 'opacity-50 cursor-not-allowed' : ''}`}>
               <input
                 type="radio"
                 className="accent-purple-600"
@@ -603,7 +603,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
               <span className="text-orange-600 font-medium">
                 Mixed mode is not available for {chartType} charts. Only uniform mode is supported.
               </span>
-            ) : uniformityMode === 'uniform' 
+            ) : uniformityMode === 'uniform'
               ? 'All datasets will use the same chart type selected in Types & Toggles panel.'
               : 'Each dataset can have its own chart type selected during creation.'
             }
@@ -631,30 +631,30 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
 
       {/* Datasets Management */}
       <div className="space-y-3">
-        <div className="flex items-center gap-2 pb-1 border-b">
+        <div
+          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+          onClick={() => setDatasetsDropdownOpen(!datasetsDropdownOpen)}
+        >
           <div className="w-2 h-2 bg-green-600 rounded-full"></div>
           <h3 className="text-[0.80rem] font-semibold text-gray-900">Datasets Management</h3>
-          <button
-            onClick={() => setDatasetsDropdownOpen(!datasetsDropdownOpen)}
-            className="ml-auto p-1 hover:bg-gray-100 rounded transition-colors"
-          >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              width="16" 
-              height="16" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
+          <div className="ml-auto flex items-center gap-2">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
               strokeLinejoin="round"
               className={`transform transition-transform ${datasetsDropdownOpen ? 'rotate-180' : ''}`}
             >
-              <path d="M6 9L12 15L18 9"/>
+              <path d="M6 9L12 15L18 9" />
             </svg>
-          </button>
+          </div>
         </div>
-        
+
         <div className="bg-green-50 rounded-lg p-3 space-y-3">
           <div className="flex items-center justify-between">
             <Label className="text-[0.80rem] font-medium text-green-900">
@@ -665,26 +665,25 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
               Add Dataset
             </Button>
           </div>
-          
+
           {datasetsDropdownOpen && (
             <div className="space-y-2 pt-2 border-t border-green-200 max-h-96 overflow-y-auto">
               {filteredDatasets.map((dataset, datasetIndex) => (
                 <div
                   key={datasetIndex}
                   onClick={() => handleDatasetTileClick(datasetIndex)}
-                  className={`p-3 bg-white rounded-lg border transition-all cursor-pointer ${
-                    chartMode === 'single' && datasetIndex === activeDatasetIndex
-                      ? 'border-blue-300 shadow-sm'
-                      : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
-                  }`}
+                  className={`p-3 bg-white rounded-lg border transition-all cursor-pointer ${chartMode === 'single' && datasetIndex === activeDatasetIndex
+                    ? 'border-blue-300 shadow-sm'
+                    : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                    }`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3">
                       <div
                         className="w-4 h-4 rounded"
                         style={{
-                          backgroundColor: Array.isArray(dataset.backgroundColor) 
-                            ? dataset.backgroundColor[0] 
+                          backgroundColor: Array.isArray(dataset.backgroundColor)
+                            ? dataset.backgroundColor[0]
                             : dataset.backgroundColor
                         }}
                       />
@@ -700,9 +699,9 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                       {chartMode === 'single' && datasetIndex === activeDatasetIndex && (
                         <span className="w-2 h-2 rounded-full bg-green-500 ml-2 inline-block" title="Active dataset"></span>
                       )}
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
                         onClick={(e) => {
                           e.stopPropagation()
@@ -774,7 +773,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                 </div>
               </div>
             </div>
-            
+
             {chartMode === 'grouped' && filteredDatasets.length > 0 && (
               <div className="p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <p className="text-xs text-yellow-800">
@@ -788,8 +787,8 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
               <div className="flex items-center justify-between">
                 <label className="text-[0.80rem] font-medium text-gray-700">Slices ({newDatasetSlices.length})</label>
                 <div className="flex gap-2">
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     onClick={() => {
                       setNewDatasetSlices(slices => slices.map(slice => ({ ...slice, value: Math.floor(Math.random() * 50) + 1 })));
                     }}
@@ -797,9 +796,9 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                   >
                     Randomize Values
                   </Button>
-                  <Button 
-                    size="sm" 
-                    onClick={handleAddSlice} 
+                  <Button
+                    size="sm"
+                    onClick={handleAddSlice}
                     disabled={chartMode === 'grouped' && filteredDatasets.length > 0}
                     className="h-7 text-xs bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500"
                   >
@@ -808,7 +807,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                   </Button>
                 </div>
               </div>
-              
+
               {chartMode === 'grouped' && filteredDatasets.length > 0 && (
                 <div className="p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <p className="text-xs text-yellow-800">
@@ -816,7 +815,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                   </p>
                 </div>
               )}
-              
+
               {chartMode === 'grouped' && filteredDatasets.length === 0 && (
                 <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-xs text-blue-800">
@@ -824,7 +823,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                   </p>
                 </div>
               )}
-              
+
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {newDatasetSlices.map((slice, index) => (
                   <div key={index} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
@@ -840,7 +839,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
-                    
+
                     <div className="grid grid-cols-3 gap-2">
                       <div>
                         <label className="text-xs font-medium text-gray-600 mb-1 block">Name</label>
@@ -942,49 +941,49 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
       { name: 'Earth', colors: ['#8d6e63', '#a1887f', '#bcaaa4', '#d7ccc8', '#8bc34a', '#4caf50'] },
       { name: 'Ocean', colors: ['#006064', '#0097a7', '#00acc1', '#00bcd4', '#26c6da', '#4dd0e1'] },
     ]
-    
+
     const applyColorPalette = (colors: string[]) => {
       if (chartMode === 'single') {
         // In single mode, always apply colors to slices of the active dataset
         const activeDataset = chartData.datasets[activeDatasetIndex]
         if (!activeDataset) return
-        
+
         const sliceColors = colors.slice(0, activeDataset.data.length)
         const borderColors = borderColorMode === 'manual'
           ? Array(activeDataset.data.length).fill(manualBorderColor)
           : sliceColors.map(c => darkenColor(c, 20))
-          
+
         handleUpdateDataset(activeDatasetIndex, {
           backgroundColor: sliceColors,
           borderColor: borderColors
         })
       } else {
         // Grouped mode: respect color mode selection
-      chartData.datasets.forEach((dataset, datasetIndex) => {
-        const datasetColor = colors[datasetIndex % colors.length]
-        if (colorMode === 'dataset') {
-          // Use one color for the whole dataset
+        chartData.datasets.forEach((dataset, datasetIndex) => {
+          const datasetColor = colors[datasetIndex % colors.length]
+          if (colorMode === 'dataset') {
+            // Use one color for the whole dataset
             const borderColors = borderColorMode === 'manual'
               ? Array(dataset.data.length).fill(manualBorderColor)
               : Array(dataset.data.length).fill(darkenColor(datasetColor, 20))
-              
-          handleUpdateDataset(datasetIndex, {
-            backgroundColor: Array(dataset.data.length).fill(datasetColor),
+
+            handleUpdateDataset(datasetIndex, {
+              backgroundColor: Array(dataset.data.length).fill(datasetColor),
               borderColor: borderColors,
-          })
-        } else {
-          // Use a different color for each slice
-          const sliceColors = colors.slice(0, dataset.data.length)
+            })
+          } else {
+            // Use a different color for each slice
+            const sliceColors = colors.slice(0, dataset.data.length)
             const borderColors = borderColorMode === 'manual'
               ? Array(dataset.data.length).fill(manualBorderColor)
               : sliceColors.map(c => darkenColor(c, 20))
-              
-          handleUpdateDataset(datasetIndex, {
-            backgroundColor: sliceColors,
+
+            handleUpdateDataset(datasetIndex, {
+              backgroundColor: sliceColors,
               borderColor: borderColors
-          })
-        }
-      })
+            })
+          }
+        })
       }
     }
 
@@ -1022,24 +1021,24 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     // Helper function to apply opacity to any color format
     const applyOpacityToColor = (color: string | undefined, opacityPercent: number) => {
       if (!color) return 'rgba(59, 130, 246, 1)' // Default blue
-      
+
       const alpha = opacityPercent / 100
-      
+
       // Handle hex colors
       if (color.startsWith('#')) {
         return hexToRgba(color, alpha)
       }
-      
+
       // Handle rgba colors - replace the alpha value
       if (color.startsWith('rgba')) {
         return color.replace(/rgba?\((\d+),\s*(\d+),\s*(\d+),\s*[\d.]+\)/, `rgba($1, $2, $3, ${alpha})`)
       }
-      
+
       // Handle rgb colors - convert to rgba
       if (color.startsWith('rgb')) {
         return color.replace(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/, `rgba($1, $2, $3, ${alpha})`)
       }
-      
+
       // Handle hsl colors
       if (color.startsWith('hsl')) {
         // For hsl, we'll try to convert or just adjust opacity
@@ -1050,11 +1049,11 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
           const h = parseInt(match[1])
           const s = parseInt(match[2]) / 100
           const l = parseInt(match[3]) / 100
-          
+
           const c = (1 - Math.abs(2 * l - 1)) * s
           const x = c * (1 - Math.abs((h / 60) % 2 - 1))
           const m = l - c / 2
-          
+
           let r = 0, g = 0, b = 0
           if (h < 60) { r = c; g = x; b = 0 }
           else if (h < 120) { r = x; g = c; b = 0 }
@@ -1062,15 +1061,15 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
           else if (h < 240) { r = 0; g = x; b = c }
           else if (h < 300) { r = x; g = 0; b = c }
           else { r = c; g = 0; b = x }
-          
+
           const red = Math.round((r + m) * 255)
           const green = Math.round((g + m) * 255)
           const blue = Math.round((b + m) * 255)
-          
+
           return `rgba(${red}, ${green}, ${blue}, ${alpha})`
         }
       }
-      
+
       // Fallback: return the color as-is
       return color
     }
@@ -1078,13 +1077,13 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     const applyQuickColor = (color: string, opacity?: number) => {
       const activeDataset = chartData.datasets[activeDatasetIndex]
       if (!activeDataset) return
-      
+
       const alpha = (opacity !== undefined ? opacity : colorOpacity) / 100
       const finalColor = alpha < 1 ? hexToRgba(color, alpha) : color
-      
+
       // Apply color to all slices in the active dataset
       const sliceCount = activeDataset.data.length
-      
+
       // Determine border color based on mode
       let finalBorderColor
       if (borderColorMode === 'manual') {
@@ -1096,7 +1095,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
         // Apply same opacity to border color
         finalBorderColor = Array(sliceCount).fill(alpha < 1 ? hexToRgba(darkenedColor, alpha) : darkenedColor)
       }
-      
+
       handleUpdateDataset(activeDatasetIndex, {
         backgroundColor: Array(sliceCount).fill(finalColor),
         borderColor: finalBorderColor,
@@ -1106,11 +1105,11 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     const applyOpacity = (opacity: number) => {
       const activeDataset = chartData.datasets[activeDatasetIndex]
       if (!activeDataset) return
-      
+
       // Apply opacity ONLY to background colors (preserving individual colors, leaving borders unchanged)
       let newBgColors: any
       if (Array.isArray(activeDataset.backgroundColor)) {
-        newBgColors = activeDataset.backgroundColor.map(color => 
+        newBgColors = activeDataset.backgroundColor.map(color =>
           typeof color === 'string' ? applyOpacityToColor(color, opacity) : color
         )
       } else if (typeof activeDataset.backgroundColor === 'string') {
@@ -1118,13 +1117,13 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
       } else {
         newBgColors = activeDataset.backgroundColor
       }
-      
+
       // IMPORTANT: Preserve existing borderColor exactly as-is to keep borders crisp and unaffected by opacity
       // Create a deep copy to ensure the reference is preserved
       const preservedBorderColor = Array.isArray(activeDataset.borderColor)
         ? [...activeDataset.borderColor]
         : activeDataset.borderColor
-      
+
       handleUpdateDataset(activeDatasetIndex, {
         backgroundColor: newBgColors,
         borderColor: preservedBorderColor as any
@@ -1134,7 +1133,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     const getCurrentColor = () => {
       const activeDataset = chartData.datasets[activeDatasetIndex]
       if (!activeDataset) return '#3b82f6'
-      
+
       const bgColor = activeDataset.backgroundColor
       if (Array.isArray(bgColor)) {
         const firstColor = bgColor[0]
@@ -1146,7 +1145,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     const getCurrentOpacity = () => {
       const activeDataset = chartData.datasets[activeDatasetIndex]
       if (!activeDataset) return 100
-      
+
       // Get opacity from the first background color
       let firstColor = ''
       if (Array.isArray(activeDataset.backgroundColor)) {
@@ -1156,7 +1155,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
         const color = activeDataset.backgroundColor
         firstColor = typeof color === 'string' ? color : ''
       }
-      
+
       if (firstColor && firstColor.startsWith('rgba')) {
         const match = firstColor.match(/rgba?\(\d+,\s*\d+,\s*\d+,\s*([\d.]+)\)/)
         if (match) {
@@ -1170,121 +1169,121 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
       <div className="space-y-4">
         {/* Color Mode Selection - Only show for grouped mode */}
         {chartMode === 'grouped' && (
-        <>
-          <div className="space-y-2">
-            <Label className="text-xs font-medium text-pink-800">Color Mode</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                variant={colorMode === 'slice' ? "default" : "outline"}
-                size="sm"
-                className="h-8 text-xs"
-                onClick={() => setColorMode('slice')}
-              >
-                Slice Colors
-              </Button>
-              <Button
-                variant={colorMode === 'dataset' ? "default" : "outline"}
-                size="sm"
-                className="h-8 text-xs"
-                onClick={() => setColorMode('dataset')}
-              >
-                Dataset Colors
-              </Button>
-            </div>
-          </div>
-
-          {/* Opacity Control for Grouped Mode */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium text-pink-800">Opacity</Label>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-600">{colorOpacity}%</span>
+          <>
+            <div className="space-y-2">
+              <Label className="text-xs font-medium text-pink-800">Color Mode</Label>
+              <div className="grid grid-cols-2 gap-2">
                 <Button
+                  variant={colorMode === 'slice' ? "default" : "outline"}
                   size="sm"
-                  variant="ghost"
-                  className="h-6 px-2 text-xs"
-                  onClick={() => {
-                    setColorOpacity(100)
-                    // Apply 100% opacity to all datasets (background colors only)
+                  className="h-8 text-xs"
+                  onClick={() => setColorMode('slice')}
+                >
+                  Slice Colors
+                </Button>
+                <Button
+                  variant={colorMode === 'dataset' ? "default" : "outline"}
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={() => setColorMode('dataset')}
+                >
+                  Dataset Colors
+                </Button>
+              </div>
+            </div>
+
+            {/* Opacity Control for Grouped Mode */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-medium text-pink-800">Opacity</Label>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-600">{colorOpacity}%</span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 px-2 text-xs"
+                    onClick={() => {
+                      setColorOpacity(100)
+                      // Apply 100% opacity to all datasets (background colors only)
+                      chartData.datasets.forEach((_, datasetIndex) => {
+                        const dataset = chartData.datasets[datasetIndex]
+
+                        // Type-safe background color handling
+                        let newBgColors: any
+                        if (Array.isArray(dataset.backgroundColor)) {
+                          newBgColors = dataset.backgroundColor.map(color =>
+                            typeof color === 'string' ? applyOpacityToColor(color, 100) : color
+                          )
+                        } else if (typeof dataset.backgroundColor === 'string') {
+                          newBgColors = applyOpacityToColor(dataset.backgroundColor, 100)
+                        } else {
+                          newBgColors = dataset.backgroundColor
+                        }
+
+                        // Preserve existing borderColor exactly as-is
+                        const preservedBorderColor = Array.isArray(dataset.borderColor)
+                          ? [...dataset.borderColor]
+                          : dataset.borderColor
+
+                        updateDataset(datasetIndex, {
+                          backgroundColor: newBgColors,
+                          borderColor: preservedBorderColor as any
+                        })
+                      })
+                    }}
+                    title="Reset to fully opaque"
+                  >
+                    Reset
+                  </Button>
+                </div>
+              </div>
+              <div className="p-3 bg-pink-50 rounded-lg border border-pink-200">
+                <Slider
+                  value={[colorOpacity]}
+                  onValueChange={(value) => {
+                    setColorOpacity(value[0])
+                    // Apply opacity to all datasets in grouped mode (background colors only)
                     chartData.datasets.forEach((_, datasetIndex) => {
                       const dataset = chartData.datasets[datasetIndex]
-                      
+
                       // Type-safe background color handling
                       let newBgColors: any
                       if (Array.isArray(dataset.backgroundColor)) {
-                        newBgColors = dataset.backgroundColor.map(color => 
-                          typeof color === 'string' ? applyOpacityToColor(color, 100) : color
+                        newBgColors = dataset.backgroundColor.map(color =>
+                          typeof color === 'string' ? applyOpacityToColor(color, value[0]) : color
                         )
                       } else if (typeof dataset.backgroundColor === 'string') {
-                        newBgColors = applyOpacityToColor(dataset.backgroundColor, 100)
+                        newBgColors = applyOpacityToColor(dataset.backgroundColor, value[0])
                       } else {
                         newBgColors = dataset.backgroundColor
                       }
-                      
+
                       // Preserve existing borderColor exactly as-is
                       const preservedBorderColor = Array.isArray(dataset.borderColor)
                         ? [...dataset.borderColor]
                         : dataset.borderColor
-                      
+
                       updateDataset(datasetIndex, {
                         backgroundColor: newBgColors,
                         borderColor: preservedBorderColor as any
                       })
                     })
                   }}
-                  title="Reset to fully opaque"
-                >
-                  Reset
-                </Button>
+                  min={0}
+                  max={100}
+                  step={1}
+                  className="w-full"
+                />
+                <div className="flex justify-between mt-2 text-[10px] text-gray-500">
+                  <span>Transparent</span>
+                  <span>Opaque</span>
+                </div>
               </div>
+              <p className="text-xs text-gray-500 italic">
+                Adjusts opacity for background colors (borders unchanged)
+              </p>
             </div>
-            <div className="p-3 bg-pink-50 rounded-lg border border-pink-200">
-              <Slider
-                value={[colorOpacity]}
-                onValueChange={(value) => {
-                  setColorOpacity(value[0])
-                  // Apply opacity to all datasets in grouped mode (background colors only)
-                  chartData.datasets.forEach((_, datasetIndex) => {
-                    const dataset = chartData.datasets[datasetIndex]
-                    
-                    // Type-safe background color handling
-                    let newBgColors: any
-                    if (Array.isArray(dataset.backgroundColor)) {
-                      newBgColors = dataset.backgroundColor.map(color => 
-                        typeof color === 'string' ? applyOpacityToColor(color, value[0]) : color
-                      )
-                    } else if (typeof dataset.backgroundColor === 'string') {
-                      newBgColors = applyOpacityToColor(dataset.backgroundColor, value[0])
-                    } else {
-                      newBgColors = dataset.backgroundColor
-                    }
-                    
-                    // Preserve existing borderColor exactly as-is
-                    const preservedBorderColor = Array.isArray(dataset.borderColor)
-                      ? [...dataset.borderColor]
-                      : dataset.borderColor
-                    
-                    updateDataset(datasetIndex, {
-                      backgroundColor: newBgColors,
-                      borderColor: preservedBorderColor as any
-                    })
-                  })
-                }}
-                min={0}
-                max={100}
-                step={1}
-                className="w-full"
-              />
-              <div className="flex justify-between mt-2 text-[10px] text-gray-500">
-                <span>Transparent</span>
-                <span>Opaque</span>
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 italic">
-              Adjusts opacity for background colors (borders unchanged)
-            </p>
-          </div>
-        </>
+          </>
         )}
 
         {/* Color Picker for Single Mode */}
@@ -1296,7 +1295,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                 <div className="flex-1 flex items-center gap-3">
                   <div className="relative">
                     {/* Checkerboard background for transparency preview */}
-                    <div 
+                    <div
                       className="absolute inset-0 rounded-lg"
                       style={{
                         backgroundImage: 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)',
@@ -1304,7 +1303,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                         backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px'
                       }}
                     />
-                    <div 
+                    <div
                       className="relative w-12 h-12 rounded-lg border-2 border-white shadow-md cursor-pointer hover:scale-105 transition-transform"
                       style={{ backgroundColor: getCurrentColor() }}
                       onClick={() => document.getElementById('single-mode-color-picker')?.click()}
@@ -1382,7 +1381,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                     title={color}
                   >
                     {/* Checkerboard background for transparency */}
-                    <div 
+                    <div
                       className="absolute inset-0"
                       style={{
                         backgroundImage: 'linear-gradient(45deg, #e5e7eb 25%, transparent 25%), linear-gradient(-45deg, #e5e7eb 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e7eb 75%), linear-gradient(-45deg, transparent 75%, #e5e7eb 75%)',
@@ -1390,7 +1389,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                         backgroundPosition: '0 0, 0 2px, 2px -2px, -2px 0px'
                       }}
                     />
-                    <div 
+                    <div
                       className="absolute inset-0"
                       style={{ backgroundColor: color }}
                     />
@@ -1407,7 +1406,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
             <div className="w-2 h-2 bg-pink-600 rounded-full"></div>
             <h3 className="text-[0.80rem] font-semibold text-gray-900">Preset Palettes</h3>
           </div>
-          
+
           <div className="space-y-2">
             <div className="grid gap-2 p-3 bg-pink-50 rounded-lg border border-pink-200">
               {colorPalettes.map((palette, index) => (
@@ -1430,11 +1429,11 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                 </button>
               ))}
             </div>
-            
+
             {/* Reset Button */}
             <div className="flex justify-center">
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 variant="outline"
                 className="h-8 text-xs w-full"
                 onClick={() => applyColorPalette(colorPalettes[0].colors)}
@@ -1456,20 +1455,20 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                       {dataset.label || `Dataset ${datasetIndex + 1}`}
                     </span>
                     <div className="flex items-center gap-2">
-                      <div 
+                      <div
                         className="w-6 h-6 rounded border-2 border-white shadow-sm cursor-pointer hover:scale-110 transition-transform"
-                        style={{ 
-                          backgroundColor: Array.isArray(dataset.backgroundColor) 
-                            ? dataset.backgroundColor[0] 
-                            : dataset.backgroundColor 
+                        style={{
+                          backgroundColor: Array.isArray(dataset.backgroundColor)
+                            ? dataset.backgroundColor[0]
+                            : dataset.backgroundColor
                         }}
                         onClick={() => document.getElementById(`dataset-color-${datasetIndex}`)?.click()}
                       />
                       <input
                         id={`dataset-color-${datasetIndex}`}
                         type="color"
-                        value={Array.isArray(dataset.backgroundColor) 
-                          ? dataset.backgroundColor[0] 
+                        value={Array.isArray(dataset.backgroundColor)
+                          ? dataset.backgroundColor[0]
                           : dataset.backgroundColor || '#3b82f6'}
                         onChange={(e) => {
                           handleUpdateDataset(datasetIndex, {
@@ -1480,8 +1479,8 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                         className="invisible w-0"
                       />
                       <Input
-                        value={Array.isArray(dataset.backgroundColor) 
-                          ? dataset.backgroundColor[0] 
+                        value={Array.isArray(dataset.backgroundColor)
+                          ? dataset.backgroundColor[0]
                           : dataset.backgroundColor || '#3b82f6'}
                         onChange={(e) => {
                           handleUpdateDataset(datasetIndex, {
@@ -1505,24 +1504,24 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
 
   const renderImagesTab = () => {
     const imageOptions = getImageOptionsForChartType(chartType);
-    const activeDataset = chartMode === 'single' && activeDatasetIndex !== -1 
-      ? chartData.datasets[activeDatasetIndex] 
+    const activeDataset = chartMode === 'single' && activeDatasetIndex !== -1
+      ? chartData.datasets[activeDatasetIndex]
       : null;
-    const previewImageUrl = (activeDataset?.pointImages?.[0] && activeDataset.pointImages[0] !== '' && activeDataset.pointImages[0] !== null) 
+    const previewImageUrl = (activeDataset?.pointImages?.[0] && activeDataset.pointImages[0] !== '' && activeDataset.pointImages[0] !== null)
       ? activeDataset.pointImages[0] as string
       : null;
-    
+
     const handleImageUpload = async (file: File, datasetIndex: number, pointIndex: number) => {
       // Import compression utility
-      const { 
-        compressImage, 
-        validateImageFile, 
+      const {
+        compressImage,
+        validateImageFile,
         getAvailableLocalStorageSpace,
         shouldCleanupImages,
         getImagesToCleanup,
         wouldExceedQuota
       } = await import('@/lib/image-utils');
-      
+
       // Validate file
       if (!validateImageFile(file, 10)) {
         toast.error('Invalid image file. Please select an image file under 10MB.');
@@ -1535,7 +1534,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
         if (availableSpace < 200 * 1024) { // Less than 200KB available
           const { shouldCleanupImages, getImagesToCleanup } = await import('@/lib/image-utils');
           const cleanupInfo = shouldCleanupImages(chartData, 1 * 1024 * 1024);
-          
+
           if (cleanupInfo.needed) {
             // Clean up old images from all datasets
             chartData.datasets.forEach((dataset: any, dsIdx: number) => {
@@ -1555,13 +1554,13 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
         // Compress image with better defaults (600x600, 0.7 quality)
         // Progressive compression will adjust if quota is low
         const compressedImageUrl = await compressImage(file, 600, 600, 0.7, true);
-        
+
         // Check if compressed image would exceed quota
         if (wouldExceedQuota(compressedImageUrl)) {
           // Try more aggressive cleanup
           const { shouldCleanupImages, getImagesToCleanup } = await import('@/lib/image-utils');
           const cleanupInfo = shouldCleanupImages(chartData, 2 * 1024 * 1024);
-          
+
           if (cleanupInfo.needed) {
             chartData.datasets.forEach((dataset: any, dsIdx: number) => {
               const indicesToRemove = getImagesToCleanup(dataset, cleanupInfo.maxImagesToKeep);
@@ -1574,7 +1573,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
               }
             });
           }
-          
+
           // Check again after cleanup
           if (wouldExceedQuota(compressedImageUrl)) {
             toast.error('Storage quota exceeded. Please remove some images or clear browser storage.');
@@ -1583,10 +1582,10 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
         }
 
         const config = chartData.datasets[datasetIndex]?.pointImageConfig?.[pointIndex] || getDefaultImageConfigFromStore(chartType);
-        
+
         // Try to update, catch quota errors
         try {
-        updatePointImage(datasetIndex, pointIndex, compressedImageUrl, config);
+          updatePointImage(datasetIndex, pointIndex, compressedImageUrl, config);
         } catch (error: any) {
           if (error?.message?.includes('quota') || error?.name === 'QuotaExceededError') {
             // Last resort cleanup - remove all but most recent image from each dataset
@@ -1601,7 +1600,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                 updateDataset(dsIdx, { pointImages: newPointImages });
               }
             });
-            
+
             try {
               updatePointImage(datasetIndex, pointIndex, compressedImageUrl, config);
             } catch (e) {
@@ -1617,7 +1616,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
         if (error?.message?.includes('quota') || error?.name === 'QuotaExceededError') {
           toast.error('Storage quota exceeded. Please remove some images or clear browser storage.');
         } else {
-        toast.error('Failed to process image. Please try a smaller file.');
+          toast.error('Failed to process image. Please try a smaller file.');
         }
       }
     };
@@ -1665,16 +1664,16 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
             <ImageIcon className="h-3.5 w-3.5 text-purple-600" />
             <h3 className="text-xs font-semibold text-gray-900">Global Image Settings</h3>
           </div>
-          
+
           <div className="bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-lg p-3 space-y-3 border border-purple-200/50">
             {/* Image Preview Section */}
             {previewImageUrl && (
               <div className="bg-white rounded-lg p-2.5 border border-purple-200 shadow-sm">
                 <Label className="text-xs font-medium text-purple-700 mb-1.5 block">Preview</Label>
                 <div className="relative aspect-square w-full max-w-[120px] mx-auto rounded-lg overflow-hidden border-2 border-purple-300 bg-gray-50">
-                  <img 
-                    src={previewImageUrl} 
-                    alt="Preview" 
+                  <img
+                    src={previewImageUrl}
+                    alt="Preview"
                     className="w-full h-full object-cover z-10 relative"
                     onError={(e) => {
                       const img = e.target as HTMLImageElement;
@@ -1738,7 +1737,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                   }
                 }}
               />
-              
+
               <div className="flex gap-2">
                 <Input
                   value={imageUploadUrl || ''}
@@ -1772,12 +1771,12 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
             {/* Configuration Section - Compact Grid */}
             <div className="space-y-2.5 pt-2 border-t border-purple-200">
               <Label className="text-xs font-semibold text-purple-700 uppercase tracking-wide">Configuration</Label>
-              
+
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <Label className="text-xs font-medium text-gray-600">Shape</Label>
-                  <Select 
-                    value={selectedImageType} 
+                  <Select
+                    value={selectedImageType}
                     onValueChange={(value) => {
                       setSelectedImageType(value);
                       handleGlobalImageConfigChange('type', value);
@@ -1792,7 +1791,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                           <div className="flex items-center gap-2">
                             {type.value === 'circle' && <Circle className="h-3 w-3" />}
                             {type.value === 'square' && <Square className="h-3 w-3" />}
-                                  {type.value === 'regular' && <ImageIcon className="h-3 w-3" />}
+                            {type.value === 'regular' && <ImageIcon className="h-3 w-3" />}
                             <span className="text-xs">{type.label}</span>
                           </div>
                         </SelectItem>
@@ -1818,7 +1817,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
 
               <div className="space-y-1">
                 <Label className="text-xs font-medium text-gray-600">Position</Label>
-                <Select 
+                <Select
                   value={activeDataset?.pointImageConfig?.[0]?.position || 'center'}
                   onValueChange={(value) => handleGlobalImageConfigChange('position', value)}
                 >
@@ -1845,7 +1844,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
               {imageOptions.supportsArrow && activeDataset?.pointImageConfig?.[0]?.position === 'callout' && (
                 <div className="space-y-2 pt-2 border-t border-purple-200">
                   <Label className="text-xs font-semibold text-purple-700 uppercase tracking-wide">Arrow Settings</Label>
-                  
+
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
                       <Label className="text-xs font-medium text-gray-600">Border Width</Label>
@@ -1877,7 +1876,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-3 pt-1">
                     <div className="flex items-center gap-1.5">
                       <Switch
@@ -1897,7 +1896,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                       <Label className="text-xs font-medium text-gray-700">Arrow Head</Label>
                     </div>
                   </div>
-                  
+
                   {activeDataset?.pointImageConfig?.[0]?.arrowLine !== false && (
                     <div className="grid grid-cols-2 gap-2 pt-1">
                       <div className="space-y-1">
@@ -1935,7 +1934,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                       {['pie', 'doughnut', 'polarArea'].includes(chartType) ? 'Fill Slice' : 'Fill Bar'}
                     </Label>
                     <Switch
-                      checked={['pie', 'doughnut', 'polarArea'].includes(chartType) 
+                      checked={['pie', 'doughnut', 'polarArea'].includes(chartType)
                         ? (activeDataset?.pointImageConfig?.[0]?.fillSlice || false)
                         : (activeDataset?.pointImageConfig?.[0]?.fillBar || false)}
                       onCheckedChange={(checked) => {
@@ -1948,41 +1947,41 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                       className="scale-75 data-[state=checked]:bg-purple-600"
                     />
                   </div>
-                  
+
                   <div className="space-y-1">
                     <Label className="text-xs font-medium text-gray-600">Image Fit</Label>
                     <div className="grid grid-cols-3 gap-1.5">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         className={`h-7 text-[10px] ${activeDataset?.pointImageConfig?.[0]?.imageFit === 'fill' ? 'bg-purple-100 border-purple-400 text-purple-700' : ''}`}
                         onClick={() => handleGlobalImageConfigChange('imageFit', 'fill')}
-                        disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ? 
-                          activeDataset?.pointImageConfig?.[0]?.fillSlice : 
+                        disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ?
+                          activeDataset?.pointImageConfig?.[0]?.fillSlice :
                           activeDataset?.pointImageConfig?.[0]?.fillBar)}
                       >
                         <Maximize2 className="h-2.5 w-2.5 mr-1" />
                         Fill
                       </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         className={`h-7 text-[10px] ${activeDataset?.pointImageConfig?.[0]?.imageFit === 'cover' ? 'bg-purple-100 border-purple-400 text-purple-700' : ''}`}
                         onClick={() => handleGlobalImageConfigChange('imageFit', 'cover')}
-                        disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ? 
-                          activeDataset?.pointImageConfig?.[0]?.fillSlice : 
+                        disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ?
+                          activeDataset?.pointImageConfig?.[0]?.fillSlice :
                           activeDataset?.pointImageConfig?.[0]?.fillBar)}
                       >
                         <Crop className="h-2.5 w-2.5 mr-1" />
                         Cover
                       </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         className={`h-7 text-[10px] ${activeDataset?.pointImageConfig?.[0]?.imageFit === 'contain' ? 'bg-purple-100 border-purple-400 text-purple-700' : ''}`}
                         onClick={() => handleGlobalImageConfigChange('imageFit', 'contain')}
-                        disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ? 
-                          activeDataset?.pointImageConfig?.[0]?.fillSlice : 
+                        disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ?
+                          activeDataset?.pointImageConfig?.[0]?.fillSlice :
                           activeDataset?.pointImageConfig?.[0]?.fillBar)}
                       >
                         <Grid className="h-2.5 w-2.5 mr-1" />
@@ -2003,12 +2002,12 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                     if (chartMode === 'single' && activeDatasetIndex !== -1) {
                       const dataset = chartData.datasets[activeDatasetIndex];
                       const dataLength = dataset.data.length;
-                      
+
                       // Clear all images and reset all configs to defaults
                       const clearedImages = Array(dataLength).fill(null);
                       const defaultConfig = getDefaultImageConfigFromStore(chartType);
                       const clearedConfigs = Array(dataLength).fill(null).map(() => ({ ...defaultConfig }));
-                      
+
                       updateDataset(activeDatasetIndex, {
                         pointImages: clearedImages,
                         pointImageConfig: clearedConfigs,
@@ -2016,14 +2015,14 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                     }
                   }}
                   disabled={
-                    !activeDataset || 
+                    !activeDataset ||
                     (!activeDataset.pointImages?.some(img => img && img !== '' && img !== null) &&
-                     !activeDataset.pointImageConfig?.some(cfg => {
-                       if (!cfg) return false;
-                       const defaultCfg = getDefaultImageConfigFromStore(chartType);
-                       // Check if any config value differs from default
-                       return Object.keys(cfg).some(key => cfg[key] !== defaultCfg[key as keyof typeof defaultCfg]);
-                     }))
+                      !activeDataset.pointImageConfig?.some(cfg => {
+                        if (!cfg) return false;
+                        const defaultCfg = getDefaultImageConfigFromStore(chartType);
+                        // Check if any config value differs from default
+                        return Object.keys(cfg).some(key => cfg[key] !== defaultCfg[key as keyof typeof defaultCfg]);
+                      }))
                   }
                 >
                   <X className="h-3 w-3 mr-1.5" />
@@ -2062,11 +2061,10 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 text-[0.80rem] font-medium border-b-2 transition-colors ${
-              activeTab === tab.id
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
+            className={`px-4 py-2 text-[0.80rem] font-medium border-b-2 transition-colors ${activeTab === tab.id
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
           >
             {tab.label}
           </button>
@@ -2116,7 +2114,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
           <DialogHeader>
             <DialogTitle>Full Edit (Single Dataset)</DialogTitle>
           </DialogHeader>
-          
+
           {/* Dataset Name and Color Section */}
           <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
             <div className="grid grid-cols-2 gap-6">
@@ -2130,7 +2128,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                   className="h-10"
                 />
               </div>
-              
+
               {/* Dataset Color */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Dataset Color</Label>
@@ -2162,7 +2160,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                       <Label htmlFor="dataset-color" className="text-xs">Dataset</Label>
                     </div>
                   </div>
-                  
+
                   {/* Color Picker */}
                   <div className="flex items-center gap-2">
                     <input
@@ -2183,7 +2181,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
               </div>
             </div>
           </div>
-          
+
           <div className="overflow-auto max-h-[60vh] space-y-2">
             {chartMode === 'single' && fullEditRows.map((row, i) => {
               return (
@@ -2208,16 +2206,16 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                   <div className="col-span-3">
                     <Label className="text-xs">Color</Label>
                     <div className="flex items-center gap-2">
-                      <input 
-                        type="color" 
+                      <input
+                        type="color"
                         className={`w-10 h-8 p-0 border-0 bg-transparent ${editingColorMode === 'dataset' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                        value={row.color} 
+                        value={row.color}
                         onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, color: e.target.value } : r))}
                         disabled={editingColorMode === 'dataset'}
                       />
-                      <Input 
+                      <Input
                         className={`h-8 text-xs w-24 ${editingColorMode === 'dataset' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        value={row.color} 
+                        value={row.color}
                         onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, color: e.target.value } : r))}
                         disabled={editingColorMode === 'dataset'}
                       />
@@ -2237,17 +2235,17 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                           input.onchange = async (e) => {
                             const file = (e.target as HTMLInputElement).files?.[0]
                             if (!file) return
-                            
+
                             // Import compression utility
-                            const { 
-                              compressImage, 
+                            const {
+                              compressImage,
                               validateImageFile,
                               getAvailableLocalStorageSpace,
                               shouldCleanupImages,
                               getImagesToCleanup,
                               wouldExceedQuota
                             } = await import('@/lib/image-utils')
-                            
+
                             // Validate file
                             if (!validateImageFile(file, 10)) {
                               toast.error('Invalid image file. Please select an image file under 10MB.')
@@ -2275,7 +2273,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
 
                               // Compress image with better defaults
                               const compressedImageUrl = await compressImage(file, 600, 600, 0.7, true)
-                              
+
                               // Check if compressed image would exceed quota
                               if (wouldExceedQuota(compressedImageUrl)) {
                                 const cleanupInfo = shouldCleanupImages(chartData, 2 * 1024 * 1024)
@@ -2303,7 +2301,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                               if (error?.message?.includes('quota') || error?.name === 'QuotaExceededError') {
                                 toast.error('Storage quota exceeded. Please remove some images.')
                               } else {
-                              toast.error('Failed to process image. Please try a smaller file.')
+                                toast.error('Failed to process image. Please try a smaller file.')
                               }
                             }
                           }
@@ -2338,13 +2336,13 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                 // Use the stored dataset index from when the tile was clicked
                 const datasetIndex = editingDatasetIndex
                 if (datasetIndex === -1 || !filteredDatasets[datasetIndex]) return
-                
+
                 // Persist labels, values, colors, images
                 const labels = fullEditRows.map(r => r.label)
                 const values = fullEditRows.map(r => r.value)
                 const colors = fullEditRows.map(r => r.color)
                 const images = fullEditRows.map(r => r.imageUrl)
-                
+
                 // Ensure arrays are aligned and persist slice colors
                 updateDataset(datasetIndex, {
                   label: editingDatasetName,

@@ -60,46 +60,41 @@ export function AnimationsPanel() {
     <div className="space-y-4">
       {/* General Animations Section */}
       <div className="space-y-3">
-        <div className="flex items-center gap-2 pb-1 border-b">
+        <div
+          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+          onClick={() => setGeneralDropdownOpen(!generalDropdownOpen)}
+        >
           <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-          <h3 className="text-sm font-semibold text-gray-900">General Animations</h3>
-          <button
-            onClick={() => setGeneralDropdownOpen(!generalDropdownOpen)}
-            className="ml-auto p-1 hover:bg-gray-100 rounded transition-colors"
-          >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              width="16" 
-              height="16" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
-              strokeLinejoin="round"
-              className={`transform transition-transform ${generalDropdownOpen ? 'rotate-180' : ''}`}
-            >
-              <path d="M6 9L12 15L18 9"/>
-            </svg>
-          </button>
-        </div>
-        
-        <div className="bg-blue-50 rounded-lg p-3 space-y-3">
-          {/* Enable Toggle */}
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium">Enable Animations</Label>
+          <h3 className="text-sm font-semibold text-gray-900 flex-1">General Animations</h3>
+          <div onClick={(e) => e.stopPropagation()}>
             <Switch
               checked={chartConfig.animation !== false}
               onCheckedChange={(checked) => handleConfigUpdate("animation", checked ? {} : false)}
-                className="data-[state=checked]:bg-blue-600"
+              className="data-[state=checked]:bg-blue-600"
             />
-            </div>
           </div>
+          <div className="ml-2 flex items-center gap-2">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={`transform transition-transform ${generalDropdownOpen ? 'rotate-180' : ''}`}
+            >
+              <path d="M6 9L12 15L18 9" />
+            </svg>
+          </div>
+        </div>
 
-          {/* Dropdown Content */}
-          {generalDropdownOpen && chartConfig.animation !== false && (
-            <div className="space-y-3 pt-2 border-t border-blue-200">
+        {/* Dropdown Content */}
+        {generalDropdownOpen && chartConfig.animation !== false && (
+          <div className="bg-blue-50 rounded-lg p-3 space-y-3">
+            <div className="space-y-3">
               {/* Duration */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
@@ -157,27 +152,28 @@ export function AnimationsPanel() {
                 />
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Hover Animation Section */}
       <div className="space-y-3">
-        <div className="flex items-center gap-2 pb-1 border-b">
+        <div
+          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+          onClick={() => setHoverOpen(!hoverOpen)}
+        >
           <div className="w-2 h-2 bg-pink-600 rounded-full"></div>
           <h3 className="text-sm font-semibold text-gray-900 flex-1">Hover Animation</h3>
-          <Switch
-            checked={hoverEnabled}
-            onCheckedChange={handleHoverEnabledChange}
-            className="data-[state=checked]:bg-pink-600"
-          />
-          <button
-            onClick={() => setHoverOpen(!hoverOpen)}
-            className="ml-2 p-1 hover:bg-gray-100 rounded transition-colors"
-            aria-label="Toggle Hover Animation"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transform transition-transform ${hoverOpen ? 'rotate-180' : ''}`}> <path d="M6 9L12 15L18 9"/> </svg>
-          </button>
+          <div onClick={(e) => e.stopPropagation()}>
+            <Switch
+              checked={hoverEnabled}
+              onCheckedChange={handleHoverEnabledChange}
+              className="data-[state=checked]:bg-pink-600"
+            />
+          </div>
+          <div className="ml-2 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transform transition-transform ${hoverOpen ? 'rotate-180' : ''}`}> <path d="M6 9L12 15L18 9" /> </svg>
+          </div>
         </div>
         {/* Single container for summary and expanded content */}
         <div className="bg-pink-50 rounded-lg">
@@ -198,7 +194,7 @@ export function AnimationsPanel() {
             </Select>
           </div>
           {hoverOpen && (
-            <div className={`px-3 pb-3 ${!hoverEnabled ? 'opacity-50 pointer-events-none' : ''}`}> 
+            <div className={`px-3 pb-3 ${!hoverEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
               <div className="flex items-center justify-between gap-2">
                 <Label className="text-xs font-medium">Animation Duration (ms)</Label>
                 <div className="relative w-24">
@@ -219,48 +215,43 @@ export function AnimationsPanel() {
 
       {/* DS Animations Section */}
       <div className="space-y-3">
-        <div className="flex items-center gap-2 pb-1 border-b">
+        <div
+          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+          onClick={() => setDsAnimationsDropdownOpen(!dsAnimationsDropdownOpen)}
+        >
           <div className="w-2 h-2 bg-orange-600 rounded-full"></div>
-          <h3 className="text-sm font-semibold text-gray-900">DS Animations</h3>
-          <button
-            onClick={() => setDsAnimationsDropdownOpen(!dsAnimationsDropdownOpen)}
-            className="ml-auto p-1 hover:bg-gray-100 rounded transition-colors"
-          >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              width="16" 
-              height="16" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
+          <h3 className="text-sm font-semibold text-gray-900 flex-1">DS Animations</h3>
+          <div onClick={(e) => e.stopPropagation()}>
+            <Switch
+              checked={true} // Chart animations are typically enabled by default
+              onCheckedChange={(checked) => {
+                // This would update the chart config for animations
+                console.log('Animation toggle:', checked)
+              }}
+              className="data-[state=checked]:bg-orange-600"
+            />
+          </div>
+          <div className="ml-2 flex items-center gap-2">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
               strokeLinejoin="round"
               className={`transform transition-transform ${dsAnimationsDropdownOpen ? 'rotate-180' : ''}`}
             >
-              <path d="M6 9L12 15L18 9"/>
+              <path d="M6 9L12 15L18 9" />
             </svg>
-          </button>
-        </div>
-        
-        <div className="bg-orange-50 rounded-lg p-3 space-y-3">
-          {/* Animation Toggle - Always Visible */}
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium">Enable Animations</Label>
-              <Switch
-                checked={true} // Chart animations are typically enabled by default
-                onCheckedChange={(checked) => {
-                  // This would update the chart config for animations
-                  console.log('Animation toggle:', checked)
-                }}
-                className="data-[state=checked]:bg-orange-600"
-              />
-            </div>
           </div>
-          
-          {dsAnimationsDropdownOpen && (
-            <div className="space-y-3 pt-2 border-t border-orange-200">
+        </div>
+
+        {dsAnimationsDropdownOpen && (
+          <div className="bg-orange-50 rounded-lg p-3 space-y-3">
+            <div className="space-y-3">
               {/* Animation Settings */}
               <div className="space-y-3">
                 <Label className="text-xs font-medium text-orange-800">Animation Properties</Label>
@@ -277,7 +268,7 @@ export function AnimationsPanel() {
                       step={100}
                     />
                   </div>
-                  
+
                   <div className="space-y-1">
                     <Label className="text-xs font-medium">Easing</Label>
                     <Select defaultValue="easeOutQuart">
@@ -306,7 +297,7 @@ export function AnimationsPanel() {
                       className="data-[state=checked]:bg-orange-600"
                     />
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <Label className="text-xs font-medium">Click Events</Label>
                     <Switch
@@ -314,7 +305,7 @@ export function AnimationsPanel() {
                       className="data-[state=checked]:bg-orange-600"
                     />
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <Label className="text-xs font-medium">Tooltips</Label>
                     <Switch
@@ -336,7 +327,7 @@ export function AnimationsPanel() {
                       className="data-[state=checked]:bg-orange-600"
                     />
                   </div>
-                  
+
                   <div className="space-y-1">
                     <Label className="text-xs font-medium">Device Pixel Ratio</Label>
                     <Select defaultValue="auto">
@@ -365,7 +356,7 @@ export function AnimationsPanel() {
                       className="data-[state=checked]:bg-orange-600"
                     />
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <Label className="text-xs font-medium">Normalize Data</Label>
                     <Switch
@@ -373,7 +364,7 @@ export function AnimationsPanel() {
                       className="data-[state=checked]:bg-orange-600"
                     />
                   </div>
-                  
+
                   <div className="space-y-1">
                     <Label className="text-xs font-medium">Index Axis</Label>
                     <Select defaultValue="x">
@@ -404,8 +395,8 @@ export function AnimationsPanel() {
                 </div>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   )

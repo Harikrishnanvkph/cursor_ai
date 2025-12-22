@@ -9,14 +9,14 @@ import { Switch } from "@/components/ui/switch"
 import { ResponsiveAnimationsPanel } from "@/components/panels/responsive-animations-panel"
 
 export function TypesTogglesPanel() {
-  const { 
-    chartType, 
-    setChartType, 
-    chartData, 
-    fillArea, 
-    showBorder, 
-    toggleFillArea, 
-    toggleShowBorder, 
+  const {
+    chartType,
+    setChartType,
+    chartData,
+    fillArea,
+    showBorder,
+    toggleFillArea,
+    toggleShowBorder,
     showImages,
     showLabels,
     toggleShowImages,
@@ -91,28 +91,26 @@ export function TypesTogglesPanel() {
           {/* Mode Toggle - Chart/Template */}
           <div className="flex items-center justify-between gap-3 pt-2 border-t">
             <span className="text-sm font-medium text-gray-700">Mode</span>
-            <div 
+            <div
               className="flex items-center gap-1 bg-gray-100 rounded-full p-1 border border-gray-200"
               style={{ display: 'flex', visibility: 'visible', opacity: 1 }}
             >
               <button
                 onClick={() => setEditorMode('chart')}
-                className={`px-4 py-1.5 text-xs font-medium rounded-full transition-all min-w-[70px] ${
-                  editorMode === 'chart' 
-                    ? 'bg-blue-500 text-white shadow-sm' 
+                className={`px-4 py-1.5 text-xs font-medium rounded-full transition-all min-w-[70px] ${editorMode === 'chart'
+                    ? 'bg-blue-500 text-white shadow-sm'
                     : 'bg-transparent text-gray-500 hover:text-gray-700'
-                }`}
+                  }`}
                 style={{ display: 'inline-block', visibility: 'visible', opacity: 1 }}
               >
                 Chart
               </button>
               <button
                 onClick={() => setEditorMode('template')}
-                className={`px-4 py-1.5 text-xs font-medium rounded-full transition-all min-w-[70px] ${
-                  editorMode === 'template' 
-                    ? 'bg-blue-500 text-white shadow-sm' 
+                className={`px-4 py-1.5 text-xs font-medium rounded-full transition-all min-w-[70px] ${editorMode === 'template'
+                    ? 'bg-blue-500 text-white shadow-sm'
                     : 'bg-transparent text-gray-500 hover:text-gray-700'
-                }`}
+                  }`}
                 style={{ display: 'inline-block', visibility: 'visible', opacity: 1 }}
               >
                 Template

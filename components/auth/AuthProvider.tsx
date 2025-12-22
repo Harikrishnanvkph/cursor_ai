@@ -27,12 +27,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await authApi.me()
       setUser(res.user)
-      
+
       // Store user ID for user-specific localStorage keys
       if (typeof window !== 'undefined' && res.user?.id) {
         localStorage.setItem('user-id', res.user.id)
       }
-      
+
       // Don't handle redirects in refresh - let the signIn method handle it
       // This prevents loops when the user is already authenticated
     } catch (error: any) {
@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true)
     try {
       const res = await authApi.signIn({ email, password })
-      
+
       // Check if this is a network failure response
       if (!res) {
         // Check if it's a network error vs server error
@@ -63,16 +63,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         return false
       }
-      
+
       setUser(res.user)
-      
+
       // Store user ID for user-specific localStorage keys
       if (typeof window !== 'undefined' && res.user?.id) {
         localStorage.setItem('user-id', res.user.id)
       }
-      
+
       toast.success('Signed in')
-      
+
       // Handle redirect after successful sign-in
       if (typeof window !== 'undefined') {
         const redirectPath = sessionStorage.getItem('redirectAfterSignIn')
@@ -85,12 +85,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }, 100)
         }
       }
-      
+
       return true // Success
     } catch (e: any) {
-      
+
       const m = String(e?.message || '').toLowerCase()
-  
+
       // Handle other errors (not network failures)
       if (m.includes('request timed out')) {
         toast.error('Request timed out. Please try again.')
@@ -112,7 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       // Don't re-throw the error - handle it gracefully
       console.error('Sign in error:', e)
-      
+
       return false // Failure
     } finally {
       setLoading(false)
@@ -127,7 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true)
     try {
       const res = await authApi.signUp({ email, password, fullName })
-      
+
       // Check if this is a network failure response
       if (!res) {
         // Check if it's a network error vs server error
@@ -138,19 +138,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         return { wasNewUser: false, requiresEmailConfirmation: false }
       }
-      
+
       if (res.wasNewUser && res.requiresEmailConfirmation) {
         toast.info('Verification email sent. Please confirm to sign in.')
       } else if (!res.wasNewUser) {
         toast.error('Email is already registered. Try signing in instead.')
       }
       await refresh()
-      
+
       // User ID will be stored in refresh() method
       return { wasNewUser: Boolean(res.wasNewUser), requiresEmailConfirmation: res.requiresEmailConfirmation }
     } catch (e: any) {
       const m = String(e?.message || '')
-      
+
       // Handle other errors (not network failures)
       if (m.toLowerCase().includes('request timed out')) {
         toast.error('Request timed out. Please try again.')
@@ -169,7 +169,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       // Don't re-throw the error - handle it gracefully
       console.error('Sign up error:', e)
-      
+
       // Return a default value when there's an error
       return { wasNewUser: false, requiresEmailConfirmation: false }
     } finally {
@@ -181,10 +181,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true)
     try {
       const res = await authApi.signOut()
-      
+
       // Always clear the user locally regardless of server response
       setUser(null)
-      
+
       // Clean up old localStorage data (only clears data older than 12 hours)
       if (typeof window !== 'undefined') {
         try {
@@ -194,15 +194,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.warn('Failed to run logout cleanup:', err);
         }
       }
-      
+
       // Clear any local caches that could rehydrate user
       if (typeof window !== 'undefined') {
         try {
           sessionStorage.removeItem('auth_user')
           sessionStorage.removeItem('redirectAfterSignIn')
-        } catch {}
+        } catch { }
       }
-      
+
       // Only show error if there was an actual problem (not network failure)
       if (!res) {
         console.warn('Server unavailable during sign out, but user cleared locally')
@@ -217,10 +217,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error: any) {
       console.error('Sign out error:', error)
-      
+
       // Still clear the user locally even if server call fails
       setUser(null)
-      
+
       // Clear user-specific localStorage even on error
       if (typeof window !== 'undefined') {
         try {
@@ -237,7 +237,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               'offline-conversations',
               'offline-chart-data',
             ];
-            
+
             storeNames.forEach(name => {
               const key = `${name}-${userId}`;
               if (localStorage.getItem(key)) {
@@ -245,13 +245,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               }
             });
           }
-          
+
           sessionStorage.removeItem('auth_user')
           sessionStorage.removeItem('redirectAfterSignIn')
           localStorage.removeItem('user-id')
-        } catch {}
+        } catch { }
       }
-      
+
       // Only show error for actual failures, not network issues
       if (!error.message?.includes('network') && !error.message?.includes('unavailable')) {
         toast.error('Sign out completed, but there was an issue with the server.')
@@ -265,7 +265,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setLoading(true)
       const url = await authApi.googleUrl()
-      
+
       // Check if this is a network failure response
       if (!url) {
         // Check if it's a network error vs server error
@@ -276,14 +276,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         return
       }
-      
+
       window.location.href = url
     } catch (error: any) {
       console.error('Failed to get Google OAuth URL:', error)
-      
+
       // Handle other errors (not network failures)
       const errorMessage = error?.message || 'Unknown error occurred'
-      
+
       if (errorMessage.includes('Request timed out')) {
         toast.error('Request timed out. Please try again.')
       } else if (errorMessage.includes('Request failed')) {

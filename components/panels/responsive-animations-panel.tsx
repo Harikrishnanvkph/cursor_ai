@@ -65,13 +65,13 @@ export function ResponsiveAnimationsPanel() {
     <div className="space-y-3 mt-4">
       {/* Quick Slice Visibility */}
       <div className="space-y-3">
-        <div className="flex items-center gap-2 pb-1 border-b">
+        <div
+          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+          onClick={() => setSliceVisibilityOpen(!sliceVisibilityOpen)}
+        >
           <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
           <h3 className="text-sm font-semibold text-gray-900">Quick Slice Visibility</h3>
-          <button
-            onClick={() => setSliceVisibilityOpen(!sliceVisibilityOpen)}
-            className="ml-auto p-1 hover:bg-gray-100 rounded transition-colors"
-          >
+          <div className="ml-auto flex items-center gap-2">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="16"
@@ -86,7 +86,7 @@ export function ResponsiveAnimationsPanel() {
             >
               <path d="M6 9L12 15L18 9" />
             </svg>
-          </button>
+          </div>
         </div>
 
         {sliceVisibilityOpen && (
@@ -122,29 +122,30 @@ export function ResponsiveAnimationsPanel() {
       </div>
 
       {/* Layout and Dimensions - Expanded by default */}
-      <div className="flex items-center gap-2 pb-1 border-b">
+      <div
+        className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+        onClick={() => !isTemplateMode && setResponsiveDropdownOpen(!responsiveDropdownOpen)}
+      >
         <div className="w-2 h-2 bg-green-600 rounded-full"></div>
         <h3 className="text-sm font-semibold text-gray-900">Layout and Dimensions</h3>
-        <button
-          onClick={() => setResponsiveDropdownOpen(!responsiveDropdownOpen)}
-          className="ml-auto p-1 hover:bg-gray-100 rounded transition-colors"
-          disabled={isTemplateMode}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={`transform transition-transform ${responsiveDropdownOpen ? 'rotate-180' : ''}`}
-          >
-            <path d="M6 9L12 15L18 9" />
-          </svg>
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          {!isTemplateMode && (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={`transform transition-transform ${responsiveDropdownOpen ? 'rotate-180' : ''}`}
+            >
+              <path d="M6 9L12 15L18 9" />
+            </svg>
+          )}
+        </div>
       </div>
       {responsiveDropdownOpen && (
         <div className="bg-green-50 rounded-lg p-3 space-y-3">
