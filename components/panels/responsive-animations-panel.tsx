@@ -6,13 +6,61 @@ import { Button } from "@/components/ui/button";
 import { useChartStore } from "@/lib/chart-store";
 import { useTemplateStore } from "@/lib/template-store";
 import React, { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, ArrowUpNarrowWide, ArrowDownWideNarrow, ArrowUpAZ, ArrowDownZA, ArrowUpDown, Trophy, TrendingUp, TrendingDown, BarChart3, Percent, Hash, X, Divide, Undo2 } from "lucide-react";
+import { toast } from "sonner";
 
 export function ResponsiveAnimationsPanel() {
-  const { chartData, chartConfig, updateChartConfig, legendFilter, toggleSliceVisibility } = useChartStore();
+  const {
+    chartData,
+    chartConfig,
+    updateChartConfig,
+    legendFilter,
+    toggleSliceVisibility,
+    activeDatasetIndex,
+    chartMode,
+    sortDataset,
+    reverseDataset,
+    filterTopN,
+    filterAboveThreshold,
+    filterBelowThreshold,
+    normalizeDataset,
+    convertToPercentage,
+    roundDataset,
+    scaleDataset,
+    datasetBackups,
+    resetDatasetOperations
+  } = useChartStore();
   const { editorMode, setEditorMode } = useTemplateStore();
   const [responsiveDropdownOpen, setResponsiveDropdownOpen] = useState(true);
   const [sliceVisibilityOpen, setSliceVisibilityOpen] = useState(false);
+  const [quickToolsOpen, setQuickToolsOpen] = useState(false);
+  const [thresholdValue, setThresholdValue] = useState(50);
+
+  const currentDatasetIndex = chartMode === 'single' ? activeDatasetIndex : 0;
+  const hasBackup = datasetBackups.has(currentDatasetIndex);
+
+  const handleSortAscending = () => sortDataset(currentDatasetIndex, 'asc');
+  const handleSortDescending = () => sortDataset(currentDatasetIndex, 'desc');
+  const handleSortLabelAZ = () => sortDataset(currentDatasetIndex, 'label-asc');
+  const handleSortLabelZA = () => sortDataset(currentDatasetIndex, 'label-desc');
+  const handleReverse = () => reverseDataset(currentDatasetIndex);
+
+  const handleTop5 = () => filterTopN(currentDatasetIndex, 5);
+  const handleTop10 = () => filterTopN(currentDatasetIndex, 10);
+  const handleAboveThreshold = () => filterAboveThreshold(currentDatasetIndex, thresholdValue);
+  const handleBelowThreshold = () => filterBelowThreshold(currentDatasetIndex, thresholdValue);
+
+  const handleNormalize = () => normalizeDataset(currentDatasetIndex, '0-100');
+  const handleConvertToPercentage = () => convertToPercentage(currentDatasetIndex);
+  const handleRound1Decimal = () => roundDataset(currentDatasetIndex, 1);
+  const handleRound2Decimals = () => roundDataset(currentDatasetIndex, 2);
+  const handleDoubleValues = () => scaleDataset(currentDatasetIndex, 2);
+  const handleHalfValues = () => scaleDataset(currentDatasetIndex, 0.5);
+
+  const handleResetOperations = () => {
+    resetDatasetOperations(currentDatasetIndex);
+    toast.success('Reset to original state', { duration: 2000 });
+  };
 
   // Check if template mode is active
   const isTemplateMode = editorMode === 'template';
@@ -121,15 +169,15 @@ export function ResponsiveAnimationsPanel() {
         )}
       </div>
 
-      {/* Layout and Dimensions - Expanded by default */}
-      <div
-        className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
-        onClick={() => !isTemplateMode && setResponsiveDropdownOpen(!responsiveDropdownOpen)}
-      >
-        <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-        <h3 className="text-sm font-semibold text-gray-900">Layout and Dimensions</h3>
-        <div className="ml-auto flex items-center gap-2">
-          {!isTemplateMode && (
+      {/* Quick Tools Section */}
+      <div className="space-y-3">
+        <div
+          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+          onClick={() => setQuickToolsOpen(!quickToolsOpen)}
+        >
+          <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+          <h3 className="text-sm font-semibold text-gray-900 flex-1">Quick Tools</h3>
+          <div className="ml-auto flex items-center gap-2">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               width="16"
@@ -140,11 +188,228 @@ export function ResponsiveAnimationsPanel() {
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className={`transform transition-transform ${responsiveDropdownOpen ? 'rotate-180' : ''}`}
+              className={`transform transition-transform ${quickToolsOpen ? 'rotate-180' : ''}`}
             >
               <path d="M6 9L12 15L18 9" />
             </svg>
-          )}
+          </div>
+        </div>
+        {quickToolsOpen && (
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-3 space-y-3 border border-blue-100">
+            {/* Reordering Operations */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-blue-900">🔄 Reordering</Label>
+              <div className="grid grid-cols-4 gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSortAscending}
+                  className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"
+                  title="Sort Ascending (Low to High)"
+                >
+                  <ArrowUpNarrowWide className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSortDescending}
+                  className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"
+                  title="Sort Descending (High to Low)"
+                >
+                  <ArrowDownWideNarrow className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSortLabelAZ}
+                  className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"
+                  title="Sort by Label A-Z"
+                >
+                  <ArrowUpAZ className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSortLabelZA}
+                  className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"
+                  title="Sort by Label Z-A"
+                >
+                  <ArrowDownZA className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleReverse}
+                  className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group col-span-4"
+                  title="Reverse Order"
+                >
+                  <ArrowUpDown className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Filtering Operations */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-blue-900">🔍 Filtering</Label>
+              <div className="grid grid-cols-4 gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleTop5}
+                  className="h-8 bg-white hover:bg-green-50 hover:border-green-300 transition-all group"
+                  title="Show Top 5 Values"
+                >
+                  <Trophy className="h-4 w-4 text-green-600 group-hover:scale-110 transition-transform" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleTop10}
+                  className="h-8 bg-white hover:bg-green-50 hover:border-green-300 transition-all group"
+                  title="Show Top 10 Values"
+                >
+                  <Trophy className="h-4 w-4 text-green-600 group-hover:scale-110 transition-transform" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAboveThreshold}
+                  className="h-8 bg-white hover:bg-green-50 hover:border-green-300 transition-all group"
+                  title={`Show values above ${thresholdValue}`}
+                >
+                  <TrendingUp className="h-4 w-4 text-green-600 group-hover:scale-110 transition-transform" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBelowThreshold}
+                  className="h-8 bg-white hover:bg-green-50 hover:border-green-300 transition-all group"
+                  title={`Show values below ${thresholdValue}`}
+                >
+                  <TrendingDown className="h-4 w-4 text-green-600 group-hover:scale-110 transition-transform" />
+                </Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label className="text-xs text-gray-600">Threshold:</Label>
+                <input
+                  type="number"
+                  value={thresholdValue}
+                  onChange={(e) => setThresholdValue(Number(e.target.value))}
+                  className="w-16 px-2 py-1 text-xs border rounded bg-white"
+                  min="0"
+                />
+              </div>
+            </div>
+
+            {/* Value Transformations */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-blue-900">📈 Transformations</Label>
+              <div className="grid grid-cols-4 gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleNormalize}
+                  className="h-8 bg-white hover:bg-purple-50 hover:border-purple-300 transition-all group"
+                  title="Normalize to 0-100 range"
+                >
+                  <BarChart3 className="h-4 w-4 text-purple-600 group-hover:scale-110 transition-transform" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleConvertToPercentage}
+                  className="h-8 bg-white hover:bg-purple-50 hover:border-purple-300 transition-all group"
+                  title="Convert to percentages"
+                >
+                  <Percent className="h-4 w-4 text-purple-600 group-hover:scale-110 transition-transform" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRound1Decimal}
+                  className="h-8 bg-white hover:bg-purple-50 hover:border-purple-300 transition-all group"
+                  title="Round to 1 decimal place"
+                >
+                  <Hash className="h-4 w-4 text-purple-600 group-hover:scale-110 transition-transform" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRound2Decimals}
+                  className="h-8 bg-white hover:bg-purple-50 hover:border-purple-300 transition-all group"
+                  title="Round to 2 decimal places"
+                >
+                  <Hash className="h-4 w-4 text-purple-600 group-hover:scale-110 transition-transform" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDoubleValues}
+                  className="h-8 bg-white hover:bg-purple-50 hover:border-purple-300 transition-all group"
+                  title="Double all values"
+                >
+                  <X className="h-4 w-4 text-purple-600 group-hover:scale-110 transition-transform" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleHalfValues}
+                  className="h-8 bg-white hover:bg-purple-50 hover:border-purple-300 transition-all group"
+                  title="Half all values"
+                >
+                  <Divide className="h-4 w-4 text-purple-600 group-hover:scale-110 transition-transform" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Reset Button */}
+            {hasBackup && (
+              <div className="pt-2 border-t border-blue-200">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResetOperations}
+                  className="w-full h-8 bg-white hover:bg-red-50 hover:border-red-300 text-red-600 hover:text-red-700 transition-all group"
+                >
+                  <Undo2 className="h-3.5 w-3.5 mr-2 group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-medium">Reset to Original</span>
+                </Button>
+              </div>
+            )}
+
+            {!hasBackup && (
+              <div className="pt-2 border-t border-blue-200">
+                <p className="text-xs text-center text-gray-500 py-2">
+                  No changes to reset
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Layout and Dimensions - Expanded by default */}
+      <div
+        className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+        onClick={() => setResponsiveDropdownOpen(!responsiveDropdownOpen)}
+      >
+        <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+        <h3 className="text-sm font-semibold text-gray-900">Layout and Dimensions</h3>
+        <div className="ml-auto flex items-center gap-2">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={`transform transition-transform ${responsiveDropdownOpen ? 'rotate-180' : ''}`}
+          >
+            <path d="M6 9L12 15L18 9" />
+          </svg>
         </div>
       </div>
       {responsiveDropdownOpen && (
