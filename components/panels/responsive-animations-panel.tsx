@@ -111,63 +111,62 @@ export function ResponsiveAnimationsPanel() {
 
   return (
     <div className="space-y-3 mt-4">
-      {/* Quick Slice Visibility */}
-      <div className="space-y-3">
-        <div
-          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
-          onClick={() => setSliceVisibilityOpen(!sliceVisibilityOpen)}
-        >
-          <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
-          <h3 className="text-sm font-semibold text-gray-900">Quick Slice Visibility</h3>
-          <div className="ml-auto flex items-center gap-2">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className={`transform transition-transform ${sliceVisibilityOpen ? 'rotate-180' : ''}`}
-            >
-              <path d="M6 9L12 15L18 9" />
-            </svg>
-          </div>
-        </div>
-
-        {sliceVisibilityOpen && (
-          <div className="bg-purple-50 rounded-lg p-3 space-y-2">
-            <p className="text-xs text-gray-600 mb-2">Click to hide/show slices from the chart</p>
-            <div className="flex flex-wrap gap-2">
-              {sliceLabels.map((label: any, index: number) => {
-                // Check if slice is hidden using legendFilter
-                const isHidden = legendFilter.slices[index] === false;
-
-                return (
-                  <Button
-                    key={index}
-                    variant={isHidden ? "outline" : "default"}
-                    size="sm"
-                    onClick={() => handleToggleSliceVisibility(index)}
-                    className={`h-8 text-xs ${isHidden
-                      ? 'bg-gray-100 text-gray-500 hover:bg-gray-200 border-gray-300'
-                      : 'bg-purple-600 hover:bg-purple-700 text-white'
-                      }`}
-                  >
-                    {isHidden ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
-                    {String(label)}
-                  </Button>
-                );
-              })}
+      {/* Quick Slice Visibility - Only show when there are labels */}
+      {sliceLabels.length > 0 && (
+        <div className="space-y-3">
+          <div
+            className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+            onClick={() => setSliceVisibilityOpen(!sliceVisibilityOpen)}
+          >
+            <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
+            <h3 className="text-sm font-semibold text-gray-900">Quick Slice Visibility</h3>
+            <div className="ml-auto flex items-center gap-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={`transform transition-transform ${sliceVisibilityOpen ? 'rotate-180' : ''}`}
+              >
+                <path d="M6 9L12 15L18 9" />
+              </svg>
             </div>
-            {sliceLabels.length === 0 && (
-              <p className="text-xs text-gray-500 italic">No slices available</p>
-            )}
           </div>
-        )}
-      </div>
+
+          {sliceVisibilityOpen && (
+            <div className="bg-purple-50 rounded-lg p-3 space-y-2">
+              <p className="text-xs text-gray-600 mb-2">Click to hide/show slices from the chart</p>
+              <div className="flex flex-wrap gap-2">
+                {sliceLabels.map((label: any, index: number) => {
+                  // Check if slice is hidden using legendFilter
+                  const isHidden = legendFilter.slices[index] === false;
+
+                  return (
+                    <Button
+                      key={index}
+                      variant={isHidden ? "outline" : "default"}
+                      size="sm"
+                      onClick={() => handleToggleSliceVisibility(index)}
+                      className={`h-8 text-xs ${isHidden
+                        ? 'bg-gray-100 text-gray-500 hover:bg-gray-200 border-gray-300'
+                        : 'bg-purple-600 hover:bg-purple-700 text-white'
+                        }`}
+                    >
+                      {isHidden ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
+                      {String(label)}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Quick Tools Section */}
       <div className="space-y-3">

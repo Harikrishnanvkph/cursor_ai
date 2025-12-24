@@ -106,7 +106,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     { name: "Slice 5", value: 30, color: "#96ceb4" }
   ])
   const [newDatasetChartType, setNewDatasetChartType] = useState<import("@/lib/chart-store").SupportedChartType>('bar')
-  const [colorMode, setColorMode] = useState<'slice' | 'dataset'>('slice');
+  const [colorMode, setColorMode] = useState<'slice' | 'dataset'>('dataset');
   const [colorOpacity, setColorOpacity] = useState(100); // 0-100 for transparency
   const [borderColorMode, setBorderColorMode] = useState<'auto' | 'manual'>('auto');
   const [manualBorderColor, setManualBorderColor] = useState('#000000');
@@ -1444,56 +1444,142 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
             </div>
           </div>
 
-          {/* Individual Dataset Colors - Only for grouped mode */}
+          {/* Individual Colors - Changes based on color mode for grouped mode */}
           {chartMode === 'grouped' && (
             <div className="space-y-2 mt-3">
-              <Label className="text-xs font-medium text-pink-800">Dataset Colors</Label>
-              <div className="space-y-2 p-3 bg-pink-50 rounded-lg border border-pink-200">
-                {chartData.datasets.map((dataset, datasetIndex) => (
-                  <div key={datasetIndex} className="flex items-center justify-between p-2 bg-white rounded border">
-                    <span className="text-xs font-medium">
-                      {dataset.label || `Dataset ${datasetIndex + 1}`}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-6 h-6 rounded border-2 border-white shadow-sm cursor-pointer hover:scale-110 transition-transform"
-                        style={{
-                          backgroundColor: Array.isArray(dataset.backgroundColor)
-                            ? dataset.backgroundColor[0]
-                            : dataset.backgroundColor
-                        }}
-                        onClick={() => document.getElementById(`dataset-color-${datasetIndex}`)?.click()}
-                      />
-                      <input
-                        id={`dataset-color-${datasetIndex}`}
-                        type="color"
-                        value={Array.isArray(dataset.backgroundColor)
-                          ? dataset.backgroundColor[0]
-                          : dataset.backgroundColor || '#3b82f6'}
-                        onChange={(e) => {
-                          handleUpdateDataset(datasetIndex, {
-                            backgroundColor: e.target.value,
-                            borderColor: darkenColor(e.target.value, 20)
-                          })
-                        }}
-                        className="invisible w-0"
-                      />
-                      <Input
-                        value={Array.isArray(dataset.backgroundColor)
-                          ? dataset.backgroundColor[0]
-                          : dataset.backgroundColor || '#3b82f6'}
-                        onChange={(e) => {
-                          handleUpdateDataset(datasetIndex, {
-                            backgroundColor: e.target.value,
-                            borderColor: darkenColor(e.target.value, 20)
-                          })
-                        }}
-                        className="w-20 h-6 text-xs font-mono uppercase"
-                        placeholder="#3b82f6"
-                      />
-                    </div>
-                  </div>
-                ))}
+              <Label className="text-xs font-medium text-pink-800">
+                {colorMode === 'slice' ? 'Slice Colors' : 'Dataset Colors'}
+              </Label>
+              <div className="space-y-2 p-3 bg-pink-50 rounded-lg border border-pink-200 max-h-60 overflow-y-auto">
+                {colorMode === 'slice' ? (
+                  /* Slice Colors mode - show color picker for each slice/label */
+                  <>
+                    {(chartData.labels || []).map((label, sliceIndex) => {
+                      // Get the color from the first dataset's backgroundColor array
+                      const firstDataset = chartData.datasets[0];
+                      const currentColor = Array.isArray(firstDataset?.backgroundColor)
+                        ? firstDataset.backgroundColor[sliceIndex] || '#3b82f6'
+                        : firstDataset?.backgroundColor || '#3b82f6';
+
+                      return (
+                        <div key={sliceIndex} className="flex items-center justify-between p-2 bg-white rounded border">
+                          <span className="text-xs font-medium">
+                            {String(label) || `Slice ${sliceIndex + 1}`}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-6 h-6 rounded border-2 border-white shadow-sm cursor-pointer hover:scale-110 transition-transform"
+                              style={{ backgroundColor: typeof currentColor === 'string' ? currentColor : '#3b82f6' }}
+                              onClick={() => document.getElementById(`slice-color-${sliceIndex}`)?.click()}
+                            />
+                            <input
+                              id={`slice-color-${sliceIndex}`}
+                              type="color"
+                              value={typeof currentColor === 'string' ? currentColor : '#3b82f6'}
+                              onChange={(e) => {
+                                // Apply this color to the same slice index across ALL datasets
+                                chartData.datasets.forEach((dataset, datasetIndex) => {
+                                  const newBgColors = Array.isArray(dataset.backgroundColor)
+                                    ? [...dataset.backgroundColor]
+                                    : Array(dataset.data.length).fill(dataset.backgroundColor || '#3b82f6');
+                                  const newBorderColors = Array.isArray(dataset.borderColor)
+                                    ? [...dataset.borderColor]
+                                    : Array(dataset.data.length).fill(dataset.borderColor || '#1d4ed8');
+
+                                  newBgColors[sliceIndex] = e.target.value;
+                                  newBorderColors[sliceIndex] = darkenColor(e.target.value, 20);
+
+                                  handleUpdateDataset(datasetIndex, {
+                                    backgroundColor: newBgColors,
+                                    borderColor: newBorderColors
+                                  });
+                                });
+                              }}
+                              className="invisible w-0"
+                            />
+                            <Input
+                              value={typeof currentColor === 'string' ? currentColor : '#3b82f6'}
+                              onChange={(e) => {
+                                // Apply this color to the same slice index across ALL datasets
+                                chartData.datasets.forEach((dataset, datasetIndex) => {
+                                  const newBgColors = Array.isArray(dataset.backgroundColor)
+                                    ? [...dataset.backgroundColor]
+                                    : Array(dataset.data.length).fill(dataset.backgroundColor || '#3b82f6');
+                                  const newBorderColors = Array.isArray(dataset.borderColor)
+                                    ? [...dataset.borderColor]
+                                    : Array(dataset.data.length).fill(dataset.borderColor || '#1d4ed8');
+
+                                  newBgColors[sliceIndex] = e.target.value;
+                                  newBorderColors[sliceIndex] = darkenColor(e.target.value, 20);
+
+                                  handleUpdateDataset(datasetIndex, {
+                                    backgroundColor: newBgColors,
+                                    borderColor: newBorderColors
+                                  });
+                                });
+                              }}
+                              className="w-20 h-6 text-xs font-mono uppercase"
+                              placeholder="#3b82f6"
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </>
+                ) : (
+                  /* Dataset Colors mode - show color picker for each dataset */
+                  <>
+                    {chartData.datasets.map((dataset, datasetIndex) => (
+                      <div key={datasetIndex} className="flex items-center justify-between p-2 bg-white rounded border">
+                        <span className="text-xs font-medium">
+                          {dataset.label || `Dataset ${datasetIndex + 1}`}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-6 h-6 rounded border-2 border-white shadow-sm cursor-pointer hover:scale-110 transition-transform"
+                            style={{
+                              backgroundColor: Array.isArray(dataset.backgroundColor)
+                                ? dataset.backgroundColor[0]
+                                : dataset.backgroundColor
+                            }}
+                            onClick={() => document.getElementById(`dataset-color-${datasetIndex}`)?.click()}
+                          />
+                          <input
+                            id={`dataset-color-${datasetIndex}`}
+                            type="color"
+                            value={Array.isArray(dataset.backgroundColor)
+                              ? dataset.backgroundColor[0]
+                              : dataset.backgroundColor || '#3b82f6'}
+                            onChange={(e) => {
+                              // Apply uniform color to all slices in this dataset
+                              const sliceCount = dataset.data.length;
+                              handleUpdateDataset(datasetIndex, {
+                                backgroundColor: Array(sliceCount).fill(e.target.value),
+                                borderColor: Array(sliceCount).fill(darkenColor(e.target.value, 20))
+                              })
+                            }}
+                            className="invisible w-0"
+                          />
+                          <Input
+                            value={Array.isArray(dataset.backgroundColor)
+                              ? dataset.backgroundColor[0]
+                              : dataset.backgroundColor || '#3b82f6'}
+                            onChange={(e) => {
+                              // Apply uniform color to all slices in this dataset
+                              const sliceCount = dataset.data.length;
+                              handleUpdateDataset(datasetIndex, {
+                                backgroundColor: Array(sliceCount).fill(e.target.value),
+                                borderColor: Array(sliceCount).fill(darkenColor(e.target.value, 20))
+                              })
+                            }}
+                            className="w-20 h-6 text-xs font-mono uppercase"
+                            placeholder="#3b82f6"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
               </div>
             </div>
           )}

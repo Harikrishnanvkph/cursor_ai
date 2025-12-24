@@ -49,7 +49,7 @@ declare module 'chart.js' {
     textShadowColor?: string | ((context: Context) => string);
   }
 
-  interface DatalabelsLabelOptions extends DatalabelsPluginOptions {}
+  interface DatalabelsLabelOptions extends DatalabelsPluginOptions { }
 
   interface PluginOptionsByType<TType extends ChartType = ChartType> {
     datalabels?: DatalabelsPluginOptions;
@@ -122,15 +122,15 @@ export interface ExtendedChartData extends ChartData {
   datasets: ExtendedChartDataset[]
 }
 
-export type SupportedChartType = 
-  | 'bar' 
-  | 'line' 
-  | 'pie' 
-  | 'doughnut' 
-  | 'polarArea' 
-  | 'radar' 
-  | 'scatter' 
-  | 'bubble' 
+export type SupportedChartType =
+  | 'bar'
+  | 'line'
+  | 'pie'
+  | 'doughnut'
+  | 'polarArea'
+  | 'radar'
+  | 'scatter'
+  | 'bubble'
   | 'horizontalBar'
   | 'area';
 
@@ -169,17 +169,17 @@ interface ChartStore {
   // Global chart reference for sharing between components
   globalChartRef: React.MutableRefObject<any> | null
   setGlobalChartRef: (ref: React.MutableRefObject<any>) => void
-  
+
   chartType: SupportedChartType;
   chartData: ExtendedChartData;
   chartConfig: ExtendedChartOptions;
   chartMode: ChartMode;
   activeDatasetIndex: number;
-  
+
   // Separate storage for each mode's datasets
   singleModeData: ExtendedChartData;
   groupedModeData: ExtendedChartData;
-  
+
   // Chart settings
   uniformityMode: 'uniform' | 'mixed';
   legendFilter: {
@@ -191,17 +191,17 @@ interface ChartStore {
   showImages: boolean;
   showLabels: boolean;
   hasJSON: boolean;
-  
+
   // Overlay state
   overlayImages: OverlayImage[];
   overlayTexts: OverlayText[];
   selectedImageId: string | null;
   selectedTextId: string | null;
-  
+
   // Backend sync state
   isDirty: boolean;
   lastSyncTime: number;
-  
+
   // Actions
   toggleDatasetVisibility: (index: number) => void;
   toggleSliceVisibility: (index: number) => void;
@@ -222,61 +222,24 @@ interface ChartStore {
   toggleShowImages: () => void;
   toggleShowLabels: () => void;
   setFullChart: (snapshot: { chartType: SupportedChartType; chartData: ExtendedChartData; chartConfig: ExtendedChartOptions }) => void;
-  
+
   // Backend sync methods
   syncToBackend: (conversationId: string) => Promise<void>;
   loadFromBackend: (conversationId: string) => Promise<void>;
   markAsDirty: () => void;
 }
 
-// Default data configurations
+// Default data configurations - empty by default
+// User must explicitly load data via "Load Sample Data" or "Add Your Own Data"
 const singleModeDefaultData: ExtendedChartData = {
-  labels: ['January', 'February', 'March', 'April', 'May'],
-  datasets: [{
-    label: 'Dataset 1',
-    data: [12, 19, 3, 5, 2],
-    backgroundColor: '#1976d2',
-    borderColor: '#1976d2',
-    borderWidth: 2,
-    fillArea: true,
-    showBorder: true,
-    showImages: false,
-    pointRadius: 4,
-    pointHoverRadius: 6,
-    tension: 0.1
-  }]
+  labels: [],
+  datasets: []
 };
 
+// Grouped mode default data - empty by default
 const groupedModeDefaultData: ExtendedChartData = {
-  labels: ['January', 'February', 'March', 'April', 'May'],
-  datasets: [
-    {
-      label: 'Dataset 1',
-      data: [12, 19, 3, 5, 2],
-      backgroundColor: '#1976d2',
-      borderColor: '#1976d2',
-      borderWidth: 2,
-      fillArea: true,
-      showBorder: true,
-      showImages: false,
-      pointRadius: 4,
-      pointHoverRadius: 6,
-      tension: 0.1
-    },
-    {
-      label: 'Dataset 2',
-      data: [2, 3, 20, 5, 1],
-      backgroundColor: '#2e7d32',
-      borderColor: '#2e7d32',
-      borderWidth: 2,
-      fillArea: true,
-      showBorder: true,
-      showImages: false,
-      pointRadius: 4,
-      pointHoverRadius: 6,
-      tension: 0.1
-    }
-  ]
+  labels: [],
+  datasets: []
 };
 
 // Default chart configuration
@@ -345,17 +308,17 @@ export const useChartStoreWithSync = create<ChartStore>()(
       // Global chart reference
       globalChartRef: null,
       setGlobalChartRef: (ref) => set({ globalChartRef: ref }),
-      
+
       chartType: 'bar',
       chartData: singleModeDefaultData,
       chartConfig: getDefaultConfigForType('bar'),
       chartMode: 'single',
       activeDatasetIndex: 0,
-      
+
       // Separate storage for each mode's datasets
       singleModeData: singleModeDefaultData,
       groupedModeData: groupedModeDefaultData,
-      
+
       // Chart settings
       uniformityMode: 'uniform',
       legendFilter: { datasets: {}, slices: {} },
@@ -364,45 +327,45 @@ export const useChartStoreWithSync = create<ChartStore>()(
       showImages: true,
       showLabels: true,
       hasJSON: false,
-      
+
       // Initialize overlay state
       overlayImages: [],
       overlayTexts: [],
       selectedImageId: null,
       selectedTextId: null,
-      
+
       // Backend sync state
       isDirty: false,
       lastSyncTime: 0,
-      
+
       // Chart actions (keeping existing functionality)
       toggleDatasetVisibility: (index: number) => set((state) => {
         const current = (state.legendFilter.datasets as Record<number, boolean>)[index] ?? true;
-        return { 
+        return {
           legendFilter: { ...state.legendFilter, datasets: { ...state.legendFilter.datasets, [index]: !current } },
           isDirty: true
         };
       }),
-      
+
       toggleSliceVisibility: (index: number) => set((state) => {
         const current = (state.legendFilter.slices as Record<number, boolean>)[index] ?? true;
-        return { 
+        return {
           legendFilter: { ...state.legendFilter, slices: { ...state.legendFilter.slices, [index]: !current } },
           isDirty: true
         };
       }),
-      
+
       setChartType: (type) => set((state) => {
         if (state.chartType === type) return state;
-        
+
         const newConfig = getDefaultConfigForType(type);
-        return { 
-          chartType: type, 
+        return {
+          chartType: type,
           chartConfig: newConfig,
           isDirty: true
         };
       }),
-      
+
       addDataset: (dataset) => set((state) => ({
         chartData: {
           ...state.chartData,
@@ -410,7 +373,7 @@ export const useChartStoreWithSync = create<ChartStore>()(
         },
         isDirty: true
       })),
-      
+
       removeDataset: (index) => set((state) => ({
         chartData: {
           ...state.chartData,
@@ -418,41 +381,41 @@ export const useChartStoreWithSync = create<ChartStore>()(
         },
         isDirty: true
       })),
-      
+
       updateDataset: (index, updates) => set((state) => ({
         chartData: {
           ...state.chartData,
-          datasets: state.chartData.datasets.map((d, i) => 
+          datasets: state.chartData.datasets.map((d, i) =>
             i === index ? { ...d, ...updates } : d
           )
         },
         isDirty: true
       })),
-      
+
       updateDataPoint: (datasetIndex, pointIndex, field, value) => set((state) => ({
         chartData: {
           ...state.chartData,
-          datasets: state.chartData.datasets.map((dataset, dIndex) => 
-            dIndex === datasetIndex 
+          datasets: state.chartData.datasets.map((dataset, dIndex) =>
+            dIndex === datasetIndex
               ? {
-                  ...dataset,
-                  data: dataset.data.map((point, pIndex) => 
-                    pIndex === pointIndex 
-                      ? { ...point, [field]: value }
-                      : point
-                  )
-                }
+                ...dataset,
+                data: dataset.data.map((point, pIndex) =>
+                  pIndex === pointIndex
+                    ? { ...point, [field]: value }
+                    : point
+                )
+              }
               : dataset
           )
         },
         isDirty: true
       })),
-      
-      updateChartConfig: (config) => set({ 
+
+      updateChartConfig: (config) => set({
         chartConfig: { ...get().chartConfig, ...config },
         isDirty: true
       }),
-      
+
       resetChart: () => set({
         chartType: 'bar',
         chartData: singleModeDefaultData,
@@ -475,31 +438,31 @@ export const useChartStoreWithSync = create<ChartStore>()(
         isDirty: false,
         lastSyncTime: 0
       }),
-      
+
       setChartMode: (mode) => set((state) => {
         const newData = mode === 'single' ? state.singleModeData : state.groupedModeData;
-        return { 
-          chartMode: mode, 
+        return {
+          chartMode: mode,
           chartData: newData,
           isDirty: true
         };
       }),
-      
-      setActiveDatasetIndex: (index) => set({ 
+
+      setActiveDatasetIndex: (index) => set({
         activeDatasetIndex: index,
         isDirty: true
       }),
-      
-      setUniformityMode: (mode) => set({ 
+
+      setUniformityMode: (mode) => set({
         uniformityMode: mode,
         isDirty: true
       }),
-      
+
       updateLabels: (labels) => set((state) => ({
         chartData: { ...state.chartData, labels },
         isDirty: true
       })),
-      
+
       toggleFillArea: () => set((state) => ({
         fillArea: !state.fillArea,
         chartData: {
@@ -508,7 +471,7 @@ export const useChartStoreWithSync = create<ChartStore>()(
         },
         isDirty: true
       })),
-      
+
       toggleShowBorder: () => set((state) => ({
         showBorder: !state.showBorder,
         chartData: {
@@ -517,7 +480,7 @@ export const useChartStoreWithSync = create<ChartStore>()(
         },
         isDirty: true
       })),
-      
+
       toggleShowImages: () => set((state) => ({
         showImages: !state.showImages,
         chartData: {
@@ -526,12 +489,12 @@ export const useChartStoreWithSync = create<ChartStore>()(
         },
         isDirty: true
       })),
-      
-      toggleShowLabels: () => set({ 
+
+      toggleShowLabels: () => set({
         showLabels: !get().showLabels,
         isDirty: true
       }),
-      
+
       setFullChart: (snapshot) => set({
         chartType: snapshot.chartType,
         chartData: snapshot.chartData,
@@ -539,18 +502,18 @@ export const useChartStoreWithSync = create<ChartStore>()(
         hasJSON: true,
         isDirty: true
       }),
-      
+
       // Backend sync methods - DISABLED (only save on explicit Save button click)
       syncToBackend: async (conversationId: string) => {
         // Auto-sync disabled - charts only save when user clicks Save button
         console.log('Auto-sync disabled. Use Save button to save charts.');
         return;
       },
-      
+
       loadFromBackend: async (conversationId: string) => {
         try {
           const response = await dataService.getCurrentChartSnapshot(conversationId);
-          
+
           if (response.data) {
             set({
               chartType: response.data.chart_type,
@@ -565,11 +528,11 @@ export const useChartStoreWithSync = create<ChartStore>()(
           console.error('Load failed:', error);
         }
       },
-      
+
       markAsDirty: () => set({ isDirty: true }),
-      
+
       // Placeholder for other methods that would be in the original chart store
-      updatePointImage: () => {},
+      updatePointImage: () => { },
     }),
     {
       name: (() => {

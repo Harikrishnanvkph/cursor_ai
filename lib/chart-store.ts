@@ -311,70 +311,18 @@ const defaultChartData = {
   ],
 }
 
-// Separate default data for single mode
+// Separate default data for single mode - empty by default
+// User must explicitly load data via "Load Sample Data" or "Add Your Own Data"
 const singleModeDefaultData = {
-  labels: ["Q1", "Q2", "Q3", "Q4"],
-  datasets: [
-    {
-      label: "Single Mode Data",
-      data: [25, 35, 20, 40],
-      backgroundColor: ["#3b82f6", "#ef4444", "#10b981", "#f59e0b"],
-      borderColor: ["#1d4ed8", "#dc2626", "#059669", "#d97706"],
-      borderWidth: 2,
-      pointImages: [null, null, null, null],
-      pointImageConfig: [
-        { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
-        { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
-        { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
-        { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
-      ],
-      mode: 'single' as ChartMode,
-      sliceLabels: ["Q1", "Q2", "Q3", "Q4"],
-    },
-  ],
+  labels: [],
+  datasets: [],
 }
 
-// Separate default data for grouped mode
+// Separate default data for grouped mode - empty by default
+// User must explicitly load data via "Load Sample Data" or "Add Your Own Data"
 const groupedModeDefaultData = {
-  labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-  datasets: [
-    {
-      label: "Grouped Mode Data A",
-      data: [15, 25, 18, 30, 22, 28],
-      backgroundColor: ["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899"],
-      borderColor: ["#1d4ed8", "#dc2626", "#059669", "#d97706", "#7c3aed", "#be185d"],
-      borderWidth: 2,
-      pointImages: [null, null, null, null, null, null],
-      pointImageConfig: [
-        { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
-        { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
-        { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
-        { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
-        { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
-        { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
-      ],
-      mode: 'grouped' as ChartMode,
-      sliceLabels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-    },
-    {
-      label: "Grouped Mode Data B",
-      data: [20, 30, 25, 35, 28, 32],
-      backgroundColor: ["#06b6d4", "#f97316", "#84cc16", "#a855f7", "#f43f5e", "#14b8a6"],
-      borderColor: ["#0891b2", "#ea580c", "#65a30d", "#9333ea", "#e11d48", "#0d9488"],
-      borderWidth: 2,
-      pointImages: [null, null, null, null, null, null],
-      pointImageConfig: [
-        { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
-        { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
-        { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
-        { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
-        { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
-        { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
-      ],
-      mode: 'grouped' as ChartMode,
-      sliceLabels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-    },
-  ],
+  labels: [],
+  datasets: [],
 }
 
 // Function to get default data for a specific mode
