@@ -4,6 +4,7 @@ import { useRef, useEffect, useState } from "react"
 import { useChartStore } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
 import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Download, RefreshCw, Maximize2, Minimize2, RotateCcw, X,
   FileCode, FileDown, FileImage, FileText, ImageIcon, Settings, Menu, Ellipsis, Eye, ZoomIn, ZoomOut, Hand, ChevronLeft, Pencil, Check, Loader2
@@ -40,7 +41,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   onTabChange?: (tab: string) => void,
   onNewChart?: () => void
 }) {
-  const { chartConfig, chartData, chartType, resetChart, setHasJSON, globalChartRef, showLabels, showImages, fillArea, showBorder, toggleShowBorder } = useChartStore()
+  const { chartConfig, chartData, chartType, setChartType, resetChart, setHasJSON, globalChartRef, showLabels, showImages, fillArea, showBorder, toggleShowBorder } = useChartStore()
   const { shouldShowTemplate, editorMode, templateInBackground, currentTemplate, setEditorMode } = useTemplateStore()
   const { user } = useAuth()
   const { backendConversationId } = useChatStore()
@@ -711,11 +712,28 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                     Template
                   </button>
                 </div>
+                {/* Compact Chart Type Selector - Mobile */}
+                <Select value={chartType} onValueChange={(value) => setChartType(value as any)}>
+                  <SelectTrigger className="h-6 w-[85px] text-[10px] px-2 py-0 border-gray-200 bg-white">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bar" className="text-xs">Bar</SelectItem>
+                    <SelectItem value="horizontalBar" className="text-xs">H. Bar</SelectItem>
+                    <SelectItem value="stackedBar" className="text-xs">Stacked</SelectItem>
+                    <SelectItem value="line" className="text-xs">Line</SelectItem>
+                    <SelectItem value="area" className="text-xs">Area</SelectItem>
+                    <SelectItem value="pie" className="text-xs">Pie</SelectItem>
+                    <SelectItem value="doughnut" className="text-xs">Doughnut</SelectItem>
+                    <SelectItem value="radar" className="text-xs">Radar</SelectItem>
+                    <SelectItem value="polarArea" className="text-xs">Polar</SelectItem>
+                    <SelectItem value="scatter" className="text-xs">Scatter</SelectItem>
+                    <SelectItem value="bubble" className="text-xs">Bubble</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="flex items-center gap-2 text-xs text-gray-500 min-w-0 flex-nowrap overflow-x-auto">
-                <ChartColumnBig className="h-4 w-4 mr-1" />
-                <span className="truncate max-w-[80px]">{getChartDisplayName()}</span>
-                <Dot className="h-4 w-4 mx-1 xs400:hidden" />
+
                 <span>{chartData.datasets.length} Dataset(s)</span>
                 <Dot className="h-4 w-4 mx-1 xs400:hidden" />
                 <span className="font-medium">{chartData.labels?.length || 0} Points</span>
@@ -786,13 +804,27 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                     Template
                   </button>
                 </div>
+                {/* Compact Chart Type Selector - Desktop */}
+                <Select value={chartType} onValueChange={(value) => setChartType(value as any)}>
+                  <SelectTrigger className="h-6 w-[90px] text-[10px] px-2 py-0 border-gray-200 bg-white">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bar" className="text-xs">Bar</SelectItem>
+                    <SelectItem value="horizontalBar" className="text-xs">H. Bar</SelectItem>
+                    <SelectItem value="stackedBar" className="text-xs">Stacked</SelectItem>
+                    <SelectItem value="line" className="text-xs">Line</SelectItem>
+                    <SelectItem value="area" className="text-xs">Area</SelectItem>
+                    <SelectItem value="pie" className="text-xs">Pie</SelectItem>
+                    <SelectItem value="doughnut" className="text-xs">Doughnut</SelectItem>
+                    <SelectItem value="radar" className="text-xs">Radar</SelectItem>
+                    <SelectItem value="polarArea" className="text-xs">Polar</SelectItem>
+                    <SelectItem value="scatter" className="text-xs">Scatter</SelectItem>
+                    <SelectItem value="bubble" className="text-xs">Bubble</SelectItem>
+                  </SelectContent>
+                </Select>
                 {/* Chart info */}
                 <div className="flex items-center gap-1 text-xs text-gray-400">
-                  <span className="flex items-center">
-                    {getChartIcon(getChartDisplayName())}
-                    <span className="truncate max-w-[60px]">{getChartDisplayName()}</span>
-                  </span>
-                  <span>•</span>
                   <span>{chartData.datasets.length} Dataset(s)</span>
                   <span>•</span>
                   <span>{chartData.labels?.length || 0} Points</span>

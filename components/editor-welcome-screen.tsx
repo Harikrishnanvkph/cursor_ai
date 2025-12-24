@@ -59,17 +59,18 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
 
     // Set chart mode to single first
     setChartMode('single')
-    
-    // Then set the chart data
+
+    // Then set the chart data - use current chartConfig to preserve settings
+    const currentConfig = useChartStore.getState().chartConfig
     setFullChart({
       chartType: 'bar',
       chartData: sampleData,
-      chartConfig: {}
+      chartConfig: currentConfig
     })
-    
+
     // Mark that we have a valid chart
     setHasJSON(true)
-    
+
     toast.success("Sample data loaded successfully!")
   }
 
@@ -101,11 +102,11 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
             Start creating your chart by choosing one of the options below
           </CardDescription>
         </CardHeader>
-        
+
         <CardContent className="space-y-4 pb-6">
           <div className="grid gap-4 md:grid-cols-2">
             {/* Sample Data Option */}
-            <Card 
+            <Card
               className="border-2 border-gray-200 hover:border-blue-400 hover:shadow-lg transition-all duration-200 cursor-pointer group"
               onClick={handleLoadSampleData}
             >
@@ -129,7 +130,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
             </Card>
 
             {/* Create Dataset Option */}
-            <Card 
+            <Card
               className="border-2 border-gray-200 hover:border-green-400 hover:shadow-lg transition-all duration-200 cursor-pointer group"
               onClick={handleGoToDataset}
             >

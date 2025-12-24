@@ -7,6 +7,7 @@ import { useChatStore } from "@/lib/chat-store"
 import { useHistoryStore } from "@/lib/history-store"
 
 import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ZoomIn, ZoomOut, RotateCcw, Eye, EyeOff, Ellipsis, Maximize2, Minimize2, Settings, Menu, X, ChevronLeft, Download, Hand, Pencil, Check, Loader2 } from "lucide-react"
 import { downloadTemplateExport } from "@/lib/template-export"
 import { FileDown, FileImage, FileCode } from "lucide-react"
@@ -43,7 +44,9 @@ export function TemplateChartPreview({
   const {
     chartData,
     chartConfig,
-    globalChartRef
+    globalChartRef,
+    chartType,
+    setChartType
   } = useChartStore()
   const { backendConversationId } = useChatStore()
   const { conversations, updateConversation } = useHistoryStore()
@@ -822,6 +825,25 @@ export function TemplateChartPreview({
                 Template
               </button>
             </div>
+            {/* Compact Chart Type Selector */}
+            <Select value={chartType} onValueChange={(value) => setChartType(value as any)}>
+              <SelectTrigger className="h-6 w-[90px] text-[10px] px-2 py-0 border-gray-200 bg-white">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="bar" className="text-xs">Bar</SelectItem>
+                <SelectItem value="horizontalBar" className="text-xs">H. Bar</SelectItem>
+                <SelectItem value="stackedBar" className="text-xs">Stacked</SelectItem>
+                <SelectItem value="line" className="text-xs">Line</SelectItem>
+                <SelectItem value="area" className="text-xs">Area</SelectItem>
+                <SelectItem value="pie" className="text-xs">Pie</SelectItem>
+                <SelectItem value="doughnut" className="text-xs">Doughnut</SelectItem>
+                <SelectItem value="radar" className="text-xs">Radar</SelectItem>
+                <SelectItem value="polarArea" className="text-xs">Polar</SelectItem>
+                <SelectItem value="scatter" className="text-xs">Scatter</SelectItem>
+                <SelectItem value="bubble" className="text-xs">Bubble</SelectItem>
+              </SelectContent>
+            </Select>
             {/* Template dimensions */}
             <span className="text-xs text-gray-400">{template.width} × {template.height}px</span>
           </div>

@@ -35,6 +35,9 @@ export function TypesTogglesPanel() {
       })
       return
     }
+
+
+
     setChartType(type as SupportedChartType)
   }
 

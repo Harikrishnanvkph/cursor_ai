@@ -282,7 +282,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
       borderColor: borderColors,
       borderWidth: 2,
       pointRadius: 5,
-      tension: 0.4,
+      tension: 0.3,
       fill: false,
       pointImages: Array(finalSlices.length).fill(null),
       pointImageConfig: Array(finalSlices.length).fill(getDefaultImageConfigFromStore(finalChartType)),

@@ -865,6 +865,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
           backgroundColor: 'rgba(59, 130, 246, 0.8)', // Blue
           borderColor: 'rgba(29, 78, 216, 1)',
           borderWidth: 2,
+          tension: 0.3,
           pointImages: [null, null, null, null, null, null],
           pointImageConfig: [
             { type: 'circle', size: 20, position: 'center', arrow: false, borderWidth: 3, borderColor: '#ffffff' },
@@ -883,6 +884,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
           backgroundColor: 'rgba(16, 185, 129, 0.8)', // Emerald green
           borderColor: 'rgba(5, 150, 105, 1)',
           borderWidth: 2,
+          tension: 0.3,
           pointImages: [null, null, null, null, null, null],
           pointImageConfig: [
             { type: 'circle', size: 20, position: 'center', arrow: false, borderWidth: 3, borderColor: '#ffffff' },
@@ -936,6 +938,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
           'rgba(255, 159, 64, 1)',
         ],
         borderWidth: 2,
+        tension: 0.3,
         pointImages: [null, null, null, null, null, null],
         pointImageConfig: [
           { type: 'circle', size: 20, position: 'center', arrow: false, borderWidth: 3, borderColor: '#ffffff' },
@@ -1011,7 +1014,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                     'data-debug-height': chartConfig.height
                   })}
                   options={{
-                    ...appliedOptions,
+                    ...chartConfig,
                     responsive: chartConfig.manualDimensions ? false : isResponsive,
                     maintainAspectRatio: !(isResponsive),
                     overlayImages,

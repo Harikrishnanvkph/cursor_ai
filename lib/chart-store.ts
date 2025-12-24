@@ -572,6 +572,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
         },
         y: {
           display: true,
+          beginAtZero: true,
           grace: 5, // Add default grace for y-axis
           grid: {
             display: true,
@@ -656,6 +657,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
         },
         y: {
           display: true,
+          beginAtZero: true,
           grace: 5,
           grid: {
             display: true,
@@ -729,6 +731,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
       },
       y: {
         display: true,
+        beginAtZero: true,
         grace: 5, // Add default grace for y-axis
         grid: {
           display: true,
@@ -2103,6 +2106,13 @@ export const useChartStore = create<ChartStore>()(
             newDataset.type = type as keyof ChartTypeRegistry; // Covers 'line', 'scatter', 'bubble', 'pie', etc.
           }
 
+          // Apply default tension for line and area charts if not already set
+          if (type === 'line' || type === 'area') {
+            if (newDataset.tension === undefined) {
+              newDataset.tension = 0.3;
+            }
+          }
+
           // Set the fill property based on the original requested type
           if (type === ('area' as CustomChartType)) {
             newDataset.fill = true;
@@ -2133,9 +2143,50 @@ export const useChartStore = create<ChartStore>()(
         // FULL RESET: Always deep clone default config for new chart type
         // Use the original type (e.g., 'area') not chartJsType ('line') to get correct configs
         let newConfig = JSON.parse(JSON.stringify(getDefaultConfigForType(type)));
+
         // Preserve existing background configuration
         if ((state.chartConfig as any)?.background) {
           (newConfig as any).background = (state.chartConfig as any).background;
+        }
+
+        // Preserve user's title, subtitle, legend, and tooltip settings
+        const prevPlugins = state.chartConfig.plugins || {};
+
+        // Always preserve title settings including display state
+        if (prevPlugins.title !== undefined) {
+          newConfig.plugins = newConfig.plugins || {};
+          // Merge with prev settings taking precedence, especially for display
+          newConfig.plugins.title = {
+            ...newConfig.plugins.title,
+            ...prevPlugins.title
+          };
+        }
+
+        // Always preserve subtitle settings including display state
+        if (prevPlugins.subtitle !== undefined) {
+          newConfig.plugins = newConfig.plugins || {};
+          newConfig.plugins.subtitle = {
+            ...newConfig.plugins.subtitle,
+            ...prevPlugins.subtitle
+          };
+        }
+
+        // Always preserve legend settings
+        if (prevPlugins.legend !== undefined) {
+          newConfig.plugins = newConfig.plugins || {};
+          newConfig.plugins.legend = {
+            ...newConfig.plugins.legend,
+            ...prevPlugins.legend
+          };
+        }
+
+        // Always preserve tooltip settings
+        if (prevPlugins.tooltip !== undefined) {
+          newConfig.plugins = newConfig.plugins || {};
+          newConfig.plugins.tooltip = {
+            ...newConfig.plugins.tooltip,
+            ...prevPlugins.tooltip
+          };
         }
 
         // Preserve manual/responsive/dimension settings for mobile devices
@@ -2169,6 +2220,7 @@ export const useChartStore = create<ChartStore>()(
         if (newConfig.plugins) {
           (newConfig.plugins as any).customLabelsConfig = prevCustomLabelsConfig;
         }
+
 
         // RADAR PATCH: always merge full radar config
         if (type === 'radar') {
@@ -2669,6 +2721,28 @@ export const useChartStore = create<ChartStore>()(
           // Update the mode-specific storage
           ...(mode === 'single' ? { singleModeData: targetModeData } : { groupedModeData: targetModeData }),
         };
+      }),
+      setChartType: (type) => set((state) => {
+        const newChartData = { ...state.chartData };
+
+        // Apply default tension for line and area charts if not already set
+        if (type === 'line' || type === 'area') {
+          newChartData.datasets = newChartData.datasets.map(dataset => ({
+            ...dataset,
+            tension: (dataset.tension === undefined) ? 0.3 : dataset.tension
+          }));
+        }
+
+        // Update the appropriate mode-specific storage
+        const modeDataUpdate = state.chartMode === 'single'
+          ? { singleModeData: newChartData }
+          : { groupedModeData: newChartData };
+
+        return {
+          chartType: type,
+          chartData: newChartData,
+          ...modeDataUpdate,
+        }
       }),
       setActiveDatasetIndex: (index) => set({ activeDatasetIndex: index }),
       setUniformityMode: (mode: 'uniform' | 'mixed') => set({ uniformityMode: mode }),

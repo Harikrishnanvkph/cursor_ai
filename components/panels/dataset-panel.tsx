@@ -37,10 +37,10 @@ export function DatasetPanel() {
       const colors = generateColorPalette(5)
       // Use existing chart labels if available, otherwise use default labels
       const defaultLabels = ['Label 1', 'Label 2', 'Label 3', 'Label 4', 'Label 5']
-      const sliceLabels = chartData.labels && chartData.labels.length > 0 
-        ? chartData.labels 
+      const sliceLabels = chartData.labels && chartData.labels.length > 0
+        ? chartData.labels
         : defaultLabels
-      
+
       const newDataset: ExtendedChartDataset = {
         label: newDatasetName,
         data: [10, 20, 30, 40, 50],
@@ -49,7 +49,7 @@ export function DatasetPanel() {
         borderWidth: 2,
         pointRadius: 5,
         pointHoverRadius: 8,
-        tension: 0.4,
+        tension: 0.3,
         fill: false,
         pointImages: Array(5).fill(null),
         pointImageConfig: Array(5).fill({
@@ -126,7 +126,7 @@ export function DatasetPanel() {
       return
     }
     setChartType(newType)
-    
+
     // Update dataset types when chart type changes
     chartData.datasets.forEach((dataset, index) => {
       const newTypeForDataset = (type === 'horizontalBar' || type === 'stackedBar') ? 'bar' : type

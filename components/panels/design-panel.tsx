@@ -135,13 +135,13 @@ export function DesignPanel() {
           <div className="bg-purple-50 rounded-lg p-3 space-y-3">
             {/* Border Styling */}
             <div className="flex items-center gap-2 pb-1 border-b border-purple-200">
-              <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
-              <h3 className="text-[0.80rem] font-semibold text-gray-900">Border Styling</h3>
+              <h3 className="text-[0.80rem] font-semibold text-gray-900">Slice Border Styling</h3>
             </div>
 
-            {/* Border Width */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
+            {/* Border Width and Border Radius - Horizontal Layout */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Border Width */}
+              <div className="space-y-1">
                 <Label className="text-xs font-medium">Border Width</Label>
                 <div className="flex items-center gap-2">
                   <Input
@@ -157,6 +157,29 @@ export function DesignPanel() {
                     placeholder="2"
                     min={0}
                     max={10}
+                    step={1}
+                  />
+                  <span className="text-xs text-purple-700">px</span>
+                </div>
+              </div>
+
+              {/* Border Radius */}
+              <div className="space-y-1">
+                <Label className="text-xs font-medium">Border Radius</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    value={Number(chartData.datasets[0]?.borderRadius ?? 0)}
+                    onChange={(e) => {
+                      const value = e.target.value ? Number(e.target.value) : 0
+                      chartData.datasets.forEach((_, index) => {
+                        handleUpdateDataset(index, 'borderRadius', value)
+                      })
+                    }}
+                    className="w-16 h-8 text-xs"
+                    placeholder="0"
+                    min={0}
+                    max={200}
                     step={1}
                   />
                   <span className="text-xs text-purple-700">px</span>
@@ -224,29 +247,11 @@ export function DesignPanel() {
                 </div>
               )}
             </div>
-
-            {/* Border Radius */}
-            <div className="space-y-1">
-              <Label className="text-xs font-medium">Border Radius (Slices)</Label>
-              <Slider
-                value={[Number(chartData.datasets[0]?.borderRadius ?? 0)]}
-                onValueChange={([value]) => {
-                  chartData.datasets.forEach((_, index) => {
-                    handleUpdateDataset(index, 'borderRadius', value)
-                  })
-                }}
-                max={200}
-                step={1}
-                className="mt-2"
-              />
-              <div className="text-xs text-gray-500 mt-1">{Number(chartData.datasets[0]?.borderRadius ?? 0)}px</div>
-            </div>
           </div>
 
           <div className="bg-purple-50 rounded-lg p-3 space-y-3">
             {/* Point Edit */}
             <div className="flex items-center gap-2 pb-1 border-b border-purple-200">
-              <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
               <h3 className="text-[0.80rem] font-semibold text-gray-900">
                 Point Edit <span className="text-xs text-gray-500">(Line, Area, Radar Charts Only)</span>
               </h3>
@@ -334,7 +339,6 @@ export function DesignPanel() {
           {/* Line Properties */}
           <div className="bg-purple-50 rounded-lg p-3 space-y-3">
             <div className="flex items-center gap-2 pb-1 border-b border-purple-200">
-              <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
               <h3 className="text-[0.80rem] font-semibold text-gray-900">
                 Line Properties <span className="text-xs text-gray-500">(Line, Area Chart Only)</span>
               </h3>
@@ -344,7 +348,7 @@ export function DesignPanel() {
               <div className="space-y-1">
                 <Label className="text-xs font-medium">Line Tension</Label>
                 <Slider
-                  value={[Number((chartData.datasets[0] as any)?.tension ?? 0.4)]}
+                  value={[Number((chartData.datasets[0] as any)?.tension ?? 0.3)]}
                   onValueChange={([value]) => {
                     chartData.datasets.forEach((_, index) => {
                       handleUpdateDataset(index, 'tension', value)
@@ -355,7 +359,7 @@ export function DesignPanel() {
                   step={0.1}
                   className="mt-2"
                 />
-                <div className="text-xs text-gray-500 mt-1">{Number((chartData.datasets[0] as any)?.tension ?? 0.4).toFixed(1)}</div>
+                <div className="text-xs text-gray-500 mt-1">{Number((chartData.datasets[0] as any)?.tension ?? 0.3).toFixed(1)}</div>
               </div>
 
               <div className="space-y-1">

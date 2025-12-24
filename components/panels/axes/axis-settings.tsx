@@ -1158,7 +1158,17 @@ export function AxisSettings({ axis, config, onUpdate, className, chartType }: A
               <Label className="text-xs font-medium">Scale Bounds</Label>
               <Select
                 value={config?.bounds || 'ticks'}
-                onValueChange={(value) => updateConfig('bounds', value)}
+                onValueChange={(value) => {
+                  if (value === 'data') {
+                    onUpdate(`scales.${axis}`, {
+                      ...config,
+                      bounds: value,
+                      grace: 0
+                    })
+                  } else {
+                    updateConfig('bounds', value)
+                  }
+                }}
               >
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue placeholder="Select bounds" />
@@ -1181,6 +1191,7 @@ export function AxisSettings({ axis, config, onUpdate, className, chartType }: A
                 className="h-8 text-xs"
                 min={0}
                 step={0.1}
+                disabled={config?.bounds === 'data'}
               />
             </div>
           </div>
