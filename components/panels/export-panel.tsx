@@ -24,12 +24,13 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
   const { currentTemplate, setEditorMode, editorMode } = useTemplateStore()
   const [exportMode, setExportMode] = useState<"chart" | "template">("chart")
   const [exportFormat, setExportFormat] = useState("png")
+  const [exportScale, setExportScale] = useState("2")
   const [dimensionMode, setDimensionMode] = useState<"auto" | "manual">("auto")
   const [manualWidth, setManualWidth] = useState(800)
   const [manualHeight, setManualHeight] = useState(600)
   const [widthInput, setWidthInput] = useState("800")
   const [heightInput, setHeightInput] = useState("600")
-  
+
   // Check if global template mode is active
   const isGlobalTemplateMode = editorMode === 'template'
   const [htmlOptions, setHtmlOptions] = useState<HTMLExportOptions>({
@@ -64,8 +65,8 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
     if (chartConfig.manualDimensions === true && !isGlobalTemplateMode) {
       setDimensionMode("manual")
       // Extract width and height from chartConfig if available
-      const width = typeof (chartConfig as any).width === 'string' 
-        ? parseInt((chartConfig as any).width) 
+      const width = typeof (chartConfig as any).width === 'string'
+        ? parseInt((chartConfig as any).width)
         : (chartConfig as any).width || 800
       const height = typeof (chartConfig as any).height === 'string'
         ? parseInt((chartConfig as any).height)
@@ -86,13 +87,13 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
     if (globalChartRef?.current?.canvas) {
       const currentWidth = globalChartRef.current.canvas.width
       const currentHeight = globalChartRef.current.canvas.height
-      
+
       // Initialize manual dimensions with current canvas dimensions
       setManualWidth(currentWidth)
       setManualHeight(currentHeight)
       setWidthInput(currentWidth.toString())
       setHeightInput(currentHeight.toString())
-      
+
       console.log(`Initial canvas dimensions: ${currentWidth}×${currentHeight}px`)
     }
   }, [globalChartRef?.current?.canvas]) // Re-run when canvas becomes available
@@ -120,7 +121,7 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
   // Handle dimension mode change
   const handleDimensionModeChange = (value: "auto" | "manual") => {
     setDimensionMode(value)
-    
+
     if (value === "auto") {
       // Sync to Layout and Dimensions: Auto = Responsive mode
       updateChartConfig({
@@ -134,21 +135,21 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
       // Sync to Layout and Dimensions: Manual = Manual Dimensions mode
       let currentWidth = 800
       let currentHeight = 600
-      
+
       // If switching to manual mode, capture current canvas dimensions
       if (exportMode === "chart" && globalChartRef?.current?.canvas) {
         currentWidth = globalChartRef.current.canvas.width
         currentHeight = globalChartRef.current.canvas.height
-        
+
         // Update manual dimensions to match current canvas size
         setManualWidth(currentWidth)
         setManualHeight(currentHeight)
         setWidthInput(currentWidth.toString())
         setHeightInput(currentHeight.toString())
-        
+
         console.log(`Manual mode activated with current canvas dimensions: ${currentWidth}×${currentHeight}px`)
       }
-      
+
       // Update chartConfig with manual dimensions
       updateChartConfig({
         ...chartConfig,
@@ -232,20 +233,20 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
       const chart = globalChartRef.current
       const canvas = chart.canvas
       const container = canvas.parentElement
-      
+
       if (container) {
         // Update container dimensions
         container.style.width = `${width}px`
         container.style.height = `${height}px`
       }
-      
+
       // Update canvas dimensions
       canvas.style.width = `${width}px`
       canvas.style.height = `${height}px`
-      
+
       // Resize the chart to fit the new dimensions
       chart.resize(width, height)
-      
+
       console.log(`Canvas resized to ${width}×${height}px`)
     }
   }
@@ -259,7 +260,7 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
         height: currentTemplate.height
       }
     }
-    
+
     if (dimensionMode === "manual") {
       // Use manual dimensions
       return {
@@ -267,7 +268,7 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
         height: Math.max(250, manualHeight)
       }
     }
-    
+
     // Auto mode: use canvas dimensions
     if (globalChartRef?.current?.canvas) {
       return {
@@ -275,7 +276,7 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
         height: globalChartRef.current.canvas.height
       }
     }
-    
+
     // Fallback
     return { width: 800, height: 600 }
   }
@@ -335,9 +336,9 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
       try {
         // Add a small delay to ensure chart is fully rendered
         await new Promise(resolve => setTimeout(resolve, 100))
-        
+
         const chartCanvas = chartInstance.canvas
-        
+
         await downloadTemplateExport(
           currentTemplate,
           chartCanvas,
@@ -347,7 +348,7 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
             format: 'html',
             fileName: (htmlOptions.fileName || `chart-${new Date().toISOString().slice(0, 10)}`).replace('.html', ''),
             quality: 1,
-            scale: 4
+            scale: parseInt(exportScale)
           }
         )
         console.log('Template exported successfully as HTML')
@@ -362,7 +363,7 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
         height: dimensions.height,
         fileName: htmlOptions.fileName || `chart-${new Date().toISOString().slice(0, 10)}.html`
       }
-      
+
       const result = await downloadChartAsHTML(updatedHtmlOptions)
       if (result.success) {
         console.log(result.message)
@@ -383,9 +384,9 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
       try {
         // Add a small delay to ensure chart is fully rendered
         await new Promise(resolve => setTimeout(resolve, 100))
-        
+
         const chartCanvas = chartInstance.canvas
-        
+
         await downloadTemplateExport(
           currentTemplate,
           chartCanvas,
@@ -395,7 +396,7 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
             format: exportFormat as 'png' | 'jpeg',
             fileName: `${currentTemplate.name.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}`,
             quality: 1,
-            scale: 4
+            scale: parseInt(exportScale)
           }
         )
         console.log(`Template exported successfully as ${exportFormat.toUpperCase()}`)
@@ -409,7 +410,11 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
         if (chartInstance.exportToImage) {
           try {
             chartInstance.exportToImage({
-              background: chartConfig.backgroundColor || '#ffffff',
+              background: (chartConfig as any)?.background || {
+                type: 'color',
+                color: chartConfig.backgroundColor || '#ffffff',
+                opacity: 100
+              },
               fileNamePrefix: 'chart',
               quality: 1.0
             })
@@ -456,7 +461,7 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
           {/* Dimension Settings */}
           <div>
             <Label className="text-xs font-medium text-gray-700">Dimension</Label>
-            <Select 
+            <Select
               value={dimensionMode}
               onValueChange={handleDimensionModeChange}
               disabled={exportMode === "template" || isGlobalTemplateMode}
@@ -539,8 +544,25 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
             </Select>
           </div>
 
-          <Button 
-            onClick={handleExportImage} 
+          <div>
+            <Label className="text-xs font-medium text-gray-700">Scale / Quality</Label>
+            <Select value={exportScale} onValueChange={setExportScale}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">1x (Standard)</SelectItem>
+                <SelectItem value="2">2x (High - Retina)</SelectItem>
+                <SelectItem value="4">4x (Ultra - Print)</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-gray-500 mt-1">
+              Higher scale = sharper image but larger file size.
+            </p>
+          </div>
+
+          <Button
+            onClick={handleExportImage}
             className="w-full h-9 text-xs bg-blue-600 hover:bg-blue-700"
             disabled={exportMode === "template" && !currentTemplate}
           >
@@ -584,8 +606,8 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
             </Select>
           </div>
 
-          <Button 
-            onClick={handleExportHTML} 
+          <Button
+            onClick={handleExportHTML}
             className="w-full h-9 text-xs bg-orange-600 hover:bg-orange-700 mt-3"
             disabled={exportMode === "template" && !currentTemplate}
           >
@@ -644,9 +666,9 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
       {onTabChange && (
         <Card className="border-gray-200 shadow-sm bg-gradient-to-br from-gray-50 to-white">
           <CardContent className="pt-6">
-            <Button 
-              variant="outline" 
-              onClick={() => onTabChange("export")} 
+            <Button
+              variant="outline"
+              onClick={() => onTabChange("export")}
               className="w-full h-9 text-xs border-2 hover:border-blue-400 hover:bg-blue-50"
             >
               <Settings className="h-4 w-4 mr-2" />

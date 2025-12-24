@@ -127,9 +127,19 @@ async function renderBackgroundOnCanvas(
       img.onload = () => {
         ctx.save()
 
+        // Clip to the target area to prevent spillover (especially for 'cover' fit)
+        ctx.beginPath()
+        ctx.rect(x, y, width, height)
+        ctx.clip()
+
         // Apply opacity by setting global alpha
         if (opacity < 1) {
           ctx.globalAlpha = opacity
+        }
+
+        // Apply blur if specified
+        if (background.blur) {
+          ctx.filter = `blur(${background.blur}px)`
         }
 
         // Calculate dimensions based on imageFit
@@ -156,6 +166,9 @@ async function renderBackgroundOnCanvas(
           dy = y + (height - dh) / 2
           ctx.drawImage(img, dx, dy, dw, dh)
         }
+
+        // Reset filter
+        ctx.filter = 'none'
 
         ctx.restore()
         resolve()
@@ -490,7 +503,7 @@ export const exportTemplateAsImage = async (
   options: TemplateExportOptions,
   chartConfig?: any
 ): Promise<string> => {
-  const { format = 'png', quality = 1, fileName = 'chart-template', scale = 4 } = options
+  const { format = 'png', quality = 1, fileName = 'chart-template', scale = 2 } = options
 
   // Create a canvas with the template dimensions
   const canvas = document.createElement('canvas')
@@ -729,12 +742,14 @@ export const exportTemplateAsHTML = async (
 
     if (bg.type === 'image' && bg.imageUrl) {
       const size = getBackgroundSize(bg.imageFit)
+      const blur = bg.blur ? `filter: blur(${bg.blur}px);` : ''
       if (opacity < 1) {
         return `
           background: linear-gradient(rgba(255, 255, 255, ${1 - opacity}), rgba(255, 255, 255, ${1 - opacity})), url(${bg.imageUrl});
           background-size: ${size};
           background-position: center;
           background-repeat: no-repeat;
+          ${blur}
         `
       } else {
         return `
@@ -742,6 +757,7 @@ export const exportTemplateAsHTML = async (
           background-size: ${size};
           background-position: center;
           background-repeat: no-repeat;
+          ${blur}
         `
       }
     }
@@ -1082,8 +1098,8 @@ export const exportTemplateAsUnifiedHTML = async (
     // Generate the chart components using the unified export system
     const chartComponents = await generateChartHTMLForTemplate(baseHtmlOptions)
 
-    // Generate template background CSS
-    const getTemplateBackgroundCSS = (): string => {
+    // Generate template background styling
+    const getBackgroundStyles = (): string => {
       const bg = template.background
       if (!bg || bg.type === 'transparent') {
         return `background-color: ${template.backgroundColor};`
@@ -1113,12 +1129,14 @@ export const exportTemplateAsUnifiedHTML = async (
 
       if (bg.type === 'image' && bg.imageUrl) {
         const size = getBackgroundSize(bg.imageFit)
+        const blur = bg.blur ? `filter: blur(${bg.blur}px);` : ''
         if (opacity < 1) {
           return `
             background: linear-gradient(rgba(255, 255, 255, ${1 - opacity}), rgba(255, 255, 255, ${1 - opacity})), url(${bg.imageUrl});
             background-size: ${size};
             background-position: center;
             background-repeat: no-repeat;
+            ${blur}
           `
         } else {
           return `
@@ -1126,6 +1144,7 @@ export const exportTemplateAsUnifiedHTML = async (
             background-size: ${size};
             background-position: center;
             background-repeat: no-repeat;
+            ${blur}
           `
         }
       }
@@ -1215,12 +1234,22 @@ export const exportTemplateAsUnifiedHTML = async (
             position: relative;
             width: ${template.width}px;
             height: ${template.height}px;
-            ${getTemplateBackgroundCSS()}
+            /* background handled by child div */
             border: ${template.borderWidth}px solid ${template.borderColor};
             margin: 0 auto;
             border-radius: 8px;
             overflow: hidden;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .template-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
         }
         
         .chart-area {
@@ -1232,6 +1261,7 @@ export const exportTemplateAsUnifiedHTML = async (
             background: white;
             border-radius: 8px;
             overflow: hidden;
+            z-index: 1;
         }
         
         ${chartComponents.chartStyles}
@@ -1243,6 +1273,7 @@ export const exportTemplateAsUnifiedHTML = async (
             padding: 8px;
             box-sizing: border-box;
             border-radius: 4px;
+            z-index: 2;
         }
         
         .text-area.text-content {
@@ -1398,6 +1429,7 @@ export const exportTemplateAsUnifiedHTML = async (
 </head>
 <body>
     <div class="template-container">
+        <div class="template-background" style="${getBackgroundStyles()}"></div>
         <div class="chart-area">
             ${chartComponents.chartContainer}
         </div>

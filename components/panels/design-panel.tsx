@@ -1002,6 +1002,17 @@ export function DesignPanel() {
                     />
                     <div className="text-xs text-gray-500 mt-1">{((chartConfig as any)?.background?.opacity as number) || 100}%</div>
                   </div>
+                  <div>
+                    <Label className="text-xs font-medium">Blur Image</Label>
+                    <Slider
+                      value={[((chartConfig as any)?.background?.blur as number) || 0]}
+                      onValueChange={([value]) => handleConfigUpdate("background.blur", value)}
+                      max={20}
+                      min={0}
+                      step={1}
+                    />
+                    <div className="text-xs text-gray-500 mt-1">{((chartConfig as any)?.background?.blur as number) || 0}px</div>
+                  </div>
                 </>
               )}
 

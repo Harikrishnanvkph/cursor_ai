@@ -6,6 +6,7 @@ export interface BackgroundImageConfig {
   imageFit?: 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';
   opacity?: number;
   imageWhiteBase?: boolean;
+  blur?: number;
 }
 
 export interface BackgroundConfig {
@@ -24,6 +25,7 @@ export interface BackgroundConfig {
   imageUrl?: string;
   imageFit?: 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';
   imageWhiteBase?: boolean;
+  blur?: number;
 }
 
 export interface ExportPluginOptions {
@@ -51,7 +53,7 @@ export interface ExportPluginOptions {
  */
 const exportPlugin = {
   id: 'exportWithBackground',
-  
+
   /**
    * Default plugin options
    */
@@ -80,7 +82,7 @@ const exportPlugin = {
       const exportOptions = { ...pluginOptions, ...options };
       const canvas = chart.canvas;
       const ctx = canvas.getContext('2d');
-      
+
       if (!ctx) {
         console.error('Failed to get canvas context');
         return;
@@ -91,7 +93,7 @@ const exportPlugin = {
       tempCanvas.width = canvas.width;
       tempCanvas.height = canvas.height;
       const tempCtx = tempCanvas.getContext('2d');
-      
+
       if (!tempCtx) {
         console.error('Failed to create temporary canvas');
         return;
@@ -100,7 +102,7 @@ const exportPlugin = {
       try {
         const background = exportOptions.background || { type: 'color', color: '#ffffff' };
         const opacity = (background.opacity ?? 100) / 100;
-        
+
         // Draw background based on type
         if (background.type === 'color' && background.color) {
           console.log(background.imageWhiteBase)
@@ -108,21 +110,21 @@ const exportPlugin = {
           tempCtx.globalAlpha = opacity;
           tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
           tempCtx.globalAlpha = 1.0;
-        } 
+        }
         else if (background.type === 'gradient') {
           const gradientType = background.gradientType || 'linear';
           const color1 = background.gradientColor2 || background.gradientStart || '#000000';
           const color2 = background.gradientColor1 || background.gradientEnd || '#ffffff';
           const direction = background.gradientDirection || 'to bottom';
-          
-          console.log('Drawing gradient background:', { 
+
+          console.log('Drawing gradient background:', {
             type: gradientType,
             direction,
             color1,
             color2,
             opacity
           });
-          
+
           try {
             if (gradientType === 'radial') {
               // Radial gradient
@@ -136,12 +138,12 @@ const exportPlugin = {
               );
               gradient.addColorStop(0, color2);
               gradient.addColorStop(1, color1);
-              
+
               tempCtx.fillStyle = gradient;
             } else {
               // Linear gradient
               let x0 = 0, y0 = 0, x1 = 0, y1 = 0;
-              
+
               // Set gradient direction based on the direction string
               // Note: The y-coordinates are inverted because canvas origin (0,0) is top-left
               switch (direction) {
@@ -172,15 +174,15 @@ const exportPlugin = {
                   x0 = 0; y0 = 0;
                   x1 = 0; y1 = tempCanvas.height;
               }
-              
+
               const gradient = tempCtx.createLinearGradient(x0, y0, x1, y1);
               // Swap the color stops to match the preview
               gradient.addColorStop(0, color2);
               gradient.addColorStop(1, color1);
-              
+
               tempCtx.fillStyle = gradient;
             }
-            
+
             tempCtx.globalAlpha = opacity;
             tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
             tempCtx.globalAlpha = 1.0;
@@ -208,7 +210,7 @@ const exportPlugin = {
             await new Promise<void>((resolve, reject) => {
               const img = new Image();
               img.crossOrigin = 'anonymous';
-              
+
               img.onload = () => {
                 console.log('Background image loaded successfully');
                 const fit = background.imageFit || 'cover';
@@ -218,7 +220,7 @@ const exportPlugin = {
 
                 if (fit === 'fill') {
                   // Use full canvas dimensions
-                } 
+                }
                 else if (fit === 'contain') {
                   if (imgAspect > canvasAspect) {
                     dWidth = tempCanvas.width;
@@ -229,7 +231,7 @@ const exportPlugin = {
                     dWidth = dHeight * imgAspect;
                     dx = (tempCanvas.width - dWidth) / 2;
                   }
-                } 
+                }
                 else if (fit === 'cover') {
                   if (imgAspect > canvasAspect) {
                     dHeight = tempCanvas.height;
@@ -243,9 +245,19 @@ const exportPlugin = {
                 }
 
                 console.log('Drawing image with dimensions:', { dx, dy, dWidth, dHeight, imgWidth: img.width, imgHeight: img.height });
+
+                // Apply blur if specified
+                if (background.blur) {
+                  tempCtx.filter = `blur(${background.blur}px)`;
+                }
+
                 tempCtx.globalAlpha = opacity;
                 tempCtx.drawImage(img, dx, dy, dWidth, dHeight);
                 tempCtx.globalAlpha = 1.0;
+
+                // Reset filter
+                tempCtx.filter = 'none';
+
                 console.log('Background image drawn successfully');
                 resolve();
               };
@@ -265,16 +277,16 @@ const exportPlugin = {
             tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
           }
         }
-        
+
         // Draw the chart on top of the background
         tempCtx.drawImage(canvas, 0, 0);
-        
+
         // Create download link
         const url = tempCanvas.toDataURL('image/png', exportOptions.quality);
         const link = document.createElement('a');
         link.download = `${exportOptions.fileNamePrefix}-${Date.now()}.png`;
         link.href = url;
-        
+
         // Trigger download
         document.body.appendChild(link);
         link.click();

@@ -715,6 +715,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
             objectFit: background.imageFit || 'cover',
             opacity: opacity / 100,
             pointerEvents: 'none',
+            filter: background.blur ? `blur(${background.blur}px)` : 'none',
           }}
         />
       );

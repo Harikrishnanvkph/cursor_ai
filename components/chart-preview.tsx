@@ -367,12 +367,14 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
           type: 'gradient' as const,
           gradientStart: bgConfig.gradientStart || '#000000',
           gradientEnd: bgConfig.gradientEnd || '#ffffff',
-          opacity: bgConfig.opacity ?? 100
+          opacity: bgConfig.opacity ?? 100,
+          blur: bgConfig.blur ?? 0
         };
       } else {
         result = {
           ...bgConfig,
-          opacity: bgConfig.opacity ?? 100
+          opacity: bgConfig.opacity ?? 100,
+          blur: bgConfig.blur ?? 0
         };
       }
     } else if (chartConfig.backgroundColor) {

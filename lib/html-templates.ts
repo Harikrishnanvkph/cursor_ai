@@ -7,7 +7,7 @@ import { generateCompletePluginSystem } from "./html-plugins";
 function generateLegendConfigWithGenerateLabels(legendConfig: any): string {
   const legendType = legendConfig.legendType || 'dataset';
   const legendLabelsConfig = legendConfig.labels || {};
-  
+
   return `{
     ...${JSON.stringify(legendConfig, null, 20)},
       labels: {
@@ -120,7 +120,7 @@ function resolveLegendConfig(
  */
 function generateChartScript(chartData: any, chartConfig: any, chartType: string, options: HTMLExportOptions, legendConfig: any): string {
   const { includeAnimations, includeTooltips, includeLegend } = options;
-  
+
   return `
         // Chart Configuration
         const chartConfig = ${JSON.stringify(chartConfig, null, 8)};
@@ -178,22 +178,23 @@ export const plainTemplate: HTMLTemplate = {
         color: '#000000'
       }
     }));
-    
+
     // Get background configuration from chartConfig
     const background = (chartConfig as any)?.background || { type: 'color', color: '#ffffff' };
     let backgroundLayerHTML = '';
     let chartContainerStyle = '';
-    
+
     if (background.type === "image" && background.imageUrl) {
       const opacity = background.opacity || 100;
       const imageFit = background.imageFit || 'cover';
-      const backgroundSize = imageFit === 'fill' ? '100% 100%' : 
-                            imageFit === 'contain' ? 'contain' : 'cover';
+      const backgroundSize = imageFit === 'fill' ? '100% 100%' :
+        imageFit === 'contain' ? 'contain' : 'cover';
       // Use the imageUrl directly without JSON.stringify to avoid double-quoting data URLs
-      const imageUrl = background.imageUrl.startsWith('data:') 
-        ? background.imageUrl 
+      const imageUrl = background.imageUrl.startsWith('data:')
+        ? background.imageUrl
         : JSON.stringify(background.imageUrl);
-      backgroundLayerHTML = `<div class="chart-background" style="position: absolute; inset: 0; z-index: 0; background-image: url(${imageUrl}); background-size: ${backgroundSize}; background-position: center; background-repeat: no-repeat; opacity: ${opacity / 100}; pointer-events: none;"></div>`;
+      const blur = background.blur ? `; filter: blur(${background.blur}px)` : '';
+      backgroundLayerHTML = `<div class="chart-background" style="position: absolute; inset: 0; z-index: 0; background-image: url(${imageUrl}); background-size: ${backgroundSize}; background-position: center; background-repeat: no-repeat; opacity: ${opacity / 100}; pointer-events: none${blur};"></div>`;
     } else if (background.type === "gradient") {
       const color1 = background.gradientColor1 || '#ffffff';
       const color2 = background.gradientColor2 || '#000000';
@@ -223,7 +224,7 @@ export const plainTemplate: HTMLTemplate = {
     } else if (background.type === "transparent") {
       chartContainerStyle = `background-color: transparent;`;
     }
-    
+
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
