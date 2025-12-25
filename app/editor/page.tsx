@@ -1053,7 +1053,7 @@ function EditorPageContent() {
 
   // Desktop layout for >1024px (original, unchanged)
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="fixed inset-0 flex bg-gray-50 overflow-hidden">
       {/* Left Sidebar - Navigation */}
       {leftSidebarCollapsed ? (
         <div className="w-16 flex-shrink-0 flex flex-col h-full items-center bg-white border-r border-gray-200 p-2">
@@ -1130,7 +1130,7 @@ function EditorPageContent() {
         </div>
       )}
       {/* Center Area - Chart Preview */}
-      <div className="flex-1 min-w-0 pr-4 pl-2 py-4">
+      <div className="flex-1 min-w-0 pr-4 pl-2 py-4 h-full overflow-hidden flex flex-col">
         {hasJSON ? (
           <ChartPreview
             onToggleLeftSidebar={() => setLeftSidebarCollapsed((v) => !v)}
@@ -1210,7 +1210,7 @@ function EditorPageContent() {
           <div className="flex-1"></div>
         </div>
       ) : (
-        <div className="w-80 flex-shrink-0 border-l bg-white overflow-hidden">
+        <div className="w-80 flex-shrink-0 border-l bg-white overflow-hidden h-full flex flex-col min-h-0">
           <ConfigPanel
             activeTab={activeTab}
             onToggleSidebar={() => setRightSidebarCollapsed((v) => !v)}

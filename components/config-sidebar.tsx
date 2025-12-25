@@ -254,15 +254,15 @@ export function ConfigSidebar() {
 
           <TabsContent value="general" className="mt-4 space-y-3">
             {/* Chart Type */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Chart Type</Label>
+            <div className="space-y-1">
+              <Label className="text-xs font-medium text-gray-700">Chart Type</Label>
               <Select value={chartType} onValueChange={(value: any) => setChartType(value)}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full h-8 text-xs">
                   <SelectValue placeholder="Select chart type" />
                 </SelectTrigger>
                 <SelectContent>
                   {chartTypes.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
+                    <SelectItem key={type.value} value={type.value} className="text-xs">
                       {type.label}
                     </SelectItem>
                   ))}
@@ -270,56 +270,44 @@ export function ConfigSidebar() {
               </Select>
             </div>
 
-            {/* Style Options */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-4 bg-gray-50 rounded-lg px-4 py-2">
-                <div className="flex flex-row items-center gap-2">
-                  <Label htmlFor="fill-area" className="text-sm">Fill</Label>
-                  <Switch
-                    id="fill-area"
-                    checked={fillArea}
-                    onCheckedChange={handleToggleFillArea}
-                  />
-                </div>
-                <div className="h-6 w-px bg-gray-200 mx-2" />
-                <div className="flex flex-row items-center gap-1">
-                  <button
-                    onClick={() => handleToggleShowBorder(!showBorder)}
-                    disabled={!fillArea}
-                    className={`flex items-center justify-center text-sm rounded-full w-9 h-9 transition-colors border border-gray-200
-                      ${showBorder ? 'bg-blue-50 text-blue-600 border-blue-200 ring-2 ring-blue-200' : 'bg-white text-gray-400'}
-                      ${!fillArea ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-100 hover:text-blue-700'}`}
-                    style={{ minWidth: 36, minHeight: 36 }}
-                  >
-                    {showBorder ? (
-                      <Eye className="h-5 w-5" />
-                    ) : (
-                      <EyeOff className="h-5 w-5" />
-                    )}
-                  </button>
-                  <span className="text-sm font-medium text-gray-700">Border</span>
-                </div>
+            {/* Compact Toggles (Single Row) */}
+            <div className="flex items-center justify-between gap-1 px-1 mb-2">
+              <div className="flex flex-col items-center gap-1">
+                <Switch
+                  id="fill-toggle"
+                  checked={fillArea}
+                  onCheckedChange={handleToggleFillArea}
+                  className="scale-75 data-[state=unchecked]:bg-input/50"
+                />
+                <Label htmlFor="fill-toggle" className="text-[12px] text-gray-600">Fill</Label>
               </div>
-
-              {/* Image and Label Toggles */}
-              <div className="flex items-center gap-4 bg-gray-50 rounded-lg px-4 py-2">
-                <div className="flex flex-row items-center gap-2">
-                  <Label htmlFor="show-images" className="text-sm">Image</Label>
-                  <Switch
-                    id="show-images"
-                    checked={showImages}
-                    onCheckedChange={handleToggleShowImages}
-                  />
-                </div>
-                <div className="h-6 w-px bg-gray-200 mx-2" />
-                <div className="flex flex-row items-center gap-2">
-                  <Label htmlFor="show-labels" className="text-sm">Label</Label>
-                  <Switch
-                    id="show-labels"
-                    checked={showLabels}
-                    onCheckedChange={toggleShowLabels}
-                  />
-                </div>
+              <div className="flex flex-col items-center gap-1">
+                <Switch
+                  id="border-toggle"
+                  checked={showBorder}
+                  onCheckedChange={(checked) => handleToggleShowBorder(checked)}
+                  disabled={!fillArea}
+                  className="scale-75 data-[state=unchecked]:bg-input/50"
+                />
+                <Label htmlFor="border-toggle" className="text-[12px] text-gray-600">Border</Label>
+              </div>
+              <div className="flex flex-col items-center gap-1">
+                <Switch
+                  id="show-images-toggle"
+                  checked={showImages}
+                  onCheckedChange={handleToggleShowImages}
+                  className="scale-75 data-[state=unchecked]:bg-input/50"
+                />
+                <Label htmlFor="show-images-toggle" className="text-[12px] text-gray-600">Image</Label>
+              </div>
+              <div className="flex flex-col items-center gap-1">
+                <Switch
+                  id="show-labels-toggle"
+                  checked={showLabels}
+                  onCheckedChange={toggleShowLabels}
+                  className="scale-75 data-[state=unchecked]:bg-input/50"
+                />
+                <Label htmlFor="show-labels-toggle" className="text-[12px] text-gray-600">Label</Label>
               </div>
             </div>
 

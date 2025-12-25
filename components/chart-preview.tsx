@@ -9,7 +9,7 @@ import {
   Download, RefreshCw, Maximize2, Minimize2, RotateCcw, X,
   FileCode, FileDown, FileImage, FileText, ImageIcon, Settings, Menu, Ellipsis, Eye, ZoomIn, ZoomOut, Hand, ChevronLeft, Pencil, Check, Loader2
 } from "lucide-react"
-import { BarChart3, ChartColumnStacked, ChartColumnBig, ChartBarBig, ChartLine, ChartPie, ChartScatter, ChartArea, Radar, Database, Dot, Edit3, LogOut } from "lucide-react"
+import { BarChart3, ChartColumnStacked, ChartColumnBig, ChartBarBig, ChartLine, ChartPie, ChartScatter, ChartArea, Radar, Database, Edit3, LogOut } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { downloadChartAsHTML } from "@/lib/html-exporter"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
@@ -58,6 +58,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   const leftSidebarPanelRef = useRef<HTMLDivElement>(null);
   const rightSidebarPanelRef = useRef<HTMLDivElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
+  const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [isDragging, setIsDragging] = useState(false);
@@ -147,6 +148,34 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       }, 5);
     }
   }, [editorMode, shouldShowTemplate]);
+
+  // Track container dimensions for responsive display
+  useEffect(() => {
+    console.log('in')
+    if (!chartContainerRef.current) return;
+
+    let rafId: number;
+    const resizeObserver = new ResizeObserver((entries) => {
+      console.log('in')
+      // Cancel any pending frame to avoid stacking updates
+      if (rafId) cancelAnimationFrame(rafId);
+
+      rafId = window.requestAnimationFrame(() => {
+        if (!Array.isArray(entries) || !entries.length) return;
+        for (const entry of entries) {
+          const { width, height } = entry.contentRect;
+          setContainerDimensions({ width, height });
+        }
+      });
+    });
+
+    resizeObserver.observe(chartContainerRef.current);
+
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      resizeObserver.disconnect();
+    };
+  }, []);
 
   // Responsive check for <576px
   const [isMobile, setIsMobile] = useState(false);
@@ -734,12 +763,14 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center gap-2 text-xs text-gray-500 min-w-0 flex-nowrap overflow-x-auto">
-
-                <span>{chartData.datasets.length} Dataset(s)</span>
-                <Dot className="h-4 w-4 mx-1 xs400:hidden" />
-                <span className="font-medium">{chartData.labels?.length || 0} Points</span>
+              <div className="flex items-center gap-2 text-xs text-gray-400 min-w-0 flex-nowrap overflow-x-auto">
+                {isResponsive ? (
+                  <span>{Math.round(containerDimensions.width)}px × {Math.round(containerDimensions.height)}px</span>
+                ) : (
+                  <span>{chartWidth}px × {chartHeight}px</span>
+                )}
               </div>
+
             </div>
           ) : (
             <div className="min-w-0 flex-1 max-w-[500px]">
@@ -827,10 +858,13 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                 </Select>
                 {/* Chart info */}
                 <div className="flex items-center gap-1 text-xs text-gray-400">
-                  <span>{chartData.datasets.length} Dataset(s)</span>
-                  <span>•</span>
-                  <span>{chartData.labels?.length || 0} Points</span>
+                  {isResponsive ? (
+                    <span>{Math.round(containerDimensions.width)}px × {Math.round(containerDimensions.height)}px</span>
+                  ) : (
+                    <span>{chartWidth}px × {chartHeight}px</span>
+                  )}
                 </div>
+
               </div>
             </div>
           )}
