@@ -783,6 +783,11 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
   const chartWidth = !isResponsive ? parseDimension((chartConfig as any)?.width) : undefined;
   const chartHeight = !isResponsive ? parseDimension((chartConfig as any)?.height) : undefined;
 
+  // Compute tooltip background color with opacity
+  const tooltipBgColor = (chartConfig.plugins as any)?.tooltip?.backgroundColor || '#000000';
+  const tooltipBgOpacity = ((chartConfig as any)?.plugins?.tooltip?.backgroundOpacity ?? 80) / 100;
+  const tooltipBackgroundWithOpacity = fadeColor(tooltipBgColor, tooltipBgOpacity);
+
   // Build stacked bar config if needed
   const stackedBarConfig = chartType === 'stackedBar' ? {
     ...chartConfig,
@@ -1123,6 +1128,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                       },
                       tooltip: {
                         ...((chartConfig.plugins as any)?.tooltip),
+                        backgroundColor: tooltipBackgroundWithOpacity,
                         callbacks: {
                           ...((chartConfig.plugins as any)?.tooltip?.callbacks),
                           label: function (context: any) {
@@ -1141,10 +1147,10 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                               return `${label}: ${value}`;
                             }
                             if (mode === 'dataset') {
-                              let lines = [`%c${datasetLabel}`, ...dataset.data.map((v: any, i: number) => {
+                              let lines = [`${datasetLabel}`, ...dataset.data.map((v: any, i: number) => {
                                 const sliceLabel = data.labels?.[i] || `Slice ${i + 1}`;
                                 const sliceColor = Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor[i] : dataset.backgroundColor;
-                                return `%c${sliceLabel}: ${v}`;
+                                return `${sliceLabel}: ${v}`;
                               })];
                               return lines;
                             }
@@ -1306,6 +1312,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                       },
                       tooltip: {
                         ...((chartConfig.plugins as any)?.tooltip),
+                        backgroundColor: tooltipBackgroundWithOpacity,
                         callbacks: {
                           ...((chartConfig.plugins as any)?.tooltip?.callbacks),
                           label: function (context: any) {
@@ -1324,10 +1331,10 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                               return `${label}: ${value}`;
                             }
                             if (mode === 'dataset') {
-                              let lines = [`%c${datasetLabel}`, ...dataset.data.map((v: any, i: number) => {
+                              let lines = [`${datasetLabel}`, ...dataset.data.map((v: any, i: number) => {
                                 const sliceLabel = data.labels?.[i] || `Slice ${i + 1}`;
                                 const sliceColor = Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor[i] : dataset.backgroundColor;
-                                return `%c${sliceLabel}: ${v}`;
+                                return `${sliceLabel}: ${v}`;
                               })];
                               return lines;
                             }
