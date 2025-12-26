@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
-import { AlignEndHorizontal, Database, Palette, Grid, Tag, Zap, Settings, Download, FileText } from "lucide-react"
+import { AlignEndHorizontal, Database, Palette, Grid, Tag, Settings, Download, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TypesTogglesPanel } from "@/components/panels/types-toggles-panel"
@@ -9,7 +9,6 @@ import { DatasetsSlicesPanel } from "@/components/panels/datasets-slices-panel"
 import { DesignPanel } from "@/components/panels/design-panel"
 import { AxesPanel } from "@/components/panels/axes/axes-panel"
 import { LabelsPanel } from "@/components/panels/labels-panel"
-import { AnimationsPanel } from "@/components/panels/animations-panel"
 import { AdvancedPanel } from "@/components/panels/advanced-panel"
 import { ExportPanel } from "@/components/panels/export-panel"
 import { TemplatesPanel } from "@/components/panels/templates-panel"
@@ -20,7 +19,6 @@ const TABLET_TABS = [
   { id: "design", label: "Style", icon: Palette },
   { id: "axes", label: "Axes", icon: Grid },
   { id: "labels", label: "Labels", icon: Tag },
-  { id: "animations", label: "Motion", icon: Zap },
   { id: "templates", label: "Templates", icon: FileText },
   { id: "advanced", label: "Advanced", icon: Settings },
   { id: "export", label: "Export", icon: Download },
@@ -31,9 +29,9 @@ interface TabletConfigSidebarProps {
   defaultTab?: string
 }
 
-export function TabletConfigSidebar({ 
-  className = "", 
-  defaultTab = "types_toggles" 
+export function TabletConfigSidebar({
+  className = "",
+  defaultTab = "types_toggles"
 }: TabletConfigSidebarProps) {
   const [activeTab, setActiveTab] = useState(defaultTab)
 
@@ -49,8 +47,6 @@ export function TabletConfigSidebar({
         return <AxesPanel />
       case "labels":
         return <LabelsPanel />
-      case "animations":
-        return <AnimationsPanel />
       case "templates":
         return <TemplatesPanel />
       case "advanced":
@@ -75,11 +71,10 @@ export function TabletConfigSidebar({
                 variant={activeTab === tab.id ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex flex-col items-center gap-1 h-auto py-2 text-xs transition-all duration-200 ${
-                  activeTab === tab.id 
-                    ? "bg-blue-600 text-white hover:bg-blue-700" 
+                className={`flex flex-col items-center gap-1 h-auto py-2 text-xs transition-all duration-200 ${activeTab === tab.id
+                    ? "bg-blue-600 text-white hover:bg-blue-700"
                     : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                }`}
+                  }`}
               >
                 <Icon className="w-4 h-4" />
                 <span className="font-medium">{tab.label}</span>

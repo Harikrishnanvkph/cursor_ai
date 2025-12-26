@@ -10,7 +10,7 @@ import { useAuth } from "@/components/auth/AuthProvider"
 import { dataService } from "@/lib/data-service"
 import { Button } from "@/components/ui/button"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
-import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Layers, Zap, Settings, Download, ChevronLeft, ChevronRight, FileText, Save, X, Loader2, Plus, Info, LayoutDashboard, MessageSquare, Edit3 } from "lucide-react"
+import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Layers, Settings, Download, ChevronLeft, ChevronRight, FileText, Save, X, Loader2, Plus, Info, LayoutDashboard, MessageSquare, Edit3 } from "lucide-react"
 import Link from "next/link"
 import React from "react"
 import { ResizableChartArea } from "@/components/resizable-chart-area"
@@ -44,7 +44,6 @@ const TABS = [
   { id: "axes", label: "Axes", icon: Grid },
   { id: "labels", label: "Labels", icon: Tag },
   { id: "overlay", label: "Overlay", icon: Layers },
-  { id: "animations", label: "Animations", icon: Zap },
   { id: "advanced", label: "Advanced", icon: Settings },
   { id: "templates", label: "Templates", icon: FileText },
   { id: "export", label: "Export", icon: Download },

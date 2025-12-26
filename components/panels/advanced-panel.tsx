@@ -13,6 +13,19 @@ import { Copy, RotateCcw } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
 
+const allowedEasings = [
+  "linear",
+  "easeInQuad",
+  "easeOutQuad",
+  "easeInOutQuad",
+  "easeInCubic",
+  "easeOutCubic",
+  "easeInOutCubic",
+  "easeInSine",
+  "easeOutSine",
+  "easeInOutSine"
+];
+
 export function AdvancedPanel() {
   const {
     chartConfig,
@@ -26,6 +39,9 @@ export function AdvancedPanel() {
   const [rawOpen, setRawOpen] = useState(false)
   const [watermarkOpen, setWatermarkOpen] = useState(false)
   const [tooltipOpen, setTooltipOpen] = useState(false)
+  const [generalAnimOpen, setGeneralAnimOpen] = useState(false)
+  const [hoverAnimOpen, setHoverAnimOpen] = useState(false)
+  const [hoverEnabled, setHoverEnabled] = useState(chartConfig.interaction?.mode !== undefined && chartConfig.interaction?.mode !== false)
 
 
   const currentDatasetIndex = chartMode === 'single' ? activeDatasetIndex : 0
@@ -44,6 +60,16 @@ export function AdvancedPanel() {
     current[keys[keys.length - 1]] = value
     updateChartConfig(newConfig)
   }
+
+  const handleHoverEnabledChange = (checked: boolean) => {
+    setHoverEnabled(checked)
+    handleConfigUpdate('interaction.mode', checked ? (typeof chartConfig.interaction?.mode === 'string' ? chartConfig.interaction.mode : 'point') : undefined)
+  }
+
+  // Ensure the value is always one of the allowed options
+  const easingValue = allowedEasings.includes((chartConfig.animation as any)?.easing)
+    ? (chartConfig.animation as any)?.easing
+    : "linear"
 
   const handleCopyConfig = async () => {
     const config = {
@@ -108,10 +134,10 @@ export function AdvancedPanel() {
             <Switch
               checked={chartConfig.plugins?.tooltip?.enabled !== false}
               onCheckedChange={(checked) => handleConfigUpdate("plugins.tooltip.enabled", checked)}
-              className="data-[state=checked]:bg-green-600 scale-75 mr-2"
+              className="data-[state=checked]:bg-green-600"
             />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="ml-2 flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transform transition-transform ${tooltipOpen ? 'rotate-180' : ''}`}> <path d="M6 9L12 15L18 9" /> </svg>
           </div>
         </div>
@@ -222,13 +248,151 @@ export function AdvancedPanel() {
         </div>
       </div>
 
+      {/* General Animations Section */}
+      <div className="space-y-2">
+        <div
+          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+          onClick={() => setGeneralAnimOpen(!generalAnimOpen)}
+        >
+          <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+          <h3 className="text-sm font-semibold text-gray-900 flex-1">General Animations</h3>
+          <div onClick={(e) => e.stopPropagation()}>
+            <Switch
+              checked={chartConfig.animation !== false}
+              onCheckedChange={(checked) => handleConfigUpdate("animation", checked ? {} : false)}
+              className="data-[state=checked]:bg-blue-600"
+            />
+          </div>
+          <div className="ml-2 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transform transition-transform ${generalAnimOpen ? 'rotate-180' : ''}`}>
+              <path d="M6 9L12 15L18 9" />
+            </svg>
+          </div>
+        </div>
+        {generalAnimOpen && chartConfig.animation !== false && (
+          <div className="bg-blue-50 rounded-lg p-3 space-y-3">
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium">Duration</Label>
+                  <span className="text-xs text-gray-500">{(chartConfig.animation as any)?.duration || 1000}ms</span>
+                </div>
+                <Slider
+                  value={[(chartConfig.animation as any)?.duration || 1000]}
+                  onValueChange={([value]) => handleConfigUpdate("animation.duration", value)}
+                  max={3000}
+                  min={100}
+                  step={100}
+                  className="mt-1"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-medium">Easing</Label>
+                <Select
+                  value={easingValue}
+                  onValueChange={(value) => handleConfigUpdate("animation.easing", value)}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Select easing" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="linear">Linear</SelectItem>
+                    <SelectItem value="easeInQuad">Ease In</SelectItem>
+                    <SelectItem value="easeOutQuad">Ease Out</SelectItem>
+                    <SelectItem value="easeInOutQuad">Ease In Out</SelectItem>
+                    <SelectItem value="easeInCubic">Ease In (Strong)</SelectItem>
+                    <SelectItem value="easeOutCubic">Ease Out (Strong)</SelectItem>
+                    <SelectItem value="easeInOutCubic">Ease In Out (Strong)</SelectItem>
+                    <SelectItem value="easeInSine">Ease In (Smooth)</SelectItem>
+                    <SelectItem value="easeOutSine">Ease Out (Smooth)</SelectItem>
+                    <SelectItem value="easeInOutSine">Ease In Out (Smooth)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium">Delay</Label>
+                  <span className="text-xs text-gray-500">{(chartConfig.animation as any)?.delay || 0}ms</span>
+                </div>
+                <Slider
+                  value={[(chartConfig.animation as any)?.delay || 0]}
+                  onValueChange={([value]) => handleConfigUpdate("animation.delay", value)}
+                  max={2000}
+                  min={0}
+                  step={100}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Hover Animation Section */}
+      <div className="space-y-2">
+        <div
+          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+          onClick={() => setHoverAnimOpen(!hoverAnimOpen)}
+        >
+          <div className="w-2 h-2 bg-pink-600 rounded-full"></div>
+          <h3 className="text-sm font-semibold text-gray-900 flex-1">Hover Animation</h3>
+          <div onClick={(e) => e.stopPropagation()}>
+            <Switch
+              checked={hoverEnabled}
+              onCheckedChange={handleHoverEnabledChange}
+              className="data-[state=checked]:bg-pink-600"
+            />
+          </div>
+          <div className="ml-2 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transform transition-transform ${hoverAnimOpen ? 'rotate-180' : ''}`}>
+              <path d="M6 9L12 15L18 9" />
+            </svg>
+          </div>
+        </div>
+        <div className="bg-pink-50 rounded-lg">
+          <div className="flex items-center justify-between px-3 py-2">
+            <span className="text-xs font-medium text-black">Hover Mode</span>
+            <Select
+              value={chartConfig.interaction?.mode === 'nearest' ? 'nearest' : 'point'}
+              onValueChange={value => handleConfigUpdate('interaction.mode', value)}
+              disabled={!hoverEnabled}
+            >
+              <SelectTrigger className="h-8 text-xs w-28">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="point">Point</SelectItem>
+                <SelectItem value="nearest">Nearest</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {hoverAnimOpen && (
+            <div className={`px-3 pb-3 ${!hoverEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+              <div className="flex items-center justify-between gap-2">
+                <Label className="text-xs font-medium">Animation Duration (ms)</Label>
+                <div className="relative w-24">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={(chartConfig as any).hover?.animationDuration ?? 400}
+                    onChange={e => handleConfigUpdate('hover.animationDuration', e.target.value ? Number(e.target.value) : 400)}
+                    className="h-8 text-xs pr-8 w-full"
+                  />
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 pointer-events-none">ms</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Watermark Section */}
       <div className="space-y-2">
         <div
           className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
           onClick={() => setWatermarkOpen(!watermarkOpen)}
         >
-          <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
+          <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
           <h3 className="text-sm font-semibold text-gray-900 flex-1">Watermark</h3>
           <div className="ml-auto flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transform transition-transform ${watermarkOpen ? 'rotate-180' : ''}`}> <path d="M6 9L12 15L18 9" /> </svg>
@@ -236,7 +400,7 @@ export function AdvancedPanel() {
         </div>
         {
           watermarkOpen && (
-            <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+            <div className="bg-purple-50 rounded-lg p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-medium">Show Watermark</Label>
                 <Switch
@@ -250,7 +414,7 @@ export function AdvancedPanel() {
                     imageUrl: "",
                     style: "tiled"
                   } : false)}
-                  className="data-[state=checked]:bg-gray-600"
+                  className="data-[state=checked]:bg-purple-600"
                 />
               </div>
               {(chartConfig as any)?.watermark && (

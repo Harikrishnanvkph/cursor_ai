@@ -5,7 +5,6 @@ import { DesignPanel } from "./panels/design-panel"
 import { AxesPanel } from "./panels/axes/axes-panel"
 import { LabelsPanel } from "./panels/labels-panel"
 import { OverlayPanel } from "./panels/overlay-panel"
-import { AnimationsPanel } from "./panels/animations-panel"
 import { AdvancedPanel } from "./panels/advanced-panel"
 import { ExportPanel } from "./panels/export-panel"
 import { TypesTogglesPanel } from "./panels/types-toggles-panel"
@@ -274,8 +273,6 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
         return <LabelsPanel />
       case "overlay":
         return <OverlayPanel />
-      case "animations":
-        return <AnimationsPanel />
       case "advanced":
         return <AdvancedPanel />
       case "templates":
