@@ -2230,7 +2230,8 @@ export const useChartStore = create<ChartStore>()(
 
         // Ensure correct scales for axis charts
         const axisTypes = ['bar', 'line', 'scatter', 'bubble', 'horizontalBar'];
-        const noScalesTypes = ['pie', 'doughnut', 'polarArea'];
+        const noScalesTypes = ['pie', 'doughnut']; // Only pie/doughnut have no scales at all
+        const radialScaleTypes = ['radar', 'polarArea']; // These need only the 'r' scale
         if (axisTypes.includes(chartJsType)) {
           if (!newConfig.scales || !newConfig.scales.x || !newConfig.scales.y) {
             newConfig.scales = {
@@ -2239,8 +2240,21 @@ export const useChartStore = create<ChartStore>()(
             };
           }
         } else if (noScalesTypes.includes(chartJsType)) {
+          // Pie and doughnut have no scales at all
           if (newConfig.scales) {
             delete newConfig.scales;
+          }
+        } else if (radialScaleTypes.includes(chartJsType)) {
+          // Radar and polarArea need only the 'r' scale - remove any leftover x/y scales
+          if (newConfig.scales) {
+            // Preserve only the 'r' scale, remove x/y if they exist from a previous chart type
+            const rScale = newConfig.scales.r;
+            if (newConfig.scales.x) delete newConfig.scales.x;
+            if (newConfig.scales.y) delete newConfig.scales.y;
+            // Ensure r scale exists
+            if (rScale) {
+              newConfig.scales = { r: rScale };
+            }
           }
         }
 

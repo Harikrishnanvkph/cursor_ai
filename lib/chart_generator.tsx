@@ -810,14 +810,17 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     x: { ...(safeScales?.x || {}) },
     y: { ...(safeScales?.y || {}) },
   } as any);
+  // For radial chart types (radar, polarArea), extract ONLY the 'r' scale
+  // This prevents leftover x/y scales from Cartesian charts from appearing
+  const radialOnlyScales = isRadialType && safeScales?.r ? { r: safeScales.r } : {};
   // Determine if any dataset (or the chart) requests horizontal orientation
   const needsHorizontal = chartType === 'horizontalBar' || filteredDatasetsPatched.some((ds: any) => (ds?.chartType || chartType) === 'horizontalBar');
   const baseOptions = {
     ...(chartConfig as any),
     indexAxis: needsHorizontal ? 'y' : ((chartConfig as any)?.indexAxis || 'x'),
     // Explicitly override scales: for pie/doughnut, force empty object to avoid axes
-    // For radar/polarArea, preserve the r scale configuration
-    scales: isRadialType ? (safeScales || {}) : (isCircularType ? {} : (optionsScales ?? {})),
+    // For radar/polarArea, use ONLY the r scale configuration (not x/y from previous chart types)
+    scales: isRadialType ? radialOnlyScales : (isCircularType ? {} : (optionsScales ?? {})),
   } as any;
   const appliedOptions = chartType === 'stackedBar'
     ? {

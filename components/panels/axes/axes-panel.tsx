@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useChartStore } from "@/lib/chart-store"
 import { AxisSettings } from "./axis-settings"
 import { RadialAxisSettings } from "./radial-axis-settings"
+import { ArcSettings } from "./arc-settings"
 
 export function AxesPanel() {
   const { chartConfig, updateChartConfig, chartType } = useChartStore()
@@ -23,19 +24,14 @@ export function AxesPanel() {
     updateChartConfig(newConfig)
   }
 
-  // Handle pie and doughnut charts (no axes)
+  // Handle pie and doughnut charts - show ArcSettings
   if (['pie', 'doughnut'].includes(chartType)) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Axes Configuration</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            This chart type has specialized axis configuration.
-          </p>
-        </CardContent>
-      </Card>
+      <ArcSettings
+        chartType={chartType}
+        options={chartConfig}
+        onUpdate={handleConfigUpdate}
+      />
     )
   }
 
@@ -45,6 +41,7 @@ export function AxesPanel() {
       <RadialAxisSettings
         config={chartConfig.scales?.r || {}}
         onUpdate={handleConfigUpdate}
+        chartType={chartType}
       />
     )
   }
