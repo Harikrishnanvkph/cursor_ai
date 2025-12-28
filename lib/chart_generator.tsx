@@ -370,6 +370,12 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
       if (chartType === 'line' || chartType === 'area' || chartType === 'radar') {
         processedDs.fill = false;
       }
+    } else {
+      // When fillArea is true, ensure area charts have a fill value
+      // Only default to 'origin' if fill is not already set to a valid value
+      if (chartType === 'area' && (processedDs.fill === undefined || processedDs.fill === false)) {
+        processedDs.fill = 'origin';
+      }
     }
 
     if (!showBorder) {

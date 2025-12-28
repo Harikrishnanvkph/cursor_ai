@@ -97,7 +97,7 @@ export function PreviewPanel() {
             <div className="w-full h-full">
               <Chart
                 ref={chartRef}
-                type={chartType}
+                type={chartType as any}
                 data={chartData}
                 options={{
                   ...chartConfig,

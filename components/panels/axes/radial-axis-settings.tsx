@@ -274,6 +274,26 @@ export function RadialAxisSettings({ config, onUpdate, chartType, className }: R
         <div className="bg-orange-50 rounded-lg">
           {ticksDropdownOpen && (
             <div className={`px-3 py-3 space-y-3 ${config?.ticks?.display === false ? 'opacity-50 pointer-events-none' : ''}`}>
+              {/* Row 0: Show Above Chart and Show Backdrop */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium">Show Above Chart</Label>
+                  <Switch
+                    checked={(config?.ticks?.z ?? 1) > 0}
+                    onCheckedChange={(checked) => updateConfig('ticks.z', checked ? 10 : 0)}
+                    className="data-[state=checked]:bg-orange-600"
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium">Show Backdrop</Label>
+                  <Switch
+                    checked={config?.ticks?.showLabelBackdrop !== false}
+                    onCheckedChange={(checked) => updateConfig('ticks.showLabelBackdrop', checked)}
+                    className="data-[state=checked]:bg-orange-600"
+                  />
+                </div>
+              </div>
+
               {/* Row 1: Color and Backdrop Color */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">

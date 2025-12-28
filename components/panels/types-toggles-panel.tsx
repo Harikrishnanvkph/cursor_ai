@@ -21,6 +21,8 @@ export function TypesTogglesPanel() {
     showLabels,
     toggleShowImages,
     toggleShowLabels,
+    updateChartConfig,
+    chartConfig,
   } = useChartStore()
   const { editorMode, setEditorMode } = useTemplateStore()
 
@@ -33,12 +35,29 @@ export function TypesTogglesPanel() {
           dataset.type = 'bar'
         }
       })
+      // Set legendType to 'dataset' for stacked bar
+      updateChartConfig({
+        ...chartConfig,
+        plugins: {
+          ...chartConfig.plugins,
+          legendType: 'dataset'
+        }
+      } as any)
       return
     }
 
-
-
     setChartType(type as SupportedChartType)
+
+    // Set the correct legendType based on chart type
+    // Pie, Doughnut, Polar Area use 'slice', all others use 'dataset'
+    const newLegendType = (type === 'pie' || type === 'doughnut' || type === 'polarArea') ? 'slice' : 'dataset';
+    updateChartConfig({
+      ...chartConfig,
+      plugins: {
+        ...chartConfig.plugins,
+        legendType: newLegendType
+      }
+    } as any)
   }
 
   return (

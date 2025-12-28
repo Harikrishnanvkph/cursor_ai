@@ -41,7 +41,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   onTabChange?: (tab: string) => void,
   onNewChart?: () => void
 }) {
-  const { chartConfig, chartData, chartType, setChartType, resetChart, setHasJSON, globalChartRef, showLabels, showImages, fillArea, showBorder, toggleShowBorder } = useChartStore()
+  const { chartConfig, chartData, chartType, setChartType, resetChart, setHasJSON, globalChartRef, showLabels, showImages, fillArea, showBorder, toggleShowBorder, updateChartConfig } = useChartStore()
   const { shouldShowTemplate, editorMode, templateInBackground, currentTemplate, setEditorMode } = useTemplateStore()
   const { user } = useAuth()
   const { backendConversationId } = useChatStore()
@@ -89,6 +89,22 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       setRenameValue(chartTitle);
       setIsRenaming(true);
     }
+  };
+
+  // Handle chart type change with legendType update
+  const handleChartTypeChange = (type: string) => {
+    setChartType(type as any);
+
+    // Set the correct legendType based on chart type
+    // Pie, Doughnut, Polar Area use 'slice', all others use 'dataset'
+    const newLegendType = (type === 'pie' || type === 'doughnut' || type === 'polarArea') ? 'slice' : 'dataset';
+    updateChartConfig({
+      ...chartConfig,
+      plugins: {
+        ...chartConfig.plugins,
+        legendType: newLegendType
+      }
+    } as any);
   };
 
   // Save rename
@@ -744,7 +760,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                   </button>
                 </div>
                 {/* Compact Chart Type Selector - Mobile */}
-                <Select value={chartType} onValueChange={(value) => setChartType(value as any)}>
+                <Select value={chartType} onValueChange={handleChartTypeChange}>
                   <SelectTrigger className="h-6 w-[85px] text-[10px] px-2 py-0 border-gray-200 bg-white">
                     <SelectValue placeholder="Type" />
                   </SelectTrigger>
@@ -838,7 +854,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                   </button>
                 </div>
                 {/* Compact Chart Type Selector - Desktop */}
-                <Select value={chartType} onValueChange={(value) => setChartType(value as any)}>
+                <Select value={chartType} onValueChange={handleChartTypeChange}>
                   <SelectTrigger className="h-6 w-[90px] text-[10px] px-2 py-0 border-gray-200 bg-white">
                     <SelectValue placeholder="Type" />
                   </SelectTrigger>

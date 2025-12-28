@@ -46,7 +46,8 @@ export function TemplateChartPreview({
     chartConfig,
     globalChartRef,
     chartType,
-    setChartType
+    setChartType,
+    updateChartConfig
   } = useChartStore()
   const { backendConversationId } = useChatStore()
   const { conversations, updateConversation } = useHistoryStore()
@@ -104,6 +105,22 @@ export function TemplateChartPreview({
       setIsRenaming(true)
     }
   }
+
+  // Handle chart type change with legendType update
+  const handleChartTypeChange = (type: string) => {
+    setChartType(type as any);
+
+    // Set the correct legendType based on chart type
+    // Pie, Doughnut, Polar Area use 'slice', all others use 'dataset'
+    const newLegendType = (type === 'pie' || type === 'doughnut' || type === 'polarArea') ? 'slice' : 'dataset';
+    updateChartConfig({
+      ...chartConfig,
+      plugins: {
+        ...chartConfig.plugins,
+        legendType: newLegendType
+      }
+    } as any);
+  };
 
   // Save rename
   const handleSaveRename = async () => {
@@ -826,7 +843,7 @@ export function TemplateChartPreview({
               </button>
             </div>
             {/* Compact Chart Type Selector */}
-            <Select value={chartType} onValueChange={(value) => setChartType(value as any)}>
+            <Select value={chartType} onValueChange={handleChartTypeChange}>
               <SelectTrigger className="h-6 w-[90px] text-[10px] px-2 py-0 border-gray-200 bg-white">
                 <SelectValue placeholder="Type" />
               </SelectTrigger>

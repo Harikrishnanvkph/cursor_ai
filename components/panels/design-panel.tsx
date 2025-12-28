@@ -351,7 +351,7 @@ export function DesignPanel() {
             <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
               <Activity className="h-4 w-4 text-blue-900" />
               <h3 className="text-sm font-semibold text-blue-900">
-                Line Properties <span className="text-xs font-normal text-blue-700 opacity-80 ml-1">(Line, Area Only)</span>
+                Line Properties <span className="text-xs font-normal text-blue-700 opacity-80 ml-1">(Line, Area, Radar)</span>
               </h3>
             </div>
 
@@ -401,25 +401,31 @@ export function DesignPanel() {
             </div>
 
             {/* Area Fill Settings */}
-            <div className="pt-2 border-t border-blue-100 space-y-3">
-              <div className="text-xs font-medium text-blue-900">Area Fill Settings</div>
+            <div className={`pt-2 border-t border-blue-100 space-y-3 ${chartType !== 'area' ? 'opacity-50 pointer-events-none' : ''}`}>
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-medium text-blue-900">Area Fill Settings</div>
+                {chartType !== 'area' && (
+                  <span className="text-xs text-gray-500 italic">Area charts only</span>
+                )}
+              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs font-medium">Fill Target</Label>
                   <Select
                     value={
-                      (chartData.datasets[0] as any)?.fill === false ? 'none' :
+                      chartType === 'area' ? (
                         (chartData.datasets[0] as any)?.fill === '-1' ? 'stack' :
-                          (chartData.datasets[0] as any)?.fill === 'end' ? 'end' :
-                            (chartData.datasets[0] as any)?.fill === true || (chartData.datasets[0] as any)?.fill === 'origin' ? 'origin' : 'none'
+                          (chartData.datasets[0] as any)?.fill === 'end' ? 'end' : 'origin'
+                      ) : 'origin'
                     }
                     onValueChange={(value) => {
-                      const fillValue = value === 'none' ? false : value === 'stack' ? '-1' : value === 'origin' ? 'origin' : value
+                      const fillValue = value === 'stack' ? '-1' : value
                       chartData.datasets.forEach((_, index) => {
                         handleUpdateDataset(index, 'fill', fillValue)
                       })
                     }}
+                    disabled={chartType !== 'area'}
                   >
                     <SelectTrigger className="h-8 text-xs">
                       <SelectValue />
@@ -428,7 +434,6 @@ export function DesignPanel() {
                       <SelectItem value="origin">Origin (Baseline)</SelectItem>
                       <SelectItem value="stack">Stacked (Previous Dataset)</SelectItem>
                       <SelectItem value="end">End (Top)</SelectItem>
-                      <SelectItem value="none">None (Line Only)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -484,6 +489,7 @@ export function DesignPanel() {
                       max={100}
                       step={5}
                       className="mt-2 flex-1"
+                      disabled={chartType !== 'area'}
                     />
                     <div className="text-xs text-gray-500 mt-2 w-8 text-right">
                       {(() => {

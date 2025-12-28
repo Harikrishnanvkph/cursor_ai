@@ -414,7 +414,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
       plugins: {
         ...baseConfig.plugins,
         // @ts-ignore - legendType is a custom property
-        legendType: 'slice' // Override to slice for radar
+        legendType: 'dataset' // Radar uses datasets, not slices
       },
       scales: {
         r: {
@@ -2113,9 +2113,14 @@ export const useChartStore = create<ChartStore>()(
             }
           }
 
+          // Apply default tension of 0 for radar charts (straight lines by default)
+          if (type === 'radar') {
+            newDataset.tension = 0;
+          }
+
           // Set the fill property based on the original requested type
-          if (type === ('area' as CustomChartType)) {
-            newDataset.fill = true;
+          if (type === 'area') {
+            newDataset.fill = 'origin'; // Use 'origin' for proper area chart fill
           } else {
             // For all other types, including 'line' (when not 'area'),
             // ensure fill is false. This explicitly turns off fill for standard line charts.
@@ -2187,6 +2192,15 @@ export const useChartStore = create<ChartStore>()(
             ...newConfig.plugins.tooltip,
             ...prevPlugins.tooltip
           };
+        }
+
+        // Set the correct legendType based on chart type
+        // Pie, Doughnut, Polar Area use 'slice', all others use 'dataset'
+        newConfig.plugins = newConfig.plugins || {};
+        if (type === 'pie' || type === 'doughnut' || type === 'polarArea') {
+          (newConfig.plugins as any).legendType = 'slice';
+        } else {
+          (newConfig.plugins as any).legendType = 'dataset';
         }
 
         // Preserve manual/responsive/dimension settings for mobile devices
