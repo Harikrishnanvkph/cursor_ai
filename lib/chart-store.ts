@@ -610,6 +610,132 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
     }
   }
 
+  // Special configuration for scatter charts
+  if (processedType === 'scatter') {
+    return {
+      ...baseConfig,
+      interaction: {
+        intersect: false,
+        mode: 'nearest' as const,
+      },
+      elements: {
+        point: {
+          radius: 6,
+          hoverRadius: 10,
+          pointStyle: 'circle',
+          borderWidth: 1,
+        }
+      },
+      scales: {
+        x: {
+          display: true,
+          type: 'linear',
+          position: 'bottom',
+          grid: {
+            display: true,
+            color: "#e5e7eb",
+            lineWidth: 1,
+          },
+          ticks: {
+            display: true,
+            font: { size: 12 },
+            color: "#666666",
+          },
+          title: {
+            display: true,
+            text: "X Axis",
+            font: { size: 14 },
+            color: "#333333",
+          },
+        },
+        y: {
+          display: true,
+          type: 'linear',
+          beginAtZero: false,
+          grid: {
+            display: true,
+            color: "#e5e7eb",
+            lineWidth: 1,
+          },
+          ticks: {
+            display: true,
+            font: { size: 12 },
+            color: "#666666",
+          },
+          title: {
+            display: true,
+            text: "Y Axis",
+            font: { size: 14 },
+            color: "#333333",
+          },
+        },
+      },
+    }
+  }
+
+  // Special configuration for bubble charts
+  if (processedType === 'bubble') {
+    return {
+      ...baseConfig,
+      interaction: {
+        intersect: false,
+        mode: 'nearest' as const,
+      },
+      elements: {
+        point: {
+          radius: 3, // Base radius, actual size comes from data 'r' value
+          hoverRadius: 20,
+          pointStyle: 'circle',
+          borderWidth: 1,
+        }
+      },
+      scales: {
+        x: {
+          display: true,
+          type: 'linear',
+          position: 'bottom',
+          grid: {
+            display: true,
+            color: "#e5e7eb",
+            lineWidth: 1,
+          },
+          ticks: {
+            display: true,
+            font: { size: 12 },
+            color: "#666666",
+          },
+          title: {
+            display: true,
+            text: "X Axis",
+            font: { size: 14 },
+            color: "#333333",
+          },
+        },
+        y: {
+          display: true,
+          type: 'linear',
+          beginAtZero: false,
+          grid: {
+            display: true,
+            color: "#e5e7eb",
+            lineWidth: 1,
+          },
+          ticks: {
+            display: true,
+            font: { size: 12 },
+            color: "#666666",
+          },
+          title: {
+            display: true,
+            text: "Y Axis",
+            font: { size: 14 },
+            color: "#333333",
+          },
+        },
+      },
+    }
+  }
+
   // Pie and doughnut charts don't need scales
   if (['pie', 'doughnut'].includes(processedType as string)) {
     return baseConfig

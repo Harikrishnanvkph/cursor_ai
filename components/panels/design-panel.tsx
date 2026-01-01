@@ -258,258 +258,335 @@ export function DesignPanel() {
             </div>
           </div>
 
-          {/* Point Edit */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
-              <CircleDot className="h-4 w-4 text-blue-900" />
-              <h3 className="text-sm font-semibold text-blue-900">
-                Point Edit <span className="text-xs font-normal text-blue-700 opacity-80 ml-1">(Line, Area, Radar)</span>
-              </h3>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs font-medium">Point Radius</Label>
-                <Input
-                  type="number"
-                  value={Number(chartData.datasets[0]?.pointRadius ?? 5)}
-                  onChange={(e) => {
-                    const value = e.target.value ? Number(e.target.value) : 5
-                    chartData.datasets.forEach((_, index) => {
-                      handleUpdateDataset(index, 'pointRadius', value)
-                    })
-                  }}
-                  className="h-8 text-xs"
-                  placeholder="5"
-                  min={0}
-                  max={20}
-                  step={1}
-                />
+          {/* Point Settings - For all point-based charts */}
+          {(chartType === 'line' || chartType === 'area' || chartType === 'radar' || chartType === 'scatter' || chartType === 'bubble') && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                <CircleDot className="h-4 w-4 text-blue-900" />
+                <h3 className="text-sm font-semibold text-blue-900">
+                  Point Settings
+                </h3>
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-xs font-medium">Hover Radius</Label>
-                <Input
-                  type="number"
-                  value={Number((chartData.datasets[0] as any)?.pointHoverRadius ?? 8)}
-                  onChange={(e) => {
-                    const value = e.target.value ? Number(e.target.value) : 8
-                    chartData.datasets.forEach((_, index) => {
-                      handleUpdateDataset(index, 'pointHoverRadius', value)
-                    })
-                  }}
-                  className="h-8 text-xs"
-                  placeholder="8"
-                  min={0}
-                  max={30}
-                  step={1}
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs font-medium">Point Border Width</Label>
-                <Input
-                  type="number"
-                  value={Number((chartData.datasets[0] as any)?.pointBorderWidth ?? 1)}
-                  onChange={(e) => {
-                    const value = e.target.value ? Number(e.target.value) : 1
-                    chartData.datasets.forEach((_, index) => {
-                      handleUpdateDataset(index, 'pointBorderWidth', value)
-                    })
-                  }}
-                  className="h-8 text-xs"
-                  placeholder="1"
-                  min={0}
-                  max={5}
-                  step={1}
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs font-medium">Hover Border Width</Label>
-                <Input
-                  type="number"
-                  value={Number((chartData.datasets[0] as any)?.pointHoverBorderWidth ?? 2)}
-                  onChange={(e) => {
-                    const value = e.target.value ? Number(e.target.value) : 2
-                    chartData.datasets.forEach((_, index) => {
-                      handleUpdateDataset(index, 'pointHoverBorderWidth', value)
-                    })
-                  }}
-                  className="h-8 text-xs"
-                  placeholder="2"
-                  min={0}
-                  max={10}
-                  step={1}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Line Properties */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
-              <Activity className="h-4 w-4 text-blue-900" />
-              <h3 className="text-sm font-semibold text-blue-900">
-                Line Properties <span className="text-xs font-normal text-blue-700 opacity-80 ml-1">(Line, Area, Radar)</span>
-              </h3>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs font-medium">Line Tension</Label>
-                <Slider
-                  value={[Number((chartData.datasets[0] as any)?.tension ?? 0.3)]}
-                  onValueChange={([value]) => {
-                    chartData.datasets.forEach((_, index) => {
-                      handleUpdateDataset(index, 'tension', value)
-                    })
-                  }}
-                  min={0}
-                  max={1}
-                  step={0.1}
-                  className="mt-2"
-                />
-                <div className="text-xs text-gray-500 mt-1">{Number((chartData.datasets[0] as any)?.tension ?? 0.3).toFixed(1)}</div>
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs font-medium">Line Style</Label>
-                <Select
-                  value={
-                    (chartData.datasets[0] as any)?.borderDash
-                      ? (JSON.stringify((chartData.datasets[0] as any).borderDash) === JSON.stringify([5, 5]) ? 'dashed' : 'dotted')
-                      : 'solid'
-                  }
-                  onValueChange={(value) => {
-                    const borderDash = value === 'solid' ? undefined : value === 'dashed' ? [5, 5] : [2, 2]
-                    chartData.datasets.forEach((_, index) => {
-                      handleUpdateDataset(index, 'borderDash', borderDash)
-                    })
-                  }}
-                >
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="solid">Solid</SelectItem>
-                    <SelectItem value="dashed">Dashed</SelectItem>
-                    <SelectItem value="dotted">Dotted</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Area Fill Settings */}
-            <div className={`pt-2 border-t border-blue-100 space-y-3 ${chartType !== 'area' ? 'opacity-50 pointer-events-none' : ''}`}>
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-medium text-blue-900">Area Fill Settings</div>
-                {chartType !== 'area' && (
-                  <span className="text-xs text-gray-500 italic">Area charts only</span>
+              {/* Row 1: Point Radius, Hover Radius, Border Width */}
+              <div className={`grid gap-3 ${chartType === 'bubble' ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                {/* Point Radius - not for bubble (bubble uses r value in data) */}
+                {chartType !== 'bubble' && (
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Point Radius</Label>
+                    <Input
+                      type="number"
+                      value={Number(chartData.datasets[0]?.pointRadius ?? 5)}
+                      onChange={(e) => {
+                        const value = e.target.value ? Number(e.target.value) : 5
+                        chartData.datasets.forEach((_, index) => {
+                          handleUpdateDataset(index, 'pointRadius', value)
+                        })
+                      }}
+                      className="h-8 text-xs"
+                      placeholder="5"
+                      min={0}
+                      max={20}
+                      step={1}
+                    />
+                  </div>
                 )}
-              </div>
 
-              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs font-medium">Fill Target</Label>
-                  <Select
-                    value={
-                      chartType === 'area' ? (
-                        (chartData.datasets[0] as any)?.fill === '-1' ? 'stack' :
-                          (chartData.datasets[0] as any)?.fill === 'end' ? 'end' : 'origin'
-                      ) : 'origin'
-                    }
-                    onValueChange={(value) => {
-                      const fillValue = value === 'stack' ? '-1' : value
+                  <Label className="text-xs font-medium">Hover Radius</Label>
+                  <Input
+                    type="number"
+                    value={Number((chartData.datasets[0] as any)?.pointHoverRadius ?? 8)}
+                    onChange={(e) => {
+                      const value = e.target.value ? Number(e.target.value) : 8
                       chartData.datasets.forEach((_, index) => {
-                        handleUpdateDataset(index, 'fill', fillValue)
+                        handleUpdateDataset(index, 'pointHoverRadius', value)
                       })
                     }}
-                    disabled={chartType !== 'area'}
+                    className="h-8 text-xs"
+                    placeholder="8"
+                    min={0}
+                    max={30}
+                    step={1}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium">Border Width</Label>
+                  <Input
+                    type="number"
+                    value={Number((chartData.datasets[0] as any)?.pointBorderWidth ?? 1)}
+                    onChange={(e) => {
+                      const value = e.target.value ? Number(e.target.value) : 1
+                      chartData.datasets.forEach((_, index) => {
+                        handleUpdateDataset(index, 'pointBorderWidth', value)
+                      })
+                    }}
+                    className="h-8 text-xs"
+                    placeholder="1"
+                    min={0}
+                    max={5}
+                    step={1}
+                  />
+                </div>
+              </div>
+
+              {/* Row 2: Point Style, Hover Border Width */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium">Point Style</Label>
+                  <Select
+                    value={(chartData.datasets[0] as any)?.pointStyle || 'circle'}
+                    onValueChange={(value) => {
+                      chartData.datasets.forEach((_, index) => {
+                        handleUpdateDataset(index, 'pointStyle', value)
+                      })
+                    }}
                   >
                     <SelectTrigger className="h-8 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="origin">Origin (Baseline)</SelectItem>
-                      <SelectItem value="stack">Stacked (Previous Dataset)</SelectItem>
-                      <SelectItem value="end">End (Top)</SelectItem>
+                      <SelectItem value="circle">Circle</SelectItem>
+                      <SelectItem value="cross">Cross</SelectItem>
+                      <SelectItem value="crossRot">Cross (Rotated)</SelectItem>
+                      <SelectItem value="dash">Dash</SelectItem>
+                      <SelectItem value="line">Line</SelectItem>
+                      <SelectItem value="rect">Rectangle</SelectItem>
+                      <SelectItem value="rectRounded">Rounded Rectangle</SelectItem>
+                      <SelectItem value="rectRot">Diamond</SelectItem>
+                      <SelectItem value="star">Star</SelectItem>
+                      <SelectItem value="triangle">Triangle</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-xs font-medium">Fill Opacity</Label>
-                  <div className="flex items-center gap-2">
-                    <Slider
-                      value={[(() => {
-                        const bgColor = (chartData.datasets[0] as any)?.backgroundColor
-                        const firstColor = Array.isArray(bgColor) ? bgColor[0] : bgColor
-                        if (typeof firstColor === 'string') {
-                          if (firstColor.startsWith('rgba')) {
-                            const match = firstColor.match(/rgba?\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)/)
-                            return match ? Math.round(parseFloat(match[1]) * 100) : 60
-                          }
-                          // Hex colors are fully opaque
-                          if (firstColor.startsWith('#')) return 100
+                  <Label className="text-xs font-medium">Hover Border Width</Label>
+                  <Input
+                    type="number"
+                    value={Number((chartData.datasets[0] as any)?.pointHoverBorderWidth ?? 2)}
+                    onChange={(e) => {
+                      const value = e.target.value ? Number(e.target.value) : 2
+                      chartData.datasets.forEach((_, index) => {
+                        handleUpdateDataset(index, 'pointHoverBorderWidth', value)
+                      })
+                    }}
+                    className="h-8 text-xs"
+                    placeholder="2"
+                    min={0}
+                    max={10}
+                    step={1}
+                  />
+                </div>
+              </div>
+
+              {/* Bubble-specific settings */}
+              {chartType === 'bubble' && (
+                <div className="pt-2 border-t border-blue-100 space-y-3">
+                  <div className="text-xs font-medium text-blue-900">Bubble Size Range</div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-medium">Min Radius</Label>
+                      <Input
+                        type="number"
+                        value={Number((chartConfig as any)?.elements?.point?.radius ?? 3)}
+                        onChange={(e) => {
+                          const value = e.target.value ? Number(e.target.value) : 3
+                          handleConfigUpdate('elements.point.radius', value)
+                        }}
+                        className="h-8 text-xs"
+                        placeholder="3"
+                        min={1}
+                        max={20}
+                        step={1}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs font-medium">Max Radius</Label>
+                      <Input
+                        type="number"
+                        value={Number((chartConfig as any)?.elements?.point?.hoverRadius ?? 20)}
+                        onChange={(e) => {
+                          const value = e.target.value ? Number(e.target.value) : 20
+                          handleConfigUpdate('elements.point.hoverRadius', value)
+                        }}
+                        className="h-8 text-xs"
+                        placeholder="20"
+                        min={5}
+                        max={50}
+                        step={1}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 italic">
+                    Tip: The 'r' value in your data controls individual bubble sizes.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Line Properties - Only for line, area, radar charts */}
+          {(chartType === 'line' || chartType === 'area' || chartType === 'radar') && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                <Activity className="h-4 w-4 text-blue-900" />
+                <h3 className="text-sm font-semibold text-blue-900">
+                  Line Properties
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium">Line Tension</Label>
+                  <Slider
+                    value={[Number((chartData.datasets[0] as any)?.tension ?? 0.3)]}
+                    onValueChange={([value]) => {
+                      chartData.datasets.forEach((_, index) => {
+                        handleUpdateDataset(index, 'tension', value)
+                      })
+                    }}
+                    min={0}
+                    max={1}
+                    step={0.1}
+                    className="mt-2"
+                  />
+                  <div className="text-xs text-gray-500 mt-1">{Number((chartData.datasets[0] as any)?.tension ?? 0.3).toFixed(1)}</div>
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium">Line Style</Label>
+                  <Select
+                    value={
+                      (chartData.datasets[0] as any)?.borderDash
+                        ? (JSON.stringify((chartData.datasets[0] as any).borderDash) === JSON.stringify([5, 5]) ? 'dashed' : 'dotted')
+                        : 'solid'
+                    }
+                    onValueChange={(value) => {
+                      const borderDash = value === 'solid' ? undefined : value === 'dashed' ? [5, 5] : [2, 2]
+                      chartData.datasets.forEach((_, index) => {
+                        handleUpdateDataset(index, 'borderDash', borderDash)
+                      })
+                    }}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="solid">Solid</SelectItem>
+                      <SelectItem value="dashed">Dashed</SelectItem>
+                      <SelectItem value="dotted">Dotted</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Area Fill Settings - Only for area charts */}
+              {chartType === 'area' && (
+                <div className="pt-2 border-t border-blue-100 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-medium text-blue-900">Area Fill Settings</div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-medium">Fill Target</Label>
+                      <Select
+                        value={
+                          (chartData.datasets[0] as any)?.fill === '-1' ? 'stack' :
+                            (chartData.datasets[0] as any)?.fill === 'end' ? 'end' : 'origin'
                         }
-                        return 60
-                      })()]}
-                      onValueChange={([value]) => {
-                        const opacity = value / 100
-                        const convertColorToRgba = (color: string): string => {
-                          if (!color) return `rgba(59, 130, 246, ${opacity})`
-                          let r = 59, g = 130, b = 246
-                          if (color.startsWith('#')) {
-                            const hex = color.replace('#', '')
-                            r = parseInt(hex.substring(0, 2), 16)
-                            g = parseInt(hex.substring(2, 4), 16)
-                            b = parseInt(hex.substring(4, 6), 16)
-                          } else if (color.startsWith('rgba') || color.startsWith('rgb')) {
-                            const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
-                            if (match) {
-                              r = parseInt(match[1])
-                              g = parseInt(match[2])
-                              b = parseInt(match[3])
+                        onValueChange={(value) => {
+                          const fillValue = value === 'stack' ? '-1' : value
+                          chartData.datasets.forEach((_, index) => {
+                            handleUpdateDataset(index, 'fill', fillValue)
+                          })
+                        }}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="origin">Origin (Baseline)</SelectItem>
+                          <SelectItem value="stack">Stacked (Previous Dataset)</SelectItem>
+                          <SelectItem value="end">End (Top)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs font-medium">Fill Opacity</Label>
+                      <div className="flex items-center gap-2">
+                        <Slider
+                          value={[(() => {
+                            const bgColor = (chartData.datasets[0] as any)?.backgroundColor
+                            const firstColor = Array.isArray(bgColor) ? bgColor[0] : bgColor
+                            if (typeof firstColor === 'string') {
+                              if (firstColor.startsWith('rgba')) {
+                                const match = firstColor.match(/rgba?\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)/)
+                                return match ? Math.round(parseFloat(match[1]) * 100) : 60
+                              }
+                              if (firstColor.startsWith('#')) return 100
                             }
-                          }
-                          return `rgba(${r}, ${g}, ${b}, ${opacity})`
-                        }
-                        chartData.datasets.forEach((dataset, index) => {
-                          const bgColors = (dataset as any)?.backgroundColor
-                          if (Array.isArray(bgColors)) {
-                            const newColors = bgColors.map((c: string) => convertColorToRgba(c))
-                            handleUpdateDataset(index, 'backgroundColor', newColors)
-                          } else {
-                            handleUpdateDataset(index, 'backgroundColor', convertColorToRgba(bgColors))
-                          }
-                        })
-                      }}
-                      min={0}
-                      max={100}
-                      step={5}
-                      className="mt-2 flex-1"
-                      disabled={chartType !== 'area'}
-                    />
-                    <div className="text-xs text-gray-500 mt-2 w-8 text-right">
-                      {(() => {
-                        const bgColor = (chartData.datasets[0] as any)?.backgroundColor
-                        const firstColor = Array.isArray(bgColor) ? bgColor[0] : bgColor
-                        if (typeof firstColor === 'string') {
-                          if (firstColor.startsWith('rgba')) {
-                            const match = firstColor.match(/rgba?\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)/)
-                            return match ? Math.round(parseFloat(match[1]) * 100) : 60
-                          }
-                          if (firstColor.startsWith('#')) return 100
-                        }
-                        return 60
-                      })()}%
+                            return 60
+                          })()]}
+                          onValueChange={([value]) => {
+                            const opacity = value / 100
+                            const convertColorToRgba = (color: string): string => {
+                              if (!color) return `rgba(59, 130, 246, ${opacity})`
+                              let r = 59, g = 130, b = 246
+                              if (color.startsWith('#')) {
+                                const hex = color.replace('#', '')
+                                r = parseInt(hex.substring(0, 2), 16)
+                                g = parseInt(hex.substring(2, 4), 16)
+                                b = parseInt(hex.substring(4, 6), 16)
+                              } else if (color.startsWith('rgba') || color.startsWith('rgb')) {
+                                const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
+                                if (match) {
+                                  r = parseInt(match[1])
+                                  g = parseInt(match[2])
+                                  b = parseInt(match[3])
+                                }
+                              }
+                              return `rgba(${r}, ${g}, ${b}, ${opacity})`
+                            }
+                            chartData.datasets.forEach((dataset, index) => {
+                              const bgColors = (dataset as any)?.backgroundColor
+                              if (Array.isArray(bgColors)) {
+                                const newColors = bgColors.map((c: string) => convertColorToRgba(c))
+                                handleUpdateDataset(index, 'backgroundColor', newColors)
+                              } else {
+                                handleUpdateDataset(index, 'backgroundColor', convertColorToRgba(bgColors))
+                              }
+                            })
+                          }}
+                          min={0}
+                          max={100}
+                          step={5}
+                          className="mt-2 flex-1"
+                        />
+                        <div className="text-xs text-gray-500 mt-2 w-8 text-right">
+                          {(() => {
+                            const bgColor = (chartData.datasets[0] as any)?.backgroundColor
+                            const firstColor = Array.isArray(bgColor) ? bgColor[0] : bgColor
+                            if (typeof firstColor === 'string') {
+                              if (firstColor.startsWith('rgba')) {
+                                const match = firstColor.match(/rgba?\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)/)
+                                return match ? Math.round(parseFloat(match[1]) * 100) : 60
+                              }
+                              if (firstColor.startsWith('#')) return 100
+                            }
+                            return 60
+                          })()}%
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
-          </div>
+          )}
         </TabsContent>
 
         <TabsContent value="title" className="mt-4 space-y-6">
