@@ -133,130 +133,134 @@ export function DesignPanel() {
         </div>
 
         <TabsContent value="styling" className="mt-4 space-y-3">
-          {/* Slice Border Styling */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
-              <Palette className="h-4 w-4 text-blue-900" />
-              <h3 className="text-sm font-semibold text-blue-900">Slice Border Styling</h3>
-            </div>
+          {/* Slice Border Styling - Only for slice-based and bar charts */}
+          {(chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea' || chartType === 'bar' || chartType === 'horizontalBar' || chartType === 'stackedBar') && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                <Palette className="h-4 w-4 text-blue-900" />
+                <h3 className="text-sm font-semibold text-blue-900">
+                  {(chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea') ? 'Slice Border Styling' : 'Bar Border Styling'}
+                </h3>
+              </div>
 
-            {/* Border Width and Border Radius - Horizontal Layout */}
-            <div className="grid grid-cols-2 gap-3">
-              {/* Border Width */}
-              <div className="space-y-1">
-                <Label className="text-xs font-medium">Border Width</Label>
+              {/* Border Width and Border Radius - Horizontal Layout */}
+              <div className="grid grid-cols-2 gap-3">
+                {/* Border Width */}
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium">Border Width</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      value={Number(chartData.datasets[0]?.borderWidth ?? 2)}
+                      onChange={(e) => {
+                        const value = e.target.value ? Number(e.target.value) : 2
+                        chartData.datasets.forEach((_, index) => {
+                          handleUpdateDataset(index, 'borderWidth', value)
+                        })
+                      }}
+                      className="w-full h-8 text-xs"
+                      placeholder="2"
+                      min={0}
+                      max={10}
+                      step={1}
+                    />
+                    <span className="text-xs text-gray-500 w-4">px</span>
+                  </div>
+                </div>
+
+                {/* Border Radius */}
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium">Border Radius</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      value={Number(chartData.datasets[0]?.borderRadius ?? 0)}
+                      onChange={(e) => {
+                        const value = e.target.value ? Number(e.target.value) : 0
+                        chartData.datasets.forEach((_, index) => {
+                          handleUpdateDataset(index, 'borderRadius', value)
+                        })
+                      }}
+                      className="w-full h-8 text-xs"
+                      placeholder="0"
+                      min={0}
+                      max={200}
+                      step={1}
+                    />
+                    <span className="text-xs text-gray-500 w-4">px</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Border Color */}
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Border Color</Label>
                 <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    value={Number(chartData.datasets[0]?.borderWidth ?? 2)}
-                    onChange={(e) => {
-                      const value = e.target.value ? Number(e.target.value) : 2
-                      chartData.datasets.forEach((_, index) => {
-                        handleUpdateDataset(index, 'borderWidth', value)
+                  <Button
+                    variant={borderColorMode === 'auto' ? "default" : "outline"}
+                    size="sm"
+                    className={`h-8 text-xs flex-1 ${borderColorMode === 'auto' ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
+                    onClick={() => {
+                      setBorderColorMode('auto')
+                      // Apply auto border colors (darkened background colors)
+                      chartData.datasets.forEach((dataset, index) => {
+                        const bgColors = Array.isArray(dataset.backgroundColor)
+                          ? dataset.backgroundColor
+                          : [dataset.backgroundColor]
+                        const autoBorderColors = bgColors.map(color => darkenColor(String(color), 20))
+                        handleUpdateDataset(index, 'borderColor', autoBorderColors)
                       })
                     }}
-                    className="w-full h-8 text-xs"
-                    placeholder="2"
-                    min={0}
-                    max={10}
-                    step={1}
-                  />
-                  <span className="text-xs text-gray-500 w-4">px</span>
+                  >
+                    Auto
+                  </Button>
+                  <Button
+                    variant={borderColorMode === 'manual' ? "default" : "outline"}
+                    size="sm"
+                    className={`h-8 text-xs flex-1 ${borderColorMode === 'manual' ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
+                    onClick={() => setBorderColorMode('manual')}
+                  >
+                    Manual
+                  </Button>
                 </div>
-              </div>
 
-              {/* Border Radius */}
-              <div className="space-y-1">
-                <Label className="text-xs font-medium">Border Radius</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    value={Number(chartData.datasets[0]?.borderRadius ?? 0)}
-                    onChange={(e) => {
-                      const value = e.target.value ? Number(e.target.value) : 0
-                      chartData.datasets.forEach((_, index) => {
-                        handleUpdateDataset(index, 'borderRadius', value)
-                      })
-                    }}
-                    className="w-full h-8 text-xs"
-                    placeholder="0"
-                    min={0}
-                    max={200}
-                    step={1}
-                  />
-                  <span className="text-xs text-gray-500 w-4">px</span>
-                </div>
+                {borderColorMode === 'manual' && (
+                  <div className="flex items-center gap-2 h-8">
+                    <div
+                      className="w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform"
+                      style={{ backgroundColor: manualBorderColor }}
+                      onClick={() => document.getElementById('manual-border-color-picker')?.click()}
+                    />
+                    <input
+                      id="manual-border-color-picker"
+                      type="color"
+                      value={manualBorderColor}
+                      onChange={(e) => {
+                        setManualBorderColor(e.target.value)
+                        // Apply manual border color to all datasets uniformly
+                        chartData.datasets.forEach((dataset, index) => {
+                          const sliceCount = dataset.data.length
+                          handleUpdateDataset(index, 'borderColor', Array(sliceCount).fill(e.target.value))
+                        })
+                      }}
+                      className="absolute opacity-0 w-0 h-0"
+                    />
+                    <Input
+                      value={manualBorderColor}
+                      onChange={(e) => {
+                        setManualBorderColor(e.target.value)
+                        chartData.datasets.forEach((dataset, index) => {
+                          const sliceCount = dataset.data.length
+                          handleUpdateDataset(index, 'borderColor', Array(sliceCount).fill(e.target.value))
+                        })
+                      }}
+                      className="h-8 text-xs flex-1"
+                    />
+                  </div>
+                )}
               </div>
             </div>
-
-            {/* Border Color */}
-            <div className="space-y-2">
-              <Label className="text-xs font-medium">Border Color</Label>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={borderColorMode === 'auto' ? "default" : "outline"}
-                  size="sm"
-                  className={`h-8 text-xs flex-1 ${borderColorMode === 'auto' ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
-                  onClick={() => {
-                    setBorderColorMode('auto')
-                    // Apply auto border colors (darkened background colors)
-                    chartData.datasets.forEach((dataset, index) => {
-                      const bgColors = Array.isArray(dataset.backgroundColor)
-                        ? dataset.backgroundColor
-                        : [dataset.backgroundColor]
-                      const autoBorderColors = bgColors.map(color => darkenColor(String(color), 20))
-                      handleUpdateDataset(index, 'borderColor', autoBorderColors)
-                    })
-                  }}
-                >
-                  Auto
-                </Button>
-                <Button
-                  variant={borderColorMode === 'manual' ? "default" : "outline"}
-                  size="sm"
-                  className={`h-8 text-xs flex-1 ${borderColorMode === 'manual' ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
-                  onClick={() => setBorderColorMode('manual')}
-                >
-                  Manual
-                </Button>
-              </div>
-
-              {borderColorMode === 'manual' && (
-                <div className="flex items-center gap-2 h-8">
-                  <div
-                    className="w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform"
-                    style={{ backgroundColor: manualBorderColor }}
-                    onClick={() => document.getElementById('manual-border-color-picker')?.click()}
-                  />
-                  <input
-                    id="manual-border-color-picker"
-                    type="color"
-                    value={manualBorderColor}
-                    onChange={(e) => {
-                      setManualBorderColor(e.target.value)
-                      // Apply manual border color to all datasets uniformly
-                      chartData.datasets.forEach((dataset, index) => {
-                        const sliceCount = dataset.data.length
-                        handleUpdateDataset(index, 'borderColor', Array(sliceCount).fill(e.target.value))
-                      })
-                    }}
-                    className="absolute opacity-0 w-0 h-0"
-                  />
-                  <Input
-                    value={manualBorderColor}
-                    onChange={(e) => {
-                      setManualBorderColor(e.target.value)
-                      chartData.datasets.forEach((dataset, index) => {
-                        const sliceCount = dataset.data.length
-                        handleUpdateDataset(index, 'borderColor', Array(sliceCount).fill(e.target.value))
-                      })
-                    }}
-                    className="h-8 text-xs flex-1"
-                  />
-                </div>
-              )}
-            </div>
-          </div>
+          )}
 
           {/* Point Settings - For all point-based charts */}
           {(chartType === 'line' || chartType === 'area' || chartType === 'radar' || chartType === 'scatter' || chartType === 'bubble') && (
@@ -437,7 +441,26 @@ export function DesignPanel() {
                 </h3>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium">Line Width</Label>
+                  <Input
+                    type="number"
+                    value={Number(chartData.datasets[0]?.borderWidth ?? 2)}
+                    onChange={(e) => {
+                      const value = e.target.value ? Number(e.target.value) : 2
+                      chartData.datasets.forEach((_, index) => {
+                        handleUpdateDataset(index, 'borderWidth', value)
+                      })
+                    }}
+                    className="h-8 text-xs"
+                    placeholder="2"
+                    min={0}
+                    max={10}
+                    step={1}
+                  />
+                </div>
+
                 <div className="space-y-1">
                   <Label className="text-xs font-medium">Line Tension</Label>
                   <Slider
