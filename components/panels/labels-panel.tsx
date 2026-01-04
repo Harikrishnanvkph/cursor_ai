@@ -103,7 +103,10 @@ export function LabelsPanel() {
                                 <Label className="text-sm font-medium text-blue-900">Show Data Labels</Label>
                                 <Switch
                                     checked={customLabelsConfig.display !== false}
-                                    onCheckedChange={(checked) => handleCustomLabelConfigUpdate("display", checked)}
+                                    onCheckedChange={(checked) => applyConfigUpdates([
+                                        { path: "plugins.datalabels.display", value: checked },
+                                        { path: "plugins.customLabelsConfig.display", value: checked }
+                                    ])}
                                     className="data-[state=checked]:bg-blue-600"
                                 />
                             </div>

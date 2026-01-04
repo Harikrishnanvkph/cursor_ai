@@ -17,10 +17,10 @@ export function TypesTogglesPanel() {
     toggleFillArea,
     toggleShowBorder,
     showImages,
-    showLabels,
     toggleShowImages,
     toggleShowLabels,
     changeChartType,
+    chartConfig,
   } = useChartStore()
   const { editorMode, setEditorMode } = useTemplateStore()
 
@@ -29,6 +29,9 @@ export function TypesTogglesPanel() {
     // This handles transition detection, type change, and legendType update
     changeChartType(type as SupportedChartType);
   }
+
+  // Derive label checked state from chartConfig to stay in sync with labels-panel
+  const labelChecked = (chartConfig.plugins as any)?.customLabelsConfig?.display !== false;
 
   return (
     <div className="space-y-3">
@@ -98,7 +101,7 @@ export function TypesTogglesPanel() {
           <Label htmlFor="show-images-toggle" className="text-[12px] text-gray-600">Image</Label>
         </div>
         <div className="flex flex-col items-center gap-1">
-          <Switch id="show-labels-toggle" checked={showLabels} onCheckedChange={toggleShowLabels} className="scale-75 data-[state=unchecked]:bg-input/50" />
+          <Switch id="show-labels-toggle" checked={labelChecked} onCheckedChange={toggleShowLabels} className="scale-75 data-[state=unchecked]:bg-input/50" />
           <Label htmlFor="show-labels-toggle" className="text-[12px] text-gray-600">Label</Label>
         </div>
       </div>

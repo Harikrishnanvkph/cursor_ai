@@ -3197,10 +3197,28 @@ export const useChartStore = create<ChartStore>()(
         return { showImages: newShowImages };
       }),
       toggleShowLabels: () => set((state) => {
-        const newShowLabels = !state.showLabels;
+        // Determine current state from config to avoid stale state issues
+        const currentDisplay = (state.chartConfig.plugins as any)?.customLabelsConfig?.display !== false;
+        const newShowLabels = !currentDisplay;
+
+        // Update chart configuration to reflect label changes
+        const newChartConfig = { ...state.chartConfig };
+        if (!newChartConfig.plugins) newChartConfig.plugins = {};
+
+        // Update datalabels plugin config
+        newChartConfig.plugins.datalabels = {
+          ...(newChartConfig.plugins.datalabels || {}),
+          display: newShowLabels
+        };
+
+        // Update customLabelsConfig
+        newChartConfig.plugins.customLabelsConfig = {
+          ...(newChartConfig.plugins.customLabelsConfig || {}),
+          display: newShowLabels
+        };
 
         // Capture undo point only if we have chart data and labels are configured
-        if (state.hasJSON && state.chartConfig.plugins?.datalabels) {
+        if (state.hasJSON) {
           try {
             const { captureUndoPoint, shouldDebounceUndoOperation } = require('./chat-store');
 
@@ -3216,7 +3234,7 @@ export const useChartStore = create<ChartStore>()(
                 currentState: {
                   chartType: state.chartType,
                   chartData: state.chartData,
-                  chartConfig: state.chartConfig
+                  chartConfig: newChartConfig
                 },
                 toolSource: 'style-toggles',
                 changeDescription: `Labels ${newShowLabels ? 'shown' : 'hidden'}`
@@ -3227,7 +3245,10 @@ export const useChartStore = create<ChartStore>()(
           }
         }
 
-        return { showLabels: newShowLabels };
+        return {
+          showLabels: newShowLabels,
+          chartConfig: newChartConfig
+        };
       }),
       setFullChart: ({ chartType, chartData, chartConfig, id }) => set((state) => {
         // Process datasets to ensure they have mode property set

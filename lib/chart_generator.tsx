@@ -114,7 +114,6 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     fillArea,
     showBorder,
     showImages,
-    showLabels,
     chartMode,
     activeDatasetIndex,
     uniformityMode,
@@ -570,7 +569,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     return { text };
   };
 
-  const customLabels = showLabels ? filteredDatasetsPatched.map((ds, datasetIdx) =>
+  const customLabels = filteredDatasetsPatched.map((ds, datasetIdx) =>
     ds.data.map((value, filteredPointIdx) => {
       // Map filtered index back to original index
       const originalPointIdx = enabledSliceIndices[filteredPointIdx];
@@ -667,7 +666,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
         arrowEndGap: customLabelsConfig.arrowEndGap ?? 8,
       };
     })
-  ) : [];
+  );
 
   // Determine chart type for Chart.js
   let chartTypeForChart = chartType === 'area' ? 'line' :
