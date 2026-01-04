@@ -82,7 +82,7 @@ export const customLabelPlugin: Plugin = {
         // Respect default Chart.js legend visibility for pie/doughnut/polarArea slices
         const chartType = (chart.config as any).type as string;
         if ((chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea') &&
-            typeof (chart as any).getDataVisibility === 'function') {
+          typeof (chart as any).getDataVisibility === 'function') {
           if ((chart as any).getDataVisibility(pointIdx) === false) return;
         }
         // --- Position logic ---
@@ -119,7 +119,10 @@ export const customLabelPlugin: Plugin = {
         }
         // If not absolute, calculate based on anchor
         if (x == null || y == null) {
-          const chartType = (chart.config as any).type as string;
+          // Use dataset type if available (for mixed charts), otherwise global type
+          const globalType = (chart.config as any).type as string;
+          const chartType = meta.type || globalType;
+
           if (chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea') {
             // Pie/doughnut
             const chartArea = chart.chartArea;
@@ -217,12 +220,12 @@ export const customLabelPlugin: Plugin = {
               y = (element.y ?? 0) - offset;
             }
           } else {
-            // Line, scatter, etc.
+            // Fallback
             x = element.x ?? 0;
             y = element.y ?? 0;
           }
         }
-        
+
         // --- Draw enhanced callout arrow if needed ---
         if (anchor === 'callout' && label.callout && (label.arrowLine || label.arrowHead)) {
           ctx.save();
@@ -231,7 +234,9 @@ export const customLabelPlugin: Plugin = {
           ctx.setLineDash([]);
 
           // Calculate arrow path based on chart type
-          const chartType = (chart.config as any).type as string;
+          const globalType = (chart.config as any).type as string;
+          const chartType = meta.type || globalType;
+
           let startX = element.x ?? 0;
           let startY = element.y ?? 0;
 
@@ -247,7 +252,7 @@ export const customLabelPlugin: Plugin = {
             const outerRadius = element.outerRadius ?? Math.min(chartArea.width, chartArea.height) / 2;
             startX = centerX + Math.cos(midAngle) * outerRadius;
             startY = centerY + Math.sin(midAngle) * outerRadius;
-          } else if (chartType === "bar") {
+          } else if (chartType === "bar" || chartType === "horizontalBar") {
             if (chart.options.indexAxis === "y") {
               startX = element.x ?? 0;
               startY = element.y ?? 0;
@@ -374,7 +379,7 @@ export const customLabelPlugin: Plugin = {
           }
           ctx.restore();
         }
-        
+
         // --- Draw shape/background ---
         if (label.shape !== 'none' && label.shape !== undefined) {
           ctx.save();

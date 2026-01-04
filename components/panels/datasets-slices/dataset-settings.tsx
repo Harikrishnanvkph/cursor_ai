@@ -77,6 +77,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     uniformityMode,
     setUniformityMode,
     updateLabels,
+    setChartType,
   } = useChartStore()
 
   const [activeTab, setActiveTab] = useState<DatasetTab>('general')
@@ -297,7 +298,15 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     // Determine the chart type to use based on uniformity mode
     let finalChartType = newDatasetChartType;
     if (chartMode === 'grouped' && uniformityMode === 'uniform') {
-      finalChartType = chartType; // Use the global chart type from Types & Toggles
+      if (filteredDatasets.length > 0) {
+        // Use the global chart type from Types & Toggles (for subsequent datasets)
+        finalChartType = chartType;
+      } else {
+        // This is the FIRST dataset - use the selected type and set it as the global type
+        finalChartType = newDatasetChartType;
+        // Update the global chart type to match what the user selected
+        setChartType(newDatasetChartType);
+      }
     }
 
     if (chartMode === 'grouped' && filteredDatasets.length > 0) {
@@ -342,15 +351,28 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
       dataPoints = finalSlices.map(slice => slice.value);
     }
 
+    // For Line/Area charts, we usually want a single color for the whole dataset
+    // rather than per-point colors (which causes multi-colored line segments)
+    const isLineOrArea = finalChartType === 'line' || finalChartType === 'area';
+
+    // Use the first slice's color as the main dataset color for Line/Area
+    const mainColor = colors[0];
+    const mainBorderColor = borderColors[0];
+
+    // Determine properties based on chart type
+    const datasetBackgroundColor = isLineOrArea ? mainColor : colors;
+    const datasetBorderColor = isLineOrArea ? mainBorderColor : borderColors;
+    const datasetFill = finalChartType === 'area' ? 'origin' : false;
+
     const newDataset: ExtendedChartDataset = {
       label: finalDatasetName,
       data: dataPoints,
-      backgroundColor: colors,
-      borderColor: borderColors,
+      backgroundColor: datasetBackgroundColor,
+      borderColor: datasetBorderColor,
       borderWidth: 2,
       pointRadius: 5,
       tension: 0.3,
-      fill: false,
+      fill: datasetFill,
       pointImages: Array(finalSlices.length).fill(null),
       pointImageConfig: Array(finalSlices.length).fill(getDefaultImageConfigFromStore(finalChartType)),
       mode: chartMode, // Set the mode when creating the dataset
@@ -386,8 +408,8 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
         { name: "Slice 5", value: 30, x: 40, y: 50, r: 10, color: "#96ceb4" }
       ])
     }
-    // Reset category to categorical
-    setChartCategory('categorical');
+    // Do not force reset category here, as it may be needed for subsequent additions
+    // Logic for resetting/persisting category is handled in initializeModalWithExistingStructure or handleCategoryChange
   }
 
   // Filter datasets based on current mode
@@ -402,22 +424,41 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
 
   // Function to initialize modal with existing dataset structure
   const initializeModalWithExistingStructure = () => {
-    if (chartMode === 'grouped' && filteredDatasets.length > 0) {
+    // Sync local state with global chart type settings
+    if (chartMode === 'grouped' && uniformityMode === 'uniform' && filteredDatasets.length > 0) {
+      // Determine category based on global chart type
+      const isCoordinate = coordinateChartTypes.some(t => t.value.toLowerCase() === chartType.toLowerCase());
+      setChartCategory(isCoordinate ? 'coordinate' : 'categorical');
+      setNewDatasetChartType(chartType);
+
       const firstDataset = filteredDatasets[0];
-      const existingSliceLabels = firstDataset.sliceLabels || firstDataset.data.map((_, i) => `Slice ${i + 1}`);
+      const existingSliceLabels = firstDataset.sliceLabels || firstDataset.data.map((_, i) =>
+        isCoordinate ? `Point ${i + 1}` : `Slice ${i + 1}`
+      );
 
       setNewDatasetSlices(existingSliceLabels.map((label, index) => ({
         name: label,
         value: 0,
+        x: index * 10,
+        y: 0,
+        r: 10,
         color: newDatasetSlices[index]?.color || "#1E90FF"
       })));
+    } else {
+      // Default initialization if no datasets or single mode
+      // If we have no datasets, we can keep the previous selection or reset to default
+      // But let's respect the current global chart type if it's set
+      /* 
+         Logic: If we are in single mode, we might want to default to the current chart type 
+         or let user choose. 
+      */
     }
   };
 
   // Update modal initialization when opening
   const handleOpenAddDatasetModal = () => {
-    setShowAddDatasetModal(true);
     initializeModalWithExistingStructure();
+    setShowAddDatasetModal(true);
   };
 
   // Helper function to convert RGBA to hex
@@ -832,7 +873,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
               {/* Category Dropdown */}
               <div>
                 <label className="text-[0.80rem] font-medium text-gray-600 mb-1 block">Category</label>
-                {chartMode === 'grouped' && uniformityMode === 'uniform' ? (
+                {chartMode === 'grouped' && uniformityMode === 'uniform' && filteredDatasets.length > 0 ? (
                   <div className="w-full h-9 px-3 rounded border border-gray-200 bg-gray-50 flex items-center text-[0.80rem]">
                     <span className="text-gray-700">
                       {coordinateChartTypes.some(t => t.value === chartType) ? 'Coordinate' : 'Categorical'}
@@ -854,7 +895,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
               {/* Chart Type Dropdown */}
               <div>
                 <label className="text-[0.80rem] font-medium text-gray-600 mb-1 block">Chart Type</label>
-                {chartMode === 'grouped' && uniformityMode === 'uniform' ? (
+                {chartMode === 'grouped' && uniformityMode === 'uniform' && filteredDatasets.length > 0 ? (
                   <div className="w-full h-9 px-3 rounded border border-gray-200 bg-gray-50 flex items-center text-[0.80rem]">
                     <span className="text-gray-700">{chartType.charAt(0).toUpperCase() + chartType.slice(1)}</span>
                   </div>

@@ -840,7 +840,13 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
         y: { ...optionsScales.y, stacked: true },
       },
     }
-    : baseOptions;
+    : {
+      ...baseOptions,
+      scales: {
+        x: { ...optionsScales.x, stacked: false },
+        y: { ...optionsScales.y, stacked: false },
+      },
+    };
 
   // Context menu handlers
   const handleContextMenuClose = () => {
