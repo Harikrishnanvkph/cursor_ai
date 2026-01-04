@@ -1545,9 +1545,16 @@ export function SliceSettings({ className }: SliceSettingsProps) {
     <div className="space-y-4">
       {/* Dataset Selection */}
       <div className="space-y-2">
+        {chartMode === 'grouped' && (
+          <div className="flex justify-center mb-2">
+            <Button size="sm" variant="outline" onClick={() => setShowEditSlicesModal(true)} className="w-full">
+              Edit All Datasets (Grouped)
+            </Button>
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <div className="flex-1 min-w-0">
-            <Label className="text-[0.80rem] font-medium">Select Dataset to Edit</Label>
+            <Label className="text-[0.80rem] font-medium">Edit Selected Dataset Below</Label>
             <Select value={String(selectedDatasetIndex)} onValueChange={(value) => handleDatasetChange(Number(value))}>
               <SelectTrigger className="h-9 w-full">
                 <span className="text-sm truncate">{filteredDatasets[selectedDatasetIndex]?.label || `Dataset ${selectedDatasetIndex + 1}`}</span>
@@ -1619,13 +1626,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
             </div>
           )}
         </div>
-        {chartMode === 'grouped' && (
-          <div className="mt-2 flex justify-center">
-            <Button size="sm" variant="outline" onClick={() => setShowEditSlicesModal(true)}>
-              Edit All Slices (Grouped Mode)
-            </Button>
-          </div>
-        )}
+
       </div>
 
       {/* Tab Navigation */}
@@ -1784,6 +1785,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
         open={showEditSlicesModal}
         onOpenChange={setShowEditSlicesModal}
         chartData={chartData}
+        chartType={chartType}
         onSave={(newSliceLabels, newValues) => {
           chartData.datasets.forEach((ds, i) => {
             // Adjust pointImageConfig length
