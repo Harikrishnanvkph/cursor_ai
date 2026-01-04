@@ -111,7 +111,7 @@ export function ResponsiveAnimationsPanel() {
 
   return (
     <div className="space-y-3 mt-4">
-      {/* Quick Slice Visibility - Only show when there are labels */}
+      {/* Quick Slice Filter - Only show when there are labels */}
       {sliceLabels.length > 0 && (
         <div className="space-y-3">
           <div
@@ -119,7 +119,7 @@ export function ResponsiveAnimationsPanel() {
             onClick={() => setSliceVisibilityOpen(!sliceVisibilityOpen)}
           >
             <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
-            <h3 className="text-sm font-semibold text-gray-900">Quick Slice Visibility</h3>
+            <h3 className="text-sm font-semibold text-gray-900">Quick Slice Filter</h3>
             <div className="ml-auto flex items-center gap-2">
               <svg
                 xmlns="http://www.w3.org/2000/svg"

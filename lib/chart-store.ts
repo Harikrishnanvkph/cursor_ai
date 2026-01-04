@@ -271,6 +271,7 @@ interface ChartStore {
   toggleShowBorder: () => void;
   toggleShowImages: () => void;
   toggleShowLabels: () => void;
+  toggleShowLegend: () => void;
   setFullChart: (chart: { chartType: SupportedChartType; chartData: ExtendedChartData; chartConfig: ExtendedChartOptions; id?: string }) => void;
   setHasJSON: (value: boolean) => void;
   // Overlay actions
@@ -3249,6 +3250,50 @@ export const useChartStore = create<ChartStore>()(
           showLabels: newShowLabels,
           chartConfig: newChartConfig
         };
+      }),
+      toggleShowLegend: () => set((state) => {
+        // Determine current state from config
+        const currentDisplay = (state.chartConfig.plugins as any)?.legend?.display !== false;
+        const newShowLegend = !currentDisplay;
+
+        // Update chart configuration
+        const newChartConfig = { ...state.chartConfig };
+        if (!newChartConfig.plugins) newChartConfig.plugins = {};
+
+        // Update legend plugin config
+        newChartConfig.plugins.legend = {
+          ...(newChartConfig.plugins.legend || {}),
+          display: newShowLegend
+        };
+
+        // Capture undo point
+        if (state.hasJSON) {
+          try {
+            const { captureUndoPoint, shouldDebounceUndoOperation } = require('./chat-store');
+
+            if (!shouldDebounceUndoOperation('manual_design_change', 'style-toggles')) {
+              captureUndoPoint({
+                type: 'manual_design_change',
+                previousState: {
+                  chartType: state.chartType,
+                  chartData: state.chartData,
+                  chartConfig: state.chartConfig
+                },
+                currentState: {
+                  chartType: state.chartType,
+                  chartData: state.chartData,
+                  chartConfig: newChartConfig
+                },
+                toolSource: 'style-toggles',
+                changeDescription: `Legend ${newShowLegend ? 'shown' : 'hidden'}`
+              });
+            }
+          } catch (error) {
+            console.warn('Failed to capture undo point for legend toggle:', error);
+          }
+        }
+
+        return { chartConfig: newChartConfig };
       }),
       setFullChart: ({ chartType, chartData, chartConfig, id }) => set((state) => {
         // Process datasets to ensure they have mode property set

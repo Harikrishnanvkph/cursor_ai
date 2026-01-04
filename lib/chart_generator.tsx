@@ -831,21 +831,26 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     // For radar/polarArea, use ONLY the r scale configuration (not x/y from previous chart types)
     scales: isRadialType ? radialOnlyScales : (isCircularType ? {} : (optionsScales ?? {})),
   } as any;
-  const appliedOptions = chartType === 'stackedBar'
-    ? {
+  let appliedOptions = baseOptions;
+
+  if (chartType === 'stackedBar') {
+    appliedOptions = {
       ...baseOptions,
       scales: {
-        x: { ...optionsScales.x, stacked: true },
-        y: { ...optionsScales.y, stacked: true },
-      },
-    }
-    : {
-      ...baseOptions,
-      scales: {
-        x: { ...optionsScales.x, stacked: false },
-        y: { ...optionsScales.y, stacked: false },
+        x: { ...(optionsScales?.x || {}), stacked: true },
+        y: { ...(optionsScales?.y || {}), stacked: true },
       },
     };
+  } else if (!isCircularType && !isRadialType) {
+    // For other Cartesian charts, explicit stacked: false
+    appliedOptions = {
+      ...baseOptions,
+      scales: {
+        x: { ...(optionsScales?.x || {}), stacked: false },
+        y: { ...(optionsScales?.y || {}), stacked: false },
+      },
+    };
+  }
 
   // Context menu handlers
   const handleContextMenuClose = () => {

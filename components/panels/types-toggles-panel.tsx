@@ -19,6 +19,7 @@ export function TypesTogglesPanel() {
     showImages,
     toggleShowImages,
     toggleShowLabels,
+    toggleShowLegend,
     changeChartType,
     chartConfig,
   } = useChartStore()
@@ -32,6 +33,9 @@ export function TypesTogglesPanel() {
 
   // Derive label checked state from chartConfig to stay in sync with labels-panel
   const labelChecked = (chartConfig.plugins as any)?.customLabelsConfig?.display !== false;
+
+  // Derive legend checked state from chartConfig
+  const legendChecked = (chartConfig.plugins as any)?.legend?.display !== false;
 
   return (
     <div className="space-y-3">
@@ -103,6 +107,10 @@ export function TypesTogglesPanel() {
         <div className="flex flex-col items-center gap-1">
           <Switch id="show-labels-toggle" checked={labelChecked} onCheckedChange={toggleShowLabels} className="scale-75 data-[state=unchecked]:bg-input/50" />
           <Label htmlFor="show-labels-toggle" className="text-[12px] text-gray-600">Label</Label>
+        </div>
+        <div className="flex flex-col items-center gap-1">
+          <Switch id="show-legend-toggle" checked={legendChecked} onCheckedChange={toggleShowLegend} className="scale-75 data-[state=unchecked]:bg-input/50" />
+          <Label htmlFor="show-legend-toggle" className="text-[12px] text-gray-600">Legend</Label>
         </div>
       </div>
 
