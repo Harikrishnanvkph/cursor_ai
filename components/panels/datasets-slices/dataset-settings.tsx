@@ -87,7 +87,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [showAddDatasetModal, setShowAddDatasetModal] = useState(false)
   const [showFullEditModal, setShowFullEditModal] = useState(false)
-  const [fullEditRows, setFullEditRows] = useState<{ label: string; value: number; color: string; imageUrl: string | null }[]>([])
+  const [fullEditRows, setFullEditRows] = useState<{ label: string; value: number; color: string; imageUrl: string | null; x?: number; y?: number; r?: number }[]>([])
   const [editingDatasetIndex, setEditingDatasetIndex] = useState<number>(0)
   const [editingDatasetName, setEditingDatasetName] = useState<string>("")
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false)
@@ -98,50 +98,84 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
   const [newDatasetName, setNewDatasetName] = useState("")
   const [newDatasetColor, setNewDatasetColor] = useState("#1E90FF") // DodgerBlue
   const [newDatasetPoints, setNewDatasetPoints] = useState(5)
-  const [newDatasetSlices, setNewDatasetSlices] = useState<Array<{ name: string, value: number, color: string }>>([
-    { name: "Slice 1", value: 10, color: "#1E90FF" },
-    { name: "Slice 2", value: 20, color: "#ff6b6b" },
-    { name: "Slice 3", value: 15, color: "#4ecdc4" },
-    { name: "Slice 4", value: 25, color: "#45b7d1" },
-    { name: "Slice 5", value: 30, color: "#96ceb4" }
+  const [newDatasetSlices, setNewDatasetSlices] = useState<Array<{ name: string, value: number, x: number, y: number, r: number, color: string }>>([
+    { name: "Slice 1", value: 10, x: 0, y: 10, r: 10, color: "#1E90FF" },
+    { name: "Slice 2", value: 20, x: 10, y: 20, r: 10, color: "#ff6b6b" },
+    { name: "Slice 3", value: 15, x: 20, y: 30, r: 10, color: "#4ecdc4" },
+    { name: "Slice 4", value: 25, x: 30, y: 40, r: 10, color: "#45b7d1" },
+    { name: "Slice 5", value: 30, x: 40, y: 50, r: 10, color: "#96ceb4" }
   ])
   const [newDatasetChartType, setNewDatasetChartType] = useState<import("@/lib/chart-store").SupportedChartType>('bar')
+  const [chartCategory, setChartCategory] = useState<'categorical' | 'coordinate'>('categorical')
   const [colorMode, setColorMode] = useState<'slice' | 'dataset'>('dataset');
   const [colorOpacity, setColorOpacity] = useState(100); // 0-100 for transparency
   const [borderColorMode, setBorderColorMode] = useState<'auto' | 'manual'>('auto');
   const [manualBorderColor, setManualBorderColor] = useState('#000000');
 
-  const supportedChartTypes: { value: import("@/lib/chart-store").SupportedChartType; label: string }[] = [
+  // Categorical chart types (use Label + Value)
+  const categoricalChartTypes: { value: import("@/lib/chart-store").SupportedChartType; label: string }[] = [
     { value: 'bar', label: 'Bar' },
     { value: 'line', label: 'Line' },
-    { value: 'scatter', label: 'Scatter' },
-    { value: 'bubble', label: 'Bubble' },
+    { value: 'area', label: 'Area' },
     { value: 'pie', label: 'Pie' },
     { value: 'doughnut', label: 'Doughnut' },
     { value: 'polarArea', label: 'Polar Area' },
     { value: 'radar', label: 'Radar' },
     { value: 'horizontalBar', label: 'Horizontal Bar' },
     { value: 'stackedBar', label: 'Stacked Bar' },
-    { value: 'area', label: 'Area' },
   ]
 
-  // Filter chart types based on mode and uniformity
+  // Coordinate chart types (use X, Y, R)
+  const coordinateChartTypes: { value: import("@/lib/chart-store").SupportedChartType; label: string }[] = [
+    { value: 'scatter', label: 'Scatter' },
+    { value: 'bubble', label: 'Bubble' },
+  ]
+
+  const supportedChartTypes = [...categoricalChartTypes, ...coordinateChartTypes]
+
+  // Filter chart types based on mode, uniformity, and category
   const getAvailableChartTypes = () => {
+    // First, filter by category
+    const baseTypes = chartCategory === 'coordinate' ? coordinateChartTypes : categoricalChartTypes;
+
     if (chartMode === 'single') {
-      return supportedChartTypes;
+      return baseTypes;
     }
 
     // For grouped mode, only allow certain chart types
     if (uniformityMode === 'mixed') {
       // Mixed mode: only allow bar, line, area for grouped datasets
-      return supportedChartTypes.filter(type =>
+      return baseTypes.filter(type =>
         ['bar', 'line', 'area'].includes(type.value)
       );
     } else {
       // Uniform mode: show all chart types except pie, doughnut
-      return supportedChartTypes.filter(type =>
+      return baseTypes.filter(type =>
         !['pie', 'doughnut'].includes(type.value)
       );
+    }
+  }
+
+  // Handle category change - reset chart type to first available in category
+  const handleCategoryChange = (category: 'categorical' | 'coordinate') => {
+    setChartCategory(category);
+    const newType = category === 'coordinate' ? 'scatter' : 'bar';
+    setNewDatasetChartType(newType);
+    // Reset slices with appropriate defaults
+    if (!(chartMode === 'grouped' && filteredDatasets.length > 0)) {
+      if (category === 'coordinate') {
+        setNewDatasetSlices([
+          { name: "Point 1", value: 0, x: 0, y: 10, r: 10, color: "#1E90FF" },
+          { name: "Point 2", value: 0, x: 10, y: 20, r: 10, color: "#ff6b6b" },
+          { name: "Point 3", value: 0, x: 20, y: 30, r: 10, color: "#4ecdc4" },
+        ]);
+      } else {
+        setNewDatasetSlices([
+          { name: "Slice 1", value: 10, x: 0, y: 10, r: 10, color: "#1E90FF" },
+          { name: "Slice 2", value: 20, x: 10, y: 20, r: 10, color: "#ff6b6b" },
+          { name: "Slice 3", value: 15, x: 20, y: 30, r: 10, color: "#4ecdc4" },
+        ]);
+      }
     }
   }
 
@@ -231,7 +265,16 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
   }
 
   const handleAddSlice = () => {
-    setNewDatasetSlices([...newDatasetSlices, { name: `Slice ${newDatasetSlices.length + 1}`, value: 0, color: "#1E90FF" }])
+    const newIndex = newDatasetSlices.length;
+    const name = chartCategory === 'coordinate' ? `Point ${newIndex + 1}` : `Slice ${newIndex + 1}`;
+    setNewDatasetSlices([...newDatasetSlices, {
+      name,
+      value: 0,
+      x: newIndex * 10,
+      y: 0,
+      r: 10,
+      color: "#1E90FF"
+    }]);
   }
 
   const handleRemoveSlice = (index: number) => {
@@ -240,7 +283,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     }
   }
 
-  const handleUpdateSlice = (index: number, field: 'name' | 'value' | 'color', value: string | number) => {
+  const handleUpdateSlice = (index: number, field: 'name' | 'value' | 'color' | 'x' | 'y' | 'r', value: string | number) => {
     const updatedSlices = [...newDatasetSlices]
     updatedSlices[index] = { ...updatedSlices[index], [field]: value }
     setNewDatasetSlices(updatedSlices)
@@ -266,6 +309,9 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
       finalSlices = existingSliceLabels.map((label, index) => ({
         name: label, // Inherit the name from existing dataset
         value: newDatasetSlices[index]?.value || 0, // Keep the user-entered value
+        x: newDatasetSlices[index]?.x || index * 10, // Keep the user-entered x
+        y: newDatasetSlices[index]?.y || 0, // Keep the user-entered y
+        r: newDatasetSlices[index]?.r || 10, // Keep the user-entered r
         color: newDatasetSlices[index]?.color || "#1E90FF" // Keep the user-entered color
       }));
 
@@ -275,9 +321,30 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
 
     const colors = finalSlices.map(slice => slice.color)
     const borderColors = colors.map(c => darkenColor(c, 20))
+
+    // Create data in the correct format based on chart type
+    let dataPoints: any[];
+    if (finalChartType === 'scatter') {
+      // Scatter charts need {x, y} format - use actual user-entered values
+      dataPoints = finalSlices.map(slice => ({
+        x: slice.x,
+        y: slice.y
+      }));
+    } else if (finalChartType === 'bubble') {
+      // Bubble charts need {x, y, r} format - use actual user-entered values
+      dataPoints = finalSlices.map(slice => ({
+        x: slice.x,
+        y: slice.y,
+        r: slice.r
+      }));
+    } else {
+      // Categorical charts use plain number values
+      dataPoints = finalSlices.map(slice => slice.value);
+    }
+
     const newDataset: ExtendedChartDataset = {
       label: finalDatasetName,
-      data: finalSlices.map(slice => slice.value),
+      data: dataPoints,
       backgroundColor: colors,
       borderColor: borderColors,
       borderWidth: 2,
@@ -304,18 +371,23 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
       setNewDatasetSlices(existingSliceLabels.map((label, index) => ({
         name: label,
         value: 0,
+        x: index * 10,
+        y: 0,
+        r: 10,
         color: newDatasetSlices[index]?.color || "#1E90FF"
       })));
     } else {
       // Reset to default for single mode or first dataset
       setNewDatasetSlices([
-        { name: "Slice 1", value: 10, color: "#1E90FF" },
-        { name: "Slice 2", value: 20, color: "#ff6b6b" },
-        { name: "Slice 3", value: 15, color: "#4ecdc4" },
-        { name: "Slice 4", value: 25, color: "#45b7d1" },
-        { name: "Slice 5", value: 30, color: "#96ceb4" }
+        { name: "Slice 1", value: 10, x: 0, y: 10, r: 10, color: "#1E90FF" },
+        { name: "Slice 2", value: 20, x: 10, y: 20, r: 10, color: "#ff6b6b" },
+        { name: "Slice 3", value: 15, x: 20, y: 30, r: 10, color: "#4ecdc4" },
+        { name: "Slice 4", value: 25, x: 30, y: 40, r: 10, color: "#45b7d1" },
+        { name: "Slice 5", value: 30, x: 40, y: 50, r: 10, color: "#96ceb4" }
       ])
     }
+    // Reset category to categorical
+    setChartCategory('categorical');
   }
 
   // Filter datasets based on current mode
@@ -372,17 +444,33 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     if (!dataset) return
 
     const currentSliceLabels = dataset.sliceLabels || chartData.labels || []
+    const isCoordinateChart = chartType === 'scatter' || chartType === 'bubble'
 
-    const rows: { label: string; value: number; color: string; imageUrl: string | null }[] = dataset.data.map((val, i) => {
+    const rows: { label: string; value: number; color: string; imageUrl: string | null; x?: number; y?: number; r?: number }[] = dataset.data.map((val, i) => {
       const rawColor = Array.isArray(dataset.backgroundColor)
         ? (dataset.backgroundColor[i] as string)
         : (dataset.backgroundColor as string) || '#3b82f6'
 
-      return {
-        label: String(currentSliceLabels[i] || `Slice ${i + 1}`),
-        value: typeof val === 'number' ? val : (Array.isArray(val) ? (val[1] as number) : (val as any)?.y ?? 0),
-        color: rgbaToHex(rawColor),
-        imageUrl: dataset.pointImages?.[i] || null,
+      if (isCoordinateChart && typeof val === 'object' && val !== null) {
+        // Coordinate data (scatter/bubble)
+        const point = val as { x: number; y: number; r?: number }
+        return {
+          label: String(currentSliceLabels[i] || `Point ${i + 1}`),
+          value: 0, // Not used for coordinate charts
+          color: rgbaToHex(rawColor),
+          imageUrl: dataset.pointImages?.[i] || null,
+          x: point.x ?? 0,
+          y: point.y ?? 0,
+          r: point.r ?? (chartType === 'bubble' ? 10 : undefined),
+        }
+      } else {
+        // Categorical data
+        return {
+          label: String(currentSliceLabels[i] || `Slice ${i + 1}`),
+          value: typeof val === 'number' ? val : (Array.isArray(val) ? (val[1] as number) : (val as any)?.y ?? 0),
+          color: rgbaToHex(rawColor),
+          imageUrl: dataset.pointImages?.[i] || null,
+        }
       }
     })
 
@@ -731,12 +819,40 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
       <Dialog open={showAddDatasetModal} onOpenChange={setShowAddDatasetModal}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create New Dataset</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              Create New Dataset
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${chartMode === 'single' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
+                {chartMode === 'single' ? 'Single' : 'Grouped'}
+              </span>
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            {/* Dataset Basic Info - All in one line */}
-            <div className="flex gap-3 items-end">
-              <div className="flex-shrink-0" style={{ width: '140px' }}>
+            {/* Dataset Basic Info - Category, Chart Type, Name */}
+            <div className="grid grid-cols-4 gap-3">
+              {/* Category Dropdown */}
+              <div>
+                <label className="text-[0.80rem] font-medium text-gray-600 mb-1 block">Category</label>
+                {chartMode === 'grouped' && uniformityMode === 'uniform' ? (
+                  <div className="w-full h-9 px-3 rounded border border-gray-200 bg-gray-50 flex items-center text-[0.80rem]">
+                    <span className="text-gray-700">
+                      {coordinateChartTypes.some(t => t.value === chartType) ? 'Coordinate' : 'Categorical'}
+                    </span>
+                  </div>
+                ) : (
+                  <Select value={chartCategory} onValueChange={(v) => handleCategoryChange(v as 'categorical' | 'coordinate')}>
+                    <SelectTrigger className="w-full h-9 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="categorical">Categorical</SelectItem>
+                      <SelectItem value="coordinate">Coordinate</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              {/* Chart Type Dropdown */}
+              <div>
                 <label className="text-[0.80rem] font-medium text-gray-600 mb-1 block">Chart Type</label>
                 {chartMode === 'grouped' && uniformityMode === 'uniform' ? (
                   <div className="w-full h-9 px-3 rounded border border-gray-200 bg-gray-50 flex items-center text-[0.80rem]">
@@ -755,7 +871,9 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                   </Select>
                 )}
               </div>
-              <div className="flex-1">
+
+              {/* Dataset Name */}
+              <div className="col-span-2">
                 <label className="text-[0.80rem] font-medium text-gray-600 mb-1 block">Dataset Name <span className="text-red-500">*</span></label>
                 <input
                   value={newDatasetName}
@@ -763,14 +881,6 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                   className="w-full h-9 px-3 rounded border border-gray-200 focus:border-green-400 focus:ring-2 focus:ring-green-100 text-[0.80rem] font-normal transition"
                   placeholder="Enter dataset name"
                 />
-              </div>
-              <div className="flex-shrink-0" style={{ width: '100px' }}>
-                <label className="text-[0.80rem] font-medium text-gray-600 mb-1 block">Mode</label>
-                <div className="h-9 px-3 rounded border border-gray-200 bg-gray-50 flex items-center justify-center">
-                  <span className="text-[0.80rem] font-medium text-blue-800">
-                    {chartMode === 'single' ? 'Single' : 'Grouped'}
-                  </span>
-                </div>
               </div>
             </div>
 
@@ -782,20 +892,40 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
               </div>
             )}
 
-            {/* Slices Management */}
+            {/* Slices/Points Management */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <label className="text-[0.80rem] font-medium text-gray-700">Slices ({newDatasetSlices.length})</label>
+                <label className="text-[0.80rem] font-medium text-gray-700">
+                  {chartCategory === 'coordinate' ? 'Points' : 'Slices'} ({newDatasetSlices.length})
+                </label>
                 <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setNewDatasetSlices(slices => slices.map(slice => ({ ...slice, value: Math.floor(Math.random() * 50) + 1 })));
-                    }}
-                    className="h-7 text-xs bg-orange-500 hover:bg-orange-600 text-white"
-                  >
-                    Randomize Values
-                  </Button>
+                  {chartCategory === 'categorical' && (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setNewDatasetSlices(slices => slices.map(slice => ({ ...slice, value: Math.floor(Math.random() * 50) + 1 })));
+                      }}
+                      className="h-7 text-xs bg-orange-500 hover:bg-orange-600 text-white"
+                    >
+                      Randomize
+                    </Button>
+                  )}
+                  {chartCategory === 'coordinate' && (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setNewDatasetSlices(slices => slices.map((slice, i) => ({
+                          ...slice,
+                          x: Math.floor(Math.random() * 100),
+                          y: Math.floor(Math.random() * 100),
+                          r: Math.floor(Math.random() * 20) + 5
+                        })));
+                      }}
+                      className="h-7 text-xs bg-orange-500 hover:bg-orange-600 text-white"
+                    >
+                      Randomize
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     onClick={handleAddSlice}
@@ -803,7 +933,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                     className="h-7 text-xs bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500"
                   >
                     <Plus className="h-3 w-3 mr-1" />
-                    Add Slice
+                    Add {chartCategory === 'coordinate' ? 'Point' : 'Slice'}
                   </Button>
                 </div>
               </div>
@@ -811,15 +941,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
               {chartMode === 'grouped' && filteredDatasets.length > 0 && (
                 <div className="p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <p className="text-xs text-yellow-800">
-                    <strong>Grouped Mode:</strong> Slice names will match existing datasets, but you can customize values and dataset name.
-                  </p>
-                </div>
-              )}
-
-              {chartMode === 'grouped' && filteredDatasets.length === 0 && (
-                <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-xs text-blue-800">
-                    <strong>Grouped Mode:</strong> This will be the first dataset. You can customize slice names and structure.
+                    <strong>Grouped Mode:</strong> Names will match existing datasets.
                   </p>
                 </div>
               )}
@@ -828,7 +950,9 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                 {newDatasetSlices.map((slice, index) => (
                   <div key={index} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-medium text-gray-600">Slice #{index + 1}</span>
+                      <span className="text-xs font-medium text-gray-600">
+                        {chartCategory === 'coordinate' ? 'Point' : 'Slice'} #{index + 1}
+                      </span>
                       <Button
                         size="sm"
                         variant="outline"
@@ -840,45 +964,111 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                       </Button>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <label className="text-xs font-medium text-gray-600 mb-1 block">Name</label>
-                        <input
-                          value={slice.name}
-                          onChange={e => handleUpdateSlice(index, 'name', e.target.value)}
-                          disabled={chartMode === 'grouped' && filteredDatasets.length > 0}
-                          className="w-full h-8 px-2 rounded border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 text-xs transition disabled:bg-gray-100 disabled:text-gray-500"
-                          placeholder="Slice name"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-gray-600 mb-1 block">Value</label>
-                        <input
-                          type="number"
-                          value={slice.value}
-                          onChange={e => handleUpdateSlice(index, 'value', Number(e.target.value))}
-                          className="w-full h-8 px-2 rounded border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 text-xs transition"
-                          placeholder="0"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-gray-600 mb-1 block">Color</label>
-                        <div className="col-span-1 flex items-center gap-2 w-full">
+                    {/* Conditional input fields based on category */}
+                    {chartCategory === 'coordinate' ? (
+                      /* Coordinate chart inputs: Label, X, Y, R (bubble only), Color */
+                      <div className="grid gap-2 grid-cols-12">
+                        <div className="col-span-3">
+                          <label className="text-xs font-medium text-gray-600 mb-1 block">Label</label>
                           <input
-                            type="color"
-                            value={slice.color}
-                            onChange={e => handleUpdateSlice(index, 'color', e.target.value)}
-                            className="w-8 h-8 p-0 border-0 bg-transparent"
-                          />
-                          <input
-                            value={slice.color}
-                            onChange={e => handleUpdateSlice(index, 'color', e.target.value)}
-                            className="flex-1 h-8 px-2 rounded border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 text-xs font-mono uppercase transition w-full"
-                            placeholder="#1E90FF"
+                            value={slice.name}
+                            onChange={e => handleUpdateSlice(index, 'name', e.target.value)}
+                            className="w-full h-8 px-2 rounded border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 text-xs transition"
+                            placeholder={`Point ${index + 1}`}
                           />
                         </div>
+                        <div className="col-span-2">
+                          <label className="text-xs font-medium text-gray-600 mb-1 block">X</label>
+                          <input
+                            type="number"
+                            value={slice.x}
+                            onChange={e => handleUpdateSlice(index, 'x', Number(e.target.value))}
+                            className="w-full h-8 px-2 rounded border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 text-xs transition"
+                            step="0.1"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="text-xs font-medium text-gray-600 mb-1 block">Y</label>
+                          <input
+                            type="number"
+                            value={slice.y}
+                            onChange={e => handleUpdateSlice(index, 'y', Number(e.target.value))}
+                            className="w-full h-8 px-2 rounded border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 text-xs transition"
+                            step="0.1"
+                          />
+                        </div>
+                        {newDatasetChartType === 'bubble' && (
+                          <div className="col-span-2">
+                            <label className="text-xs font-medium text-gray-600 mb-1 block">R</label>
+                            <input
+                              type="number"
+                              value={slice.r}
+                              onChange={e => handleUpdateSlice(index, 'r', Number(e.target.value))}
+                              className="w-full h-8 px-2 rounded border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 text-xs transition"
+                              min="1"
+                            />
+                          </div>
+                        )}
+                        <div className={newDatasetChartType === 'bubble' ? 'col-span-3' : 'col-span-5'}>
+                          <label className="text-xs font-medium text-gray-600 mb-1 block">Color</label>
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="color"
+                              value={slice.color}
+                              onChange={e => handleUpdateSlice(index, 'color', e.target.value)}
+                              className="w-8 h-8 p-0 border-0 bg-transparent flex-shrink-0"
+                            />
+                            <input
+                              value={slice.color}
+                              onChange={e => handleUpdateSlice(index, 'color', e.target.value)}
+                              className="flex-1 h-8 px-1 rounded border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 text-[10px] font-mono uppercase transition min-w-0"
+                              placeholder="#1E90FF"
+                            />
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      /* Categorical chart inputs: Name, Value, Color */
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="text-xs font-medium text-gray-600 mb-1 block">Name</label>
+                          <input
+                            value={slice.name}
+                            onChange={e => handleUpdateSlice(index, 'name', e.target.value)}
+                            disabled={chartMode === 'grouped' && filteredDatasets.length > 0}
+                            className="w-full h-8 px-2 rounded border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 text-xs transition disabled:bg-gray-100 disabled:text-gray-500"
+                            placeholder="Slice name"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-gray-600 mb-1 block">Value</label>
+                          <input
+                            type="number"
+                            value={slice.value}
+                            onChange={e => handleUpdateSlice(index, 'value', Number(e.target.value))}
+                            className="w-full h-8 px-2 rounded border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 text-xs transition"
+                            placeholder="0"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-gray-600 mb-1 block">Color</label>
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="color"
+                              value={slice.color}
+                              onChange={e => handleUpdateSlice(index, 'color', e.target.value)}
+                              className="w-8 h-8 p-0 border-0 bg-transparent flex-shrink-0"
+                            />
+                            <input
+                              value={slice.color}
+                              onChange={e => handleUpdateSlice(index, 'color', e.target.value)}
+                              className="flex-1 h-8 px-2 rounded border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 text-xs font-mono uppercase transition"
+                              placeholder="#1E90FF"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -2198,7 +2388,11 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
       <Dialog open={showFullEditModal} onOpenChange={setShowFullEditModal}>
         <DialogContent className="max-w-3xl w-full">
           <DialogHeader>
-            <DialogTitle>Full Edit (Single Dataset)</DialogTitle>
+            <DialogTitle>
+              {chartType === 'scatter' || chartType === 'bubble'
+                ? `Edit Coordinate Data (${chartType === 'bubble' ? 'Bubble' : 'Scatter'})`
+                : 'Full Edit (Single Dataset)'}
+            </DialogTitle>
           </DialogHeader>
 
           {/* Dataset Name and Color Section */}
@@ -2270,146 +2464,217 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
 
           <div className="overflow-auto max-h-[60vh] space-y-2">
             {chartMode === 'single' && fullEditRows.map((row, i) => {
-              return (
-                <div key={i} className="grid grid-cols-12 gap-2 items-center p-2 border rounded">
-                  <div className="col-span-4">
-                    <Label className="text-xs">Name</Label>
-                    <Input
-                      value={row.label}
-                      onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, label: e.target.value } : r))}
-                      className="h-8 text-xs"
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <Label className="text-xs">Value</Label>
-                    <Input
-                      type="number"
-                      value={row.value}
-                      onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, value: Number(e.target.value) } : r))}
-                      className="h-8 text-xs"
-                    />
-                  </div>
-                  <div className="col-span-3">
-                    <Label className="text-xs">Color</Label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        className={`w-10 h-8 p-0 border-0 bg-transparent ${editingColorMode === 'dataset' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                        value={row.color}
-                        onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, color: e.target.value } : r))}
-                        disabled={editingColorMode === 'dataset'}
-                      />
+              const isCoordinateChart = chartType === 'scatter' || chartType === 'bubble'
+
+              if (isCoordinateChart) {
+                // Coordinate chart UI (X, Y, R for bubble)
+                return (
+                  <div key={i} className={`grid gap-2 items-center p-2 border rounded ${chartType === 'bubble' ? 'grid-cols-12' : 'grid-cols-10'}`}>
+                    <div className="col-span-3">
+                      <Label className="text-xs">Label</Label>
                       <Input
-                        className={`h-8 text-xs w-24 ${editingColorMode === 'dataset' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        value={row.color}
-                        onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, color: e.target.value } : r))}
-                        disabled={editingColorMode === 'dataset'}
+                        value={row.label}
+                        onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, label: e.target.value } : r))}
+                        className="h-8 text-xs"
+                        placeholder={`Point ${i + 1}`}
                       />
                     </div>
-                  </div>
-                  <div className="col-span-3">
-                    <Label className="text-xs">Image</Label>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
+                    <div className="col-span-2">
+                      <Label className="text-xs">X</Label>
+                      <Input
+                        type="number"
+                        value={row.x ?? 0}
+                        onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, x: Number(e.target.value) } : r))}
                         className="h-8 text-xs"
-                        onClick={async () => {
-                          const input = document.createElement('input')
-                          input.type = 'file'
-                          input.accept = 'image/*'
-                          input.onchange = async (e) => {
-                            const file = (e.target as HTMLInputElement).files?.[0]
-                            if (!file) return
-
-                            // Import compression utility
-                            const {
-                              compressImage,
-                              validateImageFile,
-                              getAvailableLocalStorageSpace,
-                              shouldCleanupImages,
-                              getImagesToCleanup,
-                              wouldExceedQuota
-                            } = await import('@/lib/image-utils')
-
-                            // Validate file
-                            if (!validateImageFile(file, 10)) {
-                              toast.error('Invalid image file. Please select an image file under 10MB.')
-                              return
-                            }
-
-                            try {
-                              // Check available space and cleanup if needed
-                              const availableSpace = getAvailableLocalStorageSpace()
-                              if (availableSpace < 200 * 1024) {
-                                const cleanupInfo = shouldCleanupImages(chartData, 1 * 1024 * 1024)
-                                if (cleanupInfo.needed) {
-                                  chartData.datasets.forEach((dataset: any, dsIdx: number) => {
-                                    const indicesToRemove = getImagesToCleanup(dataset, cleanupInfo.maxImagesToKeep)
-                                    if (indicesToRemove.length > 0) {
-                                      const newPointImages = [...(dataset.pointImages || [])]
-                                      indicesToRemove.forEach((idx: number) => {
-                                        newPointImages[idx] = null
-                                      })
-                                      updateDataset(dsIdx, { pointImages: newPointImages })
-                                    }
-                                  })
-                                }
-                              }
-
-                              // Compress image with better defaults
-                              const compressedImageUrl = await compressImage(file, 600, 600, 0.7, true)
-
-                              // Check if compressed image would exceed quota
-                              if (wouldExceedQuota(compressedImageUrl)) {
-                                const cleanupInfo = shouldCleanupImages(chartData, 2 * 1024 * 1024)
-                                if (cleanupInfo.needed) {
-                                  chartData.datasets.forEach((dataset: any, dsIdx: number) => {
-                                    const indicesToRemove = getImagesToCleanup(dataset, cleanupInfo.maxImagesToKeep)
-                                    if (indicesToRemove.length > 0) {
-                                      const newPointImages = [...(dataset.pointImages || [])]
-                                      indicesToRemove.forEach((idx: number) => {
-                                        newPointImages[idx] = null
-                                      })
-                                      updateDataset(dsIdx, { pointImages: newPointImages })
-                                    }
-                                  })
-                                }
-                                if (wouldExceedQuota(compressedImageUrl)) {
-                                  toast.error('Storage quota exceeded. Please remove some images.')
-                                  return
-                                }
-                              }
-
-                              setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, imageUrl: compressedImageUrl } : r))
-                            } catch (error: any) {
-                              console.error('Error compressing image:', error)
-                              if (error?.message?.includes('quota') || error?.name === 'QuotaExceededError') {
-                                toast.error('Storage quota exceeded. Please remove some images.')
-                              } else {
-                                toast.error('Failed to process image. Please try a smaller file.')
-                              }
-                            }
-                          }
-                          input.click()
-                        }}
-                      >
-                        <Upload className="h-3 w-3 mr-1" /> {fullEditRows[i]?.imageUrl ? 'Change' : 'Upload'}
-                      </Button>
-                      {!!fullEditRows[i]?.imageUrl && (
+                        step="0.1"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label className="text-xs">Y</Label>
+                      <Input
+                        type="number"
+                        value={row.y ?? 0}
+                        onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, y: Number(e.target.value) } : r))}
+                        className="h-8 text-xs"
+                        step="0.1"
+                      />
+                    </div>
+                    {chartType === 'bubble' && (
+                      <div className="col-span-2">
+                        <Label className="text-xs">Size (R)</Label>
+                        <Input
+                          type="number"
+                          value={row.r ?? 10}
+                          onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, r: Number(e.target.value) } : r))}
+                          className="h-8 text-xs"
+                          min="1"
+                          step="1"
+                        />
+                      </div>
+                    )}
+                    <div className="col-span-3">
+                      <Label className="text-xs">Color</Label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          className={`w-10 h-8 p-0 border-0 bg-transparent ${editingColorMode === 'dataset' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                          value={row.color}
+                          onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, color: e.target.value } : r))}
+                          disabled={editingColorMode === 'dataset'}
+                        />
+                        <Input
+                          className={`h-8 text-xs w-20 ${editingColorMode === 'dataset' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          value={row.color}
+                          onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, color: e.target.value } : r))}
+                          disabled={editingColorMode === 'dataset'}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )
+              } else {
+                // Categorical chart UI (Name, Value, Color, Image)
+                return (
+                  <div key={i} className="grid grid-cols-12 gap-2 items-center p-2 border rounded">
+                    <div className="col-span-4">
+                      <Label className="text-xs">Name</Label>
+                      <Input
+                        value={row.label}
+                        onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, label: e.target.value } : r))}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label className="text-xs">Value</Label>
+                      <Input
+                        type="number"
+                        value={row.value}
+                        onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, value: Number(e.target.value) } : r))}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="col-span-3">
+                      <Label className="text-xs">Color</Label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          className={`w-10 h-8 p-0 border-0 bg-transparent ${editingColorMode === 'dataset' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                          value={row.color}
+                          onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, color: e.target.value } : r))}
+                          disabled={editingColorMode === 'dataset'}
+                        />
+                        <Input
+                          className={`h-8 text-xs w-24 ${editingColorMode === 'dataset' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          value={row.color}
+                          onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, color: e.target.value } : r))}
+                          disabled={editingColorMode === 'dataset'}
+                        />
+                      </div>
+                    </div>
+                    <div className="col-span-3">
+                      <Label className="text-xs">Image</Label>
+                      <div className="flex items-center gap-2">
                         <Button
                           variant="outline"
                           size="sm"
                           className="h-8 text-xs"
-                          onClick={() => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, imageUrl: null } : r))}
+                          onClick={async () => {
+                            const input = document.createElement('input')
+                            input.type = 'file'
+                            input.accept = 'image/*'
+                            input.onchange = async (e) => {
+                              const file = (e.target as HTMLInputElement).files?.[0]
+                              if (!file) return
+
+                              // Import compression utility
+                              const {
+                                compressImage,
+                                validateImageFile,
+                                getAvailableLocalStorageSpace,
+                                shouldCleanupImages,
+                                getImagesToCleanup,
+                                wouldExceedQuota
+                              } = await import('@/lib/image-utils')
+
+                              // Validate file
+                              if (!validateImageFile(file, 10)) {
+                                toast.error('Invalid image file. Please select an image file under 10MB.')
+                                return
+                              }
+
+                              try {
+                                // Check available space and cleanup if needed
+                                const availableSpace = getAvailableLocalStorageSpace()
+                                if (availableSpace < 200 * 1024) {
+                                  const cleanupInfo = shouldCleanupImages(chartData, 1 * 1024 * 1024)
+                                  if (cleanupInfo.needed) {
+                                    chartData.datasets.forEach((dataset: any, dsIdx: number) => {
+                                      const indicesToRemove = getImagesToCleanup(dataset, cleanupInfo.maxImagesToKeep)
+                                      if (indicesToRemove.length > 0) {
+                                        const newPointImages = [...(dataset.pointImages || [])]
+                                        indicesToRemove.forEach((idx: number) => {
+                                          newPointImages[idx] = null
+                                        })
+                                        updateDataset(dsIdx, { pointImages: newPointImages })
+                                      }
+                                    })
+                                  }
+                                }
+
+                                // Compress image with better defaults
+                                const compressedImageUrl = await compressImage(file, 600, 600, 0.7, true)
+
+                                // Check if compressed image would exceed quota
+                                if (wouldExceedQuota(compressedImageUrl)) {
+                                  const cleanupInfo = shouldCleanupImages(chartData, 2 * 1024 * 1024)
+                                  if (cleanupInfo.needed) {
+                                    chartData.datasets.forEach((dataset: any, dsIdx: number) => {
+                                      const indicesToRemove = getImagesToCleanup(dataset, cleanupInfo.maxImagesToKeep)
+                                      if (indicesToRemove.length > 0) {
+                                        const newPointImages = [...(dataset.pointImages || [])]
+                                        indicesToRemove.forEach((idx: number) => {
+                                          newPointImages[idx] = null
+                                        })
+                                        updateDataset(dsIdx, { pointImages: newPointImages })
+                                      }
+                                    })
+                                  }
+                                  if (wouldExceedQuota(compressedImageUrl)) {
+                                    toast.error('Storage quota exceeded. Please remove some images.')
+                                    return
+                                  }
+                                }
+
+                                setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, imageUrl: compressedImageUrl } : r))
+                              } catch (error: any) {
+                                console.error('Error compressing image:', error)
+                                if (error?.message?.includes('quota') || error?.name === 'QuotaExceededError') {
+                                  toast.error('Storage quota exceeded. Please remove some images.')
+                                } else {
+                                  toast.error('Failed to process image. Please try a smaller file.')
+                                }
+                              }
+                            }
+                            input.click()
+                          }}
                         >
-                          Remove
+                          <Upload className="h-3 w-3 mr-1" /> {fullEditRows[i]?.imageUrl ? 'Change' : 'Upload'}
                         </Button>
-                      )}
+                        {!!fullEditRows[i]?.imageUrl && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs"
+                            onClick={() => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, imageUrl: null } : r))}
+                          >
+                            Remove
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              )
+                )
+              }
             })}
           </div>
           <div className="flex justify-end gap-2">
@@ -2423,22 +2688,49 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                 const datasetIndex = editingDatasetIndex
                 if (datasetIndex === -1 || !filteredDatasets[datasetIndex]) return
 
-                // Persist labels, values, colors, images
+                const isCoordinateChart = chartType === 'scatter' || chartType === 'bubble'
+
+                // Persist labels and colors
                 const labels = fullEditRows.map(r => r.label)
-                const values = fullEditRows.map(r => r.value)
                 const colors = fullEditRows.map(r => r.color)
                 const images = fullEditRows.map(r => r.imageUrl)
 
-                // Ensure arrays are aligned and persist slice colors
-                updateDataset(datasetIndex, {
-                  label: editingDatasetName,
-                  sliceLabels: labels,
-                  data: values as any,
-                  backgroundColor: editingColorMode === 'dataset' ? editingDatasetColor : (colors as any),
-                  pointImages: images as any,
-                  datasetColorMode: editingColorMode === 'dataset' ? 'single' : 'slice',
-                  color: editingColorMode === 'dataset' ? editingDatasetColor : undefined,
-                })
+                if (isCoordinateChart) {
+                  // Coordinate chart data (x, y, r)
+                  const coordinateData = fullEditRows.map(r => {
+                    const point: { x: number; y: number; r?: number } = {
+                      x: r.x ?? 0,
+                      y: r.y ?? 0,
+                    }
+                    if (chartType === 'bubble') {
+                      point.r = r.r ?? 10
+                    }
+                    return point
+                  })
+
+                  updateDataset(datasetIndex, {
+                    label: editingDatasetName,
+                    sliceLabels: labels,
+                    data: coordinateData as any,
+                    backgroundColor: editingColorMode === 'dataset' ? editingDatasetColor : (colors as any),
+                    datasetColorMode: editingColorMode === 'dataset' ? 'single' : 'slice',
+                    color: editingColorMode === 'dataset' ? editingDatasetColor : undefined,
+                  })
+                } else {
+                  // Categorical chart data (values)
+                  const values = fullEditRows.map(r => r.value)
+
+                  updateDataset(datasetIndex, {
+                    label: editingDatasetName,
+                    sliceLabels: labels,
+                    data: values as any,
+                    backgroundColor: editingColorMode === 'dataset' ? editingDatasetColor : (colors as any),
+                    pointImages: images as any,
+                    datasetColorMode: editingColorMode === 'dataset' ? 'single' : 'slice',
+                    color: editingColorMode === 'dataset' ? editingDatasetColor : undefined,
+                  })
+                }
+
                 updateLabels(labels)
                 setShowFullEditModal(false)
               }}

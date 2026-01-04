@@ -167,7 +167,6 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
 
     // Reset setup state
     setScatterBubbleSetup({ active: false, targetType: null, direction: null, backupData: null });
-    toast.success(`Converted to ${isBubble ? 'Bubble' : 'Scatter'} chart. Original data backed up.`);
   };
 
   // Handler: Load Sample Dataset
@@ -207,7 +206,6 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     useChartStore.setState({ chartData: newChartData });
     setChartType(scatterBubbleSetup.targetType as any);
     setScatterBubbleSetup({ active: false, targetType: null, direction: null, backupData: null });
-    toast.success(`Loaded sample ${isBubble ? 'bubble' : 'scatter'} data`);
   };
 
   // Handler: Load Categorical Sample Dataset (for scatter/bubble → categorical transition)
@@ -256,8 +254,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     } as any);
 
     setScatterBubbleSetup({ active: false, targetType: null, direction: null, backupData: null });
-    setCategoricalDataBackup(null); // Clear backup after loading fresh data
-    toast.success(`Loaded sample categorical data for ${targetType} chart`);
+    setCategoricalDataBackup(null);
   };
 
   // Handler: Restore backed-up categorical data
@@ -281,8 +278,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     } as any);
 
     setScatterBubbleSetup({ active: false, targetType: null, direction: null, backupData: null });
-    setCategoricalDataBackup(null); // Clear backup after restoration
-    toast.success(`Restored your previous ${targetType} chart data`);
+    setCategoricalDataBackup(null);
   };
 
   // Handler: Restore backed-up scatter/bubble data
@@ -305,8 +301,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     } as any);
 
     setScatterBubbleSetup({ active: false, targetType: null, direction: null, backupData: null });
-    setScatterBubbleDataBackup(null); // Clear backup after restoration
-    toast.success(`Restored your previous ${targetType} chart data`);
+    setScatterBubbleDataBackup(null);
   };
 
   // Handler: Open Create Dataset Modal
@@ -335,7 +330,6 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     useChartStore.setState({ chartData: newChartData });
     setChartType(scatterBubbleSetup.targetType as any);
     setScatterBubbleSetup({ active: false, targetType: null, direction: null, backupData: null });
-    toast.success(`Created ${scatterBubbleSetup.targetType} chart`);
   };
 
   // Handler: Cancel setup screen

@@ -394,7 +394,10 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
   let filteredDatasetsPatched = [...filteredDatasets];
 
   filteredDatasetsPatched = filteredDatasetsPatched.map((ds, i) => {
-    const datasetType = ds.chartType || chartType || 'bar';
+    // In single mode, use global chartType; in grouped mixed mode, use dataset-specific type
+    const datasetType = (chartMode === 'single' || uniformityMode === 'uniform')
+      ? chartType
+      : (ds.chartType || chartType || 'bar');
     const validType = datasetType === 'stackedBar' || datasetType === 'horizontalBar' ? 'bar' :
       (datasetType === 'area' ? 'line' : datasetType);
 
@@ -671,19 +674,20 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     (chartType === 'stackedBar' ? 'bar' :
       (chartType === 'horizontalBar' ? 'bar' : chartType));
 
+  // In single mode, ALWAYS use the global chart type (user expects to change the whole chart)
+  // In grouped mode with uniform, also use global chart type
+  // In grouped mode with mixed, use dataset-specific chart types (handled by patching datasets)
   if (chartMode === 'single') {
-    const activeDs = chartData.datasets[activeDatasetIndex];
-    if (activeDs?.chartType) {
-      const dsChartType = activeDs.chartType;
-      chartTypeForChart = dsChartType === 'stackedBar' ? 'bar' :
-        (dsChartType === 'horizontalBar' ? 'bar' : dsChartType);
-    }
+    // Single mode: use global chartType (already set above)
+    // Do NOT override from dataset's chartType here
   } else {
+    // Grouped mode
     if (uniformityMode === 'uniform') {
       chartTypeForChart = chartType === 'area' ? 'line' :
         (chartType === 'stackedBar' ? 'bar' :
           (chartType === 'horizontalBar' ? 'bar' : chartType));
     } else {
+      // Mixed mode: the chart type is 'bar' as base, but each dataset has its own type
       chartTypeForChart = 'bar';
     }
   }

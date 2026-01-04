@@ -94,7 +94,7 @@ export function ChartTransitionDialog({
                                     className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transition-all"
                                 >
                                     <RotateCcw className="h-5 w-5" />
-                                    Restore Previous Data
+                                    Restore Previous Dataset Used
                                 </button>
 
                                 <button
@@ -175,7 +175,7 @@ export function ChartTransitionDialog({
                                 className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transition-all"
                             >
                                 <RotateCcw className="h-5 w-5" />
-                                Restore Previous Data
+                                Restore Previous Dataset Used
                             </button>
 
                             <button

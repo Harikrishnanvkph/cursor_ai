@@ -2287,24 +2287,29 @@ export const useChartStore = create<ChartStore>()(
         const isNewScatterBubble = scatterBubbleTypes.includes(targetType);
         const isNewCategorical = categoricalTypes.includes(targetType);
 
-        // Save data backup before checking for transition
-        if (isCurrentCategorical && isNewScatterBubble && state.chartData.datasets.length > 0) {
-          set({ categoricalDataBackup: JSON.parse(JSON.stringify(state.chartData)) });
-        } else if (isCurrentScatterBubble && isNewCategorical && state.chartData.datasets.length > 0) {
-          set({ scatterBubbleDataBackup: JSON.parse(JSON.stringify(state.chartData)) });
-        }
+        // Check if this is a cross-family transition (categorical <-> scatter/bubble)
+        const isCrossTransition = (isCurrentCategorical && isNewScatterBubble) || (isCurrentScatterBubble && isNewCategorical);
 
-        // Check if a transition setup screen is needed
-        const needsSetupScreen = state.requestChartTypeChange(targetType);
-        if (needsSetupScreen) {
-          return true;
+        if (isCrossTransition) {
+          // Save current data as backup before transitioning
+          if (isCurrentCategorical && state.chartData.datasets.length > 0) {
+            set({ categoricalDataBackup: JSON.parse(JSON.stringify(state.chartData)) });
+          } else if (isCurrentScatterBubble && state.chartData.datasets.length > 0) {
+            set({ scatterBubbleDataBackup: JSON.parse(JSON.stringify(state.chartData)) });
+          }
+
+          // Always show setup dialog for cross-family transitions
+          // User can choose to load sample data, generate with AI, or restore from backup
+          const needsSetupScreen = state.requestChartTypeChange(targetType);
+          if (needsSetupScreen) {
+            return true;
+          }
         }
 
         // No transition needed - proceed with normal type change
         state.setChartType(targetType);
 
         // Set the correct legendType based on chart type
-        // Pie, Doughnut, Polar Area use 'slice', all others use 'dataset'
         const newLegendType = (targetType === 'pie' || targetType === 'doughnut' || targetType === 'polarArea') ? 'slice' : 'dataset';
         state.updateChartConfig({
           ...state.chartConfig,
@@ -2351,6 +2356,10 @@ export const useChartStore = create<ChartStore>()(
           } else {
             newDataset.type = type as keyof ChartTypeRegistry; // Covers 'line', 'scatter', 'bubble', 'pie', etc.
           }
+
+          // IMPORTANT: Also update the dataset's chartType property
+          // This ensures the chart_generator uses the correct type in single mode
+          newDataset.chartType = type;
 
           // Apply default tension for line and area charts if not already set
           if (type === 'line' || type === 'area') {
@@ -2969,6 +2978,9 @@ export const useChartStore = create<ChartStore>()(
           chartData: modeDefaultData,
           chartConfig: newConfig,
           ...modeDataUpdate,
+          // Clear chart type transition backups
+          categoricalDataBackup: null,
+          scatterBubbleDataBackup: null,
         };
       }),
       setChartMode: (mode) => set((state) => {
