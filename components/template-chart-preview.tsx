@@ -106,20 +106,9 @@ export function TemplateChartPreview({
     }
   }
 
-  // Handle chart type change with legendType update
+  // Handle chart type change - uses centralized handler from store
   const handleChartTypeChange = (type: string) => {
-    setChartType(type as any);
-
-    // Set the correct legendType based on chart type
-    // Pie, Doughnut, Polar Area use 'slice', all others use 'dataset'
-    const newLegendType = (type === 'pie' || type === 'doughnut' || type === 'polarArea') ? 'slice' : 'dataset';
-    updateChartConfig({
-      ...chartConfig,
-      plugins: {
-        ...chartConfig.plugins,
-        legendType: newLegendType
-      }
-    } as any);
+    useChartStore.getState().changeChartType(type as any);
   };
 
   // Save rename

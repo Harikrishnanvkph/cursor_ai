@@ -288,6 +288,21 @@ interface ChartStore {
   backupDatasetState: (index: number) => void;
   restoreDatasetState: (index: number) => void;
   datasetBackups: Map<number, { labels: string[], data: any[], backgroundColor: any, borderColor: any, pointImages: any[], pointImageConfig: any[] }>;
+
+  // Pending chart type change for transition handling (scatter/bubble <-> categorical)
+  pendingChartTypeChange: {
+    targetType: SupportedChartType | null;
+    currentType: SupportedChartType | null;
+    direction: 'toScatter' | 'toCategorical' | null;
+  } | null;
+  requestChartTypeChange: (targetType: SupportedChartType) => boolean; // Returns true if setup screen needed
+  clearPendingChartTypeChange: () => void;
+
+  // Data backups for chart type transitions
+  categoricalDataBackup: ExtendedChartData | null;
+  scatterBubbleDataBackup: ExtendedChartData | null;
+  setCategoricalDataBackup: (data: ExtendedChartData | null) => void;
+  setScatterBubbleDataBackup: (data: ExtendedChartData | null) => void;
 }
 
 const defaultChartData = {
@@ -2197,6 +2212,111 @@ export const useChartStore = create<ChartStore>()(
       overlayTexts: [],
       selectedImageId: null,
       selectedTextId: null,
+
+      // Pending chart type change for transition handling (scatter/bubble <-> categorical)
+      pendingChartTypeChange: null,
+      // Data backups for chart type transitions
+      categoricalDataBackup: null,
+      scatterBubbleDataBackup: null,
+
+      requestChartTypeChange: (targetType: SupportedChartType) => {
+        const state = get();
+        const categoricalTypes = ['bar', 'horizontalBar', 'stackedBar', 'line', 'area', 'pie', 'doughnut', 'polarArea', 'radar'];
+        const scatterBubbleTypes = ['scatter', 'bubble'];
+        const isCurrentCategorical = categoricalTypes.includes(state.chartType);
+        const isCurrentScatterBubble = scatterBubbleTypes.includes(state.chartType);
+        const isNewCategorical = categoricalTypes.includes(targetType);
+        const isNewScatterBubble = scatterBubbleTypes.includes(targetType);
+
+        // CASE 1: Categorical → Scatter/Bubble
+        if (isCurrentCategorical && isNewScatterBubble && state.chartData.datasets.length > 0) {
+          const firstDataset = state.chartData.datasets[0];
+          const hasCategorialData = firstDataset?.data?.length > 0 &&
+            typeof firstDataset.data[0] === 'number';
+
+          if (hasCategorialData) {
+            set({
+              pendingChartTypeChange: {
+                targetType,
+                currentType: state.chartType,
+                direction: 'toScatter'
+              }
+            });
+            return true; // Setup screen needed
+          }
+        }
+
+        // CASE 2: Scatter/Bubble → Categorical
+        if (isCurrentScatterBubble && isNewCategorical && state.chartData.datasets.length > 0) {
+          const firstDataset = state.chartData.datasets[0];
+          const hasCoordinateData = firstDataset?.data?.length > 0 &&
+            typeof firstDataset.data[0] === 'object' &&
+            firstDataset.data[0] !== null &&
+            'x' in firstDataset.data[0];
+
+          if (hasCoordinateData) {
+            set({
+              pendingChartTypeChange: {
+                targetType,
+                currentType: state.chartType,
+                direction: 'toCategorical'
+              }
+            });
+            return true; // Setup screen needed
+          }
+        }
+
+        // No setup needed, proceed with normal type change
+        return false;
+      },
+
+      clearPendingChartTypeChange: () => set({ pendingChartTypeChange: null }),
+
+      // Data backup setters for chart type transitions
+      setCategoricalDataBackup: (data: ExtendedChartData | null) => set({ categoricalDataBackup: data }),
+      setScatterBubbleDataBackup: (data: ExtendedChartData | null) => set({ scatterBubbleDataBackup: data }),
+
+      // Centralized chart type change handler - use this from all UI components
+      // Returns true if transition dialog is shown, false if type was changed directly
+      changeChartType: (targetType: SupportedChartType) => {
+        const state = get();
+        const categoricalTypes = ['bar', 'horizontalBar', 'stackedBar', 'line', 'area', 'pie', 'doughnut', 'polarArea', 'radar'];
+        const scatterBubbleTypes = ['scatter', 'bubble'];
+        const isCurrentCategorical = categoricalTypes.includes(state.chartType);
+        const isCurrentScatterBubble = scatterBubbleTypes.includes(state.chartType);
+        const isNewScatterBubble = scatterBubbleTypes.includes(targetType);
+        const isNewCategorical = categoricalTypes.includes(targetType);
+
+        // Save data backup before checking for transition
+        if (isCurrentCategorical && isNewScatterBubble && state.chartData.datasets.length > 0) {
+          set({ categoricalDataBackup: JSON.parse(JSON.stringify(state.chartData)) });
+        } else if (isCurrentScatterBubble && isNewCategorical && state.chartData.datasets.length > 0) {
+          set({ scatterBubbleDataBackup: JSON.parse(JSON.stringify(state.chartData)) });
+        }
+
+        // Check if a transition setup screen is needed
+        const needsSetupScreen = state.requestChartTypeChange(targetType);
+        if (needsSetupScreen) {
+          return true;
+        }
+
+        // No transition needed - proceed with normal type change
+        state.setChartType(targetType);
+
+        // Set the correct legendType based on chart type
+        // Pie, Doughnut, Polar Area use 'slice', all others use 'dataset'
+        const newLegendType = (targetType === 'pie' || targetType === 'doughnut' || targetType === 'polarArea') ? 'slice' : 'dataset';
+        state.updateChartConfig({
+          ...state.chartConfig,
+          plugins: {
+            ...state.chartConfig.plugins,
+            legendType: newLegendType
+          }
+        } as any);
+
+        return false;
+      },
+
       toggleDatasetVisibility: (index: number) => set((state) => {
         const current = (state.legendFilter.datasets as Record<number, boolean>)[index] ?? true;
         return { legendFilter: { ...state.legendFilter, datasets: { ...state.legendFilter.datasets, [index]: !current } } };

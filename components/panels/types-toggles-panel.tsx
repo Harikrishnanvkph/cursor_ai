@@ -11,7 +11,6 @@ import { ResponsiveAnimationsPanel } from "@/components/panels/responsive-animat
 export function TypesTogglesPanel() {
   const {
     chartType,
-    setChartType,
     chartData,
     fillArea,
     showBorder,
@@ -21,43 +20,14 @@ export function TypesTogglesPanel() {
     showLabels,
     toggleShowImages,
     toggleShowLabels,
-    updateChartConfig,
-    chartConfig,
+    changeChartType,
   } = useChartStore()
   const { editorMode, setEditorMode } = useTemplateStore()
 
   const handleChartTypeChange = (type: string) => {
-    if (type === 'stackedBar') {
-      setChartType('stackedBar' as SupportedChartType)
-      chartData.datasets.forEach((dataset, index) => {
-        // update dataset type to 'bar'
-        if (dataset.type !== 'bar') {
-          dataset.type = 'bar'
-        }
-      })
-      // Set legendType to 'dataset' for stacked bar
-      updateChartConfig({
-        ...chartConfig,
-        plugins: {
-          ...chartConfig.plugins,
-          legendType: 'dataset'
-        }
-      } as any)
-      return
-    }
-
-    setChartType(type as SupportedChartType)
-
-    // Set the correct legendType based on chart type
-    // Pie, Doughnut, Polar Area use 'slice', all others use 'dataset'
-    const newLegendType = (type === 'pie' || type === 'doughnut' || type === 'polarArea') ? 'slice' : 'dataset';
-    updateChartConfig({
-      ...chartConfig,
-      plugins: {
-        ...chartConfig.plugins,
-        legendType: newLegendType
-      }
-    } as any)
+    // Use centralized chart type change handler from store
+    // This handles transition detection, type change, and legendType update
+    changeChartType(type as SupportedChartType);
   }
 
   return (

@@ -30,6 +30,10 @@ import { SidebarContainer } from "@/components/sidebar-container"
 import { useHistoryStore } from "@/lib/history-store"
 import { dataService } from "@/lib/data-service"
 import { toast } from "sonner"
+import { ScatterBubbleSetupScreen } from "@/components/scatter-bubble-setup-screen"
+import { CreateScatterDataModal } from "@/components/dialogs/create-scatter-data-modal"
+import { ChartTransitionDialog } from "@/components/dialogs/chart-transition-dialog"
+import type { ExtendedChartData, ExtendedChartDataset, SupportedChartType } from "@/lib/chart-store"
 
 export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeftSidebar, isLeftSidebarCollapsed, isTablet = false, activeTab, onTabChange, onNewChart }: {
   onToggleSidebar?: () => void,
@@ -41,7 +45,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   onTabChange?: (tab: string) => void,
   onNewChart?: () => void
 }) {
-  const { chartConfig, chartData, chartType, setChartType, resetChart, setHasJSON, globalChartRef, showLabels, showImages, fillArea, showBorder, toggleShowBorder, updateChartConfig } = useChartStore()
+  const { chartConfig, chartData, chartType, setChartType, resetChart, setHasJSON, globalChartRef, showLabels, showImages, fillArea, showBorder, toggleShowBorder, updateChartConfig, pendingChartTypeChange, clearPendingChartTypeChange, categoricalDataBackup, scatterBubbleDataBackup, setCategoricalDataBackup, setScatterBubbleDataBackup } = useChartStore()
   const { shouldShowTemplate, editorMode, templateInBackground, currentTemplate, setEditorMode } = useTemplateStore()
   const { user } = useAuth()
   const { backendConversationId } = useChatStore()
@@ -75,6 +79,36 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   const [renameValue, setRenameValue] = useState("");
   const [isSavingRename, setIsSavingRename] = useState(false);
 
+  // Scatter/Bubble setup state - handles both directions
+  const [scatterBubbleSetup, setScatterBubbleSetup] = useState<{
+    active: boolean;
+    targetType: 'scatter' | 'bubble' | null;
+    direction: 'toScatter' | 'toCategorical' | null; // Direction of the transition
+    backupData: ExtendedChartData | null;
+    previousChartType?: SupportedChartType; // Track previous type for restoration
+  }>({ active: false, targetType: null, direction: null, backupData: null });
+
+  const [showCreateDataModal, setShowCreateDataModal] = useState(false);
+
+  // React to pendingChartTypeChange from store
+  useEffect(() => {
+    if (pendingChartTypeChange && pendingChartTypeChange.targetType && pendingChartTypeChange.direction) {
+      const backupForRestore = pendingChartTypeChange.direction === 'toCategorical'
+        ? categoricalDataBackup
+        : scatterBubbleDataBackup;
+
+      setScatterBubbleSetup({
+        active: true,
+        targetType: pendingChartTypeChange.targetType as any,
+        direction: pendingChartTypeChange.direction,
+        backupData: backupForRestore,
+        previousChartType: pendingChartTypeChange.currentType || undefined
+      });
+
+      clearPendingChartTypeChange();
+    }
+  }, [pendingChartTypeChange, categoricalDataBackup, scatterBubbleDataBackup, clearPendingChartTypeChange]);
+
   // Focus input when entering rename mode
   useEffect(() => {
     if (isRenaming && renameInputRef.current) {
@@ -91,13 +125,128 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     }
   };
 
-  // Handle chart type change with legendType update
+  // Handle chart type change - uses centralized handler from store
   const handleChartTypeChange = (type: string) => {
-    setChartType(type as any);
+    useChartStore.getState().changeChartType(type as any);
+  };
+
+  // Handler: Quick Transform - convert categorical data to scatter/bubble format
+  const handleQuickTransform = () => {
+    if (!scatterBubbleSetup.targetType) return;
+
+    const isBubble = scatterBubbleSetup.targetType === 'bubble';
+
+    // Transform each dataset's data from [number] to [{x, y, r?}]
+    const transformedDatasets = chartData.datasets.map((dataset, datasetIndex) => {
+      const transformedData = dataset.data.map((value, index) => {
+        const numValue = typeof value === 'number' ? value :
+          (typeof value === 'object' && value !== null && 'y' in value) ? (value as any).y : 0;
+
+        return isBubble
+          ? { x: index, y: numValue, r: 8 + Math.random() * 12 } // Random radius 8-20
+          : { x: index, y: numValue };
+      });
+
+      return {
+        ...dataset,
+        data: transformedData,
+        type: scatterBubbleSetup.targetType as any
+      };
+    });
+
+    // Apply the transformation
+    const newChartData = {
+      ...chartData,
+      labels: [], // Scatter/bubble don't use labels
+      datasets: transformedDatasets
+    };
+
+    // Update store
+    useChartStore.setState({ chartData: newChartData });
+    setChartType(scatterBubbleSetup.targetType as any);
+
+    // Reset setup state
+    setScatterBubbleSetup({ active: false, targetType: null, direction: null, backupData: null });
+    toast.success(`Converted to ${isBubble ? 'Bubble' : 'Scatter'} chart. Original data backed up.`);
+  };
+
+  // Handler: Load Sample Dataset
+  const handleLoadSampleData = () => {
+    if (!scatterBubbleSetup.targetType) return;
+
+    const isBubble = scatterBubbleSetup.targetType === 'bubble';
+
+    const sampleScatterData = [
+      { x: 10, y: 20 }, { x: 15, y: 35 }, { x: 25, y: 15 },
+      { x: 30, y: 45 }, { x: 40, y: 30 }, { x: 50, y: 55 },
+      { x: 55, y: 40 }, { x: 65, y: 60 }
+    ];
+
+    const sampleBubbleData = [
+      { x: 10, y: 20, r: 10 }, { x: 20, y: 35, r: 15 }, { x: 35, y: 25, r: 8 },
+      { x: 45, y: 50, r: 20 }, { x: 55, y: 30, r: 12 }, { x: 70, y: 45, r: 18 },
+      { x: 80, y: 60, r: 14 }, { x: 90, y: 40, r: 10 }
+    ];
+
+    const sampleDataset: ExtendedChartDataset = {
+      label: isBubble ? 'Sample Bubbles' : 'Sample Points',
+      data: isBubble ? sampleBubbleData : sampleScatterData,
+      backgroundColor: isBubble
+        ? 'rgba(59, 130, 246, 0.6)'  // Semi-transparent blue for bubbles
+        : '#3b82f6',
+      borderColor: '#1d4ed8',
+      borderWidth: 1,
+      type: scatterBubbleSetup.targetType as any
+    };
+
+    const newChartData = {
+      labels: [],
+      datasets: [sampleDataset]
+    };
+
+    useChartStore.setState({ chartData: newChartData });
+    setChartType(scatterBubbleSetup.targetType as any);
+    setScatterBubbleSetup({ active: false, targetType: null, direction: null, backupData: null });
+    toast.success(`Loaded sample ${isBubble ? 'bubble' : 'scatter'} data`);
+  };
+
+  // Handler: Load Categorical Sample Dataset (for scatter/bubble → categorical transition)
+  const handleLoadCategoricalData = () => {
+    if (!scatterBubbleSetup.targetType || scatterBubbleSetup.direction !== 'toCategorical') return;
+
+    const targetType = scatterBubbleSetup.targetType as string;
+
+    // Sample categorical data with proper labels
+    const sampleCategoricalData = {
+      labels: ['January', 'February', 'March', 'April', 'May', 'June'],
+      datasets: [{
+        label: 'Sample Dataset',
+        data: [12, 19, 3, 5, 2, 3],
+        backgroundColor: [
+          'rgba(54, 162, 235, 0.8)',
+          'rgba(255, 99, 132, 0.8)',
+          'rgba(75, 192, 192, 0.8)',
+          'rgba(255, 206, 86, 0.8)',
+          'rgba(153, 102, 255, 0.8)',
+          'rgba(255, 159, 64, 0.8)',
+        ],
+        borderColor: [
+          'rgba(54, 162, 235, 1)',
+          'rgba(255, 99, 132, 1)',
+          'rgba(75, 192, 192, 1)',
+          'rgba(255, 206, 86, 1)',
+          'rgba(153, 102, 255, 1)',
+          'rgba(255, 159, 64, 1)',
+        ],
+        borderWidth: 2,
+      }]
+    };
+
+    useChartStore.setState({ chartData: sampleCategoricalData });
+    setChartType(targetType as any);
 
     // Set the correct legendType based on chart type
-    // Pie, Doughnut, Polar Area use 'slice', all others use 'dataset'
-    const newLegendType = (type === 'pie' || type === 'doughnut' || type === 'polarArea') ? 'slice' : 'dataset';
+    const newLegendType = (targetType === 'pie' || targetType === 'doughnut' || targetType === 'polarArea') ? 'slice' : 'dataset';
     updateChartConfig({
       ...chartConfig,
       plugins: {
@@ -105,6 +254,93 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
         legendType: newLegendType
       }
     } as any);
+
+    setScatterBubbleSetup({ active: false, targetType: null, direction: null, backupData: null });
+    setCategoricalDataBackup(null); // Clear backup after loading fresh data
+    toast.success(`Loaded sample categorical data for ${targetType} chart`);
+  };
+
+  // Handler: Restore backed-up categorical data
+  const handleRestoreCategoricalData = () => {
+    if (!scatterBubbleSetup.backupData || scatterBubbleSetup.direction !== 'toCategorical') return;
+
+    const targetType = scatterBubbleSetup.targetType as string;
+    const restoredData = scatterBubbleSetup.backupData;
+
+    useChartStore.setState({ chartData: restoredData });
+    setChartType(targetType as any);
+
+    // Set the correct legendType based on chart type
+    const newLegendType = (targetType === 'pie' || targetType === 'doughnut' || targetType === 'polarArea') ? 'slice' : 'dataset';
+    updateChartConfig({
+      ...chartConfig,
+      plugins: {
+        ...chartConfig.plugins,
+        legendType: newLegendType
+      }
+    } as any);
+
+    setScatterBubbleSetup({ active: false, targetType: null, direction: null, backupData: null });
+    setCategoricalDataBackup(null); // Clear backup after restoration
+    toast.success(`Restored your previous ${targetType} chart data`);
+  };
+
+  // Handler: Restore backed-up scatter/bubble data
+  const handleRestoreScatterData = () => {
+    if (!scatterBubbleSetup.backupData || scatterBubbleSetup.direction !== 'toScatter') return;
+
+    const targetType = scatterBubbleSetup.targetType as string;
+    const restoredData = scatterBubbleSetup.backupData;
+
+    useChartStore.setState({ chartData: restoredData });
+    setChartType(targetType as any);
+
+    // Scatter/Bubble use 'dataset' legendType
+    updateChartConfig({
+      ...chartConfig,
+      plugins: {
+        ...chartConfig.plugins,
+        legendType: 'dataset'
+      }
+    } as any);
+
+    setScatterBubbleSetup({ active: false, targetType: null, direction: null, backupData: null });
+    setScatterBubbleDataBackup(null); // Clear backup after restoration
+    toast.success(`Restored your previous ${targetType} chart data`);
+  };
+
+  // Handler: Open Create Dataset Modal
+  const handleOpenCreateModal = () => {
+    setShowCreateDataModal(true);
+  };
+
+  // Handler: Create Dataset from Modal
+  const handleCreateDataset = (datasetName: string, data: Array<{ x: number, y: number, r?: number }>, backgroundColor: string) => {
+    if (!scatterBubbleSetup.targetType) return;
+
+    const newDataset: ExtendedChartDataset = {
+      label: datasetName,
+      data: data,
+      backgroundColor: backgroundColor,
+      borderColor: backgroundColor,
+      borderWidth: 1,
+      type: scatterBubbleSetup.targetType as any
+    };
+
+    const newChartData = {
+      labels: [],
+      datasets: [newDataset]
+    };
+
+    useChartStore.setState({ chartData: newChartData });
+    setChartType(scatterBubbleSetup.targetType as any);
+    setScatterBubbleSetup({ active: false, targetType: null, direction: null, backupData: null });
+    toast.success(`Created ${scatterBubbleSetup.targetType} chart`);
+  };
+
+  // Handler: Cancel setup screen
+  const handleCancelSetup = () => {
+    setScatterBubbleSetup({ active: false, targetType: null, direction: null, backupData: null });
   };
 
   // Save rename
@@ -708,15 +944,32 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   // If template mode is active, render template view
   if (shouldShowTemplate()) {
     return (
-      <TemplateChartPreview
-        onToggleSidebar={onToggleSidebar}
-        isSidebarCollapsed={isSidebarCollapsed}
-        onToggleLeftSidebar={onToggleLeftSidebar}
-        isLeftSidebarCollapsed={isLeftSidebarCollapsed}
-        activeTab={activeTab}
-        onTabChange={onTabChange}
-        onNewChart={onNewChart}
-      />
+      <>
+        <TemplateChartPreview
+          onToggleSidebar={onToggleSidebar}
+          isSidebarCollapsed={isSidebarCollapsed}
+          onToggleLeftSidebar={onToggleLeftSidebar}
+          isLeftSidebarCollapsed={isLeftSidebarCollapsed}
+          activeTab={activeTab}
+          onTabChange={onTabChange}
+          onNewChart={onNewChart}
+        />
+
+        {/* Chart Transition Dialog - shown in TEMPLATE mode for scatter/categorical transitions */}
+        <ChartTransitionDialog
+          open={scatterBubbleSetup.active && scatterBubbleSetup.targetType !== null && scatterBubbleSetup.direction !== null}
+          targetChartType={scatterBubbleSetup.targetType || 'bar'}
+          direction={scatterBubbleSetup.direction || 'toScatter'}
+          hasBackup={scatterBubbleSetup.backupData !== null}
+          onLoadSample={scatterBubbleSetup.direction === 'toScatter' ? handleLoadSampleData : handleLoadCategoricalData}
+          onRestore={scatterBubbleSetup.direction === 'toScatter'
+            ? (scatterBubbleSetup.backupData ? handleRestoreScatterData : undefined)
+            : (scatterBubbleSetup.backupData ? handleRestoreCategoricalData : undefined)}
+          onQuickTransform={scatterBubbleSetup.direction === 'toScatter' ? handleQuickTransform : undefined}
+          onCreateDataset={scatterBubbleSetup.direction === 'toScatter' ? handleOpenCreateModal : undefined}
+          onCancel={handleCancelSetup}
+        />
+      </>
     )
   }
 
@@ -1001,7 +1254,22 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
           >
             {/* Canvas Background - Similar to template mode */}
             {/* Calculate canvas dimensions - larger than chart to show outer space */}
-            {(() => {
+            {/* Only show inline setup screen in CHART mode, not template mode */}
+            {scatterBubbleSetup.active && scatterBubbleSetup.targetType && scatterBubbleSetup.direction && editorMode === 'chart' ? (
+              /* Chart Setup Screen - renders INSTEAD of chart (only in chart mode) */
+              <ScatterBubbleSetupScreen
+                targetChartType={scatterBubbleSetup.targetType}
+                direction={scatterBubbleSetup.direction}
+                hasBackup={scatterBubbleSetup.backupData !== null}
+                onLoadSample={scatterBubbleSetup.direction === 'toScatter' ? handleLoadSampleData : handleLoadCategoricalData}
+                onRestore={scatterBubbleSetup.direction === 'toScatter'
+                  ? (scatterBubbleSetup.backupData ? handleRestoreScatterData : undefined)
+                  : (scatterBubbleSetup.backupData ? handleRestoreCategoricalData : undefined)}
+                onQuickTransform={scatterBubbleSetup.direction === 'toScatter' ? handleQuickTransform : undefined}
+                onCreateDataset={scatterBubbleSetup.direction === 'toScatter' ? handleOpenCreateModal : undefined}
+                onCancel={handleCancelSetup}
+              />
+            ) : ((() => {
               const isResponsive = (chartConfig as any)?.responsive !== false;
               const parseDimension = (value: any): number => {
                 if (typeof value === 'number') return isNaN(value) ? 800 : value;
@@ -1192,10 +1460,18 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                   </div>
                 </div>
               );
-            })()}
+            })())}
           </div>
         </CardContent>
       </Card>
+
+      {/* Create Scatter/Bubble Data Modal */}
+      <CreateScatterDataModal
+        open={showCreateDataModal}
+        onOpenChange={setShowCreateDataModal}
+        chartType={scatterBubbleSetup.targetType || 'scatter'}
+        onDatasetCreate={handleCreateDataset}
+      />
 
       {/* Fullscreen Toolbar */}
       {isFullscreen && (
@@ -1376,6 +1652,21 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
           )}
         </>
       )}
+
+      {/* Chart Transition Dialog - shown in CHART mode instead of inline setup screen when editorMode is template */}
+      <ChartTransitionDialog
+        open={scatterBubbleSetup.active && scatterBubbleSetup.targetType !== null && scatterBubbleSetup.direction !== null && editorMode === 'template'}
+        targetChartType={scatterBubbleSetup.targetType || 'bar'}
+        direction={scatterBubbleSetup.direction || 'toScatter'}
+        hasBackup={scatterBubbleSetup.backupData !== null}
+        onLoadSample={scatterBubbleSetup.direction === 'toScatter' ? handleLoadSampleData : handleLoadCategoricalData}
+        onRestore={scatterBubbleSetup.direction === 'toScatter'
+          ? (scatterBubbleSetup.backupData ? handleRestoreScatterData : undefined)
+          : (scatterBubbleSetup.backupData ? handleRestoreCategoricalData : undefined)}
+        onQuickTransform={scatterBubbleSetup.direction === 'toScatter' ? handleQuickTransform : undefined}
+        onCreateDataset={scatterBubbleSetup.direction === 'toScatter' ? handleOpenCreateModal : undefined}
+        onCancel={handleCancelSetup}
+      />
     </div>
   )
 }
