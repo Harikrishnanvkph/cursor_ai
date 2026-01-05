@@ -852,6 +852,55 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     };
   }
 
+  // HELPER: Recursively parse stringified functions in the options
+  const parseCallbacks = (obj: any): any => {
+    if (!obj) return obj;
+    if (typeof obj === 'string') {
+      // Check if string looks like a function definition
+      const trimmed = obj.trim();
+      if (trimmed.startsWith('function') || trimmed.startsWith('(') || trimmed.includes('=>')) {
+        try {
+          // Identify if it's a function declaration or expression
+          // Basic handling for "function(val) { ... }" pattern which is common from AI
+          if (trimmed.startsWith('function')) {
+            // Convert "function(x) { return x; }" to actual function
+            // We use new Function(return <code_as_expression>)() approach 
+            // OR specifically wrap it to evaluate.
+            // But "new Function(obj)" won't work directly if obj is "function() {}". 
+            // It needs to be "return " + obj if we want to get the function reference back.
+
+            // Safety: Using new Function is risky with untrusted input, 
+            // but necessary for this feature allowing AI/User inserted JS callbacks.
+            return new Function('return ' + trimmed)();
+          }
+        } catch (e) {
+          console.warn('Failed to parse callback string:', trimmed, e);
+          return obj; // Return original string if parsing fails
+        }
+      }
+      return obj;
+    }
+
+    if (Array.isArray(obj)) {
+      return obj.map(item => parseCallbacks(item));
+    }
+
+    if (typeof obj === 'object') {
+      const newObj: any = {};
+      for (const key in obj) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+          newObj[key] = parseCallbacks(obj[key]);
+        }
+      }
+      return newObj;
+    }
+
+    return obj;
+  };
+
+  // Apply the parsing to the options
+  appliedOptions = parseCallbacks(appliedOptions);
+
   // Context menu handlers
   const handleContextMenuClose = () => {
     setContextMenu(prev => ({ ...prev, isOpen: false }))
