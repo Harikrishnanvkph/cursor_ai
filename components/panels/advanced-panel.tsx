@@ -123,9 +123,9 @@ export function AdvancedPanel() {
 
 
       {/* Tooltip Settings Section */}
-      <div className="space-y-2">
+      <div className="space-y-0">
         <div
-          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
           onClick={() => setTooltipOpen(!tooltipOpen)}
         >
           <div className="w-2 h-2 bg-green-600 rounded-full"></div>
@@ -141,7 +141,7 @@ export function AdvancedPanel() {
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transform transition-transform ${tooltipOpen ? 'rotate-180' : ''}`}> <path d="M6 9L12 15L18 9" /> </svg>
           </div>
         </div>
-        <div className="bg-green-50 rounded-lg">
+        <div className="bg-green-50 rounded-b-lg border-x border-b border-green-100">
           {tooltipOpen && (
             <div className={`px-3 py-3 space-y-2 ${chartConfig.plugins?.tooltip?.enabled === false ? 'opacity-50 pointer-events-none' : ''}`}>
               <div className="grid grid-cols-2 gap-2">
@@ -249,9 +249,9 @@ export function AdvancedPanel() {
       </div>
 
       {/* General Animations Section */}
-      <div className="space-y-2">
+      <div className="space-y-0">
         <div
-          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
           onClick={() => setGeneralAnimOpen(!generalAnimOpen)}
         >
           <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
@@ -270,7 +270,7 @@ export function AdvancedPanel() {
           </div>
         </div>
         {generalAnimOpen && chartConfig.animation !== false && (
-          <div className="bg-blue-50 rounded-lg p-3 space-y-3">
+          <div className="bg-blue-50 rounded-b-lg p-3 space-y-3 border-x border-b border-blue-100">
             <div className="space-y-3">
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
@@ -329,9 +329,9 @@ export function AdvancedPanel() {
       </div>
 
       {/* Hover Animation Section */}
-      <div className="space-y-2">
+      <div className="space-y-0">
         <div
-          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
           onClick={() => setHoverAnimOpen(!hoverAnimOpen)}
         >
           <div className="w-2 h-2 bg-pink-600 rounded-full"></div>
@@ -349,7 +349,7 @@ export function AdvancedPanel() {
             </svg>
           </div>
         </div>
-        <div className="bg-pink-50 rounded-lg">
+        <div className="bg-pink-50 rounded-b-lg border-x border-b border-pink-100">
           <div className="flex items-center justify-between px-3 py-2">
             <span className="text-xs font-medium text-black">Hover Mode</span>
             <Select
@@ -387,9 +387,9 @@ export function AdvancedPanel() {
       </div>
 
       {/* Watermark Section */}
-      <div className="space-y-2">
+      <div className="space-y-0">
         <div
-          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
           onClick={() => setWatermarkOpen(!watermarkOpen)}
         >
           <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
@@ -400,7 +400,7 @@ export function AdvancedPanel() {
         </div>
         {
           watermarkOpen && (
-            <div className="bg-purple-50 rounded-lg p-3 space-y-2">
+            <div className="bg-purple-50 rounded-b-lg p-3 space-y-2 border-x border-b border-purple-100">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-medium">Show Watermark</Label>
                 <Switch
@@ -511,9 +511,9 @@ export function AdvancedPanel() {
       </div >
 
       {/* Raw Config Section */}
-      < div className="space-y-3" >
+      < div className="space-y-0" >
         <div
-          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
           onClick={() => setRawOpen(!rawOpen)}
         >
           <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
@@ -537,7 +537,7 @@ export function AdvancedPanel() {
         </div>
         {
           rawOpen && (
-            <div className="bg-gray-50 rounded-lg p-3 space-y-3 border border-gray-100">
+            <div className="bg-gray-50 rounded-b-lg p-3 space-y-3 border-x border-b border-gray-100">
               <div className="flex gap-2">
                 <Button variant="outline" onClick={handleCopyConfig} className="flex-1 h-8 text-xs bg-white hover:bg-gray-100">
                   <Copy className="h-4 w-4 mr-2" />

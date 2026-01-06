@@ -79,9 +79,9 @@ export function RadialAxisSettings({ config, onUpdate, chartType, className }: R
       )}
 
       {/* Grid Lines Section */}
-      <div className="space-y-2">
+      <div className="space-y-0">
         <div
-          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
           onClick={() => setGridDropdownOpen(!gridDropdownOpen)}
         >
           <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
@@ -99,7 +99,7 @@ export function RadialAxisSettings({ config, onUpdate, chartType, className }: R
             </svg>
           </div>
         </div>
-        <div className="bg-purple-50 rounded-lg">
+        <div className="bg-purple-50 rounded-b-lg border-x border-b border-purple-100">
           {gridDropdownOpen && (
             <div className={`px-3 py-3 space-y-3 ${config?.grid?.display === false ? 'opacity-50 pointer-events-none' : ''}`}>
               <div className="grid grid-cols-2 gap-3">
@@ -138,9 +138,9 @@ export function RadialAxisSettings({ config, onUpdate, chartType, className }: R
       </div>
 
       {/* Angle Lines Section */}
-      <div className="space-y-2">
+      <div className="space-y-0">
         <div
-          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
           onClick={() => setAngleLinesDropdownOpen(!angleLinesDropdownOpen)}
         >
           <div className="w-2 h-2 bg-red-600 rounded-full"></div>
@@ -158,7 +158,7 @@ export function RadialAxisSettings({ config, onUpdate, chartType, className }: R
             </svg>
           </div>
         </div>
-        <div className="bg-red-50 rounded-lg">
+        <div className="bg-red-50 rounded-b-lg border-x border-b border-red-100">
           {angleLinesDropdownOpen && (
             <div className={`px-3 py-3 ${(chartType === 'polarArea' ? config?.angleLines?.display !== true : config?.angleLines?.display === false) ? 'opacity-50 pointer-events-none' : ''}`}>
               <div className="grid grid-cols-2 gap-3">
@@ -189,9 +189,9 @@ export function RadialAxisSettings({ config, onUpdate, chartType, className }: R
       </div>
 
       {/* Point Labels Section */}
-      <div className="space-y-2">
+      <div className="space-y-0">
         <div
-          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
           onClick={() => setLabelsDropdownOpen(!labelsDropdownOpen)}
         >
           <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
@@ -209,7 +209,7 @@ export function RadialAxisSettings({ config, onUpdate, chartType, className }: R
             </svg>
           </div>
         </div>
-        <div className="bg-blue-50 rounded-lg">
+        <div className="bg-blue-50 rounded-b-lg border-x border-b border-blue-100">
           {labelsDropdownOpen && (
             <div className={`px-3 py-3 space-y-3 ${(chartType === 'polarArea' ? config?.pointLabels?.display !== true : config?.pointLabels?.display === false) ? 'opacity-50 pointer-events-none' : ''}`}>
               <div className="grid grid-cols-2 gap-3">
@@ -251,9 +251,9 @@ export function RadialAxisSettings({ config, onUpdate, chartType, className }: R
       </div>
 
       {/* Scale Ticks Section */}
-      <div className="space-y-2">
+      <div className="space-y-0">
         <div
-          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
           onClick={() => setTicksDropdownOpen(!ticksDropdownOpen)}
         >
           <div className="w-2 h-2 bg-orange-600 rounded-full"></div>
@@ -271,7 +271,7 @@ export function RadialAxisSettings({ config, onUpdate, chartType, className }: R
             </svg>
           </div>
         </div>
-        <div className="bg-orange-50 rounded-lg">
+        <div className="bg-orange-50 rounded-b-lg border-x border-b border-orange-100">
           {ticksDropdownOpen && (
             <div className={`px-3 py-3 space-y-3 ${config?.ticks?.display === false ? 'opacity-50 pointer-events-none' : ''}`}>
               {/* Row 0: Show Above Chart and Show Backdrop */}

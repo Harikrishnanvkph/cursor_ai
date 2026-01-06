@@ -126,9 +126,9 @@ export function AxisSettings({ axis, config, onUpdate, className, chartType }: A
             </div>
 
             {/* Title Section */}
-            <div className="space-y-3">
+            <div className="space-y-0">
               <div
-                className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+                className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
                 onClick={() => setTitleDropdownOpen(!titleDropdownOpen)}
               >
                 <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
@@ -167,7 +167,7 @@ export function AxisSettings({ axis, config, onUpdate, className, chartType }: A
 
               {/* Dropdown Content */}
               {titleDropdownOpen && (
-                <div className="bg-blue-50 rounded-lg p-3 space-y-3 relative overflow-hidden max-h-96 overflow-y-auto">
+                <div className="bg-blue-50 rounded-b-lg p-3 space-y-3 relative overflow-hidden max-h-96 overflow-y-auto border-x border-b border-blue-100">
                   {/* Title Text Input */}
                   <div className="space-y-1">
                     <Label className="text-xs font-medium">Text</Label>
@@ -325,9 +325,9 @@ export function AxisSettings({ axis, config, onUpdate, className, chartType }: A
             </div>
 
             {/* Label Appearance Section */}
-            <div className="space-y-3">
+            <div className="space-y-0">
               <div
-                className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+                className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
                 onClick={() => setLabelAppearanceDropdownOpen(!labelAppearanceDropdownOpen)}
               >
                 <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
@@ -359,7 +359,7 @@ export function AxisSettings({ axis, config, onUpdate, className, chartType }: A
 
               {/* Dropdown Content */}
               {labelAppearanceDropdownOpen && (
-                <div className="bg-blue-50 rounded-lg p-3 space-y-3 relative overflow-hidden max-h-96 overflow-y-auto">
+                <div className="bg-blue-50 rounded-b-lg p-3 space-y-3 relative overflow-hidden max-h-96 overflow-y-auto border-x border-b border-blue-100">
                   {/* Color */}
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
@@ -439,9 +439,9 @@ export function AxisSettings({ axis, config, onUpdate, className, chartType }: A
             </div>
 
             {/* Grid Appearance Section */}
-            <div className="space-y-3">
+            <div className="space-y-0">
               <div
-                className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+                className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
                 onClick={() => setGridAppearanceDropdownOpen(!gridAppearanceDropdownOpen)}
               >
                 <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
@@ -473,7 +473,7 @@ export function AxisSettings({ axis, config, onUpdate, className, chartType }: A
 
               {/* Dropdown Content - visible when dropdown is expanded */}
               {gridAppearanceDropdownOpen && (
-                <div className="bg-blue-50 rounded-lg p-3 space-y-3 relative overflow-hidden max-h-96 overflow-y-auto">
+                <div className="bg-blue-50 rounded-b-lg p-3 space-y-3 relative overflow-hidden max-h-96 overflow-y-auto border-x border-b border-blue-100">
                   {/* Color and Ref. Lines - Same Line */}
                   <div className="grid grid-cols-2 gap-3">
                     {/* Color */}
@@ -618,9 +618,9 @@ export function AxisSettings({ axis, config, onUpdate, className, chartType }: A
     <div className="space-y-2 overflow-y-auto overflow-x-hidden h-full pr-0 relative isolate">
       <div className="space-y-2 relative">
         {/* Tick Mark Section */}
-        <div className="space-y-3">
+        <div className="space-y-0">
           <div
-            className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+            className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
             onClick={() => setTickMarkConfigDropdownOpen(!tickMarkConfigDropdownOpen)}
           >
             <div className="w-2 h-2 bg-green-600 rounded-full"></div>
@@ -652,7 +652,7 @@ export function AxisSettings({ axis, config, onUpdate, className, chartType }: A
 
           {/* Dropdown Content */}
           {tickMarkConfigDropdownOpen && (
-            <div className="bg-green-50 rounded-lg p-3 space-y-3 relative overflow-hidden max-h-96 overflow-y-auto">
+            <div className="bg-green-50 rounded-b-lg p-3 space-y-3 relative overflow-hidden max-h-96 overflow-y-auto border-x border-b border-green-100">
               {/* Color */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
@@ -734,9 +734,9 @@ export function AxisSettings({ axis, config, onUpdate, className, chartType }: A
         </div>
 
         {/* Tick Configuration Section */}
-        <div className="space-y-3">
+        <div className="space-y-0">
           <div
-            className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+            className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
             onClick={() => setTickConfigDropdownOpen(!tickConfigDropdownOpen)}
           >
             <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
@@ -759,7 +759,7 @@ export function AxisSettings({ axis, config, onUpdate, className, chartType }: A
 
           {/* Dropdown Content */}
           {tickConfigDropdownOpen && (
-            <div className="bg-purple-50 rounded-lg p-3 space-y-3 relative overflow-hidden">
+            <div className="bg-purple-50 rounded-b-lg p-3 space-y-3 relative overflow-hidden border-x border-b border-purple-100">
               {/* Limits */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
@@ -911,9 +911,9 @@ export function AxisSettings({ axis, config, onUpdate, className, chartType }: A
         </div>
 
         {/* Major Ticks Section */}
-        <div className="space-y-3">
+        <div className="space-y-0">
           <div
-            className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+            className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
             onClick={() => setMajorTicksDropdownOpen(!majorTicksDropdownOpen)}
           >
             <div className="w-2 h-2 bg-orange-600 rounded-full"></div>
@@ -945,7 +945,7 @@ export function AxisSettings({ axis, config, onUpdate, className, chartType }: A
 
           {/* Dropdown Content */}
           {majorTicksDropdownOpen && (
-            <div className="bg-orange-50 rounded-lg p-3 space-y-3 relative overflow-hidden max-h-96 overflow-y-auto">
+            <div className="bg-orange-50 rounded-b-lg p-3 space-y-3 relative overflow-hidden max-h-96 overflow-y-auto border-x border-b border-orange-100">
               {/* Color */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
@@ -1045,9 +1045,9 @@ export function AxisSettings({ axis, config, onUpdate, className, chartType }: A
       )}
 
       {/* Axis Line Section - Dropdown */}
-      <div className="space-y-3">
+      <div className="space-y-0">
         <div
-          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
           onClick={() => setAxisLineDropdownOpen(!axisLineDropdownOpen)}
         >
           <div className="w-2 h-2 bg-orange-600 rounded-full"></div>
@@ -1079,7 +1079,7 @@ export function AxisSettings({ axis, config, onUpdate, className, chartType }: A
 
         {/* Dropdown Content - visible when dropdown is expanded */}
         {axisLineDropdownOpen && (
-          <div className="bg-orange-50 rounded-lg p-3 space-y-3">
+          <div className="bg-orange-50 rounded-b-lg p-3 space-y-3 border-x border-b border-orange-100">
             {/* Color and Width Controls */}
             <div className="grid grid-cols-2 gap-3">
               {/* Color */}
@@ -1127,9 +1127,9 @@ export function AxisSettings({ axis, config, onUpdate, className, chartType }: A
       </div>
 
       {/* Scale Configuration Section - Dropdown */}
-      <div className="space-y-3">
+      <div className="space-y-0">
         <div
-          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
           onClick={() => setScaleConfigDropdownOpen(!scaleConfigDropdownOpen)}
         >
           <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
@@ -1152,7 +1152,7 @@ export function AxisSettings({ axis, config, onUpdate, className, chartType }: A
 
         {/* Dropdown Content */}
         {scaleConfigDropdownOpen && (
-          <div className="bg-purple-50 rounded-lg p-3 space-y-3 relative overflow-hidden">
+          <div className="bg-purple-50 rounded-b-lg p-3 space-y-3 relative overflow-hidden border-x border-b border-purple-100">
             {/* Scale Bounds */}
             <div className="space-y-1">
               <Label className="text-xs font-medium">Scale Bounds</Label>

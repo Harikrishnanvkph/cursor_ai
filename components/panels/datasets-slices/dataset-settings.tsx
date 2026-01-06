@@ -53,6 +53,19 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowRight,
+  Pencil,
+  BarChart3,
+  PieChart,
+  LineChart,
+  ScatterChart,
+  Radar,
+  Activity,
+  CircleDot,
+  Hexagon,
+  ChartBarDecreasing,
+  LifeBuoy,
+  ChartArea,
+  ChartColumnStacked,
 } from "lucide-react"
 import { Slider } from "@/components/ui/slider"
 
@@ -758,103 +771,183 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
         </div>
       )}
 
-      {/* Datasets Management */}
-      <div className="space-y-3">
+      <div className="space-y-0">
+        {/* Datasets Header with Count and Actions */}
         <div
-          className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
-          onClick={() => setDatasetsDropdownOpen(!datasetsDropdownOpen)}
+          className="flex items-center justify-between py-2 px-2 border-b rounded-t hover:bg-gray-50 transition-colors group"
         >
-          <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-          <h3 className="text-[0.80rem] font-semibold text-gray-900">Datasets Management</h3>
-          <div className="ml-auto flex items-center gap-2">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className={`transform transition-transform ${datasetsDropdownOpen ? 'rotate-180' : ''}`}
+          <div
+            className="flex items-center gap-2 flex-1 cursor-pointer"
+            onClick={() => setDatasetsDropdownOpen(!datasetsDropdownOpen)}
+          >
+            <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+            <h3 className="text-[0.80rem] font-semibold text-gray-900">Datasets</h3>
+            <span className="bg-gray-100 text-gray-600 text-[10px] font-medium px-1.5 py-0.5 rounded-full border border-gray-200">
+              {filteredDatasets.length}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={(e) => {
+                e.stopPropagation()
+                handleOpenAddDatasetModal()
+              }}
+              className="h-6 px-2 text-xs bg-white border-green-200 text-green-700 hover:bg-green-50 hover:text-green-800 hover:border-green-300 shadow-sm transition-all"
             >
-              <path d="M6 9L12 15L18 9" />
-            </svg>
-          </div>
-        </div>
-
-        <div className="bg-green-50 rounded-lg p-3 space-y-3">
-          <div className="flex items-center justify-between">
-            <Label className="text-[0.80rem] font-medium text-green-900">
-              {filteredDatasets.length} Dataset{filteredDatasets.length !== 1 ? 's' : ''}
-            </Label>
-            <Button size="sm" onClick={() => handleOpenAddDatasetModal()} className="h-7 text-xs bg-green-600 hover:bg-green-700">
               <Plus className="h-3 w-3 mr-1" />
-              Add Dataset
+              Add
             </Button>
-          </div>
 
-          {datasetsDropdownOpen && (
-            <div className="space-y-2 pt-2 border-t border-green-200 max-h-96 overflow-y-auto">
-              {filteredDatasets.map((dataset, datasetIndex) => (
-                <div
-                  key={datasetIndex}
-                  onClick={() => handleDatasetTileClick(datasetIndex)}
-                  className={`p-3 bg-white rounded-lg border transition-all cursor-pointer ${chartMode === 'single' && datasetIndex === activeDatasetIndex
-                    ? 'border-blue-300 shadow-sm'
-                    : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
-                    }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-4 h-4 rounded"
-                        style={{
-                          backgroundColor: Array.isArray(dataset.backgroundColor)
-                            ? dataset.backgroundColor[0]
-                            : dataset.backgroundColor
-                        }}
-                      />
-                      <Input
-                        value={dataset.label || ''}
-                        onChange={(e) => handleUpdateDataset(datasetIndex, 'label', e.target.value)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="h-7 text-xs font-medium border border-gray-300 px-2 py-1 bg-white hover:border-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
-                        placeholder={`Dataset ${datasetIndex + 1}`}
-                      />
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {chartMode === 'single' && datasetIndex === activeDatasetIndex && (
-                        <span className="w-2 h-2 rounded-full bg-green-500 ml-2 inline-block" title="Active dataset"></span>
-                      )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDeleteClick(datasetIndex)
-                        }}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Dataset visibility toggle */}
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-xs text-gray-600">{dataset.data.length} data points</span>
-                    <div className="flex items-center gap-1">
-                      <Eye className="h-3 w-3 text-gray-400" />
-                      <span className="text-xs text-gray-500">Visible</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <div
+              className="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 cursor-pointer transition-colors"
+              onClick={() => setDatasetsDropdownOpen(!datasetsDropdownOpen)}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={`transform transition-transform duration-200 ${datasetsDropdownOpen ? 'rotate-180' : ''}`}
+              >
+                <path d="M6 9L12 15L18 9" />
+              </svg>
             </div>
-          )}
+          </div>
         </div>
+
+        {datasetsDropdownOpen && (
+          <div className="bg-green-50/50 rounded-b-lg p-3 space-y-2 border-x border-b border-green-100">
+            <div className="max-h-96 overflow-y-auto space-y-2 pr-1">
+              {filteredDatasets.length === 0 ? (
+                <div className="text-center py-4 px-2">
+                  <p className="text-xs text-gray-500 italic">No datasets to display.</p>
+                  <p className="text-[10px] text-gray-400 mt-1">Click "+ Add" to create a new dataset.</p>
+                </div>
+              ) : (
+                filteredDatasets.map((dataset, datasetIndex) => (
+                  <div
+                    key={datasetIndex}
+                    onClick={() => handleActiveDatasetChange(datasetIndex)}
+                    className={`group relative p-3 rounded-lg transition-all cursor-pointer border ${chartMode === 'single' && datasetIndex === activeDatasetIndex
+                      ? 'bg-blue-50/50 border-blue-200 shadow-sm'
+                      : 'bg-white border-transparent hover:border-gray-200 hover:shadow-sm hover:bg-gray-50/50'
+                      }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex-1 flex flex-col gap-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            value={dataset.label || ''}
+                            onChange={(e) => handleUpdateDataset(datasetIndex, 'label', e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="h-6 -ml-2 px-2 text-sm font-medium border-transparent bg-transparent hover:bg-gray-100/50 focus:bg-white focus:border-blue-200 focus:ring-2 focus:ring-blue-100 transition-all rounded shadow-none w-full max-w-[200px]"
+                            placeholder={`Dataset ${datasetIndex + 1}`}
+                          />
+                        </div>
+                        <div className="flex items-center gap-2 text-[10px] text-gray-400 pl-0.5">
+                          {/* Chart Type Label */}
+                          <span className="font-medium text-gray-500">
+                            {(() => {
+                              const type = dataset.chartType || chartType;
+                              const labels: Record<string, string> = {
+                                horizontalBar: 'H. Bar',
+                                stackedBar: 'Stacked Bar',
+                                polarArea: 'Polar Area',
+                              };
+                              return labels[type as string] || type.charAt(0).toUpperCase() + type.slice(1);
+                            })()}
+                          </span>
+                          <span className="w-0.5 h-0.5 rounded-full bg-gray-300"></span>
+
+                          <span>{dataset.data.length} points</span>
+
+                          {/* Status - Visible only for active dataset in Single mode, or all in Grouped mode */}
+                          {(chartMode === 'grouped' || datasetIndex === activeDatasetIndex) && (
+                            <>
+                              <span className="w-0.5 h-0.5 rounded-full bg-gray-300"></span>
+                              <span className={dataset.hidden ? "text-gray-400" : "text-green-600 font-medium"}>
+                                {dataset.hidden ? "Hidden" : "Visible"}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+
+                      <div className="flex items-center gap-1 justify-end min-w-[60px]">
+                        {/* Idle State: Chart Type Icon */}
+                        <div className="group-hover:hidden text-gray-400">
+                          {(() => {
+                            const type = dataset.chartType || chartType;
+                            switch (type) {
+                              case 'horizontalBar':
+                                return <ChartBarDecreasing className="h-4 w-4" />;
+                              case 'bar':
+                                return <BarChart3 className="h-4 w-4" />;
+                              case 'stackedBar':
+                                return <ChartColumnStacked className="h-4 w-4" />;
+                              case 'pie':
+                                return <PieChart className="h-4 w-4" />;
+                              case 'doughnut':
+                                return <LifeBuoy className="h-4 w-4" />;
+                              case 'area':
+                                return <ChartArea className="h-4 w-4" />;
+                              case 'line':
+                                return <LineChart className="h-4 w-4" />;
+                              case 'scatter':
+                              case 'bubble':
+                                return <ScatterChart className="h-4 w-4" />;
+                              case 'radar':
+                                return <Radar className="h-4 w-4" />;
+                              case 'polarArea':
+                                return <CircleDot className="h-4 w-4" />;
+                              default:
+                                return <Activity className="h-4 w-4" />;
+                            }
+                          })()}
+                        </div>
+
+                        {/* Hover State: Action Buttons */}
+                        <div className="hidden group-hover:flex items-center gap-1 animate-in fade-in duration-200">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDatasetTileClick(datasetIndex)
+                            }}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDeleteClick(datasetIndex)
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
       </div>
       {/* Enhanced Add Dataset Modal */}
       <Dialog open={showAddDatasetModal} onOpenChange={setShowAddDatasetModal}>

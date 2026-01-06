@@ -40,9 +40,9 @@ export function ArcSettings({ chartType, options, onUpdate }: ArcSettingsProps) 
     return (
         <div className="space-y-4">
             {/* General Arc Settings */}
-            <div className="space-y-3">
+            <div className="space-y-0">
                 <div
-                    className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+                    className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
                     onClick={() => setGeneralOpen(!generalOpen)}
                 >
                     <div className="w-2 h-2 bg-orange-600 rounded-full"></div>
@@ -55,7 +55,7 @@ export function ArcSettings({ chartType, options, onUpdate }: ArcSettingsProps) 
                 </div>
 
                 {generalOpen && (
-                    <div className="bg-orange-50 rounded-lg p-3 space-y-4">
+                    <div className="bg-orange-50 rounded-b-lg border-x border-b border-orange-100 p-3 space-y-4">
                         {/* Cutout (Doughnut hole size) */}
                         {isPieOrDoughnut && (
                             <div className="space-y-2">
@@ -129,9 +129,9 @@ export function ArcSettings({ chartType, options, onUpdate }: ArcSettingsProps) 
             </div>
 
             {/* Border Settings */}
-            <div className="space-y-3">
+            <div className="space-y-0">
                 <div
-                    className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+                    className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
                     onClick={() => setBorderOpen(!borderOpen)}
                 >
                     <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
@@ -144,7 +144,7 @@ export function ArcSettings({ chartType, options, onUpdate }: ArcSettingsProps) 
                 </div>
 
                 {borderOpen && (
-                    <div className="bg-blue-50 rounded-lg p-3 space-y-4">
+                    <div className="bg-blue-50 rounded-b-lg border-x border-b border-blue-100 p-3 space-y-4">
                         {/* Border Radius */}
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
@@ -199,9 +199,9 @@ export function ArcSettings({ chartType, options, onUpdate }: ArcSettingsProps) 
             </div>
 
             {/* Hover Effects */}
-            <div className="space-y-3">
+            <div className="space-y-0">
                 <div
-                    className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
+                    className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
                     onClick={() => setHoverOpen(!hoverOpen)}
                 >
                     <div className="w-2 h-2 bg-pink-600 rounded-full"></div>
@@ -214,7 +214,7 @@ export function ArcSettings({ chartType, options, onUpdate }: ArcSettingsProps) 
                 </div>
 
                 {hoverOpen && (
-                    <div className="bg-pink-50 rounded-lg p-3 space-y-4">
+                    <div className="bg-pink-50 rounded-b-lg border-x border-b border-pink-100 p-3 space-y-4">
                         {/* Hover Offset */}
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
