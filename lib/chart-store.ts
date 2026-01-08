@@ -110,6 +110,27 @@ interface PointImageConfig {
   [key: string]: any              // Additional config properties
 }
 
+// Chart Group for organizing datasets in Grouped Mode
+export interface ChartGroup {
+  id: string;                                      // Unique identifier
+  name: string;                                    // Display name
+  category: 'categorical' | 'coordinate' | null;  // null = not yet determined (lazy init)
+  uniformityMode: 'uniform' | 'mixed';
+  baseChartType?: SupportedChartType;              // For uniform groups, the locked type
+  isDefault?: boolean;                             // If true, cannot be deleted/renamed
+  createdAt: number;
+}
+
+// Default group that always exists
+export const DEFAULT_GROUP: ChartGroup = {
+  id: 'default',
+  name: 'Default',
+  category: null,
+  uniformityMode: 'uniform',
+  isDefault: true,
+  createdAt: 0
+};
+
 interface CustomDatasetProperties {
   datasetColorMode?: 'single' | 'slice'
   color?: string
@@ -127,6 +148,7 @@ interface CustomDatasetProperties {
     fill?: boolean
   }
   mode?: ChartMode  // Track whether dataset belongs to single or grouped mode
+  groupId?: string  // Associates dataset with a specific group in grouped mode
   sliceLabels?: string[] // Per-dataset slice names
   chartType?: SupportedChartType // Chart type for this specific dataset (used in mixed mode)
 }
@@ -229,11 +251,20 @@ interface ChartStore {
   chartConfig: ExtendedChartOptions;
   chartMode: ChartMode;
   activeDatasetIndex: number;
+  lastSingleModeActiveIndex?: number;
   // Add separate storage for each mode's datasets
   singleModeData: ExtendedChartData;
   groupedModeData: ExtendedChartData;
   // Add uniformity mode for grouped charts
   uniformityMode: 'uniform' | 'mixed';
+  // Groups for organizing datasets in Grouped Mode
+  groups: ChartGroup[];
+  activeGroupId: string;  // Always has a value (at least 'default')
+  // Group management actions
+  addGroup: (group: Omit<ChartGroup, 'id' | 'createdAt'>) => string;
+  updateGroup: (id: string, updates: Partial<ChartGroup>) => void;
+  deleteGroup: (id: string) => void;
+  setActiveGroup: (id: string) => void;
   legendFilter: {
     datasets: Record<number, boolean>;
     slices: Record<number, boolean>;
@@ -272,7 +303,7 @@ interface ChartStore {
   toggleShowImages: () => void;
   toggleShowLabels: () => void;
   toggleShowLegend: () => void;
-  setFullChart: (chart: { chartType: SupportedChartType; chartData: ExtendedChartData; chartConfig: ExtendedChartOptions; id?: string }) => void;
+  setFullChart: (chart: { chartType: SupportedChartType; chartData: ExtendedChartData; chartConfig: ExtendedChartOptions; id?: string; name?: string }) => void;
   setHasJSON: (value: boolean) => void;
   // Overlay actions
   addOverlayImage: (image: Omit<OverlayImage, 'id'>) => void;
@@ -323,6 +354,7 @@ const defaultChartData = {
         { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
         { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
       ],
+      chartType: "bar", // Store the chartType this dataset was created with
     },
   ],
 }
@@ -2198,6 +2230,71 @@ export const useChartStore = create<ChartStore>()(
       groupedModeData: emptyChartData,
       // Add uniformity mode for grouped charts
       uniformityMode: 'uniform',
+      // Groups for organizing datasets in Grouped Mode
+      groups: [DEFAULT_GROUP],
+      activeGroupId: 'default',
+
+      // Group management actions
+      addGroup: (group) => {
+        const newGroup: ChartGroup = {
+          ...group,
+          id: `group_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          createdAt: Date.now()
+        };
+        set((state) => ({
+          groups: [...state.groups, newGroup],
+          activeGroupId: newGroup.id
+        }));
+        return newGroup.id;
+      },
+
+      updateGroup: (id, updates) => {
+        set((state) => {
+          const group = state.groups.find(g => g.id === id);
+          // Prevent renaming or modifying isDefault status of default group
+          if (group?.isDefault && (updates.name !== undefined || updates.isDefault !== undefined)) {
+            return state;
+          }
+          return {
+            groups: state.groups.map(g => g.id === id ? { ...g, ...updates } : g)
+          };
+        });
+      },
+
+      deleteGroup: (id) => {
+        const state = get();
+        const group = state.groups.find(g => g.id === id);
+
+        // Prevent deletion of default group
+        if (group?.isDefault) {
+          return;
+        }
+
+        // Delete datasets that belong to this group
+        const updatedDatasets = state.chartData.datasets.filter(dataset => dataset.groupId !== id);
+
+        set({
+          groups: state.groups.filter(g => g.id !== id),
+          activeGroupId: state.activeGroupId === id ? 'default' : state.activeGroupId,
+          chartData: { ...state.chartData, datasets: updatedDatasets }
+        });
+      },
+
+      setActiveGroup: (id) => {
+        const state = get();
+        const group = state.groups.find(g => g.id === id);
+        if (group) {
+          // Update global chartType to match the group's baseChartType
+          // This ensures the chart renders correctly for this group
+          const updates: any = { activeGroupId: id };
+
+          if (group.baseChartType) {
+            updates.chartType = group.baseChartType;
+          }
+
+          set(updates);
+        }
+      },
       legendFilter: { datasets: {}, slices: {} },
       fillArea: true,
       showBorder: true,
@@ -2358,9 +2455,9 @@ export const useChartStore = create<ChartStore>()(
             newDataset.type = type as keyof ChartTypeRegistry; // Covers 'line', 'scatter', 'bubble', 'pie', etc.
           }
 
-          // IMPORTANT: Also update the dataset's chartType property
-          // This ensures the chart_generator uses the correct type in single mode
-          newDataset.chartType = type;
+          // IMPORTANT: Do NOT update the dataset's chartType property here.
+          // The dataset's chartType should preserve the original type it was created with.
+          // The GLOBAL chartType determines how the chart renders, not the dataset's chartType.
 
           // Apply default tension for line and area charts if not already set
           if (type === 'line' || type === 'area') {
@@ -2567,9 +2664,40 @@ export const useChartStore = create<ChartStore>()(
         return newState;
       }),
       addDataset: (dataset) => set((state) => {
+        // For grouped mode, assign the dataset to the active group
+        let finalDataset = { ...dataset };
+        let updatedGroups = state.groups;
+        let newChartType = state.chartType; // Track if we need to update global chartType
+
+        if (state.chartMode === 'grouped') {
+          finalDataset.groupId = state.activeGroupId;
+
+          // If this is the first dataset in the group, set the group's category AND update global chartType
+          const activeGroup = state.groups.find(g => g.id === state.activeGroupId);
+          const datasetsInGroup = state.chartData.datasets.filter(d => d.groupId === state.activeGroupId);
+
+          if (activeGroup && activeGroup.category === null && datasetsInGroup.length === 0) {
+            // Determine category from dataset's chart type
+            const coordinateTypes = ['scatter', 'bubble'];
+            const datasetChartType = finalDataset.chartType || state.chartType;
+            const category = coordinateTypes.includes(datasetChartType) ? 'coordinate' : 'categorical';
+
+            updatedGroups = state.groups.map(g =>
+              g.id === state.activeGroupId
+                ? { ...g, category, baseChartType: datasetChartType }
+                : g
+            );
+
+            // Update global chartType to match the first dataset's type
+            if (finalDataset.chartType) {
+              newChartType = finalDataset.chartType;
+            }
+          }
+        }
+
         const newChartData = {
           ...state.chartData,
-          datasets: [...state.chartData.datasets, dataset],
+          datasets: [...state.chartData.datasets, finalDataset],
         };
 
         // Update the appropriate mode-specific storage
@@ -2577,18 +2705,50 @@ export const useChartStore = create<ChartStore>()(
           ? { singleModeData: newChartData }
           : { groupedModeData: newChartData };
 
+        // Single Mode Logic: Set new dataset as active and update chart type
+        let newActiveDatasetIndex = state.activeDatasetIndex;
+        if (state.chartMode === 'single') {
+          newActiveDatasetIndex = newChartData.datasets.length - 1;
+          if (finalDataset.chartType) {
+            newChartType = finalDataset.chartType;
+          }
+        }
+
         return {
+          chartType: newChartType,
           chartData: newChartData,
+          groups: updatedGroups,
+          activeDatasetIndex: newActiveDatasetIndex,
           ...modeDataUpdate,
           // Set hasJSON to true when dataset is added
           hasJSON: true,
         };
       }),
       removeDataset: (index) => set((state) => {
+        const datasetToRemove = state.chartData.datasets[index];
+        const groupId = datasetToRemove?.groupId;
+
+        const newDatasets = state.chartData.datasets.filter((_, i) => i !== index);
+
         const newChartData = {
           ...state.chartData,
-          datasets: state.chartData.datasets.filter((_, i) => i !== index),
+          datasets: newDatasets,
         };
+
+        // Check if the group is now empty and reset its category
+        let updatedGroups = state.groups;
+        if (state.chartMode === 'grouped' && groupId) {
+          const datasetsRemainingInGroup = newDatasets.filter(d => d.groupId === groupId);
+
+          if (datasetsRemainingInGroup.length === 0) {
+            // Group is empty, reset category so it can be re-determined later
+            updatedGroups = state.groups.map(g =>
+              g.id === groupId
+                ? { ...g, category: null, baseChartType: undefined }
+                : g
+            );
+          }
+        }
 
         // Update the appropriate mode-specific storage
         const modeDataUpdate = state.chartMode === 'single'
@@ -2597,6 +2757,7 @@ export const useChartStore = create<ChartStore>()(
 
         return {
           chartData: newChartData,
+          groups: updatedGroups,
           ...modeDataUpdate,
         };
       }),
@@ -2943,8 +3104,6 @@ export const useChartStore = create<ChartStore>()(
         };
       }),
       resetChart: () => set((state) => {
-        const modeDefaultData = getDefaultDataForMode(state.chartMode);
-
         // Create new config for bar chart
         let newConfig = getDefaultConfigForType('bar');
 
@@ -2969,16 +3128,29 @@ export const useChartStore = create<ChartStore>()(
           }
         }
 
-        // Update the appropriate mode-specific storage
-        const modeDataUpdate = state.chartMode === 'single'
-          ? { singleModeData: modeDefaultData }
-          : { groupedModeData: modeDefaultData };
-
         return {
           chartType: 'bar',
-          chartData: modeDefaultData,
+          chartData: singleModeDefaultData, // Default to single mode data
           chartConfig: newConfig,
-          ...modeDataUpdate,
+
+          // Full Reset of All Modes
+          singleModeData: singleModeDefaultData,
+          groupedModeData: groupedModeDefaultData,
+
+          // Reset Grouping
+          groups: [DEFAULT_GROUP],
+          activeGroupId: 'default',
+
+          // Reset UI State
+          chartMode: 'single',
+          activeDatasetIndex: 0,
+          uniformityMode: 'uniform',
+          hasJSON: false,
+
+          // Reset Toggles
+          fillArea: true,
+          showBorder: true,
+
           // Clear chart type transition backups
           categoricalDataBackup: null,
           scatterBubbleDataBackup: null,
@@ -2987,11 +3159,16 @@ export const useChartStore = create<ChartStore>()(
       setChartMode: (mode) => set((state) => {
         // Save current mode's data before switching
         const currentModeData = state.chartData;
-        if (state.chartMode === 'single') {
-          state.singleModeData = currentModeData;
-        } else {
-          state.groupedModeData = currentModeData;
-        }
+
+        // Persist single mode index if currently in single mode
+        const lastSingleIndex = state.chartMode === 'single'
+          ? state.activeDatasetIndex
+          : state.lastSingleModeActiveIndex;
+
+        // Define backup updates
+        const backupUpdates = state.chartMode === 'single'
+          ? { singleModeData: currentModeData, lastSingleModeActiveIndex: lastSingleIndex }
+          : { groupedModeData: currentModeData };
 
         // Get the data for the target mode (either saved data or default)
         let targetModeData: ExtendedChartData;
@@ -3001,11 +3178,51 @@ export const useChartStore = create<ChartStore>()(
           targetModeData = state.groupedModeData;
         }
 
+        // Determine new active dataset index
+        let newActiveDatasetIndex = 0;
+        if (mode === 'single') {
+          // Restore last active index if valid
+          if (lastSingleIndex !== undefined && targetModeData.datasets.length > lastSingleIndex) {
+            newActiveDatasetIndex = lastSingleIndex;
+          }
+        }
+
+        // Infer Chart Type
+        let newChartType = state.chartType;
+
+        if (mode === 'grouped') {
+          // In Grouped Mode, we MUST prioritize the active group's chart type
+          const activeGroup = state.groups.find(g => g.id === state.activeGroupId);
+
+          if (activeGroup && activeGroup.baseChartType) {
+            // 1. Prefer Active Group's base type
+            newChartType = activeGroup.baseChartType;
+          } else if (activeGroup && targetModeData.datasets) {
+            // 2. If no base type, look for datasets in this specific group
+            const groupDatasets = targetModeData.datasets.filter(d => d.groupId === state.activeGroupId);
+            if (groupDatasets.length > 0 && groupDatasets[0].chartType) {
+              newChartType = groupDatasets[0].chartType;
+            } else if (targetModeData.datasets.length > 0) {
+              // 3. Fallback to first dataset in list
+              newChartType = targetModeData.datasets[0].chartType || 'bar';
+            }
+          }
+        } else {
+          // Single Mode: Use the restored active dataset's type
+          if (targetModeData.datasets && targetModeData.datasets.length > 0) {
+            newChartType = targetModeData.datasets[newActiveDatasetIndex].chartType || 'bar';
+          } else {
+            newChartType = 'bar';
+          }
+        }
+
         return {
           chartMode: mode,
           chartData: targetModeData,
-          activeDatasetIndex: 0,
+          chartType: newChartType,
+          activeDatasetIndex: newActiveDatasetIndex,
           // Update the mode-specific storage
+          ...backupUpdates,
           ...(mode === 'single' ? { singleModeData: targetModeData } : { groupedModeData: targetModeData }),
         };
       }),
@@ -3295,10 +3512,10 @@ export const useChartStore = create<ChartStore>()(
 
         return { chartConfig: newChartConfig };
       }),
-      setFullChart: ({ chartType, chartData, chartConfig, id }) => set((state) => {
+      setFullChart: ({ chartType, chartData, chartConfig, id, name }) => set((state) => {
         // Process datasets to ensure they have mode property set
         const datasetCount = chartData.datasets?.length || 0;
-        const processedDatasets = chartData.datasets?.map((ds: any) => {
+        let processedDatasets = chartData.datasets?.map((ds: any) => {
           // If dataset already has mode set, keep it
           if (ds.mode === 'grouped' || ds.mode === 'single') {
             return ds;
@@ -3309,9 +3526,71 @@ export const useChartStore = create<ChartStore>()(
           return { ...ds, mode: inferredMode };
         }) || [];
 
+        // Create a temporary group for loaded grouped datasets
+        // This prevents conflicts with existing datasets in Default group
+        let updatedGroups = state.groups;
+        let newActiveGroupId = state.activeGroupId;
+
+        const hasGroupedDatasets = processedDatasets.some(ds => ds.mode === 'grouped');
+
+        if (hasGroupedDatasets && datasetCount > 0) {
+          // Generate temp group ID: chart name prefix (4 chars) + random (6 chars) = max 10 chars
+          // Clean the name: remove spaces/special chars, take first 4 chars
+          const cleanName = (name || chartType || 'load')
+            .replace(/[^a-zA-Z0-9]/g, '')
+            .slice(0, 4)
+            .toLowerCase();
+          const random = Math.random().toString(36).substr(2, 6);
+          const tempGroupId = `${cleanName}${random}`.slice(0, 10);
+
+          // Determine category from first dataset's chart type
+          const coordinateTypes = ['scatter', 'bubble'];
+          const firstDatasetChartType = processedDatasets[0]?.chartType || chartType;
+          const category = coordinateTypes.includes(firstDatasetChartType) ? 'coordinate' : 'categorical';
+
+          // Create the temporary group with display name from chart
+          const displayName = name || `Loaded: ${chartType || 'Chart'}`;
+          const tempGroup: ChartGroup = {
+            id: tempGroupId,
+            name: displayName,
+            category,
+            uniformityMode: 'uniform',
+            baseChartType: chartType as SupportedChartType,
+            isDefault: false,
+            createdAt: Date.now()
+          };
+
+          // Check if this temp group ID already exists (unlikely but safe)
+          const groupExists = state.groups.some(g => g.id === tempGroupId);
+          if (!groupExists) {
+            updatedGroups = [...state.groups, tempGroup];
+          }
+
+          // Assign all grouped datasets to this temp group
+          processedDatasets = processedDatasets.map(ds => {
+            if (ds.mode === 'grouped') {
+              return { ...ds, groupId: tempGroupId };
+            }
+            return ds;
+          });
+
+          // Set this temp group as active
+          newActiveGroupId = tempGroupId;
+
+          // IMPORTANT: When loading a cloud chart with temp group, PRESERVE existing datasets
+          // from other groups. Only add the new datasets to the temp group.
+          const existingDatasetsFromOtherGroups = state.chartData.datasets.filter(ds =>
+            ds.groupId !== tempGroupId // Keep datasets from other groups
+          );
+
+          // Merge: existing datasets from other groups + new datasets in temp group
+          processedDatasets = [...existingDatasetsFromOtherGroups, ...processedDatasets];
+        }
+
         // Create processed chart data with mode properties set
         const processedChartData = {
           ...chartData,
+          labels: chartData.labels || state.chartData.labels, // Preserve labels if not provided
           datasets: processedDatasets
         };
 
@@ -3329,7 +3608,7 @@ export const useChartStore = create<ChartStore>()(
         }
 
         // Determine the mode based on the processed datasets
-        const hasGroupedDatasets = processedDatasets.some(ds => ds.mode === 'grouped');
+        // Note: hasGroupedDatasets is already declared above
         const hasSingleDatasets = processedDatasets.some(ds => ds.mode === 'single');
 
         let newMode = state.chartMode;
@@ -3379,6 +3658,8 @@ export const useChartStore = create<ChartStore>()(
           chartMode: newMode,
           singleModeData: newSingleModeData,
           groupedModeData: newGroupedModeData,
+          groups: updatedGroups,
+          activeGroupId: newActiveGroupId,
           activeDatasetIndex: 0, // Reset to first dataset
           // Only override snapshot ID if a new one is explicitly provided.
           // This preserves the currently loaded snapshot when we just tweak the chart.
@@ -3784,6 +4065,69 @@ export const useChartStore = create<ChartStore>()(
         });
       },
 
+      // Group Management Actions
+      addGroup: (groupData) => {
+        const id = Math.random().toString(36).substr(2, 9);
+        const newGroup = { ...groupData, id, createdAt: Date.now() } as ChartGroup;
+        set((state) => ({
+          groups: [...state.groups, newGroup],
+          activeGroupId: id
+        }));
+        return id;
+      },
+
+      updateGroup: (id, updates) => set((state) => ({
+        groups: state.groups.map(g => g.id === id ? { ...g, ...updates } : g)
+      })),
+
+      deleteGroup: (id) => set((state) => {
+        if (id === 'default') return state;
+        const newGroups = state.groups.filter(g => g.id !== id);
+
+        let newActiveId = state.activeGroupId;
+        let newChartType = state.chartType;
+
+        // If active group is deleted, switch to default or first available
+        if (state.activeGroupId === id) {
+          newActiveId = newGroups[0]?.id || 'default';
+
+          // Sync chart type with the new active group
+          // We need to look up the group in the new list
+          const newActiveGroup = newGroups.find(g => g.id === newActiveId);
+          if (newActiveGroup) {
+            if (newActiveGroup.baseChartType) {
+              newChartType = newActiveGroup.baseChartType;
+            } else if (state.groupedModeData.datasets) {
+              // If no base type, check for datasets in this group
+              const groupDatasets = state.groupedModeData.datasets.filter(d => d.groupId === newActiveId);
+              if (groupDatasets.length > 0 && groupDatasets[0].chartType) {
+                newChartType = groupDatasets[0].chartType;
+              }
+            }
+          }
+        }
+
+        return {
+          groups: newGroups,
+          activeGroupId: newActiveId,
+          chartType: newChartType
+        };
+      }),
+
+      setActiveGroup: (id) => set((state) => {
+        const group = state.groups.find(g => g.id === id);
+        let newChartType = state.chartType;
+
+        if (group && group.baseChartType) {
+          newChartType = group.baseChartType;
+        }
+
+        return {
+          activeGroupId: id,
+          chartType: newChartType
+        };
+      }),
+
       resetDatasetOperations: (index) => {
         get().restoreDatasetState(index);
       },
@@ -3796,18 +4140,33 @@ export const useChartStore = create<ChartStore>()(
         }
         return 'chart-store-anonymous';
       })(),
-      version: 1,
+      version: 3,
       migrate: (persistedState: any, version: number) => {
         if (version === 0) {
+          // Migrate datasets to have chartType if missing
+          const globalChartType = persistedState.chartType || 'bar';
+          const migrateDatasets = (data: any) => {
+            if (data?.datasets) {
+              return {
+                ...data,
+                datasets: data.datasets.map((ds: any) => ({
+                  ...ds,
+                  chartType: ds.chartType || globalChartType, // Set chartType if missing
+                })),
+              };
+            }
+            return data;
+          };
+
           return {
             ...persistedState,
-            chartType: persistedState.chartType || 'bar',
-            chartData: persistedState.chartData || singleModeDefaultData,
+            chartType: globalChartType,
+            chartData: migrateDatasets(persistedState.chartData) || singleModeDefaultData,
             chartConfig: persistedState.chartConfig || getDefaultConfigForType('bar'),
             chartMode: persistedState.chartMode || 'single',
             activeDatasetIndex: persistedState.activeDatasetIndex || 0,
-            singleModeData: persistedState.singleModeData || singleModeDefaultData,
-            groupedModeData: persistedState.groupedModeData || groupedModeDefaultData,
+            singleModeData: migrateDatasets(persistedState.singleModeData) || singleModeDefaultData,
+            groupedModeData: migrateDatasets(persistedState.groupedModeData) || groupedModeDefaultData,
             uniformityMode: persistedState.uniformityMode || 'uniform',
             legendFilter: persistedState.legendFilter || { datasets: {}, slices: {} },
             fillArea: persistedState.fillArea ?? true,
@@ -3816,6 +4175,43 @@ export const useChartStore = create<ChartStore>()(
             overlayImages: persistedState.overlayImages || [],
             overlayTexts: persistedState.overlayTexts || [],
             selectedImageId: null, // Don't persist selection state
+            // Add groups defaults
+            groups: persistedState.groups || [DEFAULT_GROUP],
+            activeGroupId: persistedState.activeGroupId || 'default',
+          };
+        }
+        // Migration for version 1 -> 2: Add chartType to datasets that don't have it
+        if (version === 1) {
+          const globalChartType = persistedState.chartType || 'bar';
+          const migrateDatasets = (data: any) => {
+            if (data?.datasets) {
+              return {
+                ...data,
+                datasets: data.datasets.map((ds: any) => ({
+                  ...ds,
+                  chartType: ds.chartType || globalChartType,
+                })),
+              };
+            }
+            return data;
+          };
+
+          return {
+            ...persistedState,
+            chartData: migrateDatasets(persistedState.chartData),
+            singleModeData: migrateDatasets(persistedState.singleModeData),
+            groupedModeData: migrateDatasets(persistedState.groupedModeData),
+            // Add groups defaults
+            groups: persistedState.groups || [DEFAULT_GROUP],
+            activeGroupId: persistedState.activeGroupId || 'default',
+          };
+        }
+        // Migration for version 2 -> 3: Add groups and activeGroupId
+        if (version === 2) {
+          return {
+            ...persistedState,
+            groups: persistedState.groups || [DEFAULT_GROUP],
+            activeGroupId: persistedState.activeGroupId || 'default',
           };
         }
         return persistedState;
@@ -3837,6 +4233,9 @@ export const useChartStore = create<ChartStore>()(
         overlayTexts: state.overlayTexts,
         selectedImageId: state.selectedImageId,
         originalCloudDimensions: state.originalCloudDimensions,
+        // Group management state
+        groups: state.groups,
+        activeGroupId: state.activeGroupId,
       }),
     }
   )

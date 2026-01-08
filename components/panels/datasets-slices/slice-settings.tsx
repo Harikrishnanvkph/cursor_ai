@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog"
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogFooter } from "@/components/ui/dialog"
 import { useState, useRef, useEffect } from "react"
 import { useChartStore, getDefaultImageType, getDefaultImageSize, getImageOptionsForChartType, getDefaultImageConfig, type ExtendedChartDataset } from "@/lib/chart-store"
 import { toast } from "sonner"
@@ -1817,75 +1817,96 @@ export function SliceSettings({ className }: SliceSettingsProps) {
 
       {/* Full Edit Modal for Single mode */}
       <Dialog open={showFullEditModal} onOpenChange={setShowFullEditModal}>
-        <DialogContent className="max-w-3xl w-full">
-          <DialogHeader>
-            <DialogTitle>
+        <DialogContent className="max-w-3xl w-full max-h-[80vh] flex flex-col p-0 gap-0">
+          {/* Compact Header */}
+          <DialogHeader className="px-4 py-3 border-b bg-gray-50/50">
+            <DialogTitle className="text-base font-semibold">
               {chartType === 'scatter' || chartType === 'bubble'
-                ? `Edit Coordinate Data (${chartType === 'bubble' ? 'Bubble' : 'Scatter'})`
-                : 'Full Edit (Single Dataset)'}
+                ? `Edit Points (${chartType === 'bubble' ? 'Bubble' : 'Scatter'})`
+                : 'Edit Data Points'}
             </DialogTitle>
           </DialogHeader>
-          <div className="overflow-auto max-h-[60vh] space-y-2">
+
+          {/* Header Row Labels */}
+          <div className={`grid gap-1.5 items-center px-4 py-2 bg-gray-50 border-b text-[10px] font-medium text-gray-500 ${chartType === 'scatter' || chartType === 'bubble' ? (chartType === 'bubble' ? 'grid-cols-12' : 'grid-cols-10') : 'grid-cols-12'}`}>
+            {chartType === 'scatter' || chartType === 'bubble' ? (
+              <>
+                <div className="col-span-3">Label</div>
+                <div className="col-span-2">X</div>
+                <div className="col-span-2">Y</div>
+                {chartType === 'bubble' && <div className="col-span-2">Size (R)</div>}
+                <div className="col-span-3">Color</div>
+              </>
+            ) : (
+              <>
+                <div className="col-span-4">Name</div>
+                <div className="col-span-2">Value</div>
+                <div className="col-span-3">Color</div>
+                <div className="col-span-3">Image</div>
+              </>
+            )}
+          </div>
+
+          {/* Compact Scrollable Rows */}
+          <div className="flex-1 overflow-auto px-4 py-2 space-y-1.5">
             {chartMode === 'single' && fullEditRows.map((row, i) => {
               const isCoordinateChart = chartType === 'scatter' || chartType === 'bubble'
 
               if (isCoordinateChart) {
                 // Coordinate chart UI (X, Y, R for bubble)
                 return (
-                  <div key={i} className={`grid gap-2 items-center p-2 border rounded ${chartType === 'bubble' ? 'grid-cols-12' : 'grid-cols-10'}`}>
+                  <div key={i} className={`grid gap-1.5 items-center py-1.5 px-2 border border-gray-100 rounded-md bg-white hover:border-gray-200 transition-colors ${chartType === 'bubble' ? 'grid-cols-12' : 'grid-cols-10'}`}>
                     <div className="col-span-3">
-                      <Label className="text-xs">Label</Label>
                       <Input
                         value={row.label}
                         onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, label: e.target.value } : r))}
-                        className="h-8 text-xs"
+                        className="h-7 text-xs"
                         placeholder={`Point ${i + 1}`}
                       />
                     </div>
                     <div className="col-span-2">
-                      <Label className="text-xs">X</Label>
                       <Input
                         type="number"
                         value={row.x ?? 0}
                         onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, x: Number(e.target.value) } : r))}
-                        className="h-8 text-xs"
+                        className="h-7 text-xs"
+                        placeholder="X"
                         step="0.1"
                       />
                     </div>
                     <div className="col-span-2">
-                      <Label className="text-xs">Y</Label>
                       <Input
                         type="number"
                         value={row.y ?? 0}
                         onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, y: Number(e.target.value) } : r))}
-                        className="h-8 text-xs"
+                        className="h-7 text-xs"
+                        placeholder="Y"
                         step="0.1"
                       />
                     </div>
                     {chartType === 'bubble' && (
                       <div className="col-span-2">
-                        <Label className="text-xs">Size (R)</Label>
                         <Input
                           type="number"
                           value={row.r ?? 10}
                           onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, r: Number(e.target.value) } : r))}
-                          className="h-8 text-xs"
+                          className="h-7 text-xs"
+                          placeholder="R"
                           min="1"
                           step="1"
                         />
                       </div>
                     )}
                     <div className="col-span-3">
-                      <Label className="text-xs">Color</Label>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         <input
                           type="color"
-                          className="w-10 h-8 p-0 border-0 bg-transparent cursor-pointer"
+                          className="w-7 h-7 p-0 border border-gray-200 rounded cursor-pointer"
                           value={row.color}
                           onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, color: e.target.value } : r))}
                         />
                         <Input
-                          className="h-8 text-xs w-20"
+                          className="h-7 text-xs flex-1"
                           value={row.color}
                           onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, color: e.target.value } : r))}
                         />
@@ -1896,38 +1917,36 @@ export function SliceSettings({ className }: SliceSettingsProps) {
               } else {
                 // Categorical chart UI (Name, Value, Color, Image)
                 return (
-                  <div key={i} className="grid grid-cols-12 gap-2 items-center p-2 border rounded">
+                  <div key={i} className="grid grid-cols-12 gap-1.5 items-center py-1.5 px-2 border border-gray-100 rounded-md bg-white hover:border-gray-200 transition-colors">
                     <div className="col-span-4">
-                      <Label className="text-xs">Name</Label>
                       <Input
                         value={row.label}
                         onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, label: e.target.value } : r))}
-                        className="h-8 text-xs"
+                        className="h-7 text-xs"
+                        placeholder={`Slice ${i + 1}`}
                       />
                     </div>
                     <div className="col-span-2">
-                      <Label className="text-xs">Value</Label>
                       <Input
                         type="number"
                         value={row.value}
                         onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, value: Number(e.target.value) } : r))}
-                        className="h-8 text-xs"
+                        className="h-7 text-xs"
+                        placeholder="Value"
                       />
                     </div>
                     <div className="col-span-3">
-                      <Label className="text-xs">Color</Label>
-                      <div className="flex items-center gap-2">
-                        <input type="color" className="w-10 h-8 p-0 border-0 bg-transparent" value={row.color} onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, color: e.target.value } : r))} />
-                        <Input className="h-8 text-xs w-24" value={row.color} onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, color: e.target.value } : r))} />
+                      <div className="flex items-center gap-1.5">
+                        <input type="color" className="w-7 h-7 p-0 border border-gray-200 rounded cursor-pointer" value={row.color} onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, color: e.target.value } : r))} />
+                        <Input className="h-7 text-xs flex-1" value={row.color} onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, color: e.target.value } : r))} />
                       </div>
                     </div>
                     <div className="col-span-3">
-                      <Label className="text-xs">Image</Label>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-8 text-xs"
+                          className="h-7 text-xs flex-1 border-dashed"
                           onClick={async () => {
                             const input = document.createElement('input')
                             input.type = 'file'
@@ -2007,12 +2026,12 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                         </Button>
                         {!!fullEditRows[i]?.imageUrl && (
                           <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 text-xs"
+                            variant="default" // Using default variant here for visibility
+                            size="icon"
+                            className="h-7 w-7 text-xs bg-red-50 text-red-600 hover:bg-red-100 border border-red-200"
                             onClick={() => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, imageUrl: null } : r))}
                           >
-                            Remove
+                            <Trash2 className="h-3 w-3" />
                           </Button>
                         )}
                       </div>
@@ -2022,11 +2041,42 @@ export function SliceSettings({ className }: SliceSettingsProps) {
               }
             })}
           </div>
-          <div className="flex justify-end gap-2">
+          {/* Compact Footer */}
+          <DialogFooter className="px-4 py-3 border-t bg-gray-50/50 gap-2 sm:gap-0">
+            <div className="flex-1 flex justify-start">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50 h-8 text-xs"
+                onClick={() => {
+                  const isCoordinateChart = chartType === 'scatter' || chartType === 'bubble'
+                  const newRow = isCoordinateChart ? {
+                    label: `Point ${fullEditRows.length + 1}`,
+                    value: 0,
+                    x: 0,
+                    y: 0,
+                    r: chartType === 'bubble' ? 10 : undefined,
+                    color: globalColor,
+                    imageUrl: null
+                  } : {
+                    label: `Slice ${fullEditRows.length + 1}`,
+                    value: 0,
+                    color: globalColor,
+                    imageUrl: null
+                  }
+                  setFullEditRows([...fullEditRows, newRow])
+                }}
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add Point
+              </Button>
+            </div>
             <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button variant="ghost" size="sm" className="h-8">Cancel</Button>
             </DialogClose>
             <Button
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white h-8 min-w-[80px]"
               onClick={() => {
                 if (!currentDataset) return
                 const datasetIndex = chartData.datasets.findIndex(ds => ds === currentDataset)
@@ -2068,9 +2118,9 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                 setShowFullEditModal(false)
               }}
             >
-              Save
+              Save Changes
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

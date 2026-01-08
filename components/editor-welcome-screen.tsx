@@ -54,19 +54,32 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
         ],
         mode: 'single' as const,
         sliceLabels: ['January', 'February', 'March', 'April', 'May', 'June'],
+        chartType: 'bar' as const, // Preserve the chart type this dataset was created with
       }]
     }
 
-    // Set chart mode to single first
-    setChartMode('single')
+    // Get current store state
+    const { chartData, addDataset } = useChartStore.getState()
 
-    // Then set the chart data - use current chartConfig to preserve settings
-    const currentConfig = useChartStore.getState().chartConfig
-    setFullChart({
-      chartType: 'bar',
-      chartData: sampleData,
-      chartConfig: currentConfig
-    })
+    // Check if we already have datasets
+    if (chartData.datasets && chartData.datasets.length > 0) {
+      // Append sample dataset
+      addDataset(sampleData.datasets[0])
+      setHasJSON(true)
+      toast.success("Sample dataset added to current chart")
+    } else {
+      // No datasets, start fresh
+      setChartMode('single')
+      const currentConfig = useChartStore.getState().chartConfig
+      setFullChart({
+        chartType: 'bar',
+        chartData: sampleData,
+        chartConfig: currentConfig
+      })
+      // Mark that we have a valid chart
+      setHasJSON(true)
+      toast.success("Sample data loaded successfully!")
+    }
 
     // Mark that we have a valid chart
     setHasJSON(true)

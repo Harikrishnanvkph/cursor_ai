@@ -117,6 +117,8 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     chartMode,
     activeDatasetIndex,
     uniformityMode,
+    activeGroupId,
+    groups,
     overlayImages,
     overlayTexts,
     selectedImageId,
@@ -127,7 +129,8 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     setSelectedTextId,
     removeOverlayImage,
     removeOverlayText,
-    setGlobalChartRef
+    setGlobalChartRef,
+    updateGroup
   } = useChartStore();
 
   const chartRef = useRef<ChartJS>(null);
@@ -285,10 +288,16 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
       .map((ds, i) => (legendFilter.datasets[i] === false ? null : ds))
       .filter((ds): ds is typeof chartData.datasets[number] => ds !== null);
 
-  // Filter datasets based on mode
+  // Filter datasets based on mode and active group
   const modeFilteredDatasets = enabledDatasets.filter(dataset => {
     if (dataset.mode) {
-      return dataset.mode === chartMode;
+      if (dataset.mode !== chartMode) return false;
+
+      // For grouped mode, also filter by active group
+      if (chartMode === 'grouped' && dataset.groupId !== activeGroupId) {
+        return false;
+      }
+      return true;
     }
     return true;
   });
@@ -933,60 +942,78 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     // Set editor mode to chart when loading sample data
     useTemplateStore.getState().setEditorMode('chart');
 
-    // Sample grouped data with 2 datasets
-    const groupedData = {
-      labels: ['January', 'February', 'March', 'April', 'May', 'June'],
-      datasets: [
-        {
-          label: 'Dataset A',
-          data: [15, 25, 18, 30, 22, 28],
-          backgroundColor: 'rgba(59, 130, 246, 0.8)', // Blue
-          borderColor: 'rgba(29, 78, 216, 1)',
-          borderWidth: 2,
-          tension: 0.3,
-          pointImages: [null, null, null, null, null, null],
-          pointImageConfig: [
-            { type: 'circle', size: 20, position: 'center', arrow: false, borderWidth: 3, borderColor: '#ffffff' },
-            { type: 'circle', size: 20, position: 'center', arrow: false, borderWidth: 3, borderColor: '#ffffff' },
-            { type: 'circle', size: 20, position: 'center', arrow: false, borderWidth: 3, borderColor: '#ffffff' },
-            { type: 'circle', size: 20, position: 'center', arrow: false, borderWidth: 3, borderColor: '#ffffff' },
-            { type: 'circle', size: 20, position: 'center', arrow: false, borderWidth: 3, borderColor: '#ffffff' },
-            { type: 'circle', size: 20, position: 'center', arrow: false, borderWidth: 3, borderColor: '#ffffff' },
-          ],
-          mode: 'grouped' as const,
-          sliceLabels: ['January', 'February', 'March', 'April', 'May', 'June'],
-        },
-        {
-          label: 'Dataset B',
-          data: [20, 30, 25, 35, 28, 32],
-          backgroundColor: 'rgba(16, 185, 129, 0.8)', // Emerald green
-          borderColor: 'rgba(5, 150, 105, 1)',
-          borderWidth: 2,
-          tension: 0.3,
-          pointImages: [null, null, null, null, null, null],
-          pointImageConfig: [
-            { type: 'circle', size: 20, position: 'center', arrow: false, borderWidth: 3, borderColor: '#ffffff' },
-            { type: 'circle', size: 20, position: 'center', arrow: false, borderWidth: 3, borderColor: '#ffffff' },
-            { type: 'circle', size: 20, position: 'center', arrow: false, borderWidth: 3, borderColor: '#ffffff' },
-            { type: 'circle', size: 20, position: 'center', arrow: false, borderWidth: 3, borderColor: '#ffffff' },
-            { type: 'circle', size: 20, position: 'center', arrow: false, borderWidth: 3, borderColor: '#ffffff' },
-            { type: 'circle', size: 20, position: 'center', arrow: false, borderWidth: 3, borderColor: '#ffffff' },
-          ],
-          mode: 'grouped' as const,
-          sliceLabels: ['January', 'February', 'March', 'April', 'May', 'June'],
-        },
-      ],
-    };
+    // Use the active group ID for the sample data
+    const targetGroupId = activeGroupId;
 
-    // Update the chart with grouped mode sample data
-    useChartStore.getState().setFullChart({
-      chartType: chartType,
-      chartData: groupedData,
-      chartConfig: chartConfig
+    // Sample labels for grouped data
+    const sampleLabels = ['January', 'February', 'March', 'April', 'May', 'June'];
+
+    // Sample datasets to add to the active group
+    const sampleDatasets = [
+      {
+        label: 'Dataset A',
+        data: [15, 25, 18, 30, 22, 28],
+        backgroundColor: 'rgba(59, 130, 246, 0.8)', // Blue
+        borderColor: 'rgba(29, 78, 216, 1)',
+        borderWidth: 2,
+        tension: 0.3,
+        pointImages: [null, null, null, null, null, null],
+        pointImageConfig: [
+          { type: 'circle', size: 20, position: 'center', arrow: false, borderWidth: 3, borderColor: '#ffffff' },
+          { type: 'circle', size: 20, position: 'center', arrow: false, borderWidth: 3, borderColor: '#ffffff' },
+          { type: 'circle', size: 20, position: 'center', arrow: false, borderWidth: 3, borderColor: '#ffffff' },
+          { type: 'circle', size: 20, position: 'center', arrow: false, borderWidth: 3, borderColor: '#ffffff' },
+          { type: 'circle', size: 20, position: 'center', arrow: false, borderWidth: 3, borderColor: '#ffffff' },
+          { type: 'circle', size: 20, position: 'center', arrow: false, borderWidth: 3, borderColor: '#ffffff' },
+        ],
+        mode: 'grouped' as const,
+        groupId: targetGroupId,
+        sliceLabels: sampleLabels,
+        chartType: 'bar' as const,
+      },
+      {
+        label: 'Dataset B',
+        data: [20, 30, 25, 35, 28, 32],
+        backgroundColor: 'rgba(16, 185, 129, 0.8)', // Emerald green
+        borderColor: 'rgba(5, 150, 105, 1)',
+        borderWidth: 2,
+        tension: 0.3,
+        pointImages: [null, null, null, null, null, null],
+        pointImageConfig: [
+          { type: 'circle', size: 20, position: 'center', arrow: false, borderWidth: 3, borderColor: '#ffffff' },
+          { type: 'circle', size: 20, position: 'center', arrow: false, borderWidth: 3, borderColor: '#ffffff' },
+          { type: 'circle', size: 20, position: 'center', arrow: false, borderWidth: 3, borderColor: '#ffffff' },
+          { type: 'circle', size: 20, position: 'center', arrow: false, borderWidth: 3, borderColor: '#ffffff' },
+          { type: 'circle', size: 20, position: 'center', arrow: false, borderWidth: 3, borderColor: '#ffffff' },
+          { type: 'circle', size: 20, position: 'center', arrow: false, borderWidth: 3, borderColor: '#ffffff' },
+        ],
+        mode: 'grouped' as const,
+        groupId: targetGroupId,
+        sliceLabels: sampleLabels,
+        chartType: 'bar' as const,
+      },
+    ];
+
+    // Update labels if the current chart has no labels
+    const store = useChartStore.getState();
+    if (!store.chartData.labels || store.chartData.labels.length === 0) {
+      store.updateLabels(sampleLabels);
+    }
+
+    // Add each sample dataset to the active group using addDataset
+    // This will properly use the existing groupId without creating a new group
+    sampleDatasets.forEach(dataset => {
+      store.addDataset(dataset);
     });
 
+    // Update chartType to bar since we're loading bar chart data
+    store.setChartType('bar');
+
+    // Update the group's category to 'categorical' since we're loading bar charts
+    updateGroup(targetGroupId, { category: 'categorical', baseChartType: 'bar' });
+
     // Mark as having JSON data
-    useChartStore.getState().setHasJSON(true);
+    store.setHasJSON(true);
   };
 
   const loadSampleSingleData = () => {
@@ -1028,6 +1055,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
         ],
         mode: 'single' as const,
         sliceLabels: ['January', 'February', 'March', 'April', 'May', 'June'],
+        chartType: 'bar' as const,
       }]
     };
 
@@ -1052,7 +1080,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
 
   return (
     <div className="p-0 h-full w-full">
-      {chartData.datasets.length > 0 ? (
+      {modeFilteredDatasets.length > 0 ? (
         <div
           className={`h-full w-full ${isResponsive ? '' : 'flex items-start justify-center'} relative`}
           style={{
@@ -1457,26 +1485,38 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
 
             {chartMode === 'grouped' && (
               <>
+                <p className="text-sm text-gray-500 mb-2">
+                  Group: <span className="font-semibold text-purple-600">{groups.find(g => g.id === activeGroupId)?.name || 'Unknown'}</span>
+                </p>
                 <p className="text-sm text-gray-500 mb-6">
-                  You're in <span className="font-semibold text-blue-600">grouped mode</span> but don't have any datasets yet.
+                  This group is empty. Add datasets to get started.
                 </p>
-                <button
-                  onClick={loadSampleGroupedData}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Load Sample Grouped Data
-                </button>
-                <p className="text-xs text-gray-400 mt-4">
-                  This will load 2 datasets with 6 data points each
-                </p>
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <p className="text-xs text-gray-500">
-                    Or switch to the <span className="font-semibold">Datasets panel</span> to add your own data manually
-                  </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <button
+                    onClick={loadSampleGroupedData}
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-medium shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5 text-sm"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    Load Sample Data
+                  </button>
+                  <button
+                    onClick={() => {
+                      // Dispatch a custom event that dataset-settings will listen for
+                      window.dispatchEvent(new CustomEvent('openAddDatasetModal'));
+                    }}
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white border-2 border-gray-200 hover:border-blue-400 text-gray-700 hover:text-blue-600 rounded-lg font-medium shadow-sm hover:shadow transition-all duration-200 text-sm"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add Dataset Manually
+                  </button>
                 </div>
+                <p className="text-xs text-gray-400 mt-4">
+                  Sample data: 2 datasets with 6 data points each
+                </p>
               </>
             )}
 

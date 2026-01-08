@@ -159,8 +159,8 @@ export const useHistoryStore = create<HistoryStore>()(
             setCurrentSnapshotId(snapshotId);
           }
 
-          // Pass snapshot ID to setFullChart so it can be stored
-          setFullChart({ ...conv.snapshot, id: snapshotId || undefined });
+          // Pass snapshot ID and chart name to setFullChart so it can be stored
+          setFullChart({ ...conv.snapshot, id: snapshotId || undefined, name: conv.title });
           setHasJSON(true);
 
           // Save original cloud dimensions for restoration (for chart-only conversations)

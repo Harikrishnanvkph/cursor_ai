@@ -24,6 +24,9 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { clearCurrentChart } from "@/lib/storage-utils"
 
+import { DEFAULT_GROUP } from "@/lib/chart-store"
+import { ClearChartDialog } from "./dialogs/clear-chart-dialog"
+
 interface ConfigPanelProps {
   activeTab: string
   onToggleSidebar?: () => void
@@ -40,6 +43,8 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
   const router = useRouter();
   const { chartType, chartData, chartConfig, hasJSON, resetChart, setHasJSON } = useChartStore();
   const { messages, clearMessages, startNewConversation, setBackendConversationId } = useChatStore();
+
+  const [showClearDialog, setShowClearDialog] = useState(false)
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth <= 576);
@@ -244,17 +249,10 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
     }
   };
 
+
+
   const handleCancel = () => {
-    clearCurrentChart()
-    clearMessages()
-    startNewConversation()
-    resetChart()
-    setHasJSON(false)
-    setBackendConversationId(null)
-    // Clear all template state to prevent data cascading to new charts
-    useTemplateStore.getState().clearAllTemplateState()
-    toast.success("Chart cleared")
-    // Stay on editor page - don't route away
+    setShowClearDialog(true)
   };
 
   const renderPanel = () => {
@@ -353,6 +351,12 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
           {renderPanel()}
         </div>
       </div>
+      {/* Clear Confirmation Dialog */}
+      {/* Clear Confirmation Dialog */}
+      <ClearChartDialog
+        open={showClearDialog}
+        onOpenChange={setShowClearDialog}
+      />
     </div>
   )
 }

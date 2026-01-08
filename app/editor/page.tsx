@@ -23,6 +23,7 @@ import { toast } from "sonner"
 import { clearCurrentChart } from "@/lib/storage-utils"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { SaveChartDialog } from "@/components/ui/save-chart-dialog"
+import { ClearChartDialog } from "@/components/dialogs/clear-chart-dialog"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { EditorWelcomeScreen } from "@/components/editor-welcome-screen"
 import { DimensionMismatchDialog } from "@/components/dialogs/dimension-mismatch-dialog"
@@ -125,6 +126,7 @@ function EditorPageContent() {
   const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false)
   const [showNewChartInfoDialog, setShowNewChartInfoDialog] = useState(false)
   const [showSaveChartDialog, setShowSaveChartDialog] = useState(false)
+  const [showClearDialog, setShowClearDialog] = useState(false)
   const [currentChartName, setCurrentChartName] = useState<string>("")
 
   // Dimension mismatch dialog state
@@ -595,16 +597,7 @@ function EditorPageContent() {
   };
 
   const handleCancel = () => {
-    clearCurrentChart()
-    clearMessages()
-    startNewConversation()
-    resetChart()
-    setHasJSON(false)
-    setBackendConversationId(null)
-    // Clear all template state to prevent data cascading to new charts
-    useTemplateStore.getState().clearAllTemplateState()
-    toast.success("Chart cleared")
-    // Stay on editor page - don't route away
+    setShowClearDialog(true)
   };
 
   // Handle new chart creation
@@ -1242,6 +1235,12 @@ function EditorPageContent() {
         isSaving={isSaving}
         onSave={handleSave}
         onCancel={() => setShowSaveChartDialog(false)}
+      />
+
+      {/* Clear Chart Dialog */}
+      <ClearChartDialog
+        open={showClearDialog}
+        onOpenChange={setShowClearDialog}
       />
 
       {/* Dimension Mismatch Dialog */}

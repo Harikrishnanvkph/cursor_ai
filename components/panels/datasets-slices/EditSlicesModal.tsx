@@ -2,8 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Plus, Trash2, GripVertical } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface EditSlicesModalProps {
@@ -27,7 +26,6 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
       datasets.map((ds: any) => {
         const val = ds.data[rowIdx];
         if (isCoordinateChart) {
-          // Ensure object structure for coordinate charts
           if (typeof val === 'object' && val !== null) {
             return { x: val.x ?? 0, y: val.y ?? 0, r: val.r ?? (chartType === 'bubble' ? 10 : undefined) };
           }
@@ -73,7 +71,6 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
     const newLabel = isCoordinateChart ? `Point ${sliceLabels.length + 1}` : `Slice ${sliceLabels.length + 1}`;
     setSliceLabels([...sliceLabels, newLabel]);
 
-    // Create empty values for each dataset
     const newRow = datasets.map(() =>
       isCoordinateChart
         ? { x: 0, y: 0, r: chartType === 'bubble' ? 10 : undefined }
@@ -89,7 +86,6 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
   };
 
   const handleSave = () => {
-    // Clean values before saving
     const cleanedValues = values.map(row => row.map(val => {
       if (isCoordinateChart) {
         return {
@@ -107,38 +103,29 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
   const renderDatasetInputs = (rowIdx: number, colIdx: number, val: any) => {
     if (isCoordinateChart) {
       return (
-        <div className="grid grid-cols-2 gap-2 w-full">
-          <div className="space-y-0.5">
-            <Label className="text-[10px] text-gray-500">X</Label>
-            <Input
-              type="number"
-              value={val?.x ?? 0}
-              onChange={e => handleValueChange(rowIdx, colIdx, 'x', e.target.value)}
-              className="h-7 text-xs px-2"
-              placeholder="X"
-            />
-          </div>
-          <div className="space-y-0.5">
-            <Label className="text-[10px] text-gray-500">Y</Label>
-            <Input
-              type="number"
-              value={val?.y ?? 0}
-              onChange={e => handleValueChange(rowIdx, colIdx, 'y', e.target.value)}
-              className="h-7 text-xs px-2"
-              placeholder="Y"
-            />
-          </div>
+        <div className="flex items-center gap-1.5">
+          <Input
+            type="number"
+            value={val?.x ?? 0}
+            onChange={e => handleValueChange(rowIdx, colIdx, 'x', e.target.value)}
+            className="h-7 text-xs w-16"
+            placeholder="X"
+          />
+          <Input
+            type="number"
+            value={val?.y ?? 0}
+            onChange={e => handleValueChange(rowIdx, colIdx, 'y', e.target.value)}
+            className="h-7 text-xs w-16"
+            placeholder="Y"
+          />
           {chartType === 'bubble' && (
-            <div className="col-span-2 space-y-0.5">
-              <Label className="text-[10px] text-gray-500">Radius (R)</Label>
-              <Input
-                type="number"
-                value={val?.r ?? 10}
-                onChange={e => handleValueChange(rowIdx, colIdx, 'r', e.target.value)}
-                className="h-7 text-xs px-2"
-                placeholder="R"
-              />
-            </div>
+            <Input
+              type="number"
+              value={val?.r ?? 10}
+              onChange={e => handleValueChange(rowIdx, colIdx, 'r', e.target.value)}
+              className="h-7 text-xs w-14"
+              placeholder="R"
+            />
           )}
         </div>
       );
@@ -149,97 +136,113 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
         type="number"
         value={val ?? ""}
         onChange={e => handleValueChange(rowIdx, colIdx, null, e.target.value)}
-        className="h-8 text-xs"
+        className="h-7 text-xs w-20"
         placeholder="Value"
       />
     );
   };
 
+  const columnWidth = isCoordinateChart ? "220px" : "140px";
+  const gridTemplateColumns = `40px 160px repeat(${datasets.length}, ${columnWidth}) 40px`;
+  const minWidth = 40 + 160 + (datasets.length * (isCoordinateChart ? 220 : 140)) + 40;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl w-full max-h-[85vh] flex flex-col p-0 gap-0">
-        <DialogHeader className="p-6 pb-2">
-          <DialogTitle className="text-xl font-semibold text-gray-900">
-            {isCoordinateChart ? 'Edit Points (Grouped Mode)' : 'Edit Slices (Grouped Mode)'}
+        {/* Modal Header */}
+        <DialogHeader className="px-6 py-4 border-b bg-gray-50/50 flex-shrink-0">
+          <DialogTitle className="text-lg font-semibold text-gray-900">
+            {isCoordinateChart ? 'Edit Points' : 'Edit Slices'} (Grouped Mode)
           </DialogTitle>
-          <p className="text-sm text-gray-500">
-            Manage data across all datasets. {isCoordinateChart ? 'Adjust coordinates for each point.' : 'Set values for each slice.'}
+          <p className="text-sm text-gray-500 mt-1">
+            Edit value{isCoordinateChart ? 's' : ''} for all datasets across {sliceLabels.length} {isCoordinateChart ? 'points' : 'slices'}.
           </p>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto px-6 py-2">
-          <div className="space-y-3 pb-4">
-            {sliceLabels.map((label, rowIdx) => (
-              <div
-                key={rowIdx}
-                className={cn(
-                  "group relative flex flex-col gap-3 p-4 rounded-xl border transition-all duration-200",
-                  "bg-white border-gray-200 shadow-sm hover:shadow-md hover:border-blue-200",
-                  "focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-300"
-                )}
-              >
-                {/* Header Row: Label & Actions */}
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-6 h-6 rounded bg-gray-100 text-gray-500 cursor-grab active:cursor-grabbing">
-                    <span className="text-xs font-semibold">{rowIdx + 1}</span>
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-auto min-h-0 relative">
+          <div className="min-w-fit inline-block w-full">
+            {/* Sticky Header Row */}
+            <div
+              className="sticky top-0 z-10 grid gap-3 items-center px-4 py-2 bg-gray-50 border-b text-[11px] font-medium text-gray-500 uppercase tracking-wider backdrop-blur-sm bg-gray-50/90"
+              style={{ gridTemplateColumns, minWidth: '100%' }}
+            >
+              <div className="text-center">#</div>
+              <div>{isCoordinateChart ? 'Point Name' : 'Slice Name'}</div>
+              {datasets.map((ds: any, i: number) => (
+                <div key={i} className="truncate px-1" title={ds.label}>
+                  {ds.label || `Dataset ${i + 1}`}
+                </div>
+              ))}
+              <div></div>
+            </div>
+
+            {/* Data Rows */}
+            <div className="p-4 space-y-1.5 ">
+              {sliceLabels.map((label, rowIdx) => (
+                <div
+                  key={rowIdx}
+                  className="grid gap-3 items-start py-2 px-0 border-b border-gray-100 last:border-0 hover:bg-gray-50/50 transition-colors rounded-sm"
+                  style={{ gridTemplateColumns, minWidth: '100%' }}
+                >
+                  {/* Row Number */}
+                  <div className="flex items-center justify-center h-8 text-xs text-gray-400 font-mono">
+                    {rowIdx + 1}
                   </div>
 
-                  <div className="flex-1">
+                  {/* Slice/Point Name */}
+                  <div className="pt-0.5">
                     <Input
                       value={label}
                       onChange={e => handleLabelChange(rowIdx, e.target.value)}
-                      className="h-8 text-sm font-medium border-transparent hover:border-gray-200 focus:border-blue-400 bg-transparent px-2 -ml-2 w-full max-w-sm transition-colors"
+                      className="h-8 text-xs font-medium"
                       placeholder={isCoordinateChart ? "Point Name" : "Slice Name"}
                     />
                   </div>
 
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleRemoveSlice(rowIdx)}
-                    disabled={sliceLabels.length <= 1}
-                    className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50 -mr-2"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-
-                {/* Values Grid */}
-                <div className={cn(
-                  "grid gap-4",
-                  datasets.length === 1 ? "grid-cols-1" :
-                    datasets.length === 2 ? "grid-cols-2" :
-                      "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-                )}>
+                  {/* Dataset Values */}
                   {datasets.map((ds: any, colIdx: number) => (
-                    <div key={colIdx} className="space-y-1.5 p-3 rounded-lg bg-gray-50/50 border border-gray-100">
-                      <Label className="text-xs font-medium text-gray-500 truncate block" title={ds.label}>
-                        {ds.label || `Dataset ${colIdx + 1}`}
-                      </Label>
+                    <div key={colIdx} className="pt-0.5">
                       {renderDatasetInputs(rowIdx, colIdx, values[rowIdx]?.[colIdx])}
                     </div>
                   ))}
+
+                  {/* Delete Button */}
+                  <div className="flex justify-center pt-0.5">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleRemoveSlice(rowIdx)}
+                      disabled={sliceLabels.length <= 1}
+                      className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
 
-        <DialogFooter className="p-4 border-t bg-gray-50/50 gap-2 sm:gap-0">
+        {/* Footer */}
+        <DialogFooter className="px-6 py-4 border-t bg-gray-50/50 gap-3 flex-shrink-0">
           <div className="flex-1 flex justify-start">
-            <Button variant="outline" onClick={handleAddSlice} className="gap-2 text-blue-600 border-blue-200 hover:bg-blue-50">
+            <Button
+              variant="outline"
+              onClick={handleAddSlice}
+              className="gap-2 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300"
+            >
               <Plus className="w-4 h-4" />
-              {isCoordinateChart ? 'Add Point' : 'Add Slice'}
+              Add {isCoordinateChart ? 'Point' : 'Slice'}
             </Button>
           </div>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <DialogClose asChild>
-              <Button variant="ghost">Cancel</Button>
-            </DialogClose>
-            <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white min-w-[80px]">
-              Save Changes
-            </Button>
-          </div>
+          <DialogClose asChild>
+            <Button variant="ghost">Cancel</Button>
+          </DialogClose>
+          <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white min-w-[100px]">
+            Save Changes
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

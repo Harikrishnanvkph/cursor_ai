@@ -5,8 +5,9 @@ import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogC
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, X, Shuffle } from 'lucide-react';
 import { useChartStore, type ExtendedChartDataset, type SupportedChartType } from '@/lib/chart-store';
+import { cn } from '@/lib/utils';
 
 interface AddDatasetModalProps {
   open: boolean;
@@ -81,20 +82,36 @@ const getDefaultPoints = (category: ChartCategory, count: number = 3): DataPoint
 };
 
 export function AddDatasetModal({ open, onOpenChange, onDatasetAdd }: AddDatasetModalProps) {
-  const { chartMode, uniformityMode, chartType, chartData } = useChartStore();
+  const { chartMode, uniformityMode, chartType, chartData, activeGroupId } = useChartStore();
   const [newDatasetName, setNewDatasetName] = useState("");
   const [chartCategory, setChartCategory] = useState<ChartCategory>('categorical');
   const [newDatasetChartType, setNewDatasetChartType] = useState<SupportedChartType>('bar');
   const [dataPoints, setDataPoints] = useState<DataPoint[]>([]);
 
-  const filteredDatasets = chartData.datasets.filter(dataset => (dataset.mode ? dataset.mode === chartMode : true));
+  // Filter datasets by mode AND by active group (for grouped mode)
+  const filteredDatasets = chartData.datasets.filter(dataset => {
+    if (dataset.mode) {
+      if (dataset.mode !== chartMode) return false;
+      // For grouped mode, also filter by active group
+      if (chartMode === 'grouped' && dataset.groupId !== activeGroupId) {
+        return false;
+      }
+      return true;
+    }
+    return true;
+  });
 
-  // Determine if chart type selection is locked (grouped + uniform mode)
-  const isChartTypeLocked = chartMode === 'grouped' && uniformityMode === 'uniform';
+  // Determine if category selection is locked (grouped mode + existing datasets, regardless of uniformity)
+  // This prevents mixing Coordinate and Categorical charts in the same group
+  const isCategoryLocked = chartMode === 'grouped' && filteredDatasets.length > 0;
 
-  // Determine current category based on locked chart type or selection
-  const effectiveCategory: ChartCategory = isChartTypeLocked
-    ? (coordinateChartTypes.some(t => t.value === chartType) ? 'coordinate' : 'categorical')
+  // Determine if chart type selection is locked (grouped + uniform mode + existing datasets)
+  // In mixed mode, chart type is NOT locked, but category IS locked by the above
+  const isChartTypeLocked = chartMode === 'grouped' && uniformityMode === 'uniform' && filteredDatasets.length > 0;
+
+  // Determine current category based on locked logic or selection
+  const effectiveCategory: ChartCategory = isCategoryLocked
+    ? (coordinateChartTypes.some(t => t.value === filteredDatasets[0].chartType) ? 'coordinate' : 'categorical')
     : chartCategory;
 
   const isBubbleChart = isChartTypeLocked ? chartType === 'bubble' : newDatasetChartType === 'bubble';
@@ -102,13 +119,15 @@ export function AddDatasetModal({ open, onOpenChange, onDatasetAdd }: AddDataset
   const initializeModal = () => {
     setNewDatasetName("");
 
-    // Determine initial category based on current chart type if locked
-    const initialCategory: ChartCategory = isChartTypeLocked
-      ? (coordinateChartTypes.some(t => t.value === chartType) ? 'coordinate' : 'categorical')
-      : 'categorical';
+    // Determine initial category based on category lock or current chart type if locked
+    const initialCategory: ChartCategory = isCategoryLocked
+      ? (coordinateChartTypes.some(t => t.value === filteredDatasets[0].chartType) ? 'coordinate' : 'categorical')
+      : (isChartTypeLocked
+        ? (coordinateChartTypes.some(t => t.value === chartType) ? 'coordinate' : 'categorical')
+        : 'categorical');
 
     setChartCategory(initialCategory);
-    setNewDatasetChartType(isChartTypeLocked ? chartType : 'bar');
+    setNewDatasetChartType(isChartTypeLocked ? chartType : (initialCategory === 'coordinate' ? 'scatter' : 'bar'));
 
     if (chartMode === 'grouped' && filteredDatasets.length > 0) {
       const firstDataset = filteredDatasets[0];
@@ -150,6 +169,26 @@ export function AddDatasetModal({ open, onOpenChange, onDatasetAdd }: AddDataset
     if (chartMode === 'single') return baseTypes;
     if (uniformityMode === 'mixed') return baseTypes.filter(type => ['bar', 'line', 'area'].includes(type.value));
     return baseTypes.filter(type => !['pie', 'doughnut'].includes(type.value));
+  };
+
+  const handleRandomize = () => {
+    const randomizedPoints = dataPoints.map(point => {
+      if (effectiveCategory === 'coordinate') {
+        const isScatter = isChartTypeLocked ? chartType === 'scatter' : newDatasetChartType === 'scatter';
+        return {
+          ...point,
+          x: Math.floor(Math.random() * 100),
+          y: Math.floor(Math.random() * 100),
+          r: Math.floor(Math.random() * 20) + 5,
+        };
+      } else {
+        return {
+          ...point,
+          value: Math.floor(Math.random() * 100) + 10,
+        };
+      }
+    });
+    setDataPoints(randomizedPoints);
   };
 
   const handleAddPoint = () => {
@@ -213,23 +252,35 @@ export function AddDatasetModal({ open, onOpenChange, onDatasetAdd }: AddDataset
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Create New Dataset</DialogTitle>
+      <DialogContent className="max-w-3xl w-full max-h-[85vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-4 py-3 border-b bg-gray-50/50">
+          <DialogTitle className="text-base font-semibold">Create New Dataset</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          {/* Category and Chart Type Selection */}
-          <div className="grid grid-cols-3 gap-4">
+
+        {/* Configurations Section - Compact */}
+        <div className="px-4 py-3 bg-white border-b space-y-3">
+          <div className="grid grid-cols-12 gap-3 items-end">
+            {/* Dataset Name */}
+            <div className="col-span-4 space-y-1">
+              <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Name</label>
+              <Input
+                value={newDatasetName}
+                onChange={e => setNewDatasetName(e.target.value)}
+                placeholder="Dataset Name"
+                className="h-8 text-xs"
+              />
+            </div>
+
             {/* Category Dropdown */}
-            <div>
-              <label className="text-[0.80rem] font-medium text-gray-600 mb-1 block">Category</label>
-              {isChartTypeLocked ? (
-                <div className="w-full h-9 px-3 rounded border border-gray-200 bg-gray-50 flex items-center text-[0.80rem]">
-                  <span className="text-gray-700">{effectiveCategory === 'coordinate' ? 'Coordinate' : 'Categorical'}</span>
+            <div className="col-span-4 space-y-1">
+              <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Category</label>
+              {isCategoryLocked ? (
+                <div className="w-full h-8 px-2 rounded border border-gray-200 bg-gray-50 flex items-center text-xs text-gray-500 cursor-not-allowed">
+                  {effectiveCategory === 'coordinate' ? 'Coordinate' : 'Categorical'}
                 </div>
               ) : (
                 <Select value={chartCategory} onValueChange={(v) => handleCategoryChange(v as ChartCategory)}>
-                  <SelectTrigger className="w-full h-9">
+                  <SelectTrigger className="w-full h-8 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -241,15 +292,15 @@ export function AddDatasetModal({ open, onOpenChange, onDatasetAdd }: AddDataset
             </div>
 
             {/* Chart Type Dropdown */}
-            <div>
-              <label className="text-[0.80rem] font-medium text-gray-600 mb-1 block">Chart Type</label>
+            <div className="col-span-4 space-y-1">
+              <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Type</label>
               {isChartTypeLocked ? (
-                <div className="w-full h-9 px-3 rounded border border-gray-200 bg-gray-50 flex items-center text-[0.80rem]">
-                  <span className="text-gray-700">{chartType.charAt(0).toUpperCase() + chartType.slice(1)}</span>
+                <div className="w-full h-8 px-2 rounded border border-gray-200 bg-gray-50 flex items-center text-xs text-gray-500 cursor-not-allowed">
+                  {chartType.charAt(0).toUpperCase() + chartType.slice(1)}
                 </div>
               ) : (
                 <Select value={newDatasetChartType} onValueChange={(v) => setNewDatasetChartType(v as SupportedChartType)}>
-                  <SelectTrigger className="w-full h-9"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-full h-8 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {getAvailableChartTypes().map((type) => (
                       <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
@@ -258,183 +309,221 @@ export function AddDatasetModal({ open, onOpenChange, onDatasetAdd }: AddDataset
                 </Select>
               )}
             </div>
-
-            {/* Dataset Name */}
-            <div>
-              <label className="text-[0.80rem] font-medium text-gray-600 mb-1 block">Dataset Name <span className="text-red-500">*</span></label>
-              <Input
-                value={newDatasetName}
-                onChange={e => setNewDatasetName(e.target.value)}
-                placeholder="Enter dataset name"
-                className="h-9"
-              />
-            </div>
           </div>
+        </div>
 
-          {/* Data Points Section */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-[0.80rem] font-medium text-gray-700">{pointLabel} ({dataPoints.length})</label>
-              <Button size="sm" onClick={handleAddPoint} disabled={chartMode === 'grouped' && filteredDatasets.length > 0}>
-                <Plus className="h-3 w-3 mr-1" /> Add {effectiveCategory === 'coordinate' ? 'Point' : 'Slice'}
-              </Button>
-            </div>
+        {/* Grouped Mode Warning */}
+        {chartMode === 'grouped' && filteredDatasets.length > 0 && (
+          <div className="px-4 py-2 bg-yellow-50 border-b border-yellow-100">
+            <p className="text-[10px] text-yellow-800 flex items-center gap-1.5">
+              <span className="font-semibold">{uniformityMode === 'uniform' ? 'Uniform Mode:' : 'Mixed Mode:'}</span>
+              {uniformityMode === 'uniform'
+                ? `Chart type is locked to ${chartType}. Slice structure matches existing datasets.`
+                : 'Slice structure matches existing datasets. You can select a compatible chart type.'}
+            </p>
+          </div>
+        )}
 
-            {/* Column Headers */}
-            <div className={`grid gap-2 px-3 text-xs text-gray-500 font-medium ${effectiveCategory === 'coordinate'
-                ? (isBubbleChart ? 'grid-cols-12' : 'grid-cols-11')
-                : 'grid-cols-12'
-              }`}>
-              {effectiveCategory === 'coordinate' ? (
+        {/* Data Points Header Row */}
+        <div className="grid grid-cols-12 gap-1.5 items-center px-4 py-2 bg-gray-50 border-b text-[10px] font-medium text-gray-500">
+          {effectiveCategory === 'coordinate' ? (
+            <>
+              <div className="col-span-3">Label</div>
+              <div className="col-span-2">X</div>
+              <div className="col-span-2">Y</div>
+              {isBubbleChart ? (
                 <>
-                  <div className="col-span-3">Label</div>
-                  <div className="col-span-2">X</div>
-                  <div className="col-span-2">Y</div>
-                  {isBubbleChart && <div className="col-span-2">Radius</div>}
-                  <div className={isBubbleChart ? 'col-span-2' : 'col-span-3'}>Color</div>
-                  <div className="col-span-1"></div>
+                  <div className="col-span-2">Radius</div>
+                  <div className="col-span-2">Color</div>
                 </>
               ) : (
                 <>
-                  <div className="col-span-4">Label</div>
-                  <div className="col-span-3">Value</div>
-                  <div className="col-span-4">Color</div>
-                  <div className="col-span-1"></div>
+                  <div className="col-span-2"></div>
+                  <div className="col-span-2">Color</div>
                 </>
               )}
-            </div>
+              <div className="col-span-1"></div>
+            </>
+          ) : (
+            <>
+              <div className="col-span-4">Label</div>
+              <div className="col-span-3">Value</div>
+              <div className="col-span-4">Color</div>
+              <div className="col-span-1"></div>
+            </>
+          )}
+        </div>
 
-            {/* Data Point Rows */}
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {dataPoints.map((point, index) => (
-                <div
-                  key={index}
-                  className={`p-3 bg-gray-50 rounded-lg border border-gray-200 grid gap-2 items-center ${effectiveCategory === 'coordinate'
-                      ? (isBubbleChart ? 'grid-cols-12' : 'grid-cols-11')
-                      : 'grid-cols-12'
-                    }`}
-                >
-                  {effectiveCategory === 'coordinate' ? (
-                    <>
-                      {/* Label */}
-                      <div className="col-span-3">
-                        <Input
-                          value={point.name}
-                          onChange={e => handleUpdatePoint(index, 'name', e.target.value)}
-                          placeholder={`Point ${index + 1}`}
-                          className="h-8 text-sm"
-                        />
-                      </div>
-                      {/* X */}
-                      <div className="col-span-2">
-                        <Input
-                          type="number"
-                          value={point.x}
-                          onChange={e => handleUpdatePoint(index, 'x', Number(e.target.value))}
-                          placeholder="X"
-                          className="h-8 text-sm"
-                          step="0.1"
-                        />
-                      </div>
-                      {/* Y */}
-                      <div className="col-span-2">
-                        <Input
-                          type="number"
-                          value={point.y}
-                          onChange={e => handleUpdatePoint(index, 'y', Number(e.target.value))}
-                          placeholder="Y"
-                          className="h-8 text-sm"
-                          step="0.1"
-                        />
-                      </div>
-                      {/* Radius (Bubble only) */}
-                      {isBubbleChart && (
-                        <div className="col-span-2">
-                          <Input
-                            type="number"
-                            value={point.r}
-                            onChange={e => handleUpdatePoint(index, 'r', Number(e.target.value))}
-                            placeholder="R"
-                            className="h-8 text-sm"
-                            min="1"
-                          />
-                        </div>
-                      )}
-                      {/* Color */}
-                      <div className={`flex items-center gap-1 ${isBubbleChart ? 'col-span-2' : 'col-span-3'}`}>
-                        <Input
-                          type="color"
-                          value={point.color}
-                          onChange={e => handleUpdatePoint(index, 'color', e.target.value)}
-                          className="p-0.5 h-8 w-8 flex-shrink-0"
-                        />
-                        <Input
-                          value={point.color}
-                          onChange={e => handleUpdatePoint(index, 'color', e.target.value)}
-                          placeholder="#1E90FF"
-                          className="h-8 text-xs flex-1"
-                        />
-                      </div>
-                    </>
+        {/* Scrollable Data Points */}
+        <div className="flex-1 overflow-auto px-4 py-2 space-y-1.5">
+          {dataPoints.map((point, index) => (
+            <div
+              key={index}
+              className="grid grid-cols-12 gap-1.5 items-center py-1.5 px-2 border border-gray-100 rounded-md bg-white hover:border-gray-200 transition-colors"
+            >
+              {effectiveCategory === 'coordinate' ? (
+                <>
+                  <div className="col-span-3">
+                    <Input
+                      value={point.name}
+                      onChange={e => handleUpdatePoint(index, 'name', e.target.value)}
+                      placeholder={`Point ${index + 1}`}
+                      className="h-7 text-xs"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Input
+                      type="number"
+                      value={point.x}
+                      onChange={e => handleUpdatePoint(index, 'x', Number(e.target.value))}
+                      className="h-7 text-xs"
+                      step="0.1"
+                      placeholder="X"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Input
+                      type="number"
+                      value={point.y}
+                      onChange={e => handleUpdatePoint(index, 'y', Number(e.target.value))}
+                      className="h-7 text-xs"
+                      step="0.1"
+                      placeholder="Y"
+                    />
+                  </div>
+                  {isBubbleChart ? (
+                    <div className="col-span-2">
+                      <Input
+                        type="number"
+                        value={point.r}
+                        onChange={e => handleUpdatePoint(index, 'r', Number(e.target.value))}
+                        className="h-7 text-xs"
+                        min="1"
+                        placeholder="R"
+                      />
+                    </div>
                   ) : (
-                    <>
-                      {/* Label */}
-                      <div className="col-span-4">
-                        <Input
-                          value={point.name}
-                          onChange={e => handleUpdatePoint(index, 'name', e.target.value)}
-                          disabled={chartMode === 'grouped' && filteredDatasets.length > 0}
-                          placeholder="Slice name"
-                          className="h-8 text-sm"
-                        />
-                      </div>
-                      {/* Value */}
-                      <div className="col-span-3">
-                        <Input
-                          type="number"
-                          value={point.value}
-                          onChange={e => handleUpdatePoint(index, 'value', Number(e.target.value))}
-                          placeholder="Value"
-                          className="h-8 text-sm"
-                        />
-                      </div>
-                      {/* Color */}
-                      <div className="col-span-4 flex items-center gap-1">
-                        <Input
-                          type="color"
-                          value={point.color}
-                          onChange={e => handleUpdatePoint(index, 'color', e.target.value)}
-                          className="p-0.5 h-8 w-8 flex-shrink-0"
-                        />
-                        <Input
-                          value={point.color}
-                          onChange={e => handleUpdatePoint(index, 'color', e.target.value)}
-                          placeholder="#1E90FF"
-                          className="h-8 text-xs flex-1"
-                        />
-                      </div>
-                    </>
+                    <div className="col-span-2"></div>
                   )}
-                  {/* Delete Button */}
+                  <div className="col-span-2">
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="color"
+                        value={point.color}
+                        onChange={e => handleUpdatePoint(index, 'color', e.target.value)}
+                        className="w-7 h-7 p-0 border border-gray-200 rounded cursor-pointer"
+                      />
+                      <Input
+                        value={point.color}
+                        onChange={e => handleUpdatePoint(index, 'color', e.target.value)}
+                        placeholder="#1E90FF"
+                        className="h-7 text-xs flex-1"
+                      />
+                    </div>
+                  </div>
                   <div className="col-span-1 flex justify-center">
                     <Button
                       size="icon"
                       variant="ghost"
                       onClick={() => handleRemovePoint(index)}
                       disabled={dataPoints.length <= 1}
-                      className="h-8 w-8"
+                      className="h-6 w-6 text-gray-400 hover:text-red-500 hover:bg-red-50"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <X className="h-3.5 w-3.5" />
                     </Button>
                   </div>
-                </div>
-              ))}
+                </>
+              ) : (
+                <>
+                  <div className="col-span-4">
+                    <Input
+                      value={point.name}
+                      onChange={e => handleUpdatePoint(index, 'name', e.target.value)}
+                      disabled={chartMode === 'grouped' && filteredDatasets.length > 0}
+                      placeholder="Slice name"
+                      className="h-7 text-xs"
+                    />
+                  </div>
+                  <div className="col-span-3">
+                    <Input
+                      type="number"
+                      value={point.value}
+                      onChange={e => handleUpdatePoint(index, 'value', Number(e.target.value))}
+                      placeholder="Value"
+                      className="h-7 text-xs"
+                    />
+                  </div>
+                  <div className="col-span-4">
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="color"
+                        value={point.color}
+                        onChange={e => handleUpdatePoint(index, 'color', e.target.value)}
+                        className="w-7 h-7 p-0 border border-gray-200 rounded cursor-pointer"
+                      />
+                      <Input
+                        value={point.color}
+                        onChange={e => handleUpdatePoint(index, 'color', e.target.value)}
+                        placeholder="#1E90FF"
+                        className="h-7 text-xs flex-1"
+                      />
+                    </div>
+                  </div>
+                  <div className="col-span-1 flex justify-center">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => handleRemovePoint(index)}
+                      disabled={dataPoints.length <= 1}
+                      className="h-6 w-6 text-gray-400 hover:text-red-500 hover:bg-red-50"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Compact Footer */}
+        <DialogFooter className="px-4 py-3 border-t bg-gray-50/50 gap-2 sm:gap-0">
+          <div className="flex-1 flex justify-start">
+            <div title={chartMode === 'grouped' && filteredDatasets.length > 0 ? "Cannot add points in Grouped Mode (structure matches existing datasets)" : ""}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAddPoint}
+                disabled={chartMode === 'grouped' && filteredDatasets.length > 0}
+                className="gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50 h-8 text-xs"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add {effectiveCategory === 'coordinate' ? 'Point' : 'Slice'}
+              </Button>
             </div>
           </div>
-        </div>
-        <DialogFooter>
-          <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
-          <Button onClick={handleCreateDataset} disabled={!newDatasetName.trim()}>Create Dataset</Button>
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRandomize}
+              className="h-8 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 gap-1.5 sm:mr-auto"
+            >
+              <Shuffle className="w-3 h-3" />
+              Randomize
+            </Button>
+            <DialogClose asChild>
+              <Button variant="ghost" size="sm" className="h-8">Cancel</Button>
+            </DialogClose>
+            <Button
+              onClick={handleCreateDataset}
+              disabled={!newDatasetName.trim()}
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white h-8"
+            >
+              Create Dataset
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

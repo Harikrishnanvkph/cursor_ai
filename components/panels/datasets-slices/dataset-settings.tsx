@@ -67,6 +67,7 @@ import {
   ChartArea,
   ChartColumnStacked,
 } from "lucide-react"
+import { AddDatasetModal } from "./add-dataset-modal"
 import { Slider } from "@/components/ui/slider"
 
 interface DatasetSettingsProps {
@@ -91,6 +92,15 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     setUniformityMode,
     updateLabels,
     setChartType,
+    // Groups
+    groups,
+    activeGroupId,
+    addGroup,
+    updateGroup,
+    deleteGroup,
+    setActiveGroup,
+    hasJSON,
+    setHasJSON,
   } = useChartStore()
 
   const [activeTab, setActiveTab] = useState<DatasetTab>('general')
@@ -108,6 +118,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
   const [datasetToDelete, setDatasetToDelete] = useState<number | null>(null)
   const [editingColorMode, setEditingColorMode] = useState<'slice' | 'dataset'>('slice')
   const [editingDatasetColor, setEditingDatasetColor] = useState<string>('#3b82f6')
+  const [editingChartType, setEditingChartType] = useState<import("@/lib/chart-store").SupportedChartType>('bar')
   const [preservedSliceColors, setPreservedSliceColors] = useState<string[]>([])
   const [newDatasetName, setNewDatasetName] = useState("")
   const [newDatasetColor, setNewDatasetColor] = useState("#1E90FF") // DodgerBlue
@@ -125,6 +136,9 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
   const [colorOpacity, setColorOpacity] = useState(100); // 0-100 for transparency
   const [borderColorMode, setBorderColorMode] = useState<'auto' | 'manual'>('auto');
   const [manualBorderColor, setManualBorderColor] = useState('#000000');
+  // Group delete confirmation
+  const [showGroupDeleteDialog, setShowGroupDeleteDialog] = useState(false);
+  const [groupToDelete, setGroupToDelete] = useState<string | null>(null);
 
   // Categorical chart types (use Label + Value)
   const categoricalChartTypes: { value: import("@/lib/chart-store").SupportedChartType; label: string }[] = [
@@ -195,13 +209,37 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
 
   const handleChartModeChange = (mode: 'single' | 'grouped') => {
     setChartMode(mode);
+    if (!hasJSON) setHasJSON(true);
     if (mode === 'single' && activeDatasetIndex === -1) {
       setActiveDatasetIndex(0);
     }
   };
 
+  // Listen for openAddDatasetModal event from chart preview empty state
+  useEffect(() => {
+    const handleOpenAddDatasetModalEvent = () => {
+      // Directly set the modal to open - initialization happens in the modal's onOpenChange
+      setShowAddDatasetModal(true);
+    };
+
+    window.addEventListener('openAddDatasetModal', handleOpenAddDatasetModalEvent);
+    return () => {
+      window.removeEventListener('openAddDatasetModal', handleOpenAddDatasetModalEvent);
+    };
+  }, []);
+
   const handleActiveDatasetChange = (index: number) => {
     setActiveDatasetIndex(index);
+    if (!hasJSON) setHasJSON(true);
+
+    // Only update global chartType in Single mode
+    // In Grouped mode, the chart type is determined by the group's baseChartType, not individual dataset selection
+    if (chartMode === 'single') {
+      const dataset = chartData.datasets[index];
+      if (dataset && (dataset as any).chartType) {
+        setChartType((dataset as any).chartType);
+      }
+    }
   };
 
   const handleUpdateDataset = (datasetIndex: number, updates: Partial<ExtendedChartDataset> | string, value?: any) => {
@@ -425,11 +463,17 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     // Logic for resetting/persisting category is handled in initializeModalWithExistingStructure or handleCategoryChange
   }
 
-  // Filter datasets based on current mode
+  // Filter datasets based on current mode and active group
   const filteredDatasets = chartData.datasets.filter(dataset => {
     // If dataset has a mode property, filter by it
     if (dataset.mode) {
-      return dataset.mode === chartMode
+      if (dataset.mode !== chartMode) return false;
+
+      // For grouped mode, also filter by active group
+      if (chartMode === 'grouped' && dataset.groupId !== activeGroupId) {
+        return false;
+      }
+      return true;
     }
     // For backward compatibility, show all datasets if no mode is set
     return true
@@ -497,8 +541,13 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     const dataset = filteredDatasets[datasetIndex]
     if (!dataset) return
 
+    // Use dataset's specific chartType if available, otherwise global chartType
+    const datasetChartType = (dataset as any).chartType || chartType
+    const isCoordinateChart = datasetChartType === 'scatter' || datasetChartType === 'bubble'
+
+    setEditingChartType(datasetChartType)
+
     const currentSliceLabels = dataset.sliceLabels || chartData.labels || []
-    const isCoordinateChart = chartType === 'scatter' || chartType === 'bubble'
 
     const rows: { label: string; value: number; color: string; imageUrl: string | null; x?: number; y?: number; r?: number }[] = dataset.data.map((val, i) => {
       const rawColor = Array.isArray(dataset.backgroundColor)
@@ -515,7 +564,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
           imageUrl: dataset.pointImages?.[i] || null,
           x: point.x ?? 0,
           y: point.y ?? 0,
-          r: point.r ?? (chartType === 'bubble' ? 10 : undefined),
+          r: point.r ?? (datasetChartType === 'bubble' ? 10 : undefined),
         }
       } else {
         // Categorical data
@@ -565,9 +614,18 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
 
   const handleConfirmDelete = () => {
     if (datasetToDelete !== null) {
-      removeDataset(datasetToDelete)
-      setShowDeleteConfirmDialog(false)
-      setDatasetToDelete(null)
+      // Get the dataset from filteredDatasets
+      const datasetToRemove = filteredDatasets[datasetToDelete];
+
+      // Find the actual index in chartData.datasets
+      const actualIndex = chartData.datasets.findIndex(d => d === datasetToRemove);
+
+      if (actualIndex !== -1) {
+        removeDataset(actualIndex);
+      }
+
+      setShowDeleteConfirmDialog(false);
+      setDatasetToDelete(null);
     }
   }
 
@@ -728,31 +786,122 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
               <BarChart2 className="h-4 w-4" />
               Uniform
             </label>
-            <label className={`flex items-center gap-2 cursor-pointer transition-colors text-[0.80rem] ${uniformityMode === 'mixed' ? 'text-purple-700 font-bold' : 'text-gray-500'} ${['pie', 'doughnut', 'radar', 'polarArea', 'scatter', 'bubble'].includes(chartType as any) ? 'opacity-50 cursor-not-allowed' : ''}`}>
-              <input
-                type="radio"
-                className="accent-purple-600"
-                checked={uniformityMode === 'mixed'}
-                onChange={() => setUniformityMode('mixed')}
-                disabled={['pie', 'doughnut', 'radar', 'polarArea', 'scatter', 'bubble'].includes(chartType as any)}
-              />
-              <Layers className="h-4 w-4" />
-              Mixed
-            </label>
+            {(() => {
+              const firstDatasetType = filteredDatasets[0]?.chartType;
+              const isMixedDisabled = firstDatasetType && ['pie', 'doughnut', 'radar', 'polarArea', 'scatter', 'bubble'].includes(firstDatasetType);
+
+              return (
+                <label className={`flex items-center gap-2 cursor-pointer transition-colors text-[0.80rem] ${uniformityMode === 'mixed' ? 'text-purple-700 font-bold' : 'text-gray-500'} ${isMixedDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                  <input
+                    type="radio"
+                    className="accent-purple-600"
+                    checked={uniformityMode === 'mixed'}
+                    onChange={() => setUniformityMode('mixed')}
+                    disabled={!!isMixedDisabled}
+                  />
+                  <Layers className="h-4 w-4" />
+                  Mixed
+                </label>
+              );
+            })()}
           </div>
           <p className="text-xs text-gray-600 mt-2">
-            {['pie', 'doughnut', 'radar', 'polarArea', 'scatter', 'bubble'].includes(chartType as any) ? (
-              <span className="text-orange-600 font-medium">
-                Mixed mode is not available for {chartType} charts. Only uniform mode is supported.
-              </span>
-            ) : uniformityMode === 'uniform'
-              ? 'All datasets will use the same chart type selected in Types & Toggles panel.'
-              : 'Each dataset can have its own chart type selected during creation.'
-            }
+            {(() => {
+              const firstDatasetType = filteredDatasets[0]?.chartType;
+              const isMixedDisabled = firstDatasetType && ['pie', 'doughnut', 'radar', 'polarArea', 'scatter', 'bubble'].includes(firstDatasetType);
+
+              if (isMixedDisabled) {
+                return (
+                  <span className="text-orange-600 font-medium">
+                    Mixed mode is not available when the first dataset is {firstDatasetType}. Only uniform mode is supported.
+                  </span>
+                );
+              }
+
+              return uniformityMode === 'uniform'
+                ? 'All datasets will use the same chart type selected in Types & Toggles panel.'
+                : 'Each dataset can have its own chart type selected during creation.';
+            })()}
           </p>
         </div>
       )}
 
+      {/* Groups Section - Only for Grouped Mode */}
+      {chartMode === 'grouped' && (
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="font-semibold text-[0.80rem]">Groups</div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+              onClick={() => {
+                const newName = `Group ${groups.length}`;
+                addGroup({
+                  name: newName,
+                  category: null,
+                  uniformityMode: 'uniform'
+                });
+                toast.success(`Created group "${newName}"`);
+              }}
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              New Group
+            </Button>
+          </div>
+          <Select value={activeGroupId} onValueChange={setActiveGroup}>
+            <SelectTrigger className="w-full h-9 text-xs">
+              <SelectValue placeholder="Select a group" />
+            </SelectTrigger>
+            <SelectContent>
+              {groups.map((group) => (
+                <SelectItem key={group.id} value={group.id}>
+                  <div className="flex items-center gap-2">
+                    <span title={group.name}>{group.name.length > 20 ? `${group.name.slice(0, 20)}...` : group.name}</span>
+                    {group.isDefault && (
+                      <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">Default</span>
+                    )}
+                    {group.category && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${group.category === 'coordinate' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>
+                        {group.category === 'coordinate' ? 'Coord' : 'Categ'}
+                      </span>
+                    )}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {/* Active Group Info */}
+          {(() => {
+            const activeGroup = groups.find(g => g.id === activeGroupId);
+            if (!activeGroup) return null;
+            return (
+              <div className="mt-2 p-2 bg-gray-50 rounded-md border border-gray-100 text-xs text-gray-600">
+                <div className="flex items-center justify-between">
+                  <span>
+                    {activeGroup.category
+                      ? `${activeGroup.category === 'coordinate' ? 'Coordinate' : 'Categorical'} • ${activeGroup.uniformityMode}`
+                      : 'Category will be set when first dataset is added'}
+                  </span>
+                  {!activeGroup.isDefault && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-5 px-1.5 text-[10px] text-red-500 hover:text-red-600 hover:bg-red-50"
+                      onClick={() => {
+                        setGroupToDelete(activeGroup.id);
+                        setShowGroupDeleteDialog(true);
+                      }}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
       {chartMode === 'single' && filteredDatasets.length > 0 && (
         <div className="space-y-2">
           <Label className="text-[0.80rem] font-medium">Active Dataset</Label>
@@ -844,13 +993,9 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex-1 flex flex-col gap-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <Input
-                            value={dataset.label || ''}
-                            onChange={(e) => handleUpdateDataset(datasetIndex, 'label', e.target.value)}
-                            onClick={(e) => e.stopPropagation()}
-                            className="h-6 -ml-2 px-2 text-sm font-medium border-transparent bg-transparent hover:bg-gray-100/50 focus:bg-white focus:border-blue-200 focus:ring-2 focus:ring-blue-100 transition-all rounded shadow-none w-full max-w-[200px]"
-                            placeholder={`Dataset ${datasetIndex + 1}`}
-                          />
+                          <span className="text-sm font-medium text-gray-800 truncate max-w-[200px]">
+                            {dataset.label || `Dataset ${datasetIndex + 1}`}
+                          </span>
                         </div>
                         <div className="flex items-center gap-2 text-[10px] text-gray-400 pl-0.5">
                           {/* Chart Type Label */}
@@ -950,310 +1095,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
         )}
       </div>
       {/* Enhanced Add Dataset Modal */}
-      <Dialog open={showAddDatasetModal} onOpenChange={setShowAddDatasetModal}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              Create New Dataset
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${chartMode === 'single' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
-                {chartMode === 'single' ? 'Single' : 'Grouped'}
-              </span>
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            {/* Dataset Basic Info - Category, Chart Type, Name */}
-            <div className="grid grid-cols-4 gap-3">
-              {/* Category Dropdown */}
-              <div>
-                <label className="text-[0.80rem] font-medium text-gray-600 mb-1 block">Category</label>
-                {chartMode === 'grouped' && uniformityMode === 'uniform' && filteredDatasets.length > 0 ? (
-                  <div className="w-full h-9 px-3 rounded border border-gray-200 bg-gray-50 flex items-center text-[0.80rem]">
-                    <span className="text-gray-700">
-                      {coordinateChartTypes.some(t => t.value === chartType) ? 'Coordinate' : 'Categorical'}
-                    </span>
-                  </div>
-                ) : (
-                  <Select value={chartCategory} onValueChange={(v) => handleCategoryChange(v as 'categorical' | 'coordinate')}>
-                    <SelectTrigger className="w-full h-9 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="categorical">Categorical</SelectItem>
-                      <SelectItem value="coordinate">Coordinate</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-
-              {/* Chart Type Dropdown */}
-              <div>
-                <label className="text-[0.80rem] font-medium text-gray-600 mb-1 block">Chart Type</label>
-                {chartMode === 'grouped' && uniformityMode === 'uniform' && filteredDatasets.length > 0 ? (
-                  <div className="w-full h-9 px-3 rounded border border-gray-200 bg-gray-50 flex items-center text-[0.80rem]">
-                    <span className="text-gray-700">{chartType.charAt(0).toUpperCase() + chartType.slice(1)}</span>
-                  </div>
-                ) : (
-                  <Select value={newDatasetChartType} onValueChange={(v) => setNewDatasetChartType(v as any)}>
-                    <SelectTrigger className="w-full h-9 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getAvailableChartTypes().map((type) => (
-                        <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-
-              {/* Dataset Name */}
-              <div className="col-span-2">
-                <label className="text-[0.80rem] font-medium text-gray-600 mb-1 block">Dataset Name <span className="text-red-500">*</span></label>
-                <input
-                  value={newDatasetName}
-                  onChange={e => setNewDatasetName(e.target.value)}
-                  className="w-full h-9 px-3 rounded border border-gray-200 focus:border-green-400 focus:ring-2 focus:ring-green-100 text-[0.80rem] font-normal transition"
-                  placeholder="Enter dataset name"
-                />
-              </div>
-            </div>
-
-            {chartMode === 'grouped' && filteredDatasets.length > 0 && (
-              <div className="p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-xs text-yellow-800">
-                  <strong>Grouped Mode:</strong> Slice names will match existing datasets, but you can customize values and dataset name.
-                </p>
-              </div>
-            )}
-
-            {/* Slices/Points Management */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-[0.80rem] font-medium text-gray-700">
-                  {chartCategory === 'coordinate' ? 'Points' : 'Slices'} ({newDatasetSlices.length})
-                </label>
-                <div className="flex gap-2">
-                  {chartCategory === 'categorical' && (
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        setNewDatasetSlices(slices => slices.map(slice => ({ ...slice, value: Math.floor(Math.random() * 50) + 1 })));
-                      }}
-                      className="h-7 text-xs bg-orange-500 hover:bg-orange-600 text-white"
-                    >
-                      Randomize
-                    </Button>
-                  )}
-                  {chartCategory === 'coordinate' && (
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        setNewDatasetSlices(slices => slices.map((slice, i) => ({
-                          ...slice,
-                          x: Math.floor(Math.random() * 100),
-                          y: Math.floor(Math.random() * 100),
-                          r: Math.floor(Math.random() * 20) + 5
-                        })));
-                      }}
-                      className="h-7 text-xs bg-orange-500 hover:bg-orange-600 text-white"
-                    >
-                      Randomize
-                    </Button>
-                  )}
-                  <Button
-                    size="sm"
-                    onClick={handleAddSlice}
-                    disabled={chartMode === 'grouped' && filteredDatasets.length > 0}
-                    className="h-7 text-xs bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500"
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    Add {chartCategory === 'coordinate' ? 'Point' : 'Slice'}
-                  </Button>
-                </div>
-              </div>
-
-              {chartMode === 'grouped' && filteredDatasets.length > 0 && (
-                <div className="p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-xs text-yellow-800">
-                    <strong>Grouped Mode:</strong> Names will match existing datasets.
-                  </p>
-                </div>
-              )}
-
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {newDatasetSlices.map((slice, index) => (
-                  <div key={index} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-medium text-gray-600">
-                        {chartCategory === 'coordinate' ? 'Point' : 'Slice'} #{index + 1}
-                      </span>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
-                        onClick={() => handleRemoveSlice(index)}
-                        disabled={newDatasetSlices.length <= 1 || (chartMode === 'grouped' && filteredDatasets.length > 0)}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-
-                    {/* Conditional input fields based on category */}
-                    {chartCategory === 'coordinate' ? (
-                      /* Coordinate chart inputs: Label, X, Y, R (bubble only), Color */
-                      <div className="grid gap-2 grid-cols-12">
-                        <div className="col-span-3">
-                          <label className="text-xs font-medium text-gray-600 mb-1 block">Label</label>
-                          <input
-                            value={slice.name}
-                            onChange={e => handleUpdateSlice(index, 'name', e.target.value)}
-                            className="w-full h-8 px-2 rounded border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 text-xs transition"
-                            placeholder={`Point ${index + 1}`}
-                          />
-                        </div>
-                        <div className="col-span-2">
-                          <label className="text-xs font-medium text-gray-600 mb-1 block">X</label>
-                          <input
-                            type="number"
-                            value={slice.x}
-                            onChange={e => handleUpdateSlice(index, 'x', Number(e.target.value))}
-                            className="w-full h-8 px-2 rounded border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 text-xs transition"
-                            step="0.1"
-                          />
-                        </div>
-                        <div className="col-span-2">
-                          <label className="text-xs font-medium text-gray-600 mb-1 block">Y</label>
-                          <input
-                            type="number"
-                            value={slice.y}
-                            onChange={e => handleUpdateSlice(index, 'y', Number(e.target.value))}
-                            className="w-full h-8 px-2 rounded border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 text-xs transition"
-                            step="0.1"
-                          />
-                        </div>
-                        {newDatasetChartType === 'bubble' && (
-                          <div className="col-span-2">
-                            <label className="text-xs font-medium text-gray-600 mb-1 block">R</label>
-                            <input
-                              type="number"
-                              value={slice.r}
-                              onChange={e => handleUpdateSlice(index, 'r', Number(e.target.value))}
-                              className="w-full h-8 px-2 rounded border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 text-xs transition"
-                              min="1"
-                            />
-                          </div>
-                        )}
-                        <div className={newDatasetChartType === 'bubble' ? 'col-span-3' : 'col-span-5'}>
-                          <label className="text-xs font-medium text-gray-600 mb-1 block">Color</label>
-                          <div className="flex items-center gap-1">
-                            <input
-                              type="color"
-                              value={slice.color}
-                              onChange={e => handleUpdateSlice(index, 'color', e.target.value)}
-                              className="w-8 h-8 p-0 border-0 bg-transparent flex-shrink-0"
-                            />
-                            <input
-                              value={slice.color}
-                              onChange={e => handleUpdateSlice(index, 'color', e.target.value)}
-                              className="flex-1 h-8 px-1 rounded border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 text-[10px] font-mono uppercase transition min-w-0"
-                              placeholder="#1E90FF"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      /* Categorical chart inputs: Name, Value, Color */
-                      <div className="grid grid-cols-3 gap-2">
-                        <div>
-                          <label className="text-xs font-medium text-gray-600 mb-1 block">Name</label>
-                          <input
-                            value={slice.name}
-                            onChange={e => handleUpdateSlice(index, 'name', e.target.value)}
-                            disabled={chartMode === 'grouped' && filteredDatasets.length > 0}
-                            className="w-full h-8 px-2 rounded border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 text-xs transition disabled:bg-gray-100 disabled:text-gray-500"
-                            placeholder="Slice name"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs font-medium text-gray-600 mb-1 block">Value</label>
-                          <input
-                            type="number"
-                            value={slice.value}
-                            onChange={e => handleUpdateSlice(index, 'value', Number(e.target.value))}
-                            className="w-full h-8 px-2 rounded border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 text-xs transition"
-                            placeholder="0"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs font-medium text-gray-600 mb-1 block">Color</label>
-                          <div className="flex items-center gap-1">
-                            <input
-                              type="color"
-                              value={slice.color}
-                              onChange={e => handleUpdateSlice(index, 'color', e.target.value)}
-                              className="w-8 h-8 p-0 border-0 bg-transparent flex-shrink-0"
-                            />
-                            <input
-                              value={slice.color}
-                              onChange={e => handleUpdateSlice(index, 'color', e.target.value)}
-                              className="flex-1 h-8 px-2 rounded border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-100 text-xs font-mono uppercase transition"
-                              placeholder="#1E90FF"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Preview */}
-            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <label className="text-xs font-medium text-blue-800 mb-2 block">Preview</label>
-              <div className="space-y-1">
-                <div className="text-xs text-blue-700">
-                  <strong>Dataset:</strong> {newDatasetName || 'Unnamed Dataset'}
-                </div>
-                <div className="text-xs text-blue-700">
-                  <strong>Mode:</strong> {chartMode === 'single' ? 'Single' : 'Grouped'}
-                </div>
-                <div className="text-xs text-blue-700">
-                  <strong>Total Value:</strong> {newDatasetSlices.reduce((sum, slice) => sum + slice.value, 0)}
-                </div>
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {newDatasetSlices.map((slice, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-1 px-2 py-1 bg-white rounded border text-xs"
-                      style={{ borderColor: slice.color }}
-                    >
-                      <div
-                        className="w-3 h-3 rounded"
-                        style={{ backgroundColor: slice.color }}
-                      />
-                      <span>{slice.name}: {slice.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 mt-4">
-            <DialogClose asChild>
-              <Button variant="outline" size="sm">Cancel</Button>
-            </DialogClose>
-            <Button
-              size="sm"
-              className="bg-green-600 hover:bg-green-700 text-white"
-              disabled={!newDatasetName.trim()}
-              onClick={handleAddDatasetModal}
-            >
-              Create Dataset
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <AddDatasetModal open={showAddDatasetModal} onOpenChange={setShowAddDatasetModal} onDatasetAdd={addDataset} />
     </div>
   )
 
@@ -2518,77 +2360,117 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Full Edit Modal for Single mode */}
+      {/* Group Delete Confirmation Dialog */}
+      <Dialog open={showGroupDeleteDialog} onOpenChange={setShowGroupDeleteDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Group</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Are you sure you want to delete this group? <span className="font-semibold text-red-600">All datasets in this group will also be permanently deleted.</span>
+            </p>
+            {groupToDelete !== null && (
+              <div className="p-3 bg-red-50 rounded-lg border border-red-100">
+                <p className="text-sm font-medium text-gray-900">
+                  Group: {groups.find(g => g.id === groupToDelete)?.name || 'Unknown'}
+                </p>
+                <p className="text-xs text-red-600 font-medium">
+                  {chartData.datasets.filter(d => d.groupId === groupToDelete).length} dataset(s) will be deleted
+                </p>
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowGroupDeleteDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (groupToDelete) {
+                  const groupName = groups.find(g => g.id === groupToDelete)?.name || 'Unknown';
+                  deleteGroup(groupToDelete);
+                  toast.success(`Deleted group "${groupName}"`);
+                }
+                setShowGroupDeleteDialog(false);
+                setGroupToDelete(null);
+              }}
+            >
+              Delete Group
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={showFullEditModal} onOpenChange={setShowFullEditModal}>
         <DialogContent className="max-w-3xl w-full">
           <DialogHeader>
             <DialogTitle>
               {chartType === 'scatter' || chartType === 'bubble'
                 ? `Edit Coordinate Data (${chartType === 'bubble' ? 'Bubble' : 'Scatter'})`
-                : 'Full Edit (Single Dataset)'}
+                : 'Edit Dataset'}
             </DialogTitle>
           </DialogHeader>
 
-          {/* Dataset Name and Color Section */}
-          <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
-            <div className="grid grid-cols-2 gap-6">
+          {/* Dataset Name and Color Section - Compact */}
+          <div className="space-y-2 p-3 bg-gray-50 rounded-lg border border-gray-100">
+            <div className="flex items-center gap-4">
               {/* Dataset Name */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Dataset Name</Label>
+              <div className="flex-1 space-y-1">
+                <Label className="text-xs font-medium text-gray-600">Dataset Name</Label>
                 <Input
                   value={editingDatasetName}
                   onChange={(e) => setEditingDatasetName(e.target.value)}
                   placeholder="Enter dataset name"
-                  className="h-10"
+                  className="h-8 text-sm"
                 />
               </div>
 
-              {/* Dataset Color */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Dataset Color</Label>
-                <div className="flex items-center gap-3">
-                  {/* Radio Buttons */}
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center space-x-1">
+              {/* Dataset Color - Inline */}
+              <div className="space-y-1">
+                <Label className="text-xs font-medium text-gray-600">Color Mode</Label>
+                <div className="flex items-center gap-2">
+                  {/* Radio Buttons - Compact */}
+                  <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-md px-2 py-1">
+                    <label className="flex items-center gap-1 cursor-pointer">
                       <input
                         type="radio"
-                        id="slice-color"
                         name="color-mode"
                         value="slice"
                         checked={editingColorMode === 'slice'}
                         onChange={() => handleColorModeChange('slice')}
-                        className="w-4 h-4 text-blue-600"
+                        className="w-3 h-3 text-blue-600"
                       />
-                      <Label htmlFor="slice-color" className="text-xs">Slice</Label>
-                    </div>
-                    <div className="flex items-center space-x-1">
+                      <span className="text-xs text-gray-600">Slice</span>
+                    </label>
+                    <label className="flex items-center gap-1 cursor-pointer">
                       <input
                         type="radio"
-                        id="dataset-color"
                         name="color-mode"
                         value="dataset"
                         checked={editingColorMode === 'dataset'}
                         onChange={() => handleColorModeChange('dataset')}
-                        className="w-4 h-4 text-blue-600"
+                        className="w-3 h-3 text-blue-600"
                       />
-                      <Label htmlFor="dataset-color" className="text-xs">Dataset</Label>
-                    </div>
+                      <span className="text-xs text-gray-600">Dataset</span>
+                    </label>
                   </div>
 
-                  {/* Color Picker */}
-                  <div className="flex items-center gap-2">
+                  {/* Color Picker - Compact */}
+                  <div className="flex items-center gap-1">
                     <input
                       type="color"
                       value={editingDatasetColor}
                       onChange={(e) => handleDatasetColorChange(e.target.value)}
                       disabled={editingColorMode === 'slice'}
-                      className={`w-8 h-8 p-0 border-0 bg-transparent rounded ${editingColorMode === 'slice' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                      className={`w-7 h-7 p-0 border-0 rounded cursor-pointer ${editingColorMode === 'slice' ? 'opacity-40 cursor-not-allowed' : ''}`}
                     />
                     <Input
                       value={editingDatasetColor}
                       onChange={(e) => handleDatasetColorChange(e.target.value)}
                       disabled={editingColorMode === 'slice'}
-                      className={`h-8 text-xs w-20 ${editingColorMode === 'slice' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      className={`h-7 text-xs w-16 font-mono ${editingColorMode === 'slice' ? 'opacity-40' : ''}`}
                     />
                   </div>
                 </div>
@@ -2596,122 +2478,141 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
             </div>
           </div>
 
-          <div className="overflow-auto max-h-[60vh] space-y-2">
-            {chartMode === 'single' && fullEditRows.map((row, i) => {
-              const isCoordinateChart = chartType === 'scatter' || chartType === 'bubble'
+          <div className="overflow-auto max-h-[55vh] space-y-1.5 mt-3">
+            {/* Header Row */}
+            {fullEditRows.length > 0 && (
+              <div className={`grid gap-1.5 items-center py-1.5 px-2 bg-gray-50 rounded-md border border-gray-100 text-xs font-medium text-gray-500 ${editingChartType === 'scatter' || editingChartType === 'bubble' ? (editingChartType === 'bubble' ? 'grid-cols-12' : 'grid-cols-10') : 'grid-cols-12'}`}>
+                {editingChartType === 'scatter' || editingChartType === 'bubble' ? (
+                  <>
+                    <div className="col-span-3">Label</div>
+                    <div className="col-span-2">X</div>
+                    <div className="col-span-2">Y</div>
+                    {editingChartType === 'bubble' && <div className="col-span-2">Size (R)</div>}
+                    <div className="col-span-3">Color</div>
+                  </>
+                ) : (
+                  <>
+                    <div className="col-span-4">Name</div>
+                    <div className="col-span-2">Value</div>
+                    <div className="col-span-3">Color</div>
+                    <div className="col-span-3">Image</div>
+                  </>
+                )}
+              </div>
+            )}
+            {fullEditRows.map((row, i) => {
+              const isCoordinateChart = editingChartType === 'scatter' || editingChartType === 'bubble'
 
               if (isCoordinateChart) {
-                // Coordinate chart UI (X, Y, R for bubble)
+                // Coordinate chart UI (X, Y, R for bubble) - Compact
                 return (
-                  <div key={i} className={`grid gap-2 items-center p-2 border rounded ${chartType === 'bubble' ? 'grid-cols-12' : 'grid-cols-10'}`}>
+                  <div key={i} className={`grid gap-1.5 items-center py-1.5 px-2 border border-gray-100 rounded-md bg-white hover:border-gray-200 transition-colors ${editingChartType === 'bubble' ? 'grid-cols-12' : 'grid-cols-10'}`}>
                     <div className="col-span-3">
-                      <Label className="text-xs">Label</Label>
                       <Input
                         value={row.label}
                         onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, label: e.target.value } : r))}
-                        className="h-8 text-xs"
+                        className="h-7 text-xs"
                         placeholder={`Point ${i + 1}`}
                       />
                     </div>
                     <div className="col-span-2">
-                      <Label className="text-xs">X</Label>
                       <Input
                         type="number"
                         value={row.x ?? 0}
                         onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, x: Number(e.target.value) } : r))}
-                        className="h-8 text-xs"
+                        className="h-7 text-xs"
+                        placeholder="X"
                         step="0.1"
                       />
                     </div>
                     <div className="col-span-2">
-                      <Label className="text-xs">Y</Label>
                       <Input
                         type="number"
                         value={row.y ?? 0}
                         onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, y: Number(e.target.value) } : r))}
-                        className="h-8 text-xs"
+                        className="h-7 text-xs"
+                        placeholder="Y"
                         step="0.1"
                       />
                     </div>
-                    {chartType === 'bubble' && (
+                    {editingChartType === 'bubble' && (
                       <div className="col-span-2">
-                        <Label className="text-xs">Size (R)</Label>
                         <Input
                           type="number"
                           value={row.r ?? 10}
                           onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, r: Number(e.target.value) } : r))}
-                          className="h-8 text-xs"
+                          className="h-7 text-xs"
+                          placeholder="R"
                           min="1"
                           step="1"
                         />
                       </div>
                     )}
                     <div className="col-span-3">
-                      <Label className="text-xs">Color</Label>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
                         <input
                           type="color"
-                          className={`w-10 h-8 p-0 border-0 bg-transparent ${editingColorMode === 'dataset' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                          className={`w-7 h-7 p-0 border-0 rounded cursor-pointer ${editingColorMode === 'dataset' ? 'opacity-40' : ''}`}
                           value={row.color}
                           onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, color: e.target.value } : r))}
                           disabled={editingColorMode === 'dataset'}
                         />
                         <Input
-                          className={`h-8 text-xs w-20 ${editingColorMode === 'dataset' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          className={`h-7 text-xs flex-1 font-mono ${editingColorMode === 'dataset' ? 'opacity-40' : ''}`}
                           value={row.color}
                           onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, color: e.target.value } : r))}
                           disabled={editingColorMode === 'dataset'}
+                          placeholder="#hex"
                         />
                       </div>
                     </div>
                   </div>
                 )
               } else {
-                // Categorical chart UI (Name, Value, Color, Image)
+                // Categorical chart UI (Name, Value, Color, Image) - Compact
                 return (
-                  <div key={i} className="grid grid-cols-12 gap-2 items-center p-2 border rounded">
+                  <div key={i} className="grid grid-cols-12 gap-1.5 items-center py-1.5 px-2 border border-gray-100 rounded-md bg-white hover:border-gray-200 transition-colors">
                     <div className="col-span-4">
-                      <Label className="text-xs">Name</Label>
                       <Input
                         value={row.label}
                         onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, label: e.target.value } : r))}
-                        className="h-8 text-xs"
+                        className="h-7 text-xs"
+                        placeholder={`Name ${i + 1}`}
                       />
                     </div>
                     <div className="col-span-2">
-                      <Label className="text-xs">Value</Label>
                       <Input
                         type="number"
                         value={row.value}
                         onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, value: Number(e.target.value) } : r))}
-                        className="h-8 text-xs"
+                        className="h-7 text-xs"
+                        placeholder="Value"
                       />
                     </div>
                     <div className="col-span-3">
-                      <Label className="text-xs">Color</Label>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
                         <input
                           type="color"
-                          className={`w-10 h-8 p-0 border-0 bg-transparent ${editingColorMode === 'dataset' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                          className={`w-7 h-7 p-0 border-0 rounded cursor-pointer ${editingColorMode === 'dataset' ? 'opacity-40' : ''}`}
                           value={row.color}
                           onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, color: e.target.value } : r))}
                           disabled={editingColorMode === 'dataset'}
                         />
                         <Input
-                          className={`h-8 text-xs w-24 ${editingColorMode === 'dataset' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          className={`h-7 text-xs flex-1 font-mono ${editingColorMode === 'dataset' ? 'opacity-40' : ''}`}
                           value={row.color}
                           onChange={(e) => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, color: e.target.value } : r))}
                           disabled={editingColorMode === 'dataset'}
+                          placeholder="#hex"
                         />
                       </div>
                     </div>
                     <div className="col-span-3">
-                      <Label className="text-xs">Image</Label>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-8 text-xs"
+                          className="h-7 text-xs px-2"
                           onClick={async () => {
                             const input = document.createElement('input')
                             input.type = 'file'
@@ -2796,12 +2697,12 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                         </Button>
                         {!!fullEditRows[i]?.imageUrl && (
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
-                            className="h-8 text-xs"
+                            className="h-7 text-xs px-2 text-red-500 hover:text-red-600 hover:bg-red-50"
                             onClick={() => setFullEditRows(prev => prev.map((r, idx) => idx === i ? { ...r, imageUrl: null } : r))}
                           >
-                            Remove
+                            <X className="h-3 w-3" />
                           </Button>
                         )}
                       </div>
@@ -2811,7 +2712,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
               }
             })}
           </div>
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-1.5 pt-3 border-t border-gray-100">
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
             </DialogClose>

@@ -147,7 +147,7 @@ interface ChatStore {
   addMessage: (msg: ChatMessage) => void;
   setMessages: (msgs: ChatMessage[]) => void;
   clearMessages: () => void;
-  startNewConversation: () => void;
+  startNewConversation: (keepChartData?: boolean) => void;
   continueConversation: (input: string) => Promise<void>;
   modifyCurrentChart: (modification: string) => Promise<void>;
   resetConversation: () => void;
@@ -259,7 +259,7 @@ export const useChatStore = create<ChatStore>()(
 
       clearMessages: () => set({ messages: [getInitialMessage()] }),
 
-      startNewConversation: () => {
+      startNewConversation: (keepChartData?: boolean) => {
         set({
           messages: [getInitialMessage()],
           currentConversationId: generateId(),
@@ -276,8 +276,13 @@ export const useChatStore = create<ChatStore>()(
           canUndo: false,
           canRedo: false
         });
-        // Reset chart to default state
-        useChartStore.getState().resetChart();
+
+        // Only reset chart if not explicitly told to keep data
+        if (!keepChartData) {
+          useChartStore.getState().resetChart();
+        }
+
+        // Always hide JSON (welcome screen shown)
         useChartStore.getState().setHasJSON(false);
       },
 
