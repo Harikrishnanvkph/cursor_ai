@@ -25,6 +25,7 @@ import {
   Maximize2,
   Crop,
   Grid,
+  Layers,
 } from "lucide-react"
 import { EditSlicesModal } from "./EditSlicesModal"
 
@@ -38,6 +39,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
   const {
     chartData,
     chartType,
+    setChartType,
     updateDataset,
     updatePointImage,
     updateDataPoint,
@@ -45,6 +47,8 @@ export function SliceSettings({ className }: SliceSettingsProps) {
     chartMode,
     activeDatasetIndex,
     setActiveDatasetIndex,
+    groups,
+    activeGroupId,
   } = useChartStore()
 
   const [activeTab, setActiveTab] = useState<SliceTab>('data')
@@ -66,6 +70,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
   const [globalColor, setGlobalColor] = useState<string>("#3b82f6")
   const [imageSelectedIndex, setImageSelectedIndex] = useState<number>(0)
   const [fullEditRows, setFullEditRows] = useState<{ label: string; value: number; color: string; imageUrl: string | null; x?: number; y?: number; r?: number }[]>([])
+  const [selectedViewGroupId, setSelectedViewGroupId] = useState<string>('default')
 
   // Filter datasets based on current mode
   const filteredDatasets = chartData.datasets.filter(dataset => {
@@ -81,10 +86,56 @@ export function SliceSettings({ className }: SliceSettingsProps) {
   const currentDataset = filteredDatasets[selectedDatasetIndex] || null
   const currentSliceLabels = currentDataset?.sliceLabels || chartData.labels || []
 
+  // Helper function to determine if the current selected group uses coordinate charts
+  // This detects from actual data structure rather than relying on global chartType
+  const getSelectedGroupChartType = (): string => {
+    // For grouped mode, check the selected group's baseChartType first
+    if (chartMode === 'grouped' && selectedViewGroupId !== 'default') {
+      const group = groups?.find(g => g.id === selectedViewGroupId);
+      if (group?.baseChartType) {
+        return group.baseChartType;
+      }
+    }
+
+    // For all modes, detect from the current dataset's data structure
+    // This ensures accurate detection based on actual data
+    if (currentDataset?.data?.length > 0) {
+      const firstDataPoint = currentDataset.data[0];
+      if (typeof firstDataPoint === 'object' && firstDataPoint !== null) {
+        if ('x' in firstDataPoint || 'y' in firstDataPoint) {
+          if ('r' in firstDataPoint) return 'bubble';
+          return 'scatter';
+        }
+      }
+      // It's categorical data (numbers or arrays)
+      return chartType; // Use global chartType for categorical (bar, line, pie, etc.)
+    }
+
+    return chartType; // Fallback to global chartType
+  };
+
+  const selectedGroupChartType = getSelectedGroupChartType();
+  const isSelectedGroupCoordinateChart = selectedGroupChartType === 'scatter' || selectedGroupChartType === 'bubble';
+
   // Keep selectedDatasetIndex in sync with global activeDatasetIndex (especially after remount)
   useEffect(() => {
     setSelectedDatasetIndex(activeDatasetIndex ?? 0)
   }, [activeDatasetIndex, chartMode])
+
+  // When group selection changes, select the first dataset in that group
+  useEffect(() => {
+    if (chartMode === 'grouped') {
+      // Find all datasets in the selected group
+      const groupDatasets = filteredDatasets
+        .map((d, globalIndex) => ({ ...d, globalIndex }))
+        .filter(d => d.groupId === selectedViewGroupId || (!d.groupId && selectedViewGroupId === 'default'));
+
+      // Select the first dataset in this group, or fallback to 0
+      if (groupDatasets.length > 0) {
+        handleDatasetChange(groupDatasets[0].globalIndex);
+      }
+    }
+  }, [selectedViewGroupId])
 
   // Sync global color picker with persisted dataset color on mount/changes (Single mode only)
   useEffect(() => {
@@ -113,6 +164,15 @@ export function SliceSettings({ className }: SliceSettingsProps) {
     setSelectedDatasetIndex(index)
     // Reflect selection globally so other panels show same dataset
     setActiveDatasetIndex(index)
+
+    // Only update global chartType in Single mode (matching handleActiveDatasetChange behavior)
+    // In Grouped mode, the chart type is determined by the group's baseChartType
+    if (chartMode === 'single') {
+      const dataset = chartData.datasets[index]
+      if (dataset && (dataset as any).chartType) {
+        setChartType((dataset as any).chartType)
+      }
+    }
   }
 
   const handleDataPointUpdate = (pointIndex: number, value: string, field: 'x' | 'y' | 'r' = 'y') => {
@@ -461,7 +521,8 @@ export function SliceSettings({ className }: SliceSettingsProps) {
 
           <div className="space-y-1.5 pt-2 border-t border-blue-200 max-h-96 overflow-y-auto">
             {currentDataset.data.map((dataPoint, pointIndex) => {
-              const isCoordinateChart = chartType === 'scatter' || chartType === 'bubble'
+              // Use group-aware chart type detection
+              const isCoordinateChart = isSelectedGroupCoordinateChart;
 
               if (isCoordinateChart) {
                 // Enhanced layout for scatter/bubble charts with more space
@@ -492,7 +553,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                       </button>
                     </div>
                     {/* Second row: Coordinate inputs */}
-                    <div className={`grid gap-2 pl-7 ${chartType === 'bubble' ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                    <div className={`grid gap-2 pl-7 ${selectedGroupChartType === 'bubble' ? 'grid-cols-3' : 'grid-cols-2'}`}>
                       <div className="space-y-1">
                         <label className="text-[10px] text-gray-500 font-medium">X</label>
                         <input
@@ -515,7 +576,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                           step="0.1"
                         />
                       </div>
-                      {chartType === 'bubble' && (
+                      {selectedGroupChartType === 'bubble' && (
                         <div className="space-y-1">
                           <label className="text-[10px] text-gray-500 font-medium">Size (R)</label>
                           <input
@@ -1546,88 +1607,151 @@ export function SliceSettings({ className }: SliceSettingsProps) {
       {/* Dataset Selection */}
       <div className="space-y-2">
         {chartMode === 'grouped' && (
-          <div className="flex justify-center mb-2">
-            <Button size="sm" variant="outline" onClick={() => setShowEditSlicesModal(true)} className="w-full">
-              Edit All Datasets (Grouped)
+          <div className="flex justify-center mb-3">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowEditSlicesModal(true)}
+              className="w-full gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 hover:from-blue-100 hover:to-indigo-100 text-blue-700 font-medium shadow-sm"
+            >
+              <Layers className="w-4 h-4" />
+              Edit All Group Datasets
             </Button>
           </div>
         )}
         <div className="flex items-center gap-2">
-          <div className="flex-1 min-w-0">
-            <Label className="text-[0.80rem] font-medium">Edit Selected Dataset Below</Label>
-            <Select value={String(selectedDatasetIndex)} onValueChange={(value) => handleDatasetChange(Number(value))}>
-              <SelectTrigger className="h-9 w-full">
-                <span className="text-sm truncate">{filteredDatasets[selectedDatasetIndex]?.label || `Dataset ${selectedDatasetIndex + 1}`}</span>
-              </SelectTrigger>
-              <SelectContent>
-                {filteredDatasets.map((dataset, index) => (
-                  <SelectItem key={index} value={String(index)}>
-                    {dataset.label || `Dataset ${index + 1}`} ({dataset.data.length} points)
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          {chartMode === 'single' && (
-            <div className="pt-5">
-              <Button size="sm" variant="outline" onClick={() => {
-                // Helper function to convert RGBA to hex
-                const rgbaToHex = (rgba: string): string => {
-                  // Handle hex colors (already in correct format)
-                  if (rgba.startsWith('#')) return rgba
+          {/* Refactored Dataset Selection for Grouped Mode */}
+          {chartMode === 'grouped' ? (
+            <div className="flex items-end gap-3 w-full">
+              {/* Group Selector */}
+              <div className="flex-1">
+                <Label className="text-[0.70rem] font-medium text-gray-500 mb-1 block">Group</Label>
+                <Select value={selectedViewGroupId} onValueChange={setSelectedViewGroupId}>
+                  <SelectTrigger className="h-8 w-full text-xs bg-blue-50 border-blue-200 hover:bg-blue-100">
+                    <SelectValue placeholder="Select Group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem key="default" value="default">Default Group</SelectItem>
+                    {(groups || []).filter(g => !g.isDefault).map(group => (
+                      <SelectItem key={group.id} value={group.id}>{group.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-                  // Handle rgba colors
-                  const match = rgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/)
-                  if (match) {
-                    const [, r, g, b] = match
-                    return `#${[r, g, b].map(x => {
-                      const hex = parseInt(x).toString(16)
-                      return hex.length === 1 ? '0' + hex : hex
-                    }).join('')}`
+              {/* Dataset Selector (Filtered by Group) */}
+              <div className="flex-1">
+                <Label className="text-[0.70rem] font-medium text-gray-500 mb-1 block">Dataset</Label>
+                {(() => {
+                  // Filter datasets belonging to the selected group
+                  // We need to map them to their ORIGINAL global index to ensure handleDatasetChange works correctly
+                  const groupDatasets = filteredDatasets
+                    .map((d, globalIndex) => ({ ...d, globalIndex }))
+                    .filter(d => d.groupId === selectedViewGroupId || (!d.groupId && selectedViewGroupId === 'default'));
+
+                  if (groupDatasets.length === 0) {
+                    return (
+                      <div className="h-8 w-full flex items-center justify-center border rounded bg-gray-50 text-xs text-gray-400 italic">
+                        No datasets
+                      </div>
+                    );
                   }
 
-                  // Fallback for other formats
-                  return rgba || '#3b82f6'
-                }
-
-                // snapshot current rows for full edit modal
-                if (!currentDataset) return
-                const isCoordinateChart = chartType === 'scatter' || chartType === 'bubble'
-                const rows: { label: string; value: number; color: string; imageUrl: string | null; x?: number; y?: number; r?: number }[] = currentDataset.data.map((val, i) => {
-                  const rawColor = Array.isArray(currentDataset.backgroundColor)
-                    ? (currentDataset.backgroundColor[i] as string)
-                    : (currentDataset.backgroundColor as string) || '#3b82f6'
-
-                  if (isCoordinateChart && typeof val === 'object' && val !== null) {
-                    const point = val as { x: number; y: number; r?: number }
-                    return {
-                      label: String(currentSliceLabels[i] || `Point ${i + 1}`),
-                      value: 0,
-                      color: rgbaToHex(rawColor),
-                      imageUrl: currentDataset.pointImages?.[i] || null,
-                      x: point.x ?? 0,
-                      y: point.y ?? 0,
-                      r: point.r ?? (chartType === 'bubble' ? 10 : undefined),
+                  return (
+                    <Select value={String(selectedDatasetIndex)} onValueChange={(value) => handleDatasetChange(Number(value))}>
+                      <SelectTrigger className="h-8 w-full text-xs bg-emerald-50 border-emerald-200 hover:bg-emerald-100">
+                        <span className="text-xs truncate">
+                          {filteredDatasets[selectedDatasetIndex]?.label || `Dataset ${selectedDatasetIndex + 1}`}
+                        </span>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {groupDatasets.map((dataset) => (
+                          <SelectItem key={dataset.globalIndex} value={String(dataset.globalIndex)}>
+                            {dataset.label || `Dataset ${dataset.globalIndex + 1}`} ({dataset.data.length} pts)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  );
+                })()}
+              </div>
+            </div>
+          ) : (
+            // Single Mode - Dropdown and Full Edit on same line
+            <div className="flex items-end gap-3 w-full">
+              <div className="flex-1">
+                <Label className="text-[0.70rem] font-medium text-gray-500 mb-1 block">Dataset</Label>
+                <Select value={String(selectedDatasetIndex)} onValueChange={(value) => handleDatasetChange(Number(value))}>
+                  <SelectTrigger className="h-8 w-full text-xs bg-blue-50 border-blue-200 hover:bg-blue-100">
+                    <span className="text-xs truncate">{filteredDatasets[selectedDatasetIndex]?.label || `Dataset ${selectedDatasetIndex + 1}`}</span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredDatasets.map((dataset, index) => (
+                      <SelectItem key={index} value={String(index)}>
+                        {dataset.label || `Dataset ${index + 1}`} ({dataset.data.length} pts)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 gap-1.5 bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200 hover:from-purple-100 hover:to-pink-100 text-purple-700 font-medium shadow-sm text-xs"
+                onClick={() => {
+                  // Helper function to convert RGBA to hex
+                  const rgbaToHex = (rgba: string): string => {
+                    if (rgba.startsWith('#')) return rgba
+                    const match = rgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/)
+                    if (match) {
+                      const [, r, g, b] = match
+                      return `#${[r, g, b].map(x => {
+                        const hex = parseInt(x).toString(16)
+                        return hex.length === 1 ? '0' + hex : hex
+                      }).join('')}`
                     }
-                  } else {
-                    return {
-                      label: String(currentSliceLabels[i] || `Slice ${i + 1}`),
-                      value: typeof val === 'number' ? val : (Array.isArray(val) ? (val[1] as number) : (val as any)?.y ?? 0),
-                      color: rgbaToHex(rawColor),
-                      imageUrl: currentDataset.pointImages?.[i] || null,
-                    }
+                    return rgba || '#3b82f6'
                   }
-                })
-                setFullEditRows(rows)
-                setShowFullEditModal(true)
-              }}>
+
+                  if (!currentDataset) return
+                  const isCoordinateChart = isSelectedGroupCoordinateChart
+                  const rows: { label: string; value: number; color: string; imageUrl: string | null; x?: number; y?: number; r?: number }[] = currentDataset.data.map((val, i) => {
+                    const rawColor = Array.isArray(currentDataset.backgroundColor)
+                      ? (currentDataset.backgroundColor[i] as string)
+                      : (currentDataset.backgroundColor as string) || '#3b82f6'
+
+                    if (isCoordinateChart && typeof val === 'object' && val !== null) {
+                      const point = val as { x: number; y: number; r?: number }
+                      return {
+                        label: String(currentSliceLabels[i] || `Point ${i + 1}`),
+                        value: 0,
+                        color: rgbaToHex(rawColor),
+                        imageUrl: currentDataset.pointImages?.[i] || null,
+                        x: point.x ?? 0,
+                        y: point.y ?? 0,
+                        r: point.r ?? (selectedGroupChartType === 'bubble' ? 10 : undefined),
+                      }
+                    } else {
+                      return {
+                        label: String(currentSliceLabels[i] || `Slice ${i + 1}`),
+                        value: typeof val === 'number' ? val : (Array.isArray(val) ? (val[1] as number) : (val as any)?.y ?? 0),
+                        color: rgbaToHex(rawColor),
+                        imageUrl: currentDataset.pointImages?.[i] || null,
+                      }
+                    }
+                  })
+                  setFullEditRows(rows)
+                  setShowFullEditModal(true)
+                }}>
+                <Edit className="w-3 h-3" />
                 Full Edit
               </Button>
             </div>
           )}
         </div>
-
       </div>
+
+
 
       {/* Tab Navigation */}
       <div className="flex border-b border-gray-200 overflow-x-auto whitespace-nowrap max-w-full px-2">
@@ -1786,8 +1910,20 @@ export function SliceSettings({ className }: SliceSettingsProps) {
         onOpenChange={setShowEditSlicesModal}
         chartData={chartData}
         chartType={chartType}
-        onSave={(newSliceLabels, newValues) => {
+        groups={groups}
+        activeGroupId={activeGroupId}
+        chartMode={chartMode}
+        onSave={(newSliceLabels, newValues, editedGroupId) => {
+          // Only update datasets that belong to the edited group
           chartData.datasets.forEach((ds, i) => {
+            // Check if this dataset belongs to the edited group
+            const isInEditedGroup = ds.groupId === editedGroupId || (!ds.groupId && editedGroupId === 'default');
+
+            // Skip datasets that are not in the edited group (in grouped mode)
+            if (chartMode === 'grouped' && !isInEditedGroup) {
+              return;
+            }
+
             // Adjust pointImageConfig length
             let pic = ds.pointImageConfig || [];
             const diff = newSliceLabels.length - pic.length;
@@ -1811,7 +1947,10 @@ export function SliceSettings({ className }: SliceSettingsProps) {
               backgroundColor: bg,
             });
           });
-          updateLabels(newSliceLabels);
+          // Only update global labels if editing the default group or in single mode
+          if (chartMode === 'single' || editedGroupId === 'default') {
+            updateLabels(newSliceLabels);
+          }
         }}
       />
 
@@ -1821,20 +1960,20 @@ export function SliceSettings({ className }: SliceSettingsProps) {
           {/* Compact Header */}
           <DialogHeader className="px-4 py-3 border-b bg-gray-50/50">
             <DialogTitle className="text-base font-semibold">
-              {chartType === 'scatter' || chartType === 'bubble'
-                ? `Edit Points (${chartType === 'bubble' ? 'Bubble' : 'Scatter'})`
+              {isSelectedGroupCoordinateChart
+                ? `Edit Points (${selectedGroupChartType === 'bubble' ? 'Bubble' : 'Scatter'})`
                 : 'Edit Data Points'}
             </DialogTitle>
           </DialogHeader>
 
           {/* Header Row Labels */}
-          <div className={`grid gap-1.5 items-center px-4 py-2 bg-gray-50 border-b text-[10px] font-medium text-gray-500 ${chartType === 'scatter' || chartType === 'bubble' ? (chartType === 'bubble' ? 'grid-cols-12' : 'grid-cols-10') : 'grid-cols-12'}`}>
-            {chartType === 'scatter' || chartType === 'bubble' ? (
+          <div className={`grid gap-1.5 items-center px-4 py-2 bg-gray-50 border-b text-[10px] font-medium text-gray-500 ${isSelectedGroupCoordinateChart ? (selectedGroupChartType === 'bubble' ? 'grid-cols-12' : 'grid-cols-10') : 'grid-cols-12'}`}>
+            {isSelectedGroupCoordinateChart ? (
               <>
                 <div className="col-span-3">Label</div>
                 <div className="col-span-2">X</div>
                 <div className="col-span-2">Y</div>
-                {chartType === 'bubble' && <div className="col-span-2">Size (R)</div>}
+                {selectedGroupChartType === 'bubble' && <div className="col-span-2">Size (R)</div>}
                 <div className="col-span-3">Color</div>
               </>
             ) : (
@@ -1850,12 +1989,12 @@ export function SliceSettings({ className }: SliceSettingsProps) {
           {/* Compact Scrollable Rows */}
           <div className="flex-1 overflow-auto px-4 py-2 space-y-1.5">
             {chartMode === 'single' && fullEditRows.map((row, i) => {
-              const isCoordinateChart = chartType === 'scatter' || chartType === 'bubble'
+              const isCoordinateChart = isSelectedGroupCoordinateChart
 
               if (isCoordinateChart) {
                 // Coordinate chart UI (X, Y, R for bubble)
                 return (
-                  <div key={i} className={`grid gap-1.5 items-center py-1.5 px-2 border border-gray-100 rounded-md bg-white hover:border-gray-200 transition-colors ${chartType === 'bubble' ? 'grid-cols-12' : 'grid-cols-10'}`}>
+                  <div key={i} className={`grid gap-1.5 items-center py-1.5 px-2 border border-gray-100 rounded-md bg-white hover:border-gray-200 transition-colors ${selectedGroupChartType === 'bubble' ? 'grid-cols-12' : 'grid-cols-10'}`}>
                     <div className="col-span-3">
                       <Input
                         value={row.label}
@@ -1884,7 +2023,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                         step="0.1"
                       />
                     </div>
-                    {chartType === 'bubble' && (
+                    {selectedGroupChartType === 'bubble' && (
                       <div className="col-span-2">
                         <Input
                           type="number"
@@ -2123,6 +2262,6 @@ export function SliceSettings({ className }: SliceSettingsProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   )
 } 
