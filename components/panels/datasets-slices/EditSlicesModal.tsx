@@ -285,7 +285,16 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog
+        open={open}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            // Reset warning state when dialog closes
+            setShowDeleteConfirm(false);
+          }
+          onOpenChange(isOpen);
+        }}
+      >
         <DialogContent className="max-w-4xl w-full max-h-[85vh] flex flex-col p-0 gap-0">
           {/* Modal Header */}
           <DialogHeader className="px-6 py-4 border-b bg-gray-50/50 flex-shrink-0 space-y-3">

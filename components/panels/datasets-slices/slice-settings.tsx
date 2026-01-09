@@ -49,6 +49,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
     setActiveDatasetIndex,
     groups,
     activeGroupId,
+    setActiveGroup,
   } = useChartStore()
 
   const [activeTab, setActiveTab] = useState<SliceTab>('data')
@@ -70,7 +71,14 @@ export function SliceSettings({ className }: SliceSettingsProps) {
   const [globalColor, setGlobalColor] = useState<string>("#3b82f6")
   const [imageSelectedIndex, setImageSelectedIndex] = useState<number>(0)
   const [fullEditRows, setFullEditRows] = useState<{ label: string; value: number; color: string; imageUrl: string | null; x?: number; y?: number; r?: number }[]>([])
-  const [selectedViewGroupId, setSelectedViewGroupId] = useState<string>('default')
+  const [selectedViewGroupId, setSelectedViewGroupId] = useState<string>(activeGroupId || 'default')
+
+  // Keep local selectedViewGroupId in sync with global activeGroupId (especially when changed from other panels)
+  useEffect(() => {
+    if (chartMode === 'grouped' && activeGroupId) {
+      setSelectedViewGroupId(activeGroupId);
+    }
+  }, [activeGroupId, chartMode])
 
   // Filter datasets based on current mode
   const filteredDatasets = chartData.datasets.filter(dataset => {
@@ -1626,7 +1634,14 @@ export function SliceSettings({ className }: SliceSettingsProps) {
               {/* Group Selector */}
               <div className="flex-1">
                 <Label className="text-[0.70rem] font-medium text-gray-500 mb-1 block">Group</Label>
-                <Select value={selectedViewGroupId} onValueChange={setSelectedViewGroupId}>
+                <Select
+                  value={selectedViewGroupId}
+                  onValueChange={(value) => {
+                    setSelectedViewGroupId(value);
+                    // Also update global active group to sync with Datasets panel
+                    setActiveGroup(value);
+                  }}
+                >
                   <SelectTrigger className="h-8 w-full text-xs bg-blue-50 border-blue-200 hover:bg-blue-100">
                     <SelectValue placeholder="Select Group" />
                   </SelectTrigger>
