@@ -910,11 +910,14 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {filteredDatasets.map((dataset, index) => (
-                <SelectItem key={index} value={String(index)}>
-                  {dataset.label || `Dataset ${index + 1}`}
-                </SelectItem>
-              ))}
+              {filteredDatasets.map((dataset, index) => {
+                const actualIndex = chartData.datasets.indexOf(dataset);
+                return (
+                  <SelectItem key={index} value={String(actualIndex)}>
+                    {dataset.label || `Dataset ${actualIndex + 1}`}
+                  </SelectItem>
+                );
+              })}
             </SelectContent>
           </Select>
         </div>
@@ -984,8 +987,14 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                 filteredDatasets.map((dataset, datasetIndex) => (
                   <div
                     key={datasetIndex}
-                    onClick={() => handleActiveDatasetChange(datasetIndex)}
-                    className={`group relative p-3 rounded-lg transition-all cursor-pointer border ${chartMode === 'single' && datasetIndex === activeDatasetIndex
+                    onClick={() => {
+                      // Find the ACTUAL index in the global chartData.datasets
+                      const actualIndex = chartData.datasets.indexOf(dataset);
+                      if (actualIndex !== -1) {
+                        handleActiveDatasetChange(actualIndex);
+                      }
+                    }}
+                    className={`group relative p-3 rounded-lg transition-all cursor-pointer border ${chartMode === 'single' && chartData.datasets.indexOf(dataset) === activeDatasetIndex
                       ? 'bg-blue-50/50 border-blue-200 shadow-sm'
                       : 'bg-white border-transparent hover:border-gray-200 hover:shadow-sm hover:bg-gray-50/50'
                       }`}
@@ -1001,13 +1010,13 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                           {/* Chart Type Label */}
                           <span className="font-medium text-gray-500">
                             {(() => {
-                              const type = dataset.chartType || chartType;
+                              const type = dataset.chartType || dataset.type || chartType;
                               const labels: Record<string, string> = {
                                 horizontalBar: 'H. Bar',
                                 stackedBar: 'Stacked Bar',
                                 polarArea: 'Polar Area',
                               };
-                              return labels[type as string] || type.charAt(0).toUpperCase() + type.slice(1);
+                              return labels[type as string] || (typeof type === 'string' ? type.charAt(0).toUpperCase() + type.slice(1) : 'Unknown');
                             })()}
                           </span>
                           <span className="w-0.5 h-0.5 rounded-full bg-gray-300"></span>
@@ -1031,7 +1040,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                         {/* Idle State: Chart Type Icon */}
                         <div className="group-hover:hidden text-gray-400">
                           {(() => {
-                            const type = dataset.chartType || chartType;
+                            const type = dataset.chartType || dataset.type || chartType;
                             switch (type) {
                               case 'horizontalBar':
                                 return <ChartBarDecreasing className="h-4 w-4" />;

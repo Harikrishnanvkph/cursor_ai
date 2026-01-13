@@ -45,7 +45,28 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   onTabChange?: (tab: string) => void,
   onNewChart?: () => void
 }) {
-  const { chartConfig, chartData, chartType, setChartType, resetChart, setHasJSON, globalChartRef, showLabels, showImages, fillArea, showBorder, toggleShowBorder, updateChartConfig, pendingChartTypeChange, clearPendingChartTypeChange, categoricalDataBackup, scatterBubbleDataBackup, setCategoricalDataBackup, setScatterBubbleDataBackup } = useChartStore()
+  // Granular selectors to prevent unnecessary re-renders of the preview component
+  const chartConfig = useChartStore(s => s.chartConfig);
+  const chartData = useChartStore(s => s.chartData);
+  const chartType = useChartStore(s => s.chartType);
+  const showLabels = useChartStore(s => s.showLabels);
+  const showImages = useChartStore(s => s.showImages);
+  const fillArea = useChartStore(s => s.fillArea);
+  const showBorder = useChartStore(s => s.showBorder);
+  const pendingChartTypeChange = useChartStore(s => s.pendingChartTypeChange);
+  const categoricalDataBackup = useChartStore(s => s.categoricalDataBackup);
+  const scatterBubbleDataBackup = useChartStore(s => s.scatterBubbleDataBackup);
+
+  // Actions
+  const setChartType = useChartStore(s => s.setChartType);
+  const resetChart = useChartStore(s => s.resetChart);
+  const setHasJSON = useChartStore(s => s.setHasJSON);
+  const globalChartRef = useChartStore(s => s.globalChartRef);
+  const toggleShowBorder = useChartStore(s => s.toggleShowBorder);
+  const updateChartConfig = useChartStore(s => s.updateChartConfig);
+  const clearPendingChartTypeChange = useChartStore(s => s.clearPendingChartTypeChange);
+  const setCategoricalDataBackup = useChartStore(s => s.setCategoricalDataBackup);
+  const setScatterBubbleDataBackup = useChartStore(s => s.setScatterBubbleDataBackup);
   const { shouldShowTemplate, editorMode, templateInBackground, currentTemplate, setEditorMode } = useTemplateStore()
   const { user } = useAuth()
   const { backendConversationId } = useChatStore()
@@ -195,7 +216,8 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
         : '#3b82f6',
       borderColor: '#1d4ed8',
       borderWidth: 1,
-      type: scatterBubbleSetup.targetType as any
+      type: scatterBubbleSetup.targetType as any,
+      chartType: scatterBubbleSetup.targetType as any // Persist chart type for single mode logic
     };
 
     const newChartData = {

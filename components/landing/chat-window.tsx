@@ -60,14 +60,14 @@ export function ChatWindow({
   // Enhanced input change handler with auto-resize
   const enhancedHandleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     handleInputChange?.(e)
-    
+
     // Optimized auto-resize logic with debouncing for ChatWindow textarea
     if (textareaRef.current) {
       // Clear any existing timeout
       if (textareaRef.current.dataset.resizeTimeout) {
         clearTimeout(Number(textareaRef.current.dataset.resizeTimeout))
       }
-      
+
       const updateHeight = () => {
         if (textareaRef.current) {
           if (e.target.value === "") {
@@ -81,7 +81,7 @@ export function ChatWindow({
           }
         }
       }
-      
+
       // Debounce the height update to reduce performance impact
       const timeoutId = setTimeout(updateHeight, 16) // ~60fps
       textareaRef.current.dataset.resizeTimeout = timeoutId.toString()
@@ -91,7 +91,7 @@ export function ChatWindow({
   // Enhanced paste handler for ChatWindow
   const enhancedHandlePaste = useCallback(() => {
     handlePaste?.()
-    
+
     // Single timeout for paste operations to reduce performance impact
     setTimeout(() => {
       if (textareaRef.current) {
@@ -141,11 +141,10 @@ export function ChatWindow({
         {messages.map((msg, idx) => (
           <div
             key={idx}
-            className={`rounded-2xl px-4 py-3 max-w-[90%] whitespace-pre-wrap break-words shadow-lg font-medium text-sm ${
-              msg.role === "user"
+            className={`rounded-2xl px-4 py-3 max-w-[90%] whitespace-pre-wrap break-words shadow-lg font-medium text-sm ${msg.role === "user"
                 ? "bg-gradient-to-br from-indigo-500 to-purple-600 text-white self-end ml-auto border border-indigo-400/30 shadow-indigo-500/25"
                 : "bg-gradient-to-br from-white to-slate-50 text-slate-800 self-start mr-auto border border-slate-200/50 shadow-slate-500/10"
-            }`}
+              }`}
             style={{ wordBreak: 'break-word' }}
           >
             <div className="flex items-start gap-3">

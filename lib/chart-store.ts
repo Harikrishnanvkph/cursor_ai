@@ -2441,8 +2441,14 @@ export const useChartStore = create<ChartStore>()(
 
         // Always fully reset config for new chart type
         const chartJsType = type === ('area' as CustomChartType) ? 'line' as const : type;
-        const newDatasets = state.chartData.datasets.map((dataset) => {
+        const newDatasets = state.chartData.datasets.map((dataset, index) => {
           const newDataset = { ...dataset } as ExtendedChartDataset;
+
+          // In Single Mode, ONLY update the Active Dataset.
+          // Inactive datasets should retain their original type and data structure.
+          if (state.chartMode === 'single' && index !== state.activeDatasetIndex) {
+            return newDataset;
+          }
 
           // Set the Chart.js type
           if (type === 'horizontalBar') {
@@ -2458,6 +2464,15 @@ export const useChartStore = create<ChartStore>()(
           // IMPORTANT: Do NOT update the dataset's chartType property here.
           // The dataset's chartType should preserve the original type it was created with.
           // The GLOBAL chartType determines how the chart renders, not the dataset's chartType.
+
+          // EXCEPTION: In Single Mode, the Global Chart Type IS the dataset's type.
+          // If the user changes the global type while focusing on this dataset, 
+          // we should update the dataset's stored type so it "remembers" the change.
+          // This fixes the bug where manual datasets (which have a stored type) would revert 
+          // the global chart type when re-selected.
+          if (state.chartMode === 'single' && index === state.activeDatasetIndex) {
+            newDataset.chartType = type;
+          }
 
           // Apply default tension for line and area charts if not already set
           if (type === 'line' || type === 'area') {
@@ -3154,6 +3169,9 @@ export const useChartStore = create<ChartStore>()(
           // Clear chart type transition backups
           categoricalDataBackup: null,
           scatterBubbleDataBackup: null,
+
+          // Clear original cloud dimensions
+          originalCloudDimensions: null,
         };
       }),
       setChartMode: (mode) => set((state) => {
@@ -3248,7 +3266,24 @@ export const useChartStore = create<ChartStore>()(
           ...modeDataUpdate,
         }
       }),
-      setActiveDatasetIndex: (index) => set({ activeDatasetIndex: index }),
+      setActiveDatasetIndex: (index) => set((state) => {
+        const dataset = state.chartData.datasets[index];
+        if (!dataset) return { activeDatasetIndex: index };
+
+        const newType = dataset.chartType || (dataset.type as SupportedChartType) || 'bar';
+
+        // If the type is changing, we should also update the config to match
+        const typeChanged = state.chartType !== newType;
+        const newConfig = typeChanged
+          ? JSON.parse(JSON.stringify(getDefaultConfigForType(newType)))
+          : state.chartConfig;
+
+        return {
+          activeDatasetIndex: index,
+          chartType: newType,
+          chartConfig: newConfig
+        };
+      }),
       setUniformityMode: (mode: 'uniform' | 'mixed') => set({ uniformityMode: mode }),
       setHasJSON: (value: boolean) => set({ hasJSON: value }),
       updateLabels: (labels: string[]) => set((state) => {
@@ -3516,14 +3551,14 @@ export const useChartStore = create<ChartStore>()(
         // Process datasets to ensure they have mode property set
         const datasetCount = chartData.datasets?.length || 0;
         let processedDatasets = chartData.datasets?.map((ds: any) => {
-          // If dataset already has mode set, keep it
-          if (ds.mode === 'grouped' || ds.mode === 'single') {
-            return ds;
-          }
-          // If no mode is set, determine based on dataset count
-          // Multiple datasets (2+) should be grouped, single dataset should be single
+          // Determine inferred mode if not set
           const inferredMode = datasetCount > 1 ? 'grouped' : 'single';
-          return { ...ds, mode: inferredMode };
+
+          return {
+            ...ds,
+            mode: ds.mode || inferredMode,
+            chartType: ds.chartType || chartType
+          };
         }) || [];
 
         // Create a temporary group for loaded grouped datasets
@@ -3585,6 +3620,11 @@ export const useChartStore = create<ChartStore>()(
 
           // Merge: existing datasets from other groups + new datasets in temp group
           processedDatasets = [...existingDatasetsFromOtherGroups, ...processedDatasets];
+        } else if (datasetCount > 0) {
+          // Single Mode / Simple Append
+          // Append these datasets to the existing ones WITHOUT creating a group
+          const existingDatasets = state.chartData.datasets;
+          processedDatasets = [...existingDatasets, ...processedDatasets];
         }
 
         // Create processed chart data with mode properties set
@@ -3594,19 +3634,6 @@ export const useChartStore = create<ChartStore>()(
           datasets: processedDatasets
         };
 
-        // Sync currentChartState to chat-store
-        try {
-          const { useChatStore } = require('./chat-store');
-          const chatStore = useChatStore.getState();
-          chatStore.updateChartState({
-            chartType,
-            chartData: processedChartData,
-            chartConfig
-          });
-        } catch (error) {
-          console.warn('Could not sync chart state to chat-store:', error);
-        }
-
         // Determine the mode based on the processed datasets
         // Note: hasGroupedDatasets is already declared above
         const hasSingleDatasets = processedDatasets.some(ds => ds.mode === 'single');
@@ -3615,36 +3642,53 @@ export const useChartStore = create<ChartStore>()(
         let newSingleModeData = state.singleModeData;
         let newGroupedModeData = state.groupedModeData;
 
-        // Auto-detect mode based on dataset count if no explicit mode is set
-        // Multiple datasets (2+) = grouped mode, single dataset = single mode
-        if (datasetCount > 1 && !hasGroupedDatasets && !hasSingleDatasets) {
-          // All datasets are new and multiple - set as grouped
-          newMode = 'grouped';
-          newGroupedModeData = processedChartData;
-        } else if (datasetCount === 1 && !hasGroupedDatasets && !hasSingleDatasets) {
-          // Single dataset - set as single
-          newMode = 'single';
-          newSingleModeData = processedChartData;
-        } else if (hasGroupedDatasets && !hasSingleDatasets) {
-          // All datasets are grouped
+        // Auto-detect mode based on TOTAL dataset count (processedDatasets)
+        const totalDatasetCount = processedDatasets.length;
+
+        // If we have mixed modes (Grouped + Single), we should generally prefer Grouped Mode to ensure everything is visible
+        // OR if we have multiple datasets and ANY of them are Grouped, we must be in Grouped Mode.
+
+        if (hasGroupedDatasets && !hasSingleDatasets) {
+          // All grouped
           newMode = 'grouped';
           newGroupedModeData = processedChartData;
         } else if (hasSingleDatasets && !hasGroupedDatasets) {
-          // All datasets are single
+          // All single.
+          // If we have multiple single datasets (playlist), we can stay in Single Mode.
+          // If we have only 1, Single Mode.
           newMode = 'single';
           newSingleModeData = processedChartData;
         } else if (hasGroupedDatasets && hasSingleDatasets) {
-          // Mixed datasets - preserve current mode and update appropriate storage
-          if (state.chartMode === 'grouped') {
-            newGroupedModeData = processedChartData;
-          } else {
-            newSingleModeData = processedChartData;
-          }
+          // Mixed Context (e.g. Grouped Chart + Appended Single Chart)
+          // To ensure the Single Chart (now appended) is visible alongside Grouped data, 
+          // we should probably switch to (or stay in) Grouped Mode ?? 
+          // The user's bug report says "Single dataset chart is not loading... showing No Data". 
+          // This is likely because the store thinks it's in Single Mode (due to the bug) but the active dataset 
+          // might be pointing to a Grouped one or vice versa, or the renderer can't handle single-in-grouped.
+
+          // SAFE FIX: If there are ANY grouped datasets, default to Grouped Mode.
+          newMode = 'grouped';
+          newGroupedModeData = processedChartData;
+          // Ensure Single Mode data is also synced just in case
+          newSingleModeData = processedChartData;
         } else {
-          // Fallback: use dataset count to determine mode
-          if (datasetCount > 1) {
-            newMode = 'grouped';
-            newGroupedModeData = processedChartData;
+          // Fallback: If no explicit mode tags
+          if (totalDatasetCount > 1) {
+            // If we have multiple datasets and no mode tags, assume Grouped to show all? 
+            // OR if they were loaded as Single (playlist), keep Single?
+            // The original logic checked `datasetCount` (loaded). 
+            // If we loaded 1, we wanted Single. But now we might have 5 total.
+            // If we are currently in Grouped, stay Grouped. 
+            // If currently Single, maybe stay Single (playlist)?
+
+            // Let's trust the current state for fallback, or default to Grouped if confused.
+            if (state.chartMode === 'grouped') {
+              newMode = 'grouped';
+              newGroupedModeData = processedChartData;
+            } else {
+              newMode = 'single';
+              newSingleModeData = processedChartData;
+            }
           } else {
             newMode = 'single';
             newSingleModeData = processedChartData;
@@ -3660,7 +3704,10 @@ export const useChartStore = create<ChartStore>()(
           groupedModeData: newGroupedModeData,
           groups: updatedGroups,
           activeGroupId: newActiveGroupId,
-          activeDatasetIndex: 0, // Reset to first dataset
+          // Set active dataset to the first of the newly loaded datasets
+          // This ensures that when loading a Single Mode chart, we immediately show the new data
+          // accessible at the end of the list.
+          activeDatasetIndex: Math.max(0, processedDatasets.length - datasetCount),
           // Only override snapshot ID if a new one is explicitly provided.
           // This preserves the currently loaded snapshot when we just tweak the chart.
           currentSnapshotId: id !== undefined ? id || null : state.currentSnapshotId,
@@ -4140,81 +4187,65 @@ export const useChartStore = create<ChartStore>()(
         }
         return 'chart-store-anonymous';
       })(),
-      version: 3,
+      version: 4,
       migrate: (persistedState: any, version: number) => {
-        if (version === 0) {
-          // Migrate datasets to have chartType if missing
-          const globalChartType = persistedState.chartType || 'bar';
-          const migrateDatasets = (data: any) => {
-            if (data?.datasets) {
-              return {
-                ...data,
-                datasets: data.datasets.map((ds: any) => ({
-                  ...ds,
-                  chartType: ds.chartType || globalChartType, // Set chartType if missing
-                })),
-              };
-            }
-            return data;
-          };
+        let state = persistedState;
 
-          return {
-            ...persistedState,
-            chartType: globalChartType,
-            chartData: migrateDatasets(persistedState.chartData) || singleModeDefaultData,
-            chartConfig: persistedState.chartConfig || getDefaultConfigForType('bar'),
-            chartMode: persistedState.chartMode || 'single',
-            activeDatasetIndex: persistedState.activeDatasetIndex || 0,
-            singleModeData: migrateDatasets(persistedState.singleModeData) || singleModeDefaultData,
-            groupedModeData: migrateDatasets(persistedState.groupedModeData) || groupedModeDefaultData,
-            uniformityMode: persistedState.uniformityMode || 'uniform',
-            legendFilter: persistedState.legendFilter || { datasets: {}, slices: {} },
-            fillArea: persistedState.fillArea ?? true,
-            showBorder: persistedState.showBorder ?? true,
-            hasJSON: persistedState.hasJSON ?? false,
-            overlayImages: persistedState.overlayImages || [],
-            overlayTexts: persistedState.overlayTexts || [],
-            selectedImageId: null, // Don't persist selection state
-            // Add groups defaults
-            groups: persistedState.groups || [DEFAULT_GROUP],
-            activeGroupId: persistedState.activeGroupId || 'default',
-          };
-        }
-        // Migration for version 1 -> 2: Add chartType to datasets that don't have it
-        if (version === 1) {
-          const globalChartType = persistedState.chartType || 'bar';
-          const migrateDatasets = (data: any) => {
-            if (data?.datasets) {
-              return {
-                ...data,
-                datasets: data.datasets.map((ds: any) => ({
-                  ...ds,
-                  chartType: ds.chartType || globalChartType,
-                })),
-              };
-            }
-            return data;
-          };
+        // Helper to ensure ALL datasets have a chartType
+        const backfillChartType = (data: any, globalType: string) => {
+          if (data?.datasets) {
+            return {
+              ...data,
+              datasets: data.datasets.map((ds: any) => ({
+                ...ds,
+                chartType: ds.chartType || globalType,
+              })),
+            };
+          }
+          return data;
+        };
 
-          return {
-            ...persistedState,
-            chartData: migrateDatasets(persistedState.chartData),
-            singleModeData: migrateDatasets(persistedState.singleModeData),
-            groupedModeData: migrateDatasets(persistedState.groupedModeData),
-            // Add groups defaults
-            groups: persistedState.groups || [DEFAULT_GROUP],
-            activeGroupId: persistedState.activeGroupId || 'default',
+        // Migration for version 0 -> 1: (Handled by defaults or simple property additions)
+        if (version < 1) {
+          // Add basic structure if missing
+          state = {
+            ...state,
+            groups: state.groups || [DEFAULT_GROUP],
+            activeGroupId: state.activeGroupId || 'default',
           };
         }
-        // Migration for version 2 -> 3: Add groups and activeGroupId
-        if (version === 2) {
-          return {
-            ...persistedState,
-            groups: persistedState.groups || [DEFAULT_GROUP],
-            activeGroupId: persistedState.activeGroupId || 'default',
+
+        // Migration for version 1 -> 2: Ensure groups and activeGroupId exist
+        if (version < 2) {
+          state = {
+            ...state,
+            groups: state.groups || [DEFAULT_GROUP],
+            activeGroupId: state.activeGroupId || 'default',
           };
         }
-        return persistedState;
+
+        // Migration for version 2 -> 3: (Add mode-specific storage if missing)
+        if (version < 3) {
+          state = {
+            ...state,
+            singleModeData: state.singleModeData || state.chartData || emptyChartData,
+            groupedModeData: state.groupedModeData || state.chartData || emptyChartData,
+          };
+        }
+
+        // Migration for version 3 -> 4: CRITICAL FIX for chartType persistence
+        // Backfill chartType for all datasets that might be missing it
+        if (version < 4) {
+          const globalType = state.chartType || 'bar';
+          state = {
+            ...state,
+            chartData: backfillChartType(state.chartData, globalType),
+            singleModeData: backfillChartType(state.singleModeData, globalType),
+            groupedModeData: backfillChartType(state.groupedModeData, globalType),
+          };
+        }
+
+        return state;
       },
       partialize: (state) => ({
         chartType: state.chartType,

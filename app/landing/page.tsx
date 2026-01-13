@@ -319,11 +319,20 @@ function LandingPageContent() {
       // Only sync if this is a different chart state to prevent infinite loops
       if (lastSyncedChartStateRef.current !== chartStateHash) {
         lastSyncedChartStateRef.current = chartStateHash
-        setFullChart({
-          chartType: currentChartState.chartType,
-          chartData: currentChartState.chartData,
-          chartConfig: currentChartState.chartConfig
-        })
+
+        // Skip calling setFullChart if datasets already have groupIds assigned
+        // This means the data came from restoreConversation which already called setFullChart
+        const datasetsHaveGroupIds = currentChartState.chartData?.datasets?.some(
+          (ds: any) => ds.groupId
+        );
+
+        if (!datasetsHaveGroupIds) {
+          setFullChart({
+            chartType: currentChartState.chartType,
+            chartData: currentChartState.chartData,
+            chartConfig: currentChartState.chartConfig
+          })
+        }
         setHasJSON(true)
       }
     } else {

@@ -41,7 +41,7 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
     // since the undo operations from the previous conversation are no longer relevant
     clearUndoStack()
     setOpen(false)
-    
+
     // Only route to landing if we're not already on a valid chart page
     // If we're on editor, docs, or other chart-related pages, stay there
     if (pathname === '/landing' || pathname === '/') {
@@ -53,12 +53,12 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
   const handleDeleteConversation = async (conversationId: string) => {
     // Check if we're deleting the currently active conversation
     const isCurrentConversation = historyConversationId === conversationId
-    
+
     try {
       await deleteConversation(conversationId)
       setDeleteConfirmId(null)
       toast.success("Conversation deleted successfully")
-      
+
       // If we deleted the currently active conversation, start a new one
       // This will automatically clear the undo/redo stack since it's no longer relevant
       if (isCurrentConversation) {
@@ -77,7 +77,7 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
       setClearConfirmOpen(false)
       setOpen(false)
       toast.success("All history cleared successfully")
-      
+
       // Always start a new conversation after clearing all history
       // This will automatically clear the undo/redo stack as well
       startNewConversation()
@@ -115,12 +115,12 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
               <History className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          
+
           <DropdownMenuContent className="w-72 mt-2 rounded-lg" align="end" forceMount>
             <div className="p-2 border-b border-gray-100">
               <h3 className="font-semibold text-gray-900 text-sm">Chat History</h3>
             </div>
-            
+
             <div className="max-h-64 overflow-y-auto">
               {loading ? (
                 <div className="p-4 text-center text-gray-500 text-sm">Loading...</div>
@@ -153,7 +153,7 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
                 ))
               )}
             </div>
-            
+
             {safeConversations.length > 0 && (
               <>
                 <DropdownMenuSeparator />
@@ -209,12 +209,12 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
               <History className="w-3 h-3" />
             </Button>
           </DropdownMenuTrigger>
-          
+
           <DropdownMenuContent className="w-72 mt-2 rounded-lg" align="end" forceMount>
             <div className="p-2 border-b border-gray-100">
               <h3 className="font-semibold text-gray-900 text-sm">Chat History</h3>
             </div>
-            
+
             <div className="max-h-64 overflow-y-auto">
               {loading ? (
                 <div className="p-4 text-center text-gray-500 text-sm">Loading...</div>
@@ -247,7 +247,7 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
                 ))
               )}
             </div>
-            
+
             {safeConversations.length > 0 && (
               <>
                 <DropdownMenuSeparator />
@@ -301,13 +301,13 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
             {open ? <ChevronUp className="w-3 h-3 text-gray-700" /> : <ChevronDown className="w-3 h-3 text-gray-700" />}
           </Button>
         </DropdownMenuTrigger>
-        
+
         <DropdownMenuContent className="w-72 mt-2 rounded-lg" align="end" forceMount>
           <div className="p-2 border-b border-gray-100">
             <h3 className="font-semibold text-gray-900 text-sm">Chat History</h3>
             <p className="text-xs text-gray-500">Your previous conversations</p>
           </div>
-          
+
           {safeConversations.length === 0 ? (
             <div className="p-4 text-center">
               <p className="text-sm text-gray-500">No chat history yet</p>
@@ -340,7 +340,7 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
                   </DropdownMenuItem>
                 ))}
               </div>
-              
+
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={handleClearClick}

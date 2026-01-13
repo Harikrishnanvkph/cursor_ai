@@ -106,32 +106,34 @@ export interface ChartGeneratorProps {
 }
 
 export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
-  const {
-    chartConfig,
-    chartData,
-    chartType,
-    legendFilter,
-    fillArea,
-    showBorder,
-    showImages,
-    chartMode,
-    activeDatasetIndex,
-    uniformityMode,
-    activeGroupId,
-    groups,
-    overlayImages,
-    overlayTexts,
-    selectedImageId,
-    selectedTextId,
-    updateOverlayImage,
-    updateOverlayText,
-    setSelectedImageId,
-    setSelectedTextId,
-    removeOverlayImage,
-    removeOverlayText,
-    setGlobalChartRef,
-    updateGroup
-  } = useChartStore();
+  // Granular selectors to prevent unnecessary re-renders
+  const chartConfig = useChartStore(s => s.chartConfig);
+  const chartData = useChartStore(s => s.chartData);
+  const chartType = useChartStore(s => s.chartType);
+  const legendFilter = useChartStore(s => s.legendFilter);
+  const fillArea = useChartStore(s => s.fillArea);
+  const showBorder = useChartStore(s => s.showBorder);
+  const showImages = useChartStore(s => s.showImages);
+  const chartMode = useChartStore(s => s.chartMode);
+  const activeDatasetIndex = useChartStore(s => s.activeDatasetIndex);
+  const uniformityMode = useChartStore(s => s.uniformityMode);
+  const activeGroupId = useChartStore(s => s.activeGroupId);
+  const groups = useChartStore(s => s.groups);
+  const overlayImages = useChartStore(s => s.overlayImages);
+  const overlayTexts = useChartStore(s => s.overlayTexts);
+  const selectedImageId = useChartStore(s => s.selectedImageId);
+  const selectedTextId = useChartStore(s => s.selectedTextId);
+
+  // Actions are stable and don't cause re-renders, but good practice to select them or use getState if appropriate
+  // However, using the hook ensures we get the bound functions
+  const updateOverlayImage = useChartStore(s => s.updateOverlayImage);
+  const updateOverlayText = useChartStore(s => s.updateOverlayText);
+  const setSelectedImageId = useChartStore(s => s.setSelectedImageId);
+  const setSelectedTextId = useChartStore(s => s.setSelectedTextId);
+  const removeOverlayImage = useChartStore(s => s.removeOverlayImage);
+  const removeOverlayText = useChartStore(s => s.removeOverlayText);
+  const setGlobalChartRef = useChartStore(s => s.setGlobalChartRef);
+  const updateGroup = useChartStore(s => s.updateGroup);
 
   const chartRef = useRef<ChartJS>(null);
   const [hoveredDatasetIndex, setHoveredDatasetIndex] = useState<number | null>(null);

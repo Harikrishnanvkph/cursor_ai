@@ -20,13 +20,27 @@ import { toast } from "sonner"
 import { useState } from "react"
 import { Eraser, RotateCcw } from "lucide-react"
 
+import { ReactNode } from "react"
+
 interface ClearChartDialogProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     onSuccess?: () => void
+    welcomeLabel?: string
+    welcomeDescription?: ReactNode
 }
 
-export function ClearChartDialog({ open, onOpenChange, onSuccess }: ClearChartDialogProps) {
+export function ClearChartDialog({
+    open,
+    onOpenChange,
+    onSuccess,
+    welcomeLabel = "Go to Welcome Preview",
+    welcomeDescription = (
+        <>
+            Returns to the welcome screen but <strong>keeps your data</strong>. You can resume editing by selecting a dataset or using the AI chat.
+        </>
+    )
+}: ClearChartDialogProps) {
     const [clearOption, setClearOption] = useState<'welcome' | 'reset'>('welcome')
     const { setHasJSON, resetChart } = useChartStore()
     const { clearMessages, startNewConversation, setBackendConversationId } = useChatStore()
@@ -84,10 +98,10 @@ export function ClearChartDialog({ open, onOpenChange, onSuccess }: ClearChartDi
                             <div className="grid gap-1.5">
                                 <Label htmlFor="welcome" className="font-medium cursor-pointer flex items-center gap-2">
                                     <RotateCcw className="h-4 w-4" />
-                                    Go to Welcome Preview
+                                    {welcomeLabel}
                                 </Label>
                                 <div className="text-sm text-muted-foreground">
-                                    Returns to the welcome screen but <strong>keeps your data</strong>. You can resume editing by selecting a dataset or using the AI chat.
+                                    {welcomeDescription}
                                 </div>
                             </div>
                         </div>

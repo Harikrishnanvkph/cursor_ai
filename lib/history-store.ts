@@ -81,9 +81,12 @@ export const useHistoryStore = create<HistoryStore>()(
           }
         }
 
-        // If not found locally, try to fetch from backend
-        if (!conv) {
-          console.log('Conversation not in local store, fetching from backend...');
+        // If not found locally, OR if found but has no details (lazy load case), fetch from backend
+        // We check for (messages.length === 0 && !snapshot) as indication of "list-only" data
+        const isIncomplete = conv && conv.messages.length === 0 && !conv.snapshot;
+
+        if (!conv || isIncomplete) {
+          console.log(`Conversation ${isIncomplete ? 'incomplete' : 'not found'} locally, fetching details from backend...`);
           try {
             const response = await dataService.getConversation(id);
             if (response.data) {
@@ -164,19 +167,21 @@ export const useHistoryStore = create<HistoryStore>()(
           setHasJSON(true);
 
           // Save original cloud dimensions for restoration (for chart-only conversations)
+          // ONLY if they haven't been set yet, to preserve the true "Original" reference
           const chartConfig = conv.snapshot.chartConfig as any;
           if (chartConfig) {
-            const width = chartConfig.width ? String(chartConfig.width) : '600px';
-            const height = chartConfig.height ? String(chartConfig.height) : '500px';
-            const { setOriginalCloudDimensions } = useChartStore.getState();
-            setOriginalCloudDimensions({
-              width: width.includes('px') ? width : `${width}px`,
-              height: height.includes('px') ? height : `${height}px`
-            });
-          }
+            const { originalCloudDimensions, setOriginalCloudDimensions } = useChartStore.getState();
 
-          // Update current chart state in chat store
-          updateChartState(conv.snapshot);
+            if (!originalCloudDimensions) {
+              const width = chartConfig.width ? String(chartConfig.width) : '600px';
+              const height = chartConfig.height ? String(chartConfig.height) : '500px';
+
+              setOriginalCloudDimensions({
+                width: width.includes('px') ? width : `${width}px`,
+                height: height.includes('px') ? height : `${height}px`
+              });
+            }
+          }
 
           // Restore template mode if snapshot has template data
           if (conv.snapshot.template_structure || conv.snapshot.is_template_mode) {
@@ -273,71 +278,22 @@ export const useHistoryStore = create<HistoryStore>()(
           }
 
           if (response.data && response.data.length > 0) {
-            // For each conversation, we need to get its messages and current snapshot
-            const conversationsWithDetails = await Promise.all(
-              response.data.map(async (conv: any) => {
-                try {
-                  // Fetch current snapshot first (required for valid conversation)
-                  const snapshotResponse = await dataService.getCurrentChartSnapshot(conv.id);
+            // Transform to lightweight frontend format
+            // We will lazy-load the details (messages & snapshot) when the user actually clicks on a conversation
+            // This prevents "Too Many Requests" (429) errors from firing hundreds of API calls at once
+            const lightweightConversations: Conversation[] = response.data.map((conv: any) => ({
+              id: conv.id,
+              title: conv.title,
+              messages: [], // Empty by default, loaded on open
+              snapshot: null, // Empty by default, loaded on open
+              timestamp: new Date(conv.created_at).getTime()
+            }));
 
-                  // Only fetch messages if we have a valid snapshot
-                  // Messages are optional - some conversations may have only chart data
-                  let transformedMessages: any[] = [];
-                  try {
-                    const messagesResponse = await dataService.getMessages(conv.id);
-                    if (messagesResponse.data && !messagesResponse.error) {
-                      transformedMessages = messagesResponse.data.map((msg: any) => ({
-                        role: msg.role,
-                        content: msg.content,
-                        timestamp: new Date(msg.created_at).getTime(),
-                        action: msg.action,
-                        changes: msg.changes,
-                        // Link chart snapshot if this message has one
-                        chartSnapshot: msg.chart_snapshots ? {
-                          chartType: msg.chart_snapshots.chart_type,
-                          chartData: msg.chart_snapshots.chart_data,
-                          chartConfig: msg.chart_snapshots.chart_config
-                        } : undefined
-                      }));
-                    }
-                  } catch {
-                    // Messages fetch failed silently - conversation still usable with snapshot
-                  }
-
-                  return {
-                    id: conv.id,
-                    title: conv.title,
-                    messages: transformedMessages,
-                    snapshot: snapshotResponse.data ? {
-                      id: snapshotResponse.data.id, // Include snapshot ID for updates
-                      chartType: snapshotResponse.data.chart_type,
-                      chartData: snapshotResponse.data.chart_data,
-                      chartConfig: snapshotResponse.data.chart_config,
-                      template_structure: snapshotResponse.data.template_structure, // Map template fields
-                      template_content: snapshotResponse.data.template_content,     // Map template fields
-                      is_template_mode: snapshotResponse.data.is_template_mode      // Map template fields
-                    } : null,
-                    timestamp: new Date(conv.created_at).getTime()
-                  };
-                } catch (error) {
-                  // Return basic conversation data if snapshot fetch fails
-                  // Don't log error to avoid console spam
-                  return {
-                    id: conv.id,
-                    title: conv.title,
-                    messages: [],
-                    snapshot: null,
-                    timestamp: new Date(conv.created_at).getTime()
-                  };
-                }
-              })
-            );
-
-            // Filter out any undefined or incomplete entries (failed loads)
-            const validConversations = conversationsWithDetails.filter(c => c && c.snapshot) as Conversation[];
-
-            set({ conversations: validConversations, loading: false });
-            console.log(`✅ Loaded ${validConversations.length} conversations from backend`);
+            set({
+              conversations: lightweightConversations,
+              loading: false
+            });
+            console.log(`✅ Loaded ${lightweightConversations.length} conversations from backend`);
           } else {
             set({ conversations: [], loading: false });
             console.log('No conversations found in backend');

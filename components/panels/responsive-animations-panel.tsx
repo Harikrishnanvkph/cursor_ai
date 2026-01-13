@@ -545,7 +545,8 @@ export function ResponsiveAnimationsPanel() {
                 }
 
                 // For chart-only conversations loaded from cloud, show Original Dimension
-                if (!isTemplateConversation && hasOriginalDimensions) {
+                // Relaxed constraint: Show if originalCloudDimensions exist, regardless of template status
+                if (hasOriginalDimensions) {
                   const widthNum = parseInt(originalCloudDimensions.width);
                   const heightNum = parseInt(originalCloudDimensions.height);
 
@@ -563,7 +564,7 @@ export function ResponsiveAnimationsPanel() {
                               ...chartConfig,
                               originalDimensions: true,
                               templateDimensions: false,
-                              manualDimensions: true,
+                              manualDimensions: true, // Original dimensions ARE a form of manual dimensions (fixed)
                               responsive: false,
                               dynamicDimension: false,
                               width: originalCloudDimensions.width,
@@ -599,10 +600,11 @@ export function ResponsiveAnimationsPanel() {
                   disabled={!(chartConfig.manualDimensions || chartConfig.dynamicDimension) || isTemplateMode || chartConfig.templateDimensions}
                   onChange={e => {
                     const newValue = e.target.value ? `${e.target.value}px` : undefined;
+                    // When manually editing, ALWAYS set originalDimensions to false
                     if (chartConfig.dynamicDimension) {
-                      updateChartConfig({ ...chartConfig, width: newValue, dynamicDimension: true });
-                    } else if (chartConfig.manualDimensions) {
-                      updateChartConfig({ ...chartConfig, width: newValue, manualDimensions: true });
+                      updateChartConfig({ ...chartConfig, width: newValue, dynamicDimension: true, originalDimensions: false });
+                    } else if (chartConfig.manualDimensions || (chartConfig as any).originalDimensions) {
+                      updateChartConfig({ ...chartConfig, width: newValue, manualDimensions: true, originalDimensions: false });
                     }
                   }}
                   className="h-8 text-xs w-full"
@@ -618,10 +620,11 @@ export function ResponsiveAnimationsPanel() {
                   disabled={!(chartConfig.manualDimensions || chartConfig.dynamicDimension) || isTemplateMode || chartConfig.templateDimensions}
                   onChange={e => {
                     const newValue = e.target.value ? `${e.target.value}px` : undefined;
+                    // When manually editing, ALWAYS set originalDimensions to false
                     if (chartConfig.dynamicDimension) {
-                      updateChartConfig({ ...chartConfig, height: newValue, dynamicDimension: true });
-                    } else if (chartConfig.manualDimensions) {
-                      updateChartConfig({ ...chartConfig, height: newValue, manualDimensions: true });
+                      updateChartConfig({ ...chartConfig, height: newValue, dynamicDimension: true, originalDimensions: false });
+                    } else if (chartConfig.manualDimensions || (chartConfig as any).originalDimensions) {
+                      updateChartConfig({ ...chartConfig, height: newValue, manualDimensions: true, originalDimensions: false });
                     }
                   }}
                   className="h-8 text-xs w-full"

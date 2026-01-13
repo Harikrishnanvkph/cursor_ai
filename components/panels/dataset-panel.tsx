@@ -117,21 +117,12 @@ export function DatasetPanel() {
   }
 
   const handleChartTypeChange = (type: string) => {
-    const newType = type === 'horizontalBar' ? 'bar' : type
+    const newType = (type === 'horizontalBar' ? 'bar' : type) as SupportedChartType
     if (type === 'stackedBar') {
       setChartType('stackedBar' as SupportedChartType)
-      chartData.datasets.forEach((dataset, index) => {
-        handleUpdateDataset(index, 'type', 'bar')
-      })
       return
     }
     setChartType(newType)
-
-    // Update dataset types when chart type changes
-    chartData.datasets.forEach((dataset, index) => {
-      const newTypeForDataset = (type === 'horizontalBar' || type === 'stackedBar') ? 'bar' : type
-      handleUpdateDataset(index, 'type', newTypeForDataset)
-    })
   }
 
   const handleImageUpload = (datasetIndex: number, pointIndex: number, event: React.ChangeEvent<HTMLInputElement>) => {

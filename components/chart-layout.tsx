@@ -19,6 +19,7 @@ import { clearCurrentChart } from "@/lib/storage-utils"
 import { DimensionMismatchDialog } from "@/components/dialogs/dimension-mismatch-dialog"
 import { SaveChartDialog } from "@/components/ui/save-chart-dialog"
 import { useHistoryStore } from "@/lib/history-store"
+import { ClearChartDialog } from "@/components/dialogs/clear-chart-dialog"
 
 // Helper to parse dimension string (e.g., "800px" -> 800)
 function parseDimension(value: string | number | undefined): number {
@@ -51,6 +52,9 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
   // Save chart dialog state
   const [showSaveChartDialog, setShowSaveChartDialog] = useState(false)
   const [currentChartName, setCurrentChartName] = useState<string>("")
+
+  // Clear chart dialog state
+  const [showClearDialog, setShowClearDialog] = useState(false)
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed)
@@ -439,26 +443,9 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
     }
   }
 
-  // Cancel and clear chart
+  // Cancel and clear chart - show confirmation first
   const handleCancel = () => {
-    // Clear all chart data from localStorage using storage-utils
-    clearCurrentChart()
-
-    // Clear messages and reset stores
-    clearMessages()
-    startNewConversation()
-
-    // Reset chart store
-    useChartStore.getState().resetChart()
-    useChartStore.getState().setHasJSON(false)
-
-    // Clear all template state to prevent data cascading to new charts
-    useTemplateStore.getState().clearAllTemplateState()
-
-    toast.success("Chart cleared from localStorage")
-
-    // Navigate to new chart creation (landing page)
-    router.push('/landing')
+    setShowClearDialog(true)
   }
 
   // Handle chart resize when sidebar toggles
@@ -632,6 +619,16 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
           handleSave(name)
         }}
         onCancel={() => setShowSaveChartDialog(false)}
+      />
+
+      <ClearChartDialog
+        open={showClearDialog}
+        onOpenChange={setShowClearDialog}
+        welcomeLabel="Close and Open New Chat"
+        welcomeDescription="Closes the chart view and starts a new conversation."
+        onSuccess={() => {
+          router.push('/landing')
+        }}
       />
     </div>
   )
