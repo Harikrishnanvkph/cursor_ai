@@ -47,16 +47,49 @@ export function TemplateChartPreview({
     globalChartRef,
     chartType,
     setChartType,
-    updateChartConfig
+    chartTitle: globalTitle,
+    setChartTitle,
+    chartMode,
+    activeDatasetIndex,
+    activeGroupId,
+    groups
   } = useChartStore()
+
+  // Derive targetId for editing
+  // Default to null - we ONLY want to enable editing if the active item has a proven sourceId
+  let targetId: string | null = null;
+
+  if (chartMode === 'single' && chartData.datasets?.[activeDatasetIndex]?.sourceId) {
+    targetId = chartData.datasets[activeDatasetIndex].sourceId!;
+  } else if (chartMode === 'grouped' && activeGroupId && groups) {
+    const activeGroup = groups.find(g => activeGroupId === g.id);
+    if (activeGroup?.sourceId) {
+      targetId = activeGroup.sourceId;
+    }
+  }
+
+  // Only allow editing if we have a valid target ID (implying the chart is saved/cloud-aware)
+  const canEditTitle = !!targetId;
+
+  // Derive title logic
+  let displayTitle = globalTitle || "Untitled Chart";
+
+  if (chartMode === 'grouped' && activeGroupId && groups) {
+    const activeGroup = groups.find(g => g.id === activeGroupId);
+    if (activeGroup?.name || activeGroup?.sourceTitle) {
+      displayTitle = activeGroup.name || activeGroup.sourceTitle!;
+    }
+  } else if (chartMode === 'single' && chartData.datasets.length > 0) {
+    const activeDs = chartData.datasets[activeDatasetIndex];
+    // Explicitly handle local single-mode datasets: default to "Untitled Chart" if no sourceTitle
+    displayTitle = activeDs?.sourceTitle || "Untitled Chart";
+  }
+
+
+  const chartTitle = displayTitle;
+
   const { backendConversationId } = useChatStore()
   const { conversations, updateConversation } = useHistoryStore()
-
-  // Get the current chart title from history
-  const currentConversation = backendConversationId
-    ? conversations.find(c => c.id === backendConversationId)
-    : null
-  const chartTitle = currentConversation?.title || null
   const containerRef = useRef<HTMLDivElement>(null)
   const fullscreenContainerRef = useRef<HTMLDivElement>(null)
   const pendingTabRef = useRef<string | null>(null)
@@ -100,10 +133,12 @@ export function TemplateChartPreview({
 
   // Start renaming
   const handleStartRename = () => {
-    if (chartTitle && backendConversationId) {
-      setRenameValue(chartTitle)
-      setIsRenaming(true)
-    }
+    if (!canEditTitle) return;
+    setRenameValue(chartTitle || "")
+    setIsRenaming(true)
+    setTimeout(() => {
+      renameInputRef.current?.focus()
+    }, 0)
   }
 
   // Handle chart type change - uses centralized handler from store
@@ -113,18 +148,29 @@ export function TemplateChartPreview({
 
   // Save rename
   const handleSaveRename = async () => {
-    if (!renameValue.trim() || !backendConversationId || renameValue === chartTitle) {
+    if (!renameValue.trim() || renameValue === chartTitle) {
       setIsRenaming(false)
       return
     }
 
+
+
     setIsSavingRename(true)
     try {
-      const result = await dataService.updateConversation(backendConversationId, { title: renameValue.trim() })
-      if (result.error) throw new Error(result.error)
+      setChartTitle(renameValue.trim())
 
-      updateConversation(backendConversationId, { title: renameValue.trim() })
-      toast.success("Title updated")
+      // Optimistically update history store
+      updateConversation(targetId, { title: renameValue.trim() })
+
+      try {
+        const result = await dataService.updateConversation(targetId, { title: renameValue.trim() })
+        if (result.error) throw new Error(result.error)
+        toast.success("Title updated")
+      } catch (error) {
+        console.error("Rename error:", error)
+        toast.error("Failed to update title backend")
+      }
+
       setIsRenaming(false)
     } catch (error) {
       console.error("Rename error:", error)
@@ -771,16 +817,18 @@ export function TemplateChartPreview({
         <div className="flex-1 max-w-[500px]">
           {/* Chart Title (from history) - Primary heading with edit */}
           {chartTitle && (
-            <div className="flex items-center gap-1.5 mb-0.5">
-              <button
-                onClick={handleStartRename}
-                className="p-0.5 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
-                title="Rename"
-              >
-                <Pencil className="h-3 w-3" />
-              </button>
+            <div className="flex items-center gap-1.5 mb-1">
+              {canEditTitle && (
+                <button
+                  onClick={handleStartRename}
+                  className="p-0.5 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+                  title="Rename"
+                >
+                  <Pencil className="h-3 w-3" />
+                </button>
+              )}
               <div className="flex items-center gap-1 flex-1">
-                {isRenaming ? (
+                {isRenaming && canEditTitle ? (
                   <>
                     <input
                       ref={renameInputRef}
@@ -810,6 +858,21 @@ export function TemplateChartPreview({
           )}
           {/* Toggle and Dimensions row */}
           <div className="flex items-center gap-2">
+            {/* Group Selector for Grouped Mode */}
+            {chartMode === 'grouped' && groups && groups.length > 1 && (
+              <Select value={activeGroupId} onValueChange={(val) => useChartStore.getState().setActiveGroup(val)}>
+                <SelectTrigger className="h-6 w-[100px] text-[10px] px-2 py-0 border-gray-200 bg-white mr-2">
+                  <SelectValue placeholder="Select Group" />
+                </SelectTrigger>
+                <SelectContent>
+                  {groups.map((g) => (
+                    <SelectItem key={g.id} value={g.id} className="text-xs">
+                      {g.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             {/* Chart/Template Mode Toggle */}
             <div className="flex items-center gap-1 bg-gray-100 rounded-full p-0.5 border border-gray-200">
               <button

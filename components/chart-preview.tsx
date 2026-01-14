@@ -57,6 +57,11 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   const categoricalDataBackup = useChartStore(s => s.categoricalDataBackup);
   const scatterBubbleDataBackup = useChartStore(s => s.scatterBubbleDataBackup);
 
+  const chartMode = useChartStore(s => s.chartMode);
+  const groups = useChartStore(s => s.groups);
+  const activeGroupId = useChartStore(s => s.activeGroupId);
+  const activeDatasetIndex = useChartStore(s => s.activeDatasetIndex);
+
   // Actions
   const setChartType = useChartStore(s => s.setChartType);
   const resetChart = useChartStore(s => s.resetChart);
@@ -70,13 +75,26 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   const { shouldShowTemplate, editorMode, templateInBackground, currentTemplate, setEditorMode } = useTemplateStore()
   const { user } = useAuth()
   const { backendConversationId } = useChatStore()
-  const { conversations, updateConversation } = useHistoryStore()
-
-  // Get the current chart title from history
-  const currentConversation = backendConversationId
-    ? conversations.find(c => c.id === backendConversationId)
-    : null
-  const chartTitle = currentConversation?.title || null
+  const { updateConversation } = useHistoryStore()
+  const chartTitle = useChartStore(s => {
+    // If in Grouped Mode, try to get title from active Group
+    if (s.chartMode === 'grouped' && s.activeGroupId && s.groups) {
+      const activeGroup = s.groups.find(g => g.id === s.activeGroupId);
+      if (activeGroup?.name || activeGroup?.sourceTitle) {
+        return activeGroup.name || activeGroup.sourceTitle!;
+      }
+    }
+    // If in Single Mode, try to get the title from the active dataset
+    if (s.chartMode === 'single' && s.chartData.datasets.length > 0) {
+      const activeDs = s.chartData.datasets[s.activeDatasetIndex];
+      // If active dataset has a title, use it. 
+      // If it doesn't (local), return "Untitled Chart" explicitly to avoid falling back to global s.chartTitle
+      return activeDs?.sourceTitle || "Untitled Chart";
+    }
+    // Fallback to global title or "Untitled" if active dataset has no title or no datasets suitable
+    return s.chartTitle || "Untitled Chart"
+  });
+  const setChartTitle = useChartStore(s => s.setChartTitle)
 
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -130,6 +148,22 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     }
   }, [pendingChartTypeChange, categoricalDataBackup, scatterBubbleDataBackup, clearPendingChartTypeChange]);
 
+  // Determine target ID for editing (Single or Grouped)
+  // Default to null - we ONLY want to enable editing if the active item has a proven sourceId
+  let targetId: string | null = null;
+
+  if (chartMode === 'single' && chartData.datasets?.[activeDatasetIndex]?.sourceId) {
+    targetId = chartData.datasets[activeDatasetIndex].sourceId!;
+  } else if (chartMode === 'grouped' && activeGroupId && groups) {
+    const activeGroup = groups.find(g => g.id === activeGroupId);
+    if (activeGroup?.sourceId) {
+      targetId = activeGroup.sourceId;
+    }
+  }
+
+  // Only allow editing if we have a valid target ID (implying the chart is saved/cloud-aware)
+  const canEditTitle = !!targetId;
+
   // Focus input when entering rename mode
   useEffect(() => {
     if (isRenaming && renameInputRef.current) {
@@ -138,12 +172,18 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     }
   }, [isRenaming]);
 
-  // Start renaming
+  // Handle Chart Renaming
   const handleStartRename = () => {
-    if (chartTitle && backendConversationId) {
-      setRenameValue(chartTitle);
-      setIsRenaming(true);
-    }
+    if (!canEditTitle) return;
+    setRenameValue(chartTitle || "");
+    setIsRenaming(true);
+    // Focus input on next tick
+    setTimeout(() => {
+      if (renameInputRef.current) {
+        renameInputRef.current.focus();
+        renameInputRef.current.select();
+      }
+    }, 0);
   };
 
   // Handle chart type change - uses centralized handler from store
@@ -359,20 +399,48 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     setScatterBubbleSetup({ active: false, targetType: null, direction: null, backupData: null });
   };
 
-  // Save rename
   const handleSaveRename = async () => {
-    if (!renameValue.trim() || !backendConversationId || renameValue === chartTitle) {
+    if (!renameValue.trim() || renameValue === chartTitle) {
+      setIsRenaming(false);
+      return;
+    }
+
+    // Determine target ID: active dataset's sourceId (single) or active group's sourceId (grouped) or global
+    let targetId = backendConversationId;
+    const { chartMode, chartData, activeDatasetIndex, activeGroupId, groups } = useChartStore.getState();
+
+    if (chartMode === 'single' && chartData.datasets?.[activeDatasetIndex]?.sourceId) {
+      targetId = chartData.datasets[activeDatasetIndex].sourceId;
+    } else if (chartMode === 'grouped' && activeGroupId && groups) {
+      const activeGroup = groups.find(g => g.id === activeGroupId);
+      if (activeGroup?.sourceId) {
+        targetId = activeGroup.sourceId;
+      }
+    }
+
+    if (!targetId) {
+      // If no ID to update (local-only chart), just update title locally
+      setChartTitle(renameValue.trim());
       setIsRenaming(false);
       return;
     }
 
     setIsSavingRename(true);
     try {
-      const result = await dataService.updateConversation(backendConversationId, { title: renameValue.trim() });
-      if (result.error) throw new Error(result.error);
+      setChartTitle(renameValue.trim());
 
-      updateConversation(backendConversationId, { title: renameValue.trim() });
-      toast.success("Title updated");
+      // Optimistically update history store (if this ID exists in history)
+      updateConversation(targetId, { title: renameValue.trim() });
+
+      try {
+        const result = await dataService.updateConversation(targetId, { title: renameValue.trim() });
+        if (result.error) throw new Error(result.error);
+        toast.success("Title updated");
+      } catch (error) {
+        console.error("Rename error:", error);
+        toast.error("Failed to update title backend");
+        // Revert on error? Or just leave local state as is.
+      }
       setIsRenaming(false);
     } catch (error) {
       console.error("Rename error:", error);
@@ -1062,15 +1130,17 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
               {/* Chart Title with edit icon */}
               {chartTitle && (
                 <div className="flex items-center gap-1.5 mb-0.5">
-                  <button
-                    onClick={handleStartRename}
-                    className="p-0.5 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
-                    title="Rename"
-                  >
-                    <Pencil className="h-3 w-3" />
-                  </button>
+                  {canEditTitle && (
+                    <button
+                      onClick={handleStartRename}
+                      className="p-0.5 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+                      title="Rename"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                  )}
                   <div className="flex items-center gap-1 flex-1">
-                    {isRenaming ? (
+                    {isRenaming && canEditTitle ? (
                       <>
                         <input
                           ref={renameInputRef}
@@ -1100,6 +1170,23 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
               )}
               {/* Toggle and Chart info row */}
               <div className="flex items-center gap-2">
+
+                {/* Group Selector for Grouped Mode */}
+                {chartMode === 'grouped' && groups && groups.length > 1 && (
+                  <Select value={activeGroupId} onValueChange={(val) => useChartStore.getState().setActiveGroup(val)}>
+                    <SelectTrigger className="h-6 w-[100px] text-[10px] px-2 py-0 border-gray-200 bg-white">
+                      <SelectValue placeholder="Select Group" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {groups.map((g) => (
+                        <SelectItem key={g.id} value={g.id} className="text-xs">
+                          {g.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
                 <div
                   className="flex items-center gap-1 bg-gray-100 rounded-full p-0.5 border border-gray-200"
                 >
@@ -1490,184 +1577,186 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       />
 
       {/* Fullscreen Toolbar */}
-      {isFullscreen && (
-        <>
-          {/* Top Left Button - Open Left Sidebar */}
-          {activeTab && onTabChange && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowLeftOverlay(true)}
-              className="fixed top-4 left-4 z-50 bg-white/95 backdrop-blur-md rounded-xl shadow-xl border border-gray-300/50 hover:bg-white hover:shadow-2xl hover:border-gray-400/60 transition-all duration-200 h-11 w-11"
-              title="Open Options"
-            >
-              <Menu className="h-5 w-5 text-gray-700" />
-            </Button>
-          )}
-
-          {/* Top Right Toolbar */}
-          <div className="fixed top-4 right-4 z-50 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-2 flex gap-2 border border-gray-200 animate-in fade-in duration-200">
-            {/* Zoom Controls */}
-            <div className="flex items-center gap-1 border rounded-md p-0.5 bg-white mr-1">
+      {
+        isFullscreen && (
+          <>
+            {/* Top Left Button - Open Left Sidebar */}
+            {activeTab && onTabChange && (
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={handleZoomOut}
-                disabled={zoom <= 0.1}
-                className="h-7 w-7 p-0"
-                title="Zoom Out"
+                onClick={() => setShowLeftOverlay(true)}
+                className="fixed top-4 left-4 z-50 bg-white/95 backdrop-blur-md rounded-xl shadow-xl border border-gray-300/50 hover:bg-white hover:shadow-2xl hover:border-gray-400/60 transition-all duration-200 h-11 w-11"
+                title="Open Options"
               >
-                <ZoomOut className="h-3.5 w-3.5" />
+                <Menu className="h-5 w-5 text-gray-700" />
               </Button>
-              <span className="text-xs text-gray-600 min-w-[45px] text-center px-1">
-                {Math.round(zoom * 100)}%
-              </span>
+            )}
+
+            {/* Top Right Toolbar */}
+            <div className="fixed top-4 right-4 z-50 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-2 flex gap-2 border border-gray-200 animate-in fade-in duration-200">
+              {/* Zoom Controls */}
+              <div className="flex items-center gap-1 border rounded-md p-0.5 bg-white mr-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleZoomOut}
+                  disabled={zoom <= 0.1}
+                  className="h-7 w-7 p-0"
+                  title="Zoom Out"
+                >
+                  <ZoomOut className="h-3.5 w-3.5" />
+                </Button>
+                <span className="text-xs text-gray-600 min-w-[45px] text-center px-1">
+                  {Math.round(zoom * 100)}%
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleZoomIn}
+                  disabled={zoom >= 3}
+                  className="h-7 w-7 p-0"
+                  title="Zoom In"
+                >
+                  <ZoomIn className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              {/* Pan Mode Toggle */}
+              <Button
+                variant={panMode ? "default" : "ghost"}
+                size="icon"
+                onClick={() => setPanMode(!panMode)}
+                title={panMode ? "Disable Pan Mode" : "Enable Pan Mode"}
+                className="h-8 w-8"
+              >
+                <Hand className="h-4 w-4" />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={handleZoomIn}
-                disabled={zoom >= 3}
-                className="h-7 w-7 p-0"
-                title="Zoom In"
+                onClick={handleExport}
+                title="Download"
+                className="hover:bg-gray-100 h-8 w-8"
               >
-                <ZoomIn className="h-3.5 w-3.5" />
+                <Download className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleFullscreen}
+                title="Exit fullscreen"
+                className="hover:bg-gray-100 h-8 w-8"
+              >
+                <Minimize2 className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => document.exitFullscreen()}
+                title="Close"
+                className="hover:bg-gray-100 text-red-500 hover:bg-red-50 h-8 w-8"
+              >
+                <X className="h-4 w-4" />
               </Button>
             </div>
-            {/* Pan Mode Toggle */}
-            <Button
-              variant={panMode ? "default" : "ghost"}
-              size="icon"
-              onClick={() => setPanMode(!panMode)}
-              title={panMode ? "Disable Pan Mode" : "Enable Pan Mode"}
-              className="h-8 w-8"
-            >
-              <Hand className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleExport}
-              title="Download"
-              className="hover:bg-gray-100 h-8 w-8"
-            >
-              <Download className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleFullscreen}
-              title="Exit fullscreen"
-              className="hover:bg-gray-100 h-8 w-8"
-            >
-              <Minimize2 className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => document.exitFullscreen()}
-              title="Close"
-              className="hover:bg-gray-100 text-red-500 hover:bg-red-50 h-8 w-8"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
 
-          {/* Left Sidebar Overlay */}
-          {showLeftOverlay && activeTab && onTabChange && (
-            <SidebarPortalProvider>
-              <SidebarContainer containerRef={leftSidebarPanelRef}>
-                <div className="fixed inset-0 z-[60] flex">
-                  {/* Sidebar Panel */}
-                  <div ref={leftSidebarPanelRef} className="w-80 bg-white shadow-2xl border-r border-gray-200 flex flex-col h-full">
-                    <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
-                      <h2 className="text-lg font-semibold text-gray-900">Options</h2>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setShowLeftOverlay(false)}
-                        className="h-8 w-8"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="flex-1 overflow-y-auto">
-                      <Sidebar
-                        activeTab={fullscreenActiveTab}
-                        onTabChange={(tab) => {
-                          setFullscreenActiveTab(tab);
-                          if (onTabChange) onTabChange(tab);
-                          setShowRightOverlay(true); // Auto-open right panel when tab is selected
-                        }}
-                        onToggleLeftSidebar={() => setShowLeftOverlay(false)}
-                        isLeftSidebarCollapsed={false}
-                      />
-                    </div>
-                  </div>
-                  {/* Backdrop */}
-                  <div
-                    className="flex-1 bg-black/20 backdrop-blur-sm"
-                    onClick={() => setShowLeftOverlay(false)}
-                  />
-                </div>
-              </SidebarContainer>
-            </SidebarPortalProvider>
-          )}
-
-          {/* Right Tools Panel Overlay */}
-          {showRightOverlay && activeTab && onTabChange && (
-            <SidebarPortalProvider>
-              <SidebarContainer containerRef={rightSidebarPanelRef}>
-                <div className="fixed inset-0 z-[70] flex">
-                  {/* Tools Panel - Positioned on left, stacked on top of options sidebar */}
-                  <div ref={rightSidebarPanelRef} className="w-80 bg-white shadow-2xl border-r border-gray-200 flex flex-col h-full">
-                    <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
-                      <h2 className="text-lg font-semibold text-gray-900">Tools</h2>
-                      <div className="flex items-center gap-2">
+            {/* Left Sidebar Overlay */}
+            {showLeftOverlay && activeTab && onTabChange && (
+              <SidebarPortalProvider>
+                <SidebarContainer containerRef={leftSidebarPanelRef}>
+                  <div className="fixed inset-0 z-[60] flex">
+                    {/* Sidebar Panel */}
+                    <div ref={leftSidebarPanelRef} className="w-80 bg-white shadow-2xl border-r border-gray-200 flex flex-col h-full">
+                      <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
+                        <h2 className="text-lg font-semibold text-gray-900">Options</h2>
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => setShowRightOverlay(false)}
+                          onClick={() => setShowLeftOverlay(false)}
                           className="h-8 w-8"
-                          title="Close Tools"
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setShowRightOverlay(false);
-                            setShowLeftOverlay(false);
-                          }}
-                          className="h-8 w-8"
-                          title="Close All"
                         >
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
+                      <div className="flex-1 overflow-y-auto">
+                        <Sidebar
+                          activeTab={fullscreenActiveTab}
+                          onTabChange={(tab) => {
+                            setFullscreenActiveTab(tab);
+                            if (onTabChange) onTabChange(tab);
+                            setShowRightOverlay(true); // Auto-open right panel when tab is selected
+                          }}
+                          onToggleLeftSidebar={() => setShowLeftOverlay(false)}
+                          isLeftSidebarCollapsed={false}
+                        />
+                      </div>
                     </div>
-                    <div className="flex-1 overflow-y-auto">
-                      <ConfigPanel
-                        activeTab={fullscreenActiveTab}
-                        onTabChange={(tab) => {
-                          setFullscreenActiveTab(tab);
-                          if (onTabChange) onTabChange(tab);
-                        }}
-                        onNewChart={onNewChart}
-                      />
-                    </div>
+                    {/* Backdrop */}
+                    <div
+                      className="flex-1 bg-black/20 backdrop-blur-sm"
+                      onClick={() => setShowLeftOverlay(false)}
+                    />
                   </div>
-                  {/* Backdrop */}
-                  <div
-                    className="flex-1 bg-black/20 backdrop-blur-sm"
-                    onClick={() => setShowRightOverlay(false)}
-                  />
-                </div>
-              </SidebarContainer>
-            </SidebarPortalProvider>
-          )}
-        </>
-      )}
+                </SidebarContainer>
+              </SidebarPortalProvider>
+            )}
+
+            {/* Right Tools Panel Overlay */}
+            {showRightOverlay && activeTab && onTabChange && (
+              <SidebarPortalProvider>
+                <SidebarContainer containerRef={rightSidebarPanelRef}>
+                  <div className="fixed inset-0 z-[70] flex">
+                    {/* Tools Panel - Positioned on left, stacked on top of options sidebar */}
+                    <div ref={rightSidebarPanelRef} className="w-80 bg-white shadow-2xl border-r border-gray-200 flex flex-col h-full">
+                      <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
+                        <h2 className="text-lg font-semibold text-gray-900">Tools</h2>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setShowRightOverlay(false)}
+                            className="h-8 w-8"
+                            title="Close Tools"
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setShowRightOverlay(false);
+                              setShowLeftOverlay(false);
+                            }}
+                            className="h-8 w-8"
+                            title="Close All"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="flex-1 overflow-y-auto">
+                        <ConfigPanel
+                          activeTab={fullscreenActiveTab}
+                          onTabChange={(tab) => {
+                            setFullscreenActiveTab(tab);
+                            if (onTabChange) onTabChange(tab);
+                          }}
+                          onNewChart={onNewChart}
+                        />
+                      </div>
+                    </div>
+                    {/* Backdrop */}
+                    <div
+                      className="flex-1 bg-black/20 backdrop-blur-sm"
+                      onClick={() => setShowRightOverlay(false)}
+                    />
+                  </div>
+                </SidebarContainer>
+              </SidebarPortalProvider>
+            )}
+          </>
+        )
+      }
 
       {/* Chart Transition Dialog - shown in CHART mode instead of inline setup screen when editorMode is template */}
       <ChartTransitionDialog
@@ -1683,6 +1772,6 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
         onCreateDataset={scatterBubbleSetup.direction === 'toScatter' ? handleOpenCreateModal : undefined}
         onCancel={handleCancelSetup}
       />
-    </div>
+    </div >
   )
 }

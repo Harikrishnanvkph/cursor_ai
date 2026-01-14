@@ -119,6 +119,8 @@ export interface ChartGroup {
   baseChartType?: SupportedChartType;              // For uniform groups, the locked type
   isDefault?: boolean;                             // If true, cannot be deleted/renamed
   createdAt: number;
+  sourceId?: string;                               // ID of the conversation this group originated from
+  sourceTitle?: string;                            // Original title of the conversation
 }
 
 // Default group that always exists
@@ -156,6 +158,8 @@ interface CustomDatasetProperties {
 // Create a type that combines ChartDataset with our custom properties
 export type ExtendedChartDataset<T extends keyof ChartTypeRegistry = keyof ChartTypeRegistry> = ChartDataset<T> & CustomDatasetProperties & {
   lastSliceColors?: string[]
+  sourceTitle?: string // Title of the conversation/chart this dataset originated from
+  sourceId?: string // ID of the conversation/chart this dataset originated from
 }
 
 // Define the chart data type with our extended dataset
@@ -260,6 +264,8 @@ interface ChartStore {
   // Groups for organizing datasets in Grouped Mode
   groups: ChartGroup[];
   activeGroupId: string;  // Always has a value (at least 'default')
+  // Chart Title persistence
+  chartTitle: string | null;
   // Group management actions
   addGroup: (group: Omit<ChartGroup, 'id' | 'createdAt'>) => string;
   updateGroup: (id: string, updates: Partial<ChartGroup>) => void;
@@ -298,6 +304,7 @@ interface ChartStore {
   setActiveDatasetIndex: (index: number) => void;
   setUniformityMode: (mode: 'uniform' | 'mixed') => void;
   updateLabels: (labels: string[]) => void;
+  setChartTitle: (title: string | null) => void;
   toggleFillArea: () => void;
   toggleShowBorder: () => void;
   toggleShowImages: () => void;
@@ -2232,70 +2239,12 @@ export const useChartStore = create<ChartStore>()(
       uniformityMode: 'uniform',
       // Groups for organizing datasets in Grouped Mode
       groups: [DEFAULT_GROUP],
-      activeGroupId: 'default',
-
-      // Group management actions
-      addGroup: (group) => {
-        const newGroup: ChartGroup = {
-          ...group,
-          id: `group_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          createdAt: Date.now()
-        };
-        set((state) => ({
-          groups: [...state.groups, newGroup],
-          activeGroupId: newGroup.id
-        }));
-        return newGroup.id;
+      activeGroupId: DEFAULT_GROUP.id,
+      chartTitle: null,
+      legendFilter: {
+        datasets: {},
+        slices: {}
       },
-
-      updateGroup: (id, updates) => {
-        set((state) => {
-          const group = state.groups.find(g => g.id === id);
-          // Prevent renaming or modifying isDefault status of default group
-          if (group?.isDefault && (updates.name !== undefined || updates.isDefault !== undefined)) {
-            return state;
-          }
-          return {
-            groups: state.groups.map(g => g.id === id ? { ...g, ...updates } : g)
-          };
-        });
-      },
-
-      deleteGroup: (id) => {
-        const state = get();
-        const group = state.groups.find(g => g.id === id);
-
-        // Prevent deletion of default group
-        if (group?.isDefault) {
-          return;
-        }
-
-        // Delete datasets that belong to this group
-        const updatedDatasets = state.chartData.datasets.filter(dataset => dataset.groupId !== id);
-
-        set({
-          groups: state.groups.filter(g => g.id !== id),
-          activeGroupId: state.activeGroupId === id ? 'default' : state.activeGroupId,
-          chartData: { ...state.chartData, datasets: updatedDatasets }
-        });
-      },
-
-      setActiveGroup: (id) => {
-        const state = get();
-        const group = state.groups.find(g => g.id === id);
-        if (group) {
-          // Update global chartType to match the group's baseChartType
-          // This ensures the chart renders correctly for this group
-          const updates: any = { activeGroupId: id };
-
-          if (group.baseChartType) {
-            updates.chartType = group.baseChartType;
-          }
-
-          set(updates);
-        }
-      },
-      legendFilter: { datasets: {}, slices: {} },
       fillArea: true,
       showBorder: true,
       showImages: true,
@@ -3158,6 +3107,7 @@ export const useChartStore = create<ChartStore>()(
 
           // Reset UI State
           chartMode: 'single',
+          chartTitle: null, // Clear title
           activeDatasetIndex: 0,
           uniformityMode: 'uniform',
           hasJSON: false,
@@ -3547,17 +3497,68 @@ export const useChartStore = create<ChartStore>()(
 
         return { chartConfig: newChartConfig };
       }),
-      setFullChart: ({ chartType, chartData, chartConfig, id, name }) => set((state) => {
+      setChartTitle: (title: string | null) => set((state) => {
+        // If in Single Mode, update the active dataset's sourceTitle
+        if (state.chartMode === 'single') {
+          const datasets = state.chartData.datasets.map((ds, i) => {
+            if (i === state.activeDatasetIndex) {
+              return { ...ds, sourceTitle: title || undefined };
+            }
+            return ds;
+          });
+          // Also update chartTitle to keep in sync if it's the only one
+          return { chartTitle: title, chartData: { ...state.chartData, datasets } };
+        }
+        // If in Grouped Mode, update the active Group name
+        if (state.chartMode === 'grouped' && state.activeGroupId) {
+          const groups = state.groups.map(g => {
+            if (g.id === state.activeGroupId) {
+              return { ...g, name: title || g.name, sourceTitle: title || undefined };
+            }
+            return g;
+          });
+          return { chartTitle: title, groups };
+        }
+
+        // Single Mode fallback (already handled above) or default
+        return { chartTitle: title };
+      }),
+
+      // Group Management Actions
+      addGroup: (group) => {
+        const id = Math.random().toString(36).substr(2, 9);
+        set((state) => ({
+          groups: [...state.groups, { ...group, id, createdAt: Date.now() }],
+          activeGroupId: id
+        }));
+        return id;
+      },
+      updateGroup: (id, updates) => set((state) => ({
+        groups: state.groups.map(g => g.id === id ? { ...g, ...updates } : g)
+      })),
+      deleteGroup: (id) => set((state) => ({
+        groups: state.groups.filter(g => g.id !== id),
+        activeGroupId: state.activeGroupId === id ? 'default' : state.activeGroupId
+      })),
+      setActiveGroup: (id) => set({ activeGroupId: id }),
+
+      setFullChart: ({ chartType, chartData, chartConfig, id, name, conversationId }) => set((state) => {
         // Process datasets to ensure they have mode property set
         const datasetCount = chartData.datasets?.length || 0;
         let processedDatasets = chartData.datasets?.map((ds: any) => {
           // Determine inferred mode if not set
-          const inferredMode = datasetCount > 1 ? 'grouped' : 'single';
+          const inferredMode = datasetCount > 1 ? 'grouped' : 'single'; // inferredMode needs to be defined inside map if not available
 
           return {
             ...ds,
             mode: ds.mode || inferredMode,
-            chartType: ds.chartType || chartType
+            chartType: ds.chartType || chartType,
+            chartType: ds.chartType || chartType,
+            // Assign source title if provided (and not already present, or override?)
+            // If loading a "Full Chart", we assume the provided 'name' applies to these datasets.
+            sourceTitle: ds.sourceTitle || name,
+            // Assign source ID if provided (prefer explicit conversationId over generic id)
+            sourceId: ds.sourceId || conversationId || id
           };
         }) || [];
 
@@ -3592,7 +3593,10 @@ export const useChartStore = create<ChartStore>()(
             uniformityMode: 'uniform',
             baseChartType: chartType as SupportedChartType,
             isDefault: false,
-            createdAt: Date.now()
+            createdAt: Date.now(),
+            // Assign source metadata to the group
+            sourceId: conversationId || id,
+            sourceTitle: name
           };
 
           // Check if this temp group ID already exists (unlikely but safe)
@@ -3711,6 +3715,8 @@ export const useChartStore = create<ChartStore>()(
           // Only override snapshot ID if a new one is explicitly provided.
           // This preserves the currently loaded snapshot when we just tweak the chart.
           currentSnapshotId: id !== undefined ? id || null : state.currentSnapshotId,
+          // Update chart title if name is provided
+          chartTitle: name || state.chartTitle,
         };
       }),
       setCurrentSnapshotId: (id: string | null) => set({ currentSnapshotId: id }),
