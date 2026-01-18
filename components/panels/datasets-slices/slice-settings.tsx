@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogFooter } from "@/components/ui/dialog"
 import { useState, useRef, useEffect } from "react"
 import { useChartStore, getDefaultImageType, getDefaultImageSize, getImageOptionsForChartType, getDefaultImageConfig, type ExtendedChartDataset } from "@/lib/chart-store"
+import { useChatStore } from "@/lib/chat-store"
 import { toast } from "sonner"
 import {
   Plus,
@@ -179,6 +180,17 @@ export function SliceSettings({ className }: SliceSettingsProps) {
       const dataset = chartData.datasets[index]
       if (dataset && (dataset as any).chartType) {
         setChartType((dataset as any).chartType)
+      }
+
+      // FIX: Sync backendConversationId with the selected dataset's sourceId
+      // This ensures the save dialog shows "Save" for local charts and "Update" for cloud charts
+      const sourceId = (dataset as any)?.sourceId;
+      if (sourceId) {
+        // This is a cloud-saved chart - update backendConversationId to match
+        useChatStore.getState().setBackendConversationId(sourceId);
+      } else {
+        // This is a local chart - clear backendConversationId
+        useChatStore.getState().setBackendConversationId(null);
       }
     }
   }
@@ -1640,6 +1652,14 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                     setSelectedViewGroupId(value);
                     // Also update global active group to sync with Datasets panel
                     setActiveGroup(value);
+
+                    // FIX: Sync backendConversationId with the selected group's sourceId
+                    const group = groups.find(g => g.id === value);
+                    if (group?.sourceId) {
+                      useChatStore.getState().setBackendConversationId(group.sourceId);
+                    } else {
+                      useChatStore.getState().setBackendConversationId(null);
+                    }
                   }}
                 >
                   <SelectTrigger className="h-8 w-full text-xs bg-blue-50 border-blue-200 hover:bg-blue-100">

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, X, Shuffle } from 'lucide-react';
 import { useChartStore, type ExtendedChartDataset, type SupportedChartType } from '@/lib/chart-store';
+import { useChatStore } from '@/lib/chat-store';
 import { cn } from '@/lib/utils';
 
 interface AddDatasetModalProps {
@@ -245,6 +246,10 @@ export function AddDatasetModal({ open, onOpenChange, onDatasetAdd }: AddDataset
       chartType: finalChartType,
     };
     onDatasetAdd(newDataset);
+
+    // NEW: Clear backendConversationId since this is now a new/modified local chart
+    useChatStore.getState().setBackendConversationId(null);
+
     onOpenChange(false);
   };
 

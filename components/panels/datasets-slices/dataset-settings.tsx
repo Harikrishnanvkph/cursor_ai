@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog"
 import { useState, useRef, useEffect } from "react"
 import { useChartStore, getDefaultImageType, getDefaultImageSize, getImageOptionsForChartType, getDefaultImageConfig as getDefaultImageConfigFromStore, type ExtendedChartDataset } from "@/lib/chart-store"
+import { useChatStore } from "@/lib/chat-store"
 import { toast } from "sonner"
 import {
   Plus,
@@ -215,6 +216,22 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     }
   };
 
+  // Handler for switching between groups in Grouped mode
+  const handleActiveGroupChange = (groupId: string) => {
+    setActiveGroup(groupId);
+
+    // FIX: Sync backendConversationId with the selected group's sourceId
+    // This ensures the save dialog shows "Save" for local groups and "Update" for cloud groups
+    const group = groups.find(g => g.id === groupId);
+    if (group?.sourceId) {
+      // This is a cloud-saved group - update backendConversationId to match
+      useChatStore.getState().setBackendConversationId(group.sourceId);
+    } else {
+      // This is a local group - clear backendConversationId
+      useChatStore.getState().setBackendConversationId(null);
+    }
+  };
+
   // Listen for openAddDatasetModal event from chart preview empty state
   useEffect(() => {
     const handleOpenAddDatasetModalEvent = () => {
@@ -238,6 +255,17 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
       const dataset = chartData.datasets[index];
       if (dataset && (dataset as any).chartType) {
         setChartType((dataset as any).chartType);
+      }
+
+      // FIX: Sync backendConversationId with the selected dataset's sourceId
+      // This ensures the save dialog shows "Save" for local charts and "Update" for cloud charts
+      const sourceId = (dataset as any)?.sourceId;
+      if (sourceId) {
+        // This is a cloud-saved chart - update backendConversationId to match
+        useChatStore.getState().setBackendConversationId(sourceId);
+      } else {
+        // This is a local chart - clear backendConversationId
+        useChatStore.getState().setBackendConversationId(null);
       }
     }
   };
@@ -431,6 +459,10 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
       chartType: finalChartType, // Store the chart type for this dataset
     }
     addDataset(newDataset)
+
+    // NEW: Clear backendConversationId since this is now a new/modified local chart
+    useChatStore.getState().setBackendConversationId(null);
+
     setShowAddDatasetModal(false)
     setNewDatasetName("")
     setNewDatasetColor("#1E90FF")
@@ -842,6 +874,8 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                   category: null,
                   uniformityMode: 'uniform'
                 });
+                // NEW: Clear backendConversationId since this is now a new/modified local chart
+                useChatStore.getState().setBackendConversationId(null);
                 toast.success(`Created group "${newName}"`);
               }}
             >
@@ -849,7 +883,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
               New Group
             </Button>
           </div>
-          <Select value={activeGroupId} onValueChange={setActiveGroup}>
+          <Select value={activeGroupId} onValueChange={handleActiveGroupChange}>
             <SelectTrigger className="w-full h-9 text-xs">
               <SelectValue placeholder="Select a group" />
             </SelectTrigger>

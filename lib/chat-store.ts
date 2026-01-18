@@ -441,6 +441,14 @@ export const useChatStore = create<ChatStore>()(
               }
             }
 
+            // FIX: Clear backendConversationId when AI creates a NEW chart
+            // This ensures the save dialog shows "Save" instead of "Update" for new charts
+            if (result.action === 'create') {
+              set({ backendConversationId: null });
+              // Also clear the current snapshot ID since this is a brand new chart
+              useChartStore.getState().setCurrentSnapshotId(null);
+            }
+
             // Capture undo point for AI-generated changes, but only if there are actual changes
             if (result.action === 'create' || result.action === 'modify' || result.action === 'update') {
               // Check if there are actual changes by comparing the states

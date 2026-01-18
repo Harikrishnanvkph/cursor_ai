@@ -205,6 +205,46 @@ export const isAreaChart = (chartType: SupportedChartType, datasets: ExtendedCha
   return (chartType === 'line' || chartType === 'area') && datasets.every(d => d.fill === true)
 }
 
+/**
+ * Prepares chart data for saving to backend by filtering and updating metadata.
+ * CRITICAL: Only includes datasets belonging to the chart being saved.
+ * - Single mode: Only the active dataset
+ * - Grouped mode: Only datasets in the active group
+ */
+export function prepareChartDataForSave(
+  chartData: any,
+  chartMode: 'single' | 'grouped',
+  activeDatasetIndex: number,
+  activeGroupId: string,
+  savedTitle: string,
+  conversationId: string,
+  isNewSave: boolean
+): any {
+  const cloned = JSON.parse(JSON.stringify(chartData));
+
+  if (chartMode === 'single') {
+    // SINGLE MODE: Only save the active dataset
+    const activeDataset = cloned.datasets[activeDatasetIndex];
+    if (activeDataset) {
+      activeDataset.sourceTitle = savedTitle;
+      if (isNewSave) activeDataset.sourceId = conversationId;
+      // Replace all datasets with just the active one
+      cloned.datasets = [activeDataset];
+    }
+  } else if (chartMode === 'grouped') {
+    // GROUPED MODE: Only save datasets belonging to the active group
+    const groupDatasets = cloned.datasets.filter((ds: any) => ds.groupId === activeGroupId);
+    groupDatasets.forEach((ds: any) => {
+      ds.sourceTitle = savedTitle;
+      if (isNewSave) ds.sourceId = conversationId;
+    });
+    // Replace all datasets with just the group's datasets
+    cloned.datasets = groupDatasets;
+  }
+
+  return cloned;
+}
+
 export type ChartMode = 'single' | 'grouped'
 
 // Overlay types

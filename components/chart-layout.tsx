@@ -2,7 +2,7 @@
 
 import { ChartPreview } from "@/components/chart-preview"
 import { ConfigSidebar } from "@/components/config-sidebar"
-import { useChartStore } from "@/lib/chart-store"
+import { useChartStore, prepareChartDataForSave } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
 import { useTemplateStore } from "@/lib/template-store"
 import { cn } from "@/lib/utils"
@@ -199,15 +199,8 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
       }
       setShowSaveChartDialog(true)
     } else {
-      // Generate a smart default name for new charts
-      const chatMessages = useChatStore.getState().messages
-      const firstUserMessage = chatMessages.find(m => m.role === 'user')
-      const defaultName = firstUserMessage
-        ? (firstUserMessage.content.length > 50
-          ? firstUserMessage.content.slice(0, 47) + '...'
-          : firstUserMessage.content)
-        : `My Chart - ${new Date().toLocaleDateString()}`
-      setCurrentChartName(defaultName)
+      // NEW: Use simple "Untitled" for new local charts
+      setCurrentChartName("Untitled")
       setShowSaveChartDialog(true)
     }
   }
@@ -342,11 +335,18 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
         }
       }
 
+      // Prepare chart data with updated metadata BEFORE saving to backend
+      const { chartMode, activeDatasetIndex, activeGroupId } = useChartStore.getState();
+      const savedTitle = chartName || `Chart saved on ${new Date().toLocaleDateString()}`;
+      const chartDataToSave = prepareChartDataForSave(
+        chartData, chartMode, activeDatasetIndex, activeGroupId, savedTitle, conversationId, !isUpdate
+      );
+
       // Save chart snapshot (updates if snapshotId exists, otherwise creates new)
       const snapshotResult = await dataService.saveChartSnapshot(
         conversationId,
         chartType,
-        chartData,
+        chartDataToSave, // Use updated data
         normalizedConfig,
         templateStructureToSave,
         templateContentToSave,
@@ -435,6 +435,32 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
       // Don't clear or route - keep the user on the same page with their saved chart
       // Just update the backend conversation ID so next save will update instead of create
       useChatStore.getState().setBackendConversationId(conversationId)
+
+      // Update the active dataset's or group's source metadata after save
+      // Run for BOTH first save AND updates to keep UI title in sync immediately
+      {
+        const chartStoreState = useChartStore.getState();
+        const { chartMode, chartData, activeDatasetIndex, groups, activeGroupId, updateDataset, updateGroup } = chartStoreState;
+        const savedTitle = chartName || `Chart saved on ${new Date().toLocaleDateString()}`;
+
+        if (chartMode === 'single') {
+          if (chartData.datasets[activeDatasetIndex]) {
+            updateDataset(activeDatasetIndex, {
+              sourceId: isUpdate ? chartData.datasets[activeDatasetIndex].sourceId : conversationId,
+              sourceTitle: savedTitle
+            });
+          }
+        } else if (chartMode === 'grouped' && activeGroupId && groups) {
+          const activeGroup = groups.find(g => g.id === activeGroupId);
+          if (activeGroup) {
+            updateGroup(activeGroupId, {
+              name: savedTitle,
+              sourceId: isUpdate ? activeGroup.sourceId : conversationId,
+              sourceTitle: savedTitle
+            });
+          }
+        }
+      }
     } catch (error) {
       console.error('Failed to save chart:', error)
       toast.error("Failed to save chart. Please try again.")

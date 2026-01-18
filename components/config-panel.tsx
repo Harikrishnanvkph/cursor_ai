@@ -16,7 +16,7 @@ import { ChevronLeft, Settings, Save, X, Loader2, Plus } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useAuth } from "@/components/auth/AuthProvider"
 import { HistoryDropdown } from "@/components/history-dropdown"
-import { useChartStore } from "@/lib/chart-store"
+import { useChartStore, prepareChartDataForSave } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
 import { useTemplateStore } from "@/lib/template-store"
 import { dataService } from "@/lib/data-service"
@@ -159,13 +159,19 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
       }
 
       // Get current snapshot ID for updates
-      const { currentSnapshotId } = useChartStore.getState();
+      const { currentSnapshotId, chartMode, activeDatasetIndex, activeGroupId } = useChartStore.getState();
+
+      // Prepare chart data with updated metadata BEFORE saving to backend
+      const savedTitle = chartName || `Chart saved on ${new Date().toLocaleDateString()}`;
+      const chartDataToSave = prepareChartDataForSave(
+        chartData, chartMode, activeDatasetIndex, activeGroupId, savedTitle, conversationId, !isUpdate
+      );
 
       // Save chart snapshot (updates if snapshotId exists, otherwise creates new)
       const snapshotResult = await dataService.saveChartSnapshot(
         conversationId,
         chartType,
-        chartData,
+        chartDataToSave, // Use updated data
         normalizedConfig,
         templateStructureToSave,
         hasTemplateContent ? templateContentToSave : null,
@@ -241,6 +247,32 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
       // Don't clear or route - keep the user on the same page with their saved chart
       // Just update the backend conversation ID so next save will update instead of create
       setBackendConversationId(conversationId)
+
+      // Update the active dataset's or group's source metadata after save
+      // Run for BOTH first save AND updates to keep UI title in sync immediately
+      {
+        const chartStoreState = useChartStore.getState();
+        const { chartMode, chartData: storeChartData, activeDatasetIndex, groups, activeGroupId, updateDataset, updateGroup } = chartStoreState;
+        const savedTitle = chartName || `Chart saved on ${new Date().toLocaleDateString()}`;
+
+        if (chartMode === 'single') {
+          if (storeChartData.datasets[activeDatasetIndex]) {
+            updateDataset(activeDatasetIndex, {
+              sourceId: isUpdate ? storeChartData.datasets[activeDatasetIndex].sourceId : conversationId,
+              sourceTitle: savedTitle
+            });
+          }
+        } else if (chartMode === 'grouped' && activeGroupId && groups) {
+          const activeGroup = groups.find(g => g.id === activeGroupId);
+          if (activeGroup) {
+            updateGroup(activeGroupId, {
+              name: savedTitle,
+              sourceId: isUpdate ? activeGroup.sourceId : conversationId,
+              sourceTitle: savedTitle
+            });
+          }
+        }
+      }
     } catch (error) {
       console.error('Save failed:', error)
       toast.error("Failed to save chart. Please try again.")

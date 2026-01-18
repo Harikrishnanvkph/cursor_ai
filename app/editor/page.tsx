@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Sidebar } from "@/components/sidebar"
 import { ChartPreview } from "@/components/chart-preview"
 import { ConfigPanel } from "@/components/config-panel"
-import { useChartStore } from "@/lib/chart-store"
+import { useChartStore, prepareChartDataForSave } from "@/lib/chart-store"
 import { useTemplateStore } from "@/lib/template-store"
 import { useAuth } from "@/components/auth/AuthProvider"
 import { dataService } from "@/lib/data-service"
@@ -353,15 +353,8 @@ function EditorPageContent() {
       }
       setShowSaveChartDialog(true)
     } else {
-      // Generate a smart default name for new charts
-      const chatMessages = useChatStore.getState().messages
-      const firstUserMessage = chatMessages.find(m => m.role === 'user')
-      const defaultName = firstUserMessage
-        ? (firstUserMessage.content.length > 50
-          ? firstUserMessage.content.slice(0, 47) + '...'
-          : firstUserMessage.content)
-        : `My Chart - ${new Date().toLocaleDateString()}`
-      setCurrentChartName(defaultName)
+      // NEW: Use simple "Untitled" for new local charts
+      setCurrentChartName("Untitled")
       setShowSaveChartDialog(true)
     }
   }
@@ -503,13 +496,19 @@ function EditorPageContent() {
       }
 
       // Get current snapshot ID for updates
-      const { currentSnapshotId, setCurrentSnapshotId } = useChartStore.getState()
+      const { currentSnapshotId, setCurrentSnapshotId, chartMode, activeDatasetIndex, activeGroupId } = useChartStore.getState()
+
+      // Prepare chart data with updated metadata BEFORE saving to backend
+      const savedTitle = chartName || `Chart saved on ${new Date().toLocaleDateString()}`;
+      const chartDataToSave = prepareChartDataForSave(
+        chartData, chartMode, activeDatasetIndex, activeGroupId, savedTitle, conversationId, !isUpdate
+      );
 
       // Save chart snapshot (updates if snapshotId exists, otherwise creates new)
       const snapshotResult = await dataService.saveChartSnapshot(
         conversationId,
         chartType,
-        chartData,
+        chartDataToSave, // Use updated data
         normalizedConfig,
         templateStructureToSave,
         hasTemplateContent ? templateContentToSave : null,
@@ -585,6 +584,32 @@ function EditorPageContent() {
       // Don't clear or route - keep the user on the same page with their saved chart
       // Just update the backend conversation ID so next save will update instead of create
       setBackendConversationId(conversationId)
+
+      // Update the active dataset's or group's source metadata after save
+      // Run for BOTH first save AND updates to keep UI title in sync immediately
+      {
+        const chartStoreState = useChartStore.getState();
+        const { chartMode, chartData: storeChartData, activeDatasetIndex, groups, activeGroupId, updateDataset, updateGroup } = chartStoreState;
+        const savedTitle = chartName || `Chart saved on ${new Date().toLocaleDateString()}`;
+
+        if (chartMode === 'single') {
+          if (storeChartData.datasets[activeDatasetIndex]) {
+            updateDataset(activeDatasetIndex, {
+              sourceId: isUpdate ? storeChartData.datasets[activeDatasetIndex].sourceId : conversationId,
+              sourceTitle: savedTitle
+            });
+          }
+        } else if (chartMode === 'grouped' && activeGroupId && groups) {
+          const activeGroup = groups.find(g => g.id === activeGroupId);
+          if (activeGroup) {
+            updateGroup(activeGroupId, {
+              name: savedTitle,
+              sourceId: isUpdate ? activeGroup.sourceId : conversationId,
+              sourceTitle: savedTitle
+            });
+          }
+        }
+      }
 
       // Close the save dialog
       setShowSaveChartDialog(false)

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { BarChart3, Database, Sparkles, TrendingUp, PieChart, LineChart } from "lucide-react"
 import { useChartStore } from "@/lib/chart-store"
+import { useChatStore } from "@/lib/chat-store"
 import { useTemplateStore } from "@/lib/template-store"
 import { toast } from "sonner"
 
@@ -16,8 +17,13 @@ interface EditorWelcomeScreenProps {
 export function EditorWelcomeScreen({ onDatasetClick, size = "default", className = "" }: EditorWelcomeScreenProps) {
   const { setFullChart, setHasJSON, setChartMode } = useChartStore()
   const { setEditorMode } = useTemplateStore()
+  const { clearMessages, setBackendConversationId } = useChatStore()
 
   const handleLoadSampleData = () => {
+    // Clear any previous conversation state to ensure this is treated as a NEW chart
+    clearMessages()
+    setBackendConversationId(null)
+
     // Set editor mode to chart when loading sample data
     setEditorMode('chart')
     // Load sample bar chart data for SINGLE mode
@@ -88,6 +94,10 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
   }
 
   const handleGoToDataset = () => {
+    // Clear any previous conversation state to ensure this is treated as a NEW chart
+    clearMessages()
+    setBackendConversationId(null)
+
     if (onDatasetClick) {
       onDatasetClick()
       toast.info("Navigate to Datasets tab to add your data")
