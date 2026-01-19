@@ -208,7 +208,7 @@ export const isAreaChart = (chartType: SupportedChartType, datasets: ExtendedCha
 /**
  * Prepares chart data for saving to backend by filtering and updating metadata.
  * CRITICAL: Only includes datasets belonging to the chart being saved.
- * - Single mode: Only the active dataset
+ * - Single mode: Only the active dataset, with labels from sliceLabels
  * - Grouped mode: Only datasets in the active group
  */
 export function prepareChartDataForSave(
@@ -230,6 +230,14 @@ export function prepareChartDataForSave(
       if (isNewSave) activeDataset.sourceId = conversationId;
       // Replace all datasets with just the active one
       cloned.datasets = [activeDataset];
+      // IMPORTANT: Set top-level labels from the dataset's sliceLabels
+      // This prevents labels from other datasets bleeding into this chart
+      if (activeDataset.sliceLabels && activeDataset.sliceLabels.length > 0) {
+        cloned.labels = activeDataset.sliceLabels;
+      } else {
+        // Fallback: generate default labels based on data length
+        cloned.labels = activeDataset.data?.map((_: any, i: number) => `Label ${i + 1}`) || [];
+      }
     }
   } else if (chartMode === 'grouped') {
     // GROUPED MODE: Only save datasets belonging to the active group
@@ -240,6 +248,10 @@ export function prepareChartDataForSave(
     });
     // Replace all datasets with just the group's datasets
     cloned.datasets = groupDatasets;
+    // For grouped mode, use the first dataset's sliceLabels as the shared labels
+    if (groupDatasets.length > 0 && groupDatasets[0].sliceLabels) {
+      cloned.labels = groupDatasets[0].sliceLabels;
+    }
   }
 
   return cloned;
