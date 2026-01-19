@@ -3177,6 +3177,16 @@ export const useChartStore = create<ChartStore>()(
         };
       }),
       setChartMode: (mode) => set((state) => {
+        // BUGFIX: Clear backendConversationId when switching modes
+        // The new mode starts with its own mode-specific data which may not be cloud-saved
+        // This ensures the save dialog shows "Save" instead of "Update" for new data
+        try {
+          const { useChatStore } = require('./chat-store');
+          useChatStore.getState().setBackendConversationId(null);
+        } catch (error) {
+          console.warn('Failed to clear backendConversationId on mode switch:', error);
+        }
+
         // Save current mode's data before switching
         const currentModeData = state.chartData;
 
