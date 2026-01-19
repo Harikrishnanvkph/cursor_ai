@@ -137,8 +137,18 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
                       <div className="font-medium text-gray-900 text-sm truncate">
                         {conversation.title}
                       </div>
-                      <div className="text-xs text-gray-500 truncate">
-                        {new Date(conversation.timestamp).toLocaleDateString()}
+                      <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                        <span className="truncate">
+                          {new Date(conversation.timestamp).toLocaleDateString()}
+                        </span>
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${conversation.chart_mode === 'grouped' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                          {conversation.chart_mode === 'grouped' ? 'Grouped' : 'Single'}
+                        </span>
+                        {conversation.is_template_mode && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700">
+                            Template
+                          </span>
+                        )}
                       </div>
                     </div>
                     <Button
@@ -231,8 +241,18 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
                       <div className="font-medium text-gray-900 text-sm truncate">
                         {conversation.title}
                       </div>
-                      <div className="text-xs text-gray-500 truncate">
-                        {new Date(conversation.timestamp).toLocaleDateString()}
+                      <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                        <span className="truncate">
+                          {new Date(conversation.timestamp).toLocaleDateString()}
+                        </span>
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${conversation.chart_mode === 'grouped' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                          {conversation.chart_mode === 'grouped' ? 'Grouped' : 'Single'}
+                        </span>
+                        {conversation.is_template_mode && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700">
+                            Template
+                          </span>
+                        )}
                       </div>
                     </div>
                     <Button
@@ -325,8 +345,18 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
                       <div className="font-medium text-gray-900 text-sm truncate">
                         {conversation.title}
                       </div>
-                      <div className="text-xs text-gray-500 truncate">
-                        {new Date(conversation.timestamp).toLocaleDateString()}
+                      <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                        <span className="truncate">
+                          {new Date(conversation.timestamp).toLocaleDateString()}
+                        </span>
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${conversation.chart_mode === 'grouped' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                          {conversation.chart_mode === 'grouped' ? 'Grouped' : 'Single'}
+                        </span>
+                        {conversation.is_template_mode && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700">
+                            Template
+                          </span>
+                        )}
                       </div>
                     </div>
                     <Button

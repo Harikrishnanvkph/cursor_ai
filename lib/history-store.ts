@@ -15,6 +15,9 @@ export type Conversation = {
   messages: ChatMessage[];
   snapshot: ChartSnapshot | null;
   timestamp: number;
+  // Mode metadata from backend
+  is_template_mode?: boolean;
+  chart_mode?: 'single' | 'grouped';
 };
 
 interface HistoryStore {
@@ -286,7 +289,10 @@ export const useHistoryStore = create<HistoryStore>()(
               title: conv.title,
               messages: [], // Empty by default, loaded on open
               snapshot: null, // Empty by default, loaded on open
-              timestamp: new Date(conv.created_at).getTime()
+              timestamp: new Date(conv.created_at).getTime(),
+              // Mode metadata from backend
+              is_template_mode: conv.is_template_mode || false,
+              chart_mode: conv.chart_mode || 'single'
             }));
 
             set({
