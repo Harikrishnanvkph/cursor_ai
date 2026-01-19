@@ -4,7 +4,8 @@ import { useState, useEffect } from "react"
 import { Sidebar } from "@/components/sidebar"
 import { ChartPreview } from "@/components/chart-preview"
 import { ConfigPanel } from "@/components/config-panel"
-import { useChartStore, prepareChartDataForSave } from "@/lib/chart-store"
+import { useChartStore } from "@/lib/chart-store"
+import { saveChartToCloud } from "@/lib/save-utils"
 import { useTemplateStore } from "@/lib/template-store"
 import { useAuth } from "@/components/auth/AuthProvider"
 import { dataService } from "@/lib/data-service"
@@ -377,248 +378,19 @@ function EditorPageContent() {
   };
 
   const handleSave = async (chartName: string) => {
-    if (!hasJSON || !user) {
-      toast.error("No chart to save or user not authenticated");
-      return;
-    }
-
     setIsSaving(true);
-    try {
-      const chatMessages = useChatStore.getState().messages
-      const existingBackendId = useChatStore.getState().backendConversationId
 
-      let conversationId: string
-      let isUpdate = false
-
-      if (existingBackendId) {
-        console.log('📝 Updating existing conversation:', existingBackendId)
-        conversationId = existingBackendId
-        isUpdate = true
-
-        // Update conversation title if name changed
-        if (chartName && chartName !== currentChartName) {
-          await dataService.updateConversation(existingBackendId, { title: chartName })
-          setCurrentChartName(chartName)
-        }
-      } else {
-        console.log('💾 Creating new conversation')
-        // Use the custom chart name provided by user
-        const conversationTitle = chartName || `Chart saved on ${new Date().toLocaleDateString()}`
-
-        const response = await dataService.createConversation(
-          conversationTitle,
-          'Chart saved from editor'
-        )
-
-        if (response.error) {
-          console.error('Failed to create conversation:', response.error)
-          toast.error("Failed to save chart. Please try again.")
-          return
-        }
-
-        if (!response.data) {
-          toast.error("Failed to create conversation.")
-          return
-        }
-
-        conversationId = response.data.id
-        setCurrentChartName(chartName) // Store the name for future updates
-        useChatStore.getState().setBackendConversationId(conversationId)
-      }
-
-      // Normalize chartConfig before saving: convert dynamicDimension to manualDimensions
-      const normalizedConfig = (() => {
-        const config = { ...chartConfig };
-
-        // If dynamicDimension is active, convert it to manualDimensions
-        if (config.dynamicDimension === true) {
-          config.manualDimensions = true;
-          config.responsive = false;
-          delete config.dynamicDimension; // Remove the dynamicDimension flag
-
-          // Ensure width and height are preserved
-          if (!config.width) config.width = '800px';
-          if (!config.height) config.height = '600px';
-
-          console.log('📊 Converted dynamicDimension to manualDimensions for storage');
-        } else {
-          // Clean up - ensure only responsive OR manualDimensions is set
-          delete config.dynamicDimension;
-
-          if (config.responsive === true) {
-            config.manualDimensions = false;
-          } else if (config.manualDimensions === true) {
-            config.responsive = false;
-          }
-        }
-
-        return config;
-      })();
-
-      // Extract template data ONLY if:
-      // 1. User is explicitly in template mode, OR
-      // 2. templateSavedToCloud is true (conversation was originally saved with template)
-      // This prevents chart-only conversations from accidentally getting template data
-      let templateStructureToSave: any = null
-      const templateContentToSave: Record<string, any> = {}
-      let hasTemplateContent = false
-
-      // Check if we should save template data
-      const templateSavedToCloud = useTemplateStore.getState().templateSavedToCloud
-      const shouldSaveTemplate = editorMode === 'template' || templateSavedToCloud
-
-      // Get template from either currentTemplate or templateInBackground
-      const templateToSave = currentTemplate || useTemplateStore.getState().templateInBackground
-
-      // Save template if it exists AND has content AND we should save it
-      if (shouldSaveTemplate && templateToSave && templateToSave.textAreas && templateToSave.textAreas.length > 0) {
-        // Save complete template structure (independent copy)
-        templateStructureToSave = templateToSave
-
-        // Extract text area content
-        templateToSave.textAreas.forEach(area => {
-          if (templateContentToSave[area.type]) {
-            // Handle multiple areas of same type
-            if (Array.isArray(templateContentToSave[area.type])) {
-              templateContentToSave[area.type].push(area.content)
-            } else {
-              templateContentToSave[area.type] = [templateContentToSave[area.type], area.content]
-            }
-          } else {
-            templateContentToSave[area.type] = area.content
-          }
-          hasTemplateContent = true
-        })
-
-        console.log('📄 Template data will be saved (editorMode:', editorMode, ', templateSavedToCloud:', templateSavedToCloud, ')')
-      } else if (templateToSave) {
-        console.log('📄 Template exists locally but NOT saving (editorMode:', editorMode, ', templateSavedToCloud:', templateSavedToCloud, ')')
-      }
-
-      // Get current snapshot ID for updates
-      const { currentSnapshotId, setCurrentSnapshotId, chartMode, activeDatasetIndex, activeGroupId } = useChartStore.getState()
-
-      // Prepare chart data with updated metadata BEFORE saving to backend
-      const savedTitle = chartName || `Chart saved on ${new Date().toLocaleDateString()}`;
-      const chartDataToSave = prepareChartDataForSave(
-        chartData, chartMode, activeDatasetIndex, activeGroupId, savedTitle, conversationId, !isUpdate
-      );
-
-      // Save chart snapshot (updates if snapshotId exists, otherwise creates new)
-      const snapshotResult = await dataService.saveChartSnapshot(
-        conversationId,
-        chartType,
-        chartDataToSave, // Use updated data
-        normalizedConfig,
-        templateStructureToSave,
-        hasTemplateContent ? templateContentToSave : null,
-        currentSnapshotId || undefined
-      )
-
-      if (snapshotResult.error) {
-        console.error('Failed to save chart snapshot:', snapshotResult.error)
-        toast.error("Failed to save chart snapshot. Please try again.")
-        return
-      }
-
-      const snapshotId = snapshotResult.data?.id
-
-      // Update current snapshot ID in store after save
-      if (snapshotId) {
-        setCurrentSnapshotId(snapshotId)
-      }
-
-      if (isUpdate) {
-        // For updates, we don't need to add any automatic messages
-        // The chart snapshot is saved as a new version, which is sufficient
-      } else {
-        const messagesToSave = chatMessages.filter(m => {
-          return !(m.role === 'assistant' && m.content.includes('Hi! Describe the chart'));
-        })
-
-        let savedCount = 0
-        for (let i = 0; i < messagesToSave.length; i++) {
-          const msg = messagesToSave[i]
-          try {
-            const chartSnapshotId = (msg.role === 'assistant' && msg.chartSnapshot)
-              ? snapshotId
-              : undefined
-
-            await dataService.addMessage(
-              conversationId,
-              msg.role,
-              msg.content,
-              chartSnapshotId,
-              msg.action || undefined,
-              msg.changes || undefined
-            )
-            savedCount++
-          } catch (msgError) {
-            console.error(`Failed to save message ${i}:`, msgError)
-          }
+    const result = await saveChartToCloud({
+      chartName,
+      user,
+      onSaveComplete: () => {
+        setIsSaving(false);
+        setShowSaveChartDialog(false);
+        if (chartName) {
+          setCurrentChartName(chartName);
         }
       }
-
-      toast.success(isUpdate ? "Chart updated successfully!" : "Chart saved successfully!")
-
-      clearCurrentChart()
-
-      if (typeof window !== 'undefined') {
-        const userId = localStorage.getItem('user-id') || 'anonymous'
-        const historyKey = `chat-history-${userId}`
-        try {
-          const historyData = localStorage.getItem(historyKey)
-          if (historyData) {
-            const parsed = JSON.parse(historyData)
-            if (parsed.state) {
-              parsed.state.conversations = []
-              localStorage.setItem(historyKey, JSON.stringify(parsed))
-              console.log('✅ Cleared localStorage history to prevent duplicates')
-            }
-          }
-        } catch (error) {
-          console.warn('Failed to clear history:', error)
-        }
-      }
-
-      // Don't clear or route - keep the user on the same page with their saved chart
-      // Just update the backend conversation ID so next save will update instead of create
-      setBackendConversationId(conversationId)
-
-      // Update the active dataset's or group's source metadata after save
-      // Run for BOTH first save AND updates to keep UI title in sync immediately
-      {
-        const chartStoreState = useChartStore.getState();
-        const { chartMode, chartData: storeChartData, activeDatasetIndex, groups, activeGroupId, updateDataset, updateGroup } = chartStoreState;
-        const savedTitle = chartName || `Chart saved on ${new Date().toLocaleDateString()}`;
-
-        if (chartMode === 'single') {
-          if (storeChartData.datasets[activeDatasetIndex]) {
-            updateDataset(activeDatasetIndex, {
-              sourceId: isUpdate ? storeChartData.datasets[activeDatasetIndex].sourceId : conversationId,
-              sourceTitle: savedTitle
-            });
-          }
-        } else if (chartMode === 'grouped' && activeGroupId && groups) {
-          const activeGroup = groups.find(g => g.id === activeGroupId);
-          if (activeGroup) {
-            updateGroup(activeGroupId, {
-              name: savedTitle,
-              sourceId: isUpdate ? activeGroup.sourceId : conversationId,
-              sourceTitle: savedTitle
-            });
-          }
-        }
-      }
-
-      // Close the save dialog
-      setShowSaveChartDialog(false)
-    } catch (error) {
-      console.error('Save failed:', error)
-      toast.error("Failed to save chart. Please try again.")
-    } finally {
-      setIsSaving(false)
-    }
+    });
   };
 
   const handleCancel = () => {

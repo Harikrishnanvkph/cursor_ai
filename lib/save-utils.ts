@@ -1,0 +1,334 @@
+/**
+ * Shared Save Utility
+ * 
+ * Consolidates chart saving logic used across landing page, editor page, 
+ * and config panel to ensure consistent behavior.
+ */
+
+import { dataService } from './data-service';
+import { useChartStore, prepareChartDataForSave } from './chart-store';
+import { useChatStore } from './chat-store';
+import { useTemplateStore } from './template-store';
+import { clearCurrentChart } from './storage-utils';
+import { toast } from 'sonner';
+
+export interface SaveChartOptions {
+    /** Custom chart name (used for new saves or renaming) */
+    chartName?: string;
+    /** User object - required for saving */
+    user: { id: string } | null;
+    /** Callback when save starts (for loading states) */
+    onSaveStart?: () => void;
+    /** Callback when save completes */
+    onSaveComplete?: (result: SaveChartResult) => void;
+}
+
+export interface SaveChartResult {
+    success: boolean;
+    conversationId?: string;
+    snapshotId?: string;
+    isUpdate: boolean;
+    error?: string;
+}
+
+/**
+ * Normalizes chart config before saving to backend.
+ * Converts dynamicDimension to manualDimensions and cleans up conflicting flags.
+ */
+function normalizeChartConfig(chartConfig: any): any {
+    const config = { ...chartConfig };
+
+    // If dynamicDimension is active, convert it to manualDimensions
+    if (config.dynamicDimension === true) {
+        config.manualDimensions = true;
+        config.responsive = false;
+        delete config.dynamicDimension;
+
+        // Ensure width and height are preserved
+        if (!config.width) config.width = '800px';
+        if (!config.height) config.height = '600px';
+    } else {
+        // Clean up - ensure only responsive OR manualDimensions is set
+        delete config.dynamicDimension;
+
+        if (config.responsive === true) {
+            config.manualDimensions = false;
+        } else if (config.manualDimensions === true) {
+            config.responsive = false;
+        }
+    }
+
+    return config;
+}
+
+/**
+ * Extracts template data for saving (if template exists).
+ * Always saves template if it exists with content, regardless of editor mode.
+ */
+function extractTemplateData(): {
+    templateStructure: any | null;
+    templateContent: Record<string, any> | null;
+} {
+    const { currentTemplate, templateInBackground } = useTemplateStore.getState();
+
+    // Get template from either currentTemplate or templateInBackground
+    const templateToSave = currentTemplate || templateInBackground;
+
+    // Save template if it exists AND has content (text areas)
+    if (templateToSave && templateToSave.textAreas && templateToSave.textAreas.length > 0) {
+        const templateContent: Record<string, any> = {};
+
+        templateToSave.textAreas.forEach((area: any) => {
+            if (templateContent[area.type]) {
+                // Handle multiple areas of same type
+                if (Array.isArray(templateContent[area.type])) {
+                    templateContent[area.type].push(area.content);
+                } else {
+                    templateContent[area.type] = [templateContent[area.type], area.content];
+                }
+            } else {
+                templateContent[area.type] = area.content;
+            }
+        });
+
+        console.log('📄 Template data will be saved');
+        return {
+            templateStructure: templateToSave,
+            templateContent
+        };
+    }
+
+    return { templateStructure: null, templateContent: null };
+}
+
+/**
+ * Main save function - consolidated logic for saving charts to backend.
+ * Used by chart-layout.tsx, editor/page.tsx, and config-panel.tsx.
+ */
+export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveChartResult> {
+    const { chartName, user, onSaveStart, onSaveComplete } = options;
+
+    // Validation
+    if (!user) {
+        const result: SaveChartResult = {
+            success: false,
+            isUpdate: false,
+            error: 'Please sign in to save charts'
+        };
+        toast.error(result.error);
+        onSaveComplete?.(result);
+        return result;
+    }
+
+    const { hasJSON, chartType, chartData, chartConfig, chartMode, activeDatasetIndex, activeGroupId, groups } = useChartStore.getState();
+
+    if (!hasJSON) {
+        const result: SaveChartResult = {
+            success: false,
+            isUpdate: false,
+            error: 'No chart to save'
+        };
+        toast.error(result.error);
+        onSaveComplete?.(result);
+        return result;
+    }
+
+    onSaveStart?.();
+
+    try {
+        const chatMessages = useChatStore.getState().messages;
+        const existingBackendId = useChatStore.getState().backendConversationId;
+
+        let conversationId: string;
+        let isUpdate = false;
+
+        // Check if this chart is already saved to backend
+        if (existingBackendId) {
+            conversationId = existingBackendId;
+            isUpdate = true;
+
+            // Update conversation title if name changed
+            if (chartName) {
+                await dataService.updateConversation(existingBackendId, { title: chartName });
+            }
+        } else {
+            // Create new conversation
+            const conversationTitle = chartName || `Chart saved on ${new Date().toLocaleDateString()}`;
+
+            const response = await dataService.createConversation(
+                conversationTitle,
+                'Chart saved from editor'
+            );
+
+            if (response.error || !response.data) {
+                const result: SaveChartResult = {
+                    success: false,
+                    isUpdate: false,
+                    error: 'Failed to create conversation'
+                };
+                toast.error(result.error);
+                onSaveComplete?.(result);
+                return result;
+            }
+
+            conversationId = response.data.id;
+            useChatStore.getState().setBackendConversationId(conversationId);
+        }
+
+        // Normalize config
+        const normalizedConfig = normalizeChartConfig(chartConfig);
+
+        // Extract template data
+        const { templateStructure, templateContent } = extractTemplateData();
+
+        // Get current snapshot ID for updates
+        const { currentSnapshotId, setCurrentSnapshotId } = useChartStore.getState();
+
+        // Fetch snapshot ID if updating but don't have it in memory
+        let snapshotIdForUpdate: string | undefined = currentSnapshotId || undefined;
+        if (!snapshotIdForUpdate && isUpdate) {
+            try {
+                const currentSnapshot = await dataService.getCurrentChartSnapshot(conversationId);
+                if (currentSnapshot.data?.id) {
+                    snapshotIdForUpdate = currentSnapshot.data.id;
+                    setCurrentSnapshotId(snapshotIdForUpdate);
+                }
+            } catch {
+                // If this fails, we'll fall back to creating a new snapshot
+            }
+        }
+
+        // Prepare chart data with updated metadata
+        const savedTitle = chartName || `Chart saved on ${new Date().toLocaleDateString()}`;
+        const chartDataToSave = prepareChartDataForSave(
+            chartData, chartMode, activeDatasetIndex, activeGroupId, savedTitle, conversationId, !isUpdate
+        );
+
+        // Save chart snapshot
+        const snapshotResult = await dataService.saveChartSnapshot(
+            conversationId,
+            chartType,
+            chartDataToSave,
+            normalizedConfig,
+            templateStructure,
+            templateContent,
+            snapshotIdForUpdate
+        );
+
+        if (snapshotResult.error) {
+            const result: SaveChartResult = {
+                success: false,
+                isUpdate,
+                error: 'Failed to save chart snapshot'
+            };
+            toast.error(result.error);
+            onSaveComplete?.(result);
+            return result;
+        }
+
+        const snapshotId = snapshotResult.data?.id;
+
+        // Update current snapshot ID in store
+        if (snapshotId) {
+            setCurrentSnapshotId(snapshotId);
+        }
+
+        // Save messages for new conversations
+        if (!isUpdate) {
+            const messagesToSave = chatMessages.filter(m => {
+                return !(m.role === 'assistant' && m.content.includes('Hi! Describe the chart'));
+            });
+
+            for (let i = 0; i < messagesToSave.length; i++) {
+                const msg = messagesToSave[i];
+                try {
+                    const chartSnapshotId = (msg.role === 'assistant' && msg.chartSnapshot)
+                        ? snapshotId
+                        : undefined;
+
+                    await dataService.addMessage(
+                        conversationId,
+                        msg.role,
+                        msg.content,
+                        chartSnapshotId,
+                        msg.action || undefined,
+                        msg.changes || undefined
+                    );
+                } catch (msgError) {
+                    console.error(`Failed to save message ${i}:`, msgError);
+                }
+            }
+        }
+
+        // Success!
+        toast.success(isUpdate ? 'Chart updated successfully!' : 'Chart saved successfully!');
+        console.log(`✅ Chart ${isUpdate ? 'updated' : 'saved'} to backend:`, conversationId);
+
+        // Clear localStorage
+        clearCurrentChart();
+
+        // Clear localStorage history to prevent duplicates
+        if (typeof window !== 'undefined') {
+            const userId = localStorage.getItem('user-id') || 'anonymous';
+            const historyKey = `chat-history-${userId}`;
+            try {
+                const historyData = localStorage.getItem(historyKey);
+                if (historyData) {
+                    const parsed = JSON.parse(historyData);
+                    if (parsed.state) {
+                        parsed.state.conversations = [];
+                        localStorage.setItem(historyKey, JSON.stringify(parsed));
+                    }
+                }
+            } catch (error) {
+                console.warn('Failed to clear history:', error);
+            }
+        }
+
+        // Update backend conversation ID
+        useChatStore.getState().setBackendConversationId(conversationId);
+
+        // Update active dataset's or group's source metadata
+        const chartStoreState = useChartStore.getState();
+        const { updateDataset, updateGroup } = chartStoreState;
+
+        if (chartMode === 'single') {
+            if (chartStoreState.chartData.datasets[activeDatasetIndex]) {
+                updateDataset(activeDatasetIndex, {
+                    sourceId: isUpdate ? chartStoreState.chartData.datasets[activeDatasetIndex].sourceId : conversationId,
+                    sourceTitle: savedTitle
+                });
+            }
+        } else if (chartMode === 'grouped' && activeGroupId && groups) {
+            const activeGroup = groups.find(g => g.id === activeGroupId);
+            if (activeGroup) {
+                updateGroup(activeGroupId, {
+                    name: savedTitle,
+                    sourceId: isUpdate ? activeGroup.sourceId : conversationId,
+                    sourceTitle: savedTitle
+                });
+            }
+        }
+
+        const result: SaveChartResult = {
+            success: true,
+            conversationId,
+            snapshotId,
+            isUpdate
+        };
+
+        onSaveComplete?.(result);
+        return result;
+
+    } catch (error) {
+        console.error('Failed to save chart:', error);
+        const result: SaveChartResult = {
+            success: false,
+            isUpdate: false,
+            error: 'Failed to save chart. Please try again.'
+        };
+        toast.error(result.error);
+        onSaveComplete?.(result);
+        return result;
+    }
+}
