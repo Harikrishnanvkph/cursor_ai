@@ -56,6 +56,7 @@ function LandingPageContent() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const hasRestoredRef = useRef(false)
   const lastSyncedChartStateRef = useRef<string | null>(null)
+  const hasMountSyncedRef = useRef(false) // Track if initial mount sync has happened
 
   // If chart store has data but currentChartState is null, try to restore from chart store
   // Use a ref to prevent infinite loops
@@ -76,6 +77,27 @@ function LandingPageContent() {
       hasRestoredRef.current = false
     }
   }, [hasJSON, chartType, chartData, currentChartState, chartConfig])
+
+  // Mount-time sync: Make chartStore authoritative on initial mount.
+  // When navigating from editor, chartStore has newer data - sync it to currentChartState.
+  useEffect(() => {
+    if (hasMountSyncedRef.current) return // Only run once
+    hasMountSyncedRef.current = true
+
+    const chartStoreState = useChartStore.getState()
+    const chatStoreState = useChatStore.getState()
+
+    // If chartStore has valid data, sync it to currentChartState
+    // This preserves any changes made in the editor
+    if (chartStoreState.hasJSON && chartStoreState.chartData?.datasets?.length > 0) {
+      // Update currentChartState to match chartStore (makes chartStore authoritative)
+      chatStoreState.updateChartState({
+        chartType: chartStoreState.chartType as any,
+        chartData: chartStoreState.chartData as any,
+        chartConfig: chartStoreState.chartConfig as any
+      })
+    }
+  }, []) // Empty deps = runs once on mount
 
   // Check if chat should be disabled (template mode but no template attached)
   const isChatDisabled = generateMode === 'template' && !currentTemplate
