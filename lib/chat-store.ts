@@ -410,7 +410,7 @@ export const useChatStore = create<ChatStore>()(
 
           // Update chart store
           if (assistantMsg.chartSnapshot) {
-            useChartStore.getState().setFullChart(assistantMsg.chartSnapshot);
+            useChartStore.getState().setFullChart({ ...assistantMsg.chartSnapshot, replaceMode: true });
             useChartStore.getState().setHasJSON(true);
 
             // Populate template text areas if template structure was provided and response includes template content
@@ -592,7 +592,7 @@ export const useChatStore = create<ChatStore>()(
         // Restore previous state
         if (operation.previousState) {
           // Update chart store
-          useChartStore.getState().setFullChart(operation.previousState);
+          useChartStore.getState().setFullChart({ ...operation.previousState, replaceMode: true });
           useChartStore.getState().setHasJSON(true);
 
           // Update chat store
@@ -635,7 +635,7 @@ export const useChatStore = create<ChatStore>()(
         const operation = undoStack.operations[nextIndex];
 
         // Restore the state that was undone
-        useChartStore.getState().setFullChart(operation.currentState);
+        useChartStore.getState().setFullChart({ ...operation.currentState, replaceMode: true });
         useChartStore.getState().setHasJSON(true);
 
         set({

@@ -362,7 +362,7 @@ interface ChartStore {
   toggleShowImages: () => void;
   toggleShowLabels: () => void;
   toggleShowLegend: () => void;
-  setFullChart: (chart: { chartType: SupportedChartType; chartData: ExtendedChartData; chartConfig: ExtendedChartOptions; id?: string; name?: string }) => void;
+  setFullChart: (chart: { chartType: SupportedChartType; chartData: ExtendedChartData; chartConfig: ExtendedChartOptions; id?: string; name?: string; conversationId?: string; replaceMode?: boolean }) => void;
   setHasJSON: (value: boolean) => void;
   // Overlay actions
   addOverlayImage: (image: Omit<OverlayImage, 'id'>) => void;
@@ -3604,7 +3604,7 @@ export const useChartStore = create<ChartStore>()(
       })),
       setActiveGroup: (id) => set({ activeGroupId: id }),
 
-      setFullChart: ({ chartType, chartData, chartConfig, id, name, conversationId }) => set((state) => {
+      setFullChart: ({ chartType, chartData, chartConfig, id, name, conversationId, replaceMode = false }) => set((state) => {
         // Process datasets to ensure they have mode property set
         const datasetCount = chartData.datasets?.length || 0;
         let processedDatasets = chartData.datasets?.map((ds: any) => {
@@ -3680,15 +3680,19 @@ export const useChartStore = create<ChartStore>()(
 
           // IMPORTANT: When loading a cloud chart with temp group, PRESERVE existing datasets
           // from other groups. Only add the new datasets to the temp group.
-          const existingDatasetsFromOtherGroups = state.chartData.datasets.filter(ds =>
-            ds.groupId !== tempGroupId // Keep datasets from other groups
-          );
+          // Skip appending if replaceMode is true (e.g., AI response, undo/redo)
+          if (!replaceMode) {
+            const existingDatasetsFromOtherGroups = state.chartData.datasets.filter(ds =>
+              ds.groupId !== tempGroupId // Keep datasets from other groups
+            );
 
-          // Merge: existing datasets from other groups + new datasets in temp group
-          processedDatasets = [...existingDatasetsFromOtherGroups, ...processedDatasets];
-        } else if (datasetCount > 0) {
+            // Merge: existing datasets from other groups + new datasets in temp group
+            processedDatasets = [...existingDatasetsFromOtherGroups, ...processedDatasets];
+          }
+        } else if (datasetCount > 0 && !replaceMode) {
           // Single Mode / Simple Append
           // Append these datasets to the existing ones WITHOUT creating a group
+          // Skip appending if replaceMode is true (e.g., AI response, undo/redo)
           const existingDatasets = state.chartData.datasets;
           processedDatasets = [...existingDatasets, ...processedDatasets];
         }

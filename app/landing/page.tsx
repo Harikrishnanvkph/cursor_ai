@@ -58,6 +58,13 @@ function LandingPageContent() {
   const lastSyncedChartStateRef = useRef<string | null>(null)
   const hasMountSyncedRef = useRef(false) // Track if initial mount sync has happened
 
+  // CRITICAL: Reset refs on every mount to handle navigation properly
+  // In Next.js App Router, refs persist across navigations - we must reset them
+  useEffect(() => {
+    hasMountSyncedRef.current = false
+    lastSyncedChartStateRef.current = null
+  }, []) // This runs on every mount
+
   // If chart store has data but currentChartState is null, try to restore from chart store
   // Use a ref to prevent infinite loops
   useEffect(() => {
@@ -80,8 +87,10 @@ function LandingPageContent() {
 
   // Mount-time sync: Make chartStore authoritative on initial mount.
   // When navigating from editor, chartStore has newer data - sync it to currentChartState.
+  // NOTE: Do NOT call setFullChart here! chartStore is already correct.
+  // We only need to sync chartStore → currentChartState for undo/redo context.
   useEffect(() => {
-    if (hasMountSyncedRef.current) return // Only run once
+    if (hasMountSyncedRef.current) return // Only run once per mount
     hasMountSyncedRef.current = true
 
     const chartStoreState = useChartStore.getState()
@@ -91,13 +100,14 @@ function LandingPageContent() {
     // This preserves any changes made in the editor
     if (chartStoreState.hasJSON && chartStoreState.chartData?.datasets?.length > 0) {
       // Update currentChartState to match chartStore (makes chartStore authoritative)
+      // DO NOT call setFullChart - chartStore already has correct data
       chatStoreState.updateChartState({
         chartType: chartStoreState.chartType as any,
         chartData: chartStoreState.chartData as any,
         chartConfig: chartStoreState.chartConfig as any
       })
     }
-  }, []) // Empty deps = runs once on mount
+  }, []) // Empty deps - only runs on mount
 
   // Check if chat should be disabled (template mode but no template attached)
   const isChatDisabled = generateMode === 'template' && !currentTemplate
@@ -328,7 +338,10 @@ function LandingPageContent() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
-  // Sync currentChartState from chat store to chart store when it changes
+  // Track currentChartState changes and set hasJSON flag
+  // NOTE: Do NOT call setFullChart here!
+  // The source (chat-store for AI, history-store for history) already called setFullChart
+  // with the correct replaceMode. Calling again would cause duplicates.
   useEffect(() => {
     if (currentChartState) {
       // Create a hash of the chart state to detect actual changes
@@ -338,30 +351,18 @@ function LandingPageContent() {
         configHash: JSON.stringify(currentChartState.chartConfig?.plugins || {})
       })
 
-      // Only sync if this is a different chart state to prevent infinite loops
+      // Only update if this is a different chart state to prevent infinite loops
       if (lastSyncedChartStateRef.current !== chartStateHash) {
         lastSyncedChartStateRef.current = chartStateHash
-
-        // Skip calling setFullChart if datasets already have groupIds assigned
-        // This means the data came from restoreConversation which already called setFullChart
-        const datasetsHaveGroupIds = currentChartState.chartData?.datasets?.some(
-          (ds: any) => ds.groupId
-        );
-
-        if (!datasetsHaveGroupIds) {
-          setFullChart({
-            chartType: currentChartState.chartType,
-            chartData: currentChartState.chartData,
-            chartConfig: currentChartState.chartConfig
-          })
-        }
+        // Only set the flag - don't call setFullChart!
+        // chartStore is already updated by chat-store or history-store
         setHasJSON(true)
       }
     } else {
       // Reset ref when currentChartState is cleared
       lastSyncedChartStateRef.current = null
     }
-  }, [currentChartState, setFullChart, setHasJSON])
+  }, [currentChartState, setHasJSON])
 
   const hasActiveChart = currentChartState !== null && hasJSON
 

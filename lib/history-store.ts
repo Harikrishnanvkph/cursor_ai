@@ -166,8 +166,19 @@ export const useHistoryStore = create<HistoryStore>()(
           }
 
           // Pass snapshot ID and chart name to setFullChart so it can be stored
+          // NOTE: Do NOT use replaceMode: true here! History loading should APPEND datasets
+          // so users can load multiple charts and switch between them in the dropdown
           setFullChart({ ...conv.snapshot, id: snapshotId || undefined, name: conv.title, conversationId: conv.id });
           setHasJSON(true);
+
+          // CRITICAL: Also update chatStore.currentChartState so landing page sees correct chart
+          // Without this, navigating from editor to landing after loading from history
+          // would show the old chart instead of the newly loaded one
+          updateChartState({
+            chartType: conv.snapshot.chartType,
+            chartData: conv.snapshot.chartData,
+            chartConfig: conv.snapshot.chartConfig
+          });
 
           // Save original cloud dimensions for restoration (for chart-only conversations)
           // ONLY if they haven't been set yet, to preserve the true "Original" reference

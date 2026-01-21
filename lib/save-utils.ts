@@ -310,6 +310,36 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
             }
         }
 
+        // CRITICAL: Also update chatStore.currentChartState with the saved title
+        // This ensures both stores stay in sync, preventing title reset on navigation
+        const currentSnapshot = useChatStore.getState().currentChartState;
+        if (currentSnapshot) {
+            const updatedDatasets = currentSnapshot.chartData.datasets.map((ds: any, i: number) => {
+                if (chartMode === 'single' && i === activeDatasetIndex) {
+                    return {
+                        ...ds,
+                        sourceId: isUpdate ? ds.sourceId : conversationId,
+                        sourceTitle: savedTitle
+                    };
+                } else if (chartMode === 'grouped' && ds.groupId === activeGroupId) {
+                    return {
+                        ...ds,
+                        sourceId: isUpdate ? ds.sourceId : conversationId,
+                        sourceTitle: savedTitle
+                    };
+                }
+                return ds;
+            });
+
+            useChatStore.getState().updateChartState({
+                ...currentSnapshot,
+                chartData: {
+                    ...currentSnapshot.chartData,
+                    datasets: updatedDatasets
+                }
+            });
+        }
+
         const result: SaveChartResult = {
             success: true,
             conversationId,
