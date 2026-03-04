@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { useChartStore } from "@/lib/chart-store"
+import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { useTemplateStore } from "@/lib/template-store"
 import { downloadChartAsHTML, type HTMLExportOptions } from "@/lib/html-exporter"
 import { downloadTemplateExport, type TemplateExportOptions } from "@/lib/template-export"
@@ -20,7 +21,8 @@ interface ExportPanelProps {
 }
 
 export function ExportPanel({ onTabChange }: ExportPanelProps) {
-  const { chartData, chartConfig, chartType, globalChartRef, updateChartConfig } = useChartStore()
+  const { chartData, chartConfig, chartType, globalChartRef } = useChartStore()
+  const { updateChartConfig } = useChartActions()
   const { currentTemplate, setEditorMode, editorMode } = useTemplateStore()
   const [exportMode, setExportMode] = useState<"chart" | "template">("chart")
   const [exportFormat, setExportFormat] = useState("png")

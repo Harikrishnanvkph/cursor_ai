@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
   try {
-    const baseServerUrl = process.env.NEXT_PUBLIC_SERVER_URL || process.env.SERVER_URL || 'http://localhost:3001'
+    const baseServerUrl = process.env.NEXT_PUBLIC_SERVER_URL || process.env.SERVER_URL || 'http://localhost:5000'
     const targetUrl = `${baseServerUrl}/api/process-chart-enhanced`
 
     const body = await req.text()
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     const text = await upstreamResponse.text()
     console.log('Frontend API proxy - Response status:', upstreamResponse.status)
     console.log('Frontend API proxy - Response preview:', text.substring(0, 300) + '...')
-    
+
     return new Response(text, {
       status: upstreamResponse.status,
       headers: {

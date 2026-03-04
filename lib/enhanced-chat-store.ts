@@ -40,11 +40,11 @@ interface EnhancedChatStore {
   isProcessing: boolean;
   isOnline: boolean;
   lastSyncTime: number;
-  
+
   // Client-side undo state
   canUndo: boolean;
   canRedo: boolean;
-  
+
   // Actions
   createConversation: (title: string, description?: string) => Promise<string>;
   loadConversations: () => Promise<void>;
@@ -53,12 +53,12 @@ interface EnhancedChatStore {
   saveChartSnapshot: (snapshot: ChartSnapshot) => Promise<void>;
   syncWithBackend: () => Promise<void>;
   handleOfflineMode: () => void;
-  
+
   // Client-side undo methods only
   undo: () => Promise<boolean>;
   redo: () => Promise<boolean>;
   addUndoPoint: (operation: any) => void;
-  
+
   // Utility methods
   clearConversation: () => void;
   startNewConversation: () => Promise<void>;
@@ -87,24 +87,24 @@ export const useEnhancedChatStore = create<EnhancedChatStore>()(
       // Create new conversation
       createConversation: async (title: string, description?: string) => {
         set({ isProcessing: true });
-        
+
         try {
           const response = await dataService.createConversation(title, description);
-          
+
           if (response.error) {
             throw new Error(response.error);
           }
-          
+
           const conversationId = response.data.id;
-          set({ 
+          set({
             currentConversationId: conversationId,
             messages: [initialMessage],
             isProcessing: false
           });
-          
+
           // Refresh conversations list
           get().loadConversations();
-          
+
           return conversationId;
         } catch (error) {
           console.error('Error creating conversation:', error);
@@ -117,13 +117,13 @@ export const useEnhancedChatStore = create<EnhancedChatStore>()(
       loadConversations: async () => {
         try {
           const response = await dataService.getConversations();
-          
+
           if (response.data) {
             set({ conversations: response.data });
           }
         } catch (error) {
           console.error('Error loading conversations:', error);
-          
+
           // Fallback to offline data
           if (!get().isOnline) {
             const offlineData = await dataService.getOfflineData();
@@ -135,10 +135,10 @@ export const useEnhancedChatStore = create<EnhancedChatStore>()(
       // Load specific conversation
       loadConversation: async (id: string) => {
         set({ isProcessing: true, currentConversationId: id });
-        
+
         try {
           const response = await dataService.getConversation(id);
-          
+
           if (response.data) {
             // Convert backend messages to frontend format
             const messages = (response.data.chat_messages || []).map((msg: any) => ({
@@ -178,7 +178,7 @@ export const useEnhancedChatStore = create<EnhancedChatStore>()(
         } catch (error) {
           console.error('Error loading conversation:', error);
           set({ isProcessing: false });
-          
+
           // Fallback to offline data
           if (!get().isOnline) {
             const offlineData = await dataService.getOfflineData();
@@ -197,10 +197,10 @@ export const useEnhancedChatStore = create<EnhancedChatStore>()(
       // Add message to conversation
       addMessage: async (msg: ChatMessage) => {
         const { currentConversationId, isOnline } = get();
-        
+
         // Add to local state immediately for responsiveness
         set({ messages: [...get().messages, msg] });
-        
+
         if (currentConversationId && isOnline) {
           try {
             await dataService.addMessage(
@@ -230,7 +230,7 @@ export const useEnhancedChatStore = create<EnhancedChatStore>()(
       saveChartSnapshot: async (snapshot: ChartSnapshot) => {
         // Only update local state, don't auto-save to backend
         set({ currentChartState: snapshot });
-        
+
         // Auto-save to backend is DISABLED
         // Charts only save when user explicitly clicks Save button
         console.log('Chart snapshot updated locally. Click Save button to save to backend.');
@@ -239,17 +239,17 @@ export const useEnhancedChatStore = create<EnhancedChatStore>()(
       // Sync with backend
       syncWithBackend: async () => {
         if (!get().isOnline) return;
-        
+
         try {
           // Sync conversations
           await get().loadConversations();
-          
+
           // Sync current conversation if exists
           const { currentConversationId } = get();
           if (currentConversationId) {
             await get().loadConversation(currentConversationId);
           }
-          
+
           set({ lastSyncTime: Date.now() });
         } catch (error) {
           console.error('Error syncing with backend:', error);
@@ -259,7 +259,7 @@ export const useEnhancedChatStore = create<EnhancedChatStore>()(
       // Handle offline mode
       handleOfflineMode: () => {
         set({ isOnline: navigator.onLine });
-        
+
         if (navigator.onLine && get().lastSyncTime === 0) {
           // Came back online, sync data
           get().syncWithBackend();
@@ -270,38 +270,38 @@ export const useEnhancedChatStore = create<EnhancedChatStore>()(
       undo: async () => {
         const { currentConversationId, currentChartState } = get();
         if (!currentConversationId) return false;
-        
+
         const undoStore = useUndoStore.getState();
         const operation = undoStore.undo(currentConversationId);
-        
+
         if (operation && operation.previousState) {
-          set({ 
+          set({
             currentChartState: operation.previousState,
             canUndo: undoStore.canUndo(currentConversationId),
             canRedo: undoStore.canRedo(currentConversationId)
           });
           return true;
         }
-        
+
         return false;
       },
 
       redo: async () => {
         const { currentConversationId } = get();
         if (!currentConversationId) return false;
-        
+
         const undoStore = useUndoStore.getState();
         const operation = undoStore.redo(currentConversationId);
-        
+
         if (operation) {
-          set({ 
+          set({
             currentChartState: operation.currentState,
             canUndo: undoStore.canUndo(currentConversationId),
             canRedo: undoStore.canRedo(currentConversationId)
           });
           return true;
         }
-        
+
         return false;
       },
 
@@ -309,7 +309,7 @@ export const useEnhancedChatStore = create<EnhancedChatStore>()(
       addUndoPoint: (operation: any) => {
         const { currentConversationId, currentChartState } = get();
         if (!currentConversationId || !currentChartState) return;
-        
+
         const undoStore = useUndoStore.getState();
         undoStore.addToUndoStack(currentConversationId, {
           ...operation,
@@ -317,7 +317,7 @@ export const useEnhancedChatStore = create<EnhancedChatStore>()(
           currentState: currentChartState,
           conversationId: currentConversationId
         });
-        
+
         set({
           canUndo: undoStore.canUndo(currentConversationId),
           canRedo: undoStore.canRedo(currentConversationId)
@@ -338,13 +338,13 @@ export const useEnhancedChatStore = create<EnhancedChatStore>()(
       // Start new conversation
       startNewConversation: async () => {
         const { currentConversationId } = get();
-        
+
         // Clear undo stack for current conversation
         if (currentConversationId) {
           const undoStore = useUndoStore.getState();
           undoStore.clearUndoStack(currentConversationId);
         }
-        
+
         set({
           messages: [initialMessage],
           currentChartState: null,
@@ -382,7 +382,7 @@ if (typeof window !== 'undefined') {
   window.addEventListener('online', () => {
     useEnhancedChatStore.getState().handleOfflineMode();
   });
-  
+
   window.addEventListener('offline', () => {
     useEnhancedChatStore.getState().handleOfflineMode();
   });

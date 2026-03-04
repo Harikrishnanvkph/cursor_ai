@@ -5,6 +5,7 @@ import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import { useChartStore } from "@/lib/chart-store"
+import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { useState } from "react"
 import { Input } from "@/components/ui/input"
 
@@ -22,11 +23,12 @@ const allowedEasings = [
 ];
 
 export function AnimationsPanel() {
-  const { chartConfig, updateChartConfig } = useChartStore()
+  const { chartConfig } = useChartStore()
+  const { updateChartConfig } = useChartActions()
   const [generalDropdownOpen, setGeneralDropdownOpen] = useState(false)
   const [hoverDropdownOpen, setHoverDropdownOpen] = useState(false)
   const [hoverOpen, setHoverOpen] = useState(true)
-  const [hoverEnabled, setHoverEnabled] = useState(chartConfig.interaction?.mode !== undefined && chartConfig.interaction?.mode !== false)
+  const [hoverEnabled, setHoverEnabled] = useState(chartConfig.interaction?.mode !== undefined)
 
   const handleConfigUpdate = (path: string, value: any) => {
     const keys = path.split(".")
@@ -48,8 +50,8 @@ export function AnimationsPanel() {
   }
 
   // Ensure the value is always one of the allowed options
-  const easingValue = allowedEasings.includes(chartConfig.animation?.easing)
-    ? chartConfig.animation?.easing
+  const easingValue = allowedEasings.includes((chartConfig as any).animation?.easing)
+    ? (chartConfig as any).animation?.easing
     : "linear"
 
   return (
@@ -95,10 +97,10 @@ export function AnimationsPanel() {
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-medium">Duration</Label>
-                  <span className="text-xs text-gray-500">{chartConfig.animation?.duration || 1000}ms</span>
+                  <span className="text-xs text-gray-500">{(chartConfig as any).animation?.duration || 1000}ms</span>
                 </div>
                 <Slider
-                  value={[chartConfig.animation?.duration || 1000]}
+                  value={[(chartConfig as any).animation?.duration || 1000]}
                   onValueChange={([value]) => handleConfigUpdate("animation.duration", value)}
                   max={3000}
                   min={100}
@@ -136,10 +138,10 @@ export function AnimationsPanel() {
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-medium">Delay</Label>
-                  <span className="text-xs text-gray-500">{chartConfig.animation?.delay || 0}ms</span>
+                  <span className="text-xs text-gray-500">{(chartConfig as any).animation?.delay || 0}ms</span>
                 </div>
                 <Slider
-                  value={[chartConfig.animation?.delay || 0]}
+                  value={[(chartConfig as any).animation?.delay || 0]}
                   onValueChange={([value]) => handleConfigUpdate("animation.delay", value)}
                   max={2000}
                   min={0}
@@ -197,7 +199,7 @@ export function AnimationsPanel() {
                   <Input
                     type="number"
                     min={0}
-                    value={chartConfig.hover?.animationDuration ?? 400}
+                    value={(chartConfig as any).hover?.animationDuration ?? 400}
                     onChange={e => handleConfigUpdate('hover.animationDuration', e.target.value ? Number(e.target.value) : 400)}
                     className="h-8 text-xs pr-8 w-full"
                   />

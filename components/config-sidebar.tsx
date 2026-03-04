@@ -1,6 +1,7 @@
 "use client"
 
 import { useChartStore } from "@/lib/chart-store"
+import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { useTemplateStore } from "@/lib/template-store"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
@@ -12,6 +13,7 @@ import { ResponsiveAnimationsPanel } from "@/components/panels/responsive-animat
 import { DatasetsSlicesPanel } from "@/components/panels/datasets-slices-panel"
 import { FileText, Layout, BarChart3, Edit3, Cloud, Settings } from "lucide-react"
 import { useState, useCallback } from "react"
+import { useUIStore } from "@/lib/stores/ui-store"
 import { Plus, Trash2, Eye, EyeOff } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { HistoryDropdown } from "@/components/history-dropdown"
@@ -151,19 +153,23 @@ export function ConfigSidebar() {
     chartType,
     chartData,
     chartConfig,
-    updateChartConfig,
-    fillArea,
-    showBorder,
-    showImages,
-    showLabels,
     overlayImages,
+  } = useChartStore()
+
+  const {
+    updateChartConfig,
     updateOverlayImage,
     setChartType,
     toggleFillArea,
     toggleShowBorder,
     toggleShowImages,
     toggleShowLabels
-  } = useChartStore()
+  } = useChartActions()
+
+  const fillArea = chartConfig?.visualSettings?.fillArea ?? true;
+  const showBorder = chartConfig?.visualSettings?.showBorder ?? true;
+  const showImages = chartConfig?.visualSettings?.showImages ?? true;
+  const showLabels = chartConfig?.visualSettings?.showLabels ?? true;
 
   const {
     templates,
@@ -175,6 +181,8 @@ export function ConfigSidebar() {
     setCurrentTemplate,
     originalCloudTemplateContent,
   } = useTemplateStore()
+
+  const { activeSidebarTab, setActiveSidebarTab } = useUIStore()
 
   // Determine if we have a "Current Cloud Template" available from snapshot
   const currentCloudTemplate = originalCloudTemplateContent?.id === "current-cloud-template"
@@ -245,7 +253,7 @@ export function ConfigSidebar() {
           </button>
         </div>
 
-        <Tabs defaultValue="general" className="w-full">
+        <Tabs value={activeSidebarTab} onValueChange={(v) => setActiveSidebarTab(v as any)} className="w-full">
           <TabsList className="grid w-full grid-cols-3 gap-1 h-auto p-1">
             <TabsTrigger value="general" className="text-xs py-2">General</TabsTrigger>
             <TabsTrigger value="datasets" className="text-xs py-2">Datasets</TabsTrigger>

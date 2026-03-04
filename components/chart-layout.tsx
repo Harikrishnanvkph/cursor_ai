@@ -8,6 +8,7 @@ import { useChatStore } from "@/lib/chat-store"
 import { useTemplateStore } from "@/lib/template-store"
 import { cn } from "@/lib/utils"
 import { useState, useEffect } from "react"
+import { useUIStore } from "@/lib/stores/ui-store"
 import { ChevronLeft, ChevronRight, Settings, Save, X, Loader2 } from "lucide-react"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import { useAuth } from "@/components/auth/AuthProvider"
@@ -22,15 +23,8 @@ import { SaveChartDialog } from "@/components/ui/save-chart-dialog"
 import { useHistoryStore } from "@/lib/history-store"
 import { ClearChartDialog } from "@/components/dialogs/clear-chart-dialog"
 
-// Helper to parse dimension string (e.g., "800px" -> 800)
-function parseDimension(value: string | number | undefined): number {
-  if (typeof value === 'number') return value
-  if (typeof value === 'string') {
-    const num = parseInt(value.replace(/[^0-9]/g, ''), 10)
-    return isNaN(num) ? 0 : num
-  }
-  return 0
-}
+// parseDimension imported from shared utility
+import { parseDimension } from "@/lib/utils/dimension-utils"
 
 export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSidebarOpen: boolean, setLeftSidebarOpen: (open: boolean) => void }) {
   const { chartData, chartType, chartConfig, hasJSON } = useChartStore()
@@ -39,7 +33,8 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
   const { editorMode, currentTemplate, setEditorMode } = useTemplateStore()
   const router = useRouter()
   const hasChartData = chartData.datasets.length > 0
-  const [isCollapsed, setIsCollapsed] = useState(false)
+
+  const { isSidebarCollapsed: isCollapsed, toggleSidebar } = useUIStore()
   const [isHovering, setIsHovering] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -57,9 +52,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
   // Clear chart dialog state
   const [showClearDialog, setShowClearDialog] = useState(false)
 
-  const toggleSidebar = () => {
-    setIsCollapsed(!isCollapsed)
-  }
+
 
   // Check if there's a dimension mismatch between chart and template
   const checkDimensionMismatch = (): boolean => {

@@ -250,14 +250,14 @@ export function RadialAxisSettings({ config, onUpdate, chartType, className }: R
         </div>
       </div>
 
-      {/* Scale Ticks Section */}
+      {/* Scale Labels Section */}
       <div className="space-y-0">
         <div
           className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
           onClick={() => setTicksDropdownOpen(!ticksDropdownOpen)}
         >
           <div className="w-2 h-2 bg-orange-600 rounded-full"></div>
-          <h3 className="text-sm font-semibold text-gray-900 flex-1">Scale Ticks</h3>
+          <h3 className="text-sm font-semibold text-gray-900 flex-1">Scale Labels</h3>
           <div onClick={(e) => e.stopPropagation()}>
             <Switch
               checked={config?.ticks?.display !== false}

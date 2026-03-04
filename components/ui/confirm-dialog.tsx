@@ -66,12 +66,12 @@ export function ConfirmDialog({
         </div>
         <div className="mt-4 flex items-center justify-evenly gap-2">
           <button
-              type="button"
-              onClick={onConfirm}
-              className="inline-flex items-center justify-center h-9 rounded-md bg-green-600 px-4 text-sm font-semibold text-white hover:bg-green-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 shadow-sm transition-colors"
-            >
-              {confirmText}
-            </button>
+            type="button"
+            onClick={onConfirm}
+            className="inline-flex items-center justify-center h-9 rounded-md bg-green-600 px-4 text-sm font-semibold text-white hover:bg-green-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 shadow-sm transition-colors"
+          >
+            {confirmText}
+          </button>
           {alternateText && onAlternate && (
             <button
               type="button"

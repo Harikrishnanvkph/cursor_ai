@@ -746,31 +746,37 @@ export function initializeStorageWithExpiry(): void {
  * Use this with Zustand persist for automatic timestamp tracking
  * Compatible with Zustand v4+ persist middleware
  */
+import { StateStorage, createJSONStorage } from 'zustand/middleware';
+
 export function createExpiringStorage(baseName: string) {
-  return {
-    getItem: (name: string) => {
+  if (typeof window === 'undefined') {
+    // Return a dummy storage for SSR that doesn't do anything
+    return createJSONStorage(() => ({
+      getItem: () => null,
+      setItem: () => { },
+      removeItem: () => { },
+    }));
+  }
+
+  const storage: StateStorage = {
+    getItem: (name: string): string | Promise<string | null> | null => {
       const key = getUserStorageKey(baseName);
-      const value = localStorage.getItem(key);
-      if (!value) return null;
-      try {
-        return JSON.parse(value);
-      } catch {
-        return null;
-      }
+      return localStorage.getItem(key);
     },
-    setItem: (name: string, value: any) => {
+    setItem: (name: string, value: string): void | Promise<void> => {
       const key = getUserStorageKey(baseName);
-      const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
-      localStorage.setItem(key, stringValue);
+      localStorage.setItem(key, value);
       // Update timestamp when data is saved (also updates activity)
       updateStorageTimestamp(key);
     },
-    removeItem: (name: string) => {
+    removeItem: (name: string): void | Promise<void> => {
       const key = getUserStorageKey(baseName);
       localStorage.removeItem(key);
       removeStorageTimestamp(key);
     },
   };
+
+  return createJSONStorage(() => storage);
 }
 
 /**

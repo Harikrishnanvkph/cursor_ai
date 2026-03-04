@@ -25,7 +25,7 @@ export function SiteHeader() {
     <header className="sticky top-0 z-50 w-full border-b border-white/20 bg-white/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/80 shadow-sm">
       {/* Background gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-r from-blue-50/50 via-white/50 to-purple-50/50 -z-10"></div>
-      
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-20 items-center justify-between py-4">
           {/* Logo */}
@@ -48,13 +48,13 @@ export function SiteHeader() {
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center space-x-2">
             {/* Public Navigation */}
-            <Button variant="ghost" size="md" asChild className="text-gray-600 hover:text-gray-900 hover:bg-white/60 px-5 py-3 rounded-xl font-medium transition-all duration-200 hover:shadow-sm">
+            <Button variant="ghost" asChild className="text-gray-600 hover:text-gray-900 hover:bg-white/60 px-5 py-3 rounded-xl font-medium transition-all duration-200 hover:shadow-sm">
               <Link href="/pricing">
                 Pricing
               </Link>
             </Button>
 
-            <Button variant="ghost" size="md" asChild className="text-gray-600 hover:text-gray-900 hover:bg-white/60 px-5 py-3 rounded-xl font-medium transition-all duration-200 hover:shadow-sm">
+            <Button variant="ghost" asChild className="text-gray-600 hover:text-gray-900 hover:bg-white/60 px-5 py-3 rounded-xl font-medium transition-all duration-200 hover:shadow-sm">
               <Link href="/documentation">
                 Documentation
               </Link>
@@ -64,22 +64,22 @@ export function SiteHeader() {
             {user && (
               <>
                 <div className="w-px h-8 bg-gradient-to-b from-transparent via-gray-300 to-transparent mx-4"></div>
-                
-                <Button variant="ghost" size="md" asChild className="text-gray-600 hover:text-blue-700 hover:bg-blue-50/80 px-5 py-3 rounded-xl font-medium transition-all duration-200 hover:shadow-sm group">
+
+                <Button variant="ghost" asChild className="text-gray-600 hover:text-blue-700 hover:bg-blue-50/80 px-5 py-3 rounded-xl font-medium transition-all duration-200 hover:shadow-sm group">
                   <Link href="/landing">
                     <MessageSquare className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />
                     AI Chat
                   </Link>
                 </Button>
 
-                <Button variant="ghost" size="md" asChild className="text-gray-600 hover:text-purple-700 hover:bg-purple-50/80 px-5 py-3 rounded-xl font-medium transition-all duration-200 hover:shadow-sm group">
+                <Button variant="ghost" asChild className="text-gray-600 hover:text-purple-700 hover:bg-purple-50/80 px-5 py-3 rounded-xl font-medium transition-all duration-200 hover:shadow-sm group">
                   <Link href="/board">
                     <LayoutDashboard className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />
                     Dashboard
                   </Link>
                 </Button>
 
-                <Button size="md" asChild className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 hover:scale-105">
+                <Button asChild className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 hover:scale-105">
                   <Link href="/editor">
                     <Edit3 className="h-4 w-4 mr-2" />
                     Advanced Editor
@@ -98,17 +98,16 @@ export function SiteHeader() {
                   <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
                   Online
                 </Badge>
-                <SimpleProfileDropdown size="md" />
+                <SimpleProfileDropdown />
               </div>
             ) : (
               <div className="flex items-center space-x-4">
-                <Button variant="ghost" size="md" asChild className="hidden sm:flex text-gray-600 hover:text-gray-900 hover:bg-white/60 px-5 py-3 rounded-xl font-medium transition-all duration-200">
+                <Button variant="ghost" asChild className="hidden sm:flex text-gray-600 hover:text-gray-900 hover:bg-white/60 px-5 py-3 rounded-xl font-medium transition-all duration-200">
                   <Link href="/signin">
                     Sign In
                   </Link>
                 </Button>
                 <Button
-                  size="md"
                   asChild
                   className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 text-white px-7 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 hover:scale-105 group"
                 >

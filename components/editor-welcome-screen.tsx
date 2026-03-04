@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { BarChart3, Database, Sparkles, TrendingUp, PieChart, LineChart } from "lucide-react"
 import { useChartStore } from "@/lib/chart-store"
+import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { useChatStore } from "@/lib/chat-store"
 import { useTemplateStore } from "@/lib/template-store"
 import { toast } from "sonner"
@@ -18,6 +19,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
   const { setFullChart, setHasJSON, setChartMode } = useChartStore()
   const { setEditorMode } = useTemplateStore()
   const { clearMessages, setBackendConversationId } = useChatStore()
+  const { addDataset } = useChartActions()
 
   const handleLoadSampleData = () => {
     // Clear any previous conversation state to ensure this is treated as a NEW chart
@@ -65,7 +67,9 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
     }
 
     // Get current store state
-    const { chartData, addDataset } = useChartStore.getState()
+    const { chartData } = useChartStore.getState()
+    // We can't use hooks inside a callback, so we need to grab the action from the hook usage at the top level
+    // OR since we are inside a component, we can use the hook at the top level
 
     // Check if we already have datasets
     if (chartData.datasets && chartData.datasets.length > 0) {
@@ -86,11 +90,6 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
       setHasJSON(true)
       toast.success("Sample data loaded successfully!")
     }
-
-    // Mark that we have a valid chart
-    setHasJSON(true)
-
-    toast.success("Sample data loaded successfully!")
   }
 
   const handleGoToDataset = () => {

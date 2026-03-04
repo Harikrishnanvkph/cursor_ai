@@ -21,26 +21,26 @@ interface PromptTemplateProps {
   size?: 'default' | 'compact' | 'large'
 }
 
-export function PromptTemplate({ 
-  onSampleClick, 
-  className = "", 
-  size = 'default' 
+export function PromptTemplate({
+  onSampleClick,
+  className = "",
+  size = 'default'
 }: PromptTemplateProps) {
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
-  const { 
-    currentTemplate, 
-    setCurrentTemplate, 
-    templates, 
-    applyTemplate, 
-    generateMode, 
-    setGenerateMode, 
+  const {
+    currentTemplate,
+    setCurrentTemplate,
+    templates,
+    applyTemplate,
+    generateMode,
+    setGenerateMode,
     setEditorMode,
     contentTypePreferences,
     setContentTypePreferences
   } = useTemplateStore()
-  
+
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  
+
   const handleSampleClick = () => {
     if (onSampleClick) {
       onSampleClick(chartTemplate)
@@ -69,13 +69,13 @@ export function PromptTemplate({
   const toggleContentType = (textAreaId: string) => {
     const currentType = contentTypePreferences[textAreaId] || 'text'
     const newType = currentType === 'text' ? 'html' : 'text'
-    
+
     // Update preferences for AI generation
     setContentTypePreferences({
       ...contentTypePreferences,
       [textAreaId]: newType
     })
-    
+
     // Also update the actual template text area's contentType for Templates -> Content panel sync
     const { updateTextArea } = useTemplateStore.getState()
     updateTextArea(textAreaId, { contentType: newType })
@@ -97,7 +97,7 @@ export function PromptTemplate({
       padding: "p-6"
     },
     default: {
-      container: "max-w-md p-12", 
+      container: "max-w-md p-12",
       icon: "w-12 h-12",
       iconInner: "w-6 h-6",
       title: "text-2xl",
@@ -106,7 +106,7 @@ export function PromptTemplate({
     },
     large: {
       container: "max-w-xl p-16",
-      icon: "w-16 h-16", 
+      icon: "w-16 h-16",
       iconInner: "w-8 h-8",
       title: "text-2xl",
       description: "text-base",
@@ -124,21 +124,21 @@ export function PromptTemplate({
               <BarChart2 className={`${styles.iconInner} text-white`} />
           </div> */}
           <div className={`${styles.title} inline-flex items-center font-bold bg-gradient-to-r from-slate-900 via-indigo-800 to-purple-800 bg-clip-text text-transparent mb-3 text-center`}>
-              <span className="text-sm inline text-slate-500 mr-3"><Bot /></span>
-              <h2>Create Your Chart with AI Prompt</h2>
-            </div>
+            <span className="text-sm inline text-slate-500 mr-3"><Bot /></span>
+            <h2>Create Your Chart with AI Prompt</h2>
+          </div>
           <p className={`text-slate-600 text-center max-w-md mx-auto leading-relaxed ${styles.description}`}>
             Describe the chart you want to create in natural language. I'll generate it for you and you can ask me to modify it further!
           </p>
         </div>
-        
+
         <div className="space-y-3 w-full">
           {/* Generate Toggle Button */}
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium text-slate-700">Generate As</label>
-            <ToggleGroup 
-              type="single" 
-              value={generateMode} 
+            <ToggleGroup
+              type="single"
+              value={generateMode}
               onValueChange={(value) => {
                 if (value) {
                   const mode = value as 'chart' | 'template'
@@ -149,16 +149,16 @@ export function PromptTemplate({
               }}
               className="w-full bg-gray-50 rounded-lg p-1 border border-gray-200"
             >
-              <ToggleGroupItem 
-                value="chart" 
+              <ToggleGroupItem
+                value="chart"
                 aria-label="Chart"
                 className="flex-1 data-[state=on]:bg-indigo-500 data-[state=on]:text-white data-[state=on]:shadow-sm"
               >
                 <BarChart2 className="w-4 h-4 mr-2" />
                 Chart
               </ToggleGroupItem>
-              <ToggleGroupItem 
-                value="template" 
+              <ToggleGroupItem
+                value="template"
                 aria-label="Template"
                 className="flex-1 data-[state=on]:bg-indigo-500 data-[state=on]:text-white data-[state=on]:shadow-sm"
               >
@@ -171,24 +171,24 @@ export function PromptTemplate({
           {/* Conditional Content Based on Generate Mode */}
           {generateMode === 'chart' ? (
             <>
-          <button
-            onClick={handleSampleClick}
-            className="w-full bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-slate-800 font-medium px-4 py-3 rounded-xl border border-indigo-200/50 transition-all duration-200 text-left hover:shadow-lg group text-sm"
-          >
-            <div className="font-semibold flex items-center gap-2 mb-1">
-              <div className="p-1 bg-indigo-100 rounded group-hover:bg-indigo-200 transition-colors">
-                <Forward className="w-4 h-4 text-indigo-600" />
+              <button
+                onClick={handleSampleClick}
+                className="w-full bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-slate-800 font-medium px-4 py-3 rounded-xl border border-indigo-200/50 transition-all duration-200 text-left hover:shadow-lg group text-sm"
+              >
+                <div className="font-semibold flex items-center gap-2 mb-1">
+                  <div className="p-1 bg-indigo-100 rounded group-hover:bg-indigo-200 transition-colors">
+                    <Forward className="w-4 h-4 text-indigo-600" />
+                  </div>
+                  Sample Request
+                </div>
+                <div className="text-xs text-slate-600 leading-relaxed">{chartTemplate}</div>
+              </button>
+
+              <div className="text-center">
+                <div className="text-xs text-slate-500">
+                  Or type your own request in the chat panel →
+                </div>
               </div>
-              Sample Request
-            </div>
-            <div className="text-xs text-slate-600 leading-relaxed">{chartTemplate}</div>
-          </button>
-          
-          <div className="text-center">
-            <div className="text-xs text-slate-500">
-              Or type your own request in the chat panel →
-            </div>
-          </div>
             </>
           ) : (
             <>
@@ -198,7 +198,7 @@ export function PromptTemplate({
                   <div className="text-xs text-slate-600 mb-2">
                     Status: <span className="font-semibold text-green-600">Attached Template</span>
                   </div>
-                  
+
                   {/* Template Name with Settings and Cancel Buttons */}
                   <div className="flex items-center gap-2 w-full">
                     <div className="flex-1 bg-green-50 border-2 border-green-500 rounded-lg px-4 py-3 flex items-center">
@@ -207,7 +207,7 @@ export function PromptTemplate({
                         {currentTemplate.name}
                       </span>
                     </div>
-                    
+
                     {/* Settings Button */}
                     <Popover open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
                       <PopoverTrigger asChild>
@@ -223,7 +223,7 @@ export function PromptTemplate({
                           <h4 className="font-semibold text-sm text-slate-900">Output Settings</h4>
                           <p className="text-xs text-slate-500 mt-1">Configure output format for each section</p>
                         </div>
-                        
+
                         <div className="p-3 space-y-3 max-h-64 overflow-y-auto">
                           {currentTemplate.textAreas.map((textArea) => {
                             const isHTML = getContentType(textArea.id) === 'html'
@@ -253,7 +253,7 @@ export function PromptTemplate({
                             )
                           })}
                         </div>
-                        
+
                         {/* Info Note */}
                         <div className="p-3 border-t bg-amber-50">
                           <div className="flex gap-2">
@@ -265,7 +265,7 @@ export function PromptTemplate({
                         </div>
                       </PopoverContent>
                     </Popover>
-                    
+
                     {/* Cancel Button */}
                     <button
                       onClick={handleCancelTemplate}
@@ -285,11 +285,11 @@ export function PromptTemplate({
                     <Layout className="w-4 h-4 mr-2" />
                     Standard Template
                   </Button>
-                  
+
                   <div className="text-center">
                     <div className="text-xs text-slate-500">or</div>
                   </div>
-                  
+
                   <Button
                     variant="outline"
                     onClick={handleChooseTemplates}

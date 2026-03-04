@@ -11,7 +11,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useChartStore, getDefaultImageType, getDefaultImageSize, getImageOptionsForChartType, type ExtendedChartDataset, type SupportedChartType } from "@/lib/chart-store"
+import { useChartStore, type ExtendedChartDataset, type SupportedChartType } from "@/lib/chart-store"
+import { useChartActions } from "@/lib/hooks/use-chart-actions"
+import { getDefaultImageType, getDefaultImageSize, getImageOptionsForChartType } from "@/lib/plugins/universal-image-plugin"
 import {
   Plus,
   Trash2,
@@ -28,8 +30,8 @@ import {
 type DataPoint = number | { x: number; y: number } | null
 
 export function DatasetPanel() {
-  const { chartData, chartType, addDataset, removeDataset, updateDataset, setChartType, updatePointImage, updateDataPoint } =
-    useChartStore()
+  const { chartData, chartType } = useChartStore()
+  const { addDataset, removeDataset, updateDataset, updateDataPoint, updatePointImage, setChartType } = useChartActions()
   const [newDatasetName, setNewDatasetName] = useState("")
 
   const handleAddDataset = () => {
@@ -58,7 +60,7 @@ export function DatasetPanel() {
           position: "center",
           arrow: false,
         }),
-        sliceLabels: sliceLabels, // Add sliceLabels to the dataset
+        sliceLabels: sliceLabels as string[], // Add sliceLabels to the dataset
       }
 
       addDataset(newDataset)
@@ -713,7 +715,7 @@ export function DatasetPanel() {
 
                     <div className="flex items-center space-x-3">
                       <Switch
-                        checked={dataset.fill || false}
+                        checked={!!dataset.fill}
                         onCheckedChange={(checked) => handleUpdateDataset(datasetIndex, "fill", checked)}
                       />
                       <Label className="text-sm font-medium">Fill Area</Label>

@@ -6,12 +6,12 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TypesTogglesPanel } from "@/components/panels/types-toggles-panel"
 import { DatasetsSlicesPanel } from "@/components/panels/datasets-slices-panel"
-import { DesignPanel } from "@/components/panels/design-panel"
+import { DesignPanel } from "@/components/panels/design-settings"
 import { AxesPanel } from "@/components/panels/axes/axes-panel"
 import { LabelsPanel } from "@/components/panels/labels-panel"
 import { AdvancedPanel } from "@/components/panels/advanced-panel"
 import { ExportPanel } from "@/components/panels/export-panel"
-import { TemplatesPanel } from "@/components/panels/templates-panel"
+import { TemplatesPanel } from "@/components/panels/template-settings"
 
 const TABLET_TABS = [
   { id: "types_toggles", label: "Types", icon: AlignEndHorizontal },
@@ -40,7 +40,7 @@ export function TabletConfigSidebar({
       case "types_toggles":
         return <TypesTogglesPanel />
       case "datasets_slices":
-        return <DatasetsSlicesPanel activeTab={tabId} />
+        return <DatasetsSlicesPanel />
       case "design":
         return <DesignPanel />
       case "axes":
@@ -72,8 +72,8 @@ export function TabletConfigSidebar({
                 size="sm"
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex flex-col items-center gap-1 h-auto py-2 text-xs transition-all duration-200 ${activeTab === tab.id
-                    ? "bg-blue-600 text-white hover:bg-blue-700"
-                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                  ? "bg-blue-600 text-white hover:bg-blue-700"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                   }`}
               >
                 <Icon className="w-4 h-4" />

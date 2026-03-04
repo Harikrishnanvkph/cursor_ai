@@ -6,21 +6,15 @@ import { useChartStore } from "@/lib/chart-store"
 import { AxisSettings } from "./axis-settings"
 import { RadialAxisSettings } from "./radial-axis-settings"
 import { ArcSettings } from "./arc-settings"
+import { useChartActions } from "@/lib/hooks/use-chart-actions"
+import { setNestedProperty } from "@/lib/utils"
 
 export function AxesPanel() {
-  const { chartConfig, updateChartConfig, chartType } = useChartStore()
+  const { chartConfig, chartType } = useChartStore()
+  const { updateChartConfig } = useChartActions()
 
   const handleConfigUpdate = (path: string, value: any) => {
-    const newConfig = JSON.parse(JSON.stringify(chartConfig))
-    const keys = path.split('.')
-    let current = newConfig
-
-    for (let i = 0; i < keys.length - 1; i++) {
-      if (!current[keys[i]]) current[keys[i]] = {}
-      current = current[keys[i]]
-    }
-
-    current[keys[keys.length - 1]] = value
+    const newConfig = setNestedProperty(chartConfig, path, value)
     updateChartConfig(newConfig)
   }
 

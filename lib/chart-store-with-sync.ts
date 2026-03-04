@@ -1,140 +1,24 @@
-// Enhanced chart store with backend sync capabilities
+﻿// Enhanced chart store with backend sync capabilities
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { dataService } from './data-service'
 import { createUserSpecificStorage } from './storage-utils'
 import type { Chart, ChartConfiguration, ChartData, ChartType, ChartDataset, ChartOptions, ChartTypeRegistry } from "chart.js"
 
-// Extend ChartTypeRegistry to include 'horizontalBar' type
-declare module 'chart.js' {
-  interface Context {
-    active: boolean;
-    chart: Chart;
-    dataIndex: number;
-    dataset: ChartDataset;
-    datasetIndex: number;
-  }
-
-  interface FontOptions {
-    family?: string;
-    lineHeight?: number | string;
-    size?: number;
-    style?: string;
-    weight?: string | number;
-  }
-
-  interface DatalabelsPluginOptions {
-    align?: 'start' | 'center' | 'end' | number;
-    anchor?: 'start' | 'center' | 'end';
-    backgroundColor?: string | ((context: Context) => string) | null;
-    borderColor?: string | ((context: Context) => string) | null;
-    borderRadius?: number;
-    borderWidth?: number;
-    clamp?: boolean;
-    clip?: boolean;
-    color?: string | ((context: Context) => string);
-    display?: boolean | 'auto' | ((context: Context) => boolean | 'auto');
-    font?: FontOptions | ((context: Context) => FontOptions);
-    formatter?: (value: any, context: Context) => any;
-    labels?: { [key: string]: DatalabelsLabelOptions };
-    listeners?: { [key: string]: (context: Context, event: Event) => void };
-    offset?: number;
-    opacity?: number;
-    padding?: number | object;
-    rotation?: number;
-    textAlign?: 'start' | 'center' | 'end' | 'left' | 'right';
-    textStrokeColor?: string | ((context: Context) => string);
-    textStrokeWidth?: number;
-    textShadowBlur?: number;
-    textShadowColor?: string | ((context: Context) => string);
-  }
-
-  interface DatalabelsLabelOptions extends DatalabelsPluginOptions { }
-
-  interface PluginOptionsByType<TType extends ChartType = ChartType> {
-    datalabels?: DatalabelsPluginOptions;
-  }
-
-  interface ChartTypeRegistry {
-    horizontalBar: ChartTypeRegistry['bar'];
-  }
-}
+import {
+  ExtendedChartOptions,
+  ExtendedChartDataset,
+  ExtendedChartData,
+  SupportedChartType,
+  ChartMode,
+  defaultChartData,
+  singleModeDefaultData,
+  groupedModeDefaultData,
+  getDefaultConfigForType
+} from "./chart-defaults"
 
 // Create a custom interface that extends ChartOptions with our additional properties
-export interface ExtendedChartOptions extends ChartOptions {
-  manualDimensions?: boolean;
-  dynamicDimension?: boolean;
-  width?: number | string;
-  height?: number | string;
-  hoverFadeEffect?: boolean;
-  background?: {
-    type: 'color' | 'gradient' | 'image' | 'transparent';
-    color?: string;
-    gradientStart?: string;
-    gradientEnd?: string;
-    gradientType?: 'linear' | 'radial';
-    gradientDirection?: 'to right' | 'to left' | 'to top' | 'to bottom' | '135deg';
-    gradientColor1?: string;
-    gradientColor2?: string;
-    opacity?: number;
-    imageUrl?: string;
-    imageFit?: 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';
-    imageWhiteBase?: boolean;
-  };
-}
 
-// Define our custom dataset properties
-interface PointImageConfig {
-  type: string
-  size: number
-  position: string
-  arrow: boolean
-  arrowColor?: string
-  borderWidth?: number
-  borderColor?: string
-  borderRadius?: number
-  backgroundColor?: string
-  padding?: number
-}
-
-interface ExtendedChartDataset extends ChartDataset {
-  pointImages?: PointImageConfig[]
-  imageUrls?: string[]
-  imageConfigs?: PointImageConfig[]
-  showImages?: boolean
-  fillArea?: boolean
-  showBorder?: boolean
-  borderWidth?: number
-  borderColor?: string
-  backgroundColor?: string
-  pointBackgroundColor?: string
-  pointBorderColor?: string
-  pointBorderWidth?: number
-  pointRadius?: number
-  pointHoverRadius?: number
-  pointHoverBackgroundColor?: string
-  pointHoverBorderColor?: string
-  pointHoverBorderWidth?: number
-  tension?: number
-}
-
-export interface ExtendedChartData extends ChartData {
-  datasets: ExtendedChartDataset[]
-}
-
-export type SupportedChartType =
-  | 'bar'
-  | 'line'
-  | 'pie'
-  | 'doughnut'
-  | 'polarArea'
-  | 'radar'
-  | 'scatter'
-  | 'bubble'
-  | 'horizontalBar'
-  | 'area';
-
-export type ChartMode = 'single' | 'grouped';
 
 // Overlay types
 export interface OverlayImage {
@@ -231,76 +115,6 @@ interface ChartStore {
 
 // Default data configurations - empty by default
 // User must explicitly load data via "Load Sample Data" or "Add Your Own Data"
-const singleModeDefaultData: ExtendedChartData = {
-  labels: [],
-  datasets: []
-};
-
-// Grouped mode default data - empty by default
-const groupedModeDefaultData: ExtendedChartData = {
-  labels: [],
-  datasets: []
-};
-
-// Default chart configuration
-const getDefaultConfigForType = (type: SupportedChartType): ExtendedChartOptions => {
-  const baseConfig: ExtendedChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: true,
-        position: 'top',
-      },
-      tooltip: {
-        enabled: true,
-      },
-    },
-    scales: {
-      x: {
-        display: true,
-      },
-      y: {
-        display: true,
-      },
-    },
-  };
-
-  switch (type) {
-    case 'bar':
-    case 'horizontalBar':
-      return {
-        ...baseConfig,
-        scales: {
-          x: { display: true },
-          y: { display: true, beginAtZero: true }
-        }
-      };
-    case 'line':
-    case 'area':
-      return {
-        ...baseConfig,
-        scales: {
-          x: { display: true },
-          y: { display: true, beginAtZero: true }
-        }
-      };
-    case 'pie':
-    case 'doughnut':
-      return {
-        ...baseConfig,
-        scales: {}
-      };
-    case 'polarArea':
-    case 'radar':
-      return {
-        ...baseConfig,
-        scales: {}
-      };
-    default:
-      return baseConfig;
-  }
-};
 
 export const useChartStoreWithSync = create<ChartStore>()(
   persist(
@@ -411,9 +225,17 @@ export const useChartStoreWithSync = create<ChartStore>()(
         isDirty: true
       })),
 
-      updateChartConfig: (config) => set({
-        chartConfig: { ...get().chartConfig, ...config },
-        isDirty: true
+      // Write config to the active chart (dataset or group) AND the global mirror
+      updateChartConfig: (config) => set((state) => {
+        if (state.chartMode === 'single') {
+          const newDatasets = state.chartData.datasets.map((ds, i) =>
+            i === state.activeDatasetIndex ? { ...ds, chartConfig: config } : ds
+          );
+          const newChartData = { ...state.chartData, datasets: newDatasets };
+          return { chartConfig: { ...state.chartConfig, ...config }, chartData: newChartData, singleModeData: newChartData, isDirty: true };
+        } else {
+          return { chartConfig: { ...state.chartConfig, ...config }, isDirty: true };
+        }
       }),
 
       resetChart: () => set({
@@ -515,10 +337,19 @@ export const useChartStoreWithSync = create<ChartStore>()(
           const response = await dataService.getCurrentChartSnapshot(conversationId);
 
           if (response.data) {
+            const loadedConfig = response.data.chart_config;
+            const loadedData = response.data.chart_data;
+            // Backfill per-dataset chartConfig from loaded config
+            if (loadedData?.datasets) {
+              loadedData.datasets = loadedData.datasets.map((ds: any) => ({
+                ...ds,
+                chartConfig: ds.chartConfig || JSON.parse(JSON.stringify(loadedConfig)),
+              }));
+            }
             set({
               chartType: response.data.chart_type,
-              chartData: response.data.chart_data,
-              chartConfig: response.data.chart_config,
+              chartData: loadedData,
+              chartConfig: loadedConfig,
               hasJSON: true,
               isDirty: false,
               lastSyncTime: Date.now()

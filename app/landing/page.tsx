@@ -65,30 +65,14 @@ function LandingPageContent() {
     lastSyncedChartStateRef.current = null
   }, []) // This runs on every mount
 
-  // If chart store has data but currentChartState is null, try to restore from chart store
-  // Use a ref to prevent infinite loops
-  useEffect(() => {
-    if (hasJSON && chartData && !currentChartState && !hasRestoredRef.current) {
-      hasRestoredRef.current = true
-      const chatStore = useChatStore.getState()
-      if (chatStore.updateChartState) {
-        chatStore.updateChartState({
-          chartType: chartType as any,
-          chartData: chartData as any,
-          chartConfig: chartConfig as any
-        })
-      }
-    }
-    // Reset ref when currentChartState becomes available
-    if (currentChartState) {
-      hasRestoredRef.current = false
-    }
-  }, [hasJSON, chartType, chartData, currentChartState, chartConfig])
-
-  // Mount-time sync: Make chartStore authoritative on initial mount.
-  // When navigating from editor, chartStore has newer data - sync it to currentChartState.
-  // NOTE: Do NOT call setFullChart here! chartStore is already correct.
-  // We only need to sync chartStore → currentChartState for undo/redo context.
+  // Consolidated mount-time sync: Handles both restore-from-chartStore and mount sync
+  // in a single effect to prevent cascading renders that cause chart flickering.
+  // 
+  // Two scenarios:
+  // 1. Chart store has data but currentChartState is null → restore from chart store
+  // 2. Chart store has data → sync to currentChartState for undo/redo context
+  //
+  // Both are handled atomically to avoid intermediate renders.
   useEffect(() => {
     if (hasMountSyncedRef.current) return // Only run once per mount
     hasMountSyncedRef.current = true
@@ -96,8 +80,7 @@ function LandingPageContent() {
     const chartStoreState = useChartStore.getState()
     const chatStoreState = useChatStore.getState()
 
-    // If chartStore has valid data, sync it to currentChartState
-    // This preserves any changes made in the editor
+    // If chartStore has valid data, sync it to currentChartState and set hasJSON atomically
     if (chartStoreState.hasJSON && chartStoreState.chartData?.datasets?.length > 0) {
       // Update currentChartState to match chartStore (makes chartStore authoritative)
       // DO NOT call setFullChart - chartStore already has correct data
@@ -106,6 +89,9 @@ function LandingPageContent() {
         chartData: chartStoreState.chartData as any,
         chartConfig: chartStoreState.chartConfig as any
       })
+      // Set hasJSON flag in the same tick to avoid a separate render cycle
+      chartStoreState.setHasJSON(true)
+      hasRestoredRef.current = true
     }
   }, []) // Empty deps - only runs on mount
 
@@ -989,7 +975,7 @@ function LandingPageContent() {
             </form>
 
             {/* Messages */}
-            <div className="lex-1 overflow-y-auto px-3 py-2 space-y-2 bg-gradient-to-b from-white/80 to-slate-50/80 font-sans">
+            <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2 bg-gradient-to-b from-white/80 to-slate-50/80 font-sans">
               {messages.map((msg, idx) => (
                 <div
                   key={idx}
@@ -1132,13 +1118,7 @@ function LandingPageContent() {
 
             {/* History Icon */}
             <button
-              onClick={() => {
-                // This will trigger the history dropdown
-                const historyButton = document.querySelector('[data-history-dropdown]') as HTMLButtonElement;
-                if (historyButton) {
-                  historyButton.click();
-                }
-              }}
+              onClick={() => setLeftSidebarOpen(true)}
               className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-200 text-gray-600 hover:text-gray-800"
               title="Chat History"
             >

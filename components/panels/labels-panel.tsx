@@ -10,9 +10,11 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Card, CardContent } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
 import { useChartStore } from "@/lib/chart-store"
+import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { Info } from "lucide-react"
 import { RadarPanel } from "./radar-panel"
 import { PiePanel } from "./pie-panel"
+import { setNestedProperty } from "@/lib/utils"
 
 type ConfigPathUpdate = {
     path: string;
@@ -20,47 +22,27 @@ type ConfigPathUpdate = {
 };
 
 export function LabelsPanel() {
-    const { chartConfig, updateChartConfig, chartData, chartType } = useChartStore()
+    const { chartConfig, chartData, chartType } = useChartStore()
+    const { updateChartConfig } = useChartActions()
 
     // Helper to update customLabelsConfig in chartConfig
     const handleCustomLabelConfigUpdate = (path: string, value: any) => {
-        const keys = path.split(".")
-        const newConfig = { ...chartConfig }
-        if (!newConfig.plugins) newConfig.plugins = {}
-        if (!newConfig.plugins.customLabelsConfig) newConfig.plugins.customLabelsConfig = {}
-        let current = newConfig.plugins.customLabelsConfig
-        for (let i = 0; i < keys.length - 1; i++) {
-            if (!current[keys[i]]) current[keys[i]] = {}
-            current = current[keys[i]]
-        }
-        current[keys[keys.length - 1]] = value
-        updateChartConfig(newConfig)
+        const fullPath = `plugins.customLabelsConfig.${path}`;
+        const newConfig = setNestedProperty(chartConfig, fullPath, value);
+        updateChartConfig(newConfig);
     }
 
     // Helper to update general chartConfig (for Legend settings)
     const handleConfigUpdate = (path: string, value: any) => {
-        const keys = path.split(".");
-        const newConfig = { ...chartConfig };
-        let current: any = newConfig;
-        for (let i = 0; i < keys.length - 1; i++) {
-            if (!current[keys[i]]) current[keys[i]] = {};
-            current = current[keys[i]];
-        }
-        current[keys[keys.length - 1]] = value;
+        const newConfig = setNestedProperty(chartConfig, path, value);
         updateChartConfig(newConfig);
     };
 
     // Apply multiple config updates at once
     const applyConfigUpdates = (updates: ConfigPathUpdate[]) => {
-        const newConfig = { ...chartConfig };
+        let newConfig = { ...chartConfig };
         for (const { path, value } of updates) {
-            const keys = path.split(".");
-            let current: any = newConfig;
-            for (let i = 0; i < keys.length - 1; i++) {
-                if (!current[keys[i]]) current[keys[i]] = {};
-                current = current[keys[i]];
-            }
-            current[keys[keys.length - 1]] = value;
+            newConfig = setNestedProperty(newConfig, path, value);
         }
         updateChartConfig(newConfig);
     };
@@ -636,7 +618,7 @@ export function LabelsPanel() {
                             <div className="space-y-1">
                                 <Label className="text-xs font-medium">Legend Type</Label>
                                 <Select
-                                    value={chartConfig.plugins?.legendType || "dataset"}
+                                    value={(chartConfig.plugins as any)?.legendType || "dataset"}
                                     onValueChange={(value) => handleConfigUpdate("plugins.legendType", value)}
                                 >
                                     <SelectTrigger className="h-8 text-xs">
@@ -654,7 +636,7 @@ export function LabelsPanel() {
                                 <div>
                                     <Label className="text-xs font-medium">Position</Label>
                                     <Select
-                                        value={chartConfig.plugins?.legend?.position || "top"}
+                                        value={(chartConfig.plugins?.legend as any)?.position || "top"}
                                         onValueChange={(value) => handleConfigUpdate("plugins.legend.position", value)}
                                     >
                                         <SelectTrigger className="h-8 text-xs">
@@ -772,12 +754,12 @@ export function LabelsPanel() {
                                 <div className="flex gap-2">
                                     <input
                                         type="color"
-                                        value={chartConfig.plugins?.legend?.labels?.color || "#000000"}
+                                        value={(chartConfig.plugins?.legend?.labels as any)?.color || "#000000"}
                                         onChange={(e) => handleConfigUpdate("plugins.legend.labels.color", e.target.value)}
                                         className="w-12 h-8 rounded border"
                                     />
                                     <Input
-                                        value={chartConfig.plugins?.legend?.labels?.color || "#000000"}
+                                        value={(chartConfig.plugins?.legend?.labels as any)?.color || "#000000"}
                                         onChange={(e) => handleConfigUpdate("plugins.legend.labels.color", e.target.value)}
                                         className="h-8 text-xs"
                                     />

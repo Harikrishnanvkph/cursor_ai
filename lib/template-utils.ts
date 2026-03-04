@@ -1,4 +1,4 @@
-import type { TemplateLayout } from "./template-store"
+import type { TemplateLayout } from "./template-store/template-types"
 
 /**
  * Extracts template structure metadata for API requests
@@ -41,16 +41,23 @@ export interface ContentGenerationPreferences {
  * @param preferences - Optional content generation preferences (content types and notes)
  */
 export function extractTemplateStructure(
-  template: TemplateLayout, 
+  template: TemplateLayout,
   preferences?: ContentGenerationPreferences | Record<string, 'text' | 'html'>
 ): TemplateStructureMetadata {
-  // Handle both old format (just content types) and new format (preferences object)
-  const contentTypeOverrides = preferences && 'contentTypes' in preferences 
-    ? preferences.contentTypes 
-    : preferences as Record<string, 'text' | 'html'> | undefined
-  const noteOverrides = preferences && 'notes' in preferences 
-    ? preferences.notes 
-    : undefined
+  let contentTypeOverrides: Record<string, 'text' | 'html'> | undefined;
+  let noteOverrides: Record<string, string> | undefined;
+
+  if (preferences) {
+    // If it has the shape of ContentGenerationPreferences
+    if ('contentTypes' in preferences || 'notes' in preferences) {
+      const prefs = preferences as ContentGenerationPreferences;
+      contentTypeOverrides = prefs.contentTypes;
+      noteOverrides = prefs.notes;
+    } else {
+      // Otherwise, it's the old Record<string, 'text' | 'html'> format
+      contentTypeOverrides = preferences as Record<string, 'text' | 'html'>;
+    }
+  }
 
   return {
     width: template.width,
@@ -83,7 +90,7 @@ export function formatTemplateStructureForPrompt(structure: TemplateStructureMet
     .filter(s => s.type !== 'chart')
     .map(s => `- ${s.name} (${s.type})`)
     .join('\n')
-  
+
   return `Template Structure:
 - Dimensions: ${structure.width}px × ${structure.height}px
 - Chart Area: ${structure.chartArea.width}px × ${structure.chartArea.height}px

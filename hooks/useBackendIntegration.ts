@@ -73,16 +73,16 @@ export function useBackendIntegration() {
   // Wrapper functions that integrate both stores
   const createNewConversation = async (title: string, description?: string) => {
     const conversationId = await createConversation(title, description)
-    
+
     // Reset chart state for new conversation
     useChartStoreWithSync.getState().resetChart()
-    
+
     return conversationId
   }
 
   const addMessageWithChartSync = async (message: any) => {
     await addMessage(message)
-    
+
     // If message contains chart snapshot, save it
     if (message.chartSnapshot && currentConversationId) {
       await saveChartSnapshot(message.chartSnapshot)
@@ -92,12 +92,12 @@ export function useBackendIntegration() {
   const updateChartAndSync = (updates: any) => {
     // Update chart state
     Object.entries(updates).forEach(([key, value]) => {
-      const setter = useChartStoreWithSync.getState()[`set${key.charAt(0).toUpperCase() + key.slice(1)}` as keyof typeof useChartStoreWithSync.getState()]
+      const setter = (useChartStoreWithSync.getState() as any)[`set${key.charAt(0).toUpperCase() + key.slice(1)}`]
       if (typeof setter === 'function') {
         (setter as any)(value)
       }
     })
-    
+
     // Mark as dirty for auto-sync
     markAsDirty()
   }
@@ -105,13 +105,13 @@ export function useBackendIntegration() {
   const performMigration = async () => {
     try {
       const result = await migrationService.migrateUserData()
-      
+
       if (result.success) {
         setNeedsMigration(false)
         // Reload data after successful migration
         await syncWithBackend()
       }
-      
+
       return result
     } catch (error) {
       console.error('Migration failed:', error)

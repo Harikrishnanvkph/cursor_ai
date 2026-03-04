@@ -23,8 +23,12 @@ import {
   Calendar,
   BarChart3,
   LayoutTemplate,
+  Activity,
   Pencil,
-  Loader2
+  Loader2,
+  MessageSquare,
+  PieChart,
+  LineChart
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -188,13 +192,33 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
   // Check if this is a template mode snapshot
   const isTemplateMode = conversation.snapshot?.is_template_mode && conversation.snapshot?.template_structure
 
+  const getChartIcon = () => {
+    if (isTemplateMode) return <LayoutTemplate className="w-8 h-8 text-purple-500" />;
+
+    const type = conversation.snapshot?.chartType;
+    switch (type) {
+      case 'pie':
+      case 'doughnut':
+      case 'polarArea':
+        return <PieChart className="w-8 h-8 text-pink-500" />;
+      case 'line':
+      case 'radar':
+        return <LineChart className="w-8 h-8 text-green-500" />;
+      case 'scatter':
+      case 'bubble':
+        return <Activity className="w-8 h-8 text-orange-500" />;
+      default:
+        return <BarChart3 className="w-8 h-8 text-blue-500" />;
+    }
+  };
+
   if (viewMode === "list") {
     return (
       <Card className="group border-0 shadow-lg bg-white/90 backdrop-blur-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5">
         <CardContent className="p-4">
           <div className="flex items-center gap-4">
             {/* Enhanced Mini Preview */}
-            <div 
+            <div
               className="flex-shrink-0 w-24 h-24 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200 overflow-hidden flex items-center justify-center cursor-pointer hover:border-blue-300 transition-all duration-300 group-hover:scale-105 relative"
               onClick={() => onPreview(conversation)}
             >
@@ -202,14 +226,10 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
               <div className="absolute inset-0 opacity-20">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(59,130,246,0.15)_1px,transparent_0)] bg-[length:12px_12px]"></div>
               </div>
-              
+
               {/* Icon */}
               <div className="relative z-10">
-                {isTemplateMode ? (
-                  <LayoutTemplate className="w-8 h-8 text-purple-500" />
-                ) : (
-                  <BarChart3 className="w-8 h-8 text-blue-500" />
-                )}
+                {getChartIcon()}
               </div>
 
               {/* Hover Overlay */}
@@ -238,7 +258,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                     )}
                   </div>
                 </div>
-                
+
                 <Badge className={`${getChartTypeColor(conversation.snapshot?.chartType || "")} border text-sm px-3 py-1 font-medium flex-shrink-0`}>
                   {isTemplateMode ? (
                     <div className="flex items-center gap-1.5">
@@ -315,7 +335,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
     <Card className="group relative overflow-hidden border-0 shadow-lg bg-white/90 backdrop-blur-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
       {/* Gradient Border Effect */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 via-purple-500/20 to-indigo-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-      
+
       <CardContent className="relative space-y-4 p-5">
         {/* Chart Preview */}
         <div
@@ -326,14 +346,10 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
           <div className="absolute inset-0 opacity-30">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(59,130,246,0.15)_1px,transparent_0)] bg-[length:20px_20px]"></div>
           </div>
-          
+
           {/* Chart Icon */}
           <div className="relative z-10 p-4 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm">
-            {isTemplateMode ? (
-              <LayoutTemplate className="w-8 h-8 text-purple-500" />
-            ) : (
-              <BarChart3 className="w-8 h-8 text-blue-500" />
-            )}
+            {getChartIcon()}
           </div>
 
           {/* Hover Overlay */}
@@ -351,7 +367,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
               {conversation.title}
             </h3>
           </div>
-          
+
           <div className="flex items-center justify-between">
             <Badge className={`${getChartTypeColor(conversation.snapshot?.chartType || "")} border text-xs px-3 py-1 font-medium`}>
               {isTemplateMode ? (
@@ -363,7 +379,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                 conversation.snapshot?.chartType || "Unknown"
               )}
             </Badge>
-            
+
             <div className="flex items-center gap-1 text-xs text-gray-500">
               <Calendar className="h-3 w-3" />
               <span>{formatDate(conversation.timestamp)}</span>

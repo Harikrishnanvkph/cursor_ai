@@ -1,7 +1,7 @@
 "use client"
 
 import { DatasetPanel } from "./panels/dataset-panel"
-import { DesignPanel } from "./panels/design-panel"
+import { DesignPanel } from "./panels/design-settings"
 import { AxesPanel } from "./panels/axes/axes-panel"
 import { ExportPanel } from "./panels/export-panel"
 

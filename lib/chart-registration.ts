@@ -28,7 +28,7 @@ import {
 } from "chart.js"
 
 // Import plugins
-import { universalImagePlugin } from "./chart-store"
+import { universalImagePlugin } from "./plugins/universal-image-plugin"
 import { customLabelPlugin } from "./custom-label-plugin"
 import exportPlugin from "./export-plugin"
 import { overlayPlugin } from "./overlay-plugin"

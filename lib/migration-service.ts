@@ -2,7 +2,7 @@
 import { dataService } from './data-service';
 import { useAuth } from '@/components/auth/AuthProvider';
 
-interface MigrationResult {
+export interface MigrationResult {
   success: boolean;
   migrated: {
     conversations: number;
@@ -13,7 +13,7 @@ interface MigrationResult {
 }
 
 class MigrationService {
-  
+
   async migrateUserData(): Promise<MigrationResult> {
     const result: MigrationResult = {
       success: true,
@@ -21,22 +21,19 @@ class MigrationService {
       errors: []
     };
 
-    try {
-      // Get current user
-      const { user } = useAuth.getState();
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
+    // User authentication is guaranteed by the UI calling this method
+    // dataService automatically attaches auth tokens to requests
 
+    try {
       // Migrate chat history (from chat-history localStorage)
       await this.migrateChatHistory(result);
-      
+
       // Migrate chart store data
       await this.migrateChartData(result);
-      
+
       // Migrate user preferences
       await this.migrateUserPreferences(result);
-      
+
       // Clean up localStorage after successful migration
       if (result.success && result.errors.length === 0) {
         this.cleanupLocalStorage();
@@ -90,29 +87,29 @@ class MigrationService {
             // Normalize chartConfig before saving: convert dynamicDimension to manualDimensions
             const normalizedConfig = (() => {
               const config = { ...conversation.snapshot.chartConfig };
-              
+
               // If dynamicDimension is active, convert it to manualDimensions
               if (config.dynamicDimension === true) {
                 config.manualDimensions = true;
                 config.responsive = false;
                 delete config.dynamicDimension; // Remove the dynamicDimension flag
-                
+
                 // Ensure width and height are preserved
                 if (!config.width) config.width = '800px';
                 if (!config.height) config.height = '600px';
-                
+
                 console.log('📊 [Migration] Converted dynamicDimension to manualDimensions');
               } else {
                 // Clean up - ensure only responsive OR manualDimensions is set
                 delete config.dynamicDimension;
-                
+
                 if (config.responsive === true) {
                   config.manualDimensions = false;
                 } else if (config.manualDimensions === true) {
                   config.responsive = false;
                 }
               }
-              
+
               return config;
             })();
 
@@ -172,7 +169,7 @@ class MigrationService {
     try {
       // Check for any other localStorage keys that might contain user preferences
       const keysToCheck = ['user-preferences', 'app-settings'];
-      
+
       for (const key of keysToCheck) {
         const data = localStorage.getItem(key);
         if (data) {
@@ -195,7 +192,7 @@ class MigrationService {
     const oldGlobalKeys = [
       'chat-history',
       'chart-store',
-      'chart-store-with-sync', 
+      'chart-store-with-sync',
       'chat-store',
       'enhanced-chat-store',
       'template-store',
@@ -225,7 +222,7 @@ class MigrationService {
   getMigrationStatus(): { needsMigration: boolean; dataSize: number } {
     let dataSize = 0;
     const keysToCheck = ['chat-history', 'chart-store', 'chart-store-with-sync', 'chat-store', 'enhanced-chat-store', 'template-store', 'undo-store'];
-    
+
     keysToCheck.forEach(key => {
       const data = localStorage.getItem(key);
       if (data) {
@@ -247,7 +244,7 @@ class MigrationService {
     totalSize: number;
   }> {
     const status = this.getMigrationStatus();
-    
+
     let conversations = 0;
     let chartSettings = false;
     let preferences = false;

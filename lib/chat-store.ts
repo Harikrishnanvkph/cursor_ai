@@ -733,3 +733,9 @@ export const useChatStore = create<ChatStore>()(
 
 // Export the captureUndoPoint function for use in other stores
 export { captureUndoPoint };
+
+// Register with bridge to break circular dependencies
+import { UndoBridge } from './services/undo-bridge';
+if (typeof window !== 'undefined') {
+  UndoBridge.register(captureUndoPoint);
+}

@@ -9,7 +9,7 @@ interface OverlayContextMenuProps {
   isOpen: boolean
   x: number
   y: number
-  type: 'image' | 'text'
+  type: 'image' | 'text' | 'shape'
   id: string
   data: any
   onClose: () => void
@@ -67,11 +67,11 @@ export function OverlayContextMenu({
   const menuWidth = 140
   const menuHeight = 120
   const offset = 5 // Very small offset from click point
-  
+
   // Simple positioning - just offset from click point
   let finalX = x + offset
   let finalY = y + offset
-  
+
   // Only adjust if it would go off-screen
   if (finalX + menuWidth > window.innerWidth) {
     finalX = x - menuWidth - offset
@@ -79,7 +79,7 @@ export function OverlayContextMenu({
   if (finalY + menuHeight > window.innerHeight) {
     finalY = y - menuHeight - offset
   }
-  
+
   // Ensure it stays on screen
   finalX = Math.max(5, Math.min(finalX, window.innerWidth - menuWidth - 5))
   finalY = Math.max(5, Math.min(finalY, window.innerHeight - menuHeight - 5))
@@ -106,7 +106,7 @@ export function OverlayContextMenu({
           <X className="h-4 w-4 mr-2" />
           Unselect
         </Button>
-        
+
         <Button
           variant="ghost"
           size="sm"
@@ -123,7 +123,7 @@ export function OverlayContextMenu({
           )}
           {data.visible !== false ? 'Hide' : 'Show'}
         </Button>
-        
+
         <Button
           variant="ghost"
           size="sm"
@@ -144,6 +144,6 @@ export function OverlayContextMenu({
   if (typeof window !== 'undefined') {
     return createPortal(menuContent, document.body)
   }
-  
+
   return null
 } 

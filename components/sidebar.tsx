@@ -1,8 +1,27 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { BarChart3, AlignEndHorizontal, Database, PanelLeft, Palette, Grid, Tag, Layers, SlidersHorizontal, Download, ChevronRight, FileText } from "lucide-react"
+import { useChartStore } from "@/lib/chart-store"
+import {
+  AlignEndHorizontal,
+  Database,
+  Palette,
+  Grid,
+  Tag,
+  Layers,
+  SlidersHorizontal,
+  Download,
+  ChevronRight,
+  FileText
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface SidebarProps {
   activeTab: string
@@ -24,22 +43,68 @@ const tabs = [
 ]
 
 export function Sidebar({ activeTab, onTabChange, onToggleLeftSidebar, isLeftSidebarCollapsed }: SidebarProps) {
+  const {
+    chartMode,
+    chartData,
+    activeDatasetIndex,
+    setActiveDatasetIndex,
+    groups,
+    activeGroupId,
+    setActiveGroupId
+  } = useChartStore()
+
+  const datasets = chartData.datasets || []
+
   return (
     <div className="h-full bg-white border-r border-gray-200 p-3 flex flex-col overflow-hidden">
-      <div className="flex items-center justify-between mb-6 flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <BarChart3 className="h-6 w-6 text-blue-600" />
-          <span className="text-lg font-bold text-gray-900 truncate">Chart Builder</span>
+      <div className={cn(
+        "flex items-center flex-shrink-0 gap-2 mb-4",
+        !onToggleLeftSidebar && "mb-2"
+      )}>
+        <div className="flex-1 min-w-0">
+          {chartMode === 'single' ? (
+            <Select
+              value={activeDatasetIndex.toString()}
+              onValueChange={(val) => setActiveDatasetIndex(parseInt(val))}
+            >
+              <SelectTrigger className="h-8 text-xs bg-gray-50 border-gray-200 hover:bg-gray-100 transition-colors">
+                <SelectValue placeholder="Select dataset" />
+              </SelectTrigger>
+              <SelectContent>
+                {datasets.map((ds: any, i) => (
+                  <SelectItem key={i} value={i.toString()}>
+                    {ds.sourceTitle || ds.label || `Dataset ${i + 1}`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <Select
+              value={activeGroupId}
+              onValueChange={setActiveGroupId}
+            >
+              <SelectTrigger className="h-8 text-xs bg-gray-50 border-gray-200 hover:bg-gray-100 transition-colors">
+                <SelectValue placeholder="Select group" />
+              </SelectTrigger>
+              <SelectContent>
+                {groups.map((group) => (
+                  <SelectItem key={group.id} value={group.id}>
+                    {group.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
+
         {onToggleLeftSidebar && (
           <Button
             variant="ghost"
             size="sm"
             onClick={onToggleLeftSidebar}
-            className="h-8 w-8 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg"
+            className="h-8 w-8 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg flex-shrink-0"
             title={isLeftSidebarCollapsed ? "Expand Left Sidebar" : "Collapse Left Sidebar"}
           >
-            {/* <PanelLeft className={`h-5 w-5 transition-colors ${isLeftSidebarCollapsed ? 'text-slate-300' : 'text-black'}`} /> */}
             <ChevronRight className={`h-4 w-4 transition-transform duration-200 ${isLeftSidebarCollapsed ? '' : 'rotate-180'}`} />
           </Button>
         )}

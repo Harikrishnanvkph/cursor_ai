@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Slider } from "@/components/ui/slider"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useChartStore } from "@/lib/chart-store"
+import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
@@ -14,7 +15,8 @@ interface PolarAreaPanelProps {
 }
 
 export function PolarAreaPanel({ className }: PolarAreaPanelProps) {
-  const { chartConfig, chartType, updateChartConfig } = useChartStore()
+  const { chartConfig, chartType } = useChartStore()
+  const { updateChartConfig } = useChartActions()
 
   if (chartType !== 'polarArea') return null
 
@@ -27,14 +29,14 @@ export function PolarAreaPanel({ className }: PolarAreaPanelProps) {
     if (!newConfig.scales.r) newConfig.scales.r = { type: 'radialLinear' } as any
 
     let current = newConfig.scales.r as any
-    
+
     // Ensure type is always set
     if (!current.type) {
       current.type = 'radialLinear'
     }
-    
+
     const pathParts = path.split('.')
-    
+
     for (let i = 0; i < pathParts.length - 1; i++) {
       if (!current[pathParts[i]]) current[pathParts[i]] = {}
       current = current[pathParts[i]]
@@ -104,24 +106,24 @@ export function PolarAreaPanel({ className }: PolarAreaPanelProps) {
             </div>
             {rScaleOptions.ticks?.display !== false && (
               <div className="pl-4 space-y-4 border-l-2 border-gray-100">
-                  <div>
-                    <Label>Tick Label Color</Label>
-                    <Input
-                      type="color"
-                      value={rScaleOptions.ticks?.color || '#666666'}
-                      onChange={(e) => handlePolarAreaScaleUpdate('ticks.color', e.target.value)}
-                      className="w-full h-8"
-                    />
-                  </div>
-                  <div>
-                    <Label>Tick Backdrop Color (for contrast)</Label>
-                    <Input
-                      type="color"
-                      value={rScaleOptions.ticks?.backdropColor || 'rgba(0,0,0,0)'} // Default to transparent
-                      onChange={(e) => handlePolarAreaScaleUpdate('ticks.backdropColor', e.target.value)}
-                      className="w-full h-8"
-                    />
-                  </div>
+                <div>
+                  <Label>Tick Label Color</Label>
+                  <Input
+                    type="color"
+                    value={rScaleOptions.ticks?.color || '#666666'}
+                    onChange={(e) => handlePolarAreaScaleUpdate('ticks.color', e.target.value)}
+                    className="w-full h-8"
+                  />
+                </div>
+                <div>
+                  <Label>Tick Backdrop Color (for contrast)</Label>
+                  <Input
+                    type="color"
+                    value={rScaleOptions.ticks?.backdropColor || 'rgba(0,0,0,0)'} // Default to transparent
+                    onChange={(e) => handlePolarAreaScaleUpdate('ticks.backdropColor', e.target.value)}
+                    className="w-full h-8"
+                  />
+                </div>
               </div>
             )}
           </TabsContent>

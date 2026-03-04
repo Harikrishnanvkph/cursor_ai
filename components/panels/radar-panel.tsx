@@ -5,16 +5,19 @@ import { Input } from "@/components/ui/input"
 import { Slider } from "@/components/ui/slider"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useChartStore } from "@/lib/chart-store"
+import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import { setNestedProperty } from "@/lib/utils"
 
 interface RadarPanelProps {
   className?: string
 }
 
 export function RadarPanel({ className }: RadarPanelProps) {
-  const { chartConfig, chartType, updateChartConfig } = useChartStore()
+  const { chartConfig, chartType } = useChartStore()
+  const { updateChartConfig } = useChartActions()
 
   if (chartType !== 'radar') return null
 
@@ -22,24 +25,17 @@ export function RadarPanel({ className }: RadarPanelProps) {
   const rScaleOptions = (chartConfig.scales?.r as any) || {}
 
   const handleRadarScaleUpdate = (path: string, value: any) => {
-    const newConfig = { ...chartConfig }
-    if (!newConfig.scales) newConfig.scales = {}
-    if (!newConfig.scales.r) newConfig.scales.r = { type: 'radialLinear' } as any
+    // We update scales.r.[path]
+    const fullPath = `scales.r.${path}`
+    const newConfig = setNestedProperty(chartConfig, fullPath, value)
 
-    let current = newConfig.scales.r as any
-    
-    // Ensure type is always set
-    if (!current.type) {
-      current.type = 'radialLinear'
+    // Ensure the radialLinear type is set properly as before
+    if (!newConfig.scales?.r?.type) {
+      newConfig.scales = newConfig.scales || {}
+      newConfig.scales.r = newConfig.scales.r || {} as any
+      newConfig.scales.r.type = 'radialLinear'
     }
-    
-    const pathParts = path.split('.')
-    
-    for (let i = 0; i < pathParts.length - 1; i++) {
-      if (!current[pathParts[i]]) current[pathParts[i]] = {}
-      current = current[pathParts[i]]
-    }
-    current[pathParts[pathParts.length - 1]] = value
+
     updateChartConfig(newConfig)
   }
 
@@ -105,15 +101,15 @@ export function RadarPanel({ className }: RadarPanelProps) {
             </div>
             {rScaleOptions.ticks?.display !== false && (
               <div className="pl-4 space-y-3 border-l-2 border-gray-100">
-                 <div>
-                    <Label className="text-xs font-normal">Tick Label Color</Label>
-                    <Input
-                      type="color"
-                      value={rScaleOptions.ticks?.color || '#666666'}
-                      onChange={(e) => handleRadarScaleUpdate('ticks.color', e.target.value)}
-                      className="w-full h-8"
-                    />
-                  </div>
+                <div>
+                  <Label className="text-xs font-normal">Tick Label Color</Label>
+                  <Input
+                    type="color"
+                    value={rScaleOptions.ticks?.color || '#666666'}
+                    onChange={(e) => handleRadarScaleUpdate('ticks.color', e.target.value)}
+                    className="w-full h-8"
+                  />
+                </div>
               </div>
             )}
           </TabsContent>

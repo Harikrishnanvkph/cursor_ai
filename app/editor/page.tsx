@@ -6,6 +6,7 @@ import { ChartPreview } from "@/components/chart-preview"
 import { ConfigPanel } from "@/components/config-panel"
 import { useChartStore } from "@/lib/chart-store"
 import { saveChartToCloud } from "@/lib/save-utils"
+import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { useTemplateStore } from "@/lib/template-store"
 import { useAuth } from "@/components/auth/AuthProvider"
 import { dataService } from "@/lib/data-service"
@@ -29,15 +30,15 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { EditorWelcomeScreen } from "@/components/editor-welcome-screen"
 import { DimensionMismatchDialog } from "@/components/dialogs/dimension-mismatch-dialog"
 
-// Helper to parse dimension string (e.g., "800px" -> 800)
-function parseDimension(value: string | number | undefined): number {
-  if (typeof value === 'number') return value
-  if (typeof value === 'string') {
-    const num = parseInt(value.replace(/[^0-9]/g, ''), 10)
-    return isNaN(num) ? 0 : num
-  }
-  return 0
-}
+import {
+  useChartConfig,
+  useChartType,
+  useChartData,
+  useHasJSON,
+  useCurrentSnapshotId
+} from "@/lib/hooks/use-chart-state"
+import { useIsMobile576, useIsTablet, useScreenDimensions } from "@/lib/hooks/use-screen-dimensions"
+import { parseDimension } from "@/lib/utils/dimension-utils"
 
 const TABS = [
   { id: "types_toggles", label: "Types", icon: AlignEndHorizontal },
@@ -50,56 +51,6 @@ const TABS = [
   { id: "templates", label: "Templates", icon: FileText },
   { id: "export", label: "Export", icon: Download },
 ]
-
-// Custom hook to detect <=576px
-function useIsMobile576() {
-  const [isMobile, setIsMobile] = useState(
-    typeof window !== "undefined" ? window.innerWidth <= 576 : false
-  );
-  useEffect(() => {
-    function handleResize() {
-      setIsMobile(window.innerWidth <= 576);
-    }
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-  return isMobile;
-}
-
-// Custom hook to get screen dimensions
-function useScreenDimensions() {
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-
-  useEffect(() => {
-    function updateDimensions() {
-      setDimensions({
-        width: window.innerWidth,
-        height: window.innerHeight
-      });
-    }
-
-    updateDimensions();
-    window.addEventListener("resize", updateDimensions);
-    return () => window.removeEventListener("resize", updateDimensions);
-  }, []);
-
-  return dimensions;
-}
-
-// Custom hook to detect 577-1024px
-function useIsTablet() {
-  const [isTablet, setIsTablet] = useState(
-    typeof window !== "undefined" ? window.innerWidth >= 577 && window.innerWidth <= 1024 : false
-  );
-  useEffect(() => {
-    function handleResize() {
-      setIsTablet(window.innerWidth >= 577 && window.innerWidth <= 1024);
-    }
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-  return isTablet;
-}
 
 export default function EditorPage() {
   return (
@@ -117,7 +68,20 @@ function EditorPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState("types_toggles")
-  const { chartConfig, updateChartConfig, chartType, chartData, hasJSON, resetChart, setHasJSON, currentSnapshotId, setCurrentSnapshotId } = useChartStore()
+
+  // Granular hooks
+  const chartConfig = useChartConfig()
+  const chartType = useChartType()
+  const chartData = useChartData()
+  const hasJSON = useHasJSON()
+  const currentSnapshotId = useCurrentSnapshotId()
+
+  // Actions (stable functions, safe to pick from store)
+  const resetChart = useChartStore(s => s.resetChart)
+  const setHasJSON = useChartStore(s => s.setHasJSON)
+  const setCurrentSnapshotId = useChartStore(s => s.setCurrentSnapshotId)
+
+  const { updateChartConfig } = useChartActions()
   const { setEditorMode, currentTemplate, editorMode, syncTemplatesFromCloud } = useTemplateStore()
   const { messages, clearMessages, startNewConversation, setBackendConversationId } = useChatStore()
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false)
@@ -437,6 +401,8 @@ function EditorPageContent() {
     clearMessages()
     startNewConversation()
     resetChart()
+    // Clear all overlay data (images, texts, shapes)
+    useChartStore.getState().clearAllOverlays()
     setHasJSON(false)
     setBackendConversationId(null)
     // Clear all template state to prevent data cascading to new charts

@@ -3,6 +3,7 @@
 import React, { useRef, useState, useEffect } from "react"
 import { useTemplateStore } from "@/lib/template-store"
 import { useChartStore } from "@/lib/chart-store"
+import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { useChatStore } from "@/lib/chat-store"
 import { useHistoryStore } from "@/lib/history-store"
 
@@ -18,6 +19,17 @@ import { SidebarPortalProvider } from "@/components/sidebar-portal-context"
 import { SidebarContainer } from "@/components/sidebar-container"
 import { dataService } from "@/lib/data-service"
 import { toast } from "sonner"
+import {
+  useChartData,
+  useChartConfig,
+  useGlobalChartRef,
+  useChartType,
+  useChartTitle,
+  useChartMode,
+  useActiveDatasetIndex,
+  useActiveGroupId,
+  useChartGroups
+} from "@/lib/hooks/use-chart-state"
 
 import ChartGenerator from "@/lib/chart_generator"
 
@@ -41,19 +53,19 @@ export function TemplateChartPreview({
   onNewChart
 }: TemplateChartPreviewProps) {
   const { currentTemplate, templateInBackground, selectedTextAreaId, setSelectedTextAreaId, editorMode, setEditorMode, contentTypePreferences } = useTemplateStore()
-  const {
-    chartData,
-    chartConfig,
-    globalChartRef,
-    chartType,
-    setChartType,
-    chartTitle: globalTitle,
-    setChartTitle,
-    chartMode,
-    activeDatasetIndex,
-    activeGroupId,
-    groups
-  } = useChartStore()
+
+  // Granular hooks
+  const chartData = useChartData()
+  const chartConfig = useChartConfig()
+  const globalChartRef = useGlobalChartRef()
+  const chartType = useChartType()
+  const globalTitle = useChartTitle()
+  const chartMode = useChartMode()
+  const activeDatasetIndex = useActiveDatasetIndex()
+  const activeGroupId = useActiveGroupId()
+  const groups = useChartGroups()
+
+  const { setChartType, setChartTitle, setActiveGroup } = useChartActions()
 
   // Derive targetId for editing
   // Default to null - we ONLY want to enable editing if the active item has a proven sourceId
@@ -141,9 +153,9 @@ export function TemplateChartPreview({
     }, 0)
   }
 
-  // Handle chart type change - uses centralized handler from store
+  // Handle chart type change
   const handleChartTypeChange = (type: string) => {
-    useChartStore.getState().changeChartType(type as any);
+    setChartType(type as any);
   };
 
   // Save rename
@@ -858,21 +870,6 @@ export function TemplateChartPreview({
           )}
           {/* Toggle and Dimensions row */}
           <div className="flex items-center gap-2">
-            {/* Group Selector for Grouped Mode */}
-            {chartMode === 'grouped' && groups && groups.length > 1 && (
-              <Select value={activeGroupId} onValueChange={(val) => useChartStore.getState().setActiveGroup(val)}>
-                <SelectTrigger className="h-6 w-[100px] text-[10px] px-2 py-0 border-gray-200 bg-white mr-2">
-                  <SelectValue placeholder="Select Group" />
-                </SelectTrigger>
-                <SelectContent>
-                  {groups.map((g) => (
-                    <SelectItem key={g.id} value={g.id} className="text-xs">
-                      {g.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
             {/* Chart/Template Mode Toggle */}
             <div className="flex items-center gap-1 bg-gray-100 rounded-full p-0.5 border border-gray-200">
               <button

@@ -1,15 +1,19 @@
 "use client"
 
 import React, { useState, useRef, useEffect } from 'react'
-import { useChartStore } from '@/lib/chart-store'
-import { GripHorizontal, GripVertical, CornerDownRight } from 'lucide-react'
+import { useChartActions } from '@/lib/hooks/use-chart-actions'
+import { useChartConfig } from '@/lib/hooks/use-chart-state'
+import { GripVertical, GripHorizontal, CornerDownRight } from 'lucide-react'
+
+// ...
 
 interface ResizableChartAreaProps {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 export function ResizableChartArea({ children }: ResizableChartAreaProps) {
-  const { chartConfig, updateChartConfig } = useChartStore()
+  const chartConfig = useChartConfig()
+  const { updateChartConfig } = useChartActions()
   const containerRef = useRef<HTMLDivElement>(null)
   const [isResizing, setIsResizing] = useState(false)
   const [resizeDirection, setResizeDirection] = useState<string>('')
@@ -19,11 +23,11 @@ export function ResizableChartArea({ children }: ResizableChartAreaProps) {
   // Get current chart dimensions for dynamic mode only
   const getCurrentDimensions = () => {
     if (chartConfig.dynamicDimension) {
-      const width = typeof chartConfig.width === 'string' 
-        ? parseInt(chartConfig.width) 
+      const width = typeof chartConfig.width === 'string'
+        ? parseInt(chartConfig.width)
         : chartConfig.width || 400
-      const height = typeof chartConfig.height === 'string' 
-        ? parseInt(chartConfig.height) 
+      const height = typeof chartConfig.height === 'string'
+        ? parseInt(chartConfig.height)
         : chartConfig.height || 300
       return { width, height }
     }
@@ -132,7 +136,7 @@ export function ResizableChartArea({ children }: ResizableChartAreaProps) {
 
   // Only render the resizable area if dynamicDimension is true
   if (!chartConfig.dynamicDimension) {
-    return children as React.ReactElement
+    return children as React.ReactElement<any, any>
   }
 
   return (
@@ -149,9 +153,7 @@ export function ResizableChartArea({ children }: ResizableChartAreaProps) {
       >
         {/* Chart Content */}
         <div className="w-full h-full overflow-hidden">
-          {React.cloneElement(children as React.ReactElement, {
-            key: `chart-${dimensions.width}-${dimensions.height}`
-          })}
+          {children}
         </div>
 
         {/* Resize Handles */}

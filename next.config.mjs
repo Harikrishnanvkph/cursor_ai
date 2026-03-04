@@ -1,3 +1,8 @@
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: {
@@ -38,12 +43,15 @@ const nextConfig = {
   productionBrowserSourceMaps: false,
   // Disable powered by header
   poweredByHeader: false,
-  // Strict mode for better error detection
-  reactStrictMode: true,
+  // Strict mode disabled: React Strict Mode causes Chart.js canvases to visibly
+  // render twice on every page load (mount → unmount → remount). This is dev-only
+  // behavior but produces noticeable chart flickering.
+  reactStrictMode: false,
   // Handle trailing slashes consistently
   trailingSlash: false,
   // Improve build output
   output: 'standalone',
+  outputFileTracingRoot: __dirname,
 }
 
 export default nextConfig

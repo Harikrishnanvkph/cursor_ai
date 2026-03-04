@@ -9,8 +9,6 @@ import {
   TrendingUp,
   Clock,
   Layers,
-  PieChart,
-  LineChart,
   Activity,
   Zap,
   Target,
@@ -18,7 +16,9 @@ import {
   Sparkles,
   ArrowUp,
   ArrowDown,
-  Minus
+  Minus,
+  LayoutGrid,
+  FileText
 } from "lucide-react"
 
 interface BoardStatsProps {
@@ -47,12 +47,12 @@ export function BoardStats({ conversations, allConversations }: BoardStatsProps)
 
     // Charts created last week for comparison
     const twoWeeksAgo = Date.now() - 14 * 24 * 60 * 60 * 1000
-    const chartsLastWeek = allConversations.filter(conv => 
+    const chartsLastWeek = allConversations.filter(conv =>
       conv.timestamp > twoWeeksAgo && conv.timestamp <= weekAgo
     ).length
 
     // Calculate trend
-    const weeklyTrend = chartsLastWeek === 0 
+    const weeklyTrend = chartsLastWeek === 0
       ? (chartsThisWeek > 0 ? 100 : 0)
       : ((chartsThisWeek - chartsLastWeek) / chartsLastWeek) * 100
 
@@ -66,6 +66,24 @@ export function BoardStats({ conversations, allConversations }: BoardStatsProps)
     todayStart.setHours(0, 0, 0, 0)
     const chartsToday = allConversations.filter(conv => conv.timestamp > todayStart.getTime()).length
 
+    // Count by chart mode
+    // Template mode: is_template_mode === true
+    // Grouped mode: is_template_mode is falsy AND chart_mode === 'grouped'
+    // Single mode: everything else (not template, not grouped)
+    let templateCount = 0
+    let groupedCount = 0
+    let singleCount = 0
+
+    allConversations.forEach(conv => {
+      if (conv.is_template_mode) {
+        templateCount++
+      } else if (conv.chart_mode === 'grouped') {
+        groupedCount++
+      } else {
+        singleCount++
+      }
+    })
+
     return {
       totalCharts,
       visibleCharts,
@@ -75,7 +93,10 @@ export function BoardStats({ conversations, allConversations }: BoardStatsProps)
       chartsLastWeek,
       weeklyTrend,
       avgPerWeek,
-      chartsToday
+      chartsToday,
+      templateCount,
+      groupedCount,
+      singleCount
     }
   }, [conversations, allConversations])
 
@@ -135,22 +156,22 @@ export function BoardStats({ conversations, allConversations }: BoardStatsProps)
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Main Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((stat, index) => (
           <Card key={index} className="relative overflow-hidden border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300 group">
             {/* Background Gradient */}
             <div className={`absolute inset-0 bg-gradient-to-br ${stat.bgGradient} opacity-50`} />
-            
-            <CardContent className="relative p-6">
-              <div className="flex items-start justify-between mb-4">
+
+            <CardContent className="relative p-4">
+              <div className="flex items-start justify-between mb-2">
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-600 mb-2">{stat.title}</p>
+                  <p className="text-xs font-medium text-gray-600 mb-1">{stat.title}</p>
                   <div className="flex items-baseline gap-2">
-                    <p className="text-3xl font-bold text-gray-900">
+                    <p className="text-2xl font-bold text-gray-900">
                       {typeof stat.value === "string" ? (
-                        <span className="text-lg capitalize">{stat.value}</span>
+                        <span className="text-base capitalize">{stat.value}</span>
                       ) : (
                         stat.value
                       )}
@@ -164,86 +185,67 @@ export function BoardStats({ conversations, allConversations }: BoardStatsProps)
                       </div>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">{stat.subtitle}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{stat.subtitle}</p>
                 </div>
-                
-                <div className={`p-3 ${stat.iconBg} rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                  <stat.icon className="h-6 w-6 text-white" />
+
+                <div className={`p-2 ${stat.iconBg} rounded-lg shadow-md group-hover:scale-110 transition-transform duration-300`}>
+                  <stat.icon className="h-5 w-5 text-white" />
                 </div>
               </div>
 
-              {/* Progress bar for visual appeal */}
-              <div className="w-full bg-gray-200/50 rounded-full h-1.5 overflow-hidden">
-                <div 
-                  className={`h-full bg-gradient-to-r ${stat.gradient} rounded-full transition-all duration-1000 ease-out`}
-                  style={{ 
-                    width: typeof stat.value === "number" 
-                      ? `${Math.min((stat.value / Math.max(...statCards.map(s => typeof s.value === "number" ? s.value : 0))) * 100, 100)}%`
-                      : "100%"
-                  }}
-                />
-              </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Chart Type Distribution */}
-      {Object.keys(stats.typeCount).length > 0 && (
+      {/* Chart Mode Breakdown */}
+      {stats.totalCharts > 0 && (
         <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
-          <CardHeader className="pb-4">
+          <CardHeader className="py-3 px-5">
             <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                  <PieChart className="h-5 w-5 text-blue-600" />
-                  Chart Type Distribution
-                </CardTitle>
-                <p className="text-sm text-gray-600 mt-1">Your most used chart types</p>
-              </div>
-              <Badge className="bg-blue-100 text-blue-700 border-blue-200">
-                {Object.keys(stats.typeCount).length} types
+              <CardTitle className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                <Layers className="h-4 w-4 text-blue-600" />
+                Chart Mode Breakdown
+              </CardTitle>
+              <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">
+                {stats.totalCharts} total
               </Badge>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(stats.typeCount)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 6)
-                .map(([type, count], index) => {
-                  const percentage = (count / stats.totalCharts) * 100
-                  const colors = [
-                    { bg: "bg-blue-500", text: "text-blue-700", light: "bg-blue-100" },
-                    { bg: "bg-emerald-500", text: "text-emerald-700", light: "bg-emerald-100" },
-                    { bg: "bg-purple-500", text: "text-purple-700", light: "bg-purple-100" },
-                    { bg: "bg-orange-500", text: "text-orange-700", light: "bg-orange-100" },
-                    { bg: "bg-pink-500", text: "text-pink-700", light: "bg-pink-100" },
-                    { bg: "bg-indigo-500", text: "text-indigo-700", light: "bg-indigo-100" }
-                  ]
-                  const color = colors[index % colors.length]
-                  
-                  return (
-                    <div key={type} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50/50 hover:bg-gray-100/50 transition-colors">
-                      <div className={`w-3 h-3 ${color.bg} rounded-full flex-shrink-0`} />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium text-gray-900 capitalize truncate">
-                            {type}
-                          </span>
-                          <span className="text-xs text-gray-500 ml-2">
-                            {count} ({percentage.toFixed(0)}%)
-                          </span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-1.5">
-                          <div 
-                            className={`h-full ${color.bg} rounded-full transition-all duration-500 ease-out`}
-                            style={{ width: `${percentage}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
+          <CardContent className="px-5 pb-4 pt-0">
+            <div className="grid grid-cols-3 gap-3">
+              {/* Single */}
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-50/60 hover:bg-blue-100/60 transition-colors">
+                <div className="p-2 bg-blue-500 rounded-lg shadow flex-shrink-0">
+                  <BarChart2 className="h-4 w-4 text-white" />
+                </div>
+                <div className="flex items-center justify-between flex-1 min-w-0">
+                  <span className="text-xs font-medium text-gray-700">Single</span>
+                  <span className="text-lg font-bold text-blue-700">{stats.singleCount}</span>
+                </div>
+              </div>
+
+              {/* Grouped */}
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-purple-50/60 hover:bg-purple-100/60 transition-colors">
+                <div className="p-2 bg-purple-500 rounded-lg shadow flex-shrink-0">
+                  <LayoutGrid className="h-4 w-4 text-white" />
+                </div>
+                <div className="flex items-center justify-between flex-1 min-w-0">
+                  <span className="text-xs font-medium text-gray-700">Grouped</span>
+                  <span className="text-lg font-bold text-purple-700">{stats.groupedCount}</span>
+                </div>
+              </div>
+
+              {/* Template */}
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-50/60 hover:bg-emerald-100/60 transition-colors">
+                <div className="p-2 bg-emerald-500 rounded-lg shadow flex-shrink-0">
+                  <FileText className="h-4 w-4 text-white" />
+                </div>
+                <div className="flex items-center justify-between flex-1 min-w-0">
+                  <span className="text-xs font-medium text-gray-700">Template</span>
+                  <span className="text-lg font-bold text-emerald-700">{stats.templateCount}</span>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

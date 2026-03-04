@@ -96,16 +96,13 @@ function BoardPageContent() {
   // Filter and sort conversations
   const filteredConversations = useMemo(() => {
     let filtered = conversations.filter(conv => {
-      // Only show conversations with snapshots
-      if (!conv.snapshot) return false
-
       // Search filter
       if (searchQuery && !conv.title.toLowerCase().includes(searchQuery.toLowerCase())) {
         return false
       }
 
-      // Type filter
-      if (filterType !== "all" && conv.snapshot.chartType !== filterType) {
+      // Type filter (only apply if snapshot is available)
+      if (filterType !== "all" && conv.snapshot?.chartType !== filterType) {
         return false
       }
 
@@ -340,22 +337,20 @@ function BoardPageContent() {
                   <div className="flex items-center gap-0.5 bg-gray-100 rounded-xl p-1 border border-gray-200">
                     <button
                       onClick={() => setViewMode("grid")}
-                      className={`p-2 rounded-lg transition-all ${
-                        viewMode === "grid" 
-                          ? "bg-white text-blue-600 shadow-sm" 
+                      className={`p-2 rounded-lg transition-all ${viewMode === "grid"
+                          ? "bg-white text-blue-600 shadow-sm"
                           : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-                      }`}
+                        }`}
                       title="Grid View"
                     >
                       <Grid3x3 className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => setViewMode("list")}
-                      className={`p-2 rounded-lg transition-all ${
-                        viewMode === "list" 
-                          ? "bg-white text-blue-600 shadow-sm" 
+                      className={`p-2 rounded-lg transition-all ${viewMode === "list"
+                          ? "bg-white text-blue-600 shadow-sm"
                           : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-                      }`}
+                        }`}
                       title="List View"
                     >
                       <List className="h-4 w-4" />
@@ -482,7 +477,7 @@ function BoardPageContent() {
                   {filteredConversations.length} {filteredConversations.length === 1 ? 'chart' : 'charts'}
                 </Badge>
               </div>
-              
+
               {filteredConversations.length !== conversations.length && (
                 <Button
                   variant="ghost"
@@ -500,8 +495,8 @@ function BoardPageContent() {
 
             {/* Charts Display */}
             <div className={
-              viewMode === "grid" 
-                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" 
+              viewMode === "grid"
+                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
                 : "space-y-4"
             }>
               {filteredConversations.map((conv) => (

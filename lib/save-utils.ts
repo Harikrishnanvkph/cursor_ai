@@ -11,6 +11,8 @@ import { useChatStore } from './chat-store';
 import { useTemplateStore } from './template-store';
 import { clearCurrentChart } from './storage-utils';
 import { toast } from 'sonner';
+import { DatasetService } from './services/dataset-service';
+import { GroupService } from './services/group-service';
 
 export interface SaveChartOptions {
     /** Custom chart name (used for new saves or renaming) */
@@ -289,24 +291,48 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
         useChatStore.getState().setBackendConversationId(conversationId);
 
         // Update active dataset's or group's source metadata
-        const chartStoreState = useChartStore.getState();
-        const { updateDataset, updateGroup } = chartStoreState;
+        // Use Services directly since actions are not available in non-component context
+
+
+        // Update active dataset's or group's source metadata
+        // Use Services directly since actions are not available in non-component context
+        const currentState = useChartStore.getState();
 
         if (chartMode === 'single') {
-            if (chartStoreState.chartData.datasets[activeDatasetIndex]) {
-                updateDataset(activeDatasetIndex, {
-                    sourceId: isUpdate ? chartStoreState.chartData.datasets[activeDatasetIndex].sourceId : conversationId,
+            if (currentState.chartData.datasets[activeDatasetIndex]) {
+                // Manually replicate updateDataset action logic using Service + setState
+                const updates = {
+                    sourceId: isUpdate ? currentState.chartData.datasets[activeDatasetIndex].sourceId : conversationId,
                     sourceTitle: savedTitle
+                };
+
+                const newState = DatasetService.updateDataset(activeDatasetIndex, updates, {
+                    chartType: currentState.chartType,
+                    chartData: currentState.chartData,
+                    chartConfig: currentState.chartConfig,
+                    chartMode: currentState.chartMode,
+                    hasJSON: currentState.hasJSON,
+                    singleModeData: currentState.singleModeData,
+                    groupedModeData: currentState.groupedModeData
                 });
+
+                if (newState) {
+                    useChartStore.setState(newState);
+                }
             }
         } else if (chartMode === 'grouped' && activeGroupId && groups) {
             const activeGroup = groups.find(g => g.id === activeGroupId);
             if (activeGroup) {
-                updateGroup(activeGroupId, {
+                // Manually replicate updateGroup action logic using Service + setState
+                const currentState = useChartStore.getState();
+                const updates = {
                     name: savedTitle,
                     sourceId: isUpdate ? activeGroup.sourceId : conversationId,
                     sourceTitle: savedTitle
-                });
+                };
+
+                const newState = GroupService.updateGroup(activeGroupId, updates, { groups: currentState.groups });
+                useChartStore.setState(newState);
             }
         }
 

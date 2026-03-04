@@ -83,7 +83,8 @@ const getDefaultPoints = (category: ChartCategory, count: number = 3): DataPoint
 };
 
 export function AddDatasetModal({ open, onOpenChange, onDatasetAdd }: AddDatasetModalProps) {
-  const { chartMode, uniformityMode, chartType, chartData, activeGroupId } = useChartStore();
+  const { chartMode, chartType, chartData, activeGroupId, chartConfig } = useChartStore();
+  const uniformityMode = chartConfig?.visualSettings?.uniformityMode || 'uniform';
   const [newDatasetName, setNewDatasetName] = useState("");
   const [chartCategory, setChartCategory] = useState<ChartCategory>('categorical');
   const [newDatasetChartType, setNewDatasetChartType] = useState<SupportedChartType>('bar');
@@ -247,8 +248,8 @@ export function AddDatasetModal({ open, onOpenChange, onDatasetAdd }: AddDataset
     };
     onDatasetAdd(newDataset);
 
-    // NEW: Clear backendConversationId since this is now a new/modified local chart
-    useChatStore.getState().setBackendConversationId(null);
+    // NOTE: Do NOT clear backendConversationId here.
+    // Adding a dataset to an existing cloud chart should still show "Update" (not "Save") in the save dialog.
 
     onOpenChange(false);
   };

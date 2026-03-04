@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react'
 import { Undo, Redo } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { useChatStore } from '@/lib/chat-store'
 import { useChartStore } from '@/lib/chart-store'
 
@@ -13,11 +14,11 @@ interface UndoRedoButtonsProps {
   className?: string
 }
 
-export function UndoRedoButtons({ 
-  variant = 'default', 
-  size = 'sm', 
+export function UndoRedoButtons({
+  variant = 'default',
+  size = 'sm',
   showLabels = true,
-  className = '' 
+  className = ''
 }: UndoRedoButtonsProps) {
   const { canUndo, canRedo, undo, redo, currentChartState, updateChartState } = useChatStore()
   const { chartType, chartData, chartConfig, hasJSON } = useChartStore()
@@ -55,7 +56,7 @@ export function UndoRedoButtons({
         }
       }
     }
-    
+
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [undo, redo])
@@ -94,7 +95,7 @@ export function UndoRedoButtons({
   }
 
   return (
-    <div className={`flex items-center gap-2 ${className}`}>
+    <div className={cn("flex items-center gap-0.5", className)}>
       {/* Undo Button */}
       <Button
         variant={getButtonVariant()}
@@ -102,16 +103,15 @@ export function UndoRedoButtons({
         onClick={() => undo()}
         disabled={!canUndo}
         title="Undo (Ctrl+Z)"
-        className={`transition-all duration-200 ${
-          canUndo 
-            ? 'opacity-100 hover:scale-105' 
-            : 'opacity-50 cursor-not-allowed'
-        }`}
+        className={cn(
+          "transition-all duration-200",
+          canUndo ? "opacity-100 hover:scale-105" : "opacity-50 cursor-not-allowed"
+        )}
       >
-        <Undo className={`${getIconSize()} ${showLabels ? 'mr-2' : ''}`} />
+        <Undo className={cn(getIconSize(), showLabels ? "mr-2" : "")} />
         {showLabels && <span className="hidden sm:inline">Undo</span>}
       </Button>
-      
+
       {/* Redo Button */}
       <Button
         variant={getButtonVariant()}
@@ -119,16 +119,14 @@ export function UndoRedoButtons({
         onClick={() => redo()}
         disabled={!canRedo}
         title="Redo (Ctrl+Y)"
-        className={`transition-all duration-200 ${
-          canRedo 
-            ? 'opacity-100 hover:scale-105' 
-            : 'opacity-50 cursor-not-allowed'
-        }`}
+        className={cn(
+          "transition-all duration-200",
+          canRedo ? "opacity-100 hover:scale-105" : "opacity-50 cursor-not-allowed"
+        )}
       >
-        <Redo className={`${getIconSize()} ${showLabels ? 'mr-2' : ''}`} />
+        <Redo className={cn(getIconSize(), showLabels ? "mr-2" : "")} />
         {showLabels && <span className="hidden sm:inline">Redo</span>}
       </Button>
     </div>
   )
 }
-

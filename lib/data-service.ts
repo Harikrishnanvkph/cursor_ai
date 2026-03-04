@@ -8,22 +8,22 @@ interface ApiResponse<T> {
 }
 
 class DataService {
-  private baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001';
+  private baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000';
   private cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
   // =============================================
   // REQUEST WRAPPER WITH CACHING
   // =============================================
-  
+
   private async request<T>(
-    endpoint: string, 
-    options: RequestInit = {}, 
+    endpoint: string,
+    options: RequestInit = {},
     useCache = true
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint}`;
     const cacheKey = `${options.method || 'GET'}:${url}`;
-    
+
     // Check cache first
     if (useCache && options.method === 'GET') {
       const cached = this.cache.get(cacheKey);
@@ -55,7 +55,7 @@ class DataService {
       }
 
       const data = await response.json();
-      
+
       // Cache successful GET requests
       if (useCache && options.method === 'GET') {
         this.cache.set(cacheKey, {
@@ -68,7 +68,7 @@ class DataService {
       return { data };
     } catch (error) {
       console.error(`API request failed: ${endpoint}`, error);
-      
+
       // Provide more specific error messages
       let errorMessage = 'Unknown error';
       if (error instanceof TypeError && error.message === 'Failed to fetch') {
@@ -76,8 +76,8 @@ class DataService {
       } else if (error instanceof Error) {
         errorMessage = error.message;
       }
-      
-      return { 
+
+      return {
         error: errorMessage,
         message: 'Request failed'
       };
@@ -87,7 +87,7 @@ class DataService {
   // =============================================
   // CONVERSATION MANAGEMENT
   // =============================================
-  
+
   async createConversation(title: string, description?: string): Promise<ApiResponse<any>> {
     return this.request('/api/data/conversations', {
       method: 'POST',
@@ -125,11 +125,11 @@ class DataService {
   // =============================================
   // CHART SNAPSHOT MANAGEMENT
   // =============================================
-  
+
   async saveChartSnapshot(
-    conversationId: string, 
-    chartType: string, 
-    chartData: any, 
+    conversationId: string,
+    chartType: string,
+    chartData: any,
     chartConfig: any,
     templateStructure?: any,  // Optional: full template layout structure
     templateContent?: any,     // Optional: text content for template areas
@@ -137,7 +137,7 @@ class DataService {
   ): Promise<ApiResponse<{ id: string }>> {
     const method = snapshotId ? 'PUT' : 'POST';
     const url = snapshotId ? `/api/data/chart-snapshots/${snapshotId}` : '/api/data/chart-snapshots';
-    
+
     return this.request(url, {
       method,
       body: JSON.stringify({
@@ -163,7 +163,7 @@ class DataService {
   // =============================================
   // CHAT MESSAGE MANAGEMENT
   // =============================================
-  
+
   async addMessage(
     conversationId: string,
     role: 'user' | 'assistant',
@@ -192,7 +192,7 @@ class DataService {
   // =============================================
   // USER PREFERENCES
   // =============================================
-  
+
   async getUserPreferences(): Promise<ApiResponse<any>> {
     return this.request('/api/data/user-preferences');
   }
@@ -207,7 +207,7 @@ class DataService {
   // =============================================
   // PROJECT MANAGEMENT
   // =============================================
-  
+
   async getProjects(): Promise<ApiResponse<any[]>> {
     return this.request('/api/data/projects');
   }
@@ -222,7 +222,7 @@ class DataService {
   // =============================================
   // TEMPLATE MANAGEMENT (Blueprint Templates)
   // =============================================
-  
+
   async getTemplates(includePublic = true): Promise<ApiResponse<any[]>> {
     return this.request(`/api/data/templates?includePublic=${includePublic}`);
   }
@@ -267,9 +267,9 @@ class DataService {
       }, false);
     } catch (error: any) {
       console.error('Error in deleteTemplate:', error);
-      return { 
+      return {
         error: error.message || 'Failed to delete template',
-        data: undefined 
+        data: undefined
       };
     }
   }
@@ -284,7 +284,7 @@ class DataService {
   // =============================================
   // CACHE MANAGEMENT
   // =============================================
-  
+
   clearCache(): void {
     this.cache.clear();
   }
@@ -300,15 +300,15 @@ class DataService {
   // =============================================
   // OFFLINE SUPPORT
   // =============================================
-  
+
   async getOfflineData(): Promise<any> {
     if (typeof window === 'undefined') return {};
-    
+
     try {
       const userId = localStorage.getItem('user-id') || 'anonymous';
       const conversations = localStorage.getItem(`offline-conversations-${userId}`);
       const chartData = localStorage.getItem(`offline-chart-data-${userId}`);
-      
+
       return {
         conversations: conversations ? JSON.parse(conversations) : [],
         chartData: chartData ? JSON.parse(chartData) : null
@@ -321,22 +321,22 @@ class DataService {
 
   async saveOfflineData(conversationId: string, data: any): Promise<void> {
     if (typeof window === 'undefined') return;
-    
+
     try {
       const userId = localStorage.getItem('user-id') || 'anonymous';
       const offlineData = await this.getOfflineData();
       offlineData.conversations = offlineData.conversations || [];
-      
+
       const existingIndex = offlineData.conversations.findIndex(
         (c: any) => c.id === conversationId
       );
-      
+
       if (existingIndex >= 0) {
         offlineData.conversations[existingIndex] = data;
       } else {
         offlineData.conversations.push(data);
       }
-      
+
       localStorage.setItem(`offline-conversations-${userId}`, JSON.stringify(offlineData.conversations));
     } catch (error) {
       console.error('Error saving offline data:', error);

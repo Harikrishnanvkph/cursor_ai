@@ -85,8 +85,8 @@ export const useHistoryStore = create<HistoryStore>()(
         }
 
         // If not found locally, OR if found but has no details (lazy load case), fetch from backend
-        // We check for (messages.length === 0 && !snapshot) as indication of "list-only" data
-        const isIncomplete = conv && conv.messages.length === 0 && !conv.snapshot;
+        // We check for absence of snapshot or absence of chartData in snapshot as indication of "list-only" data
+        const isIncomplete = conv && (!conv.snapshot || (conv.snapshot && !conv.snapshot.chartData));
 
         if (!conv || isIncomplete) {
           console.log(`Conversation ${isIncomplete ? 'incomplete' : 'not found'} locally, fetching details from backend...`);
@@ -131,8 +131,16 @@ export const useHistoryStore = create<HistoryStore>()(
               };
 
               // Add to local store for future access
-              set({
-                conversations: [conv, ...get().conversations].slice(0, 50)
+              set((state) => {
+                const existingIndex = state.conversations.findIndex(c => c.id === conv?.id);
+                if (existingIndex >= 0 && conv) {
+                  const newConversations = [...state.conversations];
+                  newConversations[existingIndex] = conv;
+                  return { conversations: newConversations };
+                }
+                return {
+                  conversations: [conv!, ...state.conversations].slice(0, 50)
+                };
               });
             }
           } catch (error) {
@@ -299,7 +307,15 @@ export const useHistoryStore = create<HistoryStore>()(
               id: conv.id,
               title: conv.title,
               messages: [], // Empty by default, loaded on open
-              snapshot: null, // Empty by default, loaded on open
+              // Construct a "mini" snapshot with just the type for display
+              snapshot: conv.current_chart_type ? {
+                chartType: conv.current_chart_type,
+                // These will be filled in when the conversation is actually opened
+                id: '',
+                conversationId: conv.id,
+                chartData: null,
+                chartConfig: null
+              } as any : null,
               timestamp: new Date(conv.created_at).getTime(),
               // Mode metadata from backend
               is_template_mode: conv.is_template_mode || false,

@@ -1,0 +1,163 @@
+"use client"
+
+import React, { RefObject } from "react"
+import ChartGenerator from "@/lib/chart_generator"
+import { parseDimension } from "@/lib/utils/dimension-utils"
+
+interface ChartPreviewCanvasProps {
+    chartContainerRef: RefObject<HTMLDivElement>;
+    chartConfig: any;
+    zoomPan: {
+        zoom: number;
+        panMode: boolean;
+        isDragging: boolean;
+        panOffset: { x: number; y: number };
+        handleMouseDown: (e: React.MouseEvent) => void;
+        handleMouseMove: (e: React.MouseEvent) => void;
+        handleMouseUp: () => void;
+    };
+}
+
+/**
+ * The chart canvas area — handles both responsive (fills container) and
+ * fixed-dimension modes, wraps <ChartGenerator/> with zoom/pan support.
+ */
+export function ChartPreviewCanvas({
+    chartContainerRef,
+    chartConfig,
+    zoomPan,
+}: ChartPreviewCanvasProps) {
+    const { zoom, panMode, isDragging, panOffset, handleMouseDown } = zoomPan;
+
+    const isResponsive = chartConfig?.responsive !== false;
+    const chartWidth = !isResponsive ? parseDimension(chartConfig?.width, 800) : 800;
+    const chartHeight = !isResponsive ? parseDimension(chartConfig?.height, 800) : 600;
+
+    if (isResponsive) {
+        return (
+            <div
+                className="absolute inset-0"
+                style={{
+                    backgroundColor: 'transparent',
+                    width: '100%',
+                    height: '100%',
+                    top: 0, left: 0, right: 0, bottom: 0
+                }}
+            >
+                {/* Background layer for dragging (only in pan mode) */}
+                {panMode && (
+                    <div
+                        className="absolute inset-0"
+                        style={{ cursor: isDragging ? 'grabbing' : 'grab', zIndex: 1 }}
+                        onMouseDown={handleMouseDown}
+                    />
+                )}
+
+                {/* Chart Area */}
+                <div
+                    className="absolute inset-0"
+                    style={{
+                        width: '100%', height: '100%',
+                        top: 0, left: 0, right: 0, bottom: 0,
+                        transform: zoom !== 1 ? `scale(${zoom})` : 'none',
+                        transformOrigin: 'center center',
+                        transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+                        zIndex: 10,
+                        cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'default',
+                        pointerEvents: 'auto'
+                    }}
+                    onMouseDown={panMode ? handleMouseDown : undefined}
+                >
+                    <div
+                        className="absolute inset-0"
+                        style={{
+                            width: '100%', height: '100%',
+                            top: 0, left: 0, right: 0, bottom: 0,
+                            pointerEvents: panMode ? 'none' : 'auto',
+                            userSelect: panMode ? 'none' : 'auto',
+                            WebkitUserSelect: panMode ? 'none' : 'auto'
+                        }}
+                        onMouseDown={(e) => {
+                            if (panMode) { handleMouseDown(e as any); e.preventDefault(); e.stopPropagation(); }
+                            else { e.stopPropagation(); }
+                        }}
+                        onDragStart={(e) => { if (panMode) e.preventDefault(); }}
+                    >
+                        <div
+                            className="absolute inset-0"
+                            style={{ width: '100%', height: '100%', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: panMode ? 'none' : 'auto' }}
+                        >
+                            <ChartGenerator />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Non-responsive mode: fixed dimensions with canvas padding
+    const canvasPadding = 200;
+    const scaledChartWidth = chartWidth * zoom;
+    const scaledChartHeight = chartHeight * zoom;
+    const effectiveCanvasWidth = Math.max(chartWidth + canvasPadding, scaledChartWidth + canvasPadding);
+    const effectiveCanvasHeight = Math.max(chartHeight + canvasPadding, scaledChartHeight + canvasPadding);
+    const initialLeft = effectiveCanvasWidth / 2 - scaledChartWidth / 2;
+    const initialTop = effectiveCanvasHeight / 2 - scaledChartHeight / 2;
+
+    return (
+        <div
+            className="relative"
+            style={{
+                width: `${effectiveCanvasWidth}px`,
+                height: `${effectiveCanvasHeight}px`,
+                margin: '0 auto',
+                backgroundColor: 'transparent'
+            }}
+        >
+            {/* Background layer for dragging (only in pan mode) */}
+            {panMode && (
+                <div
+                    className="absolute inset-0"
+                    style={{ cursor: isDragging ? 'grabbing' : 'grab', zIndex: 1 }}
+                    onMouseDown={handleMouseDown}
+                />
+            )}
+
+            {/* Chart Area */}
+            <div
+                className="absolute"
+                style={{
+                    left: `${initialLeft + panOffset.x}px`,
+                    top: `${initialTop + panOffset.y}px`,
+                    width: `${chartWidth}px`,
+                    height: `${chartHeight}px`,
+                    transform: `scale(${zoom})`,
+                    transformOrigin: 'top left',
+                    transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+                    zIndex: 10,
+                    cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'default',
+                    pointerEvents: 'auto'
+                }}
+                onMouseDown={panMode ? handleMouseDown : undefined}
+            >
+                <div
+                    className="w-full h-full"
+                    style={{
+                        pointerEvents: panMode ? 'none' : 'auto',
+                        userSelect: panMode ? 'none' : 'auto',
+                        WebkitUserSelect: panMode ? 'none' : 'auto'
+                    }}
+                    onMouseDown={(e) => {
+                        if (panMode) { handleMouseDown(e as any); e.preventDefault(); e.stopPropagation(); }
+                        else { e.stopPropagation(); }
+                    }}
+                    onDragStart={(e) => { if (panMode) e.preventDefault(); }}
+                >
+                    <div style={{ pointerEvents: panMode ? 'none' : 'auto' }}>
+                        <ChartGenerator />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}

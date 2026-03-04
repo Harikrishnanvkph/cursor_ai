@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { type Conversation } from "@/lib/history-store"
+import { type Conversation, useHistoryStore } from "@/lib/history-store"
 import { useChartStore } from "@/lib/chart-store"
 import { useTemplateStore } from "@/lib/template-store"
 import ChartGenerator from "@/lib/chart_generator"
@@ -24,7 +24,9 @@ import {
   Calendar,
   MessageSquare,
   Maximize2,
-  LayoutTemplate
+  LayoutTemplate,
+  Loader2,
+  AlertCircle
 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
@@ -38,11 +40,20 @@ interface ChartPreviewModalProps {
 export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvanced }: ChartPreviewModalProps) {
   const [activeTab, setActiveTab] = useState("preview")
   const [shareUrl, setShareUrl] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
   const { setFullChart } = useChartStore()
+  const { conversations, restoreConversation } = useHistoryStore()
   const { setCurrentTemplate, setEditorMode, clearAllTemplateState } = useTemplateStore()
 
-  // Check if this is a template mode snapshot
-  const isTemplateMode = conversation.snapshot?.is_template_mode && conversation.snapshot?.template_structure
+  // Get the "live" version of the conversation from the global store.
+  // This is CRITICAL because full data (snapshots) is lazy-loaded. 
+  // The 'conversation' prop is a static snapshot from the moment the user clicked "Preview".
+  const liveConversation = conversations.find(c => c.id === conversation.id) || conversation
+
+  // Check if this is a template mode snapshot - use live data
+  const isTemplateMode = liveConversation.snapshot?.is_template_mode && liveConversation.snapshot?.template_structure
 
   useEffect(() => {
     // Generate share URL
@@ -51,46 +62,72 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
 
   // Load chart/template data into stores when modal opens
   useEffect(() => {
-    if (conversation.snapshot && activeTab === "preview") {
-      // Always load chart data
-      setFullChart({
-        chartType: conversation.snapshot.chartType,
-        chartData: conversation.snapshot.chartData,
-        chartConfig: conversation.snapshot.chartConfig
-      })
+    const loadData = async () => {
+      // Use liveConversation to check for missing data
+      if (!liveConversation.snapshot || activeTab !== "preview") return;
 
-      // If template mode, also load template into store
-      if (isTemplateMode) {
-        const template = conversation.snapshot.template_structure
-        const content = conversation.snapshot.template_content
-
-        // Update text areas with saved content if available
-        if (content && template.textAreas) {
-          const updatedTextAreas = template.textAreas.map((area: any) => {
-            const areaContent = content[area.type]
-            if (areaContent !== undefined) {
-              return { ...area, content: areaContent }
-            }
-            return area
-          })
-          setCurrentTemplate({ ...template, textAreas: updatedTextAreas })
-        } else {
-          setCurrentTemplate(template)
+      // Check if we need to lazy-load the full conversation data
+      if (!liveConversation.snapshot.chartData || !liveConversation.messages.length) {
+        setIsLoading(true);
+        setError(null);
+        try {
+          await restoreConversation(liveConversation.id);
+        } catch (err: any) {
+          console.error("Failed to lazy-load chart data:", err);
+          setError("Failed to load chart details. Please try again.");
+          setIsLoading(false);
+          return;
         }
-        setEditorMode('template')
+        setIsLoading(false);
       }
-    }
 
-    // Cleanup when modal closes
+      // Re-fetch the updated conversation from store after restore
+      const updatedConv = useHistoryStore.getState().conversations.find(c => c.id === liveConversation.id) || liveConversation;
+
+      // Once we have (or already had) data, load it into stores
+      if (updatedConv.snapshot?.chartData) {
+        setFullChart({
+          chartType: updatedConv.snapshot.chartType,
+          chartData: updatedConv.snapshot.chartData,
+          chartConfig: updatedConv.snapshot.chartConfig
+        })
+
+        // If template mode, also load template into store
+        if (updatedConv.snapshot.is_template_mode && updatedConv.snapshot.template_structure) {
+          const template = updatedConv.snapshot.template_structure
+          const content = updatedConv.snapshot.template_content
+
+          if (content && template.textAreas) {
+            const updatedTextAreas = template.textAreas.map((area: any) => {
+              const areaContent = content[area.type]
+              if (areaContent !== undefined) {
+                return { ...area, content: areaContent }
+              }
+              return area
+            })
+            setCurrentTemplate({ ...template, textAreas: updatedTextAreas })
+          } else {
+            setCurrentTemplate(template)
+          }
+          setEditorMode('template')
+        }
+      }
+    };
+
+    loadData();
+
     return () => {
       if (isTemplateMode) {
         clearAllTemplateState()
       }
     }
-  }, [conversation.snapshot, activeTab, setFullChart, isTemplateMode, setCurrentTemplate, setEditorMode, clearAllTemplateState])
+  }, [liveConversation.snapshot, liveConversation.id, liveConversation.messages.length, activeTab, setFullChart, setCurrentTemplate, setEditorMode, clearAllTemplateState, restoreConversation])
 
   const handleDownloadPNG = async () => {
-    if (!conversation.snapshot) return
+    if (!liveConversation.snapshot?.chartData) {
+      toast.error("Chart data not yet loaded")
+      return
+    }
 
     try {
       const canvas = document.createElement("canvas")
@@ -104,10 +141,10 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
       }
 
       const chart = new ChartJS(ctx, {
-        type: conversation.snapshot.chartType as any,
-        data: conversation.snapshot.chartData,
+        type: liveConversation.snapshot.chartType as any,
+        data: liveConversation.snapshot.chartData,
         options: {
-          ...conversation.snapshot.chartConfig,
+          ...liveConversation.snapshot.chartConfig,
           animation: false,
           responsive: false,
         },
@@ -140,14 +177,17 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
   }
 
   const handleDownloadHTML = () => {
-    if (!conversation.snapshot) return
+    if (!liveConversation.snapshot?.chartData) {
+      toast.error("Chart data not yet loaded")
+      return
+    }
 
     const htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${conversation.title}</title>
+  <title>${liveConversation.title}</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
@@ -183,7 +223,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
 </head>
 <body>
   <div class="container">
-    <h1>${conversation.title}</h1>
+    <h1>${liveConversation.title}</h1>
     <div class="chart-container">
       <canvas id="chart"></canvas>
     </div>
@@ -192,9 +232,9 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
   <script>
     const ctx = document.getElementById('chart').getContext('2d');
     new Chart(ctx, {
-      type: '${conversation.snapshot.chartType}',
-      data: ${JSON.stringify(conversation.snapshot.chartData)},
-      options: ${JSON.stringify(conversation.snapshot.chartConfig)}
+      type: '${liveConversation.snapshot.chartType}',
+      data: ${JSON.stringify(liveConversation.snapshot.chartData)},
+      options: ${JSON.stringify(liveConversation.snapshot.chartConfig)}
     });
   </script>
 </body>
@@ -257,8 +297,8 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
       }
     }
     return {
-      label: conversation.snapshot?.chartType || "Unknown",
-      className: getChartTypeColor(conversation.snapshot?.chartType || ""),
+      label: liveConversation.snapshot?.chartType || "Unknown",
+      className: getChartTypeColor(liveConversation.snapshot?.chartType || ""),
       icon: null
     }
   }
@@ -280,17 +320,17 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
                   </Badge>
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
-                    {formatDate(conversation.timestamp)}
+                    {formatDate(liveConversation.timestamp)}
                   </span>
-                  {conversation.messages.length > 0 && (
+                  {liveConversation.messages.length > 0 && (
                     <span className="flex items-center gap-1">
                       <MessageSquare className="h-3 w-3" />
-                      {conversation.messages.length} message{conversation.messages.length !== 1 ? "s" : ""}
+                      {liveConversation.messages.length} message{liveConversation.messages.length !== 1 ? "s" : ""}
                     </span>
                   )}
                 </div>
                 <DialogTitle className="text-xl font-semibold text-gray-900">
-                  {conversation.title}
+                  {liveConversation.title}
                 </DialogTitle>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2">
@@ -318,7 +358,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
                   </TabsTrigger>
                 </TabsList>
                 <Button
-                  onClick={() => onEdit(conversation)}
+                  onClick={() => onEdit(liveConversation)}
                   variant="outline"
                   size="sm"
                   className="gap-2"
@@ -327,7 +367,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
                   Edit in AI Chat
                 </Button>
                 <Button
-                  onClick={() => onEditInAdvanced(conversation)}
+                  onClick={() => onEditInAdvanced(liveConversation)}
                   variant="outline"
                   size="sm"
                   className="gap-2"
@@ -352,12 +392,29 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
             <TabsContent value="preview" className="h-full p-4 mt-0">
               <div className="h-full bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                 <div className="w-full h-full">
-                  {conversation.snapshot && activeTab === "preview" && (
+                  {isLoading ? (
+                    <div className="flex flex-col items-center justify-center h-full gap-4 text-gray-500">
+                      <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
+                      <p className="text-sm font-medium">Loading full chart data...</p>
+                    </div>
+                  ) : error ? (
+                    <div className="flex flex-col items-center justify-center h-full gap-4 text-red-500 px-6 text-center">
+                      <AlertCircle className="h-10 w-10" />
+                      <p className="text-sm font-medium">{error}</p>
+                      <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+                        Retry
+                      </Button>
+                    </div>
+                  ) : liveConversation.snapshot?.chartData && activeTab === "preview" ? (
                     isTemplateMode ? (
                       <TemplateChartPreview />
                     ) : (
                       <ChartGenerator />
                     )
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-gray-400">
+                      <p>No preview available</p>
+                    </div>
                   )}
                 </div>
               </div>

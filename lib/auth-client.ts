@@ -8,7 +8,7 @@ export type AuthUser = {
   user_metadata?: Record<string, any>
 }
 
-const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001'
+const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   try {

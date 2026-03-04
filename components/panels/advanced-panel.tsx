@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import { useChartStore } from "@/lib/chart-store"
+import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { Copy, RotateCcw } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
@@ -31,17 +32,17 @@ export function AdvancedPanel() {
     chartConfig,
     chartData,
     chartType,
-    updateChartConfig,
     activeDatasetIndex,
     chartMode,
     datasetBackups
   } = useChartStore()
+  const { updateChartConfig } = useChartActions()
   const [rawOpen, setRawOpen] = useState(false)
   const [watermarkOpen, setWatermarkOpen] = useState(false)
   const [tooltipOpen, setTooltipOpen] = useState(false)
   const [generalAnimOpen, setGeneralAnimOpen] = useState(false)
   const [hoverAnimOpen, setHoverAnimOpen] = useState(false)
-  const [hoverEnabled, setHoverEnabled] = useState(chartConfig.interaction?.mode !== undefined && chartConfig.interaction?.mode !== false)
+  const [hoverEnabled, setHoverEnabled] = useState(chartConfig.interaction?.mode !== undefined)
 
 
   const currentDatasetIndex = chartMode === 'single' ? activeDatasetIndex : 0
@@ -50,7 +51,7 @@ export function AdvancedPanel() {
   const handleConfigUpdate = (path: string, value: any) => {
     const keys = path.split(".")
     const newConfig = { ...chartConfig }
-    let current = newConfig
+    let current: any = newConfig
 
     for (let i = 0; i < keys.length - 1; i++) {
       if (!current[keys[i]]) current[keys[i]] = {}
@@ -132,7 +133,7 @@ export function AdvancedPanel() {
           <h3 className="text-sm font-semibold text-gray-900 flex-1">Tooltip Settings</h3>
           <div onClick={(e) => e.stopPropagation()}>
             <Switch
-              checked={chartConfig.plugins?.tooltip?.enabled !== false}
+              checked={(chartConfig as any).plugins?.tooltip?.enabled !== false}
               onCheckedChange={(checked) => handleConfigUpdate("plugins.tooltip.enabled", checked)}
               className="data-[state=checked]:bg-green-600"
             />
@@ -143,14 +144,14 @@ export function AdvancedPanel() {
         </div>
         <div className="bg-green-50 rounded-b-lg border-x border-b border-green-100">
           {tooltipOpen && (
-            <div className={`px-3 py-3 space-y-2 ${chartConfig.plugins?.tooltip?.enabled === false ? 'opacity-50 pointer-events-none' : ''}`}>
+            <div className={`px-3 py-3 space-y-2 ${(chartConfig as any).plugins?.tooltip?.enabled === false ? 'opacity-50 pointer-events-none' : ''}`}>
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <Label className="text-xs font-medium">Tooltip Display Mode</Label>
                   <Select
-                    value={chartConfig.plugins?.tooltip?.customDisplayMode || "slice"}
+                    value={(chartConfig as any).plugins?.tooltip?.customDisplayMode || "slice"}
                     onValueChange={value => handleConfigUpdate("plugins.tooltip.customDisplayMode", value)}
-                    disabled={chartConfig.plugins?.tooltip?.enabled === false}
+                    disabled={(chartConfig as any).plugins?.tooltip?.enabled === false}
                   >
                     <SelectTrigger className="h-8 text-xs mt-1">
                       <SelectValue />
@@ -166,7 +167,7 @@ export function AdvancedPanel() {
                 <div>
                   <Label className="text-xs font-medium">Font Family</Label>
                   <Select
-                    value={chartConfig.plugins?.tooltip?.bodyFont?.family || "Arial"}
+                    value={(chartConfig as any).plugins?.tooltip?.bodyFont?.family || "Arial"}
                     onValueChange={value => handleConfigUpdate("plugins.tooltip.bodyFont.family", value)}
                   >
                     <SelectTrigger className="h-8 text-xs mt-1">
@@ -188,7 +189,7 @@ export function AdvancedPanel() {
                   <Label className="text-xs font-medium">Background Color</Label>
                   <Input
                     type="color"
-                    value={chartConfig.plugins?.tooltip?.backgroundColor || "#000000"}
+                    value={(chartConfig as any).plugins?.tooltip?.backgroundColor || "#000000"}
                     onChange={e => handleConfigUpdate("plugins.tooltip.backgroundColor", e.target.value)}
                     className="h-8"
                   />
@@ -208,7 +209,7 @@ export function AdvancedPanel() {
                   <Label className="text-xs font-medium">Text Color</Label>
                   <Input
                     type="color"
-                    value={chartConfig.plugins?.tooltip?.bodyColor || "#ffffff"}
+                    value={(chartConfig as any).plugins?.tooltip?.bodyColor || "#ffffff"}
                     onChange={e => handleConfigUpdate("plugins.tooltip.bodyColor", e.target.value)}
                     className="h-8"
                   />
@@ -217,7 +218,7 @@ export function AdvancedPanel() {
                   <Label className="text-xs font-medium">Border Color</Label>
                   <Input
                     type="color"
-                    value={chartConfig.plugins?.tooltip?.borderColor || "#cccccc"}
+                    value={(chartConfig as any).plugins?.tooltip?.borderColor || "#cccccc"}
                     onChange={e => handleConfigUpdate("plugins.tooltip.borderColor", e.target.value)}
                     className="h-8"
                   />
@@ -227,7 +228,7 @@ export function AdvancedPanel() {
                   <Input
                     type="number"
                     min={0}
-                    value={chartConfig.plugins?.tooltip?.borderWidth ?? 1}
+                    value={(chartConfig as any).plugins?.tooltip?.borderWidth ?? 1}
                     onChange={e => handleConfigUpdate("plugins.tooltip.borderWidth", e.target.value ? Number(e.target.value) : 0)}
                     className="h-8 text-xs"
                   />
@@ -237,7 +238,7 @@ export function AdvancedPanel() {
                   <Input
                     type="number"
                     min={8}
-                    value={chartConfig.plugins?.tooltip?.bodyFont?.size ?? 12}
+                    value={(chartConfig as any).plugins?.tooltip?.bodyFont?.size ?? 12}
                     onChange={e => handleConfigUpdate("plugins.tooltip.bodyFont.size", e.target.value ? Number(e.target.value) : 12)}
                     className="h-8 text-xs"
                   />

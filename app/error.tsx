@@ -13,7 +13,7 @@ interface ErrorProps {
 
 // Check if this is a ChunkLoadError (stale webpack chunks)
 function isChunkLoadError(error: Error): boolean {
-  return (
+  return !!(
     error.name === 'ChunkLoadError' ||
     error.message?.includes('ChunkLoadError') ||
     error.message?.includes('Loading chunk') ||
@@ -28,19 +28,19 @@ export default function Error({ error, reset }: ErrorProps) {
 
   useEffect(() => {
     console.error('Application error:', error)
-    
+
     // Auto-refresh for ChunkLoadError
     if (isChunkError) {
       const lastRefreshKey = 'chunk_error_last_refresh'
       const lastRefresh = sessionStorage.getItem(lastRefreshKey)
       const now = Date.now()
-      
+
       // Only auto-refresh if we haven't refreshed in the last 10 seconds
       if (!lastRefresh || now - parseInt(lastRefresh) > 10000) {
         console.log('ChunkLoadError detected, auto-refreshing...')
         setIsAutoRefreshing(true)
         sessionStorage.setItem(lastRefreshKey, now.toString())
-        
+
         setTimeout(() => {
           window.location.reload()
         }, 1500)
@@ -67,16 +67,15 @@ export default function Error({ error, reset }: ErrorProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex flex-col items-center justify-center gap-3">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${
-              isChunkError ? 'bg-amber-100' : 'bg-orange-100'
-            }`}>
+            <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${isChunkError ? 'bg-amber-100' : 'bg-orange-100'
+              }`}>
               <AlertTriangle className={`h-8 w-8 ${isChunkError ? 'text-amber-600' : 'text-orange-600'}`} />
             </div>
             <CardTitle className="text-2xl">
               {isChunkError ? 'Update Required' : 'Something went wrong'}
             </CardTitle>
             <CardDescription>
-              {isChunkError 
+              {isChunkError
                 ? 'The application needs to refresh to load updated resources'
                 : 'An unexpected error occurred'}
             </CardDescription>
@@ -87,18 +86,18 @@ export default function Error({ error, reset }: ErrorProps) {
                 ? 'This happens when the application has been updated. A quick refresh will fix it.'
                 : "We're sorry, but something went wrong while loading this page. This might be a temporary issue that can be resolved by refreshing."}
             </p>
-            
+
             <div className="space-y-3">
-              <Button 
-                onClick={() => window.location.reload()} 
+              <Button
+                onClick={() => window.location.reload()}
                 className="w-full"
               >
                 <RefreshCw className="mr-2 h-4 w-4" />
                 {isChunkError ? 'Refresh Now' : 'Try Again'}
               </Button>
-              
-              <Button 
-                onClick={() => window.location.href = '/'} 
+
+              <Button
+                onClick={() => window.location.href = '/'}
                 variant="outline"
                 className="w-full"
               >

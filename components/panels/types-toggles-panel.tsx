@@ -1,6 +1,7 @@
 "use client"
 
 import { useChartStore, type SupportedChartType } from "@/lib/chart-store"
+import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { useTemplateStore } from "@/lib/template-store"
 import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -12,23 +13,28 @@ export function TypesTogglesPanel() {
   const {
     chartType,
     chartData,
-    fillArea,
-    showBorder,
-    toggleFillArea,
-    toggleShowBorder,
-    showImages,
-    toggleShowImages,
-    toggleShowLabels,
-    toggleShowLegend,
-    changeChartType,
     chartConfig,
   } = useChartStore()
+
+  const visualSettings = chartConfig?.visualSettings || { fillArea: true, showBorder: true, showImages: true, showLabels: true, uniformityMode: 'uniform' as const };
+  const fillArea = visualSettings.fillArea;
+  const showBorder = visualSettings.showBorder;
+  const showImages = visualSettings.showImages;
+
+  const {
+    setChartType,
+    toggleFillArea,
+    toggleShowBorder,
+    toggleShowImages,
+    toggleShowLabels,
+    toggleShowLegend
+  } = useChartActions()
   const { editorMode, setEditorMode } = useTemplateStore()
 
   const handleChartTypeChange = (type: string) => {
-    // Use centralized chart type change handler from store
+    // Use centralized chart type change handler from hook
     // This handles transition detection, type change, and legendType update
-    changeChartType(type as SupportedChartType);
+    setChartType(type as SupportedChartType);
   }
 
   // Derive label checked state from chartConfig to stay in sync with labels-panel

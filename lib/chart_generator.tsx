@@ -31,7 +31,10 @@ import {
   RadarController
 } from "chart.js"
 import { Chart } from "react-chartjs-2"
-import { useChartStore, universalImagePlugin } from "@/lib/chart-store"
+import { useChartStore } from "@/lib/chart-store"
+import { useChartActions } from "@/lib/hooks/use-chart-actions"
+import { useUIStore } from "@/lib/stores/ui-store"
+import { universalImagePlugin } from "@/lib/plugins/universal-image-plugin"
 import { useTemplateStore } from "@/lib/template-store"
 import exportPlugin from "@/lib/export-plugin"
 import { customLabelPlugin } from "@/lib/custom-label-plugin"
@@ -39,6 +42,7 @@ import { overlayPlugin } from "@/lib/overlay-plugin"
 import { enhancedTitlePlugin } from "@/lib/enhanced-title-plugin"
 import { ResizableChartArea } from "@/components/resizable-chart-area"
 import { OverlayContextMenu } from "@/components/overlay-context-menu"
+import { parseDimension } from "@/lib/utils/dimension-utils"
 // Date adapter for time scales - auto-registers with Chart.js
 import 'chartjs-adapter-date-fns'
 
@@ -101,50 +105,109 @@ function fadeColor(color: any, alpha = 0.15) {
   return color;
 }
 
+import {
+  useChartConfig,
+  useChartData,
+  useChartType,
+  useLegendFilter,
+  useFillArea,
+  useShowBorder,
+  useShowImages,
+  useChartMode,
+  useActiveDatasetIndex,
+  useUniformityMode,
+  useActiveGroupId,
+  useChartGroups,
+  useOverlayImages,
+  useOverlayTexts,
+  useOverlayShapes
+} from "@/lib/hooks/use-chart-state"
+
 export interface ChartGeneratorProps {
   className?: string;
 }
 
 export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
-  // Granular selectors to prevent unnecessary re-renders
-  const chartConfig = useChartStore(s => s.chartConfig);
-  const chartData = useChartStore(s => s.chartData);
-  const chartType = useChartStore(s => s.chartType);
-  const legendFilter = useChartStore(s => s.legendFilter);
-  const fillArea = useChartStore(s => s.fillArea);
-  const showBorder = useChartStore(s => s.showBorder);
-  const showImages = useChartStore(s => s.showImages);
-  const chartMode = useChartStore(s => s.chartMode);
-  const activeDatasetIndex = useChartStore(s => s.activeDatasetIndex);
-  const uniformityMode = useChartStore(s => s.uniformityMode);
-  const activeGroupId = useChartStore(s => s.activeGroupId);
-  const groups = useChartStore(s => s.groups);
-  const overlayImages = useChartStore(s => s.overlayImages);
-  const overlayTexts = useChartStore(s => s.overlayTexts);
-  const selectedImageId = useChartStore(s => s.selectedImageId);
-  const selectedTextId = useChartStore(s => s.selectedTextId);
+  // Granular hooks to prevent unnecessary re-renders
+  const chartConfig = useChartConfig();
+  const chartData = useChartData();
+  const chartType = useChartType();
+  const legendFilter = useLegendFilter();
+  const fillArea = useFillArea();
+  const showBorder = useShowBorder();
+  const showImages = useShowImages();
+  const chartMode = useChartMode();
+  const activeDatasetIndex = useActiveDatasetIndex();
+  const uniformityMode = useUniformityMode();
+  const activeGroupId = useActiveGroupId();
+  const groups = useChartGroups();
+  const overlayImages = useOverlayImages();
+  const overlayTexts = useOverlayTexts();
+  const overlayShapes = useOverlayShapes();
+
+  const selectedImageId = useUIStore(s => s.selectedImageId);
+  const selectedTextId = useUIStore(s => s.selectedTextId);
+  const selectedShapeId = useUIStore(s => s.selectedShapeId);
 
   // Actions are stable and don't cause re-renders, but good practice to select them or use getState if appropriate
   // However, using the hook ensures we get the bound functions
-  const updateOverlayImage = useChartStore(s => s.updateOverlayImage);
-  const updateOverlayText = useChartStore(s => s.updateOverlayText);
-  const setSelectedImageId = useChartStore(s => s.setSelectedImageId);
-  const setSelectedTextId = useChartStore(s => s.setSelectedTextId);
-  const removeOverlayImage = useChartStore(s => s.removeOverlayImage);
-  const removeOverlayText = useChartStore(s => s.removeOverlayText);
+  const {
+    updateOverlayImage,
+    updateOverlayText,
+    updateOverlayShape,
+    removeOverlayImage,
+    removeOverlayText,
+    removeOverlayShape,
+    addOverlayShape,
+    updateGroup,
+    updateDataset
+  } = useChartActions();
+
+  const setSelectedImageId = useUIStore(s => s.setSelectedImageId);
+  const setSelectedTextId = useUIStore(s => s.setSelectedTextId);
+  const setSelectedShapeId = useUIStore(s => s.setSelectedShapeId);
   const setGlobalChartRef = useChartStore(s => s.setGlobalChartRef);
-  const updateGroup = useChartStore(s => s.updateGroup);
 
   const chartRef = useRef<ChartJS>(null);
   const [hoveredDatasetIndex, setHoveredDatasetIndex] = useState<number | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+
+  // Zustand hydration gate:
+  // Prevents the chart from rendering until the chart store has finished hydrating
+  // from localStorage. Without this, the component renders first with empty/default
+  // state, then re-renders with hydrated data — causing a visible double-load flicker.
+  const [storeHydrated, setStoreHydrated] = useState(false);
+  const initialRenderRef = useRef(true);
+  useEffect(() => {
+    // Check if already hydrated (can happen if persist completes synchronously)
+    const alreadyHydrated = (useChartStore.persist as any)?.hasHydrated?.();
+    if (alreadyHydrated) {
+      setStoreHydrated(true);
+      return;
+    }
+
+    // Listen for hydration completion
+    const unsub = (useChartStore.persist as any)?.onFinishHydration?.(() => {
+      setStoreHydrated(true);
+    });
+
+    // Fallback: if the persist API methods are unavailable, hydrate after a brief delay
+    const fallbackTimer = setTimeout(() => {
+      if (!storeHydrated) setStoreHydrated(true);
+    }, 150);
+
+    return () => {
+      unsub?.();
+      clearTimeout(fallbackTimer);
+    };
+  }, []);
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
     isOpen: boolean;
     x: number;
     y: number;
-    type: 'image' | 'text';
+    type: 'image' | 'text' | 'shape';
     id: string;
     data: any;
   }>({
@@ -187,10 +250,36 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
         updateOverlayImage(id, { x, y })
       } else if (type === 'text') {
         updateOverlayText(id, { x, y })
+      } else if (type === 'shape') {
+        updateOverlayShape(id, { x, y })
       }
 
       // Update chart to reflect new position
       chartRef.current?.update('none')
+    }
+
+    const handleCalloutPositionUpdate = (event: CustomEvent) => {
+      const { datasetIndex, pointIndex, calloutX, calloutY } = event.detail
+
+      const dataset = chartData.datasets[datasetIndex]
+      if (!dataset) return
+
+      // Create a shallow copy of pointImageConfig array to modify the specific index
+      // IMPORTANT: We must clone the inner object too
+      const newPointImageConfig = [...(dataset.pointImageConfig || [])]
+
+      // Ensure the config object exists at this index
+      if (newPointImageConfig[pointIndex]) {
+        newPointImageConfig[pointIndex] = {
+          ...newPointImageConfig[pointIndex],
+          calloutX,
+          calloutY
+        }
+
+        // Update the dataset with the new config
+        updateDataset(datasetIndex, { pointImageConfig: newPointImageConfig })
+        console.log('✅ Updated callout position in store:', { datasetIndex, pointIndex, calloutX, calloutY })
+      }
     }
 
     const handleImageLoaded = (event: CustomEvent) => {
@@ -247,6 +336,84 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
       }
     }
 
+    const handleShapeSelected = (event: CustomEvent) => {
+      const { shapeId } = event.detail
+      console.log('🎯 Shape selected/deselected:', shapeId)
+      setSelectedShapeId(shapeId)
+
+      // Update chart to show/hide selection handles
+      if (chartRef.current) {
+        chartRef.current.update('none')
+      }
+    }
+
+    const handleShapeResize = (event: CustomEvent) => {
+      const { id, x, y, width, height } = event.detail
+      console.log('🔄 Shape resize:', { id, x, y, width, height })
+      updateOverlayShape(id, { x, y, width, height })
+
+      // Update chart to reflect new size
+      if (chartRef.current) {
+        chartRef.current.update('none')
+      }
+    }
+
+    const handleShapeRotate = (event: CustomEvent) => {
+      const { id, rotation } = event.detail
+      updateOverlayShape(id, { rotation })
+
+      if (chartRef.current) {
+        chartRef.current.update('none')
+      }
+    }
+
+    const handleImageRotate = (event: CustomEvent) => {
+      const { id, rotation } = event.detail
+      updateOverlayImage(id, { rotation })
+
+      if (chartRef.current) {
+        chartRef.current.update('none')
+      }
+    }
+
+    const handleTextRotate = (event: CustomEvent) => {
+      const { id, rotation } = event.detail
+      updateOverlayText(id, { rotation })
+
+      if (chartRef.current) {
+        chartRef.current.update('none')
+      }
+    }
+
+    const handleDrawingCompleted = (event: CustomEvent) => {
+      const { x, y, width, height, points } = event.detail
+      console.log('✏️ Drawing completed:', { x, y, width, height, points })
+
+      const uiState = useUIStore.getState()
+
+      addOverlayShape({
+        type: 'freehand',
+        x,
+        y,
+        width,
+        height,
+        rotation: 0,
+        skewX: 0,
+        skewY: 0,
+        fillColor: 'transparent',
+        borderColor: uiState.defaultDrawingColor || '#007acc',
+        borderWidth: uiState.defaultDrawingThickness || 2,
+        borderStyle: uiState.defaultDrawingStyle || 'solid',
+        visible: true,
+        zIndex: 10,
+        points
+      })
+
+      if (chartRef.current) {
+        chartRef.current.update('none')
+      }
+    }
+
     const handleContextMenu = (event: CustomEvent) => {
       const { type, id, x, y, data } = event.detail
       console.log('🎯 Context menu triggered:', { type, id, x, y })
@@ -262,25 +429,39 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     }
 
     canvas.addEventListener('overlayPositionUpdate', handleOverlayPositionUpdate as EventListener)
+    canvas.addEventListener('calloutPositionUpdate', handleCalloutPositionUpdate as EventListener)
     canvas.addEventListener('overlayImageLoaded', handleImageLoaded as EventListener)
     canvas.addEventListener('overlayImageDimensionsUpdate', handleDimensionsUpdate as EventListener)
     canvas.addEventListener('overlayImageSelected', handleImageSelected as EventListener)
     canvas.addEventListener('overlayTextSelected', handleTextSelected as EventListener)
+    canvas.addEventListener('overlayShapeSelected', handleShapeSelected as EventListener)
     canvas.addEventListener('overlayImageResize', handleImageResize as EventListener)
+    canvas.addEventListener('overlayShapeResize', handleShapeResize as EventListener)
+    canvas.addEventListener('overlayShapeRotate', handleShapeRotate as EventListener)
+    canvas.addEventListener('overlayImageRotate', handleImageRotate as EventListener)
+    canvas.addEventListener('overlayTextRotate', handleTextRotate as EventListener)
     canvas.addEventListener('overlayContextMenu', handleContextMenu as EventListener)
+    canvas.addEventListener('overlayDrawingCompleted', handleDrawingCompleted as EventListener)
 
     console.log('✅ Event listeners attached to chart canvas')
 
     return () => {
       canvas.removeEventListener('overlayPositionUpdate', handleOverlayPositionUpdate as EventListener)
+      canvas.removeEventListener('calloutPositionUpdate', handleCalloutPositionUpdate as EventListener)
       canvas.removeEventListener('overlayImageLoaded', handleImageLoaded as EventListener)
       canvas.removeEventListener('overlayImageDimensionsUpdate', handleDimensionsUpdate as EventListener)
       canvas.removeEventListener('overlayImageSelected', handleImageSelected as EventListener)
       canvas.removeEventListener('overlayTextSelected', handleTextSelected as EventListener)
+      canvas.removeEventListener('overlayShapeSelected', handleShapeSelected as EventListener)
       canvas.removeEventListener('overlayImageResize', handleImageResize as EventListener)
+      canvas.removeEventListener('overlayShapeResize', handleShapeResize as EventListener)
+      canvas.removeEventListener('overlayShapeRotate', handleShapeRotate as EventListener)
+      canvas.removeEventListener('overlayImageRotate', handleImageRotate as EventListener)
+      canvas.removeEventListener('overlayTextRotate', handleTextRotate as EventListener)
       canvas.removeEventListener('overlayContextMenu', handleContextMenu as EventListener)
+      canvas.removeEventListener('overlayDrawingCompleted', handleDrawingCompleted as EventListener)
     }
-  }, [updateOverlayImage, updateOverlayText, setSelectedImageId, setSelectedTextId, chartType, chartConfig]);
+  }, [updateOverlayImage, updateOverlayText, updateOverlayShape, updateDataset, setSelectedImageId, setSelectedTextId, setSelectedShapeId]);
 
 
   // Get enabled datasets (respect single/grouped mode and legendFilter)
@@ -789,16 +970,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
   // Chart size logic
   const isResponsive = (chartConfig as any)?.responsive !== false;
 
-  const parseDimension = (value: any): number => {
-    if (typeof value === 'number') {
-      return isNaN(value) ? 500 : value;
-    }
-    if (typeof value === 'string') {
-      const numericValue = parseFloat(value.replace(/[^\d.-]/g, ''));
-      return isNaN(numericValue) ? 400 : numericValue;
-    }
-    return 500;
-  };
+  // parseDimension imported from @/lib/utils/dimension-utils
 
   const chartWidth = !isResponsive ? parseDimension((chartConfig as any)?.width) : undefined;
   const chartHeight = !isResponsive ? parseDimension((chartConfig as any)?.height) : undefined;
@@ -843,6 +1015,24 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     scales: isRadialType ? radialOnlyScales : (isCircularType ? {} : (optionsScales ?? {})),
   } as any;
   let appliedOptions = baseOptions;
+
+  // Suppress animations during initial render to prevent flickering on page load/navigation.
+  // After hydration, Chart.js's first render should appear instantly without animation.
+  // We track that the very first render with data has happened, then enable animations.
+  if (!storeHydrated || initialRenderRef.current) {
+    if (storeHydrated && modeFilteredDatasets.length > 0) {
+      // Store is hydrated and we have data — this is the first real render.
+      // Allow it through with no animation, then mark initial render done.
+      initialRenderRef.current = false;
+    }
+    appliedOptions = {
+      ...appliedOptions,
+      animation: false,
+      transitions: {
+        active: { animation: { duration: 0 } }
+      }
+    };
+  }
 
   if (chartType === 'stackedBar') {
     appliedOptions = {
@@ -920,15 +1110,20 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
   const handleContextMenuDelete = (id: string) => {
     if (contextMenu.type === 'image') {
       removeOverlayImage(id)
+    } else if (contextMenu.type === 'shape') {
+      removeOverlayShape(id)
     } else {
       removeOverlayText(id)
     }
     setSelectedImageId(null)
+    setSelectedShapeId(null)
   }
 
   const handleContextMenuHide = (id: string) => {
     if (contextMenu.type === 'image') {
       updateOverlayImage(id, { visible: !contextMenu.data.visible })
+    } else if (contextMenu.type === 'shape') {
+      updateOverlayShape(id, { visible: !contextMenu.data.visible })
     } else {
       updateOverlayText(id, { visible: !contextMenu.data.visible })
     }
@@ -937,6 +1132,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
   const handleContextMenuUnselect = () => {
     setSelectedImageId(null)
     setSelectedTextId(null)
+    setSelectedShapeId(null)
   }
 
   // Function to load sample data based on current mode
@@ -1002,14 +1198,27 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
       store.updateLabels(sampleLabels);
     }
 
-    // Add each sample dataset to the active group using addDataset
-    // This will properly use the existing groupId without creating a new group
-    sampleDatasets.forEach(dataset => {
-      store.addDataset(dataset);
-    });
+    // Add sample datasets directly to the current group by updating store state.
+    // We avoid setFullChart because it creates a new temporary group for grouped datasets.
+    const mergedLabels = store.chartData.labels && store.chartData.labels.length > 0
+      ? store.chartData.labels : sampleLabels;
+    const mergedDatasets = [...store.chartData.datasets, ...sampleDatasets];
 
-    // Update chartType to bar since we're loading bar chart data
-    store.setChartType('bar');
+    // Use Zustand's setState directly to append datasets without group creation side-effects
+    useChartStore.setState({
+      chartType: 'bar',
+      chartData: {
+        ...store.chartData,
+        labels: mergedLabels,
+        datasets: mergedDatasets,
+      },
+      groupedModeData: {
+        ...store.chartData,
+        labels: mergedLabels,
+        datasets: mergedDatasets,
+      },
+      hasJSON: true
+    });
 
     // Update the group's category to 'categorical' since we're loading bar charts
     updateGroup(targetGroupId, { category: 'categorical', baseChartType: 'bar' });
@@ -1080,6 +1289,15 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     chartBorderStyles.boxSizing = 'border-box';
   }
 
+  // Hydration gate: Don't render the chart until the store has finished hydrating.
+  // This prevents the visible double-render where the chart first appears empty/default
+  // then re-renders with hydrated localStorage data.
+  if (!storeHydrated) {
+    return (
+      <div className="p-0 h-full w-full" />
+    );
+  }
+
   return (
     <div className="p-0 h-full w-full">
       {modeFilteredDatasets.length > 0 ? (
@@ -1113,7 +1331,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
             {chartConfig.dynamicDimension ? (
               <ResizableChartArea>
                 <Chart
-                  key={`${chartType}-${chartWidth}-${chartHeight}-${isResponsive}-${chartConfig.manualDimensions}`}
+                  key={`${chartTypeForChart}-${isResponsive ? 'responsive' : 'fixed'}-${chartConfig.manualDimensions ? 'manual' : 'auto'}`}
                   ref={chartRef}
                   type={chartTypeForChart as any}
                   data={chartDataForChart}
@@ -1127,6 +1345,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                     maintainAspectRatio: !(isResponsive),
                     overlayImages,
                     overlayTexts,
+                    overlayShapes,
                     layout: {
                       padding: chartConfig.layout?.padding || 0
                     },
@@ -1156,7 +1375,9 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                       overlayPlugin: {
                         overlayImages,
                         overlayTexts,
-                        selectedImageId
+                        overlayShapes,
+                        selectedImageId,
+                        selectedShapeId
                       },
                       legend: {
                         ...((chartConfig.plugins as any)?.legend),
@@ -1299,7 +1520,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                 }}
               >
                 <Chart
-                  key={`${chartType}-${chartWidth}-${chartHeight}-${isResponsive}-${chartConfig.manualDimensions}`}
+                  key={`${chartTypeForChart}-${isResponsive ? 'responsive' : 'fixed'}-${chartConfig.manualDimensions ? 'manual' : 'auto'}`}
                   ref={chartRef}
                   type={chartTypeForChart as any}
                   data={chartDataForChart}
@@ -1313,6 +1534,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                     maintainAspectRatio: !(isResponsive),
                     overlayImages,
                     overlayTexts,
+                    overlayShapes,
                     layout: {
                       padding: chartConfig.layout?.padding || 0
                     },
@@ -1342,8 +1564,10 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                       overlayPlugin: {
                         overlayImages,
                         overlayTexts,
+                        overlayShapes,
                         selectedImageId,
-                        selectedTextId
+                        selectedTextId,
+                        selectedShapeId
                       },
                       legend: {
                         ...((chartConfig.plugins as any)?.legend),

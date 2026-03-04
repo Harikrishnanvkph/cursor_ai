@@ -1,6 +1,7 @@
 "use client";
 
 import { useChartStore } from "@/lib/chart-store";
+import { useChartActions } from "@/lib/hooks/use-chart-actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -9,8 +10,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Added import for Tabs components
 import { PieChartIcon } from "lucide-react";
 
-export function PiePanel() {
-  const { chartConfig, updateChartConfig } = useChartStore();
+// Assuming PiePanelProps is defined elsewhere or will be defined.
+// For the purpose of this edit, we'll assume it's a type that includes `className`.
+interface PiePanelProps {
+  className?: string;
+}
+
+export function PiePanel({ className }: PiePanelProps) {
+  const { chartConfig } = useChartStore();
+  const { updateChartConfig } = useChartActions();
 
   const dataLabelsConfig = chartConfig.plugins?.datalabels;
 
@@ -44,19 +52,19 @@ export function PiePanel() {
     };
     updateChartConfig(newConfig);
   };
-  
+
   // Ensure formatter exists for pie/doughnut
   const currentFormatter = dataLabelsConfig?.formatter;
   const isPercentageFormat = typeof currentFormatter === 'function' && currentFormatter.toString().includes('percentage');
 
   const toggleFormat = () => {
-    const newFormatter = isPercentageFormat 
+    const newFormatter = isPercentageFormat
       ? (value: any, context: any) => value // Show actual value
       : (value: any, context: any) => { // Show percentage
-          const total = context.chart.data.datasets[0].data.reduce((acc: number, val: number) => acc + val, 0);
-          const percentage = (value / total * 100).toFixed(1) + '%';
-          return percentage;
-        };
+        const total = context.chart.data.datasets[0].data.reduce((acc: number, val: number) => acc + val, 0);
+        const percentage = (value / total * 100).toFixed(1) + '%';
+        return percentage;
+      };
     handleDatalabelsUpdate('formatter', newFormatter);
   };
 
@@ -82,7 +90,7 @@ export function PiePanel() {
                 <div className="flex items-center space-x-2">
                   <Switch
                     id="showDataLabels"
-                    checked={dataLabelsConfig?.display || false}
+                    checked={dataLabelsConfig?.display === true}
                     onCheckedChange={(checked) => handleDatalabelsUpdate("display", checked)}
                   />
                   <Label htmlFor="showDataLabels">Show Data Labels</Label>
@@ -127,7 +135,7 @@ export function PiePanel() {
                       </Select>
                     </div>
                     <div className="flex items-center space-x-2">
-                       <Switch
+                      <Switch
                         id="labelFormat"
                         checked={isPercentageFormat}
                         onCheckedChange={toggleFormat}
@@ -153,7 +161,7 @@ export function PiePanel() {
                         </SelectContent>
                       </Select>
                     </div>
-                     <div>
+                    <div>
                       <Label htmlFor="labelAlign">Label Alignment (relative to Anchor)</Label>
                       <Select
                         value={dataLabelsConfig?.align as string || 'center'}
@@ -163,7 +171,7 @@ export function PiePanel() {
                           <SelectValue placeholder="Select alignment" />
                         </SelectTrigger>
                         <SelectContent>
-                           <SelectItem value="center">Center</SelectItem>
+                          <SelectItem value="center">Center</SelectItem>
                           <SelectItem value="end">End</SelectItem>
                           <SelectItem value="start">Start</SelectItem>
                           <SelectItem value="top">Top</SelectItem>
