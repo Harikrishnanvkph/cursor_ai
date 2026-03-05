@@ -36,7 +36,27 @@ export interface OverlayText {
     maxWidth?: number // Maximum width for text wrapping
 }
 
-export type ShapeType = 'rectangle' | 'square' | 'circle' | 'cloud' | 'star' | 'line' | 'lineArrow' | 'lineDoubleArrow' | 'freehand';
+export type ShapeType =
+    | 'rectangle'
+    | 'square'
+    | 'circle'
+    | 'cloud'
+    | 'star'
+    | 'line'
+    | 'lineArrow'
+    | 'lineDoubleArrow'
+    | 'freehand'
+    | 'triangle'
+    | 'pentagon'
+    | 'hexagon'
+    | 'octagon'
+    | 'diamond'
+    | 'heart'
+    | 'cross'
+    | 'speechBubble'
+    | 'arrowUp'
+    | 'arrowDown'
+    | '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';
 
 export interface OverlayShape {
     id: string

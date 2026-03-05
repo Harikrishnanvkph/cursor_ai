@@ -83,6 +83,92 @@ const overlayPlugin = {
       context.closePath();
     };
 
+    const drawPolygon = (context, cx, cy, sides, radius) => {
+      const startAngle = -Math.PI / 2;
+      context.moveTo(cx + radius * Math.cos(startAngle), cy + radius * Math.sin(startAngle));
+      for (let i = 1; i <= sides; i++) {
+        const angle = startAngle + (2 * Math.PI * i) / sides;
+        context.lineTo(cx + radius * Math.cos(angle), cy + radius * Math.sin(angle));
+      }
+      context.closePath();
+    };
+
+    const drawHeart = (context, x, y, w, h) => {
+      const topY = y + h * 0.3;
+      context.moveTo(x + w / 2, y + h);
+      context.bezierCurveTo(x, y + h * 0.6, x, topY, x + w * 0.25, topY);
+      context.bezierCurveTo(x + w * 0.35, topY, x + w / 2, y + h * 0.4, x + w / 2, y + h * 0.4);
+      context.bezierCurveTo(x + w / 2, y + h * 0.4, x + w * 0.65, topY, x + w * 0.75, topY);
+      context.bezierCurveTo(x + w, topY, x + w, y + h * 0.6, x + w / 2, y + h);
+      context.closePath();
+    };
+
+    const drawCross = (context, x, y, w, h) => {
+      const armW = w / 3;
+      const armH = h / 3;
+      context.moveTo(x + armW, y);
+      context.lineTo(x + armW * 2, y);
+      context.lineTo(x + armW * 2, y + armH);
+      context.lineTo(x + w, y + armH);
+      context.lineTo(x + w, y + armH * 2);
+      context.lineTo(x + armW * 2, y + armH * 2);
+      context.lineTo(x + armW * 2, y + h);
+      context.lineTo(x + armW, y + h);
+      context.lineTo(x + armW, y + armH * 2);
+      context.lineTo(x, y + armH * 2);
+      context.lineTo(x, y + armH);
+      context.lineTo(x + armW, y + armH);
+      context.closePath();
+    };
+
+    const drawSpeechBubble = (context, x, y, w, h) => {
+      const r = Math.min(w, h) * 0.1;
+      const bubbleH = h * 0.75;
+      const tailW = w * 0.2;
+      const tailX = x + w * 0.2;
+      context.moveTo(x + r, y);
+      context.lineTo(x + w - r, y);
+      context.quadraticCurveTo(x + w, y, x + w, y + r);
+      context.lineTo(x + w, y + bubbleH - r);
+      context.quadraticCurveTo(x + w, y + bubbleH, x + w - r, y + bubbleH);
+      context.lineTo(tailX + tailW, y + bubbleH);
+      context.lineTo(tailX, y + h);
+      context.lineTo(tailX, y + bubbleH);
+      context.lineTo(x + r, y + bubbleH);
+      context.quadraticCurveTo(x, y + bubbleH, x, y + bubbleH - r);
+      context.lineTo(x, y + r);
+      context.quadraticCurveTo(x, y, x + r, y);
+      context.closePath();
+    };
+
+    const drawArrowUp = (context, x, y, w, h) => {
+      const shaftW = w * 0.35;
+      const shaftX = x + (w - shaftW) / 2;
+      const headH = h * 0.45;
+      context.moveTo(x + w / 2, y);
+      context.lineTo(x + w, y + headH);
+      context.lineTo(shaftX + shaftW, y + headH);
+      context.lineTo(shaftX + shaftW, y + h);
+      context.lineTo(shaftX, y + h);
+      context.lineTo(shaftX, y + headH);
+      context.lineTo(x, y + headH);
+      context.closePath();
+    };
+
+    const drawArrowDown = (context, x, y, w, h) => {
+      const shaftW = w * 0.35;
+      const shaftX = x + (w - shaftW) / 2;
+      const headH = h * 0.45;
+      context.moveTo(x + w / 2, y + h);
+      context.lineTo(x + w, y + h - headH);
+      context.lineTo(shaftX + shaftW, y + h - headH);
+      context.lineTo(shaftX + shaftW, y);
+      context.lineTo(shaftX, y);
+      context.lineTo(shaftX, y + h - headH);
+      context.lineTo(x, y + h - headH);
+      context.closePath();
+    };
+
     // Render in zIndex order
     combinedOverlays.forEach((overlay) => {
       if (!overlay.visible) return;
@@ -287,11 +373,45 @@ const overlayPlugin = {
           case 'star':
             drawStar(ctx, cx, cy, 5, w / 2, w / 4);
             break;
+          case 'triangle':
+            drawPolygon(ctx, cx, cy, 3, Math.min(w, h) / 2);
+            break;
+          case 'pentagon':
+            drawPolygon(ctx, cx, cy, 5, Math.min(w, h) / 2);
+            break;
+          case 'hexagon':
+            drawPolygon(ctx, cx, cy, 6, Math.min(w, h) / 2);
+            break;
+          case 'octagon':
+            drawPolygon(ctx, cx, cy, 8, Math.min(w, h) / 2);
+            break;
+          case 'diamond':
+            ctx.moveTo(cx, y);
+            ctx.lineTo(x + w, cy);
+            ctx.lineTo(cx, y + h);
+            ctx.lineTo(x, cy);
+            ctx.closePath();
+            break;
+          case 'heart':
+            drawHeart(ctx, x, y, w, h);
+            break;
+          case 'cross':
+            drawCross(ctx, x, y, w, h);
+            break;
+          case 'speechBubble':
+            drawSpeechBubble(ctx, x, y, w, h);
+            break;
+          case 'arrowUp':
+            drawArrowUp(ctx, x, y, w, h);
+            break;
+          case 'arrowDown':
+            drawArrowDown(ctx, x, y, w, h);
+            break;
           case 'line':
             ctx.moveTo(x, cy);
             ctx.lineTo(x + w, cy);
             break;
-          case 'lineArrow':
+          case 'lineArrow': {
             ctx.moveTo(x, cy);
             ctx.lineTo(x + w, cy);
             const arrowSize = Math.max(10, Math.min(w * 0.2, 20));
@@ -299,7 +419,8 @@ const overlayPlugin = {
             ctx.lineTo(x + w, cy);
             ctx.lineTo(x + w - arrowSize, cy + arrowSize / 2);
             break;
-          case 'lineDoubleArrow':
+          }
+          case 'lineDoubleArrow': {
             ctx.moveTo(x, cy);
             ctx.lineTo(x + w, cy);
             const doubleArrowSize = Math.max(10, Math.min(w * 0.2, 20));
@@ -310,6 +431,7 @@ const overlayPlugin = {
             ctx.lineTo(x, cy);
             ctx.lineTo(x + doubleArrowSize, cy + doubleArrowSize / 2);
             break;
+          }
           case 'freehand':
             if (shape.points && shape.points.length > 0) {
               ctx.lineJoin = 'round';
@@ -336,6 +458,34 @@ const overlayPlugin = {
               }
             }
             break;
+          case '0': case '1': case '2': case '3': case '4':
+          case '5': case '6': case '7': case '8': case '9': {
+            ctx.restore();
+            ctx.save();
+            ctx.translate(cx, cy);
+            if (shape.rotation) ctx.rotate((shape.rotation * Math.PI) / 180);
+            if (shape.skewX || shape.skewY) {
+              const skewXRad = ((shape.skewX || 0) * Math.PI) / 180;
+              const skewYRad = ((shape.skewY || 0) * Math.PI) / 180;
+              ctx.transform(1, Math.tan(skewYRad), Math.tan(skewXRad), 1, 0, 0);
+            }
+            ctx.globalAlpha = 1;
+            const fontSize = Math.min(w, h) * 0.85;
+            ctx.font = \`bold \${fontSize}px Arial\`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            if (shape.fillColor && shape.fillColor !== 'transparent') {
+              ctx.fillStyle = applyOpacity(shape.fillColor, shape.fillOpacity ?? 100);
+              ctx.fillText(shape.type, 0, 0);
+            }
+            if (shape.borderWidth > 0) {
+              ctx.strokeStyle = shape.borderColor;
+              ctx.lineWidth = shape.borderWidth;
+              ctx.strokeText(shape.type, 0, 0);
+            }
+            ctx.restore();
+            return;
+          }
           default:
             ctx.rect(x, y, w, h);
         }

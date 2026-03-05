@@ -58,7 +58,6 @@ export const renderOverlayShape = (
     switch (shape.type) {
         case 'rectangle':
         case 'square':
-            // Since square is just a rectangle with constrained w=h (handled by UI), we draw them the same
             ctx.rect(x, y, w, h);
             break;
 
@@ -74,35 +73,77 @@ export const renderOverlayShape = (
             drawStar(ctx, cx, cy, 5, w / 2, w / 4);
             break;
 
+        case 'triangle':
+            drawPolygon(ctx, cx, cy, 3, Math.min(w, h) / 2);
+            break;
+
+        case 'pentagon':
+            drawPolygon(ctx, cx, cy, 5, Math.min(w, h) / 2);
+            break;
+
+        case 'hexagon':
+            drawPolygon(ctx, cx, cy, 6, Math.min(w, h) / 2);
+            break;
+
+        case 'octagon':
+            drawPolygon(ctx, cx, cy, 8, Math.min(w, h) / 2);
+            break;
+
+        case 'diamond':
+            ctx.moveTo(cx, y);
+            ctx.lineTo(x + w, cy);
+            ctx.lineTo(cx, y + h);
+            ctx.lineTo(x, cy);
+            ctx.closePath();
+            break;
+
+        case 'heart':
+            drawHeart(ctx, x, y, w, h);
+            break;
+
+        case 'cross':
+            drawCross(ctx, x, y, w, h);
+            break;
+
+        case 'speechBubble':
+            drawSpeechBubble(ctx, x, y, w, h);
+            break;
+
+        case 'arrowUp':
+            drawArrowUp(ctx, x, y, w, h);
+            break;
+
+        case 'arrowDown':
+            drawArrowDown(ctx, x, y, w, h);
+            break;
+
         case 'line':
             ctx.moveTo(x, cy);
             ctx.lineTo(x + w, cy);
             break;
 
-        case 'lineArrow':
+        case 'lineArrow': {
             ctx.moveTo(x, cy);
             ctx.lineTo(x + w, cy);
-            // Draw arrowhead
             const arrowSize = Math.max(10, Math.min(w * 0.2, 20));
             ctx.moveTo(x + w - arrowSize, cy - arrowSize / 2);
             ctx.lineTo(x + w, cy);
             ctx.lineTo(x + w - arrowSize, cy + arrowSize / 2);
             break;
+        }
 
-        case 'lineDoubleArrow':
+        case 'lineDoubleArrow': {
             ctx.moveTo(x, cy);
             ctx.lineTo(x + w, cy);
-            // Draw arrowheads on both sides
             const doubleArrowSize = Math.max(10, Math.min(w * 0.2, 20));
-            // Right arrowhead
             ctx.moveTo(x + w - doubleArrowSize, cy - doubleArrowSize / 2);
             ctx.lineTo(x + w, cy);
             ctx.lineTo(x + w - doubleArrowSize, cy + doubleArrowSize / 2);
-            // Left arrowhead
             ctx.moveTo(x + doubleArrowSize, cy - doubleArrowSize / 2);
             ctx.lineTo(x, cy);
             ctx.lineTo(x + doubleArrowSize, cy + doubleArrowSize / 2);
             break;
+        }
 
         case 'freehand':
             if (shape.points && shape.points.length > 0) {
@@ -130,6 +171,35 @@ export const renderOverlayShape = (
                 }
             }
             break;
+
+        case '0': case '1': case '2': case '3': case '4':
+        case '5': case '6': case '7': case '8': case '9':
+            // Render digit as filled text inside its bounding box
+            ctx.restore(); // Restoring here because text rendering is self-contained
+            ctx.save();
+            ctx.translate(cx, cy);
+            if (shape.rotation) ctx.rotate((shape.rotation * Math.PI) / 180);
+            if (shape.skewX || shape.skewY) {
+                const skewXRad = ((shape.skewX || 0) * Math.PI) / 180;
+                const skewYRad = ((shape.skewY || 0) * Math.PI) / 180;
+                ctx.transform(1, Math.tan(skewYRad), Math.tan(skewXRad), 1, 0, 0);
+            }
+            ctx.globalAlpha = shape.visible ? 1 : 0;
+            const fontSize = Math.min(w, h) * 0.85;
+            ctx.font = `bold ${fontSize}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            if (shape.fillColor && shape.fillColor !== 'transparent') {
+                ctx.fillStyle = applyOpacityToColor(shape.fillColor, shape.fillOpacity ?? 100);
+                ctx.fillText(shape.type, 0, 0);
+            }
+            if (shape.borderWidth > 0) {
+                ctx.strokeStyle = shape.borderColor;
+                ctx.lineWidth = shape.borderWidth;
+                ctx.strokeText(shape.type, 0, 0);
+            }
+            ctx.restore();
+            return; // already done, skip the generic fill/stroke at the end
 
         default:
             ctx.rect(x, y, w, h);
@@ -180,3 +250,95 @@ const drawStar = (ctx: CanvasRenderingContext2D, cx: number, cy: number, spikes:
     ctx.lineTo(cx, cy - outerRadius);
     ctx.closePath();
 };
+
+const drawPolygon = (ctx: CanvasRenderingContext2D, cx: number, cy: number, sides: number, radius: number) => {
+    // Start pointing up (-PI/2) for a natural orientation
+    const startAngle = -Math.PI / 2;
+    ctx.moveTo(cx + radius * Math.cos(startAngle), cy + radius * Math.sin(startAngle));
+    for (let i = 1; i <= sides; i++) {
+        const angle = startAngle + (2 * Math.PI * i) / sides;
+        ctx.lineTo(cx + radius * Math.cos(angle), cy + radius * Math.sin(angle));
+    }
+    ctx.closePath();
+};
+
+const drawHeart = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) => {
+    const topY = y + h * 0.3;
+    ctx.moveTo(x + w / 2, y + h);
+    // Left lobe
+    ctx.bezierCurveTo(x, y + h * 0.6, x, topY, x + w * 0.25, topY);
+    ctx.bezierCurveTo(x + w * 0.35, topY, x + w / 2, y + h * 0.4, x + w / 2, y + h * 0.4);
+    // Right lobe
+    ctx.bezierCurveTo(x + w / 2, y + h * 0.4, x + w * 0.65, topY, x + w * 0.75, topY);
+    ctx.bezierCurveTo(x + w, topY, x + w, y + h * 0.6, x + w / 2, y + h);
+    ctx.closePath();
+};
+
+const drawCross = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) => {
+    const armW = w / 3;
+    const armH = h / 3;
+    ctx.moveTo(x + armW, y);
+    ctx.lineTo(x + armW * 2, y);
+    ctx.lineTo(x + armW * 2, y + armH);
+    ctx.lineTo(x + w, y + armH);
+    ctx.lineTo(x + w, y + armH * 2);
+    ctx.lineTo(x + armW * 2, y + armH * 2);
+    ctx.lineTo(x + armW * 2, y + h);
+    ctx.lineTo(x + armW, y + h);
+    ctx.lineTo(x + armW, y + armH * 2);
+    ctx.lineTo(x, y + armH * 2);
+    ctx.lineTo(x, y + armH);
+    ctx.lineTo(x + armW, y + armH);
+    ctx.closePath();
+};
+
+const drawSpeechBubble = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) => {
+    const r = Math.min(w, h) * 0.1; // corner radius
+    const bubbleH = h * 0.75;
+    const tailW = w * 0.2;
+    const tailX = x + w * 0.2;
+    // Rounded rect for main body
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + bubbleH - r);
+    ctx.quadraticCurveTo(x + w, y + bubbleH, x + w - r, y + bubbleH);
+    ctx.lineTo(tailX + tailW, y + bubbleH);
+    // Tail pointing down-left
+    ctx.lineTo(tailX, y + h);
+    ctx.lineTo(tailX, y + bubbleH);
+    ctx.lineTo(x + r, y + bubbleH);
+    ctx.quadraticCurveTo(x, y + bubbleH, x, y + bubbleH - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+};
+
+const drawArrowUp = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) => {
+    const shaftW = w * 0.35;
+    const shaftX = x + (w - shaftW) / 2;
+    const headH = h * 0.45;
+    ctx.moveTo(x + w / 2, y);            // tip
+    ctx.lineTo(x + w, y + headH);        // right of head
+    ctx.lineTo(shaftX + shaftW, y + headH);
+    ctx.lineTo(shaftX + shaftW, y + h);  // shaft bottom-right
+    ctx.lineTo(shaftX, y + h);            // shaft bottom-left
+    ctx.lineTo(shaftX, y + headH);
+    ctx.lineTo(x, y + headH);            // left of head
+    ctx.closePath();
+};
+
+const drawArrowDown = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) => {
+    const shaftW = w * 0.35;
+    const shaftX = x + (w - shaftW) / 2;
+    const headH = h * 0.45;
+    ctx.moveTo(x + w / 2, y + h);        // tip
+    ctx.lineTo(x + w, y + h - headH);   // right of head
+    ctx.lineTo(shaftX + shaftW, y + h - headH);
+    ctx.lineTo(shaftX + shaftW, y);      // shaft top-right
+    ctx.lineTo(shaftX, y);               // shaft top-left
+    ctx.lineTo(shaftX, y + h - headH);
+    ctx.lineTo(x, y + h - headH);       // left of head
+    ctx.closePath();
+};
+

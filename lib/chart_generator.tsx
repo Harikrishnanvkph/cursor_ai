@@ -358,6 +358,32 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
       }
     }
 
+    const handleTextResize = (event: CustomEvent) => {
+      const { id, x, y, width, height } = event.detail
+      console.log('🔄 Text resize:', { id, x, y, width, height })
+
+      const txt = overlayTexts.find(t => t.id === id)
+      if (!txt) return
+
+      const paddingX = txt.paddingX || 8
+      const paddingY = txt.paddingY || 4
+
+      // maxWidth should be the width minus horizontal padding
+      const newMaxWidth = Math.max(20, width - (paddingX * 2))
+
+      // txt.x/y are relative to chartArea.left/top
+      // The event gives us the top-left of the bounding box (including padding)
+      updateOverlayText(id, {
+        x: x + paddingX,
+        y: y + paddingY,
+        maxWidth: newMaxWidth
+      })
+
+      if (chartRef.current) {
+        chartRef.current.update('none')
+      }
+    }
+
     const handleShapeRotate = (event: CustomEvent) => {
       const { id, rotation } = event.detail
       updateOverlayShape(id, { rotation })
@@ -437,6 +463,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     canvas.addEventListener('overlayShapeSelected', handleShapeSelected as EventListener)
     canvas.addEventListener('overlayImageResize', handleImageResize as EventListener)
     canvas.addEventListener('overlayShapeResize', handleShapeResize as EventListener)
+    canvas.addEventListener('overlayTextResize', handleTextResize as EventListener)
     canvas.addEventListener('overlayShapeRotate', handleShapeRotate as EventListener)
     canvas.addEventListener('overlayImageRotate', handleImageRotate as EventListener)
     canvas.addEventListener('overlayTextRotate', handleTextRotate as EventListener)
@@ -455,6 +482,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
       canvas.removeEventListener('overlayShapeSelected', handleShapeSelected as EventListener)
       canvas.removeEventListener('overlayImageResize', handleImageResize as EventListener)
       canvas.removeEventListener('overlayShapeResize', handleShapeResize as EventListener)
+      canvas.removeEventListener('overlayTextResize', handleTextResize as EventListener)
       canvas.removeEventListener('overlayShapeRotate', handleShapeRotate as EventListener)
       canvas.removeEventListener('overlayImageRotate', handleImageRotate as EventListener)
       canvas.removeEventListener('overlayTextRotate', handleTextRotate as EventListener)
