@@ -62,7 +62,11 @@ export function Sidebar({ activeTab, onTabChange, onToggleLeftSidebar, isLeftSid
         !onToggleLeftSidebar && "mb-2"
       )}>
         <div className="flex-1 min-w-0">
-          {chartMode === 'single' ? (
+          {((chartMode === 'single' && datasets.length === 0) || (chartMode === 'grouped' && groups.length === 0)) ? (
+            <div className="h-8 flex items-center px-3 bg-gray-50 border border-gray-100 rounded-lg shadow-sm">
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Chart Editor</span>
+            </div>
+          ) : chartMode === 'single' ? (
             <Select
               value={activeDatasetIndex.toString()}
               onValueChange={(val) => setActiveDatasetIndex(parseInt(val))}
