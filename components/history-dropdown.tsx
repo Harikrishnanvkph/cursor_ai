@@ -19,11 +19,22 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
   const [open, setOpen] = useState(false)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
+  
+  // Dropdown filter state: 'All' | 'Single Chart' | 'Group Chart' | 'Template Chart'
+  const [filterType, setFilterType] = useState<'All' | 'Single Chart' | 'Group Chart' | 'Template Chart'>('All')
+  
   const { conversations, restoreConversation, clearAllConversations, deleteConversation, loadConversationsFromBackend, loading } = useHistoryStore()
   const { startNewConversation, historyConversationId, clearUndoStack } = useChatStore()
   const { user } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
+
+  // Reset filter when history dropdown is opened, or when historyConversationId changes (e.g. chart cleared)
+  useEffect(() => {
+    if (open) {
+      setFilterType('All')
+    }
+  }, [open, historyConversationId])
 
   // Load conversations from backend when user is authenticated
   useEffect(() => {
@@ -34,6 +45,15 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
 
   // Add null check and provide default empty array
   const safeConversations = conversations || []
+  
+  // Filter conversations
+  const filteredConversations = safeConversations.filter(conv => {
+    if (filterType === 'All') return true;
+    if (filterType === 'Template Chart') return conv.is_template_mode;
+    if (filterType === 'Group Chart') return conv.chart_mode === 'grouped' && !conv.is_template_mode;
+    if (filterType === 'Single Chart') return conv.chart_mode === 'single' && !conv.is_template_mode;
+    return true;
+  });
 
   const handleConversationClick = (conversationId: string) => {
     restoreConversation(conversationId)
@@ -117,17 +137,27 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
           </DropdownMenuTrigger>
 
           <DropdownMenuContent className="w-72 mt-2 rounded-lg" align="end" forceMount>
-            <div className="p-2 border-b border-gray-100">
+            <div className="p-2 border-b border-gray-100 flex items-center justify-between">
               <h3 className="font-semibold text-gray-900 text-sm">Chat History</h3>
+              <select 
+                value={filterType} 
+                onChange={(e: any) => setFilterType(e.target.value)}
+                className="text-xs border-gray-200 rounded px-1 py-0.5 text-gray-600 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="All">All</option>
+                <option value="Single Chart">Single Chart</option>
+                <option value="Group Chart">Group Chart</option>
+                <option value="Template Chart">Template Chart</option>
+              </select>
             </div>
 
             <div className="max-h-64 overflow-y-auto">
               {loading ? (
                 <div className="p-4 text-center text-gray-500 text-sm">Loading...</div>
-              ) : safeConversations.length === 0 ? (
+              ) : filteredConversations.length === 0 ? (
                 <div className="p-4 text-center text-gray-500 text-sm">No conversations yet</div>
               ) : (
-                safeConversations.map((conversation: Conversation) => (
+                filteredConversations.map((conversation: Conversation) => (
                   <DropdownMenuItem
                     key={conversation.id}
                     onClick={() => handleConversationClick(conversation.id)}
@@ -221,17 +251,27 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
           </DropdownMenuTrigger>
 
           <DropdownMenuContent className="w-72 mt-2 rounded-lg" align="end" forceMount>
-            <div className="p-2 border-b border-gray-100">
+            <div className="p-2 border-b border-gray-100 flex items-center justify-between">
               <h3 className="font-semibold text-gray-900 text-sm">Chat History</h3>
+              <select 
+                value={filterType} 
+                onChange={(e: any) => setFilterType(e.target.value)}
+                className="text-xs border-gray-200 rounded px-1 py-0.5 text-gray-600 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="All">All</option>
+                <option value="Single Chart">Single Chart</option>
+                <option value="Group Chart">Group Chart</option>
+                <option value="Template Chart">Template Chart</option>
+              </select>
             </div>
 
             <div className="max-h-64 overflow-y-auto">
               {loading ? (
                 <div className="p-4 text-center text-gray-500 text-sm">Loading...</div>
-              ) : safeConversations.length === 0 ? (
+              ) : filteredConversations.length === 0 ? (
                 <div className="p-4 text-center text-gray-500 text-sm">No conversations yet</div>
               ) : (
-                safeConversations.map((conversation: Conversation) => (
+                filteredConversations.map((conversation: Conversation) => (
                   <DropdownMenuItem
                     key={conversation.id}
                     onClick={() => handleConversationClick(conversation.id)}
@@ -323,19 +363,31 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
         </DropdownMenuTrigger>
 
         <DropdownMenuContent className="w-72 mt-2 rounded-lg" align="end" forceMount>
-          <div className="p-2 border-b border-gray-100">
-            <h3 className="font-semibold text-gray-900 text-sm">Chat History</h3>
-            <p className="text-xs text-gray-500">Your previous conversations</p>
+          <div className="p-2 border-b border-gray-100 flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-gray-900 text-sm">Chat History</h3>
+              <p className="text-xs text-gray-500">Your previous conversations</p>
+            </div>
+            <select 
+              value={filterType} 
+              onChange={(e: any) => setFilterType(e.target.value)}
+              className="text-xs border-gray-200 rounded px-1 py-0.5 text-gray-600 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="All">All</option>
+              <option value="Single Chart">Single Chart</option>
+              <option value="Group Chart">Group Chart</option>
+              <option value="Template Chart">Template Chart</option>
+            </select>
           </div>
 
-          {safeConversations.length === 0 ? (
+          {filteredConversations.length === 0 ? (
             <div className="p-4 text-center">
               <p className="text-sm text-gray-500">No chat history yet</p>
             </div>
           ) : (
             <>
               <div className="max-h-64 overflow-y-auto">
-                {safeConversations.map((conversation) => (
+                {filteredConversations.map((conversation) => (
                   <DropdownMenuItem
                     key={conversation.id}
                     onClick={() => handleConversationClick(conversation.id)}
