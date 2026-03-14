@@ -1369,8 +1369,8 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                   })}
                   options={{
                     ...chartConfig,
-                    responsive: chartConfig.manualDimensions ? false : isResponsive,
-                    maintainAspectRatio: !(isResponsive),
+                    responsive: true,
+                    maintainAspectRatio: false,
                     overlayImages,
                     overlayTexts,
                     overlayShapes,
