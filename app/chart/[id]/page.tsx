@@ -13,13 +13,9 @@ import {
   Download,
   Edit3,
   Loader2,
-  Share2,
-  Copy,
-  BarChart2,
-  Calendar,
-  FileCode
-} from "lucide-react"
+import { Share2, Copy, BarChart2, Calendar, FileCode } from "lucide-react"
 import Link from "next/link"
+import { embedImagesAsBase64 } from "@/lib/utils/html-export-utils"
 
 interface ChartSnapshot {
   chart_type: string
@@ -156,7 +152,7 @@ export default function PublicChartPage() {
         a.click()
         document.body.removeChild(a)
         URL.revokeObjectURL(url)
-        
+
         chart.destroy()
         toast.success("PNG downloaded successfully!")
       })
@@ -166,10 +162,19 @@ export default function PublicChartPage() {
     }
   }
 
-  const handleDownloadHTML = () => {
+  const handleDownloadHTML = async () => {
     if (!conversation?.snapshot) return
 
-    const htmlContent = `<!DOCTYPE html>
+    try {
+      toast.loading("Preparing HTML export (embedding images)...", { id: "html-export" })
+
+      // Convert all images to Base64 so the HTML file is fully standalone offline
+      const { chartData, chartConfig } = await embedImagesAsBase64(
+        conversation.snapshot.chart_data,
+        conversation.snapshot.chart_config
+      )
+
+      const htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -220,90 +225,105 @@ export default function PublicChartPage() {
     const ctx = document.getElementById('chart').getContext('2d');
     new Chart(ctx, {
       type: '${conversation.snapshot.chart_type}',
-      data: ${JSON.stringify(conversation.snapshot.chart_data)},
-      options: ${JSON.stringify(conversation.snapshot.chart_config)}
+      data: ${JSON.stringify(chartData)},
+      options: ${JSON.stringify(chartConfig)}
     });
   </script>
 </body>
 </html>`
 
-    const blob = new Blob([htmlContent], { type: "text/html" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `${conversation.title.replace(/[^a-z0-9]/gi, '_')}.html`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-    
-    toast.success("HTML downloaded successfully!")
-  }
+      const blob = new Blob([htmlContent], { type: "text/html" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `${conversation.title.replace(/[^a-z0-9]/gi, '_')}.html`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
 
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(window.location.href)
-    toast.success("Link copied to clipboard!")
-  }
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString("en-US", { 
-      month: "long", 
-      day: "numeric", 
-      year: "numeric"
-    })
-  }
-
-  const getChartTypeColor = (type: string) => {
-    const colors: Record<string, string> = {
-      bar: "bg-blue-100 text-blue-700 border-blue-200",
-      line: "bg-green-100 text-green-700 border-green-200",
-      pie: "bg-purple-100 text-purple-700 border-purple-200",
-      doughnut: "bg-pink-100 text-pink-700 border-pink-200",
-      radar: "bg-orange-100 text-orange-700 border-orange-200",
-      polarArea: "bg-cyan-100 text-cyan-700 border-cyan-200",
-      bubble: "bg-indigo-100 text-indigo-700 border-indigo-200",
-      scatter: "bg-teal-100 text-teal-700 border-teal-200",
+      toast.success("HTML downloaded successfully!", { id: "html-export" })
+    } catch (error) {
+      console.error("HTML export error:", error)
+      toast.error("Failed to generate HTML", { id: "html-export" })
     }
-    return colors[type] || "bg-gray-100 text-gray-700 border-gray-200"
   }
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = `${conversation.title.replace(/[^a-z0-9]/gi, '_')}.html`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading chart...</p>
-        </div>
-      </div>
-    )
+  toast.success("HTML downloaded successfully!")
+}
+
+const handleCopyLink = () => {
+  navigator.clipboard.writeText(window.location.href)
+  toast.success("Link copied to clipboard!")
+}
+
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString)
+  return date.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric"
+  })
+}
+
+const getChartTypeColor = (type: string) => {
+  const colors: Record<string, string> = {
+    bar: "bg-blue-100 text-blue-700 border-blue-200",
+    line: "bg-green-100 text-green-700 border-green-200",
+    pie: "bg-purple-100 text-purple-700 border-purple-200",
+    doughnut: "bg-pink-100 text-pink-700 border-pink-200",
+    radar: "bg-orange-100 text-orange-700 border-orange-200",
+    polarArea: "bg-cyan-100 text-cyan-700 border-cyan-200",
+    bubble: "bg-indigo-100 text-indigo-700 border-indigo-200",
+    scatter: "bg-teal-100 text-teal-700 border-teal-200",
   }
+  return colors[type] || "bg-gray-100 text-gray-700 border-gray-200"
+}
 
-  if (error || !conversation) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Chart Not Found</h1>
-          <p className="text-gray-600 mb-4 text-sm">
-            {error || "The chart you're looking for doesn't exist or has been deleted."}
-          </p>
-          <Link href="/board">
-            <Button size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Board
-            </Button>
-          </Link>
-        </div>
-      </div>
-    )
-  }
-
+if (loading) {
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4">
-      <div className="w-full h-full">
-        <canvas ref={canvasRef} />
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+      <div className="text-center">
+        <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+        <p className="text-gray-600">Loading chart...</p>
       </div>
     </div>
   )
+}
+
+if (error || !conversation) {
+  return (
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
+      <div className="text-center max-w-md">
+        <h1 className="text-xl font-bold text-gray-900 mb-2">Chart Not Found</h1>
+        <p className="text-gray-600 mb-4 text-sm">
+          {error || "The chart you're looking for doesn't exist or has been deleted."}
+        </p>
+        <Link href="/board">
+          <Button size="sm">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Board
+          </Button>
+        </Link>
+      </div>
+    </div>
+  )
+}
+
+return (
+  <div className="min-h-screen bg-white flex items-center justify-center p-4">
+    <div className="w-full h-full">
+      <canvas ref={canvasRef} />
+    </div>
+  </div>
+)
 }
 

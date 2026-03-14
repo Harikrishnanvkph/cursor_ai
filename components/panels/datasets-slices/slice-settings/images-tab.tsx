@@ -14,8 +14,10 @@ import {
     Square,
     Maximize2,
     Crop,
-    Grid
+    Grid,
+    RotateCcw
 } from "lucide-react"
+import { getProxiedImageUrl } from "@/lib/utils/image-proxy-utils"
 
 interface ImagesTabProps {
     chartMode: string
@@ -193,7 +195,7 @@ export function ImagesTab({
     if (chartMode === 'single') {
         const idx = Math.min(Math.max(0, imageSelectedIndex), Math.max(0, (currentDataset?.data?.length || 1) - 1))
         const imageUrl = currentDataset?.pointImages?.[idx]
-        const hasImage = imageUrl && imageUrl !== '' && imageUrl !== null ? imageUrl as string : null
+        const hasImage = typeof imageUrl === 'string' && imageUrl.trim().length > 0 ? imageUrl : null
         const imageConfig = currentDataset?.pointImageConfig?.[idx] || getDefaultImageConfig(chartType)
         // Ensure type defaults to 'regular' if not set or invalid
         if (!imageConfig.type || (imageConfig.type !== 'regular' && imageConfig.type !== 'circle' && imageConfig.type !== 'square' && imageConfig.type !== 'rounded')) {
@@ -205,7 +207,7 @@ export function ImagesTab({
                 <div className="bg-gradient-to-br from-green-50 to-green-100/50 rounded-lg p-3 space-y-3 border border-green-200/50">
                     {/* Slice Selection & Status */}
                     <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 flex-1">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
                             <Label className="text-[10px] font-semibold text-green-700 uppercase tracking-wide">Slice</Label>
                             <Select value={String(idx)} onValueChange={(v) => setImageSelectedIndex(Number(v))}>
                                 <SelectTrigger className="h-7 text-xs flex-1 border-green-200 focus:border-green-400">
@@ -234,20 +236,9 @@ export function ImagesTab({
                             <Label className="text-[10px] font-medium text-green-700 mb-1.5 block">Preview</Label>
                             <div className="relative aspect-square w-full max-w-[100px] mx-auto rounded-lg overflow-hidden border-2 border-green-300 bg-gray-50">
                                 <img
-                                    src={hasImage}
+                                    src={getProxiedImageUrl(hasImage)}
                                     alt="Preview"
                                     className="w-full h-full object-cover z-10 relative"
-                                    onError={(e) => {
-                                        const img = e.target as HTMLImageElement;
-                                        img.style.display = 'none';
-                                        const fallback = img.nextElementSibling as HTMLElement;
-                                        if (fallback) fallback.style.display = 'flex';
-                                    }}
-                                    onLoad={(e) => {
-                                        const img = e.target as HTMLImageElement;
-                                        const fallback = img.nextElementSibling as HTMLElement;
-                                        if (fallback) fallback.style.display = 'none';
-                                    }}
                                 />
                                 <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-0" style={{ display: 'none' }}>
                                     <ImageIcon className="h-5 w-5 text-gray-400" />
@@ -294,12 +285,13 @@ export function ImagesTab({
                         </div>
                         <Input
                             placeholder="Paste image URL and press Enter"
-                            className="h-7 text-xs flex-1 border-green-200 focus:border-green-400"
+                            className="h-7 text-xs flex-1 border-green-200 focus:border-green-400 min-w-0"
+                            defaultValue={hasImage || ''}
+                            key={`input-single-${idx}-${hasImage}`} // Force re-render when image changes or slice changes
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                     const value = (e.target as HTMLInputElement).value
                                     internalHandleUrlSubmit(idx, value)
-                                        ; (e.target as HTMLInputElement).value = ''
                                 }
                             }}
                         />
@@ -336,16 +328,33 @@ export function ImagesTab({
                                 <Label className="text-[10px] font-medium text-gray-600">Size (px)</Label>
                                 <Input
                                     type="number"
-                                    value={imageConfig.size || getDefaultImageSize(chartType)}
+                                    value={imageConfig.size === '' || Number.isNaN(imageConfig.size as number) ? 0 : (imageConfig.size ?? getDefaultImageSize(chartType))}
                                     className="h-7 text-xs border-green-200 focus:border-green-400"
                                     min={5}
                                     max={100}
-                                    onChange={(e) => handleImageConfigChange(idx, 'size', parseInt(e.target.value))}
+                                    onChange={(e) => handleImageConfigChange(idx, 'size', e.target.value === '' ? 0 : parseInt(e.target.value))}
                                 />
                             </div>
                         </div>
                         <div className="space-y-1">
-                            <Label className="text-[10px] font-medium text-gray-600">Position</Label>
+                            <div className="flex items-center justify-between">
+                                <Label className="text-[10px] font-medium text-gray-600">Position</Label>
+                                {imageConfig.position === 'callout' && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-5 px-1.5 text-[10px] text-green-600 hover:text-green-700 hover:bg-green-50"
+                                        onClick={() => {
+                                            handleImageConfigChange(idx, 'calloutX', undefined);
+                                            handleImageConfigChange(idx, 'calloutY', undefined);
+                                        }}
+                                        title="Reset Callout Position"
+                                    >
+                                        <RotateCcw className="h-3 w-3 mr-1" />
+                                        Reset Callout Position
+                                    </Button>
+                                )}
+                            </div>
                             <Select
                                 value={imageConfig.position || 'center'}
                                 onValueChange={(value) => handleImageConfigChange(idx, 'position', value)}
@@ -379,13 +388,13 @@ export function ImagesTab({
                                         <Label className="text-xs font-medium text-gray-600">Border Width</Label>
                                         <Input
                                             type="number"
-                                            value={imageConfig.borderWidth || 3}
+                                            value={imageConfig.borderWidth === '' || Number.isNaN(imageConfig.borderWidth as number) ? 0 : (imageConfig.borderWidth ?? 3)}
                                             className="h-7 text-xs border-green-200 focus:border-green-400"
                                             placeholder="3"
                                             min={0}
                                             max={10}
                                             step={1}
-                                            onChange={(e) => handleImageConfigChange(idx, 'borderWidth', parseInt(e.target.value))}
+                                            onChange={(e) => handleImageConfigChange(idx, 'borderWidth', e.target.value === '' ? 0 : parseInt(e.target.value))}
                                         />
                                     </div>
                                     <div className="space-y-1">
@@ -441,13 +450,13 @@ export function ImagesTab({
                                             <Label className="text-xs font-medium text-gray-600">Gap (px)</Label>
                                             <Input
                                                 type="number"
-                                                value={imageConfig.arrowEndGap ?? 8}
+                                                value={imageConfig.arrowEndGap === '' || Number.isNaN(imageConfig.arrowEndGap as number) ? 0 : (imageConfig.arrowEndGap ?? 8)}
                                                 className="h-7 text-xs border-green-200 focus:border-green-400"
                                                 placeholder="8"
                                                 min={0}
                                                 max={30}
                                                 step={1}
-                                                onChange={(e) => handleImageConfigChange(idx, 'arrowEndGap', parseInt(e.target.value))}
+                                                onChange={(e) => handleImageConfigChange(idx, 'arrowEndGap', e.target.value === '' ? 0 : parseInt(e.target.value))}
                                             />
                                         </div>
                                     </div>
@@ -546,7 +555,7 @@ export function ImagesTab({
                     <div className="space-y-2.5 max-h-96 overflow-y-auto pr-1">
                         {currentDataset.data.map((_: any, pointIndex: number) => {
                             const imageUrl = currentDataset.pointImages?.[pointIndex]
-                            const hasImage = imageUrl && imageUrl !== '' && imageUrl !== null ? imageUrl as string : null
+                            const hasImage = typeof imageUrl === 'string' && imageUrl.trim().length > 0 ? imageUrl : null
                             const imageConfig = currentDataset.pointImageConfig?.[pointIndex] || getDefaultImageConfig(chartType)
                             // Ensure type defaults to 'regular' if not set or invalid
                             if (!imageConfig.type || (imageConfig.type !== 'regular' && imageConfig.type !== 'circle' && imageConfig.type !== 'square' && imageConfig.type !== 'rounded')) {
@@ -573,20 +582,9 @@ export function ImagesTab({
                                         <div className="mb-2 bg-gray-50 rounded p-1.5 border border-green-200">
                                             <div className="relative aspect-square w-full max-w-[80px] mx-auto rounded overflow-hidden border border-green-300 bg-white">
                                                 <img
-                                                    src={hasImage}
+                                                    src={getProxiedImageUrl(hasImage)}
                                                     alt={`Preview ${pointIndex + 1}`}
                                                     className="w-full h-full object-cover z-10 relative"
-                                                    onError={(e) => {
-                                                        const img = e.target as HTMLImageElement;
-                                                        img.style.display = 'none';
-                                                        const fallback = img.nextElementSibling as HTMLElement;
-                                                        if (fallback) fallback.style.display = 'flex';
-                                                    }}
-                                                    onLoad={(e) => {
-                                                        const img = e.target as HTMLImageElement;
-                                                        const fallback = img.nextElementSibling as HTMLElement;
-                                                        if (fallback) fallback.style.display = 'none';
-                                                    }}
                                                 />
                                                 <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-0" style={{ display: 'none' }}>
                                                     <ImageIcon className="h-4 w-4 text-gray-400" />
@@ -632,12 +630,13 @@ export function ImagesTab({
 
                                         <Input
                                             placeholder="Paste URL and press Enter"
-                                            className="h-7 text-xs flex-1 border-green-200 focus:border-green-400"
+                                            className="h-7 text-xs flex-1 border-green-200 focus:border-green-400 min-w-0"
+                                            defaultValue={hasImage || ''}
+                                            key={`input-grouped-${pointIndex}-${hasImage}`} // force re-render when image changes
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter') {
                                                     const value = (e.target as HTMLInputElement).value;
                                                     internalHandleUrlSubmit(pointIndex, value)
-                                                        ; (e.target as HTMLInputElement).value = '';
                                                 }
                                             }}
                                         />
@@ -676,18 +675,35 @@ export function ImagesTab({
                                                 <Label className="text-[10px] font-medium text-gray-600">Size (px)</Label>
                                                 <Input
                                                     type="number"
-                                                    value={imageConfig.size || getDefaultImageSize(chartType)}
+                                                    value={imageConfig.size === '' || Number.isNaN(imageConfig.size as number) ? 0 : (imageConfig.size ?? getDefaultImageSize(chartType))}
                                                     className="h-7 text-xs border-green-200 focus:border-green-400"
                                                     placeholder="20"
                                                     min={5}
                                                     max={100}
-                                                    onChange={(e) => handleImageConfigChange(pointIndex, 'size', parseInt(e.target.value))}
+                                                    onChange={(e) => handleImageConfigChange(pointIndex, 'size', e.target.value === '' ? 0 : parseInt(e.target.value))}
                                                 />
                                             </div>
                                         </div>
 
                                         <div className="space-y-1">
-                                            <Label className="text-[10px] font-medium text-gray-600">Position</Label>
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-[10px] font-medium text-gray-600">Position</Label>
+                                                {imageConfig.position === 'callout' && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-5 px-1.5 text-[10px] text-green-600 hover:text-green-700 hover:bg-green-50"
+                                                        onClick={() => {
+                                                            handleImageConfigChange(pointIndex, 'calloutX', undefined);
+                                                            handleImageConfigChange(pointIndex, 'calloutY', undefined);
+                                                        }}
+                                                        title="Reset Callout Position"
+                                                    >
+                                                        <RotateCcw className="h-3 w-3 mr-1" />
+                                                        Reset Callout Position
+                                                    </Button>
+                                                )}
+                                            </div>
                                             <Select
                                                 value={imageConfig.position || 'center'}
                                                 onValueChange={(value) => handleImageConfigChange(pointIndex, 'position', value)}
@@ -721,13 +737,13 @@ export function ImagesTab({
                                                         <Label className="text-xs font-medium text-gray-600">Border Width</Label>
                                                         <Input
                                                             type="number"
-                                                            value={imageConfig.borderWidth || 3}
+                                                            value={imageConfig.borderWidth === '' || Number.isNaN(imageConfig.borderWidth as number) ? 0 : (imageConfig.borderWidth ?? 3)}
                                                             className="h-7 text-xs border-green-200 focus:border-green-400"
                                                             placeholder="3"
                                                             min={0}
                                                             max={10}
                                                             step={1}
-                                                            onChange={(e) => handleImageConfigChange(pointIndex, 'borderWidth', parseInt(e.target.value))}
+                                                            onChange={(e) => handleImageConfigChange(pointIndex, 'borderWidth', e.target.value === '' ? 0 : parseInt(e.target.value))}
                                                         />
                                                     </div>
                                                     <div className="space-y-1">
@@ -783,13 +799,13 @@ export function ImagesTab({
                                                             <Label className="text-xs font-medium text-gray-600">Gap (px)</Label>
                                                             <Input
                                                                 type="number"
-                                                                value={imageConfig.arrowEndGap ?? 8}
+                                                                value={imageConfig.arrowEndGap === '' || Number.isNaN(imageConfig.arrowEndGap as number) ? 0 : (imageConfig.arrowEndGap ?? 8)}
                                                                 className="h-7 text-xs border-green-200 focus:border-green-400"
                                                                 placeholder="8"
                                                                 min={0}
                                                                 max={30}
                                                                 step={1}
-                                                                onChange={(e) => handleImageConfigChange(pointIndex, 'arrowEndGap', parseInt(e.target.value))}
+                                                                onChange={(e) => handleImageConfigChange(pointIndex, 'arrowEndGap', e.target.value === '' ? 0 : parseInt(e.target.value))}
                                                             />
                                                         </div>
                                                     </div>
@@ -868,12 +884,12 @@ export function ImagesTab({
                                                 <Label className="text-[10px] font-medium text-gray-600">Border Width</Label>
                                                 <Input
                                                     type="number"
-                                                    value={imageConfig.borderWidth || 3}
+                                                    value={imageConfig.borderWidth === '' || Number.isNaN(imageConfig.borderWidth as number) ? 0 : (imageConfig.borderWidth ?? 3)}
                                                     className="h-7 text-xs border-green-200 focus:border-green-400"
                                                     placeholder="3"
                                                     min={0}
                                                     max={10}
-                                                    onChange={(e) => handleImageConfigChange(pointIndex, 'borderWidth', parseInt(e.target.value))}
+                                                    onChange={(e) => handleImageConfigChange(pointIndex, 'borderWidth', e.target.value === '' ? 0 : parseInt(e.target.value))}
                                                 />
                                             </div>
 

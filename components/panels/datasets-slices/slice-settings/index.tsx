@@ -382,7 +382,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                 <div className="flex items-center gap-2">
                     {chartMode === 'grouped' ? (
                         <div className="flex items-end gap-3 w-full">
-                            <div className="flex-1">
+                            <div className="flex-1 min-w-0">
                                 <Label className="text-[0.70rem] font-medium text-gray-500 mb-1 block">Group</Label>
                                 <Select
                                     value={selectedViewGroupId}
@@ -410,7 +410,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                                 </Select>
                             </div>
 
-                            <div className="flex-1">
+                            <div className="flex-1 min-w-0">
                                 <Label className="text-[0.70rem] font-medium text-gray-500 mb-1 block">Dataset</Label>
                                 {(() => {
                                     const groupDatasets = filteredDatasets
@@ -446,7 +446,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                         </div>
                     ) : (
                         <div className="flex items-end gap-3 w-full">
-                            <div className="flex-1">
+                            <div className="flex-1 min-w-0">
                                 <Label className="text-[0.70rem] font-medium text-gray-500 mb-1 block">Dataset</Label>
                                 <Select value={String(selectedDatasetIndex)} onValueChange={(value) => handleDatasetChange(Number(value))}>
                                     <SelectTrigger className="h-8 w-full text-xs bg-blue-50 border-blue-200 hover:bg-blue-100">

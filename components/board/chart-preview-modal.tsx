@@ -29,6 +29,7 @@ import {
   AlertCircle
 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { embedImagesAsBase64 } from "@/lib/utils/html-export-utils"
 
 interface ChartPreviewModalProps {
   conversation: Conversation
@@ -176,13 +177,22 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
     }
   }
 
-  const handleDownloadHTML = () => {
+  const handleDownloadHTML = async () => {
     if (!liveConversation.snapshot?.chartData) {
       toast.error("Chart data not yet loaded")
       return
     }
 
-    const htmlContent = `<!DOCTYPE html>
+    try {
+      toast.loading("Preparing HTML export (embedding images)...", { id: "html-export" })
+
+      // Convert all images to Base64 so the HTML file is fully standalone offline
+      const { chartData, chartConfig } = await embedImagesAsBase64(
+        liveConversation.snapshot.chartData,
+        liveConversation.snapshot.chartConfig
+      )
+
+      const htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -233,24 +243,28 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
     const ctx = document.getElementById('chart').getContext('2d');
     new Chart(ctx, {
       type: '${liveConversation.snapshot.chartType}',
-      data: ${JSON.stringify(liveConversation.snapshot.chartData)},
-      options: ${JSON.stringify(liveConversation.snapshot.chartConfig)}
+      data: ${JSON.stringify(chartData)},
+      options: ${JSON.stringify(chartConfig)}
     });
   </script>
 </body>
 </html>`
 
-    const blob = new Blob([htmlContent], { type: "text/html" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `${conversation.title.replace(/[^a-z0-9]/gi, '_')}.html`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+      const blob = new Blob([htmlContent], { type: "text/html" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `${conversation.title.replace(/[^a-z0-9]/gi, '_')}.html`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
 
-    toast.success("HTML downloaded successfully!")
+      toast.success("HTML downloaded successfully!", { id: "html-export" })
+    } catch (error) {
+      console.error("HTML export error:", error)
+      toast.error("Failed to generate HTML", { id: "html-export" })
+    }
   }
 
   const handleCopyShareLink = () => {

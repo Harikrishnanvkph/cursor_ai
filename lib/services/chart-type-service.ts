@@ -172,6 +172,21 @@ export const ChartTypeService = {
                     return point;
                 });
             }
+
+            // Reset image callout positions when chart type changes
+            if (Array.isArray(newDataset.pointImageConfig)) {
+                newDataset.pointImageConfig = newDataset.pointImageConfig.map(config => {
+                    if (config) {
+                        return {
+                            ...config,
+                            calloutX: undefined,
+                            calloutY: undefined
+                        };
+                    }
+                    return config;
+                });
+            }
+
             return newDataset;
         });
 

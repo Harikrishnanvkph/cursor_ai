@@ -1,5 +1,6 @@
 import type { Chart } from "chart.js"
 import type { SupportedChartType, PointImageConfig } from "../chart-store"
+import { getProxiedImageUrl } from "../utils/image-proxy-utils"
 
 // Global state for drag handling
 const dragState = {
@@ -11,6 +12,55 @@ const dragState = {
 }
 
 // Universal image plugin for all chart types
+
+// Helper to calculate callout position dynamically without mutating state
+function calculateCalloutPosition(chart: any, datasetIndex: number, pointIndex: number, element: any, config: any) {
+    let calloutX = config.calloutX;
+    let calloutY = config.calloutY;
+
+    if (calloutX === undefined || calloutY === undefined) {
+        const chartType = chart.config.type;
+        const offset = config.offset || 40;
+
+        if (chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea') {
+            const centerX = chart.chartArea.left + chart.chartArea.width / 2;
+            const centerY = chart.chartArea.top + chart.chartArea.height / 2;
+            const meta = chart.getDatasetMeta(datasetIndex);
+
+            // Note: element parameter might be filtered element, so we pull from meta using pointIndex
+            const el = meta?.data?.[pointIndex] as any;
+
+            if (el) {
+                const startAngle = el.startAngle ?? 0;
+                const endAngle = el.endAngle ?? 0;
+                const midAngle = (startAngle + endAngle) / 2;
+                const outerRadius = el.outerRadius ?? (Math.min(chart.chartArea.width, chart.chartArea.height) / 2);
+                const r = outerRadius + offset;
+
+                calloutX = centerX + Math.cos(midAngle) * r;
+                calloutY = centerY + Math.sin(midAngle) * r;
+            } else {
+                calloutX = element.x + offset;
+                calloutY = element.y - offset;
+            }
+        } else {
+            calloutX = element.x + offset;
+            calloutY = element.y - offset;
+        }
+    }
+
+    // Apply boundaries
+    if (chart && chart.width && chart.height) {
+        const size = config.size || 30;
+        const halfSize = size / 2;
+        const padding = 5 + (config.borderWidth || 3);
+        calloutX = Math.max(halfSize + padding, Math.min(calloutX, chart.width - halfSize - padding));
+        calloutY = Math.max(halfSize + padding, Math.min(calloutY, chart.height - halfSize - padding));
+    }
+
+    return { calloutX, calloutY };
+}
+
 export const universalImagePlugin = {
     id: "universalImages",
     afterDraw: (chart: any) => {
@@ -94,7 +144,7 @@ export const universalImagePlugin = {
 
                         ctx.restore()
                     }
-                    img.src = imageUrl
+                    img.src = getProxiedImageUrl(imageUrl)
                 }
             })
         })
@@ -126,8 +176,7 @@ export const universalImagePlugin = {
                     if (config && config.position === "callout" && dataset.pointImages?.[pointIndex]) {
                         if (!element) return
 
-                        const calloutX = config.calloutX !== undefined ? config.calloutX : element.x + (config.offset || 40)
-                        const calloutY = config.calloutY !== undefined ? config.calloutY : element.y - (config.offset || 40)
+                        const { calloutX, calloutY } = calculateCalloutPosition(chart, datasetIndex, pointIndex, element, config);
                         const size = config.size || 30
 
                         const distance = Math.sqrt((x - calloutX) ** 2 + (y - calloutY) ** 2)
@@ -178,8 +227,7 @@ export const universalImagePlugin = {
 
                             if (!element) return
 
-                            const calloutX = config.calloutX !== undefined ? config.calloutX : element.x + (config.offset || 40)
-                            const calloutY = config.calloutY !== undefined ? config.calloutY : element.y - (config.offset || 40)
+                            const { calloutX, calloutY } = calculateCalloutPosition(chart, datasetIndex, pointIndex, element, config);
                             const size = config.size || 30
 
                             const distance = Math.sqrt((x - calloutX) ** 2 + (y - calloutY) ** 2)
@@ -243,8 +291,7 @@ export const universalImagePlugin = {
                     if (config && config.position === "callout" && dataset.pointImages?.[pointIndex]) {
                         if (!element) return
 
-                        const calloutX = config.calloutX !== undefined ? config.calloutX : element.x + (config.offset || 40)
-                        const calloutY = config.calloutY !== undefined ? config.calloutY : element.y - (config.offset || 40)
+                        const { calloutX, calloutY } = calculateCalloutPosition(chart, datasetIndex, pointIndex, element, config);
                         const size = config.size || 30
 
                         const distance = Math.sqrt((x - calloutX) ** 2 + (y - calloutY) ** 2)
@@ -545,32 +592,13 @@ function renderCalloutImage(
     const size = config.size || 30
     const offset = config.offset || 40
 
-    // Use stored position or calculate default
-    let calloutX = config.calloutX
-    let calloutY = config.calloutY
-    if (calloutX === undefined || calloutY === undefined) {
-        const chartType = chart.config.type
-        if (chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea') {
-            const centerX = chart.chartArea.left + chart.chartArea.width / 2
-            const centerY = chart.chartArea.top + chart.chartArea.height / 2
-            const meta = chart.getDatasetMeta(datasetIndex)
-            const el = meta?.data?.[pointIndex]
-            const startAngle = el?.startAngle ?? 0
-            const endAngle = el?.endAngle ?? 0
-            const midAngle = (startAngle + endAngle) / 2
-            const outerRadius = el?.outerRadius ?? Math.min(chart.chartArea.width, chart.chartArea.height) / 2
-            const r = outerRadius + offset
-            calloutX = centerX + Math.cos(midAngle) * r
-            calloutY = centerY + Math.sin(midAngle) * r
-        } else {
-            calloutX = pointX + offset
-            calloutY = pointY - offset
-        }
-    }
+    // Use stored position or calculate default dynamically
+    // The renderer uses {x: pointX, y: pointY} as a pseudo-element for calculation
+    const pseudoElement = Array.isArray(chart.getDatasetMeta(datasetIndex)?.data)
+        ? chart.getDatasetMeta(datasetIndex).data[pointIndex] || { x: pointX, y: pointY }
+        : { x: pointX, y: pointY };
 
-    // Store the calculated position back to config for dragging
-    if (config.calloutX === undefined) config.calloutX = calloutX
-    if (config.calloutY === undefined) config.calloutY = calloutY
+    const { calloutX, calloutY } = calculateCalloutPosition(chart, datasetIndex, pointIndex, pseudoElement, config);
 
     // Draw arrow line and head if enabled
     const arrowLine = config.arrowLine !== false

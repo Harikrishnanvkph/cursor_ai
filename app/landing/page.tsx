@@ -153,6 +153,8 @@ function LandingPageContent() {
     return () => window.removeEventListener('resize', checkScreenSize)
   }, [])
 
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
+
   // Auto-sync backend data when user logs in
   useEffect(() => {
     if (user && !hasLoadedBackendData) {
@@ -552,6 +554,8 @@ function LandingPageContent() {
                   setTabletRightSidebarContent('messages');
                   setTabletRightSidebarOpen(true);
                 }}
+                isTemplateModalOpen={isTemplateModalOpen}
+                setIsTemplateModalOpen={setIsTemplateModalOpen}
               />
             )}
           </div>
@@ -701,6 +705,8 @@ function LandingPageContent() {
                   setMobileRightSidebarContent('messages');
                   setMobileRightSidebarOpen(true);
                 }}
+                isTemplateModalOpen={isTemplateModalOpen}
+                setIsTemplateModalOpen={setIsTemplateModalOpen}
               />
             )}
           </div>
@@ -868,8 +874,8 @@ function LandingPageContent() {
   // Desktop Layout (default)
   return (
     <div className="flex h-screen w-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 relative overflow-hidden">
-      {/* Floating global header for history and avatar, only when no chart is created - Desktop only */}
-      {(!chartData?.datasets?.length || !hasJSON) && !isTablet && !isMobile && (
+      {/* Floating global header for history and avatar, only when no chart is created and no template modal is open - Desktop only */}
+      {(!chartData?.datasets?.length || !hasJSON) && !isTablet && !isMobile && !isTemplateModalOpen && (
         <div className="fixed top-4 right-4 z-50 flex items-center gap-3">
 
           <HistoryDropdown variant="full" />
@@ -881,7 +887,7 @@ function LandingPageContent() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(156,146,172,0.15)_1px,transparent_0)] bg-[length:20px_20px]"></div>
       </div>
       {/* Left Sidebar / Chat */}
-      <aside className={`transition-all duration-300 z-10 flex flex-col border-r border-white/20 shadow-2xl bg-white/90 backdrop-blur-xl ${leftSidebarOpen ? 'w-[320px]' : 'w-16'} rounded-tl-2xl rounded-bl-2xl`}>
+      <aside className={`transition-all duration-300 z-10 flex flex-col border-r border-white/20 shadow-2xl bg-white/90 backdrop-blur-xl ${leftSidebarOpen ? 'w-[320px]' : 'w-14'} rounded-tl-2xl rounded-bl-2xl`}>
         {leftSidebarOpen ? (
           <>
             {/* Navigation Section */}
@@ -1068,64 +1074,68 @@ function LandingPageContent() {
           </>
         ) : (
           // Collapsed Sidebar - Icon Only
-          <div className="flex flex-col items-center h-full py-4 space-y-4 group">
-            {/* Application Logo - Always shows logo, routes to home */}
-            <button
-              onClick={() => router.push("/")}
-              className="p-2 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-md"
-              title="Go to Home"
-            >
-              <BarChart2 className="w-6 h-6 text-white" />
-            </button>
+          <div className="flex flex-col items-center h-full py-4 group">
+            <div className="flex flex-col items-center space-y-4 w-full">
+              {/* Application Logo - Always shows logo, routes to home */}
+              <button
+                onClick={() => router.push("/")}
+                className="p-1.5 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-md"
+                title="Go to Home"
+              >
+                <BarChart2 className="w-5 h-5 text-white" />
+              </button>
 
-            {/* Expand Sidebar Icon - Separate ChevronRight icon */}
-            <button
-              onClick={() => setLeftSidebarOpen(true)}
-              className="p-2 rounded-lg hover:bg-gradient-to-br hover:from-blue-50 hover:to-indigo-50 text-gray-500 hover:text-blue-600 hover:shadow-md hover:scale-105"
-              title="Expand Sidebar"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
+              {/* Expand Sidebar Icon - Separate ChevronRight icon */}
+              <button
+                onClick={() => setLeftSidebarOpen(true)}
+                className="p-1.5 rounded-lg hover:bg-gradient-to-br hover:from-blue-50 hover:to-indigo-50 text-gray-500 hover:text-blue-600 hover:shadow-md hover:scale-105"
+                title="Expand Sidebar"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
 
-            {/* New Chat Icon */}
-            <button
-              onClick={() => {
-                handleNewConversation();
-                setLeftSidebarOpen(true);
-              }}
-              className="p-2 rounded-lg hover:bg-blue-50 transition-all duration-200 text-gray-600 hover:text-blue-600"
-              title="New Chat"
-            >
-              <SquarePen className="w-5 h-5" />
-            </button>
-
-            {/* Message Icon - Show current chat */}
-            <button
-              onClick={() => {
-                if (hasActiveChart) {
+              {/* New Chat Icon */}
+              <button
+                onClick={() => {
+                  handleNewConversation();
                   setLeftSidebarOpen(true);
-                }
-              }}
-              className={`p-2 rounded-lg transition-all duration-200 ${hasActiveChart
-                ? 'text-blue-600 bg-blue-50 hover:bg-blue-100'
-                : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
-                }`}
-              title={hasActiveChart ? "Current Chat" : "No active chat"}
-              disabled={!hasActiveChart}
-            >
-              <MessageSquare className="w-5 h-5" />
-            </button>
+                }}
+                className="p-1.5 rounded-lg hover:bg-blue-50 transition-all duration-200 text-gray-600 hover:text-blue-600"
+                title="New Chat"
+              >
+                <SquarePen className="w-4 h-4" />
+              </button>
 
-            {/* History Icon */}
-            <button
-              onClick={() => setLeftSidebarOpen(true)}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-200 text-gray-600 hover:text-gray-800"
-              title="Chat History"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </button>
+              {/* Message Icon - Show current chat */}
+              <button
+                onClick={() => {
+                  if (hasActiveChart) {
+                    setLeftSidebarOpen(true);
+                  }
+                }}
+                className={`p-1.5 rounded-lg transition-all duration-200 ${hasActiveChart
+                  ? 'text-blue-600 bg-blue-50 hover:bg-blue-100'
+                  : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+                  }`}
+                title={hasActiveChart ? "Current Chat" : "No active chat"}
+                disabled={!hasActiveChart}
+              >
+                <MessageSquare className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="mt-auto pt-4 pb-4 w-full flex justify-center">
+              <button
+                onClick={() => router.push('/editor')}
+                className="group/btn relative flex flex-col items-center justify-center py-4 px-1.5 gap-3 rounded-lg bg-gray-100 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 hover:shadow-sm transition-all duration-200 w-full mx-2 max-w-[40px]"
+                title="Advanced Editor"
+              >
+                <Edit3 className="w-4 h-4 text-gray-500 group-hover/btn:text-blue-600 transition-colors" />
+                <div className="writing-vertical-rl rotate-180 text-[10px] font-medium text-gray-500 tracking-wider group-hover/btn:text-blue-600 transition-colors uppercase antialiased" style={{ textRendering: 'optimizeLegibility' }}>
+                  Advanced Editor
+                </div>
+              </button>
+            </div>
           </div>
         )}
       </aside>
@@ -1141,6 +1151,8 @@ function LandingPageContent() {
             size="large"
             className="p-12"
             onSampleClick={handleTemplateClick}
+            isTemplateModalOpen={isTemplateModalOpen}
+            setIsTemplateModalOpen={setIsTemplateModalOpen}
           />
         )}
       </div>

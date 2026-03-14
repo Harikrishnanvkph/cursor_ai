@@ -5,4 +5,4 @@ export { generateCustomChartHTML, generateMinimalChartHTML, generateEmbeddedChar
 export { generateChartHTMLForTemplate } from "./template-html-generator"
 
 // Re-export utilities that other modules may need
-export { convertImageToBase64, processChartDataForExport, buildLegendConfigForExport, generateCustomLabelsFromConfig, syncImagePositionsToConfig } from "./export-utils"
+export { filterChartDataForExport, convertImageToBase64, processChartDataForExport, buildLegendConfigForExport, generateCustomLabelsFromConfig, syncImagePositionsToConfig } from "./export-utils"

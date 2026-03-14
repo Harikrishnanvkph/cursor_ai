@@ -1,5 +1,6 @@
 import type { OverlayImage } from "../../chart-store"
 import { clipImageToShape, drawRoundedRect } from "../utils/canvas"
+import { getProxiedImageUrl } from "../../utils/image-proxy-utils"
 
 // Image cache to store preloaded images
 export const imageCache = new Map<string, HTMLImageElement>()
@@ -151,7 +152,7 @@ export function renderOverlayImage(ctx: CanvasRenderingContext2D, image: Overlay
                 console.error('❌ Failed to load overlay image:', image.url.substring(0, 50) + '...')
             }
 
-            img.src = image.url
+            img.src = getProxiedImageUrl(image.url)
         }
     }
 }

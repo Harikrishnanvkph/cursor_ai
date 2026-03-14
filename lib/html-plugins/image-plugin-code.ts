@@ -2,7 +2,7 @@
  * Generate the universal image plugin code for HTML export
  */
 export function generateUniversalImagePluginCode(): string {
-    return `
+  return `
 // Universal Image Plugin for HTML Export
 const universalImagePlugin = {
   id: "universalImages",
@@ -537,6 +537,14 @@ function renderCalloutImage(ctx, pointX, pointY, img, config, datasetIndex, poin
       x = pointX + offset;
       y = pointY - offset;
     }
+  }
+
+  // Clamp to canvas boundaries to ensure it's always visible
+  if (chart && chart.width && chart.height) {
+    const halfSize = size / 2;
+    const padding = 5 + (config.borderWidth || 3);
+    x = Math.max(halfSize + padding, Math.min(x, chart.width - halfSize - padding));
+    y = Math.max(halfSize + padding, Math.min(y, chart.height - halfSize - padding));
   }
 
   // Draw arrow if enabled

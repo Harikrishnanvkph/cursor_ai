@@ -1,4 +1,74 @@
 import { type ExtendedChartData } from "../chart-store";
+import { getProxiedImageUrl, requiresProxy } from "../utils/image-proxy-utils";
+
+// Function to convert image URL to base64
+export function filterChartDataForExport(
+    rawChartData: any,
+    chartMode: string,
+    activeDatasetIndex: number,
+    legendFilter: any,
+    activeGroupId: string,
+    chartType: string
+): any {
+    // 1. Filter datasets based on mode, active dataset/group, and legend filter
+    let exportDatasets = chartMode === 'single'
+        ? rawChartData.datasets.filter((_: any, i: number) => i === activeDatasetIndex)
+        : rawChartData.datasets
+            .map((ds: any, i: number) => (legendFilter.datasets[i] === false ? null : ds))
+            .filter((ds: any) => ds !== null);
+
+    exportDatasets = exportDatasets.filter((dataset: any) => {
+        if (dataset.mode) {
+            if (dataset.mode !== chartMode) return false;
+            // For grouped mode, also filter by active group
+            if (chartMode === 'grouped' && dataset.groupId !== activeGroupId) {
+                return false;
+            }
+            return true;
+        }
+        return true;
+    });
+
+    // 2. Filter slices based on legend filter
+    const isSliceVisible = (index: number) => legendFilter.slices[index] !== false;
+    
+    // Find all slice indices that are enabled
+    const enabledSliceIndicesSet = new Set<number>();
+    exportDatasets.forEach((ds: any) => {
+        (ds.data || []).forEach((_: any, idx: number) => {
+            if (isSliceVisible(idx)) {
+                enabledSliceIndicesSet.add(idx);
+            }
+        });
+    });
+    const enabledSliceIndices = Array.from(enabledSliceIndicesSet).sort((a, b) => a - b);
+
+    // Apply slice filtering to all datasets
+    exportDatasets = exportDatasets.map((ds: any) => {
+        const filterSlice = (arr: any[] | undefined) => {
+            if (!arr || !Array.isArray(arr)) return arr;
+            return enabledSliceIndices.map(idx => arr[idx]);
+        };
+        return {
+            ...ds,
+            // Only use explicit dataset type if in grouped mode, otherwise default to chartType
+            type: chartMode === 'single' ? chartType : (ds.chartType || chartType),
+            data: filterSlice(ds.data),
+            backgroundColor: Array.isArray(ds.backgroundColor) ? filterSlice(ds.backgroundColor) : ds.backgroundColor,
+            borderColor: Array.isArray(ds.borderColor) ? filterSlice(ds.borderColor) : ds.borderColor,
+            pointImages: Array.isArray(ds.pointImages) ? filterSlice(ds.pointImages) : ds.pointImages,
+            pointImageConfig: Array.isArray(ds.pointImageConfig) ? filterSlice(ds.pointImageConfig) : ds.pointImageConfig,
+            sliceLabels: Array.isArray(ds.sliceLabels) ? filterSlice(ds.sliceLabels) : ds.sliceLabels,
+        };
+    });
+
+    // Deep copy chart data (now filtered) to avoid mutating state further
+    return {
+        ...rawChartData,
+        labels: Array.isArray(rawChartData.labels) ? enabledSliceIndices.map(idx => rawChartData.labels[idx]) : rawChartData.labels,
+        datasets: exportDatasets
+    };
+}
 
 // Function to convert image URL to base64
 export async function convertImageToBase64(imageUrl: string): Promise<string> {
@@ -22,7 +92,10 @@ export async function convertImageToBase64(imageUrl: string): Promise<string> {
 
         // Handle external URLs
         if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-            const response = await fetch(imageUrl);
+            const fetchUrl = requiresProxy(imageUrl) ? getProxiedImageUrl(imageUrl) : imageUrl;
+            // Append cache-busting timestamp to bypass browser cache where a non-CORS response might be cached
+            const cacheBustedUrl = fetchUrl + (fetchUrl.includes('?') ? '&' : '?') + '_cb=' + Date.now();
+            const response = await fetch(cacheBustedUrl, { cache: 'no-store' });
             const blob = await response.blob();
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();

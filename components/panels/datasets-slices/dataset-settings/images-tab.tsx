@@ -21,6 +21,7 @@ import {
     ArrowDown,
     ArrowLeft,
     ArrowRight,
+    RotateCcw,
     ExternalLink,
     Maximize2,
     Grid,
@@ -196,7 +197,13 @@ export function ImagesTab({
     const handleImageConfigChange = (datasetIndex: number, pointIndex: number, key: string, value: any) => {
         const currentConfig = chartData.datasets[datasetIndex]?.pointImageConfig?.[pointIndex] || getDefaultImageConfigFromStore(chartType as any);
         const imageUrl = (chartData.datasets[datasetIndex]?.pointImages?.[pointIndex] as string | undefined) ?? '';
-        updatePointImage(datasetIndex, pointIndex, imageUrl, { ...currentConfig, [key]: value });
+
+        let newConfig = { ...currentConfig, [key]: value };
+        if (key === 'arrowLine' && value === false) {
+            newConfig.arrowHead = false;
+        }
+
+        updatePointImage(datasetIndex, pointIndex, imageUrl, newConfig);
     };
 
     const handleGlobalImageConfigChange = (key: string, value: any) => {
@@ -421,19 +428,36 @@ export function ImagesTab({
                                     <Label className="text-xs font-medium text-gray-600">Size (px)</Label>
                                     <Input
                                         type="number"
-                                        value={activeDataset?.pointImageConfig?.[0]?.size || getDefaultImageSize(chartType as any)}
+                                        value={activeDataset?.pointImageConfig?.[0]?.size === '' || Number.isNaN(activeDataset?.pointImageConfig?.[0]?.size as number) ? 0 : (activeDataset?.pointImageConfig?.[0]?.size ?? getDefaultImageSize(chartType as any))}
                                         className="h-7 text-xs border-purple-200 focus:border-purple-400"
                                         placeholder="20"
                                         min={5}
                                         max={100}
                                         step={1}
-                                        onChange={(e) => handleGlobalImageConfigChange('size', parseInt(e.target.value))}
+                                        onChange={(e) => handleGlobalImageConfigChange('size', e.target.value === '' ? 0 : parseInt(e.target.value))}
                                     />
                                 </div>
                             </div>
 
                             <div className="space-y-1">
-                                <Label className="text-xs font-medium text-gray-600">Position</Label>
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-xs font-medium text-gray-600">Position</Label>
+                                    {activeDataset?.pointImageConfig?.[0]?.position === 'callout' && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-5 px-1.5 text-[10px] text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                                            onClick={() => {
+                                                handleGlobalImageConfigChange('calloutX', undefined);
+                                                handleGlobalImageConfigChange('calloutY', undefined);
+                                            }}
+                                            title="Reset Callout Position"
+                                        >
+                                            <RotateCcw className="h-3 w-3 mr-1" />
+                                            Reset Callout Position
+                                        </Button>
+                                    )}
+                                </div>
                                 <Select
                                     value={activeDataset?.pointImageConfig?.[0]?.position || 'center'}
                                     onValueChange={(value) => handleGlobalImageConfigChange('position', value)}
@@ -467,13 +491,13 @@ export function ImagesTab({
                                             <Label className="text-xs font-medium text-gray-600">Border Width</Label>
                                             <Input
                                                 type="number"
-                                                value={activeDataset?.pointImageConfig?.[0]?.borderWidth || 3}
+                                                value={activeDataset?.pointImageConfig?.[0]?.borderWidth === '' || Number.isNaN(activeDataset?.pointImageConfig?.[0]?.borderWidth as number) ? 0 : (activeDataset?.pointImageConfig?.[0]?.borderWidth ?? 3)}
                                                 className="h-7 text-xs border-purple-200 focus:border-purple-400"
                                                 placeholder="3"
                                                 min={0}
                                                 max={10}
                                                 step={1}
-                                                onChange={(e) => handleGlobalImageConfigChange('borderWidth', parseInt(e.target.value))}
+                                                onChange={(e) => handleGlobalImageConfigChange('borderWidth', e.target.value === '' ? 0 : parseInt(e.target.value))}
                                             />
                                         </div>
                                         <div className="space-y-1">
@@ -529,13 +553,13 @@ export function ImagesTab({
                                                 <Label className="text-xs font-medium text-gray-600">Gap (px)</Label>
                                                 <Input
                                                     type="number"
-                                                    value={activeDataset?.pointImageConfig?.[0]?.arrowEndGap ?? 8}
+                                                    value={activeDataset?.pointImageConfig?.[0]?.arrowEndGap === '' || Number.isNaN(activeDataset?.pointImageConfig?.[0]?.arrowEndGap as number) ? 0 : (activeDataset?.pointImageConfig?.[0]?.arrowEndGap ?? 8)}
                                                     className="h-7 text-xs border-purple-200 focus:border-purple-400"
                                                     placeholder="8"
                                                     min={0}
                                                     max={30}
                                                     step={1}
-                                                    onChange={(e) => handleGlobalImageConfigChange('arrowEndGap', parseInt(e.target.value))}
+                                                    onChange={(e) => handleGlobalImageConfigChange('arrowEndGap', e.target.value === '' ? 0 : parseInt(e.target.value))}
                                                 />
                                             </div>
                                         </div>

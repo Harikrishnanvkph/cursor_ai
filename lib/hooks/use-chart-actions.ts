@@ -176,6 +176,7 @@ export const useChartActions = () => {
             finalState.groups = currentState.groups.map((g: any) =>
                 g.id === currentState.activeGroupId ? { ...g, chartConfig: newState.chartConfig } : g
             );
+            finalState.chartData = newState.chartData;
             finalState.groupedModeData = newState.chartData;
         }
 

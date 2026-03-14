@@ -32,6 +32,10 @@ import { universalImagePlugin } from "./plugins/universal-image-plugin"
 import { customLabelPlugin } from "./custom-label-plugin"
 import exportPlugin from "./export-plugin"
 import { overlayPlugin } from "./overlay-plugin"
+import { enhancedTitlePlugin } from "./enhanced-title-plugin"
+
+// Date adapter for time scales - auto-registers with Chart.js
+import 'chartjs-adapter-date-fns'
 
 // Register all Chart.js components globally
 ChartJS.register(
@@ -58,10 +62,12 @@ ChartJS.register(
   ScatterController,
   BubbleController,
   TimeScale,
+  // Plugins
   universalImagePlugin,
   customLabelPlugin,
   exportPlugin,
-  overlayPlugin
+  overlayPlugin,
+  enhancedTitlePlugin
 )
 
 // Chart.js registration completed

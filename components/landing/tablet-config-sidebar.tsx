@@ -71,7 +71,7 @@ export function TabletConfigSidebar({
                 variant={activeTab === tab.id ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex flex-col items-center gap-1 h-auto py-2 text-xs transition-all duration-200 ${activeTab === tab.id
+                className={`flex flex-col items-center gap-1 h-auto py-2 text-xs ${activeTab === tab.id
                   ? "bg-blue-600 text-white hover:bg-blue-700"
                   : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                   }`}
@@ -86,7 +86,7 @@ export function TabletConfigSidebar({
 
       {/* Panel Content */}
       <div className="flex-1 min-h-0 overflow-y-auto p-4">
-        <div className="animate-in fade-in duration-200">
+        <div className="animate-in fade-in">
           {renderPanel(activeTab)}
         </div>
       </div>

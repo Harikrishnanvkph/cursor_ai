@@ -11,17 +11,19 @@ import { Switch } from "@/components/ui/switch"
 import { useChartStore } from "@/lib/chart-store"
 import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { useTemplateStore } from "@/lib/template-store"
-import { downloadChartAsHTML, type HTMLExportOptions } from "@/lib/html-exporter"
+import { downloadChartAsHTML, type HTMLExportOptions, filterChartDataForExport } from "@/lib/html-exporter"
 import { downloadTemplateExport, type TemplateExportOptions } from "@/lib/template-export"
 import { templateList } from "@/lib/html-templates"
-import { Download, Copy, FileImage, FileText, Code, FileCode, Settings, Layers } from "lucide-react"
+import { Download, Copy, FileImage, FileText, Code, FileCode, Settings, Layers, Share2, Link as LinkIcon } from "lucide-react"
+import { dataService } from "@/lib/data-service"
+import { toast } from "sonner"
 
 interface ExportPanelProps {
   onTabChange?: (tab: string) => void
 }
 
 export function ExportPanel({ onTabChange }: ExportPanelProps) {
-  const { chartData, chartConfig, chartType, globalChartRef } = useChartStore()
+  const { chartData, chartConfig, chartType, globalChartRef, currentSnapshotId, chartMode, activeDatasetIndex, activeGroupId, legendFilter } = useChartStore()
   const { updateChartConfig } = useChartActions()
   const { currentTemplate, setEditorMode, editorMode } = useTemplateStore()
   const [exportMode, setExportMode] = useState<"chart" | "template">("chart")
@@ -32,6 +34,7 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
   const [manualHeight, setManualHeight] = useState(600)
   const [widthInput, setWidthInput] = useState("800")
   const [heightInput, setHeightInput] = useState("600")
+  const [isSharing, setIsSharing] = useState(false)
 
   // Check if global template mode is active
   const isGlobalTemplateMode = editorMode === 'template'
@@ -310,9 +313,19 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
   }
 
   const handleExportData = () => {
+    // Filter data so we only export what is visible (e.g. single mode vs grouped mode, legend filters)
+    const exportData = filterChartDataForExport(
+        JSON.parse(JSON.stringify(chartData)),
+        chartMode,
+        activeDatasetIndex,
+        legendFilter,
+        activeGroupId,
+        chartType
+    );
+
     const csvContent = [
-      ["Label", ...chartData.datasets.map((d) => d.label)],
-      ...(chartData.labels?.map((label, index) => [label, ...chartData.datasets.map((d) => d.data[index] || "")]) ||
+      ["Label", ...exportData.datasets.map((d: any) => d.label)],
+      ...(exportData.labels?.map((label: string, index: number) => [label, ...exportData.datasets.map((d: any) => d.data[index] || "")]) ||
         []),
     ]
       .map((row) => row.join(","))
@@ -353,9 +366,10 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
             scale: parseInt(exportScale)
           }
         )
-        console.log('Template exported successfully as HTML')
+        toast.success("HTML downloaded successfully!", { id: "html-export" })
       } catch (error) {
-        console.error('Error exporting template as HTML:', error)
+        console.error("HTML export error:", error)
+        toast.error("Failed to generate HTML", { id: "html-export" })
       }
     } else {
       const dimensions = getExportDimensions()
@@ -425,6 +439,29 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
           }
         }
       }
+    }
+  }
+
+  const handleShareLink = async () => {
+    if (!currentSnapshotId) {
+      toast.error("Please ensure the chart is saved before sharing.");
+      return;
+    }
+    try {
+      setIsSharing(true);
+      toast.loading("Generating share link...", { id: "share-link" });
+      const response = await dataService.generateShareLink(currentSnapshotId);
+      if (response.error || !response.data) {
+        throw new Error(response.error || "Failed to generate link");
+      }
+      const shareUrl = `${window.location.origin}/share/${response.data.share_id}`;
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Share link copied to clipboard!", { id: "share-link" });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to generate share link.", { id: "share-link" });
+      console.error("Share error:", err);
+    } finally {
+      setIsSharing(false);
     }
   }
 
@@ -571,6 +608,44 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
             <FileImage className="h-3 w-3 mr-2" />
             Export {exportMode === "template" ? "Template" : "Chart"} as {exportFormat.toUpperCase()}
           </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="border-indigo-100 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-indigo-100 to-indigo-50 rounded-bl-full -z-10 opacity-50"></div>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2 text-indigo-900">
+            <Share2 className="h-4 w-4 text-indigo-600" />
+            Share Online
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-[10px] text-gray-500 mb-3 leading-relaxed">
+            Generate a fast, public link to share this interactive chart with anyone. Perfect for pasting into Slack, emails, or docs!
+          </p>
+          <Button
+            onClick={handleShareLink}
+            className="w-full h-9 text-xs bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+            disabled={isSharing || !currentSnapshotId}
+            variant="default"
+          >
+            {isSharing ? (
+              <span className="flex items-center">
+                <div className="h-3 w-3 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                Generating...
+              </span>
+            ) : (
+              <span className="flex items-center">
+                <LinkIcon className="h-3 w-3 mr-2" />
+                Copy Share Link
+              </span>
+            )}
+          </Button>
+          {!currentSnapshotId && (
+            <p className="text-[10px] text-amber-600 mt-2 text-center bg-amber-50 px-2 py-1 rounded">
+              You must save this chart to a conversation first.
+            </p>
+          )}
         </CardContent>
       </Card>
 

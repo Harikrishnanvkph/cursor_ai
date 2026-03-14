@@ -10,7 +10,8 @@ import {
     processChartDataForExport,
     buildLegendConfigForExport,
     generateCustomLabelsFromConfig,
-    syncImagePositionsToConfig
+    syncImagePositionsToConfig,
+    filterChartDataForExport
 } from "./export-utils";
 
 /**
@@ -23,7 +24,8 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
         chartConfig,
         chartMode,
         activeDatasetIndex,
-        legendFilter
+        legendFilter,
+        activeGroupId
     } = useChartStore.getState();
 
     // Map custom chart types to actual Chart.js types
@@ -50,8 +52,16 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
         }
     }
 
-    // Deep copy chart data to avoid mutating state
-    const chartDataCopy = JSON.parse(JSON.stringify(chartData));
+    // Filter exported datasets and slices to match exactly what is visible on screen
+    const chartDataCopy = filterChartDataForExport(
+        JSON.parse(JSON.stringify(chartData)),
+        chartMode,
+        activeDatasetIndex,
+        legendFilter,
+        activeGroupId,
+        chartType
+    );
+
     // Sync image positions
     syncImagePositionsToConfig(chartDataCopy, currentDragState);
 
@@ -116,6 +126,12 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
 
     // Process background image URL to base64 if needed
     const processedChartConfig = JSON.parse(JSON.stringify(chartConfig));
+    
+    // Remove scales for pie and doughnut charts to prevent background lines
+    if (chartType === 'pie' || chartType === 'doughnut') {
+        delete processedChartConfig.scales;
+    }
+    
     if (processedChartConfig.background?.type === 'image' && processedChartConfig.background?.imageUrl) {
         processedChartConfig.background.imageUrl = await convertImageToBase64(processedChartConfig.background.imageUrl);
     }

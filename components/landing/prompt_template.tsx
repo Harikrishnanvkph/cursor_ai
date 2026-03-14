@@ -19,14 +19,22 @@ interface PromptTemplateProps {
   onSampleClick?: (template: string) => void
   className?: string
   size?: 'default' | 'compact' | 'large'
+  isTemplateModalOpen?: boolean
+  setIsTemplateModalOpen?: (open: boolean) => void
 }
 
 export function PromptTemplate({
   onSampleClick,
   className = "",
-  size = 'default'
+  size = 'default',
+  isTemplateModalOpen: isTemplateModalOpenProp,
+  setIsTemplateModalOpen: setIsTemplateModalOpenProp
 }: PromptTemplateProps) {
-  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
+  const [isTemplateModalOpenLocal, setIsTemplateModalOpenLocal] = useState(false)
+
+  // Use prop if provided, otherwise use local state
+  const isTemplateModalOpen = isTemplateModalOpenProp !== undefined ? isTemplateModalOpenProp : isTemplateModalOpenLocal
+  const setIsTemplateModalOpen = setIsTemplateModalOpenProp !== undefined ? setIsTemplateModalOpenProp : setIsTemplateModalOpenLocal
   const {
     currentTemplate,
     setCurrentTemplate,
@@ -173,7 +181,7 @@ export function PromptTemplate({
             <>
               <button
                 onClick={handleSampleClick}
-                className="w-full bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-slate-800 font-medium px-4 py-3 rounded-xl border border-indigo-200/50 transition-all duration-200 text-left hover:shadow-lg group text-sm"
+                className="w-full bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-slate-800 font-medium px-4 py-3 rounded-xl border border-indigo-200/50 text-left hover:shadow-lg group text-sm"
               >
                 <div className="font-semibold flex items-center gap-2 mb-1">
                   <div className="p-1 bg-indigo-100 rounded group-hover:bg-indigo-200 transition-colors">
@@ -208,68 +216,19 @@ export function PromptTemplate({
                       </span>
                     </div>
 
-                    {/* Settings Button */}
-                    <Popover open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-                      <PopoverTrigger asChild>
-                        <button
-                          className="w-10 h-10 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 flex items-center justify-center transition-all duration-200 hover:scale-105 flex-shrink-0 border border-blue-200"
-                          aria-label="Template output settings"
-                        >
-                          <Settings className="w-5 h-5" />
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-80 p-0" align="end">
-                        <div className="p-3 border-b bg-slate-50">
-                          <h4 className="font-semibold text-sm text-slate-900">Output Settings</h4>
-                          <p className="text-xs text-slate-500 mt-1">Configure output format for each section</p>
-                        </div>
-
-                        <div className="p-3 space-y-3 max-h-64 overflow-y-auto">
-                          {currentTemplate.textAreas.map((textArea) => {
-                            const isHTML = getContentType(textArea.id) === 'html'
-                            return (
-                              <div key={textArea.id} className="flex items-center justify-between py-2 px-3 bg-slate-50 rounded-lg">
-                                <div className="flex-1">
-                                  <span className="text-sm font-medium text-slate-700 capitalize">
-                                    {textArea.type}
-                                  </span>
-                                  <span className="text-xs text-slate-500 ml-2">
-                                    ({isHTML ? 'HTML' : 'Plain Text'})
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <span className={`text-xs ${!isHTML ? 'font-semibold text-slate-700' : 'text-slate-400'}`}>
-                                    Text
-                                  </span>
-                                  <Switch
-                                    checked={isHTML}
-                                    onCheckedChange={() => toggleContentType(textArea.id)}
-                                  />
-                                  <span className={`text-xs ${isHTML ? 'font-semibold text-purple-700' : 'text-slate-400'}`}>
-                                    HTML
-                                  </span>
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-
-                        {/* Info Note */}
-                        <div className="p-3 border-t bg-amber-50">
-                          <div className="flex gap-2">
-                            <Info className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                            <p className="text-xs text-amber-700">
-                              <span className="font-medium">Note:</span> HTML output allows rich formatting like lists, bold text, and links. Use it for sections that need structured content.
-                            </p>
-                          </div>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
+                    {/* Settings Button (Opens Template Selection Modal) */}
+                    <button
+                      onClick={handleChooseTemplates}
+                      className="w-10 h-10 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 flex items-center justify-center hover:scale-105 flex-shrink-0 border border-blue-200"
+                      aria-label="Change template"
+                    >
+                      <Settings className="w-5 h-5" />
+                    </button>
 
                     {/* Cancel Button */}
                     <button
                       onClick={handleCancelTemplate}
-                      className="w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 flex items-center justify-center transition-all duration-200 hover:scale-105 flex-shrink-0"
+                      className="w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 flex items-center justify-center hover:scale-105 flex-shrink-0"
                       aria-label="Remove template"
                     >
                       <X className="w-5 h-5" />
@@ -280,7 +239,7 @@ export function PromptTemplate({
                 <>
                   <Button
                     onClick={handleStandardTemplate}
-                    className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-medium px-4 py-3 rounded-xl transition-all duration-200 hover:shadow-lg"
+                    className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-medium px-4 py-3 rounded-xl hover:shadow-lg"
                   >
                     <Layout className="w-4 h-4 mr-2" />
                     Standard Template
@@ -293,7 +252,7 @@ export function PromptTemplate({
                   <Button
                     variant="outline"
                     onClick={handleChooseTemplates}
-                    className="w-full border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:border-indigo-300 font-medium px-4 py-3 rounded-xl transition-all duration-200"
+                    className="w-full border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:border-indigo-300 font-medium px-4 py-3 rounded-xl"
                   >
                     <FileText className="w-4 h-4 mr-2" />
                     Choose From Templates

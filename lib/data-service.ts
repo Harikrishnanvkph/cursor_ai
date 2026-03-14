@@ -161,6 +161,21 @@ class DataService {
   }
 
   // =============================================
+  // CHART SHARING MANAGEMENT
+  // =============================================
+
+  async generateShareLink(snapshotId: string): Promise<ApiResponse<{ share_id: string }>> {
+    return this.request(`/api/data/chart-snapshots/${snapshotId}/share`, {
+      method: 'POST',
+    }, false);
+  }
+
+  async getSharedChart(shareId: string): Promise<ApiResponse<any>> {
+    // This calls the unauthenticated public route
+    return this.request(`/api/data/shared/${shareId}`);
+  }
+
+  // =============================================
   // CHAT MESSAGE MANAGEMENT
   // =============================================
 

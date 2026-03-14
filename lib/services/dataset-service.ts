@@ -155,6 +155,23 @@ export const DatasetService = {
         }
 
         let updatedDataset = { ...dataset, ...updates } as ExtendedChartDataset;
+
+        // Reset image callout positions when the dataset's chart type changes
+        if ((updates.type && updates.type !== dataset.type) || (updates.chartType && updates.chartType !== dataset.chartType)) {
+            if (Array.isArray(updatedDataset.pointImageConfig)) {
+                updatedDataset.pointImageConfig = updatedDataset.pointImageConfig.map(config => {
+                    if (config) {
+                        return {
+                            ...config,
+                            calloutX: undefined,
+                            calloutY: undefined
+                        };
+                    }
+                    return config;
+                });
+            }
+        }
+
         let changeDescription = `Dataset ${index} updated`;
 
         // Add Point

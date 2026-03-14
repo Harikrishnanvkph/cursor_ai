@@ -116,6 +116,7 @@ export const useTemplateStore = create<TemplateStore>()(
         if (template === null) {
           set({
             currentTemplate: null,
+            templateInBackground: null,
             contentTypePreferences: {},
             sectionNotes: {}
           })
@@ -187,22 +188,14 @@ export const useTemplateStore = create<TemplateStore>()(
         const next: any = { templates: remaining }
 
         if (deletedWasCurrent) {
-          next.currentTemplate = { ...fallback }
-          next.templateInBackground = state.editorMode === 'template' ? { ...fallback } : state.templateInBackground
+          next.currentTemplate = null
+          next.templateInBackground = null
 
           const chartStore = useChartStore.getState()
-          useChartStore.setState({
-            chartConfig: ChartConfigService.normalizeConfig({
-              ...chartStore.chartConfig,
-              manualDimensions: true,
-              width: `${fallback.chartArea.width}px`,
-              height: `${fallback.chartArea.height}px`,
-              responsive: false,
-              maintainAspectRatio: false
-            }, chartStore.chartType as any)
-          })
+          // No need to reset dimensions to fallback if we are clearing the template
+          // We can keep the current dimensions or reset them to a standard blank state
         } else if (deletedWasBackground) {
-          next.templateInBackground = { ...fallback }
+          next.templateInBackground = null
         }
 
         set(next)
@@ -469,7 +462,6 @@ export const useTemplateStore = create<TemplateStore>()(
           const activeTemplate =
             state.currentTemplate ||
             state.templateInBackground ||
-            state.templates[0] ||
             null
 
           if (!activeTemplate) {
@@ -515,7 +507,7 @@ export const useTemplateStore = create<TemplateStore>()(
 
           return {
             editorMode: mode,
-            templateInBackground: state.currentTemplate || state.templateInBackground,
+            templateInBackground: state.currentTemplate,
             currentTemplate: state.currentTemplate,
             chartDimensionBackup: state.chartDimensionBackup
           }

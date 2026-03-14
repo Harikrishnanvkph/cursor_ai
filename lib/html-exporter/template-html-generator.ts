@@ -9,7 +9,8 @@ import {
     processChartDataForExport,
     buildLegendConfigForExport,
     generateCustomLabelsFromConfig,
-    syncImagePositionsToConfig
+    syncImagePositionsToConfig,
+    filterChartDataForExport
 } from "./export-utils";
 
 /**
@@ -28,7 +29,8 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
         chartConfig,
         chartMode,
         activeDatasetIndex,
-        legendFilter
+        legendFilter,
+        activeGroupId
     } = useChartStore.getState();
 
     // Map custom chart types to actual Chart.js types
@@ -60,8 +62,15 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
         }
     }
 
-    // Deep copy chart data to avoid mutating state
-    const chartDataCopy = JSON.parse(JSON.stringify(chartData));
+    // Filter exported datasets and slices to match exactly what is visible on screen
+    const chartDataCopy = filterChartDataForExport(
+        JSON.parse(JSON.stringify(chartData)),
+        chartMode,
+        activeDatasetIndex,
+        legendFilter,
+        activeGroupId,
+        chartType
+    );
     // Sync image positions
     syncImagePositionsToConfig(chartDataCopy, currentDragState);
 

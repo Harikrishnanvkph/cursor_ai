@@ -19,16 +19,14 @@ export function TemplateSelectionModal({
   onClose,
   onSelect
 }: TemplateSelectionModalProps) {
-  const { 
-    templates, 
-    applyTemplate, 
+  const {
+    templates,
+    applyTemplate,
     updateTextArea,
     setContentTypePreferences: storeSetContentTypePreferences,
     setSectionNotes: storeSetSectionNotes
   } = useTemplateStore()
-  const [selectedTemplate, setSelectedTemplate] = useState<TemplateLayout | null>(
-    templates.length > 0 ? templates[0] : null
-  )
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateLayout | null>(null)
   // Store content type preferences per template: { templateId: { textAreaId: 'text' | 'html' } }
   const [contentTypePreferences, setContentTypePreferences] = useState<Record<string, Record<string, 'text' | 'html'>>>({})
   // Store section notes per template: { templateId: { textAreaId: 'note text' } }
@@ -103,13 +101,13 @@ export function TemplateSelectionModal({
       // Get content type preferences for the selected template
       const currentPrefs = contentTypePreferences[selectedTemplate.id] || {}
       const currentNotes = sectionNotes[selectedTemplate.id] || {}
-      
+
       // Build final preferences with defaults for text areas not explicitly set
       const finalPreferences: Record<string, 'text' | 'html'> = {}
       selectedTemplate.textAreas.forEach(textArea => {
         finalPreferences[textArea.id] = currentPrefs[textArea.id] || 'text'
       })
-      
+
       // Build final notes (only include non-empty notes)
       const finalNotes: Record<string, string> = {}
       Object.entries(currentNotes).forEach(([id, note]) => {
@@ -117,14 +115,14 @@ export function TemplateSelectionModal({
           finalNotes[id] = note.trim()
         }
       })
-      
+
       // Save content type preferences and notes to the store
       storeSetContentTypePreferences(finalPreferences)
       storeSetSectionNotes(finalNotes)
-      
+
       // Apply the template to the store so it's available for chart generation
       applyTemplate(selectedTemplate.id)
-      
+
       // Sync contentType to each template text area so Templates -> Content panel shows correct type
       // This must happen AFTER applyTemplate which sets the currentTemplate
       setTimeout(() => {
@@ -133,7 +131,7 @@ export function TemplateSelectionModal({
           updateTextArea(textArea.id, { contentType })
         })
       }, 0)
-      
+
       if (onSelect) {
         onSelect(selectedTemplate)
       }
@@ -157,37 +155,46 @@ export function TemplateSelectionModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md animate-in fade-in-0">
-      <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-[90vw] max-w-6xl h-[85vh] max-h-[800px] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-[90vw] max-w-6xl h-[85vh] max-h-[800px] flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Main Content Area */}
         <div className="flex flex-1 overflow-hidden bg-gray-50/30">
           {/* Left Panel: Preview */}
           <div className="flex-1 border-r border-gray-200 p-4 overflow-y-auto bg-white">
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-1">
-                <h2 className="text-xl font-bold text-gray-900">Preview</h2>
-                <Button
-                  onClick={handleSelect}
-                  disabled={!selectedTemplate}
-                  className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-6 py-2 rounded-lg font-semibold shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-md text-sm"
-                >
-                  Select Template
-                </Button>
+            <div className="mb-2 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <h2 className="text-lg font-bold text-gray-900">Preview</h2>
+                {selectedTemplate && (
+                  <>
+                    <div className="w-px h-4 bg-gray-300"></div>
+                    <div className="flex items-center gap-3 text-xs text-gray-600">
+                      <div className="flex items-center gap-1">
+                        <span className="font-medium">Size:</span>
+                        <span className="text-gray-900">{selectedTemplate.width} × {selectedTemplate.height}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="font-medium">Sections:</span>
+                        <span className="text-gray-900">{getSectionCount(selectedTemplate)}</span>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
-              {selectedTemplate && (
-                <div className="flex items-center gap-4 text-xs text-gray-600">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-medium">Size:</span>
-                    <span className="text-gray-900">{selectedTemplate.width} px × {selectedTemplate.height} px</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-medium">Sections:</span>
-                    <span className="text-gray-900">{getSectionCount(selectedTemplate)} sections</span>
-                  </div>
-                </div>
-              )}
+              <Button
+                onClick={handleSelect}
+                disabled={!selectedTemplate}
+                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-4 py-1.5 h-auto rounded-md font-medium shadow-sm hover:shadow transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              >
+                Select Template
+              </Button>
             </div>
-            
+
             {selectedTemplate ? (
               <>
 
@@ -207,15 +214,14 @@ export function TemplateSelectionModal({
                     {selectedTemplate.textAreas.map((textArea) => {
                       const scale = 0.4
                       const isMainArea = textArea.type === 'main'
-                      
+
                       return (
                         <div
                           key={textArea.id}
-                          className={`absolute border-2 flex items-center justify-center text-xs font-medium transition-all ${
-                            isMainArea 
-                              ? 'border-pink-400 bg-pink-50/60 text-pink-700 shadow-sm' 
-                              : 'border-dashed border-gray-300 bg-gray-50/40 text-gray-600'
-                          }`}
+                          className={`absolute border-2 flex items-center justify-center text-xs font-medium transition-all ${isMainArea
+                            ? 'border-pink-400 bg-pink-50/60 text-pink-700 shadow-sm'
+                            : 'border-dashed border-gray-300 bg-gray-50/40 text-gray-600'
+                            }`}
                           style={{
                             left: `${textArea.position.x * scale}px`,
                             top: `${textArea.position.y * scale}px`,
@@ -270,7 +276,7 @@ export function TemplateSelectionModal({
                         const areaTypeLabel = textArea.type.charAt(0).toUpperCase() + textArea.type.slice(1)
                         const note = currentNotes[textArea.id] || ''
                         const isNoteExpanded = expandedNotes[textArea.id] || note.length > 0
-                        
+
                         return (
                           <div
                             key={textArea.id}
@@ -279,11 +285,10 @@ export function TemplateSelectionModal({
                             {/* Main row */}
                             <div className="flex items-center justify-between p-3">
                               <div className="flex items-center gap-3 flex-1 min-w-0">
-                                <div className={`p-1.5 rounded-md flex-shrink-0 ${
-                                  isHTML 
-                                    ? 'bg-purple-100 text-purple-600' 
-                                    : 'bg-gray-100 text-gray-600'
-                                }`}>
+                                <div className={`p-1.5 rounded-md flex-shrink-0 ${isHTML
+                                  ? 'bg-purple-100 text-purple-600'
+                                  : 'bg-gray-100 text-gray-600'
+                                  }`}>
                                   {isHTML ? (
                                     <Code2 className="w-4 h-4" />
                                   ) : (
@@ -313,30 +318,29 @@ export function TemplateSelectionModal({
                                     )}
                                   </div>
                                   <p className="text-xs text-gray-500">
-                                    {isHTML 
-                                      ? 'AI will generate HTML formatted content' 
+                                    {isHTML
+                                      ? 'AI will generate HTML formatted content'
                                       : 'AI will generate plain text content'}
                                   </p>
                                 </div>
                               </div>
-                              
+
                               <div className="flex items-center gap-2 ml-3 flex-shrink-0">
                                 {/* Add Note Button */}
                                 <button
                                   onClick={() => toggleNoteExpanded(textArea.id)}
-                                  className={`px-2 py-1 rounded-md transition-colors flex items-center gap-1 text-xs font-medium ${
-                                    isNoteExpanded
-                                      ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
-                                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800'
-                                  }`}
+                                  className={`px-2 py-1 rounded-md transition-colors flex items-center gap-1 text-xs font-medium ${isNoteExpanded
+                                    ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800'
+                                    }`}
                                   title={isNoteExpanded ? "Hide note" : "Add small note for AI guidance"}
                                 >
                                   <Plus className={`w-3 h-3 transition-transform ${isNoteExpanded ? 'rotate-45' : ''}`} />
                                   <span>{isNoteExpanded ? 'Hide' : 'Add Note'}</span>
                                 </button>
-                                
+
                                 <div className="w-px h-6 bg-gray-200" />
-                                
+
                                 <span className={`text-xs font-medium ${!isHTML ? 'text-gray-900' : 'text-gray-400'}`}>
                                   Text
                                 </span>
@@ -351,7 +355,7 @@ export function TemplateSelectionModal({
                                 </span>
                               </div>
                             </div>
-                            
+
                             {/* Note input area - expandable */}
                             {isNoteExpanded && (
                               <div className="px-3 pb-3 border-t border-gray-100 bg-amber-50/30">
@@ -393,7 +397,7 @@ export function TemplateSelectionModal({
                     <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2">
                       <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
                       <p className="text-xs text-blue-800 leading-relaxed">
-                        <strong>Note:</strong> These preferences will be sent to the AI when generating content. 
+                        <strong>Note:</strong> These preferences will be sent to the AI when generating content.
                         You can change this later in the editor's Content tab.
                       </p>
                     </div>
@@ -411,7 +415,7 @@ export function TemplateSelectionModal({
           <div className="w-80 border-l border-gray-200 p-4 overflow-y-auto flex flex-col bg-white">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Templates</h2>
+                <h2 className="text-lg font-bold text-gray-900">Templates</h2>
                 <p className="text-xs text-gray-500 mt-0.5">Choose a layout</p>
               </div>
               <button
@@ -429,31 +433,25 @@ export function TemplateSelectionModal({
                 <div
                   key={template.id}
                   onClick={() => handleTemplateClick(template)}
-                  className={`p-3 rounded-lg cursor-pointer transition-all duration-200 ${
-                    selectedTemplate?.id === template.id
-                      ? 'border-2 border-indigo-500 bg-gradient-to-br from-indigo-50 to-purple-50 shadow-md ring-1 ring-indigo-200'
-                      : 'border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/30 bg-white hover:shadow-sm'
-                  }`}
+                  className={`p-2 rounded-lg cursor-pointer ${selectedTemplate?.id === template.id
+                    ? 'border-2 border-indigo-500 bg-gradient-to-br from-indigo-50 to-purple-50 shadow-md ring-1 ring-indigo-200'
+                    : 'border-2 border-transparent hover:bg-indigo-50/30 bg-white hover:shadow-sm ring-1 ring-gray-200'
+                    }`}
                 >
-                  <div className="flex items-start gap-2.5">
-                    <div className={`p-1.5 rounded-md flex-shrink-0 transition-colors ${
-                      selectedTemplate?.id === template.id
-                        ? 'bg-indigo-100 text-indigo-600'
-                        : 'bg-gray-100 text-gray-600'
-                    }`}>
+                  <div className="flex items-center gap-2.5">
+                    <div className={`p-1.5 rounded-md flex-shrink-0 ${selectedTemplate?.id === template.id
+                      ? 'bg-indigo-100 text-indigo-600'
+                      : 'bg-gray-100 text-gray-600'
+                      }`}>
                       <Layout className="w-4 h-4" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className={`font-semibold mb-1 text-sm ${
-                        selectedTemplate?.id === template.id
-                          ? 'text-indigo-900'
-                          : 'text-gray-900'
-                      }`}>
+                      <h3 className={`font-semibold text-sm ${selectedTemplate?.id === template.id
+                        ? 'text-indigo-900'
+                        : 'text-gray-900'
+                        }`}>
                         {template.name}
                       </h3>
-                      <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
-                        {template.description}
-                      </p>
                     </div>
                   </div>
                 </div>
@@ -464,14 +462,14 @@ export function TemplateSelectionModal({
             <div className="mt-4 pt-4 border-t border-gray-200">
               <button
                 onClick={handleCreateCustom}
-                className="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg text-xs text-gray-700 hover:bg-gradient-to-br hover:from-indigo-50 hover:to-purple-50 hover:border-indigo-300 transition-all duration-200 text-center group"
+                className="w-full p-2 border-2 border-dashed border-gray-300 rounded-lg text-xs text-gray-700 hover:bg-gradient-to-br hover:from-indigo-50 hover:to-purple-50 hover:border-indigo-300 transition-all duration-200 text-left group"
               >
-                <div className="flex flex-col items-center gap-1.5">
-                  <div className="p-1.5 bg-gray-100 group-hover:bg-indigo-100 rounded-md transition-colors">
+                <div className="flex items-center gap-2">
+                  <div className="p-1 bg-gray-100 group-hover:bg-indigo-100 rounded-md transition-colors flex-shrink-0">
                     <Edit3 className="w-4 h-4 text-gray-600 group-hover:text-indigo-600 transition-colors" />
                   </div>
                   <div className="font-semibold text-gray-900 group-hover:text-indigo-900 transition-colors text-xs">
-                    Create Custom Template in Editor Page
+                    Create Custom Template
                   </div>
                 </div>
               </button>
