@@ -132,6 +132,20 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
         delete processedChartConfig.scales;
     }
     
+    // Add stacked scales for stackedBar chart type
+    if (chartType === 'stackedBar') {
+        processedChartConfig.scales = {
+            ...(processedChartConfig.scales || {}),
+            x: { ...((processedChartConfig.scales && processedChartConfig.scales.x) || {}), stacked: true },
+            y: { ...((processedChartConfig.scales && processedChartConfig.scales.y) || {}), stacked: true },
+        };
+    }
+
+    // Add horizontal indexAxis for horizontalBar chart type
+    if (chartType === 'horizontalBar') {
+        processedChartConfig.indexAxis = 'y';
+    }
+
     if (processedChartConfig.background?.type === 'image' && processedChartConfig.background?.imageUrl) {
         processedChartConfig.background.imageUrl = await convertImageToBase64(processedChartConfig.background.imageUrl);
     }

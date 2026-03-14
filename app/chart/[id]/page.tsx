@@ -13,7 +13,8 @@ import {
   Download,
   Edit3,
   Loader2,
-import { Share2, Copy, BarChart2, Calendar, FileCode } from "lucide-react"
+  Share2, Copy, BarChart2, Calendar, FileCode
+} from "lucide-react"
 import Link from "next/link"
 import { embedImagesAsBase64 } from "@/lib/utils/html-export-utils"
 
@@ -248,19 +249,8 @@ export default function PublicChartPage() {
       toast.error("Failed to generate HTML", { id: "html-export" })
     }
   }
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement("a")
-  a.href = url
-  a.download = `${conversation.title.replace(/[^a-z0-9]/gi, '_')}.html`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
 
-  toast.success("HTML downloaded successfully!")
-}
-
-const handleCopyLink = () => {
+  const handleCopyLink = () => {
   navigator.clipboard.writeText(window.location.href)
   toast.success("Link copied to clipboard!")
 }

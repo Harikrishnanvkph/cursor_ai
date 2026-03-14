@@ -304,55 +304,56 @@ const customLabelPlugin = {
           ctx.restore();
         }
         
-        // Draw the label
-        ctx.save();
-        
-        // Set text properties
-        ctx.font = label.font || \`\${shapeSize * 0.4}px Arial\`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        
-        // Calculate text dimensions
-        const textMetrics = ctx.measureText(label.text);
-        const textWidth = textMetrics.width;
-        const textHeight = parseInt(ctx.font) * 0.8;
-        
-        // Draw background shape
-        const padding = label.padding || 8;
-        const bgWidth = textWidth + padding * 2;
-        const bgHeight = textHeight + padding * 2;
-        const bgX = x - bgWidth / 2;
-        const bgY = y - bgHeight / 2;
-        
-        if (label.backgroundColor || label.borderColor) {
-          ctx.beginPath();
+        // --- Draw shape/background ---
+        if (label.shape !== 'none' && label.shape !== undefined) {
+          ctx.save();
+          ctx.font = label.font || 'bold 14px Arial';
+          const borderRadius = label.borderRadius ?? 6;
+          const w = shapeSize;
+          const h = shapeSize;
           
-          if (label.shape === 'circle') {
-            const radius = Math.max(bgWidth, bgHeight) / 2;
-            ctx.arc(x, y, radius, 0, Math.PI * 2);
-          } else if (label.shape === 'star') {
-            drawStar(ctx, x, y, Math.max(bgWidth, bgHeight) / 2, 5);
-          } else {
-            const borderRadius = label.borderRadius || 4;
-            roundRect(ctx, bgX, bgY, bgWidth, bgHeight, borderRadius);
-          }
-          
+          // Background fill
           if (label.backgroundColor) {
             ctx.fillStyle = label.backgroundColor;
-            ctx.fill();
+            if (label.shape === 'rectangle') {
+              roundRect(ctx, x - w / 2, y - h / 2, w, h, borderRadius);
+              ctx.fill();
+            } else if (label.shape === 'circle') {
+              ctx.beginPath();
+              ctx.arc(x, y, w / 2, 0, 2 * Math.PI);
+              ctx.fill();
+            } else if (label.shape === 'star') {
+              drawStar(ctx, x, y, w / 2, 5);
+              ctx.fill();
+            }
           }
           
+          // Border stroke
           if (label.borderColor && label.borderWidth) {
             ctx.strokeStyle = label.borderColor;
             ctx.lineWidth = label.borderWidth;
-            ctx.stroke();
+            if (label.shape === 'rectangle') {
+              roundRect(ctx, x - w / 2, y - h / 2, w, h, borderRadius);
+              ctx.stroke();
+            } else if (label.shape === 'circle') {
+              ctx.beginPath();
+              ctx.arc(x, y, w / 2, 0, 2 * Math.PI);
+              ctx.stroke();
+            } else if (label.shape === 'star') {
+              drawStar(ctx, x, y, w / 2, 5);
+              ctx.stroke();
+            }
           }
+          ctx.restore();
         }
         
-        // Draw text
-        ctx.fillStyle = label.color || '#333';
+        // --- Draw text ---
+        ctx.save();
+        ctx.font = label.font || 'bold 14px Arial';
+        ctx.fillStyle = label.color || '#222';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
         ctx.fillText(label.text, x, y);
-        
         ctx.restore();
       });
     });
