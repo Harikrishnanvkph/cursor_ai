@@ -113,7 +113,6 @@ export function TemplateChartPreview({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
   const [showGuides, setShowGuides] = useState(true)
-  const [isUpdatingDimensions, setIsUpdatingDimensions] = useState(false)
   const [panMode, setPanMode] = useState(false)
 
   // Fullscreen state
@@ -217,20 +216,7 @@ export function TemplateChartPreview({
     }
   }, [currentTemplate?.id, templateInBackground?.id]) // Only run when template ID changes
 
-  // Handle chart dimension updates when template changes
-  useEffect(() => {
-    const template = currentTemplate || templateInBackground
-    if (template && !isUpdatingDimensions) {
-      setIsUpdatingDimensions(true)
 
-      // Small delay to ensure chart dimensions are updated
-      const timer = setTimeout(() => {
-        setIsUpdatingDimensions(false)
-      }, 100)
-
-      return () => clearTimeout(timer)
-    }
-  }, [currentTemplate?.id, templateInBackground?.id]) // Removed isUpdatingDimensions to prevent infinite loop
 
   // Handle fullscreen functionality
   const handleFullscreen = async () => {
@@ -655,7 +641,7 @@ export function TemplateChartPreview({
         )}
 
         <div style={{ pointerEvents: panMode ? 'none' : 'auto', width: '100%', height: '100%' }}>
-          <ChartGenerator key={`template-${template.id}-${template.chartArea.width}-${template.chartArea.height}-${isUpdatingDimensions}`} />
+          <ChartGenerator key={`template-${template.id}-${template.chartArea.width}-${template.chartArea.height}`} />
         </div>
       </div>
     )

@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect } from "react"
+import { createPortal } from "react-dom"
 import { useSidebarPortal } from "@/components/sidebar-portal-context"
 
 export interface ConfirmDialogProps {
@@ -14,6 +15,7 @@ export interface ConfirmDialogProps {
   onCancel: () => void
   onAlternate?: () => void
   dismissible?: boolean
+  variant?: 'default' | 'destructive'
 }
 
 export function ConfirmDialog({
@@ -27,6 +29,7 @@ export function ConfirmDialog({
   onCancel,
   onAlternate,
   dismissible = true,
+  variant = 'default',
 }: ConfirmDialogProps) {
   const { sidebarContainer } = useSidebarPortal()
 
@@ -46,6 +49,10 @@ export function ConfirmDialog({
 
   // If we're in a sidebar context, render inside the sidebar container
   const container = sidebarContainer || (typeof document !== 'undefined' ? document.body : null)
+
+  const confirmButtonClass = variant === 'destructive'
+    ? "inline-flex items-center justify-center h-9 rounded-md bg-red-600 px-4 text-sm font-semibold text-white hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 shadow-sm transition-colors"
+    : "inline-flex items-center justify-center h-9 rounded-md bg-green-600 px-4 text-sm font-semibold text-white hover:bg-green-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 shadow-sm transition-colors"
 
   const dialogContent = (
     <div
@@ -68,7 +75,7 @@ export function ConfirmDialog({
           <button
             type="button"
             onClick={onConfirm}
-            className="inline-flex items-center justify-center h-9 rounded-md bg-green-600 px-4 text-sm font-semibold text-white hover:bg-green-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500 shadow-sm transition-colors"
+            className={confirmButtonClass}
           >
             {confirmText}
           </button>

@@ -6,6 +6,7 @@ export type AuthUser = {
   provider?: string
   provider_id?: string
   user_metadata?: Record<string, any>
+  is_admin?: boolean
 }
 
 const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000'

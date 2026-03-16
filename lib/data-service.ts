@@ -251,6 +251,7 @@ class DataService {
     description: string | null,
     templateStructure: any
   ): Promise<ApiResponse<any>> {
+    this.clearCache();
     return this.request('/api/data/templates', {
       method: 'POST',
       body: JSON.stringify({
@@ -269,6 +270,7 @@ class DataService {
       templateStructure?: any;
     }
   ): Promise<ApiResponse<any>> {
+    this.clearCache();
     return this.request(`/api/data/templates/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(updates),
@@ -277,6 +279,7 @@ class DataService {
 
   async deleteTemplate(id: string): Promise<ApiResponse<void>> {
     try {
+      this.clearCache();
       return await this.request(`/api/data/templates/${id}`, {
         method: 'DELETE',
       }, false);
@@ -293,6 +296,14 @@ class DataService {
     return this.request(`/api/data/templates/${id}/visibility`, {
       method: 'PATCH',
       body: JSON.stringify({ isPublic }),
+    }, false);
+  }
+
+  async setTemplateOfficial(id: string, isOfficial: boolean): Promise<ApiResponse<any>> {
+    this.clearCache();
+    return this.request(`/api/data/templates/${id}/official`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isOfficial }),
     }, false);
   }
 

@@ -41,6 +41,8 @@ export interface TemplateLayout {
     width: number
     height: number
     isCustom?: boolean
+    isCloudTemplate?: boolean
+    is_official?: boolean
     chartArea: {
         x: number
         y: number

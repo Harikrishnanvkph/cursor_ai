@@ -581,7 +581,8 @@ export const useTemplateStore = create<TemplateStore>()(
                 id: t.id, // Override with cloud ID (this ensures UUID is preserved)
                 name: t.name,
                 description: t.description,
-                isCustom: true
+                isCustom: true,
+                is_official: t.is_official
               }
               console.log('☁️ Syncing cloud template:', { cloudId: t.id, templateId: template.id, name: template.name })
               return template
@@ -646,12 +647,13 @@ export const useTemplateStore = create<TemplateStore>()(
         return 'template-store-anonymous';
       })(),
       storage: typeof window !== 'undefined' ? createExpiringStorage('template-store') : undefined,
-      version: 2,
+      version: 3,
       migrate: (persistedState: any, version: number) => {
-        const state = persistedState || {};
+        let state = persistedState || {};
         // Initial structure -> v1
         if (version === 0) {
-          return {
+          state = {
+            ...state,
             currentTemplate: state.currentTemplate || null,
             selectedTextAreaId: state.selectedTextAreaId || null,
             templates: state.templates || defaultTemplates,
@@ -660,14 +662,22 @@ export const useTemplateStore = create<TemplateStore>()(
           }
         }
         // v1 -> v2: ensure isCustom is set for previously saved templates
-        if (version === 1) {
+        if (version === 1 || version === 0) {
           const defaultIds = new Set(defaultTemplates.map(t => t.id))
           const migratedTemplates = (state.templates || []).map((t: any) => {
             if (typeof t.isCustom === 'boolean') return t
             const looksCustom = String(t.id || '').startsWith('custom-') || /custom/i.test(String(t.name || '')) || !defaultIds.has(t.id)
             return { ...t, isCustom: !!looksCustom }
           })
-          return {
+          state = {
+            ...state,
+            templates: migratedTemplates
+          }
+        }
+        // v2 -> v3: remove template-4 (Full Width Chart) from user caches
+        if (version <= 2) {
+          const migratedTemplates = (state.templates || []).filter((t: any) => t.id !== 'template-4')
+          state = {
             ...state,
             templates: migratedTemplates
           }

@@ -1,6 +1,7 @@
 "use client"
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { authApi, type AuthUser } from '@/lib/auth-client'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
 type AuthContextValue = {
@@ -19,6 +20,7 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter()
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -75,14 +77,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Handle redirect after successful sign-in
       if (typeof window !== 'undefined') {
+        // Find if we need to redirect admin vs normal user
         const redirectPath = sessionStorage.getItem('redirectAfterSignIn')
-        if (redirectPath) {
-          console.log(`🔄 SignIn successful, redirecting to: ${redirectPath}`)
-          sessionStorage.removeItem('redirectAfterSignIn')
-          // Use setTimeout to ensure the current operation completes
-          setTimeout(() => {
-            window.location.href = redirectPath
-          }, 100)
+
+        if (res.user?.is_admin) {
+           router.push('/admin')
+        } else if (redirectPath) {
+           console.log(`🔄 SignIn successful, redirecting to: ${redirectPath}`)
+           sessionStorage.removeItem('redirectAfterSignIn')
+           router.push(redirectPath)
+        } else {
+           // Default redirect if no stored path exists for normal users
+           router.push('/')
         }
       }
 

@@ -10,6 +10,8 @@ import {
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { FileCode, FileImage, FileText, ImageIcon, Settings } from "lucide-react"
 import { UndoRedoButtons } from "@/components/ui/undo-redo-buttons"
+import { useTemplateStore } from "@/lib/template-store"
+import { useUIStore } from "@/lib/stores/ui-store"
 
 interface ChartPreviewToolbarProps {
     // Layout
@@ -113,7 +115,14 @@ export function ChartPreviewToolbar({
                 style={{ display: 'inline-block', visibility: 'visible', opacity: 1 }}
             >Chart</button>
             <button
-                onClick={() => setEditorMode('template')}
+                onClick={() => {
+                    const templateStore = useTemplateStore.getState()
+                    if (!templateStore.currentTemplate) {
+                        templateStore.applyTemplate('template-1')
+                        useUIStore.getState().setActiveSidebarTab('templates')
+                    }
+                    setEditorMode('template')
+                }}
                 className={`${btnClassName} font-medium rounded-full transition-all ${editorMode === 'template' ? 'bg-blue-500 text-white shadow-sm' : 'bg-transparent text-gray-500 hover:text-gray-700'}`}
                 style={{ display: 'inline-block', visibility: 'visible', opacity: 1 }}
             >Template</button>

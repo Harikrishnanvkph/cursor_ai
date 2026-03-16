@@ -5,7 +5,6 @@ export const defaultTemplates: TemplateLayout[] = [
     {
         id: "template-1",
         name: "Standard Report",
-        description: "Chart with title, heading, and main explanation area",
         width: 1200,
         height: 800,
         chartArea: {
@@ -72,7 +71,6 @@ export const defaultTemplates: TemplateLayout[] = [
     {
         id: "template-2",
         name: "Side-by-Side Layout",
-        description: "Chart on left, text information on right",
         width: 1200,
         height: 800,
         chartArea: {
@@ -139,7 +137,6 @@ export const defaultTemplates: TemplateLayout[] = [
     {
         id: "template-3",
         name: "Compact Layout",
-        description: "Chart with title, heading, custom text, and main explanation",
         width: 1200,
         height: 800,
         chartArea: {
@@ -201,73 +198,6 @@ export const defaultTemplates: TemplateLayout[] = [
                 id: "main-3",
                 type: "main",
                 content: "Main explanation text area for detailed descriptions and analysis.",
-                position: { x: 50, y: 540, width: 1100, height: 240 },
-                style: {
-                    fontSize: 14,
-                    fontFamily: "Arial, sans-serif",
-                    fontWeight: "normal",
-                    color: "#333333",
-                    textAlign: "left",
-                    lineHeight: 1.5,
-                    letterSpacing: 0
-                },
-                visible: true
-            }
-        ],
-        backgroundColor: "#ffffff",
-        borderColor: "#e5e7eb",
-        borderWidth: 1,
-        padding: 20
-    },
-    {
-        id: "template-4",
-        name: "Full Width Chart",
-        description: "Chart spanning full width with text areas above and below",
-        width: 1200,
-        height: 800,
-        chartArea: {
-            x: 50,
-            y: 120,
-            width: 1100,
-            height: 400
-        },
-        textAreas: [
-            {
-                id: "title-4",
-                type: "title",
-                content: "Chart Title",
-                position: { x: 50, y: 20, width: 1100, height: 40 },
-                style: {
-                    fontSize: 28,
-                    fontFamily: "Arial, sans-serif",
-                    fontWeight: "bold",
-                    color: "#000000",
-                    textAlign: "center",
-                    lineHeight: 1.2,
-                    letterSpacing: 0
-                },
-                visible: true
-            },
-            {
-                id: "heading-4",
-                type: "heading",
-                content: "Subtitle or Description",
-                position: { x: 50, y: 70, width: 1100, height: 30 },
-                style: {
-                    fontSize: 16,
-                    fontFamily: "Arial, sans-serif",
-                    fontWeight: "normal",
-                    color: "#666666",
-                    textAlign: "center",
-                    lineHeight: 1.3,
-                    letterSpacing: 0
-                },
-                visible: true
-            },
-            {
-                id: "main-4",
-                type: "main",
-                content: "Main explanation text area for detailed descriptions, analysis, or supporting information related to the chart above.",
                 position: { x: 50, y: 540, width: 1100, height: 240 },
                 style: {
                     fontSize: 14,

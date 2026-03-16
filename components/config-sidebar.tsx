@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { ResponsiveAnimationsPanel } from "@/components/panels/responsive-animations-panel"
 import { DatasetsSlicesPanel } from "@/components/panels/datasets-slices-panel"
+import { TemplateListTab } from "@/components/panels/template-settings/template-list-tab"
 import { FileText, Layout, BarChart3, Edit3, Cloud, Settings } from "lucide-react"
 import { useState, useCallback } from "react"
 import { useUIStore } from "@/lib/stores/ui-store"
@@ -172,13 +173,10 @@ export function ConfigSidebar() {
   const showLabels = chartConfig?.visualSettings?.showLabels ?? true;
 
   const {
-    templates,
     currentTemplate,
     editorMode,
     setEditorMode,
     applyTemplate,
-    resetTemplate,
-    setCurrentTemplate,
     originalCloudTemplateContent,
   } = useTemplateStore()
 
@@ -222,10 +220,6 @@ export function ConfigSidebar() {
     { value: 'bubble', label: 'Bubble' },
   ]
 
-  const handleTemplateSelect = (templateId: string) => {
-    applyTemplate(templateId)
-  }
-
   return (
     <div className="h-full flex flex-col">
       <div className="flex-1 p-4 space-y-4 overflow-y-auto">
@@ -242,7 +236,13 @@ export function ConfigSidebar() {
             <span className="font-medium">Chart</span>
           </button>
           <button
-            onClick={() => setEditorMode('template')}
+            onClick={() => {
+              if (!currentTemplate) {
+                applyTemplate('template-1')
+                setActiveSidebarTab('templates')
+              }
+              setEditorMode('template')
+            }}
             className={`flex items-center gap-1 px-2 py-1.5 rounded-md transition-colors text-xs ${editorMode === 'template'
               ? 'bg-purple-100 text-purple-700 border border-purple-200'
               : 'bg-white text-gray-500 hover:bg-gray-100'
@@ -328,126 +328,7 @@ export function ConfigSidebar() {
           </TabsContent>
 
           <TabsContent value="templates" className="mt-4">
-            <div className="space-y-4">
-              {/* Content Setting Button */}
-              <ContentSettingDialog />
-
-              <div className="text-sm font-medium text-gray-900 mb-3">Chart Templates</div>
-              <div className="grid grid-cols-1 gap-3">
-                {/* Current Cloud Template section, shown above other templates when available */}
-                {currentCloudTemplate && (
-                  <div
-                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${currentTemplate?.id === "current-cloud-template"
-                      ? "border-blue-500 bg-blue-50 shadow-md"
-                      : "border-blue-200 bg-blue-50/40 hover:border-blue-400 hover:bg-blue-50"
-                      }`}
-                    onClick={() => {
-                      // Apply the cloud template as the active template in landing
-                      setCurrentTemplate(currentCloudTemplate as any)
-                      setEditorMode("template")
-                    }}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1.5">
-                          {currentTemplate?.id === "current-cloud-template" && (
-                            <span
-                              className="inline-block h-2.5 w-2.5 rounded-full bg-blue-600 ring-2 ring-blue-200 flex-shrink-0"
-                              title="Active"
-                            />
-                          )}
-                          <Cloud className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                          <h4 className="font-semibold text-sm text-gray-900 truncate flex-1">
-                            Current Cloud Template
-                          </h4>
-                        </div>
-                        {currentCloudTemplate.description && (
-                          <p className="text-xs text-gray-600 line-clamp-2">
-                            {currentCloudTemplate.description}
-                          </p>
-                        )}
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex items-center gap-1 flex-shrink-0"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          toast("Open in Advanced Editor", {
-                            description:
-                              "To edit this template's structure, please use the Advanced Editor.",
-                            action: {
-                              label: "Go to Editor",
-                              onClick: () => router.push("/editor?tab=templates"),
-                            },
-                          })
-                        }}
-                      >
-                        <Edit3 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {templates.map((template) => (
-                  <div
-                    key={template.id}
-                    className={`p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 ${currentTemplate?.id === template.id
-                      ? 'border-blue-500 bg-blue-50 shadow-md'
-                      : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/50'
-                      }`}
-                    onClick={() => handleTemplateSelect(template.id)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-blue-600" />
-                        <h4 className="font-semibold text-sm text-gray-900">{template.name}</h4>
-                      </div>
-                      {currentTemplate?.id === template.id && (
-                        <div className="flex items-center gap-1">
-                          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                          <span className="text-blue-600 text-xs font-medium">Active</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-
-                {/* Dummy card to go to editor page */}
-                <div className="p-4 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50/40 transition-all duration-200">
-                  <div className="flex flex-col items-center justify-center text-center space-y-3">
-                    {/* <Edit3 className="h-6 w-6 text-gray-400" /> */}
-                    <div>
-                      <p className="text-sm font-medium text-gray-700 mb-1 mt-1">
-                        Go to Editor Page to Edit or Create Custom Templates
-                      </p>
-                      {/* <p className="text-xs text-gray-500">
-                        Use the advanced editor to design your own templates
-                      </p> */}
-                    </div>
-                    <Link href="/editor?tab=templates">
-                      <Button variant="default" size="sm" className="mt-1">
-                        <Edit3 className="h-4 w-4 mr-2" />
-                        Go to Editor
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              </div>
-
-              {!currentTemplate && (
-                <div className="mt-4 pt-4 border-t">
-                  <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-600">
-                      Select a template above to start customizing your chart with text areas and styling.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-
-            </div>
+            <TemplateListTab currentCloudTemplate={currentCloudTemplate as any} mode="landing" />
           </TabsContent>
         </Tabs>
       </div>

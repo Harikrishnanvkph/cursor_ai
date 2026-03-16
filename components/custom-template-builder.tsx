@@ -19,7 +19,11 @@ type SectionKind = "canvas" | TemplateTextArea["type"]
 const DEFAULT_TEMPLATE_WIDTH = 1440
 const DEFAULT_TEMPLATE_HEIGHT = 1024
 
-export function CustomTemplateBuilder() {
+interface CustomTemplateBuilderProps {
+  adminMode?: boolean
+}
+
+export function CustomTemplateBuilder({ adminMode = false }: CustomTemplateBuilderProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const source = searchParams.get('source')
@@ -68,7 +72,7 @@ export function CustomTemplateBuilder() {
       // Otherwise create a new draft
       setDraftTemplate({
         id: `custom-${Date.now()}`,
-        name: "Custom Template (Draft)",
+        name: `Template_${Date.now()}`,
         description: "Draft template",
         width: DEFAULT_TEMPLATE_WIDTH,
         height: DEFAULT_TEMPLATE_HEIGHT,
@@ -309,7 +313,7 @@ export function CustomTemplateBuilder() {
         const newTemplate = { 
           ...template, 
           id: template.id || `custom-${Date.now()}`, 
-          name: template.name || `Custom Template ${new Date().toLocaleString()}`, 
+          name: template.name || `Template_${Date.now()}`, 
           description: template.description || "User custom template", 
           isCustom: true 
         }
@@ -356,7 +360,7 @@ export function CustomTemplateBuilder() {
     }
     // Ensure overlay is painted before navigating (2 RAFs)
     await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
-    const target = source === 'current-cloud' ? "/editor?tab=templates" : "/editor"
+    const target = adminMode ? "/admin/templates" : "/editor?tab=templates"
     router.push(target)
     // Clear the draft after navigation is initiated so overlay remains visible until unmount
     setTimeout(() => {
@@ -425,7 +429,7 @@ export function CustomTemplateBuilder() {
       const newTemplate = { 
         ...template, 
         id: `custom-${Date.now()}`, 
-        name: baseName.includes('Current Cloud') ? `Custom Template ${new Date().toLocaleString()}` : baseName, 
+        name: baseName.includes('Current Cloud') ? `Template_${Date.now()}` : baseName, 
         description: template.description || "User custom template", 
         isCustom: true 
       }
@@ -487,7 +491,7 @@ export function CustomTemplateBuilder() {
     setIsExiting(true)
     setIsBusy(true)
     await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
-    const target = source === 'current-cloud' ? "/editor?tab=templates" : "/editor"
+    const target = adminMode ? "/admin/templates" : "/editor?tab=templates"
     router.push(target)
     setTimeout(() => {
       try { clearDraft() } catch {}
