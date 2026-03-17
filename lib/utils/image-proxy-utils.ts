@@ -11,7 +11,7 @@ export function requiresProxy(url: string): boolean {
     try {
         const parsedUrl = new URL(url);
         // Don't proxy if it's already using our proxy or if it's the backend API URL
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000';
+        const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000';
         if (url.startsWith(apiUrl) || parsedUrl.hostname === 'localhost' || parsedUrl.hostname === '127.0.0.1') {
             return false;
         }
@@ -35,7 +35,7 @@ export function getProxiedImageUrl(originalUrl: string): string {
 
     // Base URL resolution handling relative to the frontend origin vs backend API
     // Get API URL base
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000';
+    const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000';
 
     // Return the full proxy URL
     return `${apiUrl}/api/proxy/image?url=${encodeURIComponent(originalUrl)}`;

@@ -5,10 +5,9 @@ import Link from "next/link"
 import { useAuth } from "@/components/auth/AuthProvider"
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
-import { Badge } from "@/components/ui/badge"
 import {
   ArrowRight,
   BarChart3,
@@ -16,7 +15,6 @@ import {
   LayoutDashboard,
   MessageSquare,
   Play,
-  Settings,
   Share2,
   Sparkles,
   Download,
@@ -32,7 +30,9 @@ import {
   BarChart4,
   Brain,
   Rocket,
-  Target
+  Target,
+  Zap,
+  MousePointerClick
 } from "lucide-react"
 import Image from "next/image"
 
@@ -40,7 +40,7 @@ export default function HomePage() {
   const { user, loading } = useAuth()
   const searchParams = useSearchParams()
   const [showWelcome, setShowWelcome] = useState<boolean>(false)
-  
+
   // Only show welcome banner once per session
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -72,88 +72,125 @@ export default function HomePage() {
     }
   }, [user, showWelcome])
 
-  const heroFeatures = [
-    { icon: Brain, label: "AI-Powered Chart Generation", description: "Natural language to stunning visuals" },
-    { icon: Palette, label: "Professional Design Tools", description: "10+ advanced editing panels" },
-    { icon: Cloud, label: "Cloud Sync & Collaboration", description: "Save, share, and collaborate seamlessly" }
-  ]
-
   const capabilities = [
     {
-      icon: MessageSquare,
+      icon: Brain,
       title: "Conversational AI",
       description: "Simply describe your data story. Our AI understands context, suggests optimal chart types, and creates publication-ready visualizations instantly.",
-      gradient: "from-blue-500 to-cyan-500"
+      gradient: "from-blue-500 to-cyan-400",
+      bgGlow: "bg-blue-500/10"
     },
     {
       icon: Edit3,
       title: "Advanced Editor",
       description: "Fine-tune every detail with our comprehensive visual editor. Adjust datasets, styling, animations, overlays, and responsive behavior.",
-      gradient: "from-purple-500 to-pink-500"
+      gradient: "from-purple-500 to-pink-400",
+      bgGlow: "bg-purple-500/10"
     },
     {
       icon: LayoutDashboard,
       title: "Smart Dashboard",
       description: "Organize, manage, and analyze all your charts in one place. Track usage, share publicly, and maintain version history.",
-      gradient: "from-green-500 to-emerald-500"
+      gradient: "from-emerald-500 to-teal-400",
+      bgGlow: "bg-emerald-500/10"
     },
     {
       icon: Share2,
       title: "Universal Export",
       description: "Export as PNG, responsive HTML, or embed codes. Perfect for presentations, websites, dashboards, and marketing materials.",
-      gradient: "from-orange-500 to-red-500"
+      gradient: "from-orange-500 to-amber-400",
+      bgGlow: "bg-orange-500/10"
     }
   ]
 
   const chartTypes = [
-    { icon: BarChart4, name: "Bar Charts", color: "text-blue-600" },
-    { icon: LineChart, name: "Line Charts", color: "text-green-600" },
-    { icon: PieChart, name: "Pie Charts", color: "text-purple-600" },
-    { icon: TrendingUp, name: "Area Charts", color: "text-orange-600" },
-    { icon: Target, name: "Radar Charts", color: "text-pink-600" },
-    { icon: Layers, name: "Mixed Charts", color: "text-indigo-600" }
+    { icon: BarChart4, name: "Bar Charts", color: "from-blue-500 to-blue-600", bg: "bg-blue-50" },
+    { icon: LineChart, name: "Line Charts", color: "from-emerald-500 to-emerald-600", bg: "bg-emerald-50" },
+    { icon: PieChart, name: "Pie Charts", color: "from-purple-500 to-purple-600", bg: "bg-purple-50" },
+    { icon: TrendingUp, name: "Area Charts", color: "from-orange-500 to-orange-600", bg: "bg-orange-50" },
+    { icon: Target, name: "Radar Charts", color: "from-pink-500 to-pink-600", bg: "bg-pink-50" },
+    { icon: Layers, name: "Mixed Charts", color: "from-indigo-500 to-indigo-600", bg: "bg-indigo-50" }
   ]
 
   const workflow = [
     {
       step: "01",
       title: "Describe Your Vision",
-      description: "Tell our AI what you want to visualize. Upload CSV data, paste text, or simply describe your chart requirements in natural language.",
+      description: "Tell our AI what you want to visualize. Upload CSV data, paste text, or simply describe your chart in natural language.",
       icon: MessageSquare,
-      color: "bg-blue-500"
+      color: "from-blue-500 to-blue-600"
     },
     {
-      step: "02", 
+      step: "02",
       title: "AI Creates & You Refine",
       description: "Watch as AI generates your chart instantly. Then use our advanced editor to perfect colors, layouts, animations, and interactive elements.",
       icon: Wand2,
-      color: "bg-purple-500"
+      color: "from-purple-500 to-purple-600"
     },
     {
       step: "03",
       title: "Export & Share",
       description: "Download high-quality images, get responsive HTML code, or share via public links. Your charts work everywhere, on any device.",
       icon: Rocket,
-      color: "bg-green-500"
+      color: "from-emerald-500 to-emerald-600"
     }
   ]
 
   const stats = [
     { number: "10+", label: "Chart Types", icon: BarChart3 },
-    { number: "50+", label: "Customization Options", icon: Settings },
+    { number: "50+", label: "Customizations", icon: Palette },
     { number: "3", label: "Export Formats", icon: Download },
-    { number: "∞", label: "Creative Possibilities", icon: Sparkles }
+    { number: "∞", label: "Possibilities", icon: Sparkles }
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50">
+    <div className="min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300">
       <SiteHeader />
+
+      {/* Inline keyframe animations */}
+      <style jsx>{`
+        @keyframes float-slow {
+          0%, 100% { transform: translateY(0px) translateX(0px); }
+          25% { transform: translateY(-20px) translateX(10px); }
+          50% { transform: translateY(-10px) translateX(-5px); }
+          75% { transform: translateY(-25px) translateX(5px); }
+        }
+        @keyframes float-medium {
+          0%, 100% { transform: translateY(0px) translateX(0px); }
+          33% { transform: translateY(-15px) translateX(-10px); }
+          66% { transform: translateY(-30px) translateX(8px); }
+        }
+        @keyframes float-fast {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-18px); }
+        }
+        @keyframes gradient-x {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+        @keyframes pulse-border {
+          0%, 100% { border-color: rgba(99, 102, 241, 0.2); }
+          50% { border-color: rgba(99, 102, 241, 0.5); }
+        }
+        @keyframes dash-flow {
+          to { stroke-dashoffset: -20; }
+        }
+        .animate-float-slow { animation: float-slow 8s ease-in-out infinite; }
+        .animate-float-medium { animation: float-medium 6s ease-in-out infinite; }
+        .animate-float-fast { animation: float-fast 4s ease-in-out infinite; }
+        .animate-gradient-x { 
+          background-size: 200% 200%;
+          animation: gradient-x 6s ease infinite; 
+        }
+        .animate-pulse-border { animation: pulse-border 3s ease-in-out infinite; }
+        .animate-dash-flow { animation: dash-flow 1s linear infinite; }
+      `}</style>
 
       {/* Loading State */}
       {loading && !user && (
         <div className="min-h-screen flex items-center justify-center">
           <div className="text-center space-y-4">
-            <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
+            <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto"></div>
             <p className="text-gray-600 font-medium">Loading AIChartor...</p>
           </div>
         </div>
@@ -164,36 +201,36 @@ export default function HomePage() {
         <>
           {/* Welcome Banner for Authenticated Users */}
           {user && showWelcome && (
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-200/50 backdrop-blur-sm">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 text-white">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     {user.avatar_url && (
                       <Image
                         src={user.avatar_url}
                         alt="Profile"
-                        width={40}
-                        height={40}
-                        className="rounded-full ring-2 ring-green-200"
+                        width={32}
+                        height={32}
+                        className="rounded-full ring-2 ring-white/30"
                         referrerPolicy="no-referrer"
                         priority
                       />
                     )}
                     <div className="flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                      <span className="text-green-800 font-semibold">
-                        Welcome back, {user.full_name || user.email?.split('@')[0]}! 
+                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                      <span className="font-medium">
+                        Welcome back, {user.full_name || user.email?.split('@')[0]}!
                       </span>
-                      <Badge className="bg-green-100 text-green-700 border-green-200">
+                      <Badge className="bg-white/15 text-white border-white/20 text-xs">
                         Ready to create
                       </Badge>
                     </div>
                   </div>
                   <button
                     onClick={() => setShowWelcome(false)}
-                    className="text-green-600 hover:text-green-800 transition-colors p-1 rounded-full hover:bg-green-100"
+                    className="text-white/70 hover:text-white transition-colors p-1 rounded-full hover:bg-white/10"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
@@ -202,72 +239,73 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Hero Section */}
-          <section className="relative overflow-hidden">
-            {/* Background Elements */}
-            <div className="absolute inset-0 -z-10">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.1),transparent_50%)]"></div>
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(147,51,234,0.1),transparent_50%)]"></div>
-              <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-blue-500/20 to-transparent"></div>
+          {/* ─── HERO SECTION ─── */}
+          <section className="relative overflow-hidden bg-gradient-to-b from-indigo-50/50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-colors duration-300">
+            {/* Animated background orbs */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <div className="animate-float-slow absolute -top-24 -left-24 w-[420px] h-[420px] rounded-full bg-indigo-500/10 dark:bg-indigo-600/20 blur-[100px]"></div>
+              <div className="animate-float-medium absolute top-1/3 right-0 w-[350px] h-[350px] rounded-full bg-purple-500/10 dark:bg-purple-600/20 blur-[100px]"></div>
+              <div className="animate-float-fast absolute bottom-0 left-1/3 w-[300px] h-[300px] rounded-full bg-cyan-400/10 dark:bg-cyan-500/15 blur-[100px]"></div>
+              {/* Grid pattern */}
+              <div 
+                className="absolute inset-0 transition-opacity duration-300"
+                style={{
+                  backgroundImage: `linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px)`,
+                  backgroundSize: '60px 60px'
+                }}
+              ></div>
+              <div 
+                className="absolute inset-0 opacity-0 dark:opacity-100 transition-opacity duration-300"
+                style={{
+                  backgroundImage: `linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px)`,
+                  backgroundSize: '60px 60px'
+                }}
+              ></div>
             </div>
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16 sm:pt-24 sm:pb-20">
+            <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 sm:pt-28 sm:pb-32">
               <div className="text-center space-y-8">
-                {/* Main Headline */}
-                <div className="space-y-4">
-                  <Badge className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border-blue-200/50 hover:border-blue-300/50 transition-colors">
-                    <Sparkles className="w-4 h-4" />
-                    AI-Powered Chart Creation Platform
-                  </Badge>
-                  
-                  <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight">
-                    <span className="block text-gray-900">Transform Data Into</span>
-                    <span className="block bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
-                      Stunning Visuals
-                    </span>
-                  </h1>
-                  
-                  <p className="max-w-3xl mx-auto text-xl sm:text-2xl text-gray-600 leading-relaxed">
-                    Create professional charts in seconds with AI, then perfect them with our advanced editor. 
-                    From natural language to publication-ready visualizations.
-                  </p>
+                {/* Badge */}
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 dark:bg-white/5 border border-indigo-100 dark:border-white/10 backdrop-blur-sm text-indigo-600 dark:text-indigo-300 text-sm font-medium transition-colors">
+                  <Sparkles className="w-4 h-4" />
+                  AI-Powered Chart Creation Platform
+                  <ArrowRight className="w-3 h-3 ml-1" />
                 </div>
 
-                {/* Hero Features */}
-                <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-                  {heroFeatures.map((feature, index) => (
-                    <div key={index} className="flex flex-col items-center space-y-3 p-6 rounded-2xl bg-white/60 backdrop-blur-sm border border-white/20 hover:bg-white/80 transition-all duration-300 hover:scale-105">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white">
-                        <feature.icon className="w-6 h-6" />
-                      </div>
-                      <div className="text-center">
-                        <h3 className="font-semibold text-gray-900">{feature.label}</h3>
-                        <p className="text-sm text-gray-600 mt-1">{feature.description}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                {/* Headline */}
+                <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-extrabold tracking-tight leading-[1.05]">
+                  <span className="block text-slate-900 dark:text-white transition-colors">Transform Data Into</span>
+                  <span className="block bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-500 dark:from-indigo-400 dark:via-purple-400 dark:to-cyan-400 bg-clip-text text-transparent animate-gradient-x">
+                    Stunning Visuals
+                  </span>
+                </h1>
 
-                {/* CTA Buttons */}
+                {/* Subtitle */}
+                <p className="max-w-2xl mx-auto text-lg sm:text-xl text-slate-600 dark:text-slate-400 leading-relaxed transition-colors">
+                  Create professional charts in seconds with AI, then perfect them with our advanced editor.
+                  From natural language to publication-ready visualizations.
+                </p>
+
+                {/* CTA buttons */}
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
                   <Link href="/landing">
-                    <Button size="lg" className="px-8 py-4 text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                    <Button size="lg" className="px-8 py-6 text-base font-semibold bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 hover:from-indigo-600 hover:via-purple-600 hover:to-indigo-700 text-white shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30 transition-all duration-300 transform hover:-translate-y-0.5 rounded-xl">
                       <Play className="w-5 h-5 mr-2" />
                       Start Creating with AI
                       <ArrowRight className="w-5 h-5 ml-2" />
                     </Button>
                   </Link>
-                  
+
                   {user ? (
                     <Link href="/board">
-                      <Button size="lg" variant="outline" className="px-8 py-4 text-lg font-semibold border-2 hover:bg-gray-50 transition-all duration-300">
+                      <Button size="lg" variant="outline" className="px-8 py-6 text-base font-semibold bg-transparent border-slate-200 dark:border-white/20 text-slate-700 dark:text-white hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/10 backdrop-blur-sm transition-all duration-300 rounded-xl">
                         <LayoutDashboard className="w-5 h-5 mr-2" />
                         View Dashboard
                       </Button>
                     </Link>
                   ) : (
                     <Link href="/editor">
-                      <Button size="lg" variant="outline" className="px-8 py-4 text-lg font-semibold border-2 hover:bg-gray-50 transition-all duration-300">
+                      <Button size="lg" variant="outline" className="px-8 py-6 text-base font-semibold bg-transparent border-slate-200 dark:border-white/20 text-slate-700 dark:text-white hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/10 backdrop-blur-sm transition-all duration-300 rounded-xl">
                         <Edit3 className="w-5 h-5 mr-2" />
                         Try Advanced Editor
                       </Button>
@@ -275,54 +313,81 @@ export default function HomePage() {
                   )}
                 </div>
 
-                {/* Trust Indicator */}
-                <p className="text-sm text-gray-500 flex items-center justify-center gap-2">
-                  <CheckCircle className="w-4 h-4 text-green-500" />
-                  No credit card required • Start creating immediately
-                </p>
+                {/* Trust indicators */}
+                <div className="flex items-center justify-center gap-6 text-slate-500 text-sm pt-2">
+                  <span className="flex items-center gap-1.5">
+                    <CheckCircle className="w-4 h-4 text-emerald-400" />
+                    No credit card required
+                  </span>
+                  <span className="hidden sm:flex items-center gap-1.5">
+                    <Zap className="w-4 h-4 text-amber-400" />
+                    Charts in seconds
+                  </span>
+                  <span className="hidden md:flex items-center gap-1.5">
+                    <Cloud className="w-4 h-4 text-cyan-400" />
+                    Cloud sync included
+                  </span>
+                </div>
               </div>
+            </div>
+
+            {/* Curved bottom separator */}
+            <div className="absolute bottom-0 left-0 right-0">
+              <svg viewBox="0 0 1440 60" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full text-white dark:text-slate-950 transition-colors duration-300">
+                <path d="M0 60L1440 60L1440 0C1440 0 1080 40 720 40C360 40 0 0 0 0L0 60Z" fill="currentColor"/>
+              </svg>
             </div>
           </section>
 
-          {/* Stats Section */}
-          <section className="py-16 bg-white/50 backdrop-blur-sm border-y border-gray-200/50">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+          {/* ─── STATS SECTION (Glassmorphism) ─── */}
+          <section className="py-16 sm:py-20 bg-white dark:bg-slate-950 transition-colors duration-300 relative">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                 {stats.map((stat, index) => (
-                  <div key={index} className="text-center">
-                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 text-white mb-3">
-                      <stat.icon className="w-6 h-6" />
+                  <div
+                    key={index}
+                    className="group relative p-6 sm:p-8 rounded-2xl bg-gradient-to-br from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 border border-slate-200/80 dark:border-slate-800/80 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all duration-300 hover:shadow-lg hover:shadow-indigo-100/50 dark:hover:shadow-indigo-900/20 hover:-translate-y-1"
+                  >
+                    <div className="text-center space-y-3">
+                      <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-200/50 dark:shadow-indigo-900/50 group-hover:scale-110 transition-transform duration-300">
+                        <stat.icon className="w-6 h-6" />
+                      </div>
+                      <div className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white">{stat.number}</div>
+                      <div className="text-sm font-medium text-slate-500 dark:text-slate-400">{stat.label}</div>
                     </div>
-                    <div className="text-3xl font-bold text-gray-900 mb-1">{stat.number}</div>
-                    <div className="text-sm font-medium text-gray-600">{stat.label}</div>
                   </div>
                 ))}
               </div>
             </div>
           </section>
 
-          {/* Chart Types Showcase */}
-          <section className="py-20 bg-gradient-to-br from-gray-50 to-blue-50/30">
+          {/* ─── CHART TYPES SHOWCASE ─── */}
+          <section className="py-20 sm:py-24 bg-gradient-to-b from-white via-slate-50/80 to-white dark:from-slate-950 dark:via-slate-900/50 dark:to-slate-950 transition-colors duration-300">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="text-center mb-16">
-                <Badge className="mb-4 bg-blue-50 text-blue-700 border-blue-200">
+              <div className="text-center mb-14">
+                <Badge className="mb-4 px-4 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-200/50 dark:border-indigo-500/20 font-medium transition-colors">
                   Comprehensive Chart Library
                 </Badge>
-                <h2 className="text-4xl font-bold text-gray-900 mb-4">
+                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 dark:text-white mb-4 tracking-tight transition-colors">
                   Every Chart Type You Need
                 </h2>
-                <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+                <p className="text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto transition-colors">
                   From simple bar charts to complex mixed visualizations. Our AI understands your data and suggests the perfect chart type.
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-5">
                 {chartTypes.map((chart, index) => (
-                  <div key={index} className="group">
-                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200/50 hover:shadow-lg hover:border-gray-300/50 transition-all duration-300 hover:-translate-y-1">
-                      <div className="text-center">
-                        <chart.icon className={`w-8 h-8 mx-auto mb-3 ${chart.color}`} />
-                        <h3 className="font-semibold text-gray-900 text-sm">{chart.name}</h3>
+                  <div
+                    key={index}
+                    className="group cursor-pointer"
+                  >
+                    <div className={`relative rounded-2xl p-6 sm:p-8 ${chart.bg} dark:bg-slate-900 border border-transparent dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 transition-all duration-300 hover:shadow-xl hover:-translate-y-2`}>
+                      <div className="text-center space-y-3">
+                        <div className={`inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br ${chart.color} text-white shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
+                          <chart.icon className="w-7 h-7" />
+                        </div>
+                        <h3 className="font-semibold text-slate-800 dark:text-slate-200 text-sm transition-colors">{chart.name}</h3>
                       </div>
                     </div>
                   </div>
@@ -331,76 +396,91 @@ export default function HomePage() {
             </div>
           </section>
 
-          {/* Capabilities Section */}
-          <section className="py-20">
+          {/* ─── CAPABILITIES BENTO GRID ─── */}
+          <section className="py-20 sm:py-24 bg-white dark:bg-slate-950 transition-colors duration-300">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="text-center mb-16">
-                <Badge className="mb-4 bg-purple-50 text-purple-700 border-purple-200">
+              <div className="text-center mb-14">
+                <Badge className="mb-4 px-4 py-1.5 bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-200/50 dark:border-purple-500/20 font-medium transition-colors">
                   Platform Capabilities
                 </Badge>
-                <h2 className="text-4xl font-bold text-gray-900 mb-4">
+                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 dark:text-white mb-4 tracking-tight transition-colors">
                   Everything You Need in One Platform
                 </h2>
-                <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+                <p className="text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto transition-colors">
                   Combine the power of AI with professional design tools for the complete data visualization workflow.
                 </p>
               </div>
 
-              <div className="grid lg:grid-cols-2 gap-8">
-                {capabilities.map((capability, index) => (
-                  <Card key={index} className="group border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden">
-                    <div className={`h-1 bg-gradient-to-r ${capability.gradient}`}></div>
-                    <CardHeader className="pb-4">
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-10 h-10 rounded-lg bg-gradient-to-r ${capability.gradient} flex items-center justify-center text-white`}>
-                          <capability.icon className="w-5 h-5" />
-                        </div>
-                        <CardTitle className="text-xl text-gray-900">{capability.title}</CardTitle>
+              {/* Bento Grid: 2 large on top, 2 below */}
+              <div className="grid md:grid-cols-2 gap-5 sm:gap-6">
+                {capabilities.map((cap, index) => (
+                  <div
+                    key={index}
+                    className={`group relative rounded-3xl border border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-gradient-to-br from-white to-slate-50/50 dark:from-slate-900 dark:to-slate-950/50 overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-slate-900/50 hover:-translate-y-1 ${index < 2 ? 'p-8 sm:p-10' : 'p-7 sm:p-9'}`}
+                  >
+                    {/* Top gradient accent */}
+                    <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${cap.gradient}`}></div>
+
+                    {/* Glow on hover */}
+                    <div className={`absolute top-0 right-0 w-32 h-32 ${cap.bgGlow} rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>
+
+                    <div className="relative space-y-4">
+                      <div className={`inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br ${cap.gradient} text-white shadow-lg`}>
+                        <cap.icon className="w-6 h-6" />
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <CardDescription className="text-gray-600 leading-relaxed">
-                        {capability.description}
-                      </CardDescription>
-                    </CardContent>
-                  </Card>
+                      <h3 className={`font-bold text-slate-900 dark:text-white transition-colors ${index < 2 ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl'}`}>
+                        {cap.title}
+                      </h3>
+                      <p className="text-slate-500 dark:text-slate-400 leading-relaxed transition-colors">
+                        {cap.description}
+                      </p>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
           </section>
 
-          {/* Workflow Section */}
-          <section className="py-20 bg-gradient-to-br from-blue-50/50 to-indigo-50/50">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* ─── WORKFLOW TIMELINE ─── */}
+          <section className="py-20 sm:py-24 bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 transition-colors duration-300 relative overflow-hidden">
+            {/* Subtle background decoration */}
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-indigo-50 dark:bg-indigo-950/30 blur-[120px] opacity-50 dark:opacity-30"></div>
+            </div>
+
+            <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="text-center mb-16">
-                <Badge className="mb-4 bg-green-50 text-green-700 border-green-200">
+                <Badge className="mb-4 px-4 py-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200/50 dark:border-emerald-500/20 font-medium transition-colors">
                   Simple Workflow
                 </Badge>
-                <h2 className="text-4xl font-bold text-gray-900 mb-4">
+                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 dark:text-white mb-4 tracking-tight transition-colors">
                   From Idea to Impact in Minutes
                 </h2>
-                <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+                <p className="text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto transition-colors">
                   Our streamlined process gets you from raw data to polished visualizations faster than ever before.
                 </p>
               </div>
 
-              <div className="grid md:grid-cols-3 gap-8">
+              <div className="grid md:grid-cols-3 gap-8 relative">
+                {/* Connection line (desktop) */}
+                <div className="hidden md:block absolute top-20 left-[20%] right-[20%] h-0.5">
+                  <div className="w-full h-full bg-gradient-to-r from-blue-300 via-purple-300 to-emerald-300 dark:from-blue-600 dark:via-purple-600 dark:to-emerald-600 rounded-full"></div>
+                </div>
+
                 {workflow.map((step, index) => (
                   <div key={index} className="relative">
-                    {/* Connection Line */}
-                    {index < workflow.length - 1 && (
-                      <div className="hidden md:block absolute top-16 left-full w-full h-0.5 bg-gradient-to-r from-gray-300 to-gray-200 z-0"></div>
-                    )}
-                    
-                    <div className="relative bg-white rounded-2xl p-8 shadow-lg border border-gray-200/50 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 z-10">
-                      <div className="text-center">
-                        <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl ${step.color} text-white mb-6 shadow-lg`}>
-                          <step.icon className="w-8 h-8" />
-                        </div>
-                        <div className="text-sm font-bold text-gray-400 mb-2">STEP {step.step}</div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-4">{step.title}</h3>
-                        <p className="text-gray-600 leading-relaxed">{step.description}</p>
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-200/80 dark:border-slate-800 hover:shadow-xl dark:hover:shadow-indigo-900/20 hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-300 hover:-translate-y-2 text-center">
+                      {/* Step number circle */}
+                      <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br ${step.color} text-white shadow-lg mb-6`}>
+                        <step.icon className="w-7 h-7" />
                       </div>
+
+                      <div className="inline-block px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-500 dark:text-slate-400 tracking-wider uppercase mb-3 transition-colors">
+                        Step {step.step}
+                      </div>
+
+                      <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3 transition-colors">{step.title}</h3>
+                      <p className="text-slate-500 dark:text-slate-400 leading-relaxed text-sm transition-colors">{step.description}</p>
                     </div>
                   </div>
                 ))}
@@ -408,110 +488,117 @@ export default function HomePage() {
             </div>
           </section>
 
-          {/* CTA Section */}
-          <section className="py-20 bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 relative overflow-hidden">
-            {/* Background Pattern */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1),transparent_50%)]"></div>
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(255,255,255,0.05),transparent_50%)]"></div>
-            
-            <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8 relative">
-              <div className="space-y-8">
-                <div className="space-y-4">
-                  <h2 className="text-4xl sm:text-5xl font-bold text-white">
-                    Ready to Transform Your Data?
+          {/* ─── CTA SECTION ─── */}
+          <section className="relative overflow-hidden">
+            <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700 py-20 sm:py-24">
+              {/* Decorative elements */}
+              <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                <div className="animate-float-slow absolute top-10 left-[10%] w-3 h-3 rounded-full bg-white/20"></div>
+                <div className="animate-float-medium absolute top-20 right-[15%] w-2 h-2 rounded-full bg-white/30"></div>
+                <div className="animate-float-fast absolute bottom-20 left-[20%] w-4 h-4 rounded-full bg-white/10"></div>
+                <div className="animate-float-medium absolute bottom-10 right-[25%] w-2 h-2 rounded-full bg-white/20"></div>
+                <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 30% 20%, rgba(255,255,255,0.08), transparent 50%)' }}></div>
+                <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 70% 80%, rgba(255,255,255,0.05), transparent 50%)' }}></div>
+              </div>
+
+              <div className="relative max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
+                <div className="space-y-8">
+                  <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight">
+                    Ready to Transform
+                    <br />
+                    <span className="text-indigo-200">Your Data?</span>
                   </h2>
-                  <p className="text-xl text-blue-100 max-w-2xl mx-auto">
-                    Join thousands of teams creating stunning visualizations with AIChartor. 
+
+                  <p className="text-lg sm:text-xl text-indigo-200 max-w-2xl mx-auto leading-relaxed">
+                    Join thousands of teams creating stunning visualizations with AIChartor.
                     Start your journey from data to insights today.
                   </p>
-                </div>
 
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                  <Link href="/landing">
-                    <Button size="lg" className="px-8 py-4 text-lg font-semibold bg-white text-gray-900 hover:bg-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-                      <Sparkles className="w-5 h-5 mr-2" />
-                      Start Creating Now
-                      <ArrowUpRight className="w-5 h-5 ml-2" />
-                    </Button>
-                  </Link>
-                  
-                  <Link href="/editor">
-                    <Button size="lg" variant="outline" className="px-8 py-4 text-lg font-semibold border-2 border-white/30 text-white hover:bg-white/10 backdrop-blur-sm transition-all duration-300">
-                      <Edit3 className="w-5 h-5 mr-2" />
-                      Explore Editor
-                    </Button>
-                  </Link>
-                </div>
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+                    <Link href="/landing">
+                      <Button size="lg" className="px-8 py-6 text-base font-semibold bg-white text-indigo-700 hover:bg-indigo-50 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-0.5 rounded-xl">
+                        <Sparkles className="w-5 h-5 mr-2" />
+                        Start Creating Now
+                        <ArrowUpRight className="w-5 h-5 ml-2" />
+                      </Button>
+                    </Link>
 
-                <div className="flex items-center justify-center space-x-6 text-blue-100">
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle className="w-5 h-5" />
-                    <span>Free to start</span>
+                    <Link href="/editor">
+                      <Button size="lg" variant="outline" className="px-8 py-6 text-base font-semibold bg-transparent border-2 border-white/25 text-white hover:text-white hover:bg-white/10 backdrop-blur-sm transition-all duration-300 rounded-xl">
+                        <Edit3 className="w-5 h-5 mr-2" />
+                        Explore Editor
+                      </Button>
+                    </Link>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle className="w-5 h-5" />
-                    <span>No setup required</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle className="w-5 h-5" />
-                    <span>Export anywhere</span>
+
+                  <div className="flex flex-wrap items-center justify-center gap-6 text-indigo-200 text-sm pt-4">
+                    <span className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4" />
+                      Free to start
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4" />
+                      No setup required
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4" />
+                      Export anywhere
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
           </section>
 
-          {/* Footer */}
-          <footer className="bg-gray-900 text-white">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-              <div className="grid md:grid-cols-4 gap-8">
+          {/* ─── FOOTER ─── */}
+          <footer className="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white transition-colors duration-300 border-t border-slate-200 dark:border-transparent">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+              <div className="grid md:grid-cols-4 gap-10">
                 {/* Brand */}
                 <div className="md:col-span-2">
-                  <div className="flex items-center space-x-3 mb-4">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
+                  <div className="flex items-center space-x-3 mb-5">
+                    <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
                       <BarChart3 className="w-6 h-6 text-white" />
                     </div>
                     <span className="text-2xl font-bold">AIChartor</span>
                   </div>
-                  <p className="text-gray-400 max-w-md leading-relaxed">
-                    Transform your data into stunning visualizations with the power of AI and professional design tools. 
+                  <p className="text-slate-500 dark:text-slate-400 max-w-md leading-relaxed text-sm transition-colors">
+                    Transform your data into stunning visualizations with the power of AI and professional design tools.
                     Create, customize, and share charts that tell your story.
                   </p>
                 </div>
 
                 {/* Quick Links */}
                 <div>
-                  <h3 className="font-semibold mb-4">Platform</h3>
-                  <div className="space-y-2">
-                    <Link href="/landing" className="block text-gray-400 hover:text-white transition-colors">AI Chat</Link>
-                    <Link href="/editor" className="block text-gray-400 hover:text-white transition-colors">Advanced Editor</Link>
-                    <Link href="/board" className="block text-gray-400 hover:text-white transition-colors">Dashboard</Link>
-                    <Link href="/documentation" className="block text-gray-400 hover:text-white transition-colors">Documentation</Link>
+                  <h3 className="font-semibold mb-5 text-slate-900 dark:text-slate-200 transition-colors">Platform</h3>
+                  <div className="space-y-3">
+                    <Link href="/landing" className="block text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors text-sm">AI Chat</Link>
+                    <Link href="/editor" className="block text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors text-sm">Advanced Editor</Link>
+                    <Link href="/board" className="block text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors text-sm">Dashboard</Link>
+                    <Link href="/documentation" className="block text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors text-sm">Documentation</Link>
                   </div>
                 </div>
 
                 {/* Resources */}
                 <div>
-                  <h3 className="font-semibold mb-4">Resources</h3>
-                  <div className="space-y-2">
-                    <Link href="/pricing" className="block text-gray-400 hover:text-white transition-colors">Pricing</Link>
-                    <Link href="/about" className="block text-gray-400 hover:text-white transition-colors">About</Link>
-                    <Link href="/signin" className="block text-gray-400 hover:text-white transition-colors">Sign In</Link>
-                    <Link href="/signup" className="block text-gray-400 hover:text-white transition-colors">Sign Up</Link>
+                  <h3 className="font-semibold mb-5 text-slate-900 dark:text-slate-200 transition-colors">Resources</h3>
+                  <div className="space-y-3">
+                    <Link href="/pricing" className="block text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors text-sm">Pricing</Link>
+                    <Link href="/about" className="block text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors text-sm">About</Link>
+                    <Link href="/signin" className="block text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors text-sm">Sign In</Link>
+                    <Link href="/signup" className="block text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors text-sm">Sign Up</Link>
                   </div>
                 </div>
               </div>
 
-              <div className="border-t border-gray-800 mt-8 pt-8 flex flex-col md:flex-row items-center justify-between">
-                <div className="text-gray-400 text-sm">
-                  © 2024 AIChartor. All rights reserved.
+              <div className="border-t border-slate-200 dark:border-slate-800 mt-12 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 transition-colors">
+                <div className="text-slate-500 dark:text-slate-400 text-sm transition-colors">
+                  © {new Date().getFullYear()} AIChartor. All rights reserved.
                 </div>
-                <div className="flex items-center space-x-4 mt-4 md:mt-0">
-                  <Badge className="bg-green-500/10 text-green-400 border-green-500/20">
-                    <div className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></div>
-                    All systems operational
-                  </Badge>
-                </div>
+                <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                  <div className="w-2 h-2 bg-emerald-400 rounded-full mr-2 animate-pulse"></div>
+                  All systems operational
+                </Badge>
               </div>
             </div>
           </footer>

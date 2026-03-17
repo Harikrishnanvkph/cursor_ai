@@ -15,6 +15,7 @@ type AuthContextValue = {
   ) => Promise<{ wasNewUser: boolean; requiresEmailConfirmation?: boolean }>
   signOut: () => Promise<void>
   signInWithGoogle: () => void
+  signInAsGuest: () => void
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -26,6 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refresh = useCallback(async () => {
     console.log('hellow from refresh')
+
     try {
       const res = await authApi.me()
       setUser(res.user)
@@ -302,8 +304,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  // Guest sign-in — temporary, calls real server endpoint for full functionality
+  const signInAsGuest = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await authApi.guestSignIn()
+
+      if (!res) {
+        if (typeof window !== 'undefined' && !navigator.onLine) {
+          toast.error('No internet connection. Please check your network and try again.')
+        } else {
+          toast.error('Server is currently unavailable. Please try again later.')
+        }
+        return
+      }
+
+      setUser(res.user)
+
+      if (typeof window !== 'undefined' && res.user?.id) {
+        localStorage.setItem('user-id', res.user.id)
+      }
+
+      toast.success('Signed in as Guest')
+      router.push('/')
+    } catch (e: any) {
+      console.error('Guest sign-in error:', e)
+      toast.error('Failed to sign in as guest. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }, [router])
+
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, signInWithGoogle }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, signInWithGoogle, signInAsGuest }}>
       {children}
     </AuthContext.Provider>
   )

@@ -13,32 +13,54 @@ import {
   Sparkles,
   ArrowRight,
   Menu,
-  X
+  X,
+  ChevronRight
 } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { usePathname } from "next/navigation"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
 
 export function SiteHeader() {
   const { user } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+  const pathname = usePathname()
+  
+  // Determine if we are on the homepage to apply specific transparent-to-solid styling
+  const isHomepage = pathname === "/"
+
+  // Handle scroll effect for glassmorphism
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20)
+    }
+    window.addEventListener("scroll", handleScroll)
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [])
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/20 bg-white/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/80 shadow-sm">
-      {/* Background gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-50/50 via-white/50 to-purple-50/50 -z-10"></div>
-
+    <header 
+      className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 border-b ${
+        scrolled 
+          ? "bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-slate-200/80 dark:border-slate-800/80 shadow-sm" 
+          : isHomepage 
+            ? "bg-transparent border-transparent" 
+            : "bg-white dark:bg-slate-950 border-transparent dark:border-slate-900"
+      }`}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex h-20 items-center justify-between py-4">
+        <div className="flex h-16 sm:h-20 items-center justify-between">
           {/* Logo */}
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-3 group">
-              <div className="w-11 h-11 bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-105">
-                <BarChart3 className="w-6 h-6 text-white" />
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-indigo-600 flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:shadow-indigo-500/25 transition-all duration-300 group-hover:scale-105">
+                <BarChart3 className="w-5 h-5 text-white" />
               </div>
               <div className="flex flex-col">
-                <span className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                <span className="text-xl font-bold tracking-tight transition-colors text-slate-900 dark:text-white">
                   AIChartor
                 </span>
-                <span className="text-xs text-gray-500 font-medium -mt-1">
+                <span className="text-[10px] sm:text-xs font-medium uppercase tracking-wider -mt-1 transition-colors text-slate-500 dark:text-slate-400">
                   AI Chart Platform
                 </span>
               </div>
@@ -46,77 +68,110 @@ export function SiteHeader() {
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-2">
+          <nav className="hidden lg:flex items-center space-x-1">
             {/* Public Navigation */}
-            <Button variant="ghost" asChild className="text-gray-600 hover:text-gray-900 hover:bg-white/60 px-5 py-3 rounded-xl font-medium transition-all duration-200 hover:shadow-sm">
-              <Link href="/pricing">
-                Pricing
-              </Link>
+            <Button 
+              variant="ghost" 
+              asChild 
+              className="px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800"
+            >
+              <Link href="/pricing">Pricing</Link>
             </Button>
 
-            <Button variant="ghost" asChild className="text-gray-600 hover:text-gray-900 hover:bg-white/60 px-5 py-3 rounded-xl font-medium transition-all duration-200 hover:shadow-sm">
-              <Link href="/documentation">
-                Documentation
-              </Link>
+            <Button 
+              variant="ghost" 
+              asChild 
+              className="px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800"
+            >
+              <Link href="/documentation">Documentation</Link>
             </Button>
 
             {/* User-specific navigation - Only show when user is signed in */}
             {user && (
               <>
-                <div className="w-px h-8 bg-gradient-to-b from-transparent via-gray-300 to-transparent mx-4"></div>
+                <div className="w-px h-6 mx-3 transition-colors bg-slate-200 dark:bg-slate-800"></div>
 
-                <Button variant="ghost" asChild className="text-gray-600 hover:text-blue-700 hover:bg-blue-50/80 px-5 py-3 rounded-xl font-medium transition-all duration-200 hover:shadow-sm group">
+                <Button 
+                  variant="ghost" 
+                  asChild 
+                  className="px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 group text-slate-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-slate-300 dark:hover:text-indigo-300 dark:hover:bg-indigo-500/10"
+                >
                   <Link href="/landing">
-                    <MessageSquare className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />
+                    <MessageSquare className="h-4 w-4 mr-2 opacity-70 group-hover:opacity-100 transition-opacity" />
                     AI Chat
                   </Link>
                 </Button>
 
-                <Button variant="ghost" asChild className="text-gray-600 hover:text-purple-700 hover:bg-purple-50/80 px-5 py-3 rounded-xl font-medium transition-all duration-200 hover:shadow-sm group">
+                <Button 
+                  variant="ghost" 
+                  asChild 
+                  className="px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 group text-slate-600 hover:text-purple-700 hover:bg-purple-50 dark:text-slate-300 dark:hover:text-purple-300 dark:hover:bg-purple-500/10"
+                >
                   <Link href="/board">
-                    <LayoutDashboard className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />
+                    <LayoutDashboard className="h-4 w-4 mr-2 opacity-70 group-hover:opacity-100 transition-opacity" />
                     Dashboard
                   </Link>
                 </Button>
 
-                <Button asChild className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 hover:scale-105">
-                  <Link href="/editor">
-                    <Edit3 className="h-4 w-4 mr-2" />
-                    Advanced Editor
-                  </Link>
-                </Button>
+                <div className="pl-2">
+                  <Button 
+                    asChild 
+                    size="sm"
+                    className="bg-slate-900 hover:bg-slate-800 text-white border border-transparent shadow-sm hover:shadow transition-all duration-200 rounded-lg px-4"
+                  >
+                    <Link href="/editor">
+                      <Edit3 className="h-4 w-4 mr-2" />
+                      Editor
+                    </Link>
+                  </Button>
+                </div>
               </>
             )}
           </nav>
 
           {/* Right side - Auth buttons or User profile */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3 sm:space-x-4">
             {user ? (
               <div className="flex items-center space-x-3">
-                {/* Status Badge for authenticated users */}
-                <Badge className="hidden sm:flex bg-green-50 text-green-700 border-green-200 hover:bg-green-100 transition-colors">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                {/* Status Badge */}
+                <span className="hidden sm:flex items-center text-xs font-medium px-2 py-1 rounded-full border transition-colors bg-emerald-50 text-emerald-700 border-emerald-200/50 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20">
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5 animate-pulse"></span>
                   Online
-                </Badge>
-                <SimpleProfileDropdown />
+                </span>
+                
+                {/* Profile wrapper */}
+                <div>
+                  <SimpleProfileDropdown />
+                </div>
+                
+                {/* Theme Toggle */}
+                <ThemeToggle className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800" />
               </div>
             ) : (
-              <div className="flex items-center space-x-4">
-                <Button variant="ghost" asChild className="hidden sm:flex text-gray-600 hover:text-gray-900 hover:bg-white/60 px-5 py-3 rounded-xl font-medium transition-all duration-200">
+              <div className="hidden sm:flex items-center space-x-3">
+                <Button 
+                  variant="ghost" 
+                  asChild 
+                  className="font-medium text-sm transition-all duration-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800"
+                >
                   <Link href="/signin">
                     Sign In
                   </Link>
                 </Button>
+                
                 <Button
                   asChild
-                  className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 text-white px-7 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 hover:scale-105 group"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white border border-transparent shadow-md shadow-indigo-600/20 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 rounded-xl px-5 group"
                 >
                   <Link href="/signin">
-                    <Sparkles className="h-4 w-4 mr-2 group-hover:rotate-12 transition-transform" />
+                    <Sparkles className="h-4 w-4 mr-2 text-indigo-200 group-hover:text-white transition-colors" />
                     Start Creating
-                    <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                    <ChevronRight className="h-4 w-4 ml-1 opacity-70 group-hover:translate-x-0.5 group-hover:opacity-100 transition-all" />
                   </Link>
                 </Button>
+                
+                {/* Theme Toggle */}
+                <ThemeToggle className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800" />
               </div>
             )}
 
@@ -124,7 +179,7 @@ export function SiteHeader() {
             <Button
               variant="ghost"
               size="sm"
-              className="lg:hidden p-2 hover:bg-white/60 rounded-xl transition-colors"
+              className="lg:hidden p-2 rounded-lg transition-colors text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               {mobileMenuOpen ? (
@@ -136,21 +191,24 @@ export function SiteHeader() {
           </div>
         </div>
 
-        {/* Mobile Navigation Menu */}
+        {/* Mobile Navigation Menu Area (unchanged but cleaned up) */}
         {mobileMenuOpen && (
-          <div className="lg:hidden border-t border-white/20 bg-white/95 backdrop-blur-xl rounded-b-2xl shadow-xl mt-3 overflow-hidden">
-            <div className="px-6 py-8 space-y-4">
-              {/* Public Links */}
+          <div className="lg:hidden absolute top-full left-0 right-0 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-xl overflow-hidden">
+            <div className="px-4 py-6 space-y-2">
+              <div className="flex justify-between items-center mb-2 px-4">
+                <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Theme</span>
+                <ThemeToggle />
+              </div>
               <Link
                 href="/pricing"
-                className="block px-5 py-4 text-gray-700 hover:text-blue-700 hover:bg-blue-50/80 rounded-xl font-medium transition-all duration-200"
+                className="block px-4 py-3 text-slate-700 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl font-medium transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Pricing
               </Link>
               <Link
                 href="/documentation"
-                className="block px-5 py-4 text-gray-700 hover:text-blue-700 hover:bg-blue-50/80 rounded-xl font-medium transition-all duration-200"
+                className="block px-4 py-3 text-slate-700 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl font-medium transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Documentation
@@ -158,51 +216,51 @@ export function SiteHeader() {
 
               {user ? (
                 <>
-                  <div className="border-t border-gray-200/50 my-4"></div>
+                  <div className="h-px bg-slate-100 my-4 mx-2"></div>
                   <Link
                     href="/landing"
-                    className="flex items-center px-5 py-4 text-gray-700 hover:text-blue-700 hover:bg-blue-50/80 rounded-xl font-medium transition-all duration-200"
+                    className="flex items-center px-4 py-3 text-slate-700 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl font-medium transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    <MessageSquare className="h-5 w-5 mr-3" />
+                    <MessageSquare className="h-5 w-5 mr-3 text-indigo-500" />
                     AI Chat
                   </Link>
                   <Link
                     href="/board"
-                    className="flex items-center px-5 py-4 text-gray-700 hover:text-purple-700 hover:bg-purple-50/80 rounded-xl font-medium transition-all duration-200"
+                    className="flex items-center px-4 py-3 text-slate-700 hover:text-purple-600 hover:bg-purple-50 rounded-xl font-medium transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    <LayoutDashboard className="h-5 w-5 mr-3" />
+                    <LayoutDashboard className="h-5 w-5 mr-3 text-purple-500" />
                     Dashboard
                   </Link>
                   <Link
                     href="/editor"
-                    className="flex items-center px-5 py-4 text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl font-semibold shadow-lg"
+                    className="flex items-center px-4 py-3 mt-2 text-white bg-slate-900 hover:bg-slate-800 rounded-xl font-medium shadow-sm transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    <Edit3 className="h-5 w-5 mr-3" />
+                    <Edit3 className="h-5 w-5 mr-3 text-slate-400" />
                     Advanced Editor
                   </Link>
                 </>
               ) : (
                 <>
-                  <div className="border-t border-gray-200/50 my-4"></div>
-                  <Link
-                    href="/signin"
-                    className="block px-5 py-4 text-gray-700 hover:text-blue-700 hover:bg-blue-50/80 rounded-xl font-medium transition-all duration-200"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Sign In
-                  </Link>
-                  <Link
-                    href="/signin"
-                    className="flex items-center justify-center px-5 py-4 text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl font-semibold shadow-lg"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <Sparkles className="h-5 w-5 mr-2" />
-                    Start Creating
-                    <ArrowRight className="h-5 w-5 ml-2" />
-                  </Link>
+                  <div className="h-px bg-slate-100 my-4 mx-2"></div>
+                  <div className="grid grid-cols-2 gap-3 mt-2">
+                    <Link
+                      href="/signin"
+                      className="flex items-center justify-center px-4 py-3 text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl font-medium transition-colors"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Sign In
+                    </Link>
+                    <Link
+                      href="/signin"
+                      className="flex items-center justify-center px-4 py-3 text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl font-medium shadow-sm shadow-indigo-600/20 transition-colors"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Start Creating
+                    </Link>
+                  </div>
                 </>
               )}
             </div>
@@ -212,4 +270,3 @@ export function SiteHeader() {
     </header>
   )
 }
-

@@ -206,6 +206,29 @@ export const authApi = {
     // Fallback - this shouldn't happen but satisfies TypeScript
     return null
   },
+  guestSignIn: async () => {
+    const response = await request<{ user: AuthUser } | { error: string; message: string }>(`/auth/guest`, {
+      method: 'POST',
+    })
+
+    // Check if this is a network failure response (don't throw, return null)
+    if ('error' in response && (response.error === 'network_failure' || response.error === 'timeout')) {
+      return null
+    }
+
+    // Check if this is an API error response (throw it so it goes to catch block)
+    if ('error' in response) {
+      throw new Error(response.message)
+    }
+
+    // TypeScript guard to ensure response has user
+    if ('user' in response) {
+      return response
+    }
+
+    // Fallback
+    throw new Error('Invalid response format')
+  },
   resendVerification: async (payload: { email: string }) => {
     const response = await request<{ success: true } | { error: string; message: string }>(`/auth/resend-verification`, {
       method: 'POST',

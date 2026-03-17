@@ -3,6 +3,7 @@ import './globals.css'
 import { AuthProvider } from '@/components/auth/AuthProvider'
 import { Toaster } from '@/components/ui/sonner'
 import ConsoleSilencer from '@/components/ConsoleSilencer'
+import { ThemeProvider } from '@/components/theme-provider'
 
 export const metadata: Metadata = {
   title: 'chart development',
@@ -16,13 +17,20 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="h-full bg-gray-50" style={{ backgroundColor: '#f9fafb' }}>
-      <body className="min-h-screen bg-gray-50" style={{ backgroundColor: '#f9fafb' }}>
+    <html lang="en" suppressHydrationWarning>
+      <body className="min-h-screen bg-background text-foreground subpixel-antialiased">
         <ConsoleSilencer />
-        <AuthProvider>
-          {children}
-        </AuthProvider>
-        <Toaster position="top-center" richColors closeButton />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+          <Toaster position="top-center" richColors closeButton />
+        </ThemeProvider>
       </body>
     </html>
   )

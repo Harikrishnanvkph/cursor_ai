@@ -6,16 +6,17 @@ import { SiteHeader } from '@/components/site-header'
 
 export default function SignInPage() {
   return (
-    <div className="min-h-screen">
+    <div className="flex flex-col min-h-screen bg-background">
       <SiteHeader />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex flex-col items-center justify-center gap-3">
+      <main className="flex-1 flex flex-col items-center justify-center px-4 pt-20 sm:pt-24 pb-16">
         <SignInForm />
-        <div className="text-sm text-center">
-          No account? <Link className="underline" href="/signup">Sign up</Link>
-        </div>
-      </div>
+        <p className="mt-4 text-sm text-muted-foreground text-center">
+          No account?{' '}
+          <Link className="text-primary font-medium hover:underline" href="/signup">
+            Sign up
+          </Link>
+        </p>
+      </main>
     </div>
   )
 }
-
-
