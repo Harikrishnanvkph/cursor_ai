@@ -32,7 +32,8 @@ import {
   Rocket,
   Target,
   Zap,
-  MousePointerClick
+  MousePointerClick,
+  X
 } from "lucide-react"
 import Image from "next/image"
 
@@ -175,6 +176,10 @@ export default function HomePage() {
         @keyframes dash-flow {
           to { stroke-dashoffset: -20; }
         }
+        @keyframes pop-in {
+          0% { transform: translate(-50%, -10px) scale(0.98); opacity: 0; }
+          100% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+        }
         .animate-float-slow { animation: float-slow 8s ease-in-out infinite; }
         .animate-float-medium { animation: float-medium 6s ease-in-out infinite; }
         .animate-float-fast { animation: float-fast 4s ease-in-out infinite; }
@@ -184,6 +189,7 @@ export default function HomePage() {
         }
         .animate-pulse-border { animation: pulse-border 3s ease-in-out infinite; }
         .animate-dash-flow { animation: dash-flow 1s linear infinite; }
+        .animate-pop-in { animation: pop-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
       `}</style>
 
       {/* Loading State */}
@@ -199,40 +205,46 @@ export default function HomePage() {
       {/* Main Content */}
       {(!loading || !!user) && (
         <>
-          {/* Welcome Banner for Authenticated Users */}
+          {/* Floating Welcome Popup for Authenticated Users */}
           {user && showWelcome && (
-            <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 text-white">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    {user.avatar_url && (
-                      <Image
-                        src={user.avatar_url}
-                        alt="Profile"
-                        width={32}
-                        height={32}
-                        className="rounded-full ring-2 ring-white/30"
-                        referrerPolicy="no-referrer"
-                        priority
-                      />
+            <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] animate-pop-in pointer-events-auto">
+              <div className="bg-white/80 dark:bg-slate-900/90 backdrop-blur-xl border border-indigo-500/20 rounded-2xl p-1 shadow-2xl shadow-indigo-500/20 max-w-sm w-full mx-auto ring-1 ring-white/20">
+                <div className="flex items-center justify-between gap-4 pl-3 pr-2 py-1.5">
+                  <div className="flex items-center gap-3">
+                    {user.avatar_url ? (
+                      <div className="relative">
+                        <Image
+                          src={user.avatar_url}
+                          alt="Profile"
+                          width={36}
+                          height={36}
+                          className="rounded-xl ring-2 ring-indigo-500/20 object-cover"
+                          referrerPolicy="no-referrer"
+                          priority
+                        />
+                        <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-slate-900 rounded-full"></div>
+                      </div>
+                    ) : (
+                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
+                        {user.full_name?.[0] || user.email?.[0] || 'U'}
+                      </div>
                     )}
-                    <div className="flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                      <span className="font-medium">
-                        Welcome back, {user.full_name || user.email?.split('@')[0]}!
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold text-slate-900 dark:text-white leading-tight">
+                        Welcome back, {user.full_name?.split(' ')[0] || user.email?.split('@')[0]}!
                       </span>
-                      <Badge className="bg-white/15 text-white border-white/20 text-xs">
-                        Ready to create
-                      </Badge>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <Badge className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20 text-[10px] px-1.5 py-0 h-4 font-medium">
+                          Ready to create
+                        </Badge>
+                      </div>
                     </div>
                   </div>
                   <button
                     onClick={() => setShowWelcome(false)}
-                    className="text-white/70 hover:text-white transition-colors p-1 rounded-full hover:bg-white/10"
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
               </div>

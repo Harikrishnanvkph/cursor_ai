@@ -6,9 +6,12 @@ import ConsoleSilencer from '@/components/ConsoleSilencer'
 import { ThemeProvider } from '@/components/theme-provider'
 
 export const metadata: Metadata = {
-  title: 'chart development',
+  title: 'Chartography',
   description: 'Created by Hari',
   generator: 'v0',
+  icons: {
+    icon: '/favicon.png',
+  },
 }
 
 export default function RootLayout({
