@@ -300,28 +300,28 @@ export default function HomePage() {
 
                 {/* CTA buttons */}
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-                  <Link href="/landing">
-                    <Button size="lg" className="px-8 py-6 text-base font-semibold bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 hover:from-indigo-600 hover:via-purple-600 hover:to-indigo-700 text-white shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30 transition-all duration-300 transform hover:-translate-y-0.5 rounded-xl">
+                  <Button asChild size="lg" className="px-8 py-6 text-base font-semibold bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 hover:from-indigo-600 hover:via-purple-600 hover:to-indigo-700 text-white shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30 transition-all duration-300 transform hover:-translate-y-0.5 rounded-xl">
+                    <Link href="/landing">
                       <Play className="w-5 h-5 mr-2" />
                       Start Creating with AI
                       <ArrowRight className="w-5 h-5 ml-2" />
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
 
                   {user ? (
-                    <Link href="/board">
-                      <Button size="lg" variant="outline" className="px-8 py-6 text-base font-semibold bg-transparent border-slate-200 dark:border-white/20 text-slate-700 dark:text-white hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/10 backdrop-blur-sm transition-all duration-300 rounded-xl">
+                    <Button asChild size="lg" variant="outline" className="px-8 py-6 text-base font-semibold bg-transparent border-slate-200 dark:border-white/20 text-slate-700 dark:text-white hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/10 backdrop-blur-sm transition-all duration-300 rounded-xl">
+                      <Link href="/board">
                         <LayoutDashboard className="w-5 h-5 mr-2" />
                         View Dashboard
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   ) : (
-                    <Link href="/editor">
-                      <Button size="lg" variant="outline" className="px-8 py-6 text-base font-semibold bg-transparent border-slate-200 dark:border-white/20 text-slate-700 dark:text-white hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/10 backdrop-blur-sm transition-all duration-300 rounded-xl">
+                    <Button asChild size="lg" variant="outline" className="px-8 py-6 text-base font-semibold bg-transparent border-slate-200 dark:border-white/20 text-slate-700 dark:text-white hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/10 backdrop-blur-sm transition-all duration-300 rounded-xl">
+                      <Link href="/editor">
                         <Edit3 className="w-5 h-5 mr-2" />
                         Try Advanced Editor
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   )}
                 </div>
 
@@ -527,20 +527,20 @@ export default function HomePage() {
                   </p>
 
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
-                    <Link href="/landing">
-                      <Button size="lg" className="px-8 py-6 text-base font-semibold bg-white text-indigo-700 hover:bg-indigo-50 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-0.5 rounded-xl">
+                    <Button asChild size="lg" className="px-8 py-6 text-base font-semibold bg-white text-indigo-700 hover:bg-indigo-50 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-0.5 rounded-xl">
+                      <Link href="/landing">
                         <Sparkles className="w-5 h-5 mr-2" />
                         Start Creating Now
                         <ArrowUpRight className="w-5 h-5 ml-2" />
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
 
-                    <Link href="/editor">
-                      <Button size="lg" variant="outline" className="px-8 py-6 text-base font-semibold bg-transparent border-2 border-white/25 text-white hover:text-white hover:bg-white/10 backdrop-blur-sm transition-all duration-300 rounded-xl">
+                    <Button asChild size="lg" variant="outline" className="px-8 py-6 text-base font-semibold bg-transparent border-2 border-white/25 text-white hover:text-white hover:bg-white/10 backdrop-blur-sm transition-all duration-300 rounded-xl">
+                      <Link href="/editor">
                         <Edit3 className="w-5 h-5 mr-2" />
                         Explore Editor
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   </div>
 
                   <div className="flex flex-wrap items-center justify-center gap-6 text-indigo-200 text-sm pt-4">
