@@ -22,9 +22,9 @@ export function middleware(request: NextRequest) {
   if (isProtectedRoute) {
     console.log(`🔒 Protected route detected: ${pathname}`)
 
-    // Check for authentication cookie (using the actual cookie names from the server)
-    const authCookie = request.cookies.get('access_token') ||
-      request.cookies.get('refresh_token')
+    // Check for authentication cookie set by the frontend (AuthProvider)
+    // We cannot read backend cookies (access_token) directly when deployed on different domains (Netlify vs Render)
+    const authCookie = request.cookies.get('is_authenticated')
 
     if (!authCookie) {
       console.log(`❌ No auth cookie found, redirecting to signin`)

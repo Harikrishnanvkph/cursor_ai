@@ -20,6 +20,16 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
+const setAuthCookie = (isAuthenticated: boolean) => {
+  if (typeof document !== 'undefined') {
+    if (isAuthenticated) {
+      document.cookie = `is_authenticated=true; path=/; max-age=${15 * 24 * 60 * 60}; SameSite=Lax`
+    } else {
+      document.cookie = `is_authenticated=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`
+    }
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const [user, setUser] = useState<AuthUser | null>(null)
@@ -36,6 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (typeof window !== 'undefined' && res.user?.id) {
         localStorage.setItem('user-id', res.user.id)
       }
+      setAuthCookie(true)
 
       // Don't handle redirects in refresh - let the signIn method handle it
       // This prevents loops when the user is already authenticated
@@ -43,6 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // This shouldn't happen now since authApi.me() handles network errors
       console.warn('Unexpected error during refresh:', error)
       setUser(null)
+      setAuthCookie(false)
     } finally {
       setLoading(false)
     }
@@ -74,6 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (typeof window !== 'undefined' && res.user?.id) {
         localStorage.setItem('user-id', res.user.id)
       }
+      setAuthCookie(true)
 
       toast.success('Signed in')
 
@@ -192,6 +205,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Always clear the user locally regardless of server response
       setUser(null)
+      setAuthCookie(false)
 
       // Clean up old localStorage data (only clears data older than 12 hours)
       if (typeof window !== 'undefined') {
@@ -228,6 +242,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Still clear the user locally even if server call fails
       setUser(null)
+      setAuthCookie(false)
 
       // Clear user-specific localStorage even on error
       if (typeof window !== 'undefined') {
@@ -324,6 +339,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (typeof window !== 'undefined' && res.user?.id) {
         localStorage.setItem('user-id', res.user.id)
       }
+      setAuthCookie(true)
 
       toast.success('Signed in as Guest')
       router.push('/')
