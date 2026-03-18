@@ -29,8 +29,11 @@ const getInitialMessage = (): ChatMessage => {
   };
 };
 
-// Server API base (proxy through Next.js to avoid CORS/preflight)
-const globalServerAPILink = "/api/chart"
+// Server API base - call directly to pass credentials properly
+const getBaseUrl = () => {
+  return process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000';
+}
+const globalServerAPILink = `${getBaseUrl()}/api/process-chart-enhanced`
 
 // In-flight request control
 let currentRequestController: AbortController | null = null;
@@ -347,7 +350,8 @@ export const useChatStore = create<ChatStore>()(
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(requestBody),
-            signal: controller.signal
+            signal: controller.signal,
+            credentials: 'include'
           });
 
           if (!response.ok) {
