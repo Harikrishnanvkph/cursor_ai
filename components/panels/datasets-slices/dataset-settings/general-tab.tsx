@@ -170,7 +170,15 @@ export function GeneralTab({
                             if (isMixedDisabled) {
                                 return (
                                     <span className="text-orange-600 font-medium">
-                                        Mixed mode is not available when the first dataset is {firstDatasetType}. Only uniform mode is supported.
+                                        Mixed mode is not available when the first dataset is {(() => {
+                                            const labels: Record<string, string> = {
+                                                pie3d: '3D Pie',
+                                                doughnut3d: '3D Doughnut',
+                                                bar3d: '3D Bar',
+                                                horizontalBar3d: '3D Horizontal Bar'
+                                            };
+                                            return labels[firstDatasetType] || firstDatasetType;
+                                        })()}. Only uniform mode is supported.
                                     </span>
                                 );
                             }
@@ -396,11 +404,15 @@ export function GeneralTab({
                                                     {(() => {
                                                         const type = dataset.chartType || dataset.type || chartType;
                                                         switch (type) {
-                                                            case 'horizontalBar': return <ChartBarDecreasing className="h-4 w-4" />;
-                                                            case 'bar': return <BarChart3 className="h-4 w-4" />;
+                                                            case 'horizontalBar':
+                                                            case 'horizontalBar3d': return <ChartBarDecreasing className="h-4 w-4" />;
+                                                            case 'bar':
+                                                            case 'bar3d': return <BarChart3 className="h-4 w-4" />;
                                                             case 'stackedBar': return <ChartColumnStacked className="h-4 w-4" />;
-                                                            case 'pie': return <PieChart className="h-4 w-4" />;
-                                                            case 'doughnut': return <LifeBuoy className="h-4 w-4" />;
+                                                            case 'pie':
+                                                            case 'pie3d': return <PieChart className="h-4 w-4" />;
+                                                            case 'doughnut':
+                                                            case 'doughnut3d': return <LifeBuoy className="h-4 w-4" />;
                                                             case 'area': return <ChartArea className="h-4 w-4" />;
                                                             case 'line': return <LineChart className="h-4 w-4" />;
                                                             case 'scatter':

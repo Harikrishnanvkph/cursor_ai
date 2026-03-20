@@ -90,6 +90,16 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
                     if (Array.isArray(out.backgroundColor)) out.backgroundColor = out.backgroundColor.map(() => 'transparent');
                     else out.backgroundColor = 'transparent';
                 }
+            } else {
+                // FALLBACK CASE: When no explicit export option is provided, 
+                // we should respect the chart's nature.
+                if (chartType === 'area' || chartType === 'radar') {
+                    out.fill = (ds.fill !== undefined) ? ds.fill : true;
+                } else if (chartType === 'line') {
+                    // Strictly respect the dataset's fill property for line charts
+                    // Line charts should NEVER default to true unless explicitly requested
+                    out.fill = (ds.fill !== undefined) ? ds.fill : false;
+                }
             }
             if (options.showBorder !== undefined) {
                 const bw = options.showBorder ? (typeof out.borderWidth === 'number' ? out.borderWidth || 2 : 2) : 0;
@@ -142,7 +152,7 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
     }
 
     // Add horizontal indexAxis for horizontalBar chart type
-    if (chartType === 'horizontalBar') {
+    if (chartType === 'horizontalBar' || chartType === 'horizontalBar3d') {
         processedChartConfig.indexAxis = 'y';
     }
 
@@ -163,6 +173,15 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
                 overlayImages: processedOverlayImages,
                 overlayTexts: overlayTexts,
                 overlayShapes: overlayShapes
+            },
+            // Explicitly enable 3D plugins based on chartType
+            pie3d: {
+                ...(processedChartConfig.plugins?.pie3d || {}),
+                enabled: chartType === 'pie3d' || chartType === 'doughnut3d'
+            },
+            bar3d: {
+                ...(processedChartConfig.plugins?.bar3d || {}),
+                enabled: chartType === 'bar3d' || chartType === 'horizontalBar3d'
             }
         }
     };

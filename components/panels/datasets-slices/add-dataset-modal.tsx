@@ -29,6 +29,10 @@ const categoricalChartTypes: { value: SupportedChartType; label: string }[] = [
   { value: 'radar', label: 'Radar' },
   { value: 'horizontalBar', label: 'Horizontal Bar' },
   { value: 'stackedBar', label: 'Stacked Bar' },
+  { value: 'pie3d' as any, label: '3D Pie' },
+  { value: 'doughnut3d' as any, label: '3D Doughnut' },
+  { value: 'bar3d' as any, label: '3D Bar' },
+  { value: 'horizontalBar3d' as any, label: '3D Horizontal Bar' },
 ];
 
 // Coordinate chart types (use X, Y, and optionally R)
@@ -169,8 +173,49 @@ export function AddDatasetModal({ open, onOpenChange, onDatasetAdd }: AddDataset
   const getAvailableChartTypes = () => {
     const baseTypes = effectiveCategory === 'coordinate' ? coordinateChartTypes : categoricalChartTypes;
     if (chartMode === 'single') return baseTypes;
-    if (uniformityMode === 'mixed') return baseTypes.filter(type => ['bar', 'line', 'area'].includes(type.value));
-    return baseTypes.filter(type => !['pie', 'doughnut'].includes(type.value));
+    
+    // In grouped mode:
+    const firstDataset = filteredDatasets[0];
+    const firstType = firstDataset?.chartType || chartType;
+
+    if (uniformityMode === 'mixed') {
+      // If the group is empty, show all mixable types so the user can choose the primary axis orientation
+      if (filteredDatasets.length === 0) {
+        return baseTypes.filter(type => 
+          ['bar', 'horizontalBar', 'line', 'area'].includes(type.value as string)
+        );
+      }
+
+      const firstType = firstDataset?.chartType || chartType;
+
+      // If first dataset is a normal Bar, Line, or Area, only allow those
+      if (['bar', 'line', 'area'].includes(firstType)) {
+        return baseTypes.filter(type => ['bar', 'line', 'area'].includes(type.value as string));
+      }
+      
+      // If first dataset is a Horizontal Bar, allow Horizontal Bar, Line, or Area
+      if (firstType === 'horizontalBar') {
+        return baseTypes.filter(type => ['horizontalBar', 'line', 'area'].includes(type.value as string));
+      }
+
+      // If first dataset is a 3D Horizontal Bar, only allow 3D Horizontal Bar
+      if (firstType === 'horizontalBar3d') {
+        return baseTypes.filter(type => type.value === 'horizontalBar3d');
+      }
+
+      // If first dataset is a 3D Bar, only allow 3D Bar
+      if (firstType === 'bar3d') {
+        return baseTypes.filter(type => type.value === 'bar3d');
+      }
+
+      // Default mixed mode support (excluding Pie/Doughnut/3D Pie/3D Doughnut)
+      return baseTypes.filter(type => 
+        !['pie', 'doughnut', 'pie3d', 'doughnut3d', 'bar3d', 'horizontalBar3d', 'stackedBar'].includes(type.value as string)
+      );
+    }
+    
+    // Uniform mode: All types are available for the first dataset
+    return baseTypes;
   };
 
   const handleRandomize = () => {

@@ -31,7 +31,7 @@ export const ChartTypeService = {
         targetType: SupportedChartType,
         datasets: ExtendedChartDataset[]
     ): { needed: boolean; direction?: 'toScatter' | 'toCategorical' } => {
-        const categoricalTypes = ['bar', 'horizontalBar', 'stackedBar', 'line', 'area', 'pie', 'doughnut', 'polarArea', 'radar'];
+        const categoricalTypes = ['bar', 'horizontalBar', 'stackedBar', 'line', 'area', 'pie', 'doughnut', 'polarArea', 'radar', 'pie3d', 'doughnut3d'];
         const scatterBubbleTypes = ['scatter', 'bubble'];
         const isCurrentCategorical = categoricalTypes.includes(currentType);
         const isCurrentScatterBubble = scatterBubbleTypes.includes(currentType);
@@ -85,7 +85,7 @@ export const ChartTypeService = {
      * Helper to determine Legend Type based on Chart Type
      */
     getLegendType: (chartType: SupportedChartType): 'slice' | 'dataset' => {
-        return (chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea')
+        return (chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea' || chartType === 'pie3d' || chartType === 'doughnut3d')
             ? 'slice'
             : 'dataset';
     },
@@ -108,10 +108,13 @@ export const ChartTypeService = {
         // Only proceed if there's an actual change
         if (currentType === targetType) return null;
 
-        const chartJsType = targetType === ('area' as CustomChartType) ? 'line' as const : targetType;
+        const chartJsType = targetType === ('area' as CustomChartType) ? 'line' as const
+            : targetType === ('pie3d' as CustomChartType) ? 'pie' as const
+            : targetType === ('doughnut3d' as CustomChartType) ? 'doughnut' as const
+            : targetType;
 
         // Auto-switch to uniform mode check
-        const nonMixedModeCharts = ['pie', 'doughnut', 'radar', 'polarArea', 'scatter', 'bubble'];
+        const nonMixedModeCharts = ['pie', 'doughnut', 'radar', 'polarArea', 'scatter', 'bubble', 'pie3d', 'doughnut3d'];
         const shouldSwitchToUniform = currentState.chartMode === 'grouped' &&
             (currentState.uniformityMode === 'mixed' || currentState.chartConfig?.visualSettings?.uniformityMode === 'mixed') &&
             nonMixedModeCharts.includes(targetType);
@@ -136,6 +139,10 @@ export const ChartTypeService = {
                 newDataset.type = 'line';
             } else if (targetType === 'stackedBar') {
                 newDataset.type = 'bar';
+            } else if (targetType === ('pie3d' as CustomChartType)) {
+                newDataset.type = 'pie';
+            } else if (targetType === ('doughnut3d' as CustomChartType)) {
+                newDataset.type = 'doughnut';
             } else {
                 newDataset.type = targetType as keyof ChartTypeRegistry;
             }
@@ -215,7 +222,7 @@ export const ChartTypeService = {
         });
 
         // Set legendType
-        if (targetType === 'pie' || targetType === 'doughnut' || targetType === 'polarArea') {
+        if (targetType === 'pie' || targetType === 'doughnut' || targetType === 'polarArea' || targetType === ('pie3d' as CustomChartType) || targetType === ('doughnut3d' as CustomChartType)) {
             (newConfig.plugins as any).legendType = 'slice';
         } else {
             (newConfig.plugins as any).legendType = 'dataset';
@@ -293,6 +300,19 @@ export const ChartTypeService = {
             newConfig.visualSettings = {
                 ...(newConfig.visualSettings || {}),
                 uniformityMode: 'uniform'
+            };
+        }
+
+        // Sync fillArea setting with the target chart type
+        if (targetType === 'line') {
+            newConfig.visualSettings = {
+                ...(newConfig.visualSettings || {}),
+                fillArea: false
+            };
+        } else if (targetType === 'area' || targetType === 'radar') {
+            newConfig.visualSettings = {
+                ...(newConfig.visualSettings || {}),
+                fillArea: true
             };
         }
 

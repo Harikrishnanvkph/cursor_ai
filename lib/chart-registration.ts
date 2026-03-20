@@ -33,6 +33,8 @@ import { customLabelPlugin } from "./custom-label-plugin"
 import exportPlugin from "./export-plugin"
 import { overlayPlugin } from "./overlay-plugin"
 import { enhancedTitlePlugin } from "./enhanced-title-plugin"
+import { pie3dPlugin } from "./plugins/3d-pie-plugin"
+import { bar3dPlugin } from "./plugins/3d-bar-plugin"
 
 // Date adapter for time scales - auto-registers with Chart.js
 import 'chartjs-adapter-date-fns'
@@ -67,7 +69,9 @@ ChartJS.register(
   customLabelPlugin,
   exportPlugin,
   overlayPlugin,
-  enhancedTitlePlugin
+  enhancedTitlePlugin,
+  pie3dPlugin,
+  bar3dPlugin
 )
 
 // Chart.js registration completed

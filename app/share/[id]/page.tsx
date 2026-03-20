@@ -221,9 +221,13 @@ export default function SharedChartPage() {
       }
 
       // Determine valid Chart.js type
-      let chartTypeForChart = chart.chart_type === 'area' ? 'line' : 
-        (chart.chart_type === 'stackedBar' ? 'bar' : 
-        (chart.chart_type === 'horizontalBar' ? 'bar' : chart.chart_type));
+      let chartTypeForChart = chart.chart_type;
+      if (chart.chart_type === 'area') chartTypeForChart = 'line';
+      else if (chart.chart_type === 'stackedBar') chartTypeForChart = 'bar';
+      else if (chart.chart_type === 'horizontalBar' || chart.chart_type === 'horizontalBar3d') chartTypeForChart = 'bar';
+      else if (chart.chart_type === 'pie3d') chartTypeForChart = 'pie';
+      else if (chart.chart_type === 'doughnut3d') chartTypeForChart = 'doughnut';
+      else if (chart.chart_type === 'bar3d') chartTypeForChart = 'bar';
       
       // Ensure scales are explicitly stacked if needed
       if (chart.chart_type === 'stackedBar') {
@@ -234,15 +238,39 @@ export default function SharedChartPage() {
         };
       }
 
+      // Handle horizontal orientation
+      if (chart.chart_type === 'horizontalBar' || chart.chart_type === 'horizontalBar3d') {
+        processedConfig.indexAxis = 'y';
+      }
+
       chartRef.current = new ChartJS(ctx, {
         type: chartTypeForChart as any,
-        data: chart.chart_data,
+        data: {
+          ...chart.chart_data,
+          datasets: chart.chart_data.datasets.map((ds: any) => ({
+            ...ds,
+            type: ds.type ? (
+              ds.type === 'bar3d' || ds.type === 'horizontalBar3d' ? 'bar' :
+              ds.type === 'pie3d' ? 'pie' :
+              ds.type === 'doughnut3d' ? 'doughnut' :
+              ds.type
+            ) : undefined
+          }))
+        },
         options: {
           ...processedConfig,
           responsive: true, // Always true to fill the CSS-defined container
           maintainAspectRatio: false, // ALWAYS false so it stretches exactly to our defined container height
           plugins: {
             ...processedConfig.plugins,
+            pie3d: {
+               ...(processedConfig.plugins?.pie3d || {}),
+               enabled: chart.chart_type === 'pie3d' || chart.chart_type === 'doughnut3d'
+            },
+            bar3d: {
+               ...(processedConfig.plugins?.bar3d || {}),
+               enabled: chart.chart_type === 'bar3d' || chart.chart_type === 'horizontalBar3d'
+            },
             legend: {
               ...processedConfig.plugins?.legend,
               display: processedConfig.plugins?.legend?.display !== false,

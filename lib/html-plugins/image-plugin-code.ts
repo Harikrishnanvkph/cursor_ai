@@ -18,7 +18,7 @@ const universalImagePlugin = {
 
       meta.data.forEach((element, pointIndex) => {
         // Respect per-slice visibility for pie/doughnut/polarArea
-        if ((chart.config?.type === 'pie' || chart.config?.type === 'doughnut' || chart.config?.type === 'polarArea') &&
+        if ((chart.config?.type === 'pie' || chart.config?.type === 'doughnut' || chart.config?.type === 'polarArea' || chart.config?.type === 'pie3d' || chart.config?.type === 'doughnut3d') &&
             typeof chart.getDataVisibility === 'function' && chart.getDataVisibility(pointIndex) === false) {
           return;
         }
@@ -44,13 +44,20 @@ const universalImagePlugin = {
               return;
             }
 
-            if (chartType === "pie" || chartType === "doughnut" || chartType === "polarArea") {
+            const isFillEnabled = imageConfig.fillSlice || imageConfig.fillBar;
+            if (chartType === "pie" || chartType === "doughnut" || chartType === "polarArea" || chartType === "pie3d" || chartType === "doughnut3d") {
+              // Priority: if fill is enabled, call renderSliceImage which internally handles both
               renderSliceImage(ctx, element, img, imageConfig);
-            } else if (chartType === "bar") {
-              if (chart.config.options?.indexAxis === "y") {
-                renderBarImageHorizontal(ctx, element, img, imageConfig);
+            } else if (chartType === "bar" || chartType === "bar3d" || chartType === "horizontalBar3d" || chartType === "horizontalBar" || chartType === "stackedBar") {
+              if (isFillEnabled) {
+                if (chart.config.options?.indexAxis === "y" || chartType === "horizontalBar" || chartType === "horizontalBar3d") {
+                  renderBarImageHorizontal(ctx, element, img, imageConfig);
+                } else {
+                  renderBarImageVertical(ctx, element, img, imageConfig);
+                }
               } else {
-                renderBarImageVertical(ctx, element, img, imageConfig);
+                // Non-fill bar rendering (center by default if implemented)
+                renderPointImage(ctx, element, img, imageConfig);
               }
             } else if (
               chartType === "line" ||
@@ -71,6 +78,7 @@ const universalImagePlugin = {
   afterInit: (chart) => {
     // Set up event listeners for dragging
     const canvas = chart.canvas;
+    let isHovering = false;
 
     const handleMouseDown = (event) => {
       const rect = canvas.getBoundingClientRect();
@@ -88,8 +96,41 @@ const universalImagePlugin = {
 
             if (!element) return;
 
-            const calloutX = config.calloutX !== undefined ? config.calloutX : element.x + (config.offset || 40);
-            const calloutY = config.calloutY !== undefined ? config.calloutY : element.y - (config.offset || 40);
+            // Detect 3D pie/bar for hit-testing
+            const pie3dOpts = (chart.options.plugins && chart.options.plugins.pie3d) || {};
+            const isPie3dActive = !!(pie3dOpts.enabled);
+            const tilt = isPie3dActive ? (typeof pie3dOpts.tilt === 'number' ? pie3dOpts.tilt : 0.75) : 1.0;
+            const chartArea = chart.chartArea;
+            const centerY_chart = chartArea ? (chartArea.top + chartArea.bottom) / 2 : 0;
+            const transformY = (y_val) => isPie3dActive ? centerY_chart + (y_val - centerY_chart) * tilt : y_val;
+
+            const bar3dOpts = (chart.options.plugins && chart.options.plugins.bar3d) || chart.options.bar3d || {};
+            const isBar3dActive = !!(bar3dOpts.enabled !== false && (chart.config.type === 'bar3d' || chart.config.type === 'horizontalBar3d' || bar3dOpts.enabled));
+            let dy = 0;
+            if (isBar3dActive) {
+                const depth = typeof bar3dOpts.depth === 'number' ? bar3dOpts.depth : 12;
+                const angleRad = (typeof bar3dOpts.angle === 'number' ? bar3dOpts.angle : 45) * Math.PI / 180;
+                dy = -Math.sin(angleRad) * depth;
+            }
+
+            let defaultX, defaultY;
+            if (chart.config.type === 'pie' || chart.config.type === 'doughnut' || chart.config.type === 'polarArea') {
+                const centerX = chart.chartArea.left + chart.chartArea.width / 2;
+                const centerY = chart.chartArea.top + chart.chartArea.height / 2;
+                const startAngle = element.startAngle || 0;
+                const endAngle = element.endAngle || 0;
+                const midAngle = (startAngle + endAngle) / 2;
+                const radius = element.outerRadius || Math.min(chart.chartArea.width, chart.chartArea.height) / 2;
+                const r = radius + (config.offset || 40);
+                defaultX = centerX + Math.cos(midAngle) * r;
+                defaultY = transformY(centerY + Math.sin(midAngle) * r);
+            } else {
+                defaultX = element.x + (config.offset || 40);
+                defaultY = (element.y + (isBar3dActive && dy < 0 ? dy : 0)) - (config.offset || 40);
+            }
+
+            const calloutX = config.calloutX !== undefined ? config.calloutX : defaultX;
+            const calloutY = config.calloutY !== undefined ? config.calloutY : defaultY;
             const size = config.size || 30;
 
             const distance = Math.sqrt((x - calloutX) ** 2 + (y - calloutY) ** 2);
@@ -138,8 +179,41 @@ const universalImagePlugin = {
 
               if (!element) return;
 
-              const calloutX = config.calloutX !== undefined ? config.calloutX : element.x + (config.offset || 40);
-              const calloutY = config.calloutY !== undefined ? config.calloutY : element.y - (config.offset || 40);
+              // Detect 3D pie/bar for hover detection
+              const pie3dOpts = (chart.options.plugins && chart.options.plugins.pie3d) || {};
+              const isPie3dActive = !!(pie3dOpts.enabled);
+              const tilt = isPie3dActive ? (typeof pie3dOpts.tilt === 'number' ? pie3dOpts.tilt : 0.75) : 1.0;
+              const chartArea = chart.chartArea;
+              const centerY_chart = chartArea ? (chartArea.top + chartArea.bottom) / 2 : 0;
+              const transformY = (y_val) => isPie3dActive ? centerY_chart + (y_val - centerY_chart) * tilt : y_val;
+
+              const bar3dOpts = (chart.options.plugins && chart.options.plugins.bar3d) || {};
+              const isBar3dActive = !!(bar3dOpts.enabled);
+              let dy = 0;
+              if (isBar3dActive) {
+                  const depth = typeof bar3dOpts.depth === 'number' ? bar3dOpts.depth : 12;
+                  const angleRad = (typeof bar3dOpts.angle === 'number' ? bar3dOpts.angle : 45) * Math.PI / 180;
+                  dy = -Math.sin(angleRad) * depth;
+              }
+
+              let defaultX, defaultY;
+              if (chart.config.type === 'pie' || chart.config.type === 'doughnut' || chart.config.type === 'polarArea') {
+                  const centerX = chart.chartArea.left + chart.chartArea.width / 2;
+                  const centerY = chart.chartArea.top + chart.chartArea.height / 2;
+                  const startAngle = element.startAngle || 0;
+                  const endAngle = element.endAngle || 0;
+                  const midAngle = (startAngle + endAngle) / 2;
+                  const radius = element.outerRadius || Math.min(chart.chartArea.width, chart.chartArea.height) / 2;
+                  const r = radius + (config.offset || 40);
+                  defaultX = centerX + Math.cos(midAngle) * r;
+                  defaultY = transformY(centerY + Math.sin(midAngle) * r);
+              } else {
+                  defaultX = element.x + (config.offset || 40);
+                  defaultY = (element.y + (isBar3dActive && dy < 0 ? dy : 0)) - (config.offset || 40);
+              }
+
+              const calloutX = config.calloutX !== undefined ? config.calloutX : defaultX;
+              const calloutY = config.calloutY !== undefined ? config.calloutY : defaultY;
               const size = config.size || 30;
 
               const distance = Math.sqrt((x - calloutX) ** 2 + (y - calloutY) ** 2);
@@ -151,13 +225,20 @@ const universalImagePlugin = {
           });
         });
 
-        canvas.style.cursor = isOverCallout ? "grab" : "default";
+        if (isOverCallout) {
+          canvas.style.cursor = "grab";
+          isHovering = true;
+        } else if (isHovering) {
+          canvas.style.cursor = "default";
+          isHovering = false;
+        }
       }
     };
 
     const handleMouseUp = () => {
       if (window.imageDragState.isDragging) {
         window.imageDragState.isDragging = false;
+        isHovering = false;
         window.imageDragState.dragDatasetIndex = -1;
         window.imageDragState.dragPointIndex = -1;
         canvas.style.cursor = "default";
@@ -227,6 +308,7 @@ const universalImagePlugin = {
     const handleTouchEnd = (event) => {
       if (window.imageDragState.isDragging) {
         window.imageDragState.isDragging = false;
+        isHovering = false;
         window.imageDragState.dragDatasetIndex = -1;
         window.imageDragState.dragPointIndex = -1;
         canvas.style.cursor = "default";
@@ -266,13 +348,65 @@ const universalImagePlugin = {
 };
 
 // Helper functions for image rendering
+function getDefaultImageType(chartType) {
+  return "regular";
+}
+
+function getDefaultImageSize(chartType) {
+  const type = chartType || 'bar';
+  if (['pie', 'doughnut', 'polarArea', 'pie3d', 'doughnut3d'].includes(type)) return 24;
+  if (['bar', 'horizontalBar', 'bar3d', 'horizontalBar3d'].includes(type)) return 20;
+  return 20;
+}
+
 function getDefaultImageConfig(chartType) {
   return {
-    type: 'circle',
-    size: 30,
+    type: getDefaultImageType(chartType),
+    size: getDefaultImageSize(chartType),
     position: 'center',
-    arrow: false
+    arrow: false,
+    arrowColor: "#666666",
+    borderWidth: 3,
+    borderColor: "#ffffff",
+    offset: 40,
+    fillSlice: false,
+    fillBar: false,
+    imageFit: 'cover'
   };
+}
+
+function renderImageInRect(ctx, img, x, y, w, h, fit) {
+  if (fit === 'fill') {
+    ctx.drawImage(img, x, y, w, h);
+    return;
+  }
+
+  const imgAspect = img.width / img.height;
+  const rectAspect = w / h;
+  let drawX = x, drawY = y, drawWidth = w, drawHeight = h;
+
+  if (fit === 'contain') {
+    if (imgAspect > rectAspect) {
+      drawWidth = w;
+      drawHeight = w / imgAspect;
+      drawY = y + (h - drawHeight) / 2;
+    } else {
+      drawHeight = h;
+      drawWidth = h * imgAspect;
+      drawX = x + (w - drawWidth) / 2;
+    }
+  } else { // cover (default)
+    if (imgAspect > rectAspect) {
+      drawHeight = h;
+      drawWidth = h * imgAspect;
+      drawX = x + (w - drawWidth) / 2;
+    } else {
+      drawWidth = w;
+      drawHeight = w / imgAspect;
+      drawY = y + (h - drawHeight) / 2;
+    }
+  }
+  ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
 }
 
 function renderBarImageVertical(ctx, element, img, config) {
@@ -281,69 +415,27 @@ function renderBarImageVertical(ctx, element, img, config) {
   let y = element.y;
 
   // If fill mode is enabled, fill the entire bar with the image
-  if (config.fillBar) {
-    const barWidth = element.width;
-    const barHeight = Math.abs(element.y - element.base);
+    if (config.fillBar) {
+        // Use getProps or direct properties with fallbacks
+        const props = typeof element.getProps === 'function' ? element.getProps(['width', 'y', 'base', 'x'], true) : element;
+        const barWidth = props.width || element.width || 20;
+        const barHeight = Math.abs((props.y ?? element.y) - (props.base ?? element.base));
 
-    // Calculate position (top-left corner of the bar)
-    const barX = element.x - barWidth / 2;
-    const barY = Math.min(element.y, element.base);
+        // Calculate position (top-left corner of the bar)
+        const barX = (props.x ?? element.x) - barWidth / 2;
+        const barY = Math.min((props.y ?? element.y), (props.base ?? element.base));
 
-    // Draw the image to fill the entire bar
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(barX, barY, barWidth, barHeight);
-    ctx.clip();
+        // Draw the image to fill the entire bar
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(barX, barY, barWidth, barHeight);
+        ctx.clip();
 
-    // Determine how to fit the image
-    if (config.imageFit === "cover") {
-      // Cover: maintain aspect ratio and cover entire area
-      const imgRatio = img.width / img.height;
-      const barRatio = barWidth / barHeight;
+        renderImageInRect(ctx, img, barX, barY, barWidth, barHeight, config.imageFit);
 
-      let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
-
-      if (imgRatio > barRatio) {
-        // Image is wider than bar (relative to height)
-        drawHeight = barHeight;
-        drawWidth = drawHeight * imgRatio;
-        offsetX = (barWidth - drawWidth) / 2;
-      } else {
-        // Image is taller than bar (relative to width)
-        drawWidth = barWidth;
-        drawHeight = drawWidth / imgRatio;
-        offsetY = (barHeight - drawHeight) / 2;
-      }
-
-      ctx.drawImage(img, barX + offsetX, barY + offsetY, drawWidth, drawHeight);
-    } else if (config.imageFit === "contain") {
-      // Contain: maintain aspect ratio and fit within area
-      const imgRatio = img.width / img.height;
-      const barRatio = barWidth / barHeight;
-
-      let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
-
-      if (imgRatio > barRatio) {
-        // Image is wider than bar (relative to height)
-        drawWidth = barWidth;
-        drawHeight = drawWidth / imgRatio;
-        offsetY = (barHeight - drawHeight) / 2;
-      } else {
-        // Image is taller than bar (relative to width)
-        drawHeight = barHeight;
-        drawWidth = drawHeight * imgRatio;
-        offsetX = (barWidth - drawWidth) / 2;
-      }
-
-      ctx.drawImage(img, barX + offsetX, barY + offsetY, drawWidth, drawHeight);
-    } else {
-      // Fill: stretch to fill entire area
-      ctx.drawImage(img, barX, barY, barWidth, barHeight);
+        ctx.restore();
+        return;
     }
-
-    ctx.restore();
-    return;
-  }
 
   // Original positioning logic for non-fill mode
   switch (config.position) {
@@ -352,8 +444,19 @@ function renderBarImageVertical(ctx, element, img, config) {
       y = ((element.y ?? 0) + (element.base ?? 0)) / 2;
       break;
     case "above":
-      // Just above the bar
-      y = (element.y ?? 0) - size / 2 - 8;
+      // Detect if 3D bar is active and adjust for top face
+      {
+        const bar3dOptsAbove = (element.chart?.options?.plugins && element.chart.options.plugins.bar3d) || {};
+        const isBar3dActiveAbove = !!(bar3dOptsAbove.enabled);
+        let dyAbove = 0;
+        if (isBar3dActiveAbove) {
+          const depth = typeof bar3dOptsAbove.depth === 'number' ? bar3dOptsAbove.depth : 12;
+          const angleRad = (typeof bar3dOptsAbove.angle === 'number' ? bar3dOptsAbove.angle : 45) * Math.PI / 180;
+          dyAbove = -Math.sin(angleRad) * depth;
+        }
+        // Just above the (3D) bar
+        y = (element.y ?? 0) + (dyAbove < 0 ? dyAbove : 0) - size / 2 - 8;
+      }
       break;
     case "below":
       // Just inside the bottom of the bar
@@ -382,25 +485,28 @@ function renderBarImageHorizontal(ctx, element, img, config) {
 
   // If fill mode is enabled, fill the entire bar with the image
   if (config.fillBar) {
+    // Use getProps or direct properties with fallbacks
+    const props = typeof element.getProps === 'function' ? element.getProps(['height', 'x', 'base', 'y'], true) : element;
+    
     // Improved fallback for barHeight
-    let barHeight = element.height;
+    let barHeight = props.height || element.height;
     if (!barHeight || barHeight <= 0) {
       // Try to estimate from meta data if available
       const meta = element.$context?.dataset?.meta;
       if (meta && meta.data && meta.data.length > 1) {
         const idx = element.$context.dataIndex;
         if (meta.data[idx + 1]) {
-          barHeight = Math.abs(meta.data[idx + 1].y - element.y);
+          barHeight = Math.abs(meta.data[idx + 1].y - (props.y ?? element.y));
         }
       }
       // Fallback to a larger default if still not found
       if (!barHeight || barHeight <= 0) barHeight = 40;
     }
-    const barWidth = Math.abs(element.x - element.base);
+    const barWidth = Math.abs((props.x ?? element.x) - (props.base ?? element.base));
 
     // Calculate position (top-left corner of the bar)
-    const barX = Math.min(element.x, element.base);
-    const barY = element.y - barHeight / 2;
+    const barX = Math.min((props.x ?? element.x), (props.base ?? element.base));
+    const barY = (props.y ?? element.y) - barHeight / 2;
 
     // Draw the image to fill the entire bar
     ctx.save();
@@ -408,51 +514,7 @@ function renderBarImageHorizontal(ctx, element, img, config) {
     ctx.rect(barX, barY, barWidth, barHeight);
     ctx.clip();
 
-    // Determine how to fit the image
-    if (config.imageFit === "cover") {
-      // Cover: maintain aspect ratio and cover entire area
-      const imgRatio = img.width / img.height;
-      const barRatio = barWidth / barHeight;
-
-      let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
-
-      if (imgRatio > barRatio) {
-        // Image is wider than bar (relative to height)
-        drawHeight = barHeight;
-        drawWidth = drawHeight * imgRatio;
-        offsetX = (barWidth - drawWidth) / 2;
-      } else {
-        // Image is taller than bar (relative to width)
-        drawWidth = barWidth;
-        drawHeight = drawWidth / imgRatio;
-        offsetY = (barHeight - drawHeight) / 2;
-      }
-
-      ctx.drawImage(img, barX + offsetX, barY + offsetY, drawWidth, drawHeight);
-    } else if (config.imageFit === "contain") {
-      // Contain: maintain aspect ratio and fit within area
-      const imgRatio = img.width / img.height;
-      const barRatio = barWidth / barHeight;
-
-      let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
-
-      if (imgRatio > barRatio) {
-        // Image is wider than bar (relative to height)
-        drawWidth = barWidth;
-        drawHeight = drawWidth / imgRatio;
-        offsetY = (barHeight - drawHeight) / 2;
-      } else {
-        // Image is taller than bar (relative to width)
-        drawHeight = barHeight;
-        drawWidth = drawHeight * imgRatio;
-        offsetX = (barWidth - drawWidth) / 2;
-      }
-
-      ctx.drawImage(img, barX + offsetX, barY + offsetY, drawWidth, drawHeight);
-    } else {
-      // Fill: stretch to fill entire area
-      ctx.drawImage(img, barX, barY, barWidth, barHeight);
-    }
+    renderImageInRect(ctx, img, barX, barY, barWidth, barHeight, config.imageFit);
 
     ctx.restore();
     return;
@@ -465,8 +527,19 @@ function renderBarImageHorizontal(ctx, element, img, config) {
       x = ((element.x ?? 0) + (element.base ?? 0)) / 2;
       break;
     case "above":
-      // Right end of the bar
-      x = (element.x ?? 0) + size / 2 + 8;
+      // Detect if 3D bar is active and adjust for top face
+      {
+        const bar3dOptsAboveH = (element.chart?.options?.plugins && element.chart.options.plugins.bar3d) || {};
+        const isBar3dActiveAboveH = !!(bar3dOptsAboveH.enabled);
+        let dxAboveH = 0;
+        if (isBar3dActiveAboveH) {
+          const depth = typeof bar3dOptsAboveH.depth === 'number' ? bar3dOptsAboveH.depth : 12;
+          const angleRad = (typeof bar3dOptsAboveH.angle === 'number' ? bar3dOptsAboveH.angle : 45) * Math.PI / 180;
+          dxAboveH = Math.cos(angleRad) * depth;
+        }
+        // Right end of the (3D) bar
+        x = (element.x ?? 0) + (dxAboveH > 0 ? dxAboveH : 0) + size / 2 + 8;
+      }
       break;
     case "below":
       // Just inside the left end of the bar
@@ -518,24 +591,38 @@ function renderCalloutImage(ctx, pointX, pointY, img, config, datasetIndex, poin
   const size = config.size || 30;
   let x = config.calloutX;
   let y = config.calloutY;
+  const offset = config.offset || 40;
+  const chartType = chart.config?.type;
+  const pie3dOpts = (chart.options.plugins && chart.options.plugins.pie3d) || chart.options.pie3d || {};
+  const isPie3dActive = !!(pie3dOpts.enabled !== false && (chartType === 'pie3d' || chartType === 'doughnut3d' || pie3dOpts.enabled));
+  const tilt = isPie3dActive ? (typeof pie3dOpts.tilt === 'number' ? pie3dOpts.tilt : 0.75) : 1.0;
+  const chartArea = chart.chartArea;
+  const centerY_chart = chartArea ? (chartArea.top + chartArea.bottom) / 2 : 0;
+  const transformY = (y_val) => isPie3dActive ? centerY_chart + (y_val - centerY_chart) * tilt : y_val;
+
   if (x === undefined || y === undefined) {
-    const offset = config.offset || 40;
-    const chartType = chart.config?.type;
     if (chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea') {
       const centerX = chart.chartArea.left + chart.chartArea.width / 2;
       const centerY = chart.chartArea.top + chart.chartArea.height / 2;
       const meta = chart.getDatasetMeta(datasetIndex);
       const el = meta && meta.data ? meta.data[pointIndex] : null;
-      const startAngle = el?.startAngle || 0;
-      const endAngle = el?.endAngle || 0;
-      const midAngle = (startAngle + endAngle) / 2;
+      const sA = el?.startAngle || 0;
+      const eA = el?.endAngle || 0;
+      const mA = (sA + eA) / 2;
       const radius = el?.outerRadius || Math.min(chart.chartArea.width, chart.chartArea.height) / 2;
-      const r = radius + offset;
-      x = centerX + Math.cos(midAngle) * r;
-      y = centerY + Math.sin(midAngle) * r;
+      x = centerX + Math.cos(mA) * (radius + offset);
+      y = transformY(centerY + Math.sin(mA) * (radius + offset));
     } else {
+      const bar3dOpts = (chart.options.plugins && chart.options.plugins.bar3d) || chart.options.bar3d || {};
+      const isBar3dActive = !!(bar3dOpts.enabled !== false && (chartType === 'bar3d' || chartType === 'horizontalBar3d' || bar3dOpts.enabled));
+      let dy = 0;
+      if (isBar3dActive) {
+          const depth = typeof bar3dOpts.depth === 'number' ? bar3dOpts.depth : 12;
+          const angleRad = (typeof bar3dOpts.angle === 'number' ? bar3dOpts.angle : 45) * Math.PI / 180;
+          dy = -Math.sin(angleRad) * depth;
+      }
       x = pointX + offset;
-      y = pointY - offset;
+      y = (pointY + (isBar3dActive && dy < 0 ? dy : 0)) - offset;
     }
   }
 
@@ -547,8 +634,12 @@ function renderCalloutImage(ctx, pointX, pointY, img, config, datasetIndex, poin
     y = Math.max(halfSize + padding, Math.min(y, chart.height - halfSize - padding));
   }
 
+  const arrowLine = config.arrowLine !== false;
+  const arrowHead = config.arrowHead !== false;
+  const showArrow = config.arrow || arrowLine || arrowHead;
+
   // Draw arrow if enabled
-  if (config.arrow) {
+  if (showArrow) {
     ctx.save();
     ctx.strokeStyle = config.arrowColor || '#333';
     ctx.lineWidth = 2;
@@ -561,49 +652,89 @@ function renderCalloutImage(ctx, pointX, pointY, img, config, datasetIndex, poin
       const centerY = chart.chartArea.top + chart.chartArea.height / 2;
       const meta = chart.getDatasetMeta(datasetIndex);
       const el = meta && meta.data ? meta.data[pointIndex] : null;
-      const startAngle = el?.startAngle || 0;
-      const endAngle = el?.endAngle || 0;
-      const midAngle = (startAngle + endAngle) / 2;
-      const radius = el?.outerRadius || Math.min(chart.chartArea.width, chart.chartArea.height) / 2;
-      startX = centerX + Math.cos(midAngle) * radius;
-      startY = centerY + Math.sin(midAngle) * radius;
+      const sA_arrow = el?.startAngle || 0;
+      const eA_arrow = el?.endAngle || 0;
+      const mA_arrow = (sA_arrow + eA_arrow) / 2;
+      const radius_arrow = el?.outerRadius || Math.min(chart.chartArea.width, chart.chartArea.height) / 2;
+      startX = centerX + Math.cos(mA_arrow) * radius_arrow;
+      startY = transformY(centerY + Math.sin(mA_arrow) * radius_arrow);
+    } else if (chartType === 'bar' || chartType === 'bar3d' || chartType === 'horizontalBar' || chartType === 'horizontalBar3d') {
+      const bar3dOpts = (chart.options.plugins && chart.options.plugins.bar3d) || chart.options.bar3d || {};
+      const isBar3dActive = !!(bar3dOpts.enabled !== false && (chart.config?.type === 'bar3d' || chart.config?.type === 'horizontalBar3d' || bar3dOpts.enabled));
+      let dx = 0, dy = 0;
+      if (isBar3dActive) {
+          const depth = typeof bar3dOpts.depth === 'number' ? bar3dOpts.depth : 12;
+          const angleRad = (typeof bar3dOpts.angle === 'number' ? bar3dOpts.angle : 45) * Math.PI / 180;
+          dx = Math.cos(angleRad) * depth;
+          dy = -Math.sin(angleRad) * depth;
+      }
+      if (chart.config.options && chart.config.options.indexAxis === 'y') {
+          startX = pointX + (dx > 0 ? dx : 0);
+          startY = pointY;
+      } else {
+          startX = pointX;
+          startY = pointY + (dy < 0 ? dy : 0);
+      }
     }
 
     // Optional elbow
     const useElbow = config.arrowSegments === 2;
     let bendX = config.arrowBendX;
     let bendY = config.arrowBendY;
+    const gap = config.arrowEndGap ?? 8;
+
     if ((bendX == null || bendY == null) && config.arrowBendRelX != null && config.arrowBendRelY != null) {
       bendX = config.arrowBendRelX * chart.width;
       bendY = config.arrowBendRelY * chart.height;
     }
+    
     if (useElbow && (bendX == null || bendY == null)) {
-      bendX = x;
-      bendY = startY;
+      if (chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea') {
+        const elbowOffset = (config.arrowElbowLength ?? 14);
+        // We reuse midAngle and radius from earlier calculation if available, 
+        // but to be safe we recalculate or ensure they are in scope.
+        const meta = chart.getDatasetMeta(datasetIndex);
+        const el = meta && meta.data ? meta.data[pointIndex] : null;
+        if (el) {
+          const sA = el.startAngle || 0;
+          const eA = el.endAngle || 0;
+          const mA = (sA + eA) / 2;
+          bendX = startX + Math.cos(mA) * elbowOffset;
+          bendY = startY + Math.sin(mA) * (isPie3dActive ? elbowOffset * tilt : elbowOffset);
+        }
+      } else {
+        bendX = startX + (x - startX) * 0.2;
+        bendY = startY;
+      }
     }
 
-    ctx.beginPath();
-    ctx.moveTo(startX, startY);
-    if (useElbow) {
-      ctx.lineTo(bendX, bendY);
-      ctx.lineTo(x, y);
-    } else {
-      ctx.lineTo(x, y);
-    }
-    ctx.stroke();
+    let px_last = startX, py_last = startY;
+    if (useElbow && bendX != null && bendY != null) { px_last = bendX; py_last = bendY; }
+    
+    const angleToImage = Math.atan2(y - py_last, x - px_last);
+    const arrowEndX = x - gap * Math.cos(angleToImage);
+    const arrowEndY = y - gap * Math.sin(angleToImage);
 
-    // Draw arrow head at end of last segment
-    const headLength = 8;
-    const headAngle = Math.PI / 6;
-    let px = startX, py = startY;
-    if (useElbow) { px = bendX; py = bendY; }
-    const angle = Math.atan2(y - py, x - px);
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x - headLength * Math.cos(angle - headAngle), y - headLength * Math.sin(angle - headAngle));
-    ctx.moveTo(x, y);
-    ctx.lineTo(x - headLength * Math.cos(angle + headAngle), y - headLength * Math.sin(angle + headAngle));
-    ctx.stroke();
+    if (arrowLine) {
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      if (useElbow && bendX != null && bendY != null) {
+        ctx.lineTo(bendX, bendY);
+      }
+      ctx.lineTo(arrowEndX, arrowEndY);
+      ctx.stroke();
+    }
+
+    if (arrowHead) {
+      const headLength = 12; // Match editor
+      const headAngle = Math.PI / 6;
+      ctx.beginPath();
+      ctx.moveTo(arrowEndX, arrowEndY);
+      ctx.lineTo(arrowEndX - headLength * Math.cos(angleToImage - headAngle), arrowEndY - headLength * Math.sin(angleToImage - headAngle));
+      ctx.moveTo(arrowEndX, arrowEndY);
+      ctx.lineTo(arrowEndX - headLength * Math.cos(angleToImage + headAngle), arrowEndY - headLength * Math.sin(angleToImage + headAngle));
+      ctx.stroke();
+    }
     ctx.restore();
   }
 
@@ -692,266 +823,195 @@ function renderCalloutImage(ctx, pointX, pointY, img, config, datasetIndex, poin
 }
 
 function renderSliceImage(ctx, element, img, config) {
-  // Common geometry variables
+  // Check if this is a fill slice request (robustly check both properties)
+  if (config.fillSlice || config.fillBar) {
+    renderSliceFillImage(ctx, element, img, config);
+    return;
+  }
+
   const chart = element._chart || element.chart;
+  if (!chart || !chart.chartArea) return;
   const chartArea = chart.chartArea;
-  const centerX = chartArea.left + chartArea.width / 2;
-  const centerY = chartArea.top + chartArea.height / 2;
+  
+  // Use element.x/y for center point (handles exploded slices)
+  const centerX = element.x || chartArea.left + chartArea.width / 2;
+  const centerY = element.y || chartArea.top + chartArea.height / 2;
+  
   const startAngle = element.startAngle || 0;
   const endAngle = element.endAngle || 0;
   const innerRadius = element.innerRadius || 0;
   const outerRadius = element.outerRadius || Math.min(chartArea.width, chartArea.height) / 2;
 
-  // Fill slice mode
-  if (config.fillSlice) {
-    ctx.save();
-    ctx.beginPath();
-    if (innerRadius > 0) {
-      ctx.arc(centerX, centerY, outerRadius, startAngle, endAngle);
-      ctx.lineTo(centerX + Math.cos(endAngle) * innerRadius, centerY + Math.sin(endAngle) * innerRadius);
-      ctx.arc(centerX, centerY, innerRadius, endAngle, startAngle, true);
-      ctx.closePath();
-    } else {
-      ctx.moveTo(centerX, centerY);
-      ctx.arc(centerX, centerY, outerRadius, startAngle, endAngle);
-      ctx.closePath();
-    }
-    ctx.clip();
-    const imageFit = config.imageFit || 'cover';
-    if (imageFit === 'contain') {
-      // Largest rectangle fully inside the sector (approximate)
-      const sliceAngle = Math.abs(endAngle - startAngle);
-      const imgAspect = img.width / img.height;
-      let best = { area: 0, x: 0, y: 0, w: 0, h: 0 };
-      const angleSteps = 30;
-      const radiusSteps = 30;
-      for (let ai = 0; ai <= angleSteps; ai++) {
-        const fracA = ai / angleSteps;
-        const theta = startAngle + fracA * (endAngle - startAngle);
-        for (let ri = 0; ri <= radiusSteps; ri++) {
-          const fracR = ri / radiusSteps;
-          const r = innerRadius + fracR * (outerRadius - innerRadius);
-          // Binary search for max width
-          let low = 0, high = outerRadius - innerRadius, maxW = 0, maxH = 0;
-          for (let iter = 0; iter < 10; iter++) {
-            const mid = (low + high) / 2;
-            let w, h;
-            if (imgAspect > 1) {
-              w = mid;
-              h = w / imgAspect;
-            } else {
-              h = mid;
-              w = h * imgAspect;
-            }
-            // Rectangle corners in cartesian
-            const corners = [
-              { dx: -w/2, dy: -h/2 },
-              { dx: w/2, dy: -h/2 },
-              { dx: w/2, dy: h/2 },
-              { dx: -w/2, dy: h/2 },
-            ].map(({dx,dy}) => {
-              // Place center at (cx,cy)
-              const cx = centerX + Math.cos(theta) * r;
-              const cy = centerY + Math.sin(theta) * r;
-              return { x: cx + dx, y: cy + dy };
-            });
-            // Check all corners are inside the sector
-            const allInside = corners.every(({x, y}) => {
-              const relX = x - centerX;
-              const relY = y - centerY;
-              const rad = Math.sqrt(relX*relX + relY*relY);
-              let ang = Math.atan2(relY, relX);
-              if (ang < 0) ang += 2 * Math.PI;
-              let sA = startAngle, eA = endAngle;
-              if (sA < 0) sA += 2 * Math.PI;
-              if (eA < 0) eA += 2 * Math.PI;
-              if (eA < sA) eA += 2 * Math.PI;
-              if (ang < sA) ang += 2 * Math.PI;
-              return (
-                rad >= innerRadius - 0.5 && rad <= outerRadius + 0.5 &&
-                ang >= sA - 1e-6 && ang <= eA + 1e-6
-              );
-            });
-            if (allInside) {
-              maxW = w; maxH = h; low = mid;
-            } else {
-              high = mid;
-            }
-          }
-          if (maxW > 0 && maxH > 0 && maxW * maxH > best.area) {
-            // Place center at (cx,cy)
-            const cx = centerX + Math.cos(theta) * r;
-            const cy = centerY + Math.sin(theta) * r;
-            best = { area: maxW * maxH, x: cx - maxW/2, y: cy - maxH/2, w: maxW, h: maxH };
-          }
-        }
-      }
-      if (best.area > 0) {
-        ctx.drawImage(img, best.x, best.y, best.w, best.h);
-      }
-    } else {
-      // --- Calculate the bounding box for the current slice only ---
-      const points = [];
-      const steps = 100; // More steps = more accurate bounding box
-      for (let i = 0; i <= steps; i++) {
-        const angle = startAngle + (endAngle - startAngle) * (i / steps);
-        points.push([
-          centerX + Math.cos(angle) * outerRadius,
-          centerY + Math.sin(angle) * outerRadius
-        ]);
-        if (innerRadius > 0) {
-          points.push([
-            centerX + Math.cos(angle) * innerRadius,
-            centerY + Math.sin(angle) * innerRadius
-          ]);
-        }
-      }
-      const xs = points.map(p => p[0]);
-      const ys = points.map(p => p[1]);
-      const minX = Math.min(...xs);
-      const maxX = Math.max(...xs);
-      const minY = Math.min(...ys);
-      const maxY = Math.max(...ys);
-      const sliceWidth = maxX - minX;
-      const sliceHeight = maxY - minY;
-      let drawX = minX;
-      let drawY = minY;
-      let drawWidth = sliceWidth;
-      let drawHeight = sliceHeight;
-      if (imageFit === 'fill') {
-        drawX = minX;
-        drawY = minY;
-        drawWidth = sliceWidth;
-        drawHeight = sliceHeight;
-      } else {
-        // cover (default)
-        const imgAspect = img.width / img.height;
-        const sliceAspect = sliceWidth / sliceHeight;
-        if (imgAspect > sliceAspect) {
-          drawHeight = sliceHeight;
-          drawWidth = sliceHeight * imgAspect;
-          drawX = minX + (sliceWidth - drawWidth) / 2;
-        } else {
-          drawWidth = sliceWidth;
-          drawHeight = sliceWidth / imgAspect;
-          drawY = minY + (sliceHeight - drawHeight) / 2;
-        }
-      }
-      ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
-    }
-    ctx.restore();
-    return;
-  }
+  // Detect 3D pie for label positioning
+  const pie3dOpts = (chart.options.plugins && chart.options.plugins.pie3d) || chart.options.pie3d || {};
+  const isPie3dActive = !!(pie3dOpts.enabled !== false && (chartType === 'pie3d' || chartType === 'doughnut3d' || pie3dOpts.enabled));
+  const tilt = isPie3dActive ? (typeof pie3dOpts.tilt === 'number' ? pie3dOpts.tilt : 0.75) : 1.0;
+  const centerY_chart = (chartArea.top + chartArea.bottom) / 2;
+  const transformY = (y_val) => isPie3dActive ? centerY_chart + (y_val - centerY_chart) * tilt : y_val;
 
-  // ...rest of the original renderSliceImage logic for non-fill mode...
   const size = config.size || 30;
-  let x = element.x;
-  let y;
+  const midAngle = (startAngle + endAngle) / 2;
+  let x, y;
+
   switch (config.position) {
     case "center":
-      // Center of the slice: halfway between inner and outer radius
-      const midAngle = (startAngle + endAngle) / 2;
       const r = innerRadius + (outerRadius - innerRadius) * 0.5;
       x = centerX + Math.cos(midAngle) * r;
-      y = centerY + Math.sin(midAngle) * r;
+      y = transformY(centerY + Math.sin(midAngle) * r);
       break;
     case "above":
-      // Above the slice: outside the outer radius
-      {
-        const midAngle = (startAngle + endAngle) / 2;
-        const rAbove = outerRadius + size * 0.7;
-        x = centerX + Math.cos(midAngle) * rAbove;
-        y = centerY + Math.sin(midAngle) * rAbove;
-      }
+      const rAbove = outerRadius + size * 0.7;
+      x = centerX + Math.cos(midAngle) * rAbove;
+      y = transformY(centerY + Math.sin(midAngle) * rAbove);
       break;
     case "below":
-      // Below the slice: closer to inner radius
-      {
-        const midAngle = (startAngle + endAngle) / 2;
-        const rBelow = innerRadius + (outerRadius - innerRadius) * 0.2;
-        x = centerX + Math.cos(midAngle) * rBelow;
-        y = centerY + Math.sin(midAngle) * rBelow;
-      }
+      const rBelow = innerRadius + (outerRadius - innerRadius) * 0.2;
+      x = centerX + Math.cos(midAngle) * rBelow;
+      y = transformY(centerY + Math.sin(midAngle) * rBelow);
       break;
     case "callout":
-      // Callout position - handled separately
-      {
-        const datasetIndex = element._datasetIndex || 0;
-        const pointIndex = element._index || 0;
-        renderCalloutImage(ctx, element.x, element.y, img, config, datasetIndex, pointIndex, chart);
-        return;
-      }
+      renderCalloutImage(ctx, element.x, element.y, img, config, element._datasetIndex, element._index, chart);
+      return;
     default:
-      // Default: place at element center
-      y = element.y - size / 2 - 5;
+      x = element.x;
+      y = element.y;
       break;
   }
+
   drawImageWithClipping(ctx, x - size / 2, y - size / 2, size, size, img, config.type);
 }
 
 function renderSliceFillImage(ctx, element, img, config) {
-  const chartArea = element.chart.chartArea;
-  const centerX = chartArea.left + chartArea.width / 2;
-  const centerY = chartArea.top + chartArea.height / 2;
-  const startAngle = element.startAngle;
-  const endAngle = element.endAngle;
-  const innerRadius = element.innerRadius;
-  const outerRadius = element.outerRadius;
+  const chart = element._chart || element.chart;
+  if (!chart || !chart.chartArea) return;
+  const chartArea = chart.chartArea;
+  
+  const centerX = element.x || chartArea.left + chartArea.width / 2;
+  const centerY = element.y || chartArea.top + chartArea.height / 2;
+  const startAngle = element.startAngle || 0;
+  const endAngle = element.endAngle || 0;
+  const innerRadius = element.innerRadius || 0;
+  const outerRadius = element.outerRadius || Math.min(chartArea.width, chartArea.height) / 2;
 
-  if (config.fillSlice) {
-    ctx.save();
-    ctx.beginPath();
+  ctx.save();
+
+  // Detect 3D pie and apply tilt
+  const pie3dOpts = (chart.options.plugins && chart.options.plugins.pie3d) || chart.options.pie3d || {};
+  const isPie3dActive = !!(pie3dOpts.enabled !== false && (chart.config.type === 'pie3d' || chart.config.type === 'doughnut3d' || pie3dOpts.enabled));
+  if (isPie3dActive) {
+    const tilt = typeof pie3dOpts.tilt === 'number' ? pie3dOpts.tilt : 0.75;
+    ctx.translate(centerX, centerY);
+    ctx.scale(1, tilt);
+    ctx.translate(-centerX, -centerY);
+  }
+
+  ctx.beginPath();
+  if (innerRadius > 0) {
+    ctx.arc(centerX, centerY, outerRadius, startAngle, endAngle);
+    ctx.lineTo(centerX + Math.cos(endAngle) * innerRadius, centerY + Math.sin(endAngle) * innerRadius);
+    ctx.arc(centerX, centerY, innerRadius, endAngle, startAngle, true);
+    ctx.closePath();
+  } else {
     ctx.moveTo(centerX, centerY);
     ctx.arc(centerX, centerY, outerRadius, startAngle, endAngle);
-    ctx.lineTo(centerX, centerY);
     ctx.closePath();
-    ctx.clip();
+  }
+  ctx.clip();
 
-    const fit = config.imageFit || 'cover';
-    let dx = centerX - outerRadius, dy = centerY - outerRadius;
-    let dWidth = outerRadius * 2, dHeight = outerRadius * 2;
-    const sliceAspect = (endAngle - startAngle) / (Math.PI * 2);
+  const fitMode = config.imageFit || 'cover';
+  
+  if (fitMode === 'contain') {
     const imgAspect = img.width / img.height;
-
-    if (fit === 'contain') {
-      if (imgAspect > sliceAspect) {
-        dWidth = outerRadius * 2;
-        dHeight = dWidth / imgAspect;
-        dy = centerY - dHeight / 2;
-      } else {
-        dHeight = outerRadius * 2;
-        dWidth = dHeight * imgAspect;
-        dx = centerX - dWidth / 2;
+    let best = { area: 0, x: 0, y: 0, w: 0, h: 0 };
+    const angleSteps = 15;
+    const radiusSteps = 15;
+    
+    for (let ai = 0; ai <= angleSteps; ai++) {
+      const theta = startAngle + (ai / angleSteps) * (endAngle - startAngle);
+      for (let ri = 0; ri <= radiusSteps; ri++) {
+        const r = innerRadius + (ri / radiusSteps) * (outerRadius - innerRadius);
+        
+        let low = 0, high = outerRadius - innerRadius, maxW = 0, maxH = 0;
+        for (let iter = 0; iter < 8; iter++) {
+          const mid = (low + high) / 2;
+          let w, h;
+          if (imgAspect > 1) {
+            w = mid;
+            h = w / imgAspect;
+          } else {
+            h = mid;
+            w = h * imgAspect;
+          }
+          
+          const corners = [
+            { dx: -w / 2, dy: -h / 2 },
+            { dx: w / 2, dy: -h / 2 },
+            { dx: w / 2, dy: h / 2 },
+            { dx: -w / 2, dy: h / 2 },
+          ];
+          
+          let allInside = true;
+          for (let ci = 0; ci < corners.length; ci++) {
+            const cx = centerX + Math.cos(theta) * r + corners[ci].dx;
+            const cy = centerY + Math.sin(theta) * r + corners[ci].dy;
+            
+            const relX = cx - centerX;
+            const relY = cy - centerY;
+            const rad = Math.sqrt(relX * relX + relY * relY);
+            let ang = Math.atan2(relY, relX);
+            if (ang < 0) ang += 2 * Math.PI;
+            
+            let sA = startAngle, eA = endAngle;
+            while (sA < 0) sA += 2 * Math.PI;
+            while (eA < 0) eA += 2 * Math.PI;
+            while (eA < sA) eA += 2 * Math.PI;
+            while (ang < sA) ang += 2 * Math.PI;
+            
+            if (!(rad >= innerRadius - 0.5 && rad <= outerRadius + 0.5 && ang >= sA - 1e-6 && ang <= eA + 1e-6)) {
+              allInside = false;
+              break;
+            }
+          }
+          if (allInside) {
+            maxW = w; maxH = h; low = mid;
+          } else {
+            high = mid;
+          }
+        }
+        if (maxW * maxH > best.area) {
+          const cx = centerX + Math.cos(theta) * r;
+          const cy = centerY + Math.sin(theta) * r;
+          best = { area: maxW * maxH, x: cx - maxW / 2, y: cy - maxH / 2, w: maxW, h: maxH };
+        }
       }
     }
-
-    ctx.drawImage(img, dx, dy, dWidth, dHeight);
-    ctx.restore();
-  } else {
-    const midAngle = (startAngle + endAngle) / 2;
-    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-    const x = centerX + Math.cos(midAngle) * radius;
-    const y = centerY + Math.sin(midAngle) * radius;
-    const size = config.size || 30;
-
-    if (config.type === 'circle') {
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(x, y, size / 2, 0, Math.PI * 2);
-      ctx.clip();
-      ctx.drawImage(img, x - size / 2, y - size / 2, size, size);
-      ctx.restore();
-    } else if (config.type === 'square') {
-      ctx.drawImage(img, x - size / 2, y - size / 2, size, size);
-    } else if (config.type === 'rounded') {
-      ctx.save();
-      const radius = size * 0.2;
-      roundRect(ctx, x - size / 2, y - size / 2, size, size, radius);
-      ctx.clip();
-      ctx.drawImage(img, x - size / 2, y - size / 2, size, size);
-      ctx.restore();
+    if (best.area > 0) {
+      ctx.drawImage(img, best.x, best.y, best.w, best.h);
     }
+  } else {
+    // Calculate bounding box for the slice for fill/cover
+    const boundingPoints = [];
+    const boundingSteps = 60;
+    for (let bi = 0; bi <= boundingSteps; bi++) {
+      const bAngle = startAngle + (endAngle - startAngle) * (bi / boundingSteps);
+      boundingPoints.push([centerX + Math.cos(bAngle) * outerRadius, centerY + Math.sin(bAngle) * outerRadius]);
+      if (innerRadius > 0) {
+        boundingPoints.push([centerX + Math.cos(bAngle) * innerRadius, centerY + Math.sin(bAngle) * innerRadius]);
+      }
+    }
+    const boundingXs = boundingPoints.map(p => p[0]);
+    const boundingYs = boundingPoints.map(p => p[1]);
+    const sMinX = Math.min(...boundingXs);
+    const sMaxX = Math.max(...boundingXs);
+    const sMinY = Math.min(...boundingYs);
+    const sMaxY = Math.max(...boundingYs);
+    const sWidth = sMaxX - sMinX;
+    const sHeight = sMaxY - sMinY;
+
+    renderImageInRect(ctx, img, sMinX, sMinY, sWidth, sHeight, fitMode);
   }
+
+  ctx.restore();
 }
 
 function drawImageWithClipping(ctx, x, y, w, h, img, type) {

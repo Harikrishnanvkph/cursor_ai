@@ -469,16 +469,13 @@ export function ImagesTab({
                             <div className="space-y-2 pt-2 border-t border-green-200">
                                 <div className="flex items-center justify-between">
                                     <Label className="text-[10px] font-semibold text-green-700 uppercase tracking-wide">
-                                        {['pie', 'doughnut', 'polarArea'].includes(chartType) ? 'Fill Slice' : 'Fill Bar'}
+                                        {['pie', 'doughnut', 'polarArea', 'pie3d', 'doughnut3d'].includes(chartType) ? 'Fill Slice' : 'Fill Bar'}
                                     </Label>
                                     <Switch
-                                        checked={['pie', 'doughnut', 'polarArea'].includes(chartType) ? (imageConfig.fillSlice || false) : (imageConfig.fillBar || false)}
+                                        checked={['pie', 'doughnut', 'polarArea', 'pie3d', 'doughnut3d'].includes(chartType) ? (imageConfig.fillSlice || false) : (imageConfig.fillBar || false)}
                                         onCheckedChange={(checked) => {
-                                            if (['pie', 'doughnut', 'polarArea'].includes(chartType)) {
-                                                handleImageConfigChange(idx, 'fillSlice', checked)
-                                            } else {
-                                                handleImageConfigChange(idx, 'fillBar', checked)
-                                            }
+                                            // Update BOTH properties atomically to prevent race condition
+                                            handleImageConfigChange(idx, { fillSlice: checked, fillBar: checked })
                                         }}
                                         className="scale-75 data-[state=checked]:bg-green-600"
                                     />

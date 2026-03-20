@@ -93,7 +93,7 @@ declare module 'chart.js' {
 }
 
 // Define our custom chart types that extend Chart.js types
-export type CustomChartType = 'stackedBar' | 'area';
+export type CustomChartType = 'stackedBar' | 'area' | 'pie3d' | 'doughnut3d' | 'bar3d' | 'horizontalBar3d';
 
 // Define supported chart types as a union of Chart.js types and our custom types
 type SupportedChartTypeLocal =
@@ -204,7 +204,11 @@ export const chartTypeMapping: Record<SupportedChartType, keyof ChartTypeRegistr
     radar: 'radar',
     horizontalBar: 'bar',
     stackedBar: 'bar',
-    area: 'line'
+    area: 'line',
+    pie3d: 'pie',
+    doughnut3d: 'doughnut',
+    bar3d: 'bar',
+    horizontalBar3d: 'bar'
 };
 
 // Create a utility function to check if a chart should be displayed as an area chart
@@ -308,19 +312,27 @@ export const getDefaultDataForMode = (mode: ChartMode): ExtendedChartData => {
 
 // Export getDefaultConfigForType for use in chart-preview
 export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChartOptions => {
+    // Track if this is a 3D variant for plugin enabling
+    const is3DPie = type === ('pie3d' as CustomChartType) || type === ('doughnut3d' as CustomChartType);
+    const is3DBar = type === ('bar3d' as CustomChartType) || type === ('horizontalBar3d' as CustomChartType);
+
     // For area chart, use line chart config
-    // Use type assertion to avoid TypeScript error
     let processedType: keyof ChartTypeRegistry;
     if (type === ('area' as CustomChartType)) {
         processedType = 'line';
+    } else if (is3DPie) {
+        processedType = type === 'pie3d' ? 'pie' : 'doughnut';
+    } else if (is3DBar || type === 'horizontalBar' || type === 'stackedBar') {
+        processedType = 'bar';
     } else {
         processedType = type as keyof ChartTypeRegistry;
     }
+
     let baseConfig: ExtendedChartOptions = {
         responsive: true,
         manualDimensions: false,
         visualSettings: {
-            fillArea: true,
+            fillArea: (type !== 'line'), // Line charts should default to no fill
             showBorder: true,
             showImages: true,
             showLabels: true,
@@ -376,6 +388,12 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
             },
             // @ts-ignore - legendType is a custom property 
             legendType: 'dataset', // Default for axis charts
+
+            // 3D Plugin Defaults
+            // @ts-ignore
+            pie3d: is3DPie ? { enabled: true, depth: 20, darken: 0.25, tilt: 0.75, shadowColor: 'rgba(0,0,0,0.3)', shadowBlur: 10, shadowOffsetX: 0, shadowOffsetY: 5 } : { enabled: false },
+            // @ts-ignore
+            bar3d: is3DBar ? { enabled: true, depth: 12, darken: 0.2, angle: 45, shadowColor: 'rgba(0,0,0,0.3)', shadowBlur: 10, shadowOffsetX: 0, shadowOffsetY: 5 } : { enabled: false },
         },
         animation: {
             duration: 1000,
@@ -481,7 +499,6 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
         } as ExtendedChartOptions;
     }
 
-    // Special configuration for pie and doughnut charts
     if (processedType === 'pie' || processedType === 'doughnut') {
         return {
             ...baseConfig,

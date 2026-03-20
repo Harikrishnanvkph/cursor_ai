@@ -9,6 +9,7 @@ const dragState = {
     dragPointIndex: -1,
     dragOffsetX: 0,
     dragOffsetY: 0,
+    isHovering: false,
 }
 
 // Universal image plugin for all chart types
@@ -17,6 +18,15 @@ const dragState = {
 function calculateCalloutPosition(chart: any, datasetIndex: number, pointIndex: number, element: any, config: any) {
     let calloutX = config.calloutX;
     let calloutY = config.calloutY;
+
+    // Detect if 3D pie is active and get tilt
+    const pie3dOpts = (chart.options.plugins as any)?.pie3d;
+    const isPie3dActive = !!(pie3dOpts && pie3dOpts.enabled);
+    const tilt = isPie3dActive ? (typeof pie3dOpts.tilt === 'number' ? pie3dOpts.tilt : 0.75) : 1.0;
+    const chartArea = chart.chartArea;
+    const centerY_chart = chartArea ? (chartArea.top + chartArea.bottom) / 2 : 0;
+
+    const transformY = (y_val: number) => isPie3dActive ? centerY_chart + (y_val - centerY_chart) * tilt : y_val;
 
     if (calloutX === undefined || calloutY === undefined) {
         const chartType = chart.config.type;
@@ -38,15 +48,34 @@ function calculateCalloutPosition(chart: any, datasetIndex: number, pointIndex: 
                 const r = outerRadius + offset;
 
                 calloutX = centerX + Math.cos(midAngle) * r;
-                calloutY = centerY + Math.sin(midAngle) * r;
+                calloutY = transformY(centerY + Math.sin(midAngle) * r);
             } else {
                 calloutX = element.x + offset;
-                calloutY = element.y - offset;
+                calloutY = transformY(element.y - offset);
             }
         } else {
-            calloutX = element.x + offset;
-            calloutY = element.y - offset;
+            // Detect if 3D bar is active and get offsets
+            const bar3dOpts = (chart.options.plugins as any)?.bar3d;
+            const isBar3dActive = !!(bar3dOpts && bar3dOpts.enabled);
+            let dx = 0, dy = 0;
+            if (isBar3dActive) {
+                const depth = typeof bar3dOpts.depth === 'number' ? bar3dOpts.depth : 12;
+                const angleRad = (typeof bar3dOpts.angle === 'number' ? bar3dOpts.angle : 45) * Math.PI / 180;
+                dx = Math.cos(angleRad) * depth;
+                dy = -Math.sin(angleRad) * depth;
+            }
+
+            // Adjust start point for 3D bar if above/top
+            const adjY = (isBar3dActive && dy < 0) ? element.y + dy : element.y;
+            const adjX = (isBar3dActive && dx > 0) ? element.x + dx : element.x;
+
+            calloutX = adjX + offset;
+            calloutY = adjY - offset;
         }
+    } else if (isPie3dActive) {
+        // If we have stored absolute coordinates, we might still need to adjust them if they were saved in "flat" space
+        // but for now we assume calloutX/Y are the final visual coordinates.
+        // However, if they were JUST calculated from a drag, they are visual.
     }
 
     // Apply boundaries
@@ -78,7 +107,7 @@ export const universalImagePlugin = {
             meta.data.forEach((element: any, pointIndex: number) => {
                 // For pie/doughnut/polarArea, respect per-slice visibility toggled by legend
                 const type = chart.config?.type;
-                if ((type === 'pie' || type === 'doughnut' || type === 'polarArea') &&
+                if ((type === 'pie' || type === 'doughnut' || type === 'polarArea' || type === 'pie3d' || type === 'doughnut3d') &&
                     typeof chart.getDataVisibility === 'function' && chart.getDataVisibility(pointIndex) === false) {
                     return;
                 }
@@ -98,17 +127,20 @@ export const universalImagePlugin = {
                         element.chart = chart
 
                         // Fill Slice/Bar takes priority over position - check it first
-                        if (chartType === "pie" || chartType === "doughnut" || chartType === "polarArea") {
-                            if (imageConfig.fillSlice) {
+                        // Robustly check BOTH fillSlice and fillBar to handle UI property mismatch
+                        const isFillEnabled = imageConfig.fillSlice || imageConfig.fillBar;
+
+                        if (chartType === "pie" || chartType === "doughnut" || chartType === "polarArea" || chartType === "pie3d" || chartType === "doughnut3d") {
+                            if (isFillEnabled) {
                                 // Fill slice mode - ignore position setting
                                 renderSliceImage(ctx, element, img, imageConfig)
                                 ctx.restore()
                                 return
                             }
-                        } else if (chartType === "bar") {
-                            if (imageConfig.fillBar) {
+                        } else if (chartType === "bar" || chartType === "bar3d" || chartType === "horizontalBar3d" || chartType === "horizontalBar" || chartType === "stackedBar") {
+                            if (isFillEnabled) {
                                 // Fill bar mode - ignore position setting
-                                if (chart.config.options?.indexAxis === "y") {
+                                if (chart.config.options?.indexAxis === "y" || chartType === "horizontalBar" || chartType === "horizontalBar3d") {
                                     renderBarImageHorizontal(ctx, element, img, imageConfig)
                                 } else {
                                     renderBarImageVertical(ctx, element, img, imageConfig)
@@ -155,8 +187,10 @@ export const universalImagePlugin = {
 
         const handleMouseDown = (event: MouseEvent) => {
             const rect = canvas.getBoundingClientRect()
-            const x = event.clientX - rect.left
-            const y = event.clientY - rect.top
+            const scaleX = canvas.width / rect.width
+            const scaleY = canvas.height / rect.height
+            const x = (event.clientX - rect.left) * scaleX
+            const y = (event.clientY - rect.top) * scaleY
 
             // Check if clicking on a callout
             chart.data.datasets.forEach((dataset: any, datasetIndex: number) => {
@@ -197,8 +231,10 @@ export const universalImagePlugin = {
 
         const handleMouseMove = (event: MouseEvent) => {
             const rect = canvas.getBoundingClientRect()
-            const x = event.clientX - rect.left
-            const y = event.clientY - rect.top
+            const scaleX = canvas.width / rect.width
+            const scaleY = canvas.height / rect.height
+            const x = (event.clientX - rect.left) * scaleX
+            const y = (event.clientY - rect.top) * scaleY
 
             if (dragState.isDragging) {
                 // Update callout position
@@ -238,8 +274,13 @@ export const universalImagePlugin = {
                         }
                     })
                 })
-
-                canvas.style.cursor = isOverCallout ? "grab" : "default"
+                if (isOverCallout) {
+                    canvas.style.cursor = "grab"
+                    ;(dragState as any).isHovering = true
+                } else if ((dragState as any).isHovering) {
+                    canvas.style.cursor = "default"
+                    ;(dragState as any).isHovering = false
+                }
             }
         }
 
@@ -273,8 +314,10 @@ export const universalImagePlugin = {
             if (event.touches.length !== 1) return
             const touch = event.touches[0]
             const rect = canvas.getBoundingClientRect()
-            const x = touch.clientX - rect.left
-            const y = touch.clientY - rect.top
+            const scaleX = canvas.width / rect.width
+            const scaleY = canvas.height / rect.height
+            const x = (touch.clientX - rect.left) * scaleX
+            const y = (touch.clientY - rect.top) * scaleY
 
             // Check if touching a callout (same logic as mouse)
             chart.data.datasets.forEach((dataset: any, datasetIndex: number) => {
@@ -314,8 +357,10 @@ export const universalImagePlugin = {
             if (event.touches.length !== 1) return
             const touch = event.touches[0]
             const rect = canvas.getBoundingClientRect()
-            const x = touch.clientX - rect.left
-            const y = touch.clientY - rect.top
+            const scaleX = canvas.width / rect.width
+            const scaleY = canvas.height / rect.height
+            const x = (touch.clientX - rect.left) * scaleX
+            const y = (touch.clientY - rect.top) * scaleY
 
             if (dragState.isDragging) {
                 // Update callout position
@@ -428,12 +473,14 @@ function renderBarImageVertical(ctx: any, element: any, img: any, config: any) {
 
     // If fill mode is enabled, fill the entire bar with the image
     if (config.fillBar) {
-        const barWidth = element.width
-        const barHeight = Math.abs(element.y - element.base)
+        // Use getProps or direct properties with fallbacks
+        const props = typeof element.getProps === 'function' ? element.getProps(['width', 'y', 'base', 'x'], true) : element;
+        const barWidth = props.width || element.width || 20;
+        const barHeight = Math.abs((props.y ?? element.y) - (props.base ?? element.base));
 
         // Calculate position (top-left corner of the bar)
-        const barX = element.x - barWidth / 2
-        const barY = Math.min(element.y, element.base)
+        const barX = (props.x ?? element.x) - barWidth / 2;
+        const barY = Math.min((props.y ?? element.y), (props.base ?? element.base));
 
         // Draw the image to fill the entire bar
         ctx.save()
@@ -454,8 +501,17 @@ function renderBarImageVertical(ctx: any, element: any, img: any, config: any) {
             y = ((element.y ?? 0) + (element.base ?? 0)) / 2;
             break
         case "above":
-            // Just above the bar
-            y = (element.y ?? 0) - size / 2 - 8;
+            // Detect if 3D bar is active and adjust for top face
+            const bar3dOptsAbove = (element.chart?.options?.plugins as any)?.bar3d;
+            const isBar3dActiveAbove = !!(bar3dOptsAbove && bar3dOptsAbove.enabled);
+            let dyAbove = 0;
+            if (isBar3dActiveAbove) {
+                const depth = typeof bar3dOptsAbove.depth === 'number' ? bar3dOptsAbove.depth : 12;
+                const angleRad = (typeof bar3dOptsAbove.angle === 'number' ? bar3dOptsAbove.angle : 45) * Math.PI / 180;
+                dyAbove = -Math.sin(angleRad) * depth;
+            }
+            // Just above the (3D) bar
+            y = (element.y ?? 0) + (dyAbove < 0 ? dyAbove : 0) - size / 2 - 8;
             break
         case "below":
             // Just inside the bottom of the bar
@@ -484,25 +540,28 @@ function renderBarImageHorizontal(ctx: any, element: any, img: any, config: any)
 
     // If fill mode is enabled, fill the entire bar with the image
     if (config.fillBar) {
+        // Use getProps or direct properties with fallbacks
+        const props = typeof element.getProps === 'function' ? element.getProps(['height', 'x', 'base', 'y'], true) : element;
+        
         // Improved fallback for barHeight
-        let barHeight = element.height;
+        let barHeight = props.height || element.height;
         if (!barHeight || barHeight <= 0) {
             // Try to estimate from meta data if available
             const meta = element.$context?.dataset?.meta;
             if (meta && meta.data && meta.data.length > 1) {
                 const idx = element.$context.dataIndex;
                 if (meta.data[idx + 1]) {
-                    barHeight = Math.abs(meta.data[idx + 1].y - element.y);
+                    barHeight = Math.abs(meta.data[idx + 1].y - (props.y ?? element.y));
                 }
             }
             // Fallback to a larger default if still not found
             if (!barHeight || barHeight <= 0) barHeight = 40;
         }
-        const barWidth = Math.abs(element.x - element.base)
+        const barWidth = Math.abs((props.x ?? element.x) - (props.base ?? element.base))
 
         // Calculate position (top-left corner of the bar)
-        const barX = Math.min(element.x, element.base)
-        const barY = element.y - barHeight / 2
+        const barX = Math.min((props.x ?? element.x), (props.base ?? element.base))
+        const barY = (props.y ?? element.y) - barHeight / 2
 
         // Draw the image to fill the entire bar
         ctx.save()
@@ -523,8 +582,17 @@ function renderBarImageHorizontal(ctx: any, element: any, img: any, config: any)
             x = ((element.x ?? 0) + (element.base ?? 0)) / 2;
             break
         case "above":
-            // Right end of the bar
-            x = (element.x ?? 0) + size / 2 + 8;
+            // Detect if 3D bar is active and adjust for top face
+            const bar3dOptsAboveH = (element.chart?.options?.plugins as any)?.bar3d;
+            const isBar3dActiveAboveH = !!(bar3dOptsAboveH && bar3dOptsAboveH.enabled);
+            let dxAboveH = 0;
+            if (isBar3dActiveAboveH) {
+                const depth = typeof bar3dOptsAboveH.depth === 'number' ? bar3dOptsAboveH.depth : 12;
+                const angleRad = (typeof bar3dOptsAboveH.angle === 'number' ? bar3dOptsAboveH.angle : 45) * Math.PI / 180;
+                dxAboveH = Math.cos(angleRad) * depth;
+            }
+            // Right end of the (3D) bar
+            x = (element.x ?? 0) + (dxAboveH > 0 ? dxAboveH : 0) + size / 2 + 8;
             break
         case "below":
             // Just inside the left end of the bar
@@ -600,6 +668,15 @@ function renderCalloutImage(
 
     const { calloutX, calloutY } = calculateCalloutPosition(chart, datasetIndex, pointIndex, pseudoElement, config);
 
+    // Detect if 3D pie is active and get tilt
+    const pie3dOpts = (chart.options.plugins as any)?.pie3d;
+    const isPie3dActive = !!(pie3dOpts && pie3dOpts.enabled);
+    const tilt = isPie3dActive ? (typeof pie3dOpts.tilt === 'number' ? pie3dOpts.tilt : 0.75) : 1.0;
+    const chartArea = chart.chartArea;
+    const centerY_chart = chartArea ? (chartArea.top + chartArea.bottom) / 2 : 0;
+
+    const transformY = (y_val: number) => isPie3dActive ? centerY_chart + (y_val - centerY_chart) * tilt : y_val;
+
     // Draw arrow line and head if enabled
     const arrowLine = config.arrowLine !== false
     const arrowHead = config.arrowHead !== false
@@ -627,14 +704,25 @@ function renderCalloutImage(
             const midAngle = (startAngle + endAngle) / 2
             const radius = el?.outerRadius ?? Math.min(chart.chartArea.width, chart.chartArea.height) / 2
             startX = centerX + Math.cos(midAngle) * radius
-            startY = centerY + Math.sin(midAngle) * radius
+            startY = transformY(centerY + Math.sin(midAngle) * radius)
         } else if (chartType === "bar") {
+            // Detect if 3D bar is active and get offsets
+            const bar3dOpts = (chart.options.plugins as any)?.bar3d;
+            const isBar3dActive = !!(bar3dOpts && bar3dOpts.enabled);
+            let dx = 0, dy = 0;
+            if (isBar3dActive) {
+                const depth = typeof bar3dOpts.depth === 'number' ? bar3dOpts.depth : 12;
+                const angleRad = (typeof bar3dOpts.angle === 'number' ? bar3dOpts.angle : 45) * Math.PI / 180;
+                dx = Math.cos(angleRad) * depth;
+                dy = -Math.sin(angleRad) * depth;
+            }
+
             if (chart.config.options?.indexAxis === "y") {
-                startX = pointX
-                startY = pointY
+                startX = pointX + (isBar3dActive && dx > 0 ? dx : 0);
+                startY = pointY;
             } else {
-                startX = pointX
-                startY = pointY
+                startX = pointX;
+                startY = pointY + (isBar3dActive && dy < 0 ? dy : 0);
             }
         }
 
@@ -843,17 +931,20 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: n
 
 // Render image for pie/doughnut/polarArea charts
 function renderSliceImage(ctx: any, element: any, img: any, config: any) {
-    // Check if this is a fill slice request
-    if (config.fillSlice) {
+    // Check if this is a fill slice request (robustly check both properties)
+    if (config.fillSlice || config.fillBar) {
         renderSliceFillImage(ctx, element, img, config);
         return;
     }
 
     const size = config.size || 30
     const chart = element._chart || element.chart
+    if (!chart || !chart.chartArea) return;
     const chartArea = chart.chartArea
-    const centerX = chartArea.left + chartArea.width / 2
-    const centerY = chartArea.top + chartArea.height / 2
+    
+    // Use element.x/y if available for exploded slices
+    const centerX = element.x ?? (chartArea.left + chartArea.width / 2)
+    const centerY = element.y ?? (chartArea.top + chartArea.height / 2)
 
     // For Chart.js, element has startAngle, endAngle, innerRadius, outerRadius
     const startAngle = element.startAngle || 0
@@ -862,25 +953,33 @@ function renderSliceImage(ctx: any, element: any, img: any, config: any) {
     const innerRadius = element.innerRadius || 0
     const outerRadius = element.outerRadius || Math.min(chartArea.width, chartArea.height) / 2
 
+    // Detect if 3D pie is active and get tilt
+    const pie3dOpts = (chart.options.plugins as any)?.pie3d;
+    const isPie3dActive = !!(pie3dOpts && pie3dOpts.enabled);
+    const tilt = isPie3dActive ? (typeof pie3dOpts.tilt === 'number' ? pie3dOpts.tilt : 0.75) : 1.0;
+    const centerY_chart = chartArea ? (chartArea.top + chartArea.bottom) / 2 : 0;
+
+    const transformY = (y_val: number) => isPie3dActive ? centerY_chart + (y_val - centerY_chart) * tilt : y_val;
+
     let x, y
     switch (config.position) {
         case "center":
             // Center of the slice: halfway between inner and outer radius
             const r = innerRadius + (outerRadius - innerRadius) * 0.5;
             x = centerX + Math.cos(midAngle) * r;
-            y = centerY + Math.sin(midAngle) * r;
+            y = transformY(centerY + Math.sin(midAngle) * r);
             break
         case "above":
             // Above the slice: outside the outer radius
             const rAbove = outerRadius + size * 0.7;
             x = centerX + Math.cos(midAngle) * rAbove;
-            y = centerY + Math.sin(midAngle) * rAbove;
+            y = transformY(centerY + Math.sin(midAngle) * rAbove);
             break
         case "below":
             // Below the slice: closer to inner radius
             const rBelow = innerRadius + (outerRadius - innerRadius) * 0.2;
             x = centerX + Math.cos(midAngle) * rBelow;
-            y = centerY + Math.sin(midAngle) * rBelow;
+            y = transformY(centerY + Math.sin(midAngle) * rBelow);
             break
         case "callout":
             // Callout position - handled separately
@@ -898,8 +997,8 @@ function renderSliceImage(ctx: any, element: any, img: any, config: any) {
 function renderSliceFillImage(ctx: any, element: any, img: any, config: any) {
     const chart = element._chart || element.chart
     const chartArea = chart.chartArea
-    const centerX = chartArea.left + chartArea.width / 2
-    const centerY = chartArea.top + chartArea.height / 2
+    const centerX = element.x ?? (chartArea.left + chartArea.width / 2)
+    const centerY = element.y ?? (chartArea.top + chartArea.height / 2)
 
     // Get slice geometry
     const startAngle = element.startAngle || 0
@@ -909,6 +1008,16 @@ function renderSliceFillImage(ctx: any, element: any, img: any, config: any) {
 
     // Save context for clipping
     ctx.save()
+
+    // Detect if 3D pie is active and apply tilt
+    const pie3dOpts = (chart.options.plugins as any)?.pie3d;
+    const isPie3dActive = !!(pie3dOpts && pie3dOpts.enabled);
+    if (isPie3dActive) {
+        const tilt = typeof pie3dOpts.tilt === 'number' ? pie3dOpts.tilt : 0.75;
+        ctx.translate(centerX, centerY);
+        ctx.scale(1, tilt);
+        ctx.translate(-centerX, -centerY);
+    }
 
     // Create clipping path for the slice
     ctx.beginPath()
@@ -1043,6 +1152,8 @@ export const getImageOptionsForChartType = (chartType: SupportedChartType): Imag
         case 'bar':
         case 'horizontalBar':
         case 'stackedBar':
+        case 'bar3d':
+        case 'horizontalBar3d':
             return {
                 types: [
                     { value: 'square', label: 'Square' },
@@ -1109,6 +1220,8 @@ export const getImageOptionsForChartType = (chartType: SupportedChartType): Imag
         case 'pie':
         case 'doughnut':
         case 'polarArea':
+        case 'pie3d':
+        case 'doughnut3d':
             return {
                 types: [
                     { value: "circle", label: "Circle" },
@@ -1149,9 +1262,13 @@ export const getDefaultImageSize = (chartType: SupportedChartType): number => {
         case 'pie':
         case 'doughnut':
         case 'polarArea':
+        case 'pie3d':
+        case 'doughnut3d':
             return 24
         case 'bar':
         case 'horizontalBar':
+        case 'bar3d':
+        case 'horizontalBar3d':
             return 20
         case 'line':
         case 'scatter':

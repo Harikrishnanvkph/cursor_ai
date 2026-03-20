@@ -47,6 +47,14 @@ const customLabelPlugin = {
     const ctx = chart.ctx;
     const shapeSize = opts.shapeSize ?? 32;
     
+    // 3D Tilt Support
+    const pie3dOpts = chart.options.plugins?.pie3d;
+    const is3dActive = !!pie3dOpts?.enabled;
+    const tilt = is3dActive ? (typeof pie3dOpts.tilt === 'number' ? pie3dOpts.tilt : 0.75) : 1.0;
+    const chartArea = chart.chartArea;
+    const centerY_chart = (chartArea.top + chartArea.bottom) / 2;
+    const transformY = (valY) => is3dActive ? centerY_chart + (valY - centerY_chart) * tilt : valY;
+
     chart.data.datasets.forEach((dataset, datasetIdx) => {
       const meta = chart.getDatasetMeta(datasetIdx);
       if (!meta || !meta.data) return;
@@ -68,45 +76,40 @@ const customLabelPlugin = {
         const chartType = chart.config.type;
         const shapeSize = opts.shapeSize ?? 32;
 
-        if (anchor === 'callout' && label.draggable && chartType === 'bar' && !(chart.options.indexAxis === 'y')) {
-          // For vertical bar chart callout-with-arrow: anchor is center of top edge of bar
-          const anchorX = element.x ?? 0;
-          const anchorY = (element.y ?? 0) - (element.height ? element.height / 2 : 0);
-          // Use dx/dy if present (relative to anchor point)
-          if (label.dx !== undefined && label.dy !== undefined) {
-            x = anchorX + label.dx;
-            y = anchorY + label.dy;
+        if (anchor === 'callout' && label.draggable) {
+          // Unified callout positioning: check drag state first, then stored position, then compute default
+          const key = \`\${datasetIdx}_\${pointIdx}\`;
+          if (window.labelDragState && window.labelDragState[key]) {
+            x = window.labelDragState[key].x;
+            y = window.labelDragState[key].y;
+          } else if (label.x != null && label.y != null) {
+            x = label.x;
+            y = label.y;
           } else {
-            // Default offset
-            const offset = label.calloutOffset || shapeSize * 1.5;
-            x = anchorX;
-            y = anchorY - offset;
-          }
-          // Arrow always from anchorX, anchorY to x, y
-          // (Arrow drawing code below should use these)
-        } else if (anchor === 'callout' && label.draggable) {
-          // Default callout position for non-bar charts
-          if (label.relX !== undefined && label.relY !== undefined && chart.width && chart.height) {
-            x = label.relX * chart.width;
-            y = label.relY * chart.height;
-          } else {
+            // Compute default position per chart type
             const offset = label.calloutOffset || shapeSize * 1.5;
             if (chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea') {
-              const chartArea = chart.chartArea;
-              const centerX = chartArea.left + chartArea.width / 2;
-              const centerY = chartArea.top + chartArea.height / 2;
+              const cArea = chart.chartArea;
+              const centerX = cArea.left + cArea.width / 2;
+              const centerY = cArea.top + cArea.height / 2;
               const startAngle = element.startAngle ?? 0;
               const endAngle = element.endAngle ?? 0;
               const midAngle = (startAngle + endAngle) / 2;
-              const outerRadius = element.outerRadius ?? Math.min(chartArea.width, chartArea.height) / 2;
+              const outerRadius = element.outerRadius ?? Math.min(cArea.width, cArea.height) / 2;
               const r = outerRadius + offset;
               x = centerX + Math.cos(midAngle) * r;
-              y = centerY + Math.sin(midAngle) * r;
+              y = transformY(centerY + Math.sin(midAngle) * r);
             } else {
-              x = (element.x ?? 0) + offset;
+              x = element.x ?? 0;
               y = (element.y ?? 0) - offset;
             }
           }
+
+          // Clamp label within canvas boundaries
+          const halfShape = shapeSize / 2;
+          const padding = 5;
+          x = Math.max(halfShape + padding, Math.min(x, chart.width - halfShape - padding));
+          y = Math.max(halfShape + padding, Math.min(y, chart.height - halfShape - padding));
         } else {
           // Anchor-based logic for center, top, bottom
           if (chartType === 'bar' || chartType === 'horizontalBar') {
@@ -181,6 +184,12 @@ const customLabelPlugin = {
           }
         }
         
+        // Apply 3D tilt transform only for non-callout labels
+        // (callout labels handle tilt inside their own branch)
+        if (!(anchor === 'callout' && label.draggable)) {
+          y = transformY(y);
+        }
+
         // Draw callout arrow if needed
         if (anchor === 'callout' && label.callout && (label.arrowLine || label.arrowHead)) {
           ctx.save();
@@ -203,6 +212,8 @@ const customLabelPlugin = {
             const outerRadius = element.outerRadius ?? Math.min(chartArea.width, chartArea.height) / 2;
             startX = centerX + Math.cos(midAngle) * outerRadius;
             startY = centerY + Math.sin(midAngle) * outerRadius;
+            // Apply 3D tilt to arrow start point
+            startY = transformY(startY);
           }
           
           const endGap = label.arrowEndGap || 10;
@@ -395,6 +406,7 @@ Chart.register(customLabelPlugin);
 customLabelPlugin.afterInit = function(chart) {
   const canvas = chart.canvas;
   let dragging = false;
+  let isHovering = false;
   let dragKey = '';
   let offsetX = 0;
   let offsetY = 0;
@@ -403,6 +415,14 @@ customLabelPlugin.afterInit = function(chart) {
     const opts = ${JSON.stringify(customLabelsConfig)};
     if (!opts || !opts.labels) return null;
     const shapeSize = opts.shapeSize ?? 32;
+
+    // Define transformY locally for 3D hit-testing
+    const pie3dOpts = chart.options.plugins?.pie3d;
+    const is3dActive = !!(pie3dOpts?.enabled);
+    const tilt = is3dActive ? (typeof pie3dOpts.tilt === 'number' ? pie3dOpts.tilt : 0.75) : 1.0;
+    const chartArea = chart.chartArea;
+    const centerY_chart = (chartArea.top + chartArea.bottom) / 2;
+    const localTransformY = (valY) => is3dActive ? centerY_chart + (valY - centerY_chart) * tilt : valY;
     
     for (let datasetIdx = 0; datasetIdx < opts.labels.length; ++datasetIdx) {
       const arr = opts.labels[datasetIdx];
@@ -415,26 +435,35 @@ customLabelPlugin.afterInit = function(chart) {
         if (window.labelDragState[key]) {
           lx = window.labelDragState[key].x;
           ly = window.labelDragState[key].y;
+        } else if (label.x != null && label.y != null) {
+          lx = label.x;
+          ly = label.y;
         } else {
           const meta = chart.getDatasetMeta(datasetIdx);
           const element = meta.data[pointIdx];
           const offset = label.calloutOffset || shapeSize * 1.5;
           if (chart.config.type === 'pie' || chart.config.type === 'doughnut' || chart.config.type === 'polarArea') {
-            const chartArea = chart.chartArea;
-            const centerX = chartArea.left + chartArea.width / 2;
-            const centerY = chartArea.top + chartArea.height / 2;
+            const cArea = chart.chartArea;
+            const cX = cArea.left + cArea.width / 2;
+            const cY = cArea.top + cArea.height / 2;
             const startAngle = element.startAngle ?? 0;
             const endAngle = element.endAngle ?? 0;
             const midAngle = (startAngle + endAngle) / 2;
-            const outerRadius = element.outerRadius ?? Math.min(chartArea.width, chartArea.height) / 2;
+            const outerRadius = element.outerRadius ?? Math.min(cArea.width, cArea.height) / 2;
             const r = outerRadius + offset;
-            lx = centerX + Math.cos(midAngle) * r;
-            ly = centerY + Math.sin(midAngle) * r;
+            lx = cX + Math.cos(midAngle) * r;
+            ly = localTransformY(cY + Math.sin(midAngle) * r);
           } else {
-            lx = (element.x ?? 0) + offset;
+            lx = element.x ?? 0;
             ly = (element.y ?? 0) - offset;
           }
         }
+
+        // Apply clamping to match afterDraw
+        const halfShape = shapeSize / 2;
+        const pad = 5;
+        lx = Math.max(halfShape + pad, Math.min(lx, chart.width - halfShape - pad));
+        ly = Math.max(halfShape + pad, Math.min(ly, chart.height - halfShape - pad));
         
         // Hit test (circle)
         if (Math.hypot(x - lx, y - ly) < shapeSize / 1.5) {
@@ -470,12 +499,19 @@ customLabelPlugin.afterInit = function(chart) {
     } else {
       // Hover effect
       const hit = getLabelAt(x, y);
-      canvas.style.cursor = hit ? 'grab' : 'default';
+      if (hit) {
+        canvas.style.cursor = 'grab';
+        isHovering = true;
+      } else if (isHovering) {
+        canvas.style.cursor = 'default';
+        isHovering = false;
+      }
     }
   }
 
   function onMouseUp() {
     dragging = false;
+    isHovering = false; // Reset isHovering on mouse up
     dragKey = '';
     canvas.style.cursor = 'default';
   }

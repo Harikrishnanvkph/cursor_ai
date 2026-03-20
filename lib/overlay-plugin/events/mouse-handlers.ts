@@ -1148,6 +1148,14 @@ export function getMouseHandlers(chart: Chart) {
                 }
             }
 
+            // Apply the calculated cursor
+            if (isOverOverlay) {
+                canvas.style.cursor = hoverCursor
+                dragState.isHovering = true
+            } else if (dragState.isHovering) {
+                canvas.style.cursor = 'default'
+                dragState.isHovering = false
+            }
         }
     }
 

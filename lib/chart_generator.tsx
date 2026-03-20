@@ -40,6 +40,8 @@ import exportPlugin from "@/lib/export-plugin"
 import { customLabelPlugin } from "@/lib/custom-label-plugin"
 import { overlayPlugin } from "@/lib/overlay-plugin"
 import { enhancedTitlePlugin } from "@/lib/enhanced-title-plugin"
+import { pie3dPlugin } from "@/lib/plugins/3d-pie-plugin"
+import { bar3dPlugin } from "@/lib/plugins/3d-bar-plugin"
 import { ResizableChartArea } from "@/components/resizable-chart-area"
 import { OverlayContextMenu } from "@/components/overlay-context-menu"
 import { parseDimension } from "@/lib/utils/dimension-utils"
@@ -74,7 +76,9 @@ ChartJS.register(
   customLabelPlugin,
   exportPlugin,
   overlayPlugin,
-  enhancedTitlePlugin
+  enhancedTitlePlugin,
+  pie3dPlugin,
+  bar3dPlugin
 );
 
 // Plugin registration verified
@@ -589,6 +593,10 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
       if (chartType === 'line' || chartType === 'area' || chartType === 'radar') {
         processedDs.fill = false;
       }
+      // 3D pie/doughnut types still behave like pie/doughnut for fill
+      if (chartType === 'pie3d' || chartType === 'doughnut3d') {
+        // No fill changes needed for pie-based types
+      }
     } else {
       // When fillArea is true, ensure area charts have a fill value
       // Only default to 'origin' if fill is not already set to a valid value
@@ -617,8 +625,11 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     const datasetType = (chartMode === 'single' || uniformityMode === 'uniform')
       ? chartType
       : (ds.chartType || chartType || 'bar');
-    const validType = datasetType === 'stackedBar' || datasetType === 'horizontalBar' ? 'bar' :
-      (datasetType === 'area' ? 'line' : datasetType);
+    const validType = datasetType === 'stackedBar' || datasetType === 'horizontalBar' || datasetType === 'horizontalBar3d' ? 'bar' :
+      (datasetType === 'area' ? 'line' :
+        (datasetType === 'pie3d' ? 'pie' :
+          (datasetType === 'doughnut3d' ? 'doughnut' : 
+            (datasetType === 'bar3d' ? 'bar' : datasetType))));
 
     let patched = { ...ds, type: validType };
     if (
@@ -891,7 +902,11 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
   // Determine chart type for Chart.js
   let chartTypeForChart = chartType === 'area' ? 'line' :
     (chartType === 'stackedBar' ? 'bar' :
-      (chartType === 'horizontalBar' ? 'bar' : chartType));
+      (chartType === 'horizontalBar' ? 'bar' :
+        (chartType === 'pie3d' ? 'pie' :
+          (chartType === 'doughnut3d' ? 'doughnut' : 
+            (chartType === 'bar3d' ? 'bar' : 
+              (chartType === 'horizontalBar3d' ? 'bar' : chartType))))));
 
   // In single mode, ALWAYS use the global chart type (user expects to change the whole chart)
   // In grouped mode with uniform, also use global chart type
@@ -904,7 +919,11 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     if (uniformityMode === 'uniform') {
       chartTypeForChart = chartType === 'area' ? 'line' :
         (chartType === 'stackedBar' ? 'bar' :
-          (chartType === 'horizontalBar' ? 'bar' : chartType));
+          (chartType === 'horizontalBar' ? 'bar' :
+            (chartType === 'pie3d' ? 'pie' :
+              (chartType === 'doughnut3d' ? 'doughnut' : 
+                (chartType === 'bar3d' ? 'bar' : 
+                  (chartType === 'horizontalBar3d' ? 'bar' : chartType))))));
     } else {
       // Mixed mode: the chart type is 'bar' as base, but each dataset has its own type
       chartTypeForChart = 'bar';
@@ -918,11 +937,17 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     datasets: filteredDatasetsPatched,
   };
 
-  // Final safety check to ensure chartTypeForChart is valid
+  // Final safety check to ensure chartTypeForChart is valid after all overrides
   if (chartTypeForChart === 'stackedBar' || chartTypeForChart === 'horizontalBar') {
     chartTypeForChart = 'bar';
   } else if (chartTypeForChart === 'area') {
     chartTypeForChart = 'line';
+  } else if (chartTypeForChart === 'pie3d') {
+    chartTypeForChart = 'pie';
+  } else if (chartTypeForChart === 'doughnut3d') {
+    chartTypeForChart = 'doughnut';
+  } else if (chartTypeForChart === 'bar3d' || chartTypeForChart === 'horizontalBar3d') {
+    chartTypeForChart = 'bar';
   }
 
   // Handle background settings
@@ -1034,7 +1059,11 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
   // This prevents leftover x/y scales from Cartesian charts from appearing
   const radialOnlyScales = isRadialType && safeScales?.r ? { r: safeScales.r } : {};
   // Determine if any dataset (or the chart) requests horizontal orientation
-  const needsHorizontal = chartType === 'horizontalBar' || filteredDatasetsPatched.some((ds: any) => (ds?.chartType || chartType) === 'horizontalBar');
+  const needsHorizontal = chartType === 'horizontalBar' || chartType === 'horizontalBar3d' || 
+    filteredDatasetsPatched.some((ds: any) => 
+      (ds?.chartType || chartType) === 'horizontalBar' || 
+      (ds?.chartType || chartType) === 'horizontalBar3d'
+    );
   const baseOptions = {
     ...(chartConfig as any),
     indexAxis: needsHorizontal ? 'y' : ((chartConfig as any)?.indexAxis || 'x'),
@@ -1398,6 +1427,12 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                     },
                     plugins: ({
                       ...chartConfig.plugins,
+                      pie3d: (chartType === 'pie3d' || chartType === 'doughnut3d') 
+                        ? { ...((chartConfig.plugins as any)?.pie3d || {}), enabled: true } 
+                        : (chartConfig.plugins as any)?.pie3d,
+                      bar3d: (chartType === 'bar3d' || chartType === 'horizontalBar3d')
+                        ? { ...((chartConfig.plugins as any)?.bar3d || {}), enabled: true }
+                        : (chartConfig.plugins as any)?.bar3d,
                       legendType: ((chartConfig.plugins as any)?.legendType) || 'dataset',
                       customLabels: { shapeSize: 32, labels: customLabels },
                       overlayPlugin: {
@@ -1587,6 +1622,12 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                     },
                     plugins: ({
                       ...chartConfig.plugins,
+                      pie3d: (chartType === 'pie3d' || chartType === 'doughnut3d') 
+                        ? { ...((chartConfig.plugins as any)?.pie3d || {}), enabled: true } 
+                        : (chartConfig.plugins as any)?.pie3d,
+                      bar3d: (chartType === 'bar3d' || chartType === 'horizontalBar3d')
+                        ? { ...((chartConfig.plugins as any)?.bar3d || {}), enabled: true }
+                        : (chartConfig.plugins as any)?.bar3d,
                       legendType: ((chartConfig.plugins as any)?.legendType) || 'dataset',
                       customLabels: { shapeSize: 32, labels: customLabels },
                       overlayPlugin: {

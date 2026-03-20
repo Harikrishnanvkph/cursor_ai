@@ -194,25 +194,30 @@ export function ImagesTab({
         }
     };
 
-    const handleImageConfigChange = (datasetIndex: number, pointIndex: number, key: string, value: any) => {
+    const handleImageConfigChange = (datasetIndex: number, pointIndex: number, keyOrUpdates: string | Record<string, any>, value?: any) => {
         const currentConfig = chartData.datasets[datasetIndex]?.pointImageConfig?.[pointIndex] || getDefaultImageConfigFromStore(chartType as any);
         const imageUrl = (chartData.datasets[datasetIndex]?.pointImages?.[pointIndex] as string | undefined) ?? '';
 
-        let newConfig = { ...currentConfig, [key]: value };
-        if (key === 'arrowLine' && value === false) {
-            newConfig.arrowHead = false;
+        let newConfig;
+        if (typeof keyOrUpdates === 'string') {
+            newConfig = { ...currentConfig, [keyOrUpdates]: value };
+            if (keyOrUpdates === 'arrowLine' && value === false) {
+                newConfig.arrowHead = false;
+            }
+        } else {
+            newConfig = { ...currentConfig, ...keyOrUpdates };
         }
 
         updatePointImage(datasetIndex, pointIndex, imageUrl, newConfig);
     };
 
-    const handleGlobalImageConfigChange = (key: string, value: any) => {
+    const handleGlobalImageConfigChange = (keyOrUpdates: string | Record<string, any>, value?: any) => {
         const targetIndices = getTargetDatasetIndices();
         targetIndices.forEach(dsIdx => {
             const dataset = chartData.datasets[dsIdx];
             if (dataset && dataset.data) {
                 dataset.data.forEach((_: any, pointIndex: number) => {
-                    handleImageConfigChange(dsIdx, pointIndex, key, value);
+                    handleImageConfigChange(dsIdx, pointIndex, keyOrUpdates, value);
                 });
             }
         });
@@ -572,18 +577,15 @@ export function ImagesTab({
                                 <div className="space-y-2 pt-2 border-t border-purple-200">
                                     <div className="flex items-center justify-between">
                                         <Label className="text-xs font-semibold text-purple-700 uppercase tracking-wide">
-                                            {['pie', 'doughnut', 'polarArea'].includes(chartType) ? 'Fill Slice' : 'Fill Bar'}
+                                            {['pie', 'doughnut', 'polarArea', 'pie3d', 'doughnut3d'].includes(chartType) ? 'Fill Slice' : 'Fill Bar'}
                                         </Label>
                                         <Switch
-                                            checked={['pie', 'doughnut', 'polarArea'].includes(chartType)
+                                            checked={['pie', 'doughnut', 'polarArea', 'pie3d', 'doughnut3d'].includes(chartType)
                                                 ? (activeDataset?.pointImageConfig?.[0]?.fillSlice || false)
                                                 : (activeDataset?.pointImageConfig?.[0]?.fillBar || false)}
                                             onCheckedChange={(checked) => {
-                                                if (['pie', 'doughnut', 'polarArea'].includes(chartType)) {
-                                                    handleGlobalImageConfigChange('fillSlice', checked)
-                                                } else {
-                                                    handleGlobalImageConfigChange('fillBar', checked)
-                                                }
+                                                // Update BOTH properties atomically to prevent race condition
+                                                handleGlobalImageConfigChange({ fillSlice: checked, fillBar: checked })
                                             }}
                                             className="scale-75 data-[state=checked]:bg-purple-600"
                                         />
@@ -597,7 +599,7 @@ export function ImagesTab({
                                                 size="sm"
                                                 className={`h-7 text-[10px] ${activeDataset?.pointImageConfig?.[0]?.imageFit === 'fill' ? 'bg-purple-100 border-purple-400 text-purple-700' : ''}`}
                                                 onClick={() => handleGlobalImageConfigChange('imageFit', 'fill')}
-                                                disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ?
+                                                disabled={!(['pie', 'doughnut', 'polarArea', 'pie3d', 'doughnut3d'].includes(chartType) ?
                                                     activeDataset?.pointImageConfig?.[0]?.fillSlice :
                                                     activeDataset?.pointImageConfig?.[0]?.fillBar)}
                                             >
@@ -609,7 +611,7 @@ export function ImagesTab({
                                                 size="sm"
                                                 className={`h-7 text-[10px] ${activeDataset?.pointImageConfig?.[0]?.imageFit === 'cover' ? 'bg-purple-100 border-purple-400 text-purple-700' : ''}`}
                                                 onClick={() => handleGlobalImageConfigChange('imageFit', 'cover')}
-                                                disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ?
+                                                disabled={!(['pie', 'doughnut', 'polarArea', 'pie3d', 'doughnut3d'].includes(chartType) ?
                                                     activeDataset?.pointImageConfig?.[0]?.fillSlice :
                                                     activeDataset?.pointImageConfig?.[0]?.fillBar)}
                                             >
@@ -621,7 +623,7 @@ export function ImagesTab({
                                                 size="sm"
                                                 className={`h-7 text-[10px] ${activeDataset?.pointImageConfig?.[0]?.imageFit === 'contain' ? 'bg-purple-100 border-purple-400 text-purple-700' : ''}`}
                                                 onClick={() => handleGlobalImageConfigChange('imageFit', 'contain')}
-                                                disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ?
+                                                disabled={!(['pie', 'doughnut', 'polarArea', 'pie3d', 'doughnut3d'].includes(chartType) ?
                                                     activeDataset?.pointImageConfig?.[0]?.fillSlice :
                                                     activeDataset?.pointImageConfig?.[0]?.fillBar)}
                                             >

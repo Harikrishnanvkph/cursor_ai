@@ -1,4 +1,9 @@
-import { type ExtendedChartData } from "../chart-store";
+import { type ExtendedChartData, chartTypeMapping } from "../chart-store";
+
+// Helper to map custom chart types to base Chart.js types
+function getMappedType(type: string): string {
+    return (chartTypeMapping as any)[type] || type;
+}
 import { getProxiedImageUrl, requiresProxy } from "../utils/image-proxy-utils";
 
 // Function to convert image URL to base64
@@ -51,8 +56,8 @@ export function filterChartDataForExport(
         };
         return {
             ...ds,
-            // Only use explicit dataset type if in grouped mode, otherwise default to chartType
-            type: chartMode === 'single' ? chartType : (ds.chartType || chartType),
+            // Map custom chart types (like 'bar3d') to base Chart.js types for the dataset
+            type: chartMode === 'single' ? getMappedType(chartType) : getMappedType(ds.chartType || chartType),
             data: filterSlice(ds.data),
             backgroundColor: Array.isArray(ds.backgroundColor) ? filterSlice(ds.backgroundColor) : ds.backgroundColor,
             borderColor: Array.isArray(ds.borderColor) ? filterSlice(ds.borderColor) : ds.borderColor,

@@ -88,7 +88,11 @@ export function TypesTogglesPanel() {
             <SelectItem value="line">Line</SelectItem>
             <SelectItem value="area">Area</SelectItem>
             <SelectItem value="pie">Pie</SelectItem>
+            <SelectItem value="pie3d">3D Pie</SelectItem>
             <SelectItem value="doughnut">Doughnut</SelectItem>
+            <SelectItem value="doughnut3d">3D Doughnut</SelectItem>
+            <SelectItem value="bar3d">3D Bar</SelectItem>
+            <SelectItem value="horizontalBar3d">3D Horizontal Bar</SelectItem>
             <SelectItem value="radar">Radar</SelectItem>
             <SelectItem value="polarArea">Polar Area</SelectItem>
             <SelectItem value="scatter">Scatter</SelectItem>
@@ -99,7 +103,13 @@ export function TypesTogglesPanel() {
 
       <div className="flex items-center justify-between gap-1 px-1 mb-2">
         <div className="flex flex-col items-center gap-1">
-          <Switch id="fill-toggle" checked={fillArea} onCheckedChange={toggleFillArea} className="scale-75 data-[state=unchecked]:bg-input/50" />
+          <Switch 
+            id="fill-toggle" 
+            checked={chartType === 'line' ? false : fillArea} 
+            onCheckedChange={toggleFillArea} 
+            disabled={chartType === 'line'}
+            className="scale-75 data-[state=unchecked]:bg-input/50" 
+          />
           <Label htmlFor="fill-toggle" className="text-[12px] text-gray-600">Fill</Label>
         </div>
         <div className="flex flex-col items-center gap-1">

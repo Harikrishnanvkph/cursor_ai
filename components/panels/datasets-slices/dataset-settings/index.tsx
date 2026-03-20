@@ -339,7 +339,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
 
     // Auto-switch to uniform mode for incompatible chart types in grouped mode
     useEffect(() => {
-        if (chartMode === 'grouped' && ['pie', 'doughnut', 'radar', 'polarArea', 'scatter', 'bubble'].includes(chartType as any) && uniformityMode === 'mixed') {
+        if (chartMode === 'grouped' && ['pie', 'doughnut', 'radar', 'polarArea', 'scatter', 'bubble', 'pie3d', 'doughnut3d'].includes(chartType as any) && uniformityMode === 'mixed') {
             setUniformityMode('uniform');
         }
     }, [chartType, chartMode, uniformityMode, setUniformityMode]);

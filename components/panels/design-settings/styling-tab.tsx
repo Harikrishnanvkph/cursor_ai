@@ -530,6 +530,314 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                     )}
                 </div>
             )}
+
+            {/* 3D Effect Settings - Only for pie3d and doughnut3d */}
+            {(chartType === 'pie3d' as any || chartType === 'doughnut3d' as any) && (
+                <div className="space-y-3">
+                    <div className="flex items-center gap-2 p-3 bg-purple-50 rounded-lg border border-purple-100">
+                        <svg className="h-4 w-4 text-purple-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <ellipse cx="12" cy="10" rx="10" ry="6" />
+                            <path d="M2 10v4c0 3.31 4.48 6 10 6s10-2.69 10-6v-4" />
+                        </svg>
+                        <h3 className="text-sm font-semibold text-purple-900">
+                            3D Effect Settings
+                        </h3>
+                    </div>
+
+                    {/* Depth */}
+                    <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-xs font-medium">Depth</Label>
+                            <span className="text-xs text-gray-500">{(chartConfig.plugins as any)?.pie3d?.depth ?? 20}px</span>
+                        </div>
+                        <Slider
+                            value={[Number((chartConfig.plugins as any)?.pie3d?.depth ?? 20)]}
+                            onValueChange={([value]) => handleConfigUpdate('plugins.pie3d.depth', value)}
+                            min={1}
+                            max={200}
+                            step={1}
+                        />
+                    </div>
+
+                    {/* Tilt */}
+                    <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-xs font-medium">Tilt Angle</Label>
+                            <span className="text-xs text-gray-500">{Math.round((1 - Number((chartConfig.plugins as any)?.pie3d?.tilt ?? 0.75)) * 100)}°</span>
+                        </div>
+                        <Slider
+                            value={[Number((chartConfig.plugins as any)?.pie3d?.tilt ?? 0.75)]}
+                            onValueChange={([value]) => handleConfigUpdate('plugins.pie3d.tilt', value)}
+                            min={0.4}
+                            max={1.0}
+                            step={0.05}
+                        />
+                        <div className="flex justify-between text-[10px] text-gray-400">
+                            <span>More tilted</span>
+                            <span>Flat</span>
+                        </div>
+                    </div>
+
+                    {/* Wall Darkening */}
+                    <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-xs font-medium">Wall Darkening</Label>
+                            <span className="text-xs text-gray-500">{Math.round(Number((chartConfig.plugins as any)?.pie3d?.darken ?? 0.25) * 100)}%</span>
+                        </div>
+                        <Slider
+                            value={[Number((chartConfig.plugins as any)?.pie3d?.darken ?? 0.25)]}
+                            onValueChange={([value]) => handleConfigUpdate('plugins.pie3d.darken', value)}
+                            min={0}
+                            max={0.6}
+                            step={0.05}
+                        />
+                    </div>
+
+                    {/* Shadow Settings */}
+                    <div className="pt-2 border-t border-purple-100 space-y-3">
+                        <div className="text-xs font-medium text-purple-900">Shadow</div>
+
+                        <div className="space-y-3">
+                            {/* Shadow Blur */}
+                            <div className="space-y-1">
+                                <Label className="text-xs font-medium">Blur</Label>
+                                <div className="flex items-center gap-2">
+                                    <Slider
+                                        value={[Number((chartConfig.plugins as any)?.pie3d?.shadowBlur ?? 10)]}
+                                        onValueChange={([value]) => handleConfigUpdate('plugins.pie3d.shadowBlur', value)}
+                                        min={0}
+                                        max={40}
+                                        step={1}
+                                        className="flex-1"
+                                    />
+                                    <span className="text-xs text-gray-500 w-6 text-right">{(chartConfig.plugins as any)?.pie3d?.shadowBlur ?? 10}</span>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                {/* Shadow Offset X */}
+                                <div className="space-y-1">
+                                    <Label className="text-xs font-medium">Offset X</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Slider
+                                            value={[Number((chartConfig.plugins as any)?.pie3d?.shadowOffsetX ?? 0)]}
+                                            onValueChange={([value]) => handleConfigUpdate('plugins.pie3d.shadowOffsetX', value)}
+                                            min={-30}
+                                            max={30}
+                                            step={1}
+                                            className="flex-1"
+                                        />
+                                        <span className="text-xs text-gray-500 w-6 text-right">{(chartConfig.plugins as any)?.pie3d?.shadowOffsetX ?? 0}</span>
+                                    </div>
+                                </div>
+
+                                {/* Shadow Offset Y */}
+                                <div className="space-y-1">
+                                    <Label className="text-xs font-medium">Offset Y</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Slider
+                                            value={[Number((chartConfig.plugins as any)?.pie3d?.shadowOffsetY ?? 5)]}
+                                            onValueChange={([value]) => handleConfigUpdate('plugins.pie3d.shadowOffsetY', value)}
+                                            min={-30}
+                                            max={30}
+                                            step={1}
+                                            className="flex-1"
+                                        />
+                                        <span className="text-xs text-gray-500 w-6 text-right">{(chartConfig.plugins as any)?.pie3d?.shadowOffsetY ?? 5}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Shadow Color */}
+                        <div className="space-y-1">
+                            <Label className="text-xs font-medium">Shadow Color</Label>
+                            <div className="flex items-center gap-2 h-8">
+                                <div
+                                    className="w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform"
+                                    style={{ backgroundColor: (chartConfig.plugins as any)?.pie3d?.shadowColor || 'rgba(0,0,0,0.3)' }}
+                                    onClick={() => document.getElementById('pie3d-shadow-color-picker')?.click()}
+                                />
+                                <input
+                                    id="pie3d-shadow-color-picker"
+                                    type="color"
+                                    value="#000000"
+                                    onChange={(e) => {
+                                        // Convert hex to rgba with 0.3 alpha
+                                        const hex = e.target.value;
+                                        const r = parseInt(hex.slice(1, 3), 16);
+                                        const g = parseInt(hex.slice(3, 5), 16);
+                                        const b = parseInt(hex.slice(5, 7), 16);
+                                        handleConfigUpdate('plugins.pie3d.shadowColor', `rgba(${r},${g},${b},0.3)`);
+                                    }}
+                                    className="absolute opacity-0 w-0 h-0"
+                                />
+                                <Input
+                                    value={(chartConfig.plugins as any)?.pie3d?.shadowColor || 'rgba(0,0,0,0.3)'}
+                                    onChange={(e) => handleConfigUpdate('plugins.pie3d.shadowColor', e.target.value)}
+                                    className="h-8 text-xs flex-1"
+                                    placeholder="rgba(0,0,0,0.3)"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 3D Bar Effect Settings - Only for bar3d and horizontalBar3d */}
+            {(chartType === 'bar3d' as any || chartType === 'horizontalBar3d' as any) && (
+                <div className="space-y-3 mt-4 border-gray-100">
+                    <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                        <svg className="h-4 w-4 text-blue-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                            <polyline points="3.29 7 12 12 20.71 7" />
+                            <line x1="12" y1="22" x2="12" y2="12" />
+                        </svg>
+                        <h3 className="text-sm font-semibold text-blue-900">
+                            3D Bar Settings
+                        </h3>
+                    </div>
+
+                    {/* Depth */}
+                    <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-xs font-medium">3D Depth</Label>
+                            <span className="text-xs text-gray-500">{(chartConfig.plugins as any)?.bar3d?.depth ?? 12}px</span>
+                        </div>
+                        <Slider
+                            value={[Number((chartConfig.plugins as any)?.bar3d?.depth ?? 12)]}
+                            onValueChange={([value]) => handleConfigUpdate('plugins.bar3d.depth', value)}
+                            min={1}
+                            max={100}
+                            step={1}
+                        />
+                    </div>
+
+                    {/* Angle */}
+                    <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-xs font-medium">Perspective Angle</Label>
+                            <span className="text-xs text-gray-500">{(chartConfig.plugins as any)?.bar3d?.angle ?? 45}°</span>
+                        </div>
+                        <Slider
+                            value={[Number((chartConfig.plugins as any)?.bar3d?.angle ?? 45)]}
+                            onValueChange={([value]) => handleConfigUpdate('plugins.bar3d.angle', value)}
+                            min={0}
+                            max={90}
+                            step={5}
+                        />
+                        <div className="flex justify-between text-[10px] text-gray-400">
+                            <span>Sideways</span>
+                            <span>Frontal</span>
+                        </div>
+                    </div>
+
+                    {/* Shading */}
+                    <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-xs font-medium">3D Shading (Darken)</Label>
+                            <span className="text-xs text-gray-500">{Math.round(Number((chartConfig.plugins as any)?.bar3d?.darken ?? 0.2) * 100)}%</span>
+                        </div>
+                        <Slider
+                            value={[Number((chartConfig.plugins as any)?.bar3d?.darken ?? 0.2)]}
+                            onValueChange={([value]) => handleConfigUpdate('plugins.bar3d.darken', value)}
+                            min={0}
+                            max={0.5}
+                            step={0.05}
+                        />
+                    </div>
+
+                    {/* Shadow Settings for 3D Bars */}
+                    <div className="pt-2 border-t border-blue-100 space-y-3">
+                        <div className="text-xs font-medium text-blue-900">Shadow</div>
+
+                        <div className="space-y-3">
+                            {/* Shadow Blur */}
+                            <div className="space-y-1">
+                                <Label className="text-xs font-medium">Blur</Label>
+                                <div className="flex items-center gap-2">
+                                    <Slider
+                                        value={[Number((chartConfig.plugins as any)?.bar3d?.shadowBlur ?? 10)]}
+                                        onValueChange={([value]) => handleConfigUpdate('plugins.bar3d.shadowBlur', value)}
+                                        min={0}
+                                        max={40}
+                                        step={1}
+                                        className="flex-1"
+                                    />
+                                    <span className="text-xs text-gray-500 w-6 text-right">{(chartConfig.plugins as any)?.bar3d?.shadowBlur ?? 10}</span>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                {/* Shadow Offset X */}
+                                <div className="space-y-1">
+                                    <Label className="text-xs font-medium">Offset X</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Slider
+                                            value={[Number((chartConfig.plugins as any)?.bar3d?.shadowOffsetX ?? 0)]}
+                                            onValueChange={([value]) => handleConfigUpdate('plugins.bar3d.shadowOffsetX', value)}
+                                            min={-30}
+                                            max={30}
+                                            step={1}
+                                            className="flex-1"
+                                        />
+                                        <span className="text-xs text-gray-500 w-6 text-right">{(chartConfig.plugins as any)?.bar3d?.shadowOffsetX ?? 0}</span>
+                                    </div>
+                                </div>
+
+                                {/* Shadow Offset Y */}
+                                <div className="space-y-1">
+                                    <Label className="text-xs font-medium">Offset Y</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Slider
+                                            value={[Number((chartConfig.plugins as any)?.bar3d?.shadowOffsetY ?? 5)]}
+                                            onValueChange={([value]) => handleConfigUpdate('plugins.bar3d.shadowOffsetY', value)}
+                                            min={-30}
+                                            max={30}
+                                            step={1}
+                                            className="flex-1"
+                                        />
+                                        <span className="text-xs text-gray-500 w-6 text-right">{(chartConfig.plugins as any)?.bar3d?.shadowOffsetY ?? 5}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Shadow Color */}
+                        <div className="space-y-1">
+                            <Label className="text-xs font-medium">Shadow Color</Label>
+                            <div className="flex items-center gap-2 h-8">
+                                <div
+                                    className="w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform"
+                                    style={{ backgroundColor: (chartConfig.plugins as any)?.bar3d?.shadowColor || 'rgba(0,0,0,0.3)' }}
+                                    onClick={() => document.getElementById('bar3d-shadow-color-picker')?.click()}
+                                />
+                                <input
+                                    id="bar3d-shadow-color-picker"
+                                    type="color"
+                                    value="#000000"
+                                    onChange={(e) => {
+                                        const hex = e.target.value;
+                                        const r = parseInt(hex.slice(1, 3), 16);
+                                        const g = parseInt(hex.slice(3, 5), 16);
+                                        const b = parseInt(hex.slice(5, 7), 16);
+                                        handleConfigUpdate('plugins.bar3d.shadowColor', `rgba(${r},${g},${b},0.3)`);
+                                    }}
+                                    className="absolute opacity-0 w-0 h-0"
+                                />
+                                <Input
+                                    value={(chartConfig.plugins as any)?.bar3d?.shadowColor || 'rgba(0,0,0,0.3)'}
+                                    onChange={(e) => handleConfigUpdate('plugins.bar3d.shadowColor', e.target.value)}
+                                    className="h-8 text-xs flex-1"
+                                    placeholder="rgba(0,0,0,0.3)"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
+
+

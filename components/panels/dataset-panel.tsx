@@ -119,12 +119,7 @@ export function DatasetPanel() {
   }
 
   const handleChartTypeChange = (type: string) => {
-    const newType = (type === 'horizontalBar' ? 'bar' : type) as SupportedChartType
-    if (type === 'stackedBar') {
-      setChartType('stackedBar' as SupportedChartType)
-      return
-    }
-    setChartType(newType)
+    setChartType(type as SupportedChartType)
   }
 
   const handleImageUpload = (datasetIndex: number, pointIndex: number, event: React.ChangeEvent<HTMLInputElement>) => {
@@ -143,11 +138,19 @@ export function DatasetPanel() {
     updatePointImage(datasetIndex, pointIndex, imageUrl, {})
   }
 
-  const handleImageConfigChange = (datasetIndex: number, pointIndex: number, configKey: string, value: any) => {
+  const handleImageConfigChange = (datasetIndex: number, pointIndex: number, keyOrUpdates: string | Record<string, any>, value?: any) => {
     const dataset = chartData.datasets[datasetIndex]
     const currentImageUrl = dataset.pointImages?.[pointIndex] || ""
     const currentConfig = dataset.pointImageConfig?.[pointIndex] || {}
-    updatePointImage(datasetIndex, pointIndex, currentImageUrl, { ...currentConfig, [configKey]: value })
+    
+    let newConfig;
+    if (typeof keyOrUpdates === 'string') {
+      newConfig = { ...currentConfig, [keyOrUpdates]: value }
+    } else {
+      newConfig = { ...currentConfig, ...keyOrUpdates }
+    }
+    
+    updatePointImage(datasetIndex, pointIndex, currentImageUrl, newConfig)
   }
 
   const imageOptions = getImageOptionsForChartType(chartType)
@@ -170,7 +173,11 @@ export function DatasetPanel() {
                 <SelectItem value="line">Line</SelectItem>
                 <SelectItem value="area">Area</SelectItem>
                 <SelectItem value="pie">Pie</SelectItem>
+                <SelectItem value="pie3d">3D Pie</SelectItem>
                 <SelectItem value="doughnut">Doughnut</SelectItem>
+                <SelectItem value="doughnut3d">3D Doughnut</SelectItem>
+                <SelectItem value="bar3d">3D Bar</SelectItem>
+                <SelectItem value="horizontalBar3d">3D Horizontal Bar</SelectItem>
                 <SelectItem value="radar">Radar</SelectItem>
                 <SelectItem value="polarArea">Polar Area</SelectItem>
                 <SelectItem value="scatter">Scatter</SelectItem>

@@ -67,6 +67,16 @@ export const customLabelPlugin: Plugin = {
     if (!opts || !opts.labels) return;
     const ctx = chart.ctx;
     const shapeSize = opts.shapeSize ?? 32;
+
+    // Detect if 3D pie is active and get tilt
+    const pie3dOpts = (chart.options.plugins as any)?.pie3d;
+    const is3dActive = !!(pie3dOpts && pie3dOpts.enabled);
+    const tilt = is3dActive ? (typeof pie3dOpts.tilt === 'number' ? pie3dOpts.tilt : 0.75) : 1.0;
+    const chartArea = chart.chartArea;
+    const centerY_chart = (chartArea.top + chartArea.bottom) / 2;
+
+    const transformY = (y: number) => is3dActive ? centerY_chart + (y - centerY_chart) * tilt : y;
+
     chart.data.datasets.forEach((dataset, datasetIdx) => {
       const meta = chart.getDatasetMeta(datasetIdx);
       if (!meta || !meta.data) return;
@@ -88,6 +98,12 @@ export const customLabelPlugin: Plugin = {
         // --- Position logic ---
         let x = label.x;
         let y = label.y;
+
+        // Apply tilt adjustment to absolute Y if provided and we're in 3D mode
+        if (y != null && is3dActive) {
+           y = transformY(y);
+        }
+
         let anchor = label.anchor || 'center';
         // If callout and draggable, use stored position
         if (anchor === 'callout' && label.draggable) {
@@ -110,7 +126,7 @@ export const customLabelPlugin: Plugin = {
               const outerRadius = element.outerRadius ?? Math.min(chartArea.width, chartArea.height) / 2;
               const r = outerRadius + offset;
               x = centerX + Math.cos(midAngle) * r;
-              y = centerY + Math.sin(midAngle) * r;
+              y = transformY(centerY + Math.sin(midAngle) * r);
             } else {
               x = (element.x ?? 0) + offset;
               y = (element.y ?? 0) - offset;
@@ -136,15 +152,15 @@ export const customLabelPlugin: Plugin = {
             if (anchor === 'center') {
               const r = innerRadius + (outerRadius - innerRadius) * 0.5;
               x = centerX + Math.cos(midAngle) * r;
-              y = centerY + Math.sin(midAngle) * r;
+              y = transformY(centerY + Math.sin(midAngle) * r);
             } else if (anchor === 'top') {
               const r = outerRadius + shapeSize * 0.7;
               x = centerX + Math.cos(midAngle) * r;
-              y = centerY + Math.sin(midAngle) * r;
+              y = transformY(centerY + Math.sin(midAngle) * r);
             } else if (anchor === 'bottom') {
               const r = innerRadius + (outerRadius - innerRadius) * 0.2;
               x = centerX + Math.cos(midAngle) * r;
-              y = centerY + Math.sin(midAngle) * r;
+              y = transformY(centerY + Math.sin(midAngle) * r);
             } else if (anchor === 'callout') {
               const offset = label.calloutOffset || shapeSize * 1.5;
               x = (element.x ?? 0) + offset;
@@ -251,7 +267,7 @@ export const customLabelPlugin: Plugin = {
             const midAngle = (startAngle + endAngle) / 2;
             const outerRadius = element.outerRadius ?? Math.min(chartArea.width, chartArea.height) / 2;
             startX = centerX + Math.cos(midAngle) * outerRadius;
-            startY = centerY + Math.sin(midAngle) * outerRadius;
+            startY = transformY(centerY + Math.sin(midAngle) * outerRadius);
           } else if (chartType === "bar" || chartType === "horizontalBar") {
             if (chart.options.indexAxis === "y") {
               startX = element.x ?? 0;
@@ -295,9 +311,8 @@ export const customLabelPlugin: Plugin = {
                   const startAngle = element.startAngle ?? 0;
                   const endAngle = element.endAngle ?? 0;
                   const midAngle = (startAngle + endAngle) / 2;
-                  const elbow = (label as any).arrowElbowLength ?? 14;
                   bendX = startX + Math.cos(midAngle) * elbow;
-                  bendY = startY + Math.sin(midAngle) * elbow;
+                  bendY = transformY(centerY + Math.sin(midAngle) * (outerRadius + elbow));
                 } else {
                   // fallback generic elbow near start
                   bendX = startX + (endX - startX) * 0.2;
@@ -440,10 +455,21 @@ export const customLabelPlugin: Plugin = {
     const dragState: any = {};
     dragStateMap.set(chart, dragState);
     let dragging = false;
+    let isHovering = false;
     let dragKey = '';
     let offsetX = 0;
     let offsetY = 0;
+
     function getLabelAt(x: number, y: number) {
+      // Detect if 3D pie is active and get tilt for hit-testing
+      const pie3dOpts = (chart.options.plugins as any)?.pie3d;
+      const is3dActive = !!(pie3dOpts && pie3dOpts.enabled);
+      const tilt = is3dActive ? (typeof pie3dOpts.tilt === 'number' ? pie3dOpts.tilt : 0.75) : 1.0;
+      const chartArea = chart.chartArea;
+      if (!chartArea) return null; // Safety check
+      const centerY_chart = (chartArea.top + chartArea.bottom) / 2;
+      const transformY = (y_val: number) => is3dActive ? centerY_chart + (y_val - centerY_chart) * tilt : y_val;
+
       const opts: CustomLabelPluginOptions | undefined = (chart.options.plugins as any)?.customLabels;
       if (!opts || !opts.labels) return null;
       const shapeSize = opts.shapeSize ?? 32;
@@ -472,7 +498,7 @@ export const customLabelPlugin: Plugin = {
               const outerRadius = element.outerRadius ?? Math.min(chartArea.width, chartArea.height) / 2;
               const r = outerRadius + offset;
               lx = centerX + Math.cos(midAngle) * r;
-              ly = centerY + Math.sin(midAngle) * r;
+              ly = transformY(centerY + Math.sin(midAngle) * r);
             } else {
               lx = (element.x ?? 0) + offset;
               ly = (element.y ?? 0) - offset;
@@ -488,8 +514,10 @@ export const customLabelPlugin: Plugin = {
     }
     function onMouseDown(e: MouseEvent) {
       const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const x = (e.clientX - rect.left) * scaleX;
+      const y = (e.clientY - rect.top) * scaleY;
       const hit = getLabelAt(x, y);
       if (hit) {
         dragging = true;
@@ -502,19 +530,28 @@ export const customLabelPlugin: Plugin = {
     }
     function onMouseMove(e: MouseEvent) {
       const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const x = (e.clientX - rect.left) * scaleX;
+      const y = (e.clientY - rect.top) * scaleY;
       if (dragging && dragKey) {
         dragState[dragKey] = { x: x - offsetX, y: y - offsetY };
         chart.update('none');
       } else {
         // Hover effect
         const hit = getLabelAt(x, y);
-        canvas.style.cursor = hit ? 'grab' : 'default';
+        if (hit) {
+          canvas.style.cursor = 'grab';
+          isHovering = true;
+        } else if (isHovering) {
+          canvas.style.cursor = 'default';
+          isHovering = false;
+        }
       }
     }
     function onMouseUp() {
       dragging = false;
+      isHovering = false;
       dragKey = '';
       canvas.style.cursor = 'default';
     }
@@ -524,8 +561,10 @@ export const customLabelPlugin: Plugin = {
       if (e.touches.length !== 1) return;
       const touch = e.touches[0];
       const rect = canvas.getBoundingClientRect();
-      const x = touch.clientX - rect.left;
-      const y = touch.clientY - rect.top;
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const x = (touch.clientX - rect.left) * scaleX;
+      const y = (touch.clientY - rect.top) * scaleY;
       const hit = getLabelAt(x, y);
       if (hit) {
         dragging = true;
@@ -541,8 +580,10 @@ export const customLabelPlugin: Plugin = {
       if (e.touches.length !== 1) return;
       const touch = e.touches[0];
       const rect = canvas.getBoundingClientRect();
-      const x = touch.clientX - rect.left;
-      const y = touch.clientY - rect.top;
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const x = (touch.clientX - rect.left) * scaleX;
+      const y = (touch.clientY - rect.top) * scaleY;
       if (dragging && dragKey) {
         dragState[dragKey] = { x: x - offsetX, y: y - offsetY };
         chart.update('none');

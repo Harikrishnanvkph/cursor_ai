@@ -332,16 +332,23 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                     getDefaultImageSize={getDefaultImageSize as any}
                     handleImageUpload={(pointIndex, event) => { }} // Handled internally in ImagesTab now
                     handleImageUrlChange={(pointIndex, url) => { }} // Handled internally in ImagesTab now
-                    handleImageConfigChange={(pointIndex, key, value) => {
+                    handleImageConfigChange={(pointIndex, keyOrUpdates, value) => {
                         const datasetIndex = chartData.datasets.findIndex((ds: any) => ds === currentDataset)
                         if (datasetIndex === -1) return
                         const currentConfig = currentDataset.pointImageConfig?.[pointIndex] || getDefaultImageConfig(chartType)
                         const imageUrl = (currentDataset.pointImages?.[pointIndex] as string | undefined) ?? ''
-                        if (key === 'arrowLine' && value === false) {
-                            updatePointImage(datasetIndex, pointIndex, imageUrl, { ...currentConfig, [key]: value, arrowHead: false })
+
+                        let newConfig;
+                        if (typeof keyOrUpdates === 'string') {
+                            newConfig = { ...currentConfig, [keyOrUpdates]: value };
+                            if (keyOrUpdates === 'arrowLine' && value === false) {
+                                newConfig.arrowHead = false;
+                            }
                         } else {
-                            updatePointImage(datasetIndex, pointIndex, imageUrl, { ...currentConfig, [key]: value })
+                            newConfig = { ...currentConfig, ...keyOrUpdates };
                         }
+
+                        updatePointImage(datasetIndex, pointIndex, imageUrl, newConfig);
                     }}
                     updatePointImage={updatePointImage}
                     updateDataset={updateDataset}

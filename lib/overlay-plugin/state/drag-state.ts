@@ -16,4 +16,5 @@ export const dragState = {
     centerY: 0,
     isDrawingFreehand: false,
     drawingPoints: [] as { x: number, y: number }[],
+    isHovering: false,
 }

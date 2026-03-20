@@ -89,10 +89,23 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
             const out = { ...ds } as any;
             if (effectiveFillArea !== undefined) {
                 const isLineLike = (chartType === 'line' || chartType === 'area' || chartType === 'radar');
-                if (isLineLike) out.fill = !!effectiveFillArea;
+                if (isLineLike) {
+                    // Force the override if we have an explicit preference
+                    out.fill = !!effectiveFillArea;
+                }
                 if (effectiveFillArea === false) {
                     if (Array.isArray(out.backgroundColor)) out.backgroundColor = out.backgroundColor.map(() => 'transparent');
                     else out.backgroundColor = 'transparent';
+                }
+            } else {
+                // FALLBACK CASE: When no explicit option is provided, 
+                // we should respect the chart's nature.
+                if (chartType === 'area' || chartType === 'radar') {
+                    out.fill = (ds.fill !== undefined) ? ds.fill : true;
+                } else if (chartType === 'line') {
+                    // Strictly respect the dataset's fill property for line charts
+                    // Line charts should NEVER default to true unless explicitly requested
+                    out.fill = (ds.fill !== undefined) ? ds.fill : false;
                 }
             }
             if (effectiveShowBorder !== undefined) {
