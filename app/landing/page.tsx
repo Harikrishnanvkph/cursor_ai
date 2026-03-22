@@ -439,8 +439,9 @@ function LandingPageContent() {
   // Show loading until client-side hydration
   if (!isClient) {
     return (
-      <div className="flex h-screen w-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="flex h-screen w-screen bg-gradient-to-b from-indigo-50/50 via-white to-slate-50 items-center justify-center relative overflow-hidden">
+        <AnimatedBackground />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 z-10"></div>
       </div>
     )
   }
@@ -448,7 +449,8 @@ function LandingPageContent() {
   // Tablet Layout (577px - 1024px)
   if (isTablet) {
     return (
-      <div className="flex h-screen w-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 relative overflow-hidden">
+      <div className="flex h-screen w-screen bg-gradient-to-b from-indigo-50/50 via-white to-slate-50 relative overflow-hidden">
+        <AnimatedBackground />
         {/* Header */}
         <header className="fixed top-0 left-0 right-0 z-40 h-16 bg-white/95 backdrop-blur-xl border-b border-white/30 shadow-lg">
           <div className="flex items-center justify-between h-full px-6">
@@ -571,7 +573,7 @@ function LandingPageContent() {
             />
 
             {/* Sidebar */}
-            <div className="absolute right-0 top-0 bottom-0 w-80 bg-white shadow-2xl border-l border-white/20 transform transition-transform duration-300 flex flex-col">
+            <div className="absolute right-0 top-0 bottom-0 w-80 bg-white shadow-2xl border-l border-white/20 flex flex-col">
               {/* Sidebar Header */}
               <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
                 <h3 className="font-semibold text-gray-900 capitalize">
@@ -594,14 +596,14 @@ function LandingPageContent() {
                       <div className="flex items-center gap-0 bg-gray-50 rounded-lg p-1">
                         <button
                           onClick={() => router.push('/board')}
-                          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-all relative"
+                          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-colors relative"
                           title="Dashboard"
                         >
                           <LayoutDashboard className="w-3.5 h-3.5" />
                           <span>Board</span>
                         </button>
                         <button
-                          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-semibold text-indigo-700 bg-white rounded-md shadow-sm transition-all relative"
+                          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-semibold text-indigo-700 bg-white rounded-md shadow-sm transition-colors relative"
                         >
                           <MessageSquare className="w-3.5 h-3.5" />
                           <span>AI Chat</span>
@@ -609,13 +611,45 @@ function LandingPageContent() {
                         </button>
                         <button
                           onClick={() => router.push('/editor')}
-                          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-all relative"
+                          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-colors relative"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
                           <span>Editor</span>
                         </button>
                       </div>
                     </div>
+                    {/* Chat Input - Tablet */}
+                    <form
+                      onSubmit={handleSend}
+                      className="p-2 border-b border-white/20 bg-gradient-to-br from-blue/90 to-blue-50/90 flex gap-2 shadow-inner backdrop-blur-sm flex-shrink-0"
+                    >
+                      <textarea
+                        ref={textareaRef}
+                        className="flex-1 rounded-lg border border-slate-200/100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white/80 resize-none max-h-24 min-h-[36px] leading-relaxed transition-colors font-sans shadow-sm backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        placeholder={isChatDisabled ? "Attach a template to start..." : (hasActiveChart ? "Modify the chart..." : "Describe your chart...")}
+                        value={input}
+                        onChange={handleInputChange}
+                        onPaste={handlePaste}
+                        disabled={isProcessing || isChatDisabled}
+                        rows={1}
+                        onKeyDown={e => {
+                          if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                            e.preventDefault();
+                            if (!isChatDisabled) {
+                              handleSend(e)
+                            }
+                          }
+                        }}
+                      />
+                      <button
+                        type="submit"
+                        className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-3 py-2 rounded-lg shadow-lg disabled:opacity-50 transition-all duration-200"
+                        disabled={isProcessing || !input.trim() || isChatDisabled}
+                        style={{ alignSelf: "flex-end", height: 36 }}
+                      >
+                        <Send className="inline-block w-4 h-4" />
+                      </button>
+                    </form>
                     <ChatWindow
                       messages={messages}
                       input={input}
@@ -644,8 +678,8 @@ function LandingPageContent() {
                 )}
 
                 {tabletRightSidebarContent === 'history' && (
-                  <div className="p-4">
-                    <HistoryDropdown />
+                  <div className="h-full bg-white">
+                    <HistoryDropdown variant="sidebar" />
                   </div>
                 )}
               </div>
@@ -659,7 +693,8 @@ function LandingPageContent() {
   // Mobile Layout (< 576px)
   if (isMobile) {
     return (
-      <div className="flex flex-col h-screen w-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 relative overflow-hidden">
+      <div className="flex flex-col h-screen w-screen bg-gradient-to-b from-indigo-50/50 via-white to-slate-50 relative overflow-hidden">
+        <AnimatedBackground />
         {/* Header */}
         <header className="fixed top-0 left-0 right-0 z-40 h-14 bg-white/95 backdrop-blur-xl border-b border-white/30 shadow-lg">
           <div className="flex items-center justify-between h-full px-4">
@@ -734,7 +769,7 @@ function LandingPageContent() {
             {/* Messages Icon */}
             <button
               onClick={() => handleMobileIconClick('messages')}
-              className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all duration-200 min-w-0 ${mobileRightSidebarContent === 'messages' && mobileRightSidebarOpen
+              className={`flex flex-col items-center justify-center py-2 px-1 sm:px-2 rounded-lg transition-all duration-200 min-w-0 ${mobileRightSidebarContent === 'messages' && mobileRightSidebarOpen
                 ? 'text-blue-600 bg-blue-50'
                 : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
                 }`}
@@ -747,7 +782,7 @@ function LandingPageContent() {
             {/* Tools Icon */}
             <button
               onClick={() => handleMobileIconClick('tools')}
-              className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all duration-200 min-w-0 ${mobileRightSidebarContent === 'tools' && mobileRightSidebarOpen
+              className={`flex flex-col items-center justify-center py-2 px-1 sm:px-2 rounded-lg transition-all duration-200 min-w-0 ${mobileRightSidebarContent === 'tools' && mobileRightSidebarOpen
                 ? 'text-blue-600 bg-blue-50'
                 : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
                 }`}
@@ -760,7 +795,7 @@ function LandingPageContent() {
             {/* History Icon */}
             <button
               onClick={() => handleMobileIconClick('history')}
-              className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all duration-200 min-w-0 ${mobileRightSidebarContent === 'history' && mobileRightSidebarOpen
+              className={`flex flex-col items-center justify-center py-2 px-1 sm:px-2 rounded-lg transition-all duration-200 min-w-0 ${mobileRightSidebarContent === 'history' && mobileRightSidebarOpen
                 ? 'text-blue-600 bg-blue-50'
                 : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
                 }`}
@@ -772,11 +807,6 @@ function LandingPageContent() {
               <span className="text-xs font-medium">History</span>
             </button>
 
-            {/* Profile Icon */}
-            <div className="flex flex-col items-center justify-center p-2 min-w-0">
-              <SimpleProfileDropdown size="md" variant="avatar" className="mb-1" />
-              <span className="text-xs font-medium text-gray-600">Profile</span>
-            </div>
 
           </div>
         </nav>
@@ -785,7 +815,7 @@ function LandingPageContent() {
         {mobileRightSidebarOpen && (
           <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm" onClick={closeMobileSidebar}>
             <div
-              className="absolute right-0 top-0 bottom-0 w-80 max-w-[85vw] bg-white/95 backdrop-blur-xl shadow-2xl border-l border-white/30 flex flex-col"
+              className="absolute right-0 top-0 bottom-0 w-[92vw] sm:w-80 max-w-md bg-white/95 backdrop-blur-xl shadow-2xl border-l border-white/30 flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Sidebar Header */}
@@ -802,7 +832,7 @@ function LandingPageContent() {
               </div>
 
               {/* Sidebar Content */}
-              <div className="flex-1 overflow-hidden">
+              <div className="flex-1 overflow-hidden flex flex-col">
                 {mobileRightSidebarContent === 'messages' && (
                   <>
                     {/* Navigation Section - Mobile */}
@@ -810,14 +840,14 @@ function LandingPageContent() {
                       <div className="flex items-center gap-0 bg-gray-50 rounded-lg p-1">
                         <button
                           onClick={() => router.push('/board')}
-                          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-all relative"
+                          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-colors relative"
                           title="Dashboard"
                         >
                           <LayoutDashboard className="w-3.5 h-3.5" />
                           <span>Board</span>
                         </button>
                         <button
-                          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-semibold text-indigo-700 bg-white rounded-md shadow-sm transition-all relative"
+                          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-semibold text-indigo-700 bg-white rounded-md shadow-sm transition-colors relative"
                         >
                           <MessageSquare className="w-3.5 h-3.5" />
                           <span>AI Chat</span>
@@ -825,13 +855,45 @@ function LandingPageContent() {
                         </button>
                         <button
                           onClick={() => router.push('/editor')}
-                          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-all relative"
+                          className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-colors relative"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
                           <span>Editor</span>
                         </button>
                       </div>
                     </div>
+                    {/* Chat Input - Mobile */}
+                    <form
+                      onSubmit={handleSend}
+                      className="p-2 border-b border-white/20 bg-gradient-to-br from-blue/90 to-blue-50/90 flex gap-2 shadow-inner backdrop-blur-sm flex-shrink-0"
+                    >
+                      <textarea
+                        ref={textareaRef}
+                        className="flex-1 rounded-lg border border-slate-200/100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white/80 resize-none max-h-20 min-h-[36px] leading-relaxed transition-colors font-sans shadow-sm backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        placeholder={isChatDisabled ? "Attach a template to start..." : (hasActiveChart ? "Modify the chart..." : "Describe your chart...")}
+                        value={input}
+                        onChange={handleInputChange}
+                        onPaste={handlePaste}
+                        disabled={isProcessing || isChatDisabled}
+                        rows={1}
+                        onKeyDown={e => {
+                          if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                            e.preventDefault();
+                            if (!isChatDisabled) {
+                              handleSend(e)
+                            }
+                          }
+                        }}
+                      />
+                      <button
+                        type="submit"
+                        className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-3 py-2 rounded-lg shadow-lg disabled:opacity-50 transition-all duration-200"
+                        disabled={isProcessing || !input.trim() || isChatDisabled}
+                        style={{ alignSelf: "flex-end", height: 36 }}
+                      >
+                        <Send className="inline-block w-4 h-4" />
+                      </button>
+                    </form>
                     <ChatWindow
                       messages={messages}
                       input={input}
@@ -859,8 +921,8 @@ function LandingPageContent() {
                 )}
 
                 {mobileRightSidebarContent === 'history' && (
-                  <div className="p-4">
-                    <HistoryDropdown variant="full" />
+                  <div className="h-full bg-white">
+                    <HistoryDropdown variant="sidebar" />
                   </div>
                 )}
               </div>
@@ -873,7 +935,8 @@ function LandingPageContent() {
 
   // Desktop Layout (default)
   return (
-    <div className="flex h-screen w-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 relative overflow-hidden">
+    <div className="flex h-screen w-screen bg-gradient-to-b from-indigo-50/50 via-white to-slate-50 relative overflow-hidden">
+      <AnimatedBackground />
       {/* Floating global header for history and avatar, only when no chart is created and no template modal is open - Desktop only */}
       {(!chartData?.datasets?.length || !hasJSON) && !isTablet && !isMobile && !isTemplateModalOpen && (
         <div className="fixed top-4 right-4 z-50 flex items-center gap-3">
@@ -882,12 +945,8 @@ function LandingPageContent() {
           <SimpleProfileDropdown size="md" />
         </div>
       )}
-      {/* Background decoration */}
-      <div className="absolute inset-0 opacity-30">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(156,146,172,0.15)_1px,transparent_0)] bg-[length:20px_20px]"></div>
-      </div>
       {/* Left Sidebar / Chat */}
-      <aside className={`transition-all duration-300 z-10 flex flex-col border-r border-white/20 shadow-2xl bg-white/90 backdrop-blur-xl ${leftSidebarOpen ? 'w-[320px]' : 'w-14'} rounded-tl-2xl rounded-bl-2xl`}>
+      <aside className={`z-10 flex flex-col border-r border-white/20 shadow-2xl bg-white/90 backdrop-blur-xl ${leftSidebarOpen ? 'w-[320px]' : 'w-14'} rounded-tl-2xl rounded-bl-2xl`}>
         {leftSidebarOpen ? (
           <>
             {/* Navigation Section */}
@@ -895,14 +954,14 @@ function LandingPageContent() {
               <div className="flex items-center gap-0 bg-gray-50 rounded-lg p-1">
                 <button
                   onClick={() => router.push('/board')}
-                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-all relative"
+                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-colors relative"
                   title="Dashboard"
                 >
                   <LayoutDashboard className="w-3.5 h-3.5" />
                   <span>Board</span>
                 </button>
                 <button
-                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-semibold text-indigo-700 bg-white rounded-md shadow-sm transition-all relative"
+                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-semibold text-indigo-700 bg-white rounded-md shadow-sm transition-colors relative"
                 >
                   <MessageSquare className="w-3.5 h-3.5" />
                   <span>AI Chat</span>
@@ -910,7 +969,7 @@ function LandingPageContent() {
                 </button>
                 <button
                   onClick={() => router.push('/editor')}
-                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-all relative"
+                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-colors relative"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
                   <span>Editor</span>
@@ -931,14 +990,14 @@ function LandingPageContent() {
               </div>
               <div className="flex gap-1">
                 <button
-                  className="bg-white/20 hover:bg-white/30 text-white font-semibold px-2 py-1.5 rounded-lg backdrop-blur-sm transition-all duration-200 text-xs border border-white/20 flex items-center gap-1 hover:scale-105"
+                  className="bg-white/20 hover:bg-white/30 text-white font-semibold px-2 py-1.5 rounded-lg backdrop-blur-sm transition-colors text-xs border border-white/20 flex items-center gap-1"
                   onClick={handleNewConversation}
                   title="New Conversation"
                 >
                   <SquarePen className="w-3.5 h-3.5" />
                 </button>
                 <button
-                  className="bg-white/20 hover:bg-white/30 text-white font-semibold px-2 py-1.5 rounded-lg backdrop-blur-sm transition-all duration-200 text-xs border border-white/20 hover:scale-105"
+                  className="bg-white/20 hover:bg-white/30 text-white font-semibold px-2 py-1.5 rounded-lg backdrop-blur-sm transition-colors text-xs border border-white/20"
                   onClick={() => setLeftSidebarOpen(false)}
                   title="Collapse Sidebar"
                 >
@@ -1001,7 +1060,7 @@ function LandingPageContent() {
                           <div className="relative group">
                             <Info className="w-3 h-3 text-blue-400 hover:text-blue-600 cursor-help transition-colors" />
                             {/* Tooltip */}
-                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 transition-opacity duration-200 delay-0 group-hover:opacity-100 group-hover:delay-300 pointer-events-none whitespace-nowrap z-50">
                               <div className="space-y-1">
                                 {msg.chartSnapshot && (
                                   <div className="flex items-center gap-1">
@@ -1079,7 +1138,7 @@ function LandingPageContent() {
               {/* Application Logo - Always shows logo, routes to home */}
               <button
                 onClick={() => router.push("/")}
-                className="p-1.5 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-md"
+                className="p-1.5 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg shadow-lg transition-shadow hover:shadow-md"
                 title="Go to Home"
               >
                 <BarChart2 className="w-5 h-5 text-white" />
@@ -1088,7 +1147,7 @@ function LandingPageContent() {
               {/* Expand Sidebar Icon - Separate ChevronRight icon */}
               <button
                 onClick={() => setLeftSidebarOpen(true)}
-                className="p-1.5 rounded-lg hover:bg-gradient-to-br hover:from-blue-50 hover:to-indigo-50 text-gray-500 hover:text-blue-600 hover:shadow-md hover:scale-105"
+                className="p-1.5 rounded-lg hover:bg-gradient-to-br hover:from-blue-50 hover:to-indigo-50 text-gray-500 hover:text-blue-600 transition-colors hover:shadow-md"
                 title="Expand Sidebar"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -1156,6 +1215,31 @@ function LandingPageContent() {
           />
         )}
       </div>
+    </div>
+  )
+}
+
+function AnimatedBackground() {
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+      <div className="absolute -top-24 -left-24 w-[420px] h-[420px] rounded-full bg-indigo-500/10 dark:bg-indigo-600/20 blur-[100px]"></div>
+      <div className="absolute top-1/3 right-0 w-[350px] h-[350px] rounded-full bg-purple-500/10 dark:bg-purple-600/20 blur-[100px]"></div>
+      <div className="absolute bottom-0 left-1/3 w-[300px] h-[300px] rounded-full bg-cyan-400/10 dark:bg-cyan-500/15 blur-[100px]"></div>
+      {/* Grid pattern */}
+      <div 
+        className="absolute inset-0 transition-opacity duration-300"
+        style={{
+          backgroundImage: `linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px)`,
+          backgroundSize: '60px 60px'
+        }}
+      ></div>
+      <div 
+        className="absolute inset-0 opacity-0 dark:opacity-100 transition-opacity duration-300"
+        style={{
+          backgroundImage: `linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px)`,
+          backgroundSize: '60px 60px'
+        }}
+      ></div>
     </div>
   )
 } 

@@ -97,15 +97,15 @@ export function ChartPreviewToolbar({
                 <SelectItem value="line" className="text-xs">Line</SelectItem>
                 <SelectItem value="area" className="text-xs">Area</SelectItem>
                 <SelectItem value="pie" className="text-xs">Pie</SelectItem>
-                <SelectItem value="pie3d" className="text-xs">3D Pie</SelectItem>
                 <SelectItem value="doughnut" className="text-xs">Doughnut</SelectItem>
-                <SelectItem value="doughnut3d" className="text-xs">3D Doughnut</SelectItem>
-                <SelectItem value="bar3d" className="text-xs">3D Bar</SelectItem>
-                <SelectItem value="horizontalBar3d" className="text-xs">3D Horizontal Bar</SelectItem>
                 <SelectItem value="radar" className="text-xs">Radar</SelectItem>
                 <SelectItem value="polarArea" className="text-xs">Polar</SelectItem>
                 <SelectItem value="scatter" className="text-xs">Scatter</SelectItem>
                 <SelectItem value="bubble" className="text-xs">Bubble</SelectItem>
+                <SelectItem value="pie3d" className="text-xs">3D Pie</SelectItem>
+                <SelectItem value="doughnut3d" className="text-xs">3D Doughnut</SelectItem>
+                <SelectItem value="bar3d" className="text-xs">3D Bar</SelectItem>
+                <SelectItem value="horizontalBar3d" className="text-xs">3D Horizontal Bar</SelectItem>
             </SelectContent>
         </Select>
     );

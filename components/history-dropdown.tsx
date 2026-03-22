@@ -12,17 +12,17 @@ import { useRouter, usePathname } from "next/navigation"
 import { toast } from "sonner"
 
 interface HistoryDropdownProps {
-  variant?: 'full' | 'compact' | 'inline'
+  variant?: 'full' | 'compact' | 'inline' | 'sidebar'
 }
 
 export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
   const [open, setOpen] = useState(false)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
-  
+
   // Dropdown filter state: 'All' | 'Single Chart' | 'Group Chart' | 'Template Chart'
   const [filterType, setFilterType] = useState<'All' | 'Single Chart' | 'Group Chart' | 'Template Chart'>('All')
-  
+
   const { conversations, restoreConversation, clearAllConversations, deleteConversation, loadConversationsFromBackend, loading } = useHistoryStore()
   const { startNewConversation, historyConversationId, clearUndoStack } = useChatStore()
   const { user } = useAuth()
@@ -31,21 +31,21 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
 
   // Reset filter when history dropdown is opened, or when historyConversationId changes (e.g. chart cleared)
   useEffect(() => {
-    if (open) {
+    if (open || variant === 'sidebar') {
       setFilterType('All')
     }
-  }, [open, historyConversationId])
+  }, [open, historyConversationId, variant])
 
   // Load conversations from backend when user is authenticated
   useEffect(() => {
-    if (user && open) {
+    if (user && (open || variant === 'sidebar')) {
       loadConversationsFromBackend()
     }
-  }, [user, open, loadConversationsFromBackend])
+  }, [user, open, variant, loadConversationsFromBackend])
 
   // Add null check and provide default empty array
   const safeConversations = conversations || []
-  
+
   // Filter conversations
   const filteredConversations = safeConversations.filter(conv => {
     if (filterType === 'All') return true;
@@ -139,8 +139,8 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
           <DropdownMenuContent className="w-72 mt-2 rounded-lg" align="end" forceMount>
             <div className="p-2 border-b border-gray-100 flex items-center justify-between">
               <h3 className="font-semibold text-gray-900 text-sm">Chat History</h3>
-              <select 
-                value={filterType} 
+              <select
+                value={filterType}
                 onChange={(e: any) => setFilterType(e.target.value)}
                 className="text-xs border-gray-200 rounded px-1 py-0.5 text-gray-600 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
@@ -253,8 +253,8 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
           <DropdownMenuContent className="w-72 mt-2 rounded-lg" align="end" forceMount>
             <div className="p-2 border-b border-gray-100 flex items-center justify-between">
               <h3 className="font-semibold text-gray-900 text-sm">Chat History</h3>
-              <select 
-                value={filterType} 
+              <select
+                value={filterType}
                 onChange={(e: any) => setFilterType(e.target.value)}
                 className="text-xs border-gray-200 rounded px-1 py-0.5 text-gray-600 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
@@ -342,6 +342,117 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
     )
   }
 
+  if (variant === 'sidebar') {
+    // Sidebar mode: inline rendering for mobile/tablet sidebars without a wrapping popover
+    return (
+      <div className="w-full h-full flex flex-col overflow-hidden">
+        <div className="p-3 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
+          <div>
+            <h3 className="font-semibold text-gray-900 text-sm">Chat History</h3>
+            <p className="text-xs text-gray-500">Your previous conversations</p>
+          </div>
+          <select
+            value={filterType}
+            onChange={(e: any) => setFilterType(e.target.value)}
+            className="text-xs border border-gray-200 rounded px-2 py-1 text-gray-600 bg-gray-50 hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors cursor-pointer"
+          >
+            <option value="All">All</option>
+            <option value="Single Chart">Single Chart</option>
+            <option value="Group Chart">Group Chart</option>
+            <option value="Template Chart">Template Chart</option>
+          </select>
+        </div>
+
+        {loading ? (
+          <div className="p-8 text-center text-gray-400">Loading history...</div>
+        ) : filteredConversations.length === 0 ? (
+          <div className="p-8 text-center">
+            <div className="mx-auto w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-3">
+              <History className="w-6 h-6 text-gray-400" />
+            </div>
+            <p className="text-sm font-medium text-gray-900 mb-1">No history yet</p>
+            <p className="text-xs text-gray-500">Your conversations will appear here.</p>
+          </div>
+        ) : (
+          <div className="flex flex-col flex-1 min-h-0">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-1">
+              {filteredConversations.map((conversation: Conversation) => (
+                <div
+                  key={conversation.id}
+                  onClick={() => handleConversationClick(conversation.id)}
+                  className={`flex items-center justify-between p-2 cursor-pointer rounded-xl border transition-all duration-200 group ${historyConversationId === conversation.id
+                    ? 'bg-blue-50/80 border-blue-200 shadow-sm'
+                    : 'bg-white border-transparent hover:border-gray-200 hover:shadow-sm'
+                    }`}
+                >
+                  <div className="flex-1 min-w-0 pr-3">
+                    <div className={`font-semibold text-sm truncate mb-1 ${historyConversationId === conversation.id ? 'text-blue-900' : 'text-gray-900'
+                      }`}>
+                      {conversation.title}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
+                      <span className="truncate">
+                        {new Date(conversation.timestamp).toLocaleDateString()}
+                      </span>
+                      <span className="w-1 h-1 rounded-full bg-gray-300"></span>
+                      <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-semibold tracking-wide ${conversation.chart_mode === 'grouped'
+                        ? 'bg-purple-100 text-purple-700'
+                        : 'bg-indigo-100 text-indigo-700'
+                        }`}>
+                        {conversation.chart_mode === 'grouped' ? 'Grouped' : 'Single'}
+                      </span>
+                      {conversation.is_template_mode && (
+                        <span className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold tracking-wide bg-amber-100 text-amber-700">
+                          Template
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => handleDeleteClick(e, conversation.id)}
+                    className="h-8 w-8 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50 shrink-0 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity rounded-lg"
+                    title="Delete conversation"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-3 border-t border-gray-100 bg-gray-50/50 flex-shrink-0">
+              <Button
+                variant="outline"
+                onClick={handleClearClick}
+                className="w-full flex items-center justify-center gap-2 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-200 h-10 rounded-xl transition-colors"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span className="text-sm font-semibold">Clear All History</span>
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <ConfirmDialog
+          open={deleteConfirmId !== null}
+          onCancel={() => setDeleteConfirmId(null)}
+          title="Delete Conversation"
+          description="Are you sure you want to delete this conversation? This action cannot be undone."
+          onConfirm={() => deleteConfirmId && handleDeleteConversation(deleteConfirmId)}
+        />
+
+        <ConfirmDialog
+          open={clearConfirmOpen}
+          onCancel={() => setClearConfirmOpen(false)}
+          title="Clear All History"
+          description="Are you sure you want to delete all conversations? This action cannot be undone."
+          onConfirm={handleClearHistory}
+        />
+      </div>
+    )
+  }
+
   // Default full variant
   return (
     <>
@@ -368,8 +479,8 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
               <h3 className="font-semibold text-gray-900 text-sm">Chat History</h3>
               <p className="text-xs text-gray-500">Your previous conversations</p>
             </div>
-            <select 
-              value={filterType} 
+            <select
+              value={filterType}
               onChange={(e: any) => setFilterType(e.target.value)}
               className="text-xs border-gray-200 rounded px-1 py-0.5 text-gray-600 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >

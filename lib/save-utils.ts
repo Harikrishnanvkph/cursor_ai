@@ -64,14 +64,19 @@ function normalizeChartConfig(chartConfig: any): any {
 }
 
 /**
- * Extracts template data for saving (if template exists).
- * Always saves template if it exists with content, regardless of editor mode.
+ * Extracts template data for saving (if template exists AND we're in template mode).
+ * Only saves template when the editor is actively in template mode.
  */
 function extractTemplateData(): {
     templateStructure: any | null;
     templateContent: Record<string, any> | null;
 } {
-    const { currentTemplate, templateInBackground } = useTemplateStore.getState();
+    const { currentTemplate, templateInBackground, editorMode } = useTemplateStore.getState();
+
+    // Only save template data when in template mode
+    if (editorMode !== 'template') {
+        return { templateStructure: null, templateContent: null };
+    }
 
     // Get template from either currentTemplate or templateInBackground
     const templateToSave = currentTemplate || templateInBackground;

@@ -126,24 +126,24 @@ export function PromptTemplate({
 
   return (
     <div className={`flex items-center justify-center h-full ${styles.padding} ${className}`}>
-      <div className={`flex flex-col items-center justify-center w-full ${styles.container} bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20`}>
-        <div className="flex flex-col items-center justify-center mb-6">
-          {/* <div className={`inline-flex items-center justify-center ${styles.icon} bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-xl mb-4`}>
-              <BarChart2 className={`${styles.iconInner} text-white`} />
-          </div> */}
-          <div className={`${styles.title} inline-flex items-center font-bold bg-gradient-to-r from-slate-900 via-indigo-800 to-purple-800 bg-clip-text text-transparent mb-3 text-center`}>
-            <span className="text-sm inline text-slate-500 mr-3"><Bot /></span>
+      <div className={`relative flex flex-col items-center justify-center w-full ${styles.container} bg-white/70 backdrop-blur-2xl rounded-3xl shadow-[0_8px_32px_0_rgba(79,70,229,0.1)] border border-white/60 overflow-hidden`}>
+        {/* Subtle inner highlight */}
+        <div className="absolute inset-0 bg-gradient-to-b from-white/40 to-transparent pointer-events-none"></div>
+
+        <div className="relative flex flex-col items-center justify-center mb-6 w-full">
+          <div className={`${styles.title} inline-flex items-center font-extrabold bg-gradient-to-r from-slate-900 via-indigo-800 to-purple-800 bg-clip-text text-transparent mb-3 text-center tracking-tight`}>
+            <span className="text-sm inline text-slate-500 mr-3 p-2 bg-white/50 rounded-xl shadow-sm border border-slate-100/50 backdrop-blur-md"><Bot className="w-5 h-5" /></span>
             <h2>Create Your Chart with AI Prompt</h2>
           </div>
-          <p className={`text-slate-600 text-center max-w-md mx-auto leading-relaxed ${styles.description}`}>
+          <p className={`text-slate-500 text-center max-w-md mx-auto leading-relaxed ${styles.description}`}>
             Describe the chart you want to create in natural language. I'll generate it for you and you can ask me to modify it further!
           </p>
         </div>
 
-        <div className="space-y-3 w-full">
+        <div className="relative space-y-4 w-full">
           {/* Generate Toggle Button */}
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-slate-700">Generate As</label>
+            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider pl-1">Generate As</label>
             <ToggleGroup
               type="single"
               value={generateMode}
@@ -155,12 +155,12 @@ export function PromptTemplate({
                   setEditorMode(mode)
                 }
               }}
-              className="w-full bg-gray-50 rounded-lg p-1 border border-gray-200"
+              className="w-full bg-white/60 backdrop-blur-md rounded-xl p-1.5 border border-white/80 shadow-inner"
             >
               <ToggleGroupItem
                 value="chart"
                 aria-label="Chart"
-                className="flex-1 data-[state=on]:bg-indigo-500 data-[state=on]:text-white data-[state=on]:shadow-sm"
+                className="flex-1 rounded-lg data-[state=on]:bg-gradient-to-r data-[state=on]:from-indigo-500 data-[state=on]:to-purple-500 data-[state=on]:text-white data-[state=on]:shadow-md transition-all duration-300 text-slate-600 hover:text-slate-900 data-[state=on]:hover:text-white"
               >
                 <BarChart2 className="w-4 h-4 mr-2" />
                 Chart
@@ -168,7 +168,7 @@ export function PromptTemplate({
               <ToggleGroupItem
                 value="template"
                 aria-label="Template"
-                className="flex-1 data-[state=on]:bg-indigo-500 data-[state=on]:text-white data-[state=on]:shadow-sm"
+                className="flex-1 rounded-lg data-[state=on]:bg-gradient-to-r data-[state=on]:from-indigo-500 data-[state=on]:to-purple-500 data-[state=on]:text-white data-[state=on]:shadow-md transition-all duration-300 text-slate-600 hover:text-slate-900 data-[state=on]:hover:text-white"
               >
                 <FileText className="w-4 h-4 mr-2" />
                 Template
@@ -181,10 +181,10 @@ export function PromptTemplate({
             <>
               <button
                 onClick={handleSampleClick}
-                className="w-full bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-slate-800 font-medium px-4 py-3 rounded-xl border border-indigo-200/50 text-left hover:shadow-lg group text-sm"
+                className="w-full bg-gradient-to-r from-indigo-50/80 to-purple-50/80 hover:from-indigo-100/90 hover:to-purple-100/90 text-slate-800 font-medium px-5 py-4 rounded-2xl border border-indigo-200/50 text-left hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 group text-sm backdrop-blur-sm"
               >
-                <div className="font-semibold flex items-center gap-2 mb-1">
-                  <div className="p-1 bg-indigo-100 rounded group-hover:bg-indigo-200 transition-colors">
+                <div className="font-semibold flex items-center gap-2 mb-1.5">
+                  <div className="p-1.5 bg-white/60 rounded-md group-hover:bg-white/80 shadow-sm transition-colors border border-indigo-100/50">
                     <Forward className="w-4 h-4 text-indigo-600" />
                   </div>
                   Sample Request
@@ -239,22 +239,27 @@ export function PromptTemplate({
                 <>
                   <Button
                     onClick={handleStandardTemplate}
-                    className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-medium px-4 py-3 rounded-xl hover:shadow-lg"
+                    className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-medium px-4 py-6 rounded-2xl hover:shadow-xl hover:shadow-indigo-500/20 transition-all duration-300 hover:-translate-y-0.5"
                   >
-                    <Layout className="w-4 h-4 mr-2" />
+                    <Layout className="w-5 h-5 mr-2" />
                     Standard Template
                   </Button>
 
-                  <div className="text-center">
-                    <div className="text-xs text-slate-500">or</div>
+                  <div className="text-center relative py-2">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-slate-200/60"></div>
+                    </div>
+                    <div className="relative flex justify-center text-xs">
+                      <span className="bg-white/70 px-2 text-slate-400 font-medium">or</span>
+                    </div>
                   </div>
 
                   <Button
                     variant="outline"
                     onClick={handleChooseTemplates}
-                    className="w-full border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:border-indigo-300 font-medium px-4 py-3 rounded-xl"
+                    className="w-full bg-white/50 backdrop-blur-sm border-indigo-200/60 text-indigo-600 hover:bg-white/80 hover:border-indigo-300 font-medium px-4 py-6 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5"
                   >
-                    <FileText className="w-4 h-4 mr-2" />
+                    <FileText className="w-5 h-5 mr-2" />
                     Choose From Templates
                   </Button>
                 </>

@@ -134,10 +134,6 @@ export function Sidebar({ activeTab, onTabChange, onToggleLeftSidebar, isLeftSid
           )
         })}
       </nav>
-
-      <div className="mt-auto pt-3 border-t border-gray-200 flex-shrink-0">
-        {/* Version text removed */}
-      </div>
     </div>
   )
 }

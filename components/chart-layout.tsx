@@ -20,6 +20,7 @@ import { toast } from "sonner"
 import { clearCurrentChart } from "@/lib/storage-utils"
 import { DimensionMismatchDialog } from "@/components/dialogs/dimension-mismatch-dialog"
 import { SaveChartDialog } from "@/components/ui/save-chart-dialog"
+import { SaveModeConflictDialog } from "@/components/dialogs/save-mode-conflict-dialog"
 import { useHistoryStore } from "@/lib/history-store"
 import { ClearChartDialog } from "@/components/dialogs/clear-chart-dialog"
 
@@ -47,6 +48,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
 
   // Save chart dialog state
   const [showSaveChartDialog, setShowSaveChartDialog] = useState(false)
+  const [showModeConflictDialog, setShowModeConflictDialog] = useState(false)
   const [currentChartName, setCurrentChartName] = useState<string>("")
 
   // Clear chart dialog state
@@ -157,7 +159,71 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
     }
   }
 
-  // Pre-save check that may show dimension mismatch dialog
+  // Check if there's a mode conflict (template chart being saved from chart mode)
+  const checkModeConflict = (): boolean => {
+    const { editorMode, templateSavedToCloud, currentTemplate, templateInBackground } = useTemplateStore.getState()
+    const hasTemplate = !!(currentTemplate || templateInBackground)
+    // Conflict: in chart mode, but this chart was originally a template chart from cloud
+    return editorMode === 'chart' && templateSavedToCloud && hasTemplate
+  }
+
+  // Handle "Save Chart & Discard Template" — strips template, saves as chart-only
+  const handleSaveChartDiscardTemplate = async () => {
+    setShowModeConflictDialog(false)
+    // Clear template state so extractTemplateData() returns null
+    useTemplateStore.getState().clearAllTemplateState()
+    // Proceed to save dialog (will now save without template)
+    proceedToSaveDialog()
+  }
+
+  // Handle "Save as Separate Chart" — creates new conversation without template
+  const handleSaveAsSeparateChart = async () => {
+    setShowModeConflictDialog(false)
+    if (!user) {
+      toast.error("Please sign in to save charts")
+      return
+    }
+    setIsSaving(true)
+    try {
+      const conversationTitle = `Chart copy - ${new Date().toLocaleDateString()}`
+      const response = await dataService.createConversation(
+        conversationTitle,
+        'Standalone chart copy (no template)'
+      )
+      if (response.error || !response.data) {
+        toast.error("Failed to create chart copy")
+        return
+      }
+      const newConversationId = response.data.id
+      const snapshotResult = await dataService.saveChartSnapshot(
+        newConversationId,
+        chartType,
+        chartData,
+        chartConfig,
+        null,  // NO template
+        null
+      )
+      if (snapshotResult.error) {
+        toast.error("Failed to save chart snapshot")
+        return
+      }
+      // Don't touch the original template chart - just update local state to new entry
+      useChatStore.getState().setBackendConversationId(newConversationId)
+      if (snapshotResult.data?.id) {
+        useChartStore.getState().setCurrentSnapshotId(snapshotResult.data.id)
+      }
+      // Clear template state locally
+      useTemplateStore.getState().clearAllTemplateState()
+      toast.success("Chart saved as separate copy!")
+    } catch (error) {
+      console.error('Save as separate chart failed:', error)
+      toast.error("Failed to save chart copy")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Pre-save check that may show mode conflict or dimension mismatch dialog
   const handleSaveClick = () => {
     if (!user) {
       toast.error("Please sign in to save charts")
@@ -166,6 +232,12 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
 
     if (!hasJSON) {
       toast.error("No chart to save")
+      return
+    }
+
+    // Check for mode conflict FIRST (template chart being saved from chart mode)
+    if (checkModeConflict()) {
+      setShowModeConflictDialog(true)
       return
     }
 
@@ -223,7 +295,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
       window.dispatchEvent(new Event('resize'))
     }
 
-    const timer = setTimeout(handleResize, 300) // Match this with your transition duration
+    const timer = setTimeout(handleResize, 10) // Small delay for layout update
     return () => clearTimeout(timer)
   }, [isCollapsed, leftSidebarOpen])
 
@@ -232,7 +304,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
       {/* Chart Area */}
       <div
         className={cn(
-          "transition-all duration-300 p-4 overflow-auto absolute inset-0 right-auto",
+          "p-4 overflow-auto absolute inset-0 right-auto",
           isCollapsed ? "right-16" : "right-[280px]"
         )}
         style={{
@@ -251,7 +323,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
       {/* Right Sidebar (Config Panel) - Collapsible */}
       <div
         className={cn(
-          "absolute landing-right-sidebar right-0 top-0 bottom-0 border-l bg-white shadow-lg transition-all duration-300 flex flex-col z-10",
+          "absolute landing-right-sidebar right-0 top-0 bottom-0 border-l bg-white shadow-lg flex flex-col z-10",
           isCollapsed ? "w-16" : "w-[280px]"
         )}
         onMouseEnter={() => setIsHovering(true)}
@@ -376,6 +448,15 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
           isSaving={isSaving}
         />
       )}
+
+      {/* Save Mode Conflict Dialog */}
+      <SaveModeConflictDialog
+        isOpen={showModeConflictDialog}
+        onClose={() => setShowModeConflictDialog(false)}
+        onSaveChartDiscardTemplate={handleSaveChartDiscardTemplate}
+        onSaveAsSeparateChart={handleSaveAsSeparateChart}
+        isSaving={isSaving}
+      />
 
       {/* Save Chart Dialog with Name Input */}
       <SaveChartDialog

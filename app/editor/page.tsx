@@ -29,6 +29,7 @@ import { ClearChartDialog } from "@/components/dialogs/clear-chart-dialog"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { EditorWelcomeScreen } from "@/components/editor-welcome-screen"
 import { DimensionMismatchDialog } from "@/components/dialogs/dimension-mismatch-dialog"
+import { SaveModeConflictDialog } from "@/components/dialogs/save-mode-conflict-dialog"
 
 import {
   useChartConfig,
@@ -92,6 +93,7 @@ function EditorPageContent() {
   const [showNewChartInfoDialog, setShowNewChartInfoDialog] = useState(false)
   const [showSaveChartDialog, setShowSaveChartDialog] = useState(false)
   const [showClearDialog, setShowClearDialog] = useState(false)
+  const [showModeConflictDialog, setShowModeConflictDialog] = useState(false)
   const [currentChartName, setCurrentChartName] = useState<string>("")
 
   // Dimension mismatch dialog state
@@ -325,19 +327,89 @@ function EditorPageContent() {
   }
 
   // Open save dialog instead of saving directly
+  // Check if there's a mode conflict (template chart being saved from chart mode)
+  const checkModeConflict = (): boolean => {
+    const { editorMode, templateSavedToCloud, currentTemplate, templateInBackground } = useTemplateStore.getState()
+    const hasTemplate = !!(currentTemplate || templateInBackground)
+    // Conflict: in chart mode, but this chart was originally a template chart from cloud
+    return editorMode === 'chart' && templateSavedToCloud && hasTemplate
+  }
+
+  // Handle "Save Chart & Discard Template" — strips template, saves as chart-only
+  const handleSaveChartDiscardTemplate = async () => {
+    setShowModeConflictDialog(false)
+    // Clear template state so extractTemplateData() returns null
+    useTemplateStore.getState().clearAllTemplateState()
+    // Proceed to save dialog (will now save without template)
+    proceedToSaveDialog()
+  }
+
+  // Handle "Save as Separate Chart" — creates new conversation without template
+  const handleSaveAsSeparateChart = async () => {
+    setShowModeConflictDialog(false)
+    if (!user) {
+      toast.error("Please sign in to save charts")
+      return
+    }
+    setIsSaving(true)
+    try {
+      const conversationTitle = `Chart copy - ${new Date().toLocaleDateString()}`
+      const response = await dataService.createConversation(
+        conversationTitle,
+        'Standalone chart copy (no template)'
+      )
+      if (response.error || !response.data) {
+        toast.error("Failed to create chart copy")
+        return
+      }
+      const newConversationId = response.data.id
+      const snapshotResult = await dataService.saveChartSnapshot(
+        newConversationId,
+        chartType,
+        chartData,
+        chartConfig,
+        null,  // NO template
+        null
+      )
+      if (snapshotResult.error) {
+        toast.error("Failed to save chart snapshot")
+        return
+      }
+      // Don't touch the original template chart - just update local state to new entry
+      setBackendConversationId(newConversationId)
+      if (snapshotResult.data?.id) {
+        setCurrentSnapshotId(snapshotResult.data.id)
+      }
+      // Clear template state locally
+      useTemplateStore.getState().clearAllTemplateState()
+      toast.success("Chart saved as separate copy!")
+    } catch (error) {
+      console.error('Save as separate chart failed:', error)
+      toast.error("Failed to save chart copy")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   const handleSaveClick = () => {
     if (!hasJSON || !user) {
       toast.error("No chart to save or user not authenticated");
       return;
     }
 
-    // Check for dimension mismatch FIRST
+    // Check for mode conflict FIRST (template chart being saved from chart mode)
+    if (checkModeConflict()) {
+      setShowModeConflictDialog(true)
+      return
+    }
+
+    // Check for dimension mismatch
     if (checkDimensionMismatch()) {
       setShowDimensionDialog(true)
       return // Don't proceed with save dialog, show mismatch dialog instead
     }
 
-    // No mismatch - proceed to save dialog
+    // No conflicts - proceed to save dialog
     proceedToSaveDialog()
   };
 
@@ -720,7 +792,7 @@ function EditorPageContent() {
 
         {/* Left Sidebar Overlay when expanded */}
         {(!leftSidebarCollapsed) && (
-          <div className="fixed top-0 left-0 h-full w-64 z-40 bg-white shadow-2xl border-r border-gray-200 transition-all duration-300 flex flex-col">
+          <div className="fixed top-0 left-0 h-full w-64 z-40 bg-white shadow-2xl border-r border-gray-200 flex flex-col">
             <div className="p-4">
               {/* Navigation Section */}
               <div className="mb-4">
@@ -734,13 +806,13 @@ function EditorPageContent() {
                   </button>
                   <button
                     onClick={() => router.push('/landing')}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-all relative"
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-colors relative"
                   >
                     <MessageSquare className="w-3.5 h-3.5" />
                     <span>AI Chat</span>
                   </button>
                   <button
-                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-700 bg-white rounded-md shadow-sm transition-all relative"
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-700 bg-white rounded-md shadow-sm transition-colors relative"
                   >
                     <Edit3 className="w-3.5 h-3.5" />
                     <span>Editor</span>
@@ -761,7 +833,7 @@ function EditorPageContent() {
 
         {/* Right Sidebar Overlay when expanded */}
         {(!rightSidebarCollapsed) && (
-          <div className="fixed top-0 right-0 h-full w-80 z-40 bg-white shadow-2xl border-l border-gray-200 transition-all duration-300 flex flex-col">
+          <div className="fixed top-0 right-0 h-full w-80 z-40 bg-white shadow-2xl border-l border-gray-200 flex flex-col">
             <ConfigPanel
               activeTab={activeTab}
               onToggleSidebar={() => setRightSidebarCollapsed(true)}
@@ -827,7 +899,7 @@ function EditorPageContent() {
             className="h-10 w-10 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg mb-4"
             title={leftSidebarCollapsed ? "Expand Left Sidebar" : "Collapse Left Sidebar"}
           >
-            <ChevronRight className={`h-4 w-4 transition-transform duration-200 ${leftSidebarCollapsed ? '' : 'rotate-180'}`} />
+            <ChevronRight className={`h-4 w-4 ${leftSidebarCollapsed ? '' : 'rotate-180'}`} />
           </Button>
 
           {TABS.map((tab) => {
@@ -860,13 +932,13 @@ function EditorPageContent() {
                 </button>
                 <button
                   onClick={() => router.push('/landing')}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-all relative"
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-colors relative"
                 >
                   <MessageSquare className="w-3.5 h-3.5" />
                   <span>AI Chat</span>
                 </button>
                 <button
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-700 bg-white rounded-md shadow-sm transition-all relative"
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-700 bg-white rounded-md shadow-sm transition-colors relative"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
                   <span>Editor</span>
@@ -921,7 +993,7 @@ function EditorPageContent() {
               className="h-10 w-10 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg mx-auto"
               title={rightSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
             >
-              <ChevronLeft className={`h-4 w-4 transition-transform duration-200 ${rightSidebarCollapsed ? '' : 'rotate-180'}`} />
+              <ChevronLeft className={`h-4 w-4 ${rightSidebarCollapsed ? '' : 'rotate-180'}`} />
             </Button>
           </div>
 
@@ -1021,6 +1093,15 @@ function EditorPageContent() {
           isSaving={isSaving}
         />
       )}
+
+      {/* Save Mode Conflict Dialog */}
+      <SaveModeConflictDialog
+        isOpen={showModeConflictDialog}
+        onClose={() => setShowModeConflictDialog(false)}
+        onSaveChartDiscardTemplate={handleSaveChartDiscardTemplate}
+        onSaveAsSeparateChart={handleSaveAsSeparateChart}
+        isSaving={isSaving}
+      />
 
       {/* Info Dialog for New Chart Options */}
       <Dialog open={showNewChartInfoDialog} onOpenChange={setShowNewChartInfoDialog}>

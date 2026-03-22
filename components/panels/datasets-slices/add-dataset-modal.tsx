@@ -21,14 +21,14 @@ type ChartCategory = 'categorical' | 'coordinate';
 // Categorical chart types (use Label + Value)
 const categoricalChartTypes: { value: SupportedChartType; label: string }[] = [
   { value: 'bar', label: 'Bar' },
+  { value: 'horizontalBar', label: 'Horizontal Bar' },
+  { value: 'stackedBar', label: 'Stacked Bar' },
   { value: 'line', label: 'Line' },
   { value: 'area', label: 'Area' },
   { value: 'pie', label: 'Pie' },
   { value: 'doughnut', label: 'Doughnut' },
-  { value: 'polarArea', label: 'Polar Area' },
   { value: 'radar', label: 'Radar' },
-  { value: 'horizontalBar', label: 'Horizontal Bar' },
-  { value: 'stackedBar', label: 'Stacked Bar' },
+  { value: 'polarArea', label: 'Polar Area' },
   { value: 'pie3d' as any, label: '3D Pie' },
   { value: 'doughnut3d' as any, label: '3D Doughnut' },
   { value: 'bar3d' as any, label: '3D Bar' },

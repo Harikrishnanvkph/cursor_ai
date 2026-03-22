@@ -148,49 +148,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300">
       <SiteHeader />
 
-      {/* Inline keyframe animations */}
-      <style jsx>{`
-        @keyframes float-slow {
-          0%, 100% { transform: translateY(0px) translateX(0px); }
-          25% { transform: translateY(-20px) translateX(10px); }
-          50% { transform: translateY(-10px) translateX(-5px); }
-          75% { transform: translateY(-25px) translateX(5px); }
-        }
-        @keyframes float-medium {
-          0%, 100% { transform: translateY(0px) translateX(0px); }
-          33% { transform: translateY(-15px) translateX(-10px); }
-          66% { transform: translateY(-30px) translateX(8px); }
-        }
-        @keyframes float-fast {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-18px); }
-        }
-        @keyframes gradient-x {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-        }
-        @keyframes pulse-border {
-          0%, 100% { border-color: rgba(99, 102, 241, 0.2); }
-          50% { border-color: rgba(99, 102, 241, 0.5); }
-        }
-        @keyframes dash-flow {
-          to { stroke-dashoffset: -20; }
-        }
-        @keyframes pop-in {
-          0% { transform: translate(-50%, -10px) scale(0.98); opacity: 0; }
-          100% { transform: translate(-50%, 0) scale(1); opacity: 1; }
-        }
-        .animate-float-slow { animation: float-slow 8s ease-in-out infinite; }
-        .animate-float-medium { animation: float-medium 6s ease-in-out infinite; }
-        .animate-float-fast { animation: float-fast 4s ease-in-out infinite; }
-        .animate-gradient-x { 
-          background-size: 200% 200%;
-          animation: gradient-x 6s ease infinite; 
-        }
-        .animate-pulse-border { animation: pulse-border 3s ease-in-out infinite; }
-        .animate-dash-flow { animation: dash-flow 1s linear infinite; }
-        .animate-pop-in { animation: pop-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-      `}</style>
+{/* Animations moved to globals.css */}
 
       {/* Loading State */}
       {loading && !user && (
