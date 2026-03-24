@@ -2,7 +2,8 @@
 
 import React from "react"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { STANDARD_CHART_TYPES, THREE_D_CHART_TYPES } from "@/lib/chart-types"
 import {
     Download, RefreshCw, Maximize2, RotateCcw,
     Ellipsis, ZoomIn, ZoomOut, Hand, Pencil, Check, Loader2
@@ -91,21 +92,17 @@ export function ChartPreviewToolbar({
                 <SelectValue placeholder="Type" />
             </SelectTrigger>
             <SelectContent>
-                <SelectItem value="bar" className="text-xs">Bar</SelectItem>
-                <SelectItem value="horizontalBar" className="text-xs">H. Bar</SelectItem>
-                <SelectItem value="stackedBar" className="text-xs">Stacked</SelectItem>
-                <SelectItem value="line" className="text-xs">Line</SelectItem>
-                <SelectItem value="area" className="text-xs">Area</SelectItem>
-                <SelectItem value="pie" className="text-xs">Pie</SelectItem>
-                <SelectItem value="doughnut" className="text-xs">Doughnut</SelectItem>
-                <SelectItem value="radar" className="text-xs">Radar</SelectItem>
-                <SelectItem value="polarArea" className="text-xs">Polar</SelectItem>
-                <SelectItem value="scatter" className="text-xs">Scatter</SelectItem>
-                <SelectItem value="bubble" className="text-xs">Bubble</SelectItem>
-                <SelectItem value="pie3d" className="text-xs">3D Pie</SelectItem>
-                <SelectItem value="doughnut3d" className="text-xs">3D Doughnut</SelectItem>
-                <SelectItem value="bar3d" className="text-xs">3D Bar</SelectItem>
-                <SelectItem value="horizontalBar3d" className="text-xs">3D Horizontal Bar</SelectItem>
+                {/* Standard Charts */}
+                {STANDARD_CHART_TYPES.map((type) => (
+                    <SelectItem key={type.value} value={type.value} className="text-xs py-1.5">{type.label}</SelectItem>
+                ))}
+                
+                <SelectSeparator />
+                
+                {/* 3D Charts */}
+                {THREE_D_CHART_TYPES.map((type) => (
+                    <SelectItem key={type.value} value={type.value} className="text-xs py-1.5 font-medium text-blue-600">{type.label}</SelectItem>
+                ))}
             </SelectContent>
         </Select>
     );
@@ -145,17 +142,60 @@ export function ChartPreviewToolbar({
 
     return (
         <div className={`${isMobile ? '' : 'mb-4'} flex-shrink-0`}>
-            <div className={`flex${isMobile ? ' mb-2 flex-col' : ' items-center justify-between flex-wrap'} gap-2 px-2`}>
+            <div className={`flex${isMobile ? ' mb-1 flex-col' : ' items-center justify-between flex-wrap'} gap-1.5 px-2`}>
                 {/* Left: title + chart info */}
                 {isMobile ? (
-                    <div className="min-w-0 flex-1 flex flex-row items-center xs576:justify-between gap-x-2">
-                        <div className="flex items-center gap-2">
-                            <h1 className="text-lg font-bold text-gray-900 truncate xs400:text-base"><span className="xs400:hidden">Chart</span> Preview</h1>
-                            <ModeToggle btnClassName="px-2 py-1 text-xs" />
-                            <ChartTypeSelector triggerClassName="h-6 w-[85px] text-[10px] px-2 py-0 border-gray-200 bg-white" />
+                    <div className="min-w-0 flex flex-nowrap items-center gap-x-2 overflow-x-auto pb-1.5 scrollbar-hide select-none px-1">
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                            <ModeToggle btnClassName="px-2.5 py-1 text-[11px]" />
+                            <ChartTypeSelector triggerClassName="h-7 w-[75px] text-[10px] px-2 py-0 border-gray-200 bg-white rounded-lg flex-shrink-0" />
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-gray-400 min-w-0 flex-nowrap overflow-x-auto">
-                            <DimensionDisplay />
+                        
+                        <div className="h-4 w-px bg-gray-200 flex-shrink-0 mx-0.5" />
+
+                        <div className="flex items-center gap-1.5 flex-shrink-0 pr-2">
+                            {/* Compact zoom for mobile */}
+                            <div className="flex items-center gap-0 border rounded-lg p-0.5 bg-white flex-shrink-0">
+                                <Button variant="ghost" size="sm" onClick={zoomPan.handleZoomOut} disabled={zoomPan.zoom <= 0.1} className="h-6 w-6 p-0" title="Zoom Out">
+                                    <ZoomOut className="h-3 w-3" />
+                                </Button>
+                                <span className="text-[10px] text-gray-600 min-w-[30px] text-center font-medium">{Math.round(zoomPan.zoom * 100)}%</span>
+                                <Button variant="ghost" size="sm" onClick={zoomPan.handleZoomIn} disabled={zoomPan.zoom >= 3} className="h-6 w-6 p-0" title="Zoom In">
+                                    <ZoomIn className="h-3 w-3" />
+                                </Button>
+                            </div>
+                            {/* Pan */}
+                            <Button variant={zoomPan.panMode ? "default" : "outline"} size="sm" onClick={() => zoomPan.setPanMode(!zoomPan.panMode)} className="h-7 w-7 p-0 flex-shrink-0 rounded-lg" title={zoomPan.panMode ? "Disable Pan" : "Pan"}>
+                                <Hand className="h-4 w-4" />
+                            </Button>
+                            {/* Actions */}
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" size="sm" className="h-7 w-7 p-0 flex-shrink-0 rounded-lg" title="Actions"><Ellipsis className="h-4 w-4" /></Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={exports.handleRefresh}><RefreshCw className="h-4 w-4 mr-2" /><span>Refresh Chart</span></DropdownMenuItem>
+                                    <DropdownMenuItem onClick={zoomPan.handleResetZoom}><RotateCcw className="h-4 w-4 mr-2" /><span>Reset Zoom</span></DropdownMenuItem>
+                                    <DropdownMenuItem onClick={handleFullscreen}><Maximize2 className="h-4 w-4 mr-2" /><span>Fullscreen</span></DropdownMenuItem>
+                                    <DropdownMenuItem onClick={onResetChart}><RotateCcw className="h-4 w-4 mr-2" /><span>Reset Chart</span></DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            {/* Export */}
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button size="sm" variant="default" className="h-7 w-7 p-0 flex-shrink-0 rounded-lg shadow-sm" title="Export"><Download className="h-4 w-4" /></Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={exports.handleExport}><FileImage className="h-4 w-4 mr-2" /> PNG</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={exports.handleExportJPEG}><ImageIcon className="h-4 w-4 mr-2" /> JPEG</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={exports.handleExportHTML}><FileCode className="h-4 w-4 mr-2" /> HTML</DropdownMenuItem>
+                                    <DropdownMenuItem onClick={exports.handleExportCSV}><FileText className="h-4 w-4 mr-2" /> CSV</DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={exports.handleExportSettings} className="bg-blue-50 hover:bg-blue-100"><Settings className="h-4 w-4 mr-2" /> Settings</DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            {/* Undo/Redo */}
+                            <UndoRedoButtons variant="default" size="sm" showLabels={false} />
                         </div>
                     </div>
                 ) : (
@@ -205,8 +245,9 @@ export function ChartPreviewToolbar({
                         </div>
                     </div>
                 )}
-                {/* Right: action buttons */}
-                <div className={`flex gap-1 flex-shrink-0 ml-4${isMobile ? ' justify-evenly ml-0 overflow-x-auto max-w-full pb-1' : ''}`} style={isMobile ? { WebkitOverflowScrolling: 'touch' } : {}}>
+                {/* Right: action buttons - desktop only (mobile has them inline above) */}
+                {!isMobile && (
+                <div className="flex gap-1 flex-shrink-0 ml-4">
                     {/* Zoom Controls */}
                     <div className="flex items-center gap-0.5 border rounded-md p-0.5 bg-white">
                         <Button variant="ghost" size="sm" onClick={zoomPan.handleZoomOut} disabled={zoomPan.zoom <= 0.1} className="h-7 w-7 p-0" title="Zoom Out">
@@ -250,6 +291,7 @@ export function ChartPreviewToolbar({
                     {/* Undo/Redo Buttons */}
                     <UndoRedoButtons variant="default" size="sm" showLabels={false} />
                 </div>
+                )}
             </div>
         </div>
     );

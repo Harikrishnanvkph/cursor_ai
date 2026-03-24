@@ -5,7 +5,8 @@ import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { useTemplateStore } from "@/lib/template-store"
 import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { STANDARD_CHART_TYPES, THREE_D_CHART_TYPES } from "@/lib/chart-types"
 import { Switch } from "@/components/ui/switch"
 import { ResponsiveAnimationsPanel } from "@/components/panels/responsive-animations-panel"
 
@@ -82,21 +83,17 @@ export function TypesTogglesPanel() {
             <SelectValue placeholder="Select chart type" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="bar">Bar</SelectItem>
-            <SelectItem value="horizontalBar">Horizontal Bar</SelectItem>
-            <SelectItem value="stackedBar">Stacked Bar</SelectItem>
-            <SelectItem value="line">Line</SelectItem>
-            <SelectItem value="area">Area</SelectItem>
-            <SelectItem value="pie">Pie</SelectItem>
-            <SelectItem value="pie3d">3D Pie</SelectItem>
-            <SelectItem value="doughnut">Doughnut</SelectItem>
-            <SelectItem value="doughnut3d">3D Doughnut</SelectItem>
-            <SelectItem value="bar3d">3D Bar</SelectItem>
-            <SelectItem value="horizontalBar3d">3D Horizontal Bar</SelectItem>
-            <SelectItem value="radar">Radar</SelectItem>
-            <SelectItem value="polarArea">Polar Area</SelectItem>
-            <SelectItem value="scatter">Scatter</SelectItem>
-            <SelectItem value="bubble">Bubble</SelectItem>
+            {/* Standard Charts */}
+            {STANDARD_CHART_TYPES.map((type) => (
+              <SelectItem key={type.value} value={type.value} className="text-sm py-2">{type.label}</SelectItem>
+            ))}
+            
+            <SelectSeparator />
+            
+            {/* 3D Charts */}
+            {THREE_D_CHART_TYPES.map((type) => (
+              <SelectItem key={type.value} value={type.value} className="text-sm py-2 font-medium text-blue-600">{type.label}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

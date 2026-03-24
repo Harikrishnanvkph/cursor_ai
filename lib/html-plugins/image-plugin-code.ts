@@ -49,15 +49,10 @@ const universalImagePlugin = {
               // Priority: if fill is enabled, call renderSliceImage which internally handles both
               renderSliceImage(ctx, element, img, imageConfig);
             } else if (chartType === "bar" || chartType === "bar3d" || chartType === "horizontalBar3d" || chartType === "horizontalBar" || chartType === "stackedBar") {
-              if (isFillEnabled) {
-                if (chart.config.options?.indexAxis === "y" || chartType === "horizontalBar" || chartType === "horizontalBar3d") {
-                  renderBarImageHorizontal(ctx, element, img, imageConfig);
-                } else {
-                  renderBarImageVertical(ctx, element, img, imageConfig);
-                }
+              if (chart.config.options?.indexAxis === "y" || chartType === "horizontalBar" || chartType === "horizontalBar3d") {
+                renderBarImageHorizontal(ctx, element, img, imageConfig);
               } else {
-                // Non-fill bar rendering (center by default if implemented)
-                renderPointImage(ctx, element, img, imageConfig);
+                renderBarImageVertical(ctx, element, img, imageConfig);
               }
             } else if (
               chartType === "line" ||
@@ -565,26 +560,35 @@ function renderBarImageHorizontal(ctx, element, img, config) {
 
 function renderPointImage(ctx, element, img, config) {
   const size = config.size || 30;
-  const x = element.x;
-  const y = element.y;
+  let x = element.x;
+  let y = element.y;
 
-  if (config.type === 'circle') {
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(x, y, size / 2, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.drawImage(img, x - size / 2, y - size / 2, size, size);
-    ctx.restore();
-  } else if (config.type === 'square') {
-    ctx.drawImage(img, x - size / 2, y - size / 2, size, size);
-  } else if (config.type === 'rounded') {
-    ctx.save();
-    const radius = size * 0.2;
-    roundRect(ctx, x - size / 2, y - size / 2, size, size, radius);
-    ctx.clip();
-    ctx.drawImage(img, x - size / 2, y - size / 2, size, size);
-    ctx.restore();
+  switch (config.position) {
+    case "center":
+      // Center on the point
+      break;
+    case "above":
+      // Above the point
+      y = (element.y ?? 0) - size / 2 - 12;
+      break;
+    case "below":
+      // Below the point
+      y = (element.y ?? 0) + size / 2 + 12;
+      break;
+    case "callout":
+      // Callout position - handled separately
+      {
+        const chart = element.chart;
+        const datasetIndex = element._datasetIndex || 0;
+        const pointIndex = element._index || 0;
+        renderCalloutImage(ctx, element.x, element.y, img, config, datasetIndex, pointIndex, chart);
+        return;
+      }
+    default:
+      break;
   }
+
+  drawImageWithClipping(ctx, x - size / 2, y - size / 2, size, size, img, config.type);
 }
 
 function renderCalloutImage(ctx, pointX, pointY, img, config, datasetIndex, pointIndex, chart) {

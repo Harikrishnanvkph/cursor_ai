@@ -286,7 +286,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
 
   // --- Render ---
   return (
-    <div className={`flex min-w-full flex-col overflow-hidden${isMobile ? '' : ' h-full'}`} ref={fullscreenContainerRef}>
+    <div className="flex min-w-full flex-col overflow-hidden h-full" ref={fullscreenContainerRef}>
       {/* Fullscreen bg overlay */}
       {fullscreen.isFullscreen && <div className="fixed inset-0 bg-white z-40" />}
 
@@ -309,7 +309,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       />
 
       {/* Chart Container */}
-      <Card className={`${isMobile ? 'w-full min-h-[300px]' : 'w-full flex-1 min-h-[300px]'} rounded-lg border bg-card text-card-foreground shadow-lg overflow-hidden transition-all duration-200${fullscreen.isFullscreen ? ' fixed inset-4 z-50 m-0 rounded-lg' : ''}`}>
+      <Card className={`w-full flex-1 min-h-[300px] rounded-lg border bg-card text-card-foreground shadow-lg overflow-hidden transition-all duration-200${fullscreen.isFullscreen ? ' fixed inset-4 z-50 m-0 rounded-lg' : ''}`}>
         <CardContent className={`${isMobile ? 'p-0' : 'p-0'} h-full w-full`}>
           <div
             ref={chartContainerRef}

@@ -6,7 +6,8 @@ import { useTemplateStore } from "@/lib/template-store"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { STANDARD_CHART_TYPES, THREE_D_CHART_TYPES } from "@/lib/chart-types"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { ResponsiveAnimationsPanel } from "@/components/panels/responsive-animations-panel"
@@ -209,16 +210,6 @@ export function ConfigSidebar() {
     })
   }, [toggleShowImages, overlayImages, updateOverlayImage])
 
-  const chartTypes = [
-    { value: 'bar', label: 'Bar' },
-    { value: 'line', label: 'Line' },
-    { value: 'pie', label: 'Pie' },
-    { value: 'doughnut', label: 'Doughnut' },
-    { value: 'radar', label: 'Radar' },
-    { value: 'polarArea', label: 'Polar Area' },
-    { value: 'scatter', label: 'Scatter' },
-    { value: 'bubble', label: 'Bubble' },
-  ]
 
   return (
     <div className="h-full flex flex-col">
@@ -227,13 +218,13 @@ export function ConfigSidebar() {
         <div className="flex items-center justify-between gap-2 bg-gray-50 rounded-lg p-1">
           <button
             onClick={() => setEditorMode('chart')}
-            className={`flex items-center gap-1 px-2 py-1.5 rounded-md transition-colors text-xs ${editorMode === 'chart'
-              ? 'bg-blue-100 text-blue-700 border border-blue-200'
-              : 'bg-white text-gray-500 hover:bg-gray-100'
+            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md transition-all text-sm font-medium ${editorMode === 'chart'
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'bg-white text-gray-600 hover:text-gray-900 shadow-sm'
               }`}
           >
-            <BarChart3 className="h-3.5 w-3.5" />
-            <span className="font-medium">Chart</span>
+            <BarChart3 className="h-4 w-4" />
+            <span>Chart</span>
           </button>
           <button
             onClick={() => {
@@ -243,36 +234,42 @@ export function ConfigSidebar() {
               }
               setEditorMode('template')
             }}
-            className={`flex items-center gap-1 px-2 py-1.5 rounded-md transition-colors text-xs ${editorMode === 'template'
-              ? 'bg-purple-100 text-purple-700 border border-purple-200'
-              : 'bg-white text-gray-500 hover:bg-gray-100'
+            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md transition-all text-sm font-medium ${editorMode === 'template'
+              ? 'bg-purple-600 text-white shadow-md'
+              : 'bg-white text-gray-600 hover:text-gray-900 shadow-sm'
               }`}
           >
-            <Layout className="h-3.5 w-3.5" />
-            <span className="font-medium">Template</span>
+            <Layout className="h-4 w-4" />
+            <span>Template</span>
           </button>
         </div>
 
         <Tabs value={activeSidebarTab} onValueChange={(v) => setActiveSidebarTab(v as any)} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 gap-1 h-auto p-1">
-            <TabsTrigger value="general" className="text-xs py-2">General</TabsTrigger>
-            <TabsTrigger value="datasets" className="text-xs py-2">Datasets</TabsTrigger>
-            <TabsTrigger value="templates" className="text-xs py-2">Templates</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 gap-1 h-auto p-1 bg-gray-100 rounded-lg">
+            <TabsTrigger value="general" className="text-xs py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">General</TabsTrigger>
+            <TabsTrigger value="datasets" className="text-xs py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">Datasets</TabsTrigger>
+            <TabsTrigger value="templates" className="text-xs py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">Templates</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="general" className="mt-4 space-y-3">
+          <TabsContent value="general" className="mt-4 space-y-4">
             {/* Chart Type */}
-            <div className="space-y-1">
-              <Label className="text-xs font-medium text-gray-700">Chart Type</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Chart Type</Label>
               <Select value={chartType} onValueChange={(value: any) => setChartType(value)}>
-                <SelectTrigger className="w-full h-8 text-xs">
+                <SelectTrigger className="w-full h-10 text-sm border-gray-200 bg-white">
                   <SelectValue placeholder="Select chart type" />
                 </SelectTrigger>
-                <SelectContent>
-                  {chartTypes.map((type) => (
-                    <SelectItem key={type.value} value={type.value} className="text-xs">
-                      {type.label}
-                    </SelectItem>
+                <SelectContent className="z-[1001] max-h-[300px]">
+                  {/* Standard Charts */}
+                  {STANDARD_CHART_TYPES.map((type) => (
+                    <SelectItem key={type.value} value={type.value} className="text-sm py-2">{type.label}</SelectItem>
+                  ))}
+                  
+                  <SelectSeparator />
+                  
+                  {/* 3D Charts */}
+                  {THREE_D_CHART_TYPES.map((type) => (
+                    <SelectItem key={type.value} value={type.value} className="text-sm py-2 font-medium text-blue-600">{type.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

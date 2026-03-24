@@ -138,22 +138,35 @@ function EditorPageContent() {
   }, [user, syncTemplatesFromCloud, loadConversationsFromBackend]);
 
   // Auto-apply mobile dimensions when Manual Dimensions is enabled on mobile
+  // Read state directly from store to avoid stale closures and infinite dependency loops
   useEffect(() => {
     if (isMobile && screenWidth > 0) {
-      // Automatically enable Manual Dimensions on mobile devices
       const mobileWidth = `${screenWidth}px`;
-      const mobileHeight = `${screenWidth}px`; // Same as width for square aspect
+      const mobileHeight = `${screenWidth}px`;
 
-      updateChartConfig({
-        ...chartConfig,
-        manualDimensions: true,
-        responsive: false,
-        maintainAspectRatio: false,
-        width: mobileWidth,
-        height: mobileHeight
-      });
+      // Always get the *latest* config from the store, not from the React closure
+      // otherwise, we might accidentally overwrite user changes with a stale config
+      const latestConfig = useChartStore.getState().chartConfig;
+
+      // Prevent infinite loops by only updating if the dimensions actually differ
+      if (
+        latestConfig.width !== mobileWidth ||
+        latestConfig.height !== mobileHeight ||
+        latestConfig.manualDimensions !== true ||
+        latestConfig.responsive !== false
+      ) {
+        // We can safely call the store's action here
+        useChartStore.getState().updateChartConfig({
+          ...latestConfig,
+          manualDimensions: true,
+          responsive: false,
+          maintainAspectRatio: false,
+          width: mobileWidth,
+          height: mobileHeight
+        });
+      }
     }
-  }, [isMobile, screenWidth, updateChartConfig]);
+  }, [isMobile, screenWidth]);
 
   // Listen for custom events to change active tab
   useEffect(() => {
