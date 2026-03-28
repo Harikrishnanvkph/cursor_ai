@@ -40,23 +40,9 @@ export type ShapeType =
     | 'rectangle'
     | 'square'
     | 'circle'
-    | 'cloud'
-    | 'star'
     | 'line'
     | 'lineArrow'
-    | 'lineDoubleArrow'
-    | 'freehand'
-    | 'triangle'
-    | 'pentagon'
-    | 'hexagon'
-    | 'octagon'
-    | 'diamond'
-    | 'heart'
-    | 'cross'
-    | 'speechBubble'
-    | 'arrowUp'
-    | 'arrowDown'
-    | '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';
+    | 'lineDoubleArrow';
 
 export interface OverlayShape {
     id: string
@@ -75,5 +61,7 @@ export interface OverlayShape {
     borderStyle?: 'solid' | 'dashed' | 'dotted'
     visible: boolean
     zIndex: number
+    imageUrl?: string // Support for "Frames" (images clipped to shapes)
+    imageFit?: 'cover' | 'contain' | 'fill'
     points?: { x: number, y: number }[] // Used exclusively by 'freehand' type to store internal normalized points within the shape bounds [0,1]
 }

@@ -11,10 +11,12 @@ export const dragState = {
     startY: 0,
     startWidth: 0,
     startHeight: 0,
+    startFontSize: 0,
     startRotation: 0,
     centerX: 0,
     centerY: 0,
-    isDrawingFreehand: false,
-    drawingPoints: [] as { x: number, y: number }[],
     isHovering: false,
+    // Hover highlighting
+    hoveredOverlayId: null as string | null,
+    hoveredOverlayType: null as 'image' | 'text' | 'shape' | null,
 }

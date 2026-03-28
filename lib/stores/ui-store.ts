@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import type { ShapeType } from '@/lib/types/overlay'
 
 interface UIStore {
     // Sidebar State
@@ -18,16 +19,6 @@ interface UIStore {
     setSelectedImageId: (id: string | null) => void
     setSelectedTextId: (id: string | null) => void
     setSelectedShapeId: (id: string | null) => void
-
-    // Freehand Drawing State
-    isDrawingMode: boolean
-    setDrawingMode: (active: boolean) => void
-    defaultDrawingColor: string
-    setDefaultDrawingColor: (color: string) => void
-    defaultDrawingThickness: number
-    setDefaultDrawingThickness: (thickness: number) => void
-    defaultDrawingStyle: 'solid' | 'dashed' | 'dotted'
-    setDefaultDrawingStyle: (style: 'solid' | 'dashed' | 'dotted') => void
 }
 
 export const useUIStore = create<UIStore>()(
@@ -49,16 +40,6 @@ export const useUIStore = create<UIStore>()(
             setSelectedImageId: (id) => set({ selectedImageId: id }),
             setSelectedTextId: (id) => set({ selectedTextId: id }),
             setSelectedShapeId: (id) => set({ selectedShapeId: id }),
-
-            // Freehand Drawing
-            isDrawingMode: false,
-            setDrawingMode: (active) => set({ isDrawingMode: active, selectedImageId: null, selectedTextId: null, selectedShapeId: null }),
-            defaultDrawingColor: '#007acc',
-            setDefaultDrawingColor: (color) => set({ defaultDrawingColor: color }),
-            defaultDrawingThickness: 2,
-            setDefaultDrawingThickness: (thickness) => set({ defaultDrawingThickness: thickness }),
-            defaultDrawingStyle: 'solid',
-            setDefaultDrawingStyle: (style) => set({ defaultDrawingStyle: style }),
         }),
         {
             name: 'ui-store',
@@ -66,9 +47,6 @@ export const useUIStore = create<UIStore>()(
             partialize: (state) => ({
                 isSidebarCollapsed: state.isSidebarCollapsed,
                 activeSidebarTab: state.activeSidebarTab,
-                defaultDrawingColor: state.defaultDrawingColor,
-                defaultDrawingThickness: state.defaultDrawingThickness,
-                defaultDrawingStyle: state.defaultDrawingStyle
             }),
         }
     )

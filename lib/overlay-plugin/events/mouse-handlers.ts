@@ -4,6 +4,7 @@ import { dragState } from "../state/drag-state"
 import { getResizeHandle, isPointInCircle, isPointInRect, rotatePoint } from "../utils/geometry"
 import { wrapText } from "../features/text-renderer"
 import { useUIStore } from "../../stores/ui-store"
+import { useChartStore } from "../../chart-store"
 
 export function getMouseHandlers(chart: Chart) {
     const canvas = chart.canvas
@@ -23,13 +24,7 @@ export function getMouseHandlers(chart: Chart) {
         const overlayTexts = overlayDataRoot.overlayTexts || []
         const overlayShapes = overlayDataRoot.overlayShapes || []
 
-        const uiStore = useUIStore.getState()
-        if (uiStore.isDrawingMode) {
-            dragState.isDrawingFreehand = true
-            dragState.drawingPoints = [{ x, y }]
-            event.preventDefault()
-            return
-        }
+
 
         // Check if clicking on any overlay (check in reverse zIndex order for top-most)
         const allOverlays = [
@@ -135,11 +130,10 @@ export function getMouseHandlers(chart: Chart) {
                 }
 
                 if (isInside) {
-                    // Select the image
-                    const selectEvent = new CustomEvent('overlayImageSelected', {
-                        detail: { imageId: img.id }
-                    })
-                    canvas.dispatchEvent(selectEvent)
+                    const uiStore = useUIStore.getState()
+                    uiStore.setSelectedImageId(img.id)
+                    uiStore.setSelectedTextId(null)
+                    uiStore.setSelectedShapeId(null)
 
                     // Start drag operation
                     dragState.isDragging = true
@@ -242,10 +236,10 @@ export function getMouseHandlers(chart: Chart) {
                 }
 
                 if (isInside) {
-                    const selectEvent = new CustomEvent('overlayShapeSelected', {
-                        detail: { shapeId: shape.id }
-                    })
-                    canvas.dispatchEvent(selectEvent)
+                    const uiStore = useUIStore.getState()
+                    uiStore.setSelectedShapeId(shape.id)
+                    uiStore.setSelectedImageId(null)
+                    uiStore.setSelectedTextId(null)
 
                     dragState.isDragging = true
                     dragState.dragType = 'shape'
@@ -334,6 +328,7 @@ export function getMouseHandlers(chart: Chart) {
                             dragState.startY = txtY
                             dragState.startWidth = hitWidth
                             dragState.startHeight = hitHeight
+                            dragState.startFontSize = txt.fontSize
 
                             // Set appropriate cursor based on handle type
                             switch (resizeHandle) {
@@ -360,13 +355,12 @@ export function getMouseHandlers(chart: Chart) {
                         break
                     }
                 }
-
-                if (isPointInRect(hitX, hitY, txtX, txtY, hitWidth, hitHeight)) {
-                    // Select the text
-                    const selectEvent = new CustomEvent('overlayTextSelected', {
-                        detail: { textId: txt.id }
-                    })
-                    canvas.dispatchEvent(selectEvent)
+                const isInside = isPointInRect(hitX, hitY, txtX, txtY, hitWidth, hitHeight)
+                if (isInside) {
+                    const uiStore = useUIStore.getState()
+                    uiStore.setSelectedTextId(txt.id)
+                    uiStore.setSelectedImageId(null)
+                    uiStore.setSelectedShapeId(null)
 
                     // Start drag operation
                     dragState.isDragging = true
@@ -382,35 +376,12 @@ export function getMouseHandlers(chart: Chart) {
             }
         }
 
-        // If clicked outside any overlay, deselect the current image and text
+        // If clicked outside any overlay, deselect
         if (!clickedOnOverlay) {
-            const overlayData = (chart.options as any)?.plugins?.overlayPlugin || {}
-            const selectedImageId = overlayData.selectedImageId
-            const selectedTextId = overlayData.selectedTextId
-            const selectedShapeId = overlayData.selectedShapeId
-
-            if (selectedImageId) {
-                // Deselect the image
-                const deselectEvent = new CustomEvent('overlayImageSelected', {
-                    detail: { imageId: null }
-                })
-                canvas.dispatchEvent(deselectEvent)
-            }
-
-            if (selectedTextId) {
-                // Deselect the text
-                const deselectTextEvent = new CustomEvent('overlayTextSelected', {
-                    detail: { textId: null }
-                })
-                canvas.dispatchEvent(deselectTextEvent)
-            }
-
-            if (selectedShapeId) {
-                const deselectShapeEvent = new CustomEvent('overlayShapeSelected', {
-                    detail: { shapeId: null }
-                })
-                canvas.dispatchEvent(deselectShapeEvent)
-            }
+            const uiStore = useUIStore.getState()
+            uiStore.setSelectedImageId(null)
+            uiStore.setSelectedTextId(null)
+            uiStore.setSelectedShapeId(null)
 
             // Force chart update to hide selection handles
             if (chart && chart.update) {
@@ -598,6 +569,15 @@ export function getMouseHandlers(chart: Chart) {
         if (dragState.isDrawingFreehand) {
             dragState.drawingPoints.push({ x, y })
             chart.update('none') // Trigger a fast re-render without animation to show the trail
+            event.preventDefault()
+            return
+        }
+
+        // Shape creation preview: update current position for live preview
+        if (dragState.isCreatingShape) {
+            dragState.shapeCreationCurrentX = x
+            dragState.shapeCreationCurrentY = y
+            chart.update('none') // Trigger re-render for live preview
             event.preventDefault()
             return
         }
@@ -883,43 +863,38 @@ export function getMouseHandlers(chart: Chart) {
                 newY = absNewY - driftY - chartArea.top;
             }
 
-            // Dispatch resize event based on dragType
+            const chartStore = useChartStore.getState()
+            
+            // Apply resize based on dragType
             if (dragState.dragType === 'shape') {
-                const resizeEvent = new CustomEvent('overlayShapeResize', {
-                    detail: {
-                        id: dragState.dragId,
-                        x: newX,
-                        y: newY,
-                        width: newWidth,
-                        height: newHeight
-                    }
+                chartStore.updateOverlayShape(dragState.dragId, {
+                    x: newX,
+                    y: newY,
+                    width: newWidth,
+                    height: newHeight
                 })
-                canvas.dispatchEvent(resizeEvent)
             } else if (dragState.dragType === 'text') {
-                // For text, resizing is not fully symmetric in the standard editor, but we still broadcast the changes.
-                // A true custom event for Text Resize isn't mapped strictly yet, but dragging limits bounding box bounds.
-                const resizeEvent = new CustomEvent('overlayTextResize', {
-                    detail: {
-                        id: dragState.dragId,
-                        x: newX,
-                        y: newY,
-                        width: newWidth,
-                        height: newHeight
-                    }
-                })
-                canvas.dispatchEvent(resizeEvent)
+                const scaleX = newWidth / dragState.startWidth
+                const scaleY = newHeight / dragState.startHeight
+                const avgScale = (scaleX + scaleY) / 2
+                
+                let updateData: any = { x: newX, y: newY }
+                
+                if (dragState.resizeHandle === 'e' || dragState.resizeHandle === 'w') {
+                    updateData.maxWidth = newWidth
+                } else if (dragState.resizeHandle !== 'n' && dragState.resizeHandle !== 's') {
+                    updateData.fontSize = Math.max(8, dragState.startFontSize * avgScale)
+                }
+
+                chartStore.updateOverlayText(dragState.dragId, updateData)
             } else {
-                const resizeEvent = new CustomEvent('overlayImageResize', {
-                    detail: {
-                        id: dragState.dragId,
-                        x: newX,
-                        y: newY,
-                        width: newWidth,
-                        height: newHeight,
-                        useNaturalSize: false // Turn off natural size when manually resizing
-                    }
+                chartStore.updateOverlayImage(dragState.dragId, {
+                    x: newX,
+                    y: newY,
+                    width: newWidth,
+                    height: newHeight,
+                    useNaturalSize: false // Turn off natural size when manually resizing
                 })
-                canvas.dispatchEvent(resizeEvent)
             }
 
             event.preventDefault()
@@ -928,16 +903,14 @@ export function getMouseHandlers(chart: Chart) {
             const newX = x - dragState.dragOffsetX - chartArea.left
             const newY = y - dragState.dragOffsetY - chartArea.top
 
-            // Dispatch custom event to update position
-            const updateEvent = new CustomEvent('overlayPositionUpdate', {
-                detail: {
-                    type: dragState.dragType,
-                    id: dragState.dragId,
-                    x: newX,
-                    y: newY
-                }
-            })
-            canvas.dispatchEvent(updateEvent)
+            const chartStore = useChartStore.getState()
+            if (dragState.dragType === 'image') {
+                chartStore.updateOverlayImage(dragState.dragId, { x: newX, y: newY })
+            } else if (dragState.dragType === 'text') {
+                chartStore.updateOverlayText(dragState.dragId, { x: newX, y: newY })
+            } else if (dragState.dragType === 'shape') {
+                chartStore.updateOverlayShape(dragState.dragId, { x: newX, y: newY })
+            }
 
             event.preventDefault()
         } else {
@@ -1020,6 +993,8 @@ export function getMouseHandlers(chart: Chart) {
 
                 if (isInside) {
                     isOverOverlay = true
+                    dragState.hoveredOverlayId = img.id
+                    dragState.hoveredOverlayType = 'image'
                     if (hoverCursor === 'default') {
                         hoverCursor = 'grab'
                     }
@@ -1071,6 +1046,8 @@ export function getMouseHandlers(chart: Chart) {
 
                     if (isInside) {
                         isOverOverlay = true
+                        dragState.hoveredOverlayId = shape.id
+                        dragState.hoveredOverlayType = 'shape'
                         if (hoverCursor === 'default') hoverCursor = 'grab'
                         break
                     }
@@ -1142,82 +1119,28 @@ export function getMouseHandlers(chart: Chart) {
 
                     if (isPointInRect(hoverHitX, hoverHitY, txtX, txtY, hitWidth, hitHeight)) {
                         isOverOverlay = true
+                        dragState.hoveredOverlayId = txt.id
+                        dragState.hoveredOverlayType = 'text'
                         if (hoverCursor === 'default') hoverCursor = 'grab'
                         break
                     }
                 }
             }
 
-            // Apply the calculated cursor
             if (isOverOverlay) {
                 canvas.style.cursor = hoverCursor
                 dragState.isHovering = true
-            } else if (dragState.isHovering) {
+            } else if (dragState.isHovering || dragState.hoveredOverlayId) {
                 canvas.style.cursor = 'default'
                 dragState.isHovering = false
+                dragState.hoveredOverlayId = null
+                dragState.hoveredOverlayType = null
             }
         }
     }
 
     const handleMouseUp = () => {
-        if (dragState.isDrawingFreehand) {
-            dragState.isDrawingFreehand = false
-
-            // Need at least 2 points to make a shape
-            if (dragState.drawingPoints.length > 1) {
-                const chartArea = chart.chartArea
-
-                // Algorithmic path smoothing (Moving Average)
-                let smoothedPoints = [...dragState.drawingPoints];
-                const smoothingIterations = 3;
-                for (let iter = 0; iter < smoothingIterations; iter++) {
-                    if (smoothedPoints.length < 3) break;
-                    const newPoints = [smoothedPoints[0]];
-                    for (let i = 1; i < smoothedPoints.length - 1; i++) {
-                        newPoints.push({
-                            x: (smoothedPoints[i - 1].x + smoothedPoints[i].x + smoothedPoints[i + 1].x) / 3,
-                            y: (smoothedPoints[i - 1].y + smoothedPoints[i].y + smoothedPoints[i + 1].y) / 3,
-                        });
-                    }
-                    newPoints.push(smoothedPoints[smoothedPoints.length - 1]);
-                    smoothedPoints = newPoints;
-                }
-
-                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
-
-                for (const pt of smoothedPoints) {
-                    if (pt.x < minX) minX = pt.x
-                    if (pt.x > maxX) maxX = pt.x
-                    if (pt.y < minY) minY = pt.y
-                    if (pt.y > maxY) maxY = pt.y
-                }
-
-                // If dimensions are too small, ignore
-                if (maxX - minX > 5 || maxY - minY > 5) {
-                    const width = Math.max(1, maxX - minX)
-                    const height = Math.max(1, maxY - minY)
-
-                    // Normalize points to [0, 1] relative to the bounding box
-                    const normalizedPoints = smoothedPoints.map(pt => ({
-                        x: (pt.x - minX) / width,
-                        y: (pt.y - minY) / height
-                    }))
-
-                    const drawEvent = new CustomEvent('overlayDrawingCompleted', {
-                        detail: {
-                            x: minX - chartArea.left,
-                            y: minY - chartArea.top,
-                            width,
-                            height,
-                            points: normalizedPoints
-                        }
-                    })
-                    canvas.dispatchEvent(drawEvent)
-                }
-            }
-            dragState.drawingPoints = []
-            canvas.style.cursor = 'default'
-        } else if (dragState.isDragging || dragState.isResizing || dragState.isRotating) {
+        if (dragState.isDragging || dragState.isResizing || dragState.isRotating) {
             dragState.isDragging = false
             dragState.isResizing = false
             dragState.isRotating = false

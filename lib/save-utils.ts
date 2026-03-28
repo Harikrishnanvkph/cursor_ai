@@ -13,6 +13,7 @@ import { clearCurrentChart } from './storage-utils';
 import { toast } from 'sonner';
 import { DatasetService } from './services/dataset-service';
 import { GroupService } from './services/group-service';
+import { useFormatGalleryStore } from './stores/format-gallery-store';
 
 export interface SaveChartOptions {
     /** Custom chart name (used for new saves or renaming) */
@@ -198,7 +199,31 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
         }
 
         // Extract template data
-        const { templateStructure, templateContent } = extractTemplateData();
+        let { templateStructure, templateContent } = extractTemplateData();
+
+        // Inject format data into config so it's persisted in the snapshot
+        const { editorMode } = useTemplateStore.getState();
+        const { selectedFormatId, contentPackage, contextualImageUrl } = useFormatGalleryStore.getState();
+        
+        if (editorMode === 'template' && selectedFormatId) {
+            normalizedConfig.formatData = {
+                formatId: selectedFormatId,
+                contentPackage,
+                contextualImageUrl
+            };
+            
+            // Note: The Supabase RPC function 'save_chart_snapshot' sets `is_template_mode = true` 
+            // ONLY if templateStructure or templateContent is NOT NULL.
+            // Since formats store their data in chartConfig instead of templateStructure,
+            // we must pass a dummy structure to force the database template flag to true!
+            if (!templateStructure) {
+                templateStructure = {
+                    isFormatReference: true,
+                    formatId: selectedFormatId,
+                    note: 'Dummy structure to trigger backend is_template_mode flag for formats'
+                };
+            }
+        }
 
         // Get current snapshot ID for updates
         const { currentSnapshotId, setCurrentSnapshotId } = useChartStore.getState();

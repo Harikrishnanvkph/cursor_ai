@@ -25,15 +25,7 @@ export function ShapeOverlaysTab() {
 
     const {
         selectedShapeId,
-        setSelectedShapeId,
-        isDrawingMode,
-        setDrawingMode,
-        defaultDrawingColor,
-        setDefaultDrawingColor,
-        defaultDrawingThickness,
-        setDefaultDrawingThickness,
-        defaultDrawingStyle,
-        setDefaultDrawingStyle
+        setSelectedShapeId
     } = useUIStore()
 
     const { toast } = useToast()
@@ -55,81 +47,21 @@ export function ShapeOverlaysTab() {
             label: 'Basic',
             shapes: [
                 { type: 'rectangle', label: 'Rect', icon: Square },
-                { type: 'square', label: 'Square', icon: Square },
-                { type: 'circle', label: 'Circle', icon: Circle },
-                { type: 'cloud', label: 'Cloud', icon: Cloud },
-                { type: 'star', label: 'Star', icon: Star }
-            ]
-        },
-        {
-            label: 'Polygons',
-            shapes: [
-                { type: 'triangle', label: 'Triangle', svg: <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 4l9 16H3z" /></svg> },
-                { type: 'pentagon', label: 'Pentagon', svg: <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l10 7-4 11H6l-4-11z" /></svg> },
-                { type: 'hexagon', label: 'Hexagon', icon: Hexagon },
-                { type: 'octagon', label: 'Octagon', svg: <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M7 2h10l5 5v10l-5 5H7l-5-5V7z" /></svg> },
-                { type: 'diamond', label: 'Diamond', svg: <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l9 10-9 10-9-10z" /></svg> }
-            ]
-        },
-        {
-            label: 'Symbols',
-            shapes: [
-                { type: 'heart', label: 'Heart', svg: <svg viewBox="0 0 24 24" className="h-4 w-4" fill="current" stroke="currentColor" strokeWidth="2"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" /></svg> },
-                { type: 'cross', label: 'Cross', svg: <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12h14" /></svg> },
-                { type: 'speechBubble', label: 'Bubble', svg: <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 11-7.6-11.4 8.28 8.28 0 014.8 1.5 8.41 8.41 0 013.7 6.1zM12 18l-3 4V18" /></svg> }
+                { type: 'circle', label: 'Circle', icon: Circle }
             ]
         },
         {
             label: 'Arrows',
             shapes: [
-                { type: 'arrowUp', label: 'Up', svg: <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 19V5M5 12l7-7 7 7" /></svg> },
-                { type: 'arrowDown', label: 'Down', svg: <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14M5 12l7 7 7-7" /></svg> },
                 { type: 'line', label: 'Line', icon: Minus },
                 { type: 'lineArrow', label: 'Arrow', icon: ArrowRight },
                 { type: 'lineDoubleArrow', label: 'Dual', icon: ArrowLeftRight }
             ]
-        },
-        {
-            label: 'Numbers',
-            shapes: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'].map(n => ({ type: n as OverlayShape['type'], label: n }))
         }
     ];
 
     return (
         <div className="space-y-4">
-            <Card>
-                <CardHeader className="pb-3"><CardTitle className="text-sm flex items-center gap-2"><PenTool className="h-4 w-4" />Drawing</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                    <Button variant={isDrawingMode ? "default" : "outline"} className="w-full" onClick={() => setDrawingMode(!isDrawingMode)}>{isDrawingMode ? 'Drawing Active' : 'Draw Freehand'}</Button>
-                    <div className="grid grid-cols-2 gap-3 pt-3 border-t">
-                        <div>
-                            <Label className="text-[10px] text-gray-500 mb-1 block uppercase tracking-wider font-semibold">Line Thickness</Label>
-                            <div className="flex items-center gap-2 mt-2">
-                                <Slider value={[defaultDrawingThickness]} onValueChange={([v]) => setDefaultDrawingThickness(v)} min={1} max={20} className="flex-1" />
-                                <span className="text-[10px] w-4 text-right text-gray-500">{defaultDrawingThickness}px</span>
-                            </div>
-                        </div>
-                        <div>
-                            <Label className="text-[10px] text-gray-500 mb-1 block uppercase tracking-wider font-semibold">Style & Color</Label>
-                            <div className="flex items-center gap-2 mt-1">
-                                <Select value={defaultDrawingStyle} onValueChange={(v: any) => setDefaultDrawingStyle(v)}>
-                                    <SelectTrigger className="h-7 text-[11px] px-2 flex-1"><SelectValue placeholder="Style" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="solid" className="text-[11px]">Solid</SelectItem>
-                                        <SelectItem value="dashed" className="text-[11px]">Dashed</SelectItem>
-                                        <SelectItem value="dotted" className="text-[11px]">Dotted</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <div className="relative group">
-                                    <Input type="color" value={defaultDrawingColor} onChange={e => setDefaultDrawingColor(e.target.value)} className="h-7 w-8 p-0 border opacity-0 absolute z-10 cursor-pointer" />
-                                    <div className="h-7 w-8 rounded border" style={{ backgroundColor: defaultDrawingColor }} />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
             {/* Premium Add Shape Dropdown */}
             <div className={`relative overflow-hidden transition-all duration-300 border rounded-lg ${isAddShapeOpen ? 'bg-slate-50/30 border-blue-200 shadow-sm' : 'bg-white border-slate-100 hover:border-slate-200 shadow-none'}`}>
                 <button

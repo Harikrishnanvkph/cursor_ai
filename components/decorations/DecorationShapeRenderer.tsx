@@ -1,0 +1,1672 @@
+"use client"
+
+import React, { useRef, useCallback, useEffect, useState } from "react"
+import { useDecorationStore, type DecorationShape, type DrawingState } from "@/lib/stores/decoration-store"
+import { DecorationToolbar } from "./DecorationToolbar"
+
+// ═══════════════════════════════════════════════════════
+// SVG Path Generators
+// ═══════════════════════════════════════════════════════
+
+function cloudPath(x: number, y: number, w: number, h: number): string {
+  // Generate a cloud shape with scalloped edges
+  const cx = x + w / 2, cy = y + h / 2
+  const rx = w / 2, ry = h / 2
+  const bumps = 12
+  const points: string[] = []
+  for (let i = 0; i < bumps; i++) {
+    const angle = (i / bumps) * Math.PI * 2
+    const nextAngle = ((i + 1) / bumps) * Math.PI * 2
+    const midAngle = (angle + nextAngle) / 2
+    const bumpDepth = 0.15 + Math.random() * 0.08 // slight randomness for organic feel
+
+    const px = cx + rx * Math.cos(angle)
+    const py = cy + ry * Math.sin(angle)
+    const cpx = cx + rx * (1 + bumpDepth) * Math.cos(midAngle)
+    const cpy = cy + ry * (1 + bumpDepth) * Math.sin(midAngle)
+    const ex = cx + rx * Math.cos(nextAngle)
+    const ey = cy + ry * Math.sin(nextAngle)
+
+    if (i === 0) points.push(`M ${px} ${py}`)
+    points.push(`Q ${cpx} ${cpy} ${ex} ${ey}`)
+  }
+  points.push('Z')
+  return points.join(' ')
+}
+
+function cloudLinePath(points: { x: number; y: number }[]): string {
+  if (points.length < 2) return ''
+  let d = `M ${points[0].x} ${points[0].y}`
+  for (let i = 1; i < points.length; i++) {
+    const p1 = points[i-1], p2 = points[i]
+    const dx = p2.x - p1.x, dy = p2.y - p1.y
+    const dist = Math.sqrt(dx*dx + dy*dy)
+    const bumpSize = 25
+    const bumps = Math.max(1, Math.round(dist / bumpSize))
+    
+    for (let j = 0; j < bumps; j++) {
+      const t1 = j / bumps
+      const t2 = (j + 1) / bumps
+      const startX = p1.x + dx * t1
+      const startY = p1.y + dy * t1
+      const endX = p1.x + dx * t2
+      const endY = p1.y + dy * t2
+      
+      const segmentDist = dist / bumps;
+      const radius = segmentDist / 2;
+      d += ` A ${radius} ${radius} 0 0 1 ${endX} ${endY}`
+    }
+  }
+  return d
+}
+
+function polygonPath(points: { x: number; y: number }[]): string {
+  if (points.length < 2) return ''
+  return points.map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`)).join(' ') + ' Z'
+}
+
+function connectedLinesPath(points: { x: number; y: number }[]): string {
+  if (points.length < 2) return ''
+  return points.map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`)).join(' ')
+}
+
+function freehandPath(points: { x: number; y: number }[]): string {
+  if (points.length < 2) return ''
+  let d = `M ${points[0].x} ${points[0].y}`
+  
+  if (points.length === 2) {
+    return d + ` L ${points[1].x} ${points[1].y}`
+  }
+  
+  // Use midpoints as destinations and original points as control points
+  // for perfectly smooth continuous curves
+  for (let i = 1; i < points.length - 1; i++) {
+    const cpX = points[i].x
+    const cpY = points[i].y
+    const nextX = points[i + 1].x
+    const nextY = points[i + 1].y
+    const midX = (cpX + nextX) / 2
+    const midY = (cpY + nextY) / 2
+    
+    d += ` Q ${cpX} ${cpY} ${midX} ${midY}`
+  }
+  
+  // Connect the very last point
+  d += ` L ${points[points.length - 1].x} ${points[points.length - 1].y}`
+  return d
+}
+
+function getStrokeDasharray(style: string): string {
+  switch (style) {
+    case 'dashed': return '8,6'
+    case 'dotted': return '2,4'
+    default: return 'none'
+  }
+}
+
+function snapAngle(startX: number, startY: number, endX: number, endY: number): { x: number; y: number } {
+  const dx = endX - startX
+  const dy = endY - startY
+  const dist = Math.sqrt(dx * dx + dy * dy)
+  const angle = Math.atan2(dy, dx)
+  // Snap to nearest 45°
+  const snapped = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4)
+  return {
+    x: startX + dist * Math.cos(snapped),
+    y: startY + dist * Math.sin(snapped)
+  }
+}
+
+/** Rotate a point (x,y) around a center (cx,cy) by a given angle in degrees */
+function rotatePoint(x: number, y: number, cx: number, cy: number, angleDegrees: number): { x: number; y: number } {
+  const rad = (angleDegrees * Math.PI) / 180
+  const cos = Math.cos(rad)
+  const sin = Math.sin(rad)
+  const dx = x - cx
+  const dy = y - cy
+  return {
+    x: cx + dx * cos - dy * sin,
+    y: cy + dx * sin + dy * cos
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// Shape Helpers
+// ═══════════════════════════════════════════════════════
+
+const LINE_LIKE_TYPES = ['line', 'arrow', 'double-arrow', 'connected-lines', 'freehand']
+const POINTS_BASED_TYPES = [...LINE_LIKE_TYPES, 'polygon', 'cloud-line']
+const EDITABLE_POINTS_TYPES = ['line', 'arrow', 'double-arrow', 'connected-lines', 'cloud-line', 'polygon']
+
+function isLineLike(type: string) { return LINE_LIKE_TYPES.includes(type) }
+function isPointsBased(type: string) { return POINTS_BASED_TYPES.includes(type) }
+function hasEditablePoints(type: string) { return EDITABLE_POINTS_TYPES.includes(type) }
+
+/** Compute the bounding box for any shape (points-based or rect-based) */
+function getShapeBounds(shape: DecorationShape): { x: number; y: number; width: number; height: number } {
+  if (shape.points && shape.points.length >= 2 && isPointsBased(shape.type)) {
+    const xs = shape.points.map(p => p.x)
+    const ys = shape.points.map(p => p.y)
+    const minX = Math.min(...xs)
+    const minY = Math.min(...ys)
+    const maxX = Math.max(...xs)
+    const maxY = Math.max(...ys)
+    // Ensure minimum bounding box size for lines
+    const PAD = 12
+    const w = Math.max(maxX - minX, PAD * 2)
+    const h = Math.max(maxY - minY, PAD * 2)
+    return {
+      x: minX - (w === PAD * 2 ? PAD - (maxX - minX) / 2 : 0),
+      y: minY - (h === PAD * 2 ? PAD - (maxY - minY) / 2 : 0),
+      width: w,
+      height: h
+    }
+  }
+  return { x: shape.x, y: shape.y, width: shape.width, height: shape.height }
+}
+
+// ═══════════════════════════════════════════════════════
+// Resize Handle Positions
+// ═══════════════════════════════════════════════════════
+
+type HandlePosition = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w'
+const HANDLE_SIZE = 8
+const ROTATION_HANDLE_DISTANCE = 50
+
+function getHandlePositions(shape: DecorationShape): { pos: HandlePosition; x: number; y: number; cursor: string }[] {
+  const bounds = getShapeBounds(shape)
+  const { x, y, width: w, height: h } = bounds
+  return [
+    { pos: 'nw', x: x, y: y, cursor: 'nw-resize' },
+    { pos: 'n', x: x + w / 2, y: y, cursor: 'n-resize' },
+    { pos: 'ne', x: x + w, y: y, cursor: 'ne-resize' },
+    { pos: 'e', x: x + w, y: y + h / 2, cursor: 'e-resize' },
+    { pos: 'se', x: x + w, y: y + h, cursor: 'se-resize' },
+    { pos: 's', x: x + w / 2, y: y + h, cursor: 's-resize' },
+    { pos: 'sw', x: x, y: y + h, cursor: 'sw-resize' },
+    { pos: 'w', x: x, y: y + h / 2, cursor: 'w-resize' },
+  ]
+}
+
+// ═══════════════════════════════════════════════════════
+// Single Shape SVG Element
+// ═══════════════════════════════════════════════════════
+
+function getStampContent(type: string): string | null {
+  if (type.startsWith('num-')) return type.replace('num-', '')
+  switch (type) {
+    case 'emoji-star': return '⭐';
+    case 'emoji-warning': return '⚠️';
+    case 'emoji-heart': return '❤️';
+    case 'emoji-thumb': return '👍';
+    case 'emoji-fire': return '🔥';
+    case 'emoji-idea': return '💡';
+    case 'emoji-check': return '✅';
+    case 'emoji-cross': return '❌';
+    case 'emoji-smile': return '😊';
+    case 'emoji-sad': return '😢';
+    case 'emoji-rocket': return '🚀';
+    case 'emoji-target': return '🎯';
+    case 'emoji-laugh': return '😂';
+    case 'exclamation': return '❗';
+    case 'question': return '❓';
+    case 'pushpin': return '📌';
+    case 'bullseye': return '◎';
+  }
+  return null;
+}
+
+const ShapeSVG = React.memo(function ShapeSVGComponent({ shape }: { shape: DecorationShape }) {
+  const { x, y, width: w, height: h, fillColor, fillOpacity, strokeColor, strokeWidth, strokeStyle, rotation, type } = shape
+  const fill = isLineLike(type) ? 'none' : fillColor
+  const opacity = fillOpacity / 100
+  const dash = getStrokeDasharray(strokeStyle)
+  const bounds = getShapeBounds(shape)
+  const transform = rotation ? `rotate(${rotation} ${bounds.x + bounds.width / 2} ${bounds.y + bounds.height / 2})` : undefined
+  const contentRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (type === 'textbox-auto' && shape.autoSize && contentRef.current) {
+      const observer = new ResizeObserver((entries) => {
+        for (let entry of entries) {
+          const el = entry.target as HTMLDivElement
+          const newW = el.offsetWidth + 8
+          const newH = el.offsetHeight + 8
+          const currentShape = useDecorationStore.getState().shapes.find(s => s.id === shape.id)
+          if (currentShape && (Math.abs(currentShape.width - newW) > 1 || Math.abs(currentShape.height - newH) > 1)) {
+            useDecorationStore.getState().updateShape(shape.id, { width: newW, height: newH })
+          }
+        }
+      })
+      observer.observe(contentRef.current)
+      return () => observer.disconnect()
+    }
+  }, [shape.id, type, shape.autoSize])
+
+  const commonProps = {
+    stroke: strokeColor,
+    strokeWidth,
+    strokeDasharray: dash === 'none' ? undefined : dash,
+    transform,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+  }
+
+  const stampText = getStampContent(type)
+  if (stampText) {
+    return (
+      <g transform={transform}>
+        <rect x={x} y={y} width={w} height={h} fill="transparent" />
+        <text
+          x={x + w / 2}
+          y={y + h / 2 + Math.min(w, h) * 0.05}
+          fontSize={Math.min(w, h) * 0.8}
+          fontFamily="sans-serif"
+          fontWeight={type.startsWith('num-') ? "bold" : "normal"}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill={type.startsWith('num-') ? (fillColor !== 'transparent' ? fillColor : strokeColor) : undefined}
+          style={{ userSelect: 'none', pointerEvents: 'none' }}
+        >
+          {stampText}
+        </text>
+      </g>
+    )
+  }
+
+  switch (type) {
+    case 'rectangle':
+      return <rect x={x} y={y} width={w} height={h} fill={fill} fillOpacity={opacity} rx={2} {...commonProps} />
+
+    case 'circle':
+      return <ellipse cx={x + w / 2} cy={y + h / 2} rx={w / 2} ry={h / 2} fill={fill} fillOpacity={opacity} {...commonProps} />
+
+    case 'triangle':
+      return <polygon points={`${x + w / 2},${y} ${x + w},${y + h} ${x},${y + h}`} fill={fill} fillOpacity={opacity} {...commonProps} />
+
+    case 'star': {
+      const cx = x + w / 2; const cy = y + h / 2;
+      const outerR = Math.min(w, h) / 2; const innerR = outerR * (0.382);
+      const pts = [];
+      for (let i = 0; i < 10; i++) {
+        const r = i % 2 === 0 ? outerR : innerR;
+        const angle = (Math.PI / 5) * i - Math.PI / 2;
+        pts.push(`${cx + Math.cos(angle) * r},${cy + Math.sin(angle) * r}`);
+      }
+      return <polygon points={pts.join(' ')} fill={fill} fillOpacity={opacity} {...commonProps} />
+    }
+
+    case 'checkmark':
+      return <path d={`M ${x + w*0.2} ${y + h*0.5} L ${x + w*0.4} ${y + h*0.75} L ${x + w*0.8} ${y + h*0.25}`} fill="none" {...commonProps} />
+
+    case 'crossmark':
+      return (
+        <g>
+          <line x1={x + w*0.2} y1={y + h*0.2} x2={x + w*0.8} y2={y + h*0.8} {...commonProps} />
+          <line x1={x + w*0.8} y1={y + h*0.2} x2={x + w*0.2} y2={y + h*0.8} {...commonProps} />
+        </g>
+      )
+
+    case 'dot':
+      return <circle cx={x + w/2} cy={y + h/2} r={Math.min(w,h)/2 * 0.8} fill={strokeColor} />
+
+    case 'line': {
+      const pts = shape.points
+      if (pts && pts.length >= 2) {
+        const [p1, p2] = pts
+        return (
+          <g transform={transform}>
+            <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke="transparent" strokeWidth={Math.max(strokeWidth, 16)} />
+            <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} {...commonProps} transform={undefined} />
+          </g>
+        )
+      }
+      return <line x1={x} y1={y} x2={x + w} y2={y + h} {...commonProps} />
+    }
+
+    case 'arrow':
+    case 'double-arrow': {
+      const pts = shape.points
+      if (pts && pts.length >= 2) {
+        const [p1, p2] = pts
+        const dx = p2.x - p1.x
+        const dy = p2.y - p1.y
+        const angle = Math.atan2(dy, dx)
+        const arrowSize = Math.max(10, Math.min(Math.sqrt(dx * dx + dy * dy) * 0.12, 18))
+        return (
+          <g transform={transform}>
+            <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke="transparent" strokeWidth={Math.max(strokeWidth, 16)} />
+            <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} {...commonProps} transform={undefined} />
+            <line x1={p2.x - arrowSize * Math.cos(angle - 0.4)} y1={p2.y - arrowSize * Math.sin(angle - 0.4)} x2={p2.x} y2={p2.y} {...commonProps} transform={undefined} />
+            <line x1={p2.x - arrowSize * Math.cos(angle + 0.4)} y1={p2.y - arrowSize * Math.sin(angle + 0.4)} x2={p2.x} y2={p2.y} {...commonProps} transform={undefined} />
+            {type === 'double-arrow' && (
+              <>
+                <line x1={p1.x + arrowSize * Math.cos(angle - 0.4)} y1={p1.y + arrowSize * Math.sin(angle - 0.4)} x2={p1.x} y2={p1.y} {...commonProps} transform={undefined} />
+                <line x1={p1.x + arrowSize * Math.cos(angle + 0.4)} y1={p1.y + arrowSize * Math.sin(angle + 0.4)} x2={p1.x} y2={p1.y} {...commonProps} transform={undefined} />
+              </>
+            )}
+          </g>
+        )
+      }
+      return <line x1={x} y1={y} x2={x + w} y2={y + h} {...commonProps} />
+    }
+
+    case 'cloud':
+      return <path d={cloudPath(x, y, w, h)} fill={fill} fillOpacity={opacity} {...commonProps} />
+
+    case 'polygon':
+      if (shape.points && shape.points.length >= 3) {
+        return <path d={polygonPath(shape.points)} fill={fill} fillOpacity={opacity} {...commonProps} />
+      }
+      return <path d={polygonPath(regularPolygon(x, y, w, h, 6))} fill={fill} fillOpacity={opacity} {...commonProps} />
+
+    case 'connected-lines':
+      if (shape.points && shape.points.length >= 2) {
+        return <path d={connectedLinesPath(shape.points)} fill="none" {...commonProps} />
+      }
+      return <line x1={x} y1={y + h / 2} x2={x + w} y2={y + h / 2} {...commonProps} />
+
+    case 'cloud-line':
+      if (shape.points && shape.points.length >= 2) {
+        return <path d={cloudLinePath(shape.points)} fill={fill} fillOpacity={opacity} {...commonProps} />
+      }
+      return <line x1={x} y1={y + h / 2} x2={x + w} y2={y + h / 2} {...commonProps} />
+
+    case 'freehand':
+      if (shape.points && shape.points.length >= 2) {
+        return <path d={freehandPath(shape.points)} fill="none" {...commonProps} />
+      }
+      return null
+
+    case 'text-callout': {
+      const tailH = Math.min(20, h * 0.3)
+      const boxH = h - tailH
+      return (
+        <g transform={transform}>
+          <rect x={x} y={y} width={w} height={boxH} fill={fill} fillOpacity={opacity} rx={6} stroke={strokeColor} strokeWidth={strokeWidth} strokeDasharray={dash === 'none' ? undefined : dash} />
+          {/* Tail */}
+          <polygon
+            points={`${x + w * 0.3},${y + boxH} ${x + w * 0.5},${y + h} ${x + w * 0.5},${y + boxH}`}
+            fill={fill}
+            fillOpacity={opacity}
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
+          />
+          {/* Text */}
+          {shape.text && (
+            <foreignObject x={x + 6} y={y + 4} width={w - 12} height={boxH - 8}>
+              <div style={{ fontSize: '12px', color: strokeColor, wordBreak: 'break-word', lineHeight: 1.3 }}>
+                {shape.text}
+              </div>
+            </foreignObject>
+          )}
+        </g>
+      )
+    }
+
+    case 'textbox':
+    case 'textbox-auto': {
+      const isAutoSized = shape.autoSize && type === 'textbox-auto'
+      const fSize = type === 'textbox-auto' && !shape.autoSize
+        ? Math.max(6, Math.min(w, h) * 0.18)
+        : (shape.fontSize || 14)
+      const hasHtml = shape.text ? /<[a-z][\s\S]*>/i.test(shape.text) : false
+      return (
+        <g transform={transform}>
+          <rect x={x} y={y} width={w} height={h} fill={fill} fillOpacity={opacity} rx={4} {...commonProps} transform={undefined} />
+          {shape.text && (
+            <foreignObject
+              x={x + 4}
+              y={y + 4}
+              width={isAutoSized ? Math.max(2000, w) : Math.max(0, w - 8)}
+              height={isAutoSized ? Math.max(2000, h) : Math.max(0, h - 8)}
+              style={{ overflow: 'visible' }}
+            >
+              <style>{`
+                .deco-textbox-content p, .deco-textbox-content div { margin: 0; padding: 0; }
+                .deco-textbox-content ul { list-style-type: disc; padding-left: 16px; margin: 2px 0; }
+                .deco-textbox-content ol { list-style-type: decimal; padding-left: 16px; margin: 2px 0; }
+                .deco-textbox-content li { margin-bottom: 1px; }
+              `}</style>
+              <div
+                ref={contentRef}
+                className="deco-textbox-content"
+                style={{
+                  width: isAutoSized ? 'max-content' : '100%',
+                  height: isAutoSized ? 'auto' : (type === 'textbox' ? '100%' : 'auto'),
+                  display: isAutoSized ? 'inline-block' : 'block',
+                  fontSize: `${fSize}px`,
+                  fontFamily: shape.fontFamily || 'Arial',
+                  fontWeight: shape.fontWeight || 'normal',
+                  fontStyle: shape.fontStyle || 'normal',
+                  textDecoration: shape.textDecoration || 'none',
+                  textAlign: (shape.textAlign || 'left') as any,
+                  color: shape.textColor || strokeColor,
+                  lineHeight: shape.lineHeight ? `${shape.lineHeight}` : '1.4',
+                  wordBreak: 'break-word' as const,
+                  whiteSpace: 'pre-wrap',
+                  userSelect: 'none' as const,
+                  pointerEvents: 'none' as const,
+                }}
+                {...(hasHtml ? { dangerouslySetInnerHTML: { __html: shape.text } } : {})}
+              >
+                {hasHtml ? undefined : shape.text}
+              </div>
+            </foreignObject>
+          )}
+        </g>
+      )
+    }
+
+    case 'deco-image': {
+      const pmap: Record<string, string> = { fill: 'none', cover: 'xMidYMid slice', contain: 'xMidYMid meet' }
+      const par = shape.imageFit ? pmap[shape.imageFit] : 'xMidYMid slice'
+      const clipId = `clip-image-${shape.id}`
+      const rx = shape.borderRadius || 0
+      return (
+        <g transform={transform}>
+          <rect x={x} y={y} width={w} height={h} fill={fill} fillOpacity={opacity} rx={rx} {...commonProps} transform={undefined} />
+          {shape.imageUrl && (
+            <>
+              {rx > 0 && (
+                <defs>
+                  <clipPath id={clipId}>
+                    <rect x={x} y={y} width={w} height={h} rx={rx} />
+                  </clipPath>
+                </defs>
+              )}
+              <image
+                x={x} y={y} width={w} height={h}
+                href={shape.imageUrl}
+                preserveAspectRatio={par}
+                clipPath={rx > 0 ? `url(#${clipId})` : undefined}
+                style={{ pointerEvents: 'none' }}
+              />
+            </>
+          )}
+        </g>
+      )
+    }
+
+    case 'deco-svg': {
+      return (
+        <g transform={transform}>
+          <rect x={x} y={y} width={w} height={h} fill="transparent" stroke="none" />
+          {shape.svgContent && (
+            <foreignObject x={x} y={y} width={w} height={h}>
+              <div
+                style={{
+                  width: '100%', height: '100%',
+                  pointerEvents: 'none' as const,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+                dangerouslySetInnerHTML={{ __html: shape.svgContent }}
+              />
+            </foreignObject>
+          )}
+        </g>
+      )
+    }
+
+    default:
+      return <rect x={x} y={y} width={w} height={h} fill={fill} fillOpacity={opacity} {...commonProps} />
+  }
+})
+
+function regularPolygon(x: number, y: number, w: number, h: number, sides: number): { x: number; y: number }[] {
+  const cx = x + w / 2, cy = y + h / 2
+  const rx = w / 2, ry = h / 2
+  const pts: { x: number; y: number }[] = []
+  for (let i = 0; i < sides; i++) {
+    const angle = (i / sides) * Math.PI * 2 - Math.PI / 2
+    pts.push({ x: cx + rx * Math.cos(angle), y: cy + ry * Math.sin(angle) })
+  }
+  return pts
+}
+
+// ═══════════════════════════════════════════════════════
+// Drawing Preview
+// ═══════════════════════════════════════════════════════
+
+function DrawingPreview({ drawing }: { drawing: DrawingState }) {
+  const { mode, startX, startY, currentX, currentY, points, shiftKey } = drawing
+
+  let endX = currentX, endY = currentY
+  if (shiftKey && (mode === 'line' || mode === 'arrow' || mode === 'double-arrow' || mode === 'connected-lines' || mode === 'cloud-line')) {
+    const snapped = snapAngle(startX, startY, currentX, currentY)
+    endX = snapped.x
+    endY = snapped.y
+  }
+
+  const previewProps = {
+    stroke: '#3b82f6',
+    strokeWidth: 2,
+    strokeDasharray: '4,4',
+    fill: 'rgba(59, 130, 246, 0.1)',
+    pointerEvents: 'none' as const,
+  }
+
+  if (shiftKey && (['rectangle', 'circle', 'triangle', 'star', 'checkmark', 'crossmark', 'dot'].includes(mode) || mode.startsWith('num-') || mode.startsWith('emoji-'))) {
+    const dx = endX - startX
+    const dy = endY - startY
+    const size = Math.max(Math.abs(dx), Math.abs(dy))
+    endX = startX + (Math.sign(dx) || 1) * size
+    endY = startY + (Math.sign(dy) || 1) * size
+  }
+
+  if (['rectangle', 'cloud', 'triangle', 'star', 'checkmark', 'crossmark', 'dot', 'text-callout', 'textbox', 'textbox-auto', 'deco-image', 'deco-svg'].includes(mode) || mode.startsWith('num-') || mode.startsWith('emoji-')) {
+    const x = Math.min(startX, endX)
+    const y = Math.min(startY, endY)
+    const w = Math.abs(endX - startX)
+    const h = Math.abs(endY - startY)
+    return <rect x={x} y={y} width={w} height={h} {...previewProps} rx={['text-callout', 'textbox', 'textbox-auto'].includes(mode) ? 6 : (mode === 'deco-image' ? 4 : 0)} />
+  }
+
+  switch (mode) {
+    case 'circle': {
+      const x = Math.min(startX, endX)
+      const y = Math.min(startY, endY)
+      const w = Math.abs(endX - startX)
+      const h = Math.abs(endY - startY)
+      return <ellipse cx={x + w / 2} cy={y + h / 2} rx={w / 2} ry={h / 2} {...previewProps} />
+    }
+    case 'line':
+      return <line x1={startX} y1={startY} x2={endX} y2={endY} {...previewProps} fill="none" />
+    case 'arrow':
+    case 'double-arrow': {
+      const arrowSize = 10
+      const angle = Math.atan2(endY - startY, endX - startX)
+      return (
+        <g {...previewProps} fill="none">
+          <line x1={startX} y1={startY} x2={endX} y2={endY} />
+          <line x1={endX - arrowSize * Math.cos(angle - 0.4)} y1={endY - arrowSize * Math.sin(angle - 0.4)} x2={endX} y2={endY} />
+          <line x1={endX - arrowSize * Math.cos(angle + 0.4)} y1={endY - arrowSize * Math.sin(angle + 0.4)} x2={endX} y2={endY} />
+          {mode === 'double-arrow' && (
+            <>
+              <line x1={startX + arrowSize * Math.cos(angle - 0.4)} y1={startY + arrowSize * Math.sin(angle - 0.4)} x2={startX} y2={startY} />
+              <line x1={startX + arrowSize * Math.cos(angle + 0.4)} y1={startY + arrowSize * Math.sin(angle + 0.4)} x2={startX} y2={startY} />
+            </>
+          )}
+        </g>
+      )
+    }
+    case 'freehand':
+      if (points.length < 2) return null
+      return <path d={freehandPath(points)} {...previewProps} fill="none" />
+    case 'polygon':
+    case 'connected-lines':
+    case 'cloud-line':
+      if (points.length === 0) return null
+      const allPts = [...points, { x: endX, y: endY }]
+      if (mode === 'cloud-line') return <path d={cloudLinePath(allPts)} {...previewProps} fill="rgba(59, 130, 246, 0.1)" />
+      return <path d={connectedLinesPath(allPts)} {...previewProps} fill={mode === 'polygon' ? 'rgba(59, 130, 246, 0.1)' : 'none'} />
+    default:
+      return null
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// Main Renderer Component
+// ═══════════════════════════════════════════════════════
+
+interface DecorationShapeRendererProps {
+  containerWidth: number
+  containerHeight: number
+  panMode?: boolean
+}
+
+export function DecorationShapeRenderer({ containerWidth, containerHeight, panMode }: DecorationShapeRendererProps) {
+  const {
+    shapes, selectedShapeId, hoveredShapeId, drawingMode, drawingInProgress,
+    setSelectedShapeId, setHoveredShapeId, setDrawingInProgress, addShape, updateShape
+  } = useDecorationStore()
+
+  const svgRef = useRef<SVGSVGElement>(null)
+  const [editingShapeId, setEditingShapeId] = useState<string | null>(null)
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null)
+  const [snapGuides, setSnapGuides] = useState<{ x: number | null, y: number | null }>({ x: null, y: null })
+  const editRef = useRef<HTMLDivElement>(null)
+  const lastMouseDownTargetRef = useRef<EventTarget | null>(null)
+  const ignoreNextClickRef = useRef<boolean>(false)
+  const [dragState, setDragState] = useState<{
+    type: 'move' | 'resize' | 'rotate' | 'endpoint'
+    shapeId: string
+    startX: number
+    startY: number
+    origShape: DecorationShape
+    handle?: HandlePosition
+    endpointIndex?: number  // 0 = start, 1 = end (for line/arrow endpoint drag)
+  } | null>(null)
+
+  // ── Coordinate helpers ─────────────────────────────
+
+  const getSVGPoint = useCallback((e: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent): { x: number; y: number } | null => {
+    const svg = svgRef.current
+    if (!svg) return null
+    const clientX = 'touches' in e ? (e as TouchEvent).touches[0]?.clientX ?? (e as TouchEvent).changedTouches[0]?.clientX : (e as MouseEvent).clientX
+    const clientY = 'touches' in e ? (e as TouchEvent).touches[0]?.clientY ?? (e as TouchEvent).changedTouches[0]?.clientY : (e as MouseEvent).clientY
+
+    // Use SVG's screen coordinate transform matrix to properly convert
+    // screen coords → SVG-local coords. This automatically handles any
+    // CSS transforms (scale, translate) applied by parent containers.
+    const ctm = svg.getScreenCTM()
+    if (ctm) {
+      const inverseCTM = ctm.inverse()
+      return {
+        x: inverseCTM.a * clientX + inverseCTM.c * clientY + inverseCTM.e,
+        y: inverseCTM.b * clientX + inverseCTM.d * clientY + inverseCTM.f
+      }
+    }
+
+    // Fallback: manual calculation using bounding rect
+    const rect = svg.getBoundingClientRect()
+    const scaleX = rect.width > 0 ? containerWidth / rect.width : 1
+    const scaleY = rect.height > 0 ? containerHeight / rect.height : 1
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY
+    }
+  }, [containerWidth, containerHeight])
+
+  // ── Drawing handlers ──────────────────────────────
+
+  const handleCanvasPointerDown = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    if (panMode || !drawingMode) return
+    const pt = getSVGPoint(e as any)
+    if (!pt) return
+
+    e.preventDefault()
+    e.stopPropagation()
+
+    const shiftKey = 'shiftKey' in e ? (e as React.MouseEvent).shiftKey : false
+
+    if (drawingMode === 'polygon' || drawingMode === 'connected-lines' || drawingMode === 'cloud-line') {
+      // Multi-point mode: add point on each click
+      const current = drawingInProgress
+      if (current && current.mode === drawingMode) {
+        setDrawingInProgress({
+          ...current,
+          points: [...current.points, { x: pt.x, y: pt.y }],
+          currentX: pt.x,
+          currentY: pt.y,
+          shiftKey
+        })
+      } else {
+        setDrawingInProgress({
+          mode: drawingMode,
+          startX: pt.x, startY: pt.y,
+          currentX: pt.x, currentY: pt.y,
+          points: [{ x: pt.x, y: pt.y }],
+          shiftKey
+        })
+      }
+      return
+    }
+
+    // Single-gesture shapes
+    if (drawingMode === 'textbox-auto') {
+      // ── Click-to-place: auto-sized textbox at click point (NO DRAG CREATION) ──
+      const clickX = pt.x
+      const clickY = pt.y
+      const fontSize = 14
+      const shapeData: any = {
+        type: 'textbox-auto' as any,
+        x: clickX, y: clickY, width: 8, height: fontSize * 1.4 + 8,
+        rotation: 0,
+        fillColor: 'transparent',
+        fillOpacity: 100,
+        strokeColor: 'transparent',
+        strokeWidth: 0,
+        strokeStyle: 'solid' as const,
+        visible: true, locked: false, zIndex: shapes.length + 1,
+        text: '',
+        autoSize: true,
+        fontFamily: 'Arial',
+        fontSize,
+        fontWeight: 'normal',
+        fontStyle: 'normal',
+        textDecoration: 'none',
+        textAlign: 'left',
+        textColor: '#1e293b',
+        lineHeight: 1.4,
+      }
+      const newId = addShape(shapeData)
+      ignoreNextClickRef.current = true
+      useDecorationStore.getState().setDrawingMode(null) // Turn off tool after single click
+      requestAnimationFrame(() => setEditingShapeId(newId))
+      return
+    }
+
+    setDrawingInProgress({
+      mode: drawingMode,
+      startX: pt.x, startY: pt.y,
+      currentX: pt.x, currentY: pt.y,
+      points: [{ x: pt.x, y: pt.y }],
+      shiftKey
+    })
+  }, [drawingMode, panMode, getSVGPoint, drawingInProgress, setDrawingInProgress, addShape, shapes.length])
+
+  const handleCanvasPointerMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    if (!drawingInProgress && !dragState) return
+    const pt = getSVGPoint(e as any)
+    if (!pt) return
+
+    const shiftKey = 'shiftKey' in e ? (e as React.MouseEvent).shiftKey : false
+
+    // Handle drag/resize/rotate/endpoint
+    if (dragState) {
+      e.preventDefault()
+      e.stopPropagation()
+      const dx = pt.x - dragState.startX
+      const dy = pt.y - dragState.startY
+      const orig = dragState.origShape
+      
+      const rotation = orig.rotation || 0
+      let localDx = dx
+      let localDy = dy
+
+      // If shape is rotated, transform mouse delta into shape's local coordinate space
+      if (Math.abs(rotation) > 0.01 && (dragState.type === 'resize' || dragState.type === 'endpoint')) {
+        const oBounds = getShapeBounds(orig)
+        const cx = oBounds.x + oBounds.width / 2
+        const cy = oBounds.y + oBounds.height / 2
+        // Rotate current point AND start point BACKWARDS around center to get local coordinates
+        const localPt = rotatePoint(pt.x, pt.y, cx, cy, -rotation)
+        const localStart = rotatePoint(dragState.startX, dragState.startY, cx, cy, -rotation)
+        localDx = localPt.x - localStart.x
+        localDy = localPt.y - localStart.y
+      }
+
+      if (dragState.type === 'move') {
+        let finalDx = dx
+        let finalDy = dy
+        let snapX: number | null = null
+        let snapY: number | null = null
+        
+        // Smart snapping (disable if altKey/option is pressed)
+        if (!e.altKey) {
+          const SNAP_THRESHOLD = 5
+          const draggedBounds = getShapeBounds(orig)
+          const dCenter = {
+            x: draggedBounds.x + draggedBounds.width / 2 + dx,
+            y: draggedBounds.y + draggedBounds.height / 2 + dy
+          }
+          
+          const targetXs = [containerWidth / 2]; const targetYs = [containerHeight / 2]
+          
+          shapes.forEach(s => {
+            if (s.id === dragState.shapeId || !s.visible) return
+            const b = getShapeBounds(s)
+            targetXs.push(b.x, b.x + b.width / 2, b.x + b.width)
+            targetYs.push(b.y, b.y + b.height / 2, b.y + b.height)
+          })
+
+          const candidateXs = [draggedBounds.x + dx, dCenter.x, draggedBounds.x + draggedBounds.width + dx]
+          const candidateYs = [draggedBounds.y + dy, dCenter.y, draggedBounds.y + draggedBounds.height + dy]
+
+          let bestXMatch = { dist: SNAP_THRESHOLD + 1, diff: 0, target: 0 }
+          for (const cx of candidateXs) {
+            for (const tx of targetXs) {
+              const dist = Math.abs(cx - tx)
+              if (dist < bestXMatch.dist) bestXMatch = { dist, diff: tx - cx, target: tx }
+            }
+          }
+          if (bestXMatch.dist <= SNAP_THRESHOLD) {
+            finalDx += bestXMatch.diff; snapX = bestXMatch.target
+          }
+
+          let bestYMatch = { dist: SNAP_THRESHOLD + 1, diff: 0, target: 0 }
+          for (const cy of candidateYs) {
+            for (const ty of targetYs) {
+              const dist = Math.abs(cy - ty)
+              if (dist < bestYMatch.dist) bestYMatch = { dist, diff: ty - cy, target: ty }
+            }
+          }
+          if (bestYMatch.dist <= SNAP_THRESHOLD) {
+            finalDy += bestYMatch.diff; snapY = bestYMatch.target
+          }
+        }
+        
+        setSnapGuides({ x: snapX, y: snapY })
+
+        // Apply
+        if (orig.points && orig.points.length > 0) {
+          const movedPoints = orig.points.map(p => ({ x: p.x + finalDx, y: p.y + finalDy }))
+          updateShape(dragState.shapeId, { x: orig.x + finalDx, y: orig.y + finalDy, points: movedPoints })
+        } else {
+          updateShape(dragState.shapeId, { x: orig.x + finalDx, y: orig.y + finalDy })
+        }
+      } else if (dragState.type === 'endpoint' && dragState.endpointIndex !== undefined) {
+        // Drag individual endpoint of line/arrow
+        const newPoints = [...(orig.points || [])]
+        const idx = dragState.endpointIndex
+        if (newPoints[idx]) {
+          newPoints[idx] = { x: orig.points![idx].x + localDx, y: orig.points![idx].y + localDy }
+          // Recompute bounding box from points
+          const xs = newPoints.map(p => p.x)
+          const ys = newPoints.map(p => p.y)
+          updateShape(dragState.shapeId, {
+            points: newPoints,
+            x: Math.min(...xs), y: Math.min(...ys),
+            width: Math.max(Math.abs(Math.max(...xs) - Math.min(...xs)), 1),
+            height: Math.max(Math.abs(Math.max(...ys) - Math.min(...ys)), 1)
+          })
+        }
+      } else if (dragState.type === 'rotate') {
+        // Rotation: compute angle from center of shape to current mouse
+        const bounds = getShapeBounds(orig)
+        const cx = bounds.x + bounds.width / 2
+        const cy = bounds.y + bounds.height / 2
+        const startAngle = Math.atan2(dragState.startY - cy, dragState.startX - cx)
+        const currentAngle = Math.atan2(pt.y - cy, pt.x - cx)
+        const deltaAngle = (currentAngle - startAngle) * (180 / Math.PI)
+        let newRotation = (orig.rotation || 0) + deltaAngle
+        // Snap to 15° increments when holding shift
+        const shiftKey = 'shiftKey' in e ? (e as React.MouseEvent).shiftKey : false
+        if (shiftKey) {
+          newRotation = Math.round(newRotation / 15) * 15
+        }
+        updateShape(dragState.shapeId, { rotation: newRotation })
+      } else if (dragState.type === 'resize' && dragState.handle) {
+        const h = dragState.handle
+        const oBounds = getShapeBounds(orig)
+        
+        let newX = oBounds.x, newY = oBounds.y, newW = oBounds.width, newH = oBounds.height
+        if (h.includes('w')) { newX = oBounds.x + localDx; newW = oBounds.width - localDx }
+        if (h.includes('e')) { newW = oBounds.width + localDx }
+        if (h.includes('n')) { newY = oBounds.y + localDy; newH = oBounds.height - localDy }
+        if (h.includes('s')) { newH = oBounds.height + localDy }
+        const isPointText = orig.autoSize && orig.type === 'textbox-auto'
+        const forceAspect = isPointText || ('shiftKey' in e ? (e as React.MouseEvent).shiftKey : false)
+
+        if (forceAspect && oBounds.width > 0 && oBounds.height > 0) {
+          const ratio = oBounds.width / oBounds.height
+          if (h === 'nw' || h === 'se' || h === 'sw' || h === 'ne') {
+            const wRatioScale = newW / oBounds.width
+            const hRatioScale = newH / oBounds.height
+            if (Math.abs(wRatioScale - 1) > Math.abs(hRatioScale - 1)) {
+              newH = newW / ratio
+              if (h.includes('n')) newY = oBounds.y + (oBounds.height - newH)
+            } else {
+              newW = newH * ratio
+              if (h.includes('w')) newX = oBounds.x + (oBounds.width - newW)
+            }
+          } else if (isPointText) {
+            // For edge handles on point text, force proportional scaling based on the dragged axis
+            if (h === 'n' || h === 's') {
+              newW = newH * ratio
+              newX = oBounds.x + (oBounds.width - newW) / 2 // keep centered horizontally
+            } else if (h === 'e' || h === 'w') {
+              newH = newW / ratio
+              newY = oBounds.y + (oBounds.height - newH) / 2 // keep centered vertically
+            }
+          }
+        }
+
+        // Enforce minimum size
+        if (newW < 10) { newW = 10; if (h.includes('w')) newX = oBounds.x + oBounds.width - 10 }
+        if (newH < 10) { newH = 10; if (h.includes('n')) newY = oBounds.y + oBounds.height - 10 }
+
+        if (isPointText) {
+          // Proportionally scale the fontSize when resizing point text based on height scale
+          const scaleRatio = newH / oBounds.height
+          const newFontSize = Math.max(6, Math.min(240, (orig.fontSize || 14) * scaleRatio))
+          updateShape(dragState.shapeId, { x: newX, y: newY, width: newW, height: newH, fontSize: newFontSize })
+        } else if (orig.points && orig.points.length > 0) {
+          const prevW = oBounds.width
+          const prevH = oBounds.height
+          const scaleX = prevW > 0 ? newW / prevW : 1
+          const scaleY = prevH > 0 ? newH / prevH : 1
+          const newPoints = orig.points.map(p => ({
+            x: newX + (p.x - oBounds.x) * scaleX,
+            y: newY + (p.y - oBounds.y) * scaleY
+          }))
+          updateShape(dragState.shapeId, { x: newX, y: newY, width: newW, height: newH, points: newPoints })
+        } else {
+          updateShape(dragState.shapeId, { x: newX, y: newY, width: newW, height: newH })
+        }
+      }
+      return
+    }
+
+    // Handle drawing
+    if (drawingInProgress) {
+      e.preventDefault()
+
+      if (drawingInProgress.mode === 'freehand') {
+        setDrawingInProgress({
+          ...drawingInProgress,
+          currentX: pt.x, currentY: pt.y,
+          points: [...drawingInProgress.points, { x: pt.x, y: pt.y }],
+          shiftKey
+        })
+      } else if (drawingInProgress.mode === 'polygon' || drawingInProgress.mode === 'connected-lines' || drawingInProgress.mode === 'cloud-line') {
+        setDrawingInProgress({
+          ...drawingInProgress,
+          currentX: pt.x, currentY: pt.y,
+          shiftKey
+        })
+      } else {
+        setDrawingInProgress({
+          ...drawingInProgress,
+          currentX: pt.x, currentY: pt.y,
+          shiftKey
+        })
+      }
+    }
+  }, [drawingInProgress, dragState, getSVGPoint, setDrawingInProgress, updateShape])
+
+  const handleCanvasPointerUp = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    // Finish drag
+    if (dragState) {
+      setDragState(null)
+      setSnapGuides({ x: null, y: null })
+      return
+    }
+
+    if (!drawingInProgress) return
+    const pt = getSVGPoint(e as any)
+
+    // For multi-point modes, don't finalize on mouse up
+    if (drawingInProgress.mode === 'polygon' || drawingInProgress.mode === 'connected-lines' || drawingInProgress.mode === 'cloud-line') {
+      return
+    }
+
+    // Finalize single-gesture shapes
+    const { mode, startX, startY, points, shiftKey } = drawingInProgress
+    let endX = pt?.x ?? drawingInProgress.currentX
+    let endY = pt?.y ?? drawingInProgress.currentY
+
+    if (shiftKey && (mode === 'line' || mode === 'arrow' || mode === 'double-arrow')) {
+      const snapped = snapAngle(startX, startY, endX, endY)
+      endX = snapped.x
+      endY = snapped.y
+    } else if (shiftKey && (['rectangle', 'circle', 'triangle', 'star', 'checkmark', 'crossmark', 'dot'].includes(mode) || mode.startsWith('num-') || mode.startsWith('emoji-'))) {
+      const dx = endX - startX
+      const dy = endY - startY
+      const size = Math.max(Math.abs(dx), Math.abs(dy))
+      endX = startX + (Math.sign(dx) || 1) * size
+      endY = startY + (Math.sign(dy) || 1) * size
+    }
+
+    const x = Math.min(startX, endX)
+    const y = Math.min(startY, endY)
+    const w = Math.abs(endX - startX)
+    const h = Math.abs(endY - startY)
+
+    // Must have minimum size
+    if (mode === 'freehand') {
+      if (points.length >= 3) {
+        addShape({
+          type: 'freehand', x: 0, y: 0, width: 0, height: 0,
+          rotation: 0, points, fillColor: 'transparent', fillOpacity: 100,
+          strokeColor: '#1e40af', strokeWidth: 2, strokeStyle: 'solid',
+          visible: true, locked: false, zIndex: shapes.length + 1
+        })
+      }
+    } else if (w > 5 || h > 5) {
+      const isLine = mode === 'line' || mode === 'arrow' || mode === 'double-arrow'
+      const isTextbox = mode === 'textbox'
+      const isDecoImage = mode === 'deco-image'
+      const isDecoSvg = mode === 'deco-svg'
+
+      const shapeData: any = {
+        type: mode as any,
+        x, y, width: w, height: h,
+        rotation: 0,
+        points: isLine ? [{ x: startX, y: startY }, { x: endX, y: endY }] : undefined,
+        fillColor: isLine ? 'transparent'
+          : isTextbox ? 'rgba(255,255,255,0.9)'
+          : isDecoImage ? 'transparent'
+          : isDecoSvg ? 'transparent'
+          : (['checkmark', 'crossmark', 'dot'].includes(mode) ? 'none' : 'rgba(59, 130, 246, 0.3)'),
+        fillOpacity: 100,
+        strokeColor: isTextbox ? '#94a3b8' : isDecoImage ? '#cbd5e1' : isDecoSvg ? '#a5b4fc' : (['dot'].includes(mode) ? 'rgba(59, 130, 246, 0.3)' : '#1e40af'),
+        strokeWidth: isTextbox || isDecoImage || isDecoSvg ? 1 : 2,
+        strokeStyle: 'solid' as const,
+        visible: true, locked: false, zIndex: shapes.length + 1,
+        text: mode === 'text-callout' ? 'Text' : isTextbox ? 'Type here...' : undefined,
+      }
+
+      // Textbox-specific defaults
+      if (isTextbox) {
+        shapeData.fontFamily = 'Arial'
+        shapeData.fontSize = 14
+        shapeData.fontWeight = 'normal'
+        shapeData.fontStyle = 'normal'
+        shapeData.textDecoration = 'none'
+        shapeData.textAlign = 'left'
+        shapeData.textColor = '#1e293b'
+        shapeData.lineHeight = 1.4
+      }
+
+      // Image-specific defaults
+      if (isDecoImage) {
+        shapeData.imageFit = 'cover'
+        shapeData.borderRadius = 0
+      }
+
+      // SVG-specific defaults
+      if (isDecoSvg) {
+        shapeData.svgContent = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#e0e7ff" rx="8"/><text x="50" y="55" text-anchor="middle" font-size="12" fill="#4338ca">SVG</text></svg>'
+      }
+
+      addShape(shapeData)
+    }
+
+    setDrawingInProgress(null)
+  }, [drawingInProgress, dragState, getSVGPoint, addShape, shapes.length, setDrawingInProgress])
+
+  // Double-click to finalize polygon / connected-lines
+  const handleCanvasDoubleClick = useCallback((e: React.MouseEvent) => {
+    if (!drawingInProgress) return
+    const { mode, points } = drawingInProgress
+
+    if (mode === 'polygon' && points.length >= 3) {
+      addShape({
+        type: 'polygon',
+        x: 0, y: 0, width: 0, height: 0,
+        rotation: 0, points,
+        fillColor: 'rgba(59, 130, 246, 0.3)', fillOpacity: 100,
+        strokeColor: '#1e40af', strokeWidth: 2, strokeStyle: 'solid',
+        visible: true, locked: false, zIndex: shapes.length + 1
+      })
+      setDrawingInProgress(null)
+    } else if ((mode === 'connected-lines' || mode === 'cloud-line') && points.length >= 2) {
+      const finalPoints = mode === 'cloud-line' && points.length >= 3
+        ? [...points, { ...points[0] }]
+        : points;
+      
+      addShape({
+        type: mode,
+        x: 0, y: 0, width: 0, height: 0,
+        rotation: 0, points: finalPoints,
+        fillColor: mode === 'cloud-line' ? 'rgba(59, 130, 246, 0.3)' : 'transparent', fillOpacity: 100,
+        strokeColor: '#1e40af', strokeWidth: 2, strokeStyle: 'solid',
+        visible: true, locked: false, zIndex: shapes.length + 1
+      })
+      setDrawingInProgress(null)
+    }
+  }, [drawingInProgress, addShape, shapes.length, setDrawingInProgress])
+
+  // ── Shape interaction handlers ─────────────────────
+
+  const handleShapePointerDown = useCallback((e: React.MouseEvent | React.TouchEvent, shape: DecorationShape) => {
+    if (panMode || drawingMode) return
+    e.preventDefault()
+    e.stopPropagation()
+
+    if (shape.locked) {
+      setSelectedShapeId(shape.id)
+      return
+    }
+
+    setSelectedShapeId(shape.id)
+    const pt = getSVGPoint(e as any)
+    if (!pt) return
+
+    setDragState({
+      type: 'move',
+      shapeId: shape.id,
+      startX: pt.x,
+      startY: pt.y,
+      origShape: { ...shape }
+    })
+  }, [panMode, drawingMode, getSVGPoint, setSelectedShapeId])
+
+  const handleResizePointerDown = useCallback((e: React.MouseEvent | React.TouchEvent, shape: DecorationShape, handle: HandlePosition) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const pt = getSVGPoint(e as any)
+    if (!pt || shape.locked) return
+
+    setDragState({
+      type: 'resize',
+      shapeId: shape.id,
+      startX: pt.x,
+      startY: pt.y,
+      origShape: { ...shape },
+      handle
+    })
+  }, [getSVGPoint])
+
+  // ── Click on background to deselect ────────────────
+
+  const handleBackgroundClick = useCallback((e: React.MouseEvent) => {
+    if (ignoreNextClickRef.current) {
+      ignoreNextClickRef.current = false
+      return
+    }
+    // Only deselect if both mousedown and click happened directly on the SVG background.
+    // This prevents deselecting when clicking a shape's thin stroke (mousedown), which renders the thick invisible
+    // hit area under the mouse, causing the browser's synthesized click event to target the common parent (SVG).
+    if (e.target === svgRef.current && lastMouseDownTargetRef.current === svgRef.current && !drawingMode && !drawingInProgress) {
+      setSelectedShapeId(null)
+      setEditingShapeId(null)
+    }
+  }, [drawingMode, drawingInProgress, setSelectedShapeId])
+
+  // ── Double-click on textbox to enter editing ──────
+
+  const handleTextboxDoubleClick = useCallback((e: React.MouseEvent, shape: DecorationShape) => {
+    if (panMode || drawingMode) return
+    if (shape.type !== 'textbox' && shape.type !== 'textbox-auto') return
+    e.preventDefault()
+    e.stopPropagation()
+    setEditingShapeId(shape.id)
+  }, [panMode, drawingMode])
+
+  // ── Save editing content back to shape ────────────
+
+  const handleEditingSave = useCallback(() => {
+    if (!editingShapeId || !editRef.current) return
+    let html = editRef.current.innerHTML || ''
+    
+    // Clean up trailing browser-inserted break tags safely without breaking intended blank lines
+    // We only remove a trailing <br> if it's the very last thing, as browsers inject them for caret positioning
+    if (html.endsWith('<br>')) { html = html.slice(0, -4) }
+    
+    // Also remove empty <p></p> or <div></div> that might have sneaked in
+    html = html.replace(/<p>(\s|&nbsp;|<br>)*<\/p>$/, '')
+    html = html.replace(/<div>(\s|&nbsp;|<br>)*<\/div>$/, '')
+
+    // Delete the shape entirely if completely empty instead of leaving an invisible box
+    if (!html.trim() && !html.includes('<img')) {
+      useDecorationStore.getState().removeShape(editingShapeId)
+    } else {
+      updateShape(editingShapeId, { text: html })
+    }
+    setEditingShapeId(null)
+  }, [editingShapeId, updateShape])
+
+  // Focus the contentEditable and attach resize measurement
+  useEffect(() => {
+    if (editingShapeId && editRef.current) {
+      const storeState = useDecorationStore.getState()
+      const shape = storeState.shapes.find(s => s.id === editingShapeId)
+      
+      if (shape) {
+        editRef.current.innerHTML = shape.text || ''
+      }
+      
+      editRef.current.focus()
+      // Place cursor at end
+      const range = document.createRange()
+      range.selectNodeContents(editRef.current)
+      range.collapse(false)
+      const sel = window.getSelection()
+      sel?.removeAllRanges()
+      sel?.addRange(range)
+
+      // Observe the editing div to update the shape's bounds automatically
+      // We do this so the selection bounding box matches the typed text dynamically.
+      let observer: ResizeObserver | null = null;
+      if (shape && shape.autoSize) {
+        observer = new ResizeObserver((entries) => {
+          for (let entry of entries) {
+            const el = entry.target as HTMLDivElement
+            // offsetWidth/Height reflect the layout size accurately.
+            // deco-edit-zone has 4px padding (8px total) and 2px border (4px total) = 12px total extra size
+            // We want the saved shape to INCLUDE 8px padding so the visual text is padded inside the rect!
+            // Therefore, we only subtract the 4px border.
+            const newW = Math.max(0, el.offsetWidth - 4)
+            const newH = Math.max(0, el.offsetHeight - 4)
+            
+            const currentShape = useDecorationStore.getState().shapes.find(s => s.id === editingShapeId)
+            if (currentShape && (Math.abs(currentShape.width - newW) > 1 || Math.abs(currentShape.height - newH) > 1)) {
+              useDecorationStore.getState().updateShape(editingShapeId, { width: newW, height: newH })
+            }
+          }
+        })
+        observer.observe(editRef.current)
+      }
+      
+      return () => {
+        if (observer) observer.disconnect()
+      }
+    }
+  }, [editingShapeId]) // Removed 'shapes' from deps to prevent cursor resetting on every keystroke!
+
+  // ── Track cursor position for "A" preview ─────────
+
+  const handleCursorTrack = useCallback((e: React.MouseEvent) => {
+    if (drawingMode === 'textbox-auto' && !drawingInProgress) {
+      const pt = getSVGPoint(e as any)
+      if (pt) setCursorPos(pt)
+    } else {
+      if (cursorPos) setCursorPos(null)
+    }
+  }, [drawingMode, drawingInProgress, getSVGPoint, cursorPos])
+
+  // ── Global mouse up (catch releases outside SVG) ──
+
+  useEffect(() => {
+    const handleGlobalUp = () => {
+      if (dragState) {
+        setDragState(null)
+        setSnapGuides({ x: null, y: null })
+      }
+    }
+    window.addEventListener('mouseup', handleGlobalUp)
+    window.addEventListener('touchend', handleGlobalUp)
+    return () => {
+      window.removeEventListener('mouseup', handleGlobalUp)
+      window.removeEventListener('touchend', handleGlobalUp)
+    }
+  }, [dragState])
+
+  // ── Escape key to cancel drawing ──────────────────
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setDrawingInProgress(null)
+        useDecorationStore.getState().setDrawingMode(null)
+      }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        const { selectedShapeId: selId } = useDecorationStore.getState()
+        if (selId) {
+          useDecorationStore.getState().removeShape(selId)
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [setDrawingInProgress])
+
+  // ── Determine cursor ──────────────────────────────
+
+  const getCursor = (): string => {
+    if (panMode) return 'grab'
+    if (drawingMode) return 'crosshair'
+    if (dragState?.type === 'move') return 'move'
+    if (dragState?.type === 'rotate') return 'grabbing'
+    return 'default'
+  }
+
+  // ── Sort shapes by zIndex ─────────────────────────
+
+  const sortedShapes = React.useMemo(() => {
+    return [...shapes].filter(s => s.visible).sort((a, b) => a.zIndex - b.zIndex)
+  }, [shapes])
+  
+  const selectedShape = React.useMemo(() => {
+    return shapes.find(s => s.id === selectedShapeId)
+  }, [shapes, selectedShapeId])
+
+  return (
+    <svg
+      ref={svgRef}
+      className="absolute inset-0 w-full h-full"
+      viewBox={`0 0 ${containerWidth} ${containerHeight}`}
+      style={{
+        cursor: getCursor(),
+        // Exclusive Focus Mode: If a shape is selected, or we are drawing/dragging, 
+        // the SVG catches ALL clicks and blocks the underlying format zones.
+        pointerEvents: (!panMode && (drawingMode || dragState || selectedShapeId || editingShapeId)) ? 'auto' : 'none',
+        zIndex: 20
+      }}
+      // These events will only fire on the SVG itself when drawingMode is true OR during drag
+      onMouseDown={(drawingMode || dragState) ? (handleCanvasPointerDown as any) : undefined}
+      onMouseDownCapture={(e) => { lastMouseDownTargetRef.current = e.target }}
+      onMouseMove={(e: any) => { handleCursorTrack(e); (handleCanvasPointerMove as any)(e) }}
+      onMouseUp={handleCanvasPointerUp as any}
+      onMouseLeave={() => { if (dragState) { setDragState(null); setSnapGuides({x:null,y:null}) }; setCursorPos(null) }}
+      onDoubleClick={drawingMode ? handleCanvasDoubleClick : undefined}
+      onTouchStart={(drawingMode || dragState) ? (handleCanvasPointerDown as any) : undefined}
+      onTouchMove={handleCanvasPointerMove as any}
+      onTouchEnd={handleCanvasPointerUp as any}
+      onClick={handleBackgroundClick}
+    >
+      {/* Invisible background to catch deselection clicks when not drawing,
+          placed behind shapes so it doesn't block them, but only active when NOT drawing
+          so it doesn't intercept drawing clicks. 
+          WAIT — we want Format Zones to be clickable when not drawing. 
+          If we have this rect, it blocks Format Zones! 
+          Instead, we rely on the FormatRenderer's background click handler to clear BOTH format selection AND decoration selection.
+      */}
+      
+      {/* Shapes */}
+      {sortedShapes.map(shape => (
+        <g
+          key={shape.id}
+          style={{ 
+            opacity: shape.locked ? 0.8 : 1,
+            pointerEvents: 'auto', // Important: shapes catch clicks even if SVG doesn't
+            cursor: drawingMode ? 'crosshair' : (shape.locked ? 'default' : 'move')
+          }}
+          onMouseDown={(e) => handleShapePointerDown(e, shape)}
+          onTouchStart={(e) => handleShapePointerDown(e, shape)}
+          onMouseEnter={() => setHoveredShapeId(shape.id)}
+          onMouseLeave={() => setHoveredShapeId(null)}
+          onClick={(e) => e.stopPropagation()}
+          onDoubleClick={(e) => handleTextboxDoubleClick(e, shape)}
+        >
+          <ShapeSVG shape={shape} />
+
+          {/* Hover highlight — uses computed bounds */}
+          {hoveredShapeId === shape.id && selectedShapeId !== shape.id && (() => {
+            const hb = getShapeBounds(shape)
+            return (
+              <rect
+                x={hb.x - 3} y={hb.y - 3}
+                width={hb.width + 6} height={hb.height + 6}
+                fill="none" stroke="#f59e0b" strokeWidth={2} strokeDasharray="4,3"
+                rx={3} pointerEvents="none" opacity={0.7}
+              />
+            )
+          })()}
+        </g>
+      ))}
+
+      {/* Selection UI */}
+      {selectedShape && (() => {
+        const sb = getShapeBounds(selectedShape)
+        const isPointsShape = isPointsBased(selectedShape.type)
+        const hasPointsUI = hasEditablePoints(selectedShape.type)
+        const rotCx = sb.x + sb.width / 2
+        const rotCy = sb.y - ROTATION_HANDLE_DISTANCE
+        
+        const cx = sb.x + sb.width / 2
+        const cy = sb.y + sb.height / 2
+        const rotation = selectedShape.rotation || 0
+        
+        // Global bounds of the shape including rotation
+        const corners = [
+          { x: sb.x, y: sb.y },
+          { x: sb.x + sb.width, y: sb.y },
+          { x: sb.x + sb.width, y: sb.y + sb.height },
+          { x: sb.x, y: sb.y + sb.height }
+        ]
+        const rotatedCorners = corners.map(pt => rotatePoint(pt.x, pt.y, cx, cy, rotation))
+        const globalMinY = Math.min(...rotatedCorners.map(pt => pt.y))
+        const globalMaxY = Math.max(...rotatedCorners.map(pt => pt.y))
+        
+        // Include rotation handle in top/bottom extent
+        const rotHandleRotated = rotatePoint(rotCx, rotCy, cx, cy, rotation)
+        const topObjectY = Math.min(globalMinY, rotHandleRotated.y)
+        const bottomObjectY = Math.max(globalMaxY, rotHandleRotated.y)
+
+        const isTextbox = selectedShape.type === 'textbox' || selectedShape.type === 'textbox-auto'
+        const toolbarWidth = isTextbox ? 380 : 220
+        const gap = 20
+        const toolbarHeight = 44
+
+        let toolbarYPosition = topObjectY - gap - toolbarHeight
+        // If it goes off top edge, place below instead
+        if (toolbarYPosition < 10) {
+          toolbarYPosition = bottomObjectY + gap
+        }
+
+        let toolbarXPosition = cx - toolbarWidth / 2
+        // Constrain to container boundaries horizontally
+        if (toolbarXPosition < 10) toolbarXPosition = 10
+        if (toolbarWidth < containerWidth && toolbarXPosition + toolbarWidth > containerWidth - 10) {
+          toolbarXPosition = containerWidth - toolbarWidth - 10
+        }
+
+        return (
+          <g style={{ pointerEvents: 'auto' }}>
+            {/* ── Elements outside rotation ────────────────── */}
+            {/* Toolbar — stays horizontal, correctly positioned outside bounds, invisible during drag/rotate. */}
+            {!dragState && (
+              <DecorationToolbar 
+                shapeId={selectedShape.id} 
+                x={toolbarXPosition} 
+                y={toolbarYPosition} 
+                editingShapeId={editingShapeId} 
+                onStartEditing={(id) => setEditingShapeId(id)} 
+              />
+            )}
+
+            {/* ── Transformed Selection Frame ──────────────── */}
+            <g transform={`rotate(${selectedShape.rotation || 0} ${sb.x + sb.width / 2} ${sb.y + sb.height / 2})`}>
+              {/* Invisible drag-hit area over the entire shape bounds */}
+              {!selectedShape.locked && (
+                <rect
+                  x={sb.x} y={sb.y}
+                  width={sb.width} height={sb.height}
+                  fill="transparent"
+                  style={{ cursor: 'move', pointerEvents: 'auto' }}
+                  onMouseDown={(e) => handleShapePointerDown(e, selectedShape)}
+                  onTouchStart={(e) => handleShapePointerDown(e, selectedShape)}
+                  onDoubleClick={(e) => handleTextboxDoubleClick(e, selectedShape)}
+                />
+              )}
+
+              {/* Selection border */}
+              <rect
+                x={sb.x - 3} y={sb.y - 3}
+                width={sb.width + 6} height={sb.height + 6}
+                fill="none" stroke="#3b82f6" strokeWidth={1.5} strokeDasharray="5,3"
+                rx={3} pointerEvents="none"
+              />
+
+              {/* Rotation handle — now inside transformed group */}
+              {!selectedShape.locked && (
+                <>
+                  <line
+                    x1={rotCx} y1={sb.y}
+                    x2={rotCx} y2={rotCy + 9}
+                    stroke="#3b82f6" strokeWidth={1} strokeDasharray="3,2"
+                    pointerEvents="none"
+                  />
+                  <circle
+                    cx={rotCx} cy={rotCy} r={9}
+                    fill="#3b82f6"
+                    style={{ cursor: 'grab' }}
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      const rPt = getSVGPoint(e as any)
+                      if (!rPt) return
+                      setDragState({
+                        type: 'rotate',
+                        shapeId: selectedShape.id,
+                        startX: rPt.x, startY: rPt.y,
+                        origShape: { ...selectedShape }
+                      })
+                    }}
+                    onTouchStart={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      const rPt = getSVGPoint(e as any)
+                      if (!rPt) return
+                      setDragState({
+                        type: 'rotate',
+                        shapeId: selectedShape.id,
+                        startX: rPt.x, startY: rPt.y,
+                        origShape: { ...selectedShape }
+                      })
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  {/* Rotation icon — counter-rotated to stay upright */}
+                  <g transform={`translate(${rotCx}, ${rotCy}) rotate(${- (selectedShape.rotation || 0)}) translate(-6, -6) scale(0.5)`} pointerEvents="none">
+                    <path d="M22 12l-3 3-3-3" fill="none" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M2 12l3-3 3 3" fill="none" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M19.016 14v-1.95A7.05 7.05 0 0 0 8 6.22" fill="none" stroke="white" strokeWidth={2} strokeLinecap="round" />
+                    <path d="M16.016 17.845A7.05 7.05 0 0 1 5 12.015V10" fill="none" stroke="white" strokeWidth={2} strokeLinecap="round" />
+                    <path d="M5 10V9" stroke="white" strokeWidth={2} strokeLinecap="round" />
+                    <path d="M19 15v-1" stroke="white" strokeWidth={2} strokeLinecap="round" />
+                  </g>
+                </>
+              )}
+
+              {/* Resize handles — now inside transformed group */}
+              {!hasPointsUI && !selectedShape.locked && getHandlePositions(selectedShape).map(({ pos, x, y, cursor }) => (
+                <rect
+                  key={pos}
+                  x={x - HANDLE_SIZE / 2} y={y - HANDLE_SIZE / 2}
+                  width={HANDLE_SIZE} height={HANDLE_SIZE}
+                  fill="white" stroke="#3b82f6" strokeWidth={1.5}
+                  rx={2}
+                  style={{ cursor }}
+                  onMouseDown={(e) => handleResizePointerDown(e, selectedShape, pos)}
+                  onTouchStart={(e) => handleResizePointerDown(e, selectedShape, pos)}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ))}
+
+              {/* Line/arrow/polygon: endpoint circle handles at each point */}
+              {hasPointsUI && selectedShape.points && selectedShape.points.length >= 2 && !selectedShape.locked && (
+                <>
+                  {selectedShape.points.map((pt, idx) => (
+                    <circle
+                      key={`ep-${idx}`}
+                      cx={pt.x} cy={pt.y} r={6}
+                      fill="white" stroke="#3b82f6" strokeWidth={2}
+                      style={{ cursor: 'crosshair' }}
+                      onMouseDown={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        const ePt = getSVGPoint(e as any)
+                        if (!ePt) return
+                        setDragState({
+                          type: 'endpoint',
+                          shapeId: selectedShape.id,
+                          startX: ePt.x, startY: ePt.y,
+                          origShape: { ...selectedShape, points: [...selectedShape.points!] },
+                          endpointIndex: idx
+                        })
+                      }}
+                      onTouchStart={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        const ePt = getSVGPoint(e as any)
+                        if (!ePt) return
+                        setDragState({
+                          type: 'endpoint',
+                          shapeId: selectedShape.id,
+                          startX: ePt.x, startY: ePt.y,
+                          origShape: { ...selectedShape, points: [...selectedShape.points!] },
+                          endpointIndex: idx
+                        })
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  ))}
+                </>
+              )}
+            </g>
+          </g>
+        )
+      })()}
+
+      {/* Drawing preview */}
+      {drawingInProgress && <DrawingPreview drawing={drawingInProgress} />}
+
+      {/* Snap Guides */}
+      {snapGuides.x !== null && (
+        <line x1={snapGuides.x} y1={0} x2={snapGuides.x} y2={containerHeight} stroke="#ec4899" strokeWidth={1} strokeDasharray="4,4" pointerEvents="none" opacity={0.6} />
+      )}
+      {snapGuides.y !== null && (
+        <line x1={0} y1={snapGuides.y} x2={containerWidth} y2={snapGuides.y} stroke="#ec4899" strokeWidth={1} strokeDasharray="4,4" pointerEvents="none" opacity={0.6} />
+      )}
+
+      {/* "A" cursor preview for textbox-auto tool */}
+      {drawingMode === 'textbox-auto' && !drawingInProgress && cursorPos && (
+        <g style={{ pointerEvents: 'none' }}>
+          {/* Blinking cursor line */}
+          <line
+            x1={cursorPos.x} y1={cursorPos.y - 18}
+            x2={cursorPos.x} y2={cursorPos.y + 2}
+            stroke="#ec4899" strokeWidth={1.5}
+            opacity={0.9}
+          >
+            <animate attributeName="opacity" values="0.9;0.2;0.9" dur="1s" repeatCount="indefinite" />
+          </line>
+          {/* "A" character showing text height */}
+          <text
+            x={cursorPos.x + 4}
+            y={cursorPos.y}
+            fontSize="18"
+            fontFamily="Arial"
+            fontWeight="bold"
+            fill="#3b82f6"
+            opacity={0.5}
+          >A</text>
+          {/* Height indicator */}
+          <text
+            x={cursorPos.x + 24}
+            y={cursorPos.y}
+            fontSize="9"
+            fontFamily="Arial"
+            fill="#64748b"
+            opacity={0.6}
+          >H: 14 pt</text>
+        </g>
+      )}
+
+      {/* Inline contentEditable editing overlay for textboxes */}
+      {editingShapeId && (() => {
+        const editShape = shapes.find(s => s.id === editingShapeId)
+        if (!editShape) return null
+        if (editShape.type !== 'textbox' && editShape.type !== 'textbox-auto') return null
+        const isAutoSized = editShape.autoSize && editShape.type === 'textbox-auto'
+        const ex = editShape.x
+        const ey = editShape.y
+        const fSize = editShape.fontSize || 14
+        return (
+          <foreignObject
+            x={ex - 2}
+            y={ey - 2}
+            width={isAutoSized ? 2000 : Math.max(0, editShape.width + 4)}
+            height={isAutoSized ? 2000 : Math.max(0, editShape.height + 4)}
+            style={{ overflow: 'visible', zIndex: 50 }}
+          >
+            <style>{`
+              .deco-edit-zone p, .deco-edit-zone div { margin: 0; padding: 0; }
+              .deco-edit-zone ul { list-style-type: disc; padding-left: 16px; margin: 2px 0; }
+              .deco-edit-zone ol { list-style-type: decimal; padding-left: 16px; margin: 2px 0; }
+              .deco-edit-zone li { margin-bottom: 1px; }
+            `}</style>
+            <div
+              ref={editRef}
+              className="deco-edit-zone"
+              contentEditable
+              suppressContentEditableWarning
+              style={{
+                width: isAutoSized ? 'max-content' : '100%',
+                minWidth: isAutoSized ? '6px' : undefined,
+                height: isAutoSized ? 'auto' : '100%',
+                display: isAutoSized ? 'inline-block' : 'block',
+                fontSize: `${fSize}px`,
+                fontFamily: editShape.fontFamily || 'Arial',
+                fontWeight: editShape.fontWeight || 'normal',
+                fontStyle: editShape.fontStyle || 'normal',
+                textDecoration: editShape.textDecoration || 'none',
+                textAlign: (editShape.textAlign || 'left') as any,
+                color: editShape.textColor || '#1e293b',
+                lineHeight: editShape.lineHeight ? `${editShape.lineHeight}` : '1.4',
+                wordBreak: 'break-word' as const,
+                whiteSpace: 'pre-wrap',
+                outline: 'none',
+                cursor: 'text',
+                background: 'rgba(255,255,255,0.95)',
+                border: '2px solid #3b82f6',
+                borderRadius: '4px',
+                padding: '4px',
+                boxShadow: '0 0 0 2px rgba(59,130,246,0.15)',
+              }}
+              onInput={() => {
+                if (!editRef.current) return
+                updateShape(editingShapeId!, { text: editRef.current.innerHTML || '' })
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.preventDefault()
+                  handleEditingSave()
+                }
+                // Prevent deletion/backspace from removing the shape
+                e.stopPropagation()
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </foreignObject>
+        )
+      })()}
+    </svg>
+  )
+}

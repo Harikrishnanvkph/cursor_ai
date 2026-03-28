@@ -13,7 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ResponsiveAnimationsPanel } from "@/components/panels/responsive-animations-panel"
 import { DatasetsSlicesPanel } from "@/components/panels/datasets-slices-panel"
 import { TemplateListTab } from "@/components/panels/template-settings/template-list-tab"
-import { FileText, Layout, BarChart3, Edit3, Cloud, Settings } from "lucide-react"
+import { FileText, Layout, BarChart3, Edit3, Cloud, Settings, Sparkles } from "lucide-react"
+
 import { useState, useCallback } from "react"
 import { useUIStore } from "@/lib/stores/ui-store"
 import { Plus, Trash2, Eye, EyeOff } from "lucide-react"
@@ -147,7 +148,6 @@ function ContentSettingDialog() {
   )
 }
 
-
 export function ConfigSidebar() {
   const router = useRouter()
 
@@ -244,14 +244,23 @@ export function ConfigSidebar() {
           </button>
         </div>
 
-        <Tabs value={activeSidebarTab} onValueChange={(v) => setActiveSidebarTab(v as any)} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 gap-1 h-auto p-1 bg-gray-100 rounded-lg">
-            <TabsTrigger value="general" className="text-xs py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">General</TabsTrigger>
-            <TabsTrigger value="datasets" className="text-xs py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">Datasets</TabsTrigger>
-            <TabsTrigger value="templates" className="text-xs py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">Templates</TabsTrigger>
-          </TabsList>
+        <div className="w-full">
+          <div className="grid w-full grid-cols-3 gap-1 h-auto p-1 bg-gray-100 rounded-lg">
+            <button
+              onClick={() => setActiveSidebarTab('general')}
+              className={`text-xs py-2 rounded-md transition-all ${activeSidebarTab === 'general' ? 'bg-white shadow-sm font-medium text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+            >General</button>
+            <button
+              onClick={() => setActiveSidebarTab('datasets')}
+              className={`text-xs py-2 rounded-md transition-all ${activeSidebarTab === 'datasets' ? 'bg-white shadow-sm font-medium text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+            >Data</button>
+            <button
+              onClick={() => setActiveSidebarTab('templates')}
+              className={`text-xs py-2 rounded-md transition-all ${activeSidebarTab === 'templates' ? 'bg-white shadow-sm font-medium text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+            >Templates</button>
+          </div>
 
-          <TabsContent value="general" className="mt-4 space-y-4">
+          <div className={`mt-4 space-y-4 ${activeSidebarTab === 'general' ? 'block' : 'hidden'}`}>
             {/* Chart Type */}
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Chart Type</Label>
@@ -318,16 +327,18 @@ export function ConfigSidebar() {
 
             {/* Responsive Animations Panel */}
             <ResponsiveAnimationsPanel />
-          </TabsContent>
+          </div>
 
-          <TabsContent value="datasets" className="mt-4">
+          <div className={`mt-4 ${activeSidebarTab === 'datasets' ? 'block' : 'hidden'}`}>
             <DatasetsSlicesPanel />
-          </TabsContent>
+          </div>
 
-          <TabsContent value="templates" className="mt-4">
+
+
+          <div className={`mt-4 ${activeSidebarTab === 'templates' ? 'block' : 'hidden'}`}>
             <TemplateListTab currentCloudTemplate={currentCloudTemplate as any} mode="landing" />
-          </TabsContent>
-        </Tabs>
+          </div>
+        </div>
       </div>
     </div>
   )

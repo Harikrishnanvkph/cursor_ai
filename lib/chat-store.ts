@@ -451,6 +451,17 @@ export const useChatStore = create<ChatStore>()(
               set({ backendConversationId: null });
               // Also clear the current snapshot ID since this is a brand new chart
               useChartStore.getState().setCurrentSnapshotId(null);
+
+              // Auto-open Format Gallery for new chart creations (not template mode)
+              const templateStore = useTemplateStore.getState();
+              if (templateStore.generateMode !== 'template') {
+                try {
+                  const { useFormatGalleryStore } = require('./stores/format-gallery-store');
+                  useFormatGalleryStore.getState().openGallery();
+                } catch (e) {
+                  console.warn('Could not auto-open format gallery:', e);
+                }
+              }
             }
 
             // Capture undo point for AI-generated changes, but only if there are actual changes

@@ -3,7 +3,7 @@
 import React, { useState, useRef, useCallback, useEffect } from "react"
 
 import { useRouter } from "next/navigation"
-import { Send, BarChart2, Plus, SquarePen, PencilRuler, RotateCcw, Edit3, MessageSquare, Sparkles, ArrowRight, X, ChevronLeft, ChevronRight, PanelLeft, PanelRight, Settings, Brain, Info, LayoutDashboard } from "lucide-react"
+import { Send, BarChart2, Plus, SquarePen, PencilRuler, RotateCcw, Edit3, MessageSquare, Sparkles, ArrowRight, X, ChevronLeft, ChevronRight, PanelLeft, PanelRight, Settings, Brain, Info, LayoutDashboard, Layers } from "lucide-react"
 import { useChartStore } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
 import { dataService } from "@/lib/data-service"
@@ -25,6 +25,8 @@ import { PromptTemplate, chartTemplate, ChatWindow } from "@/components/landing"
 import { ConfigSidebar } from "@/components/config-sidebar"
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 import { toast } from "sonner"
+import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
+import { FormatGallery } from "@/components/gallery/FormatGallery"
 
 export default function LandingPage() {
   return (
@@ -51,6 +53,7 @@ function LandingPageContent() {
 
   const { addConversation, loadConversationsFromBackend, restoreConversation } = useHistoryStore()
   const { generateMode, currentTemplate, syncTemplatesFromCloud } = useTemplateStore()
+  const { isGalleryOpen, openGallery } = useFormatGalleryStore()
   const [input, setInput] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -997,6 +1000,13 @@ function LandingPageContent() {
                   <SquarePen className="w-3.5 h-3.5" />
                 </button>
                 <button
+                  className="bg-white/20 hover:bg-white/30 text-white font-semibold px-2 py-1.5 rounded-lg backdrop-blur-sm transition-colors text-xs border border-white/20 flex items-center gap-1"
+                  onClick={openGallery}
+                  title="Browse Format Gallery"
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                </button>
+                <button
                   className="bg-white/20 hover:bg-white/30 text-white font-semibold px-2 py-1.5 rounded-lg backdrop-blur-sm transition-colors text-xs border border-white/20"
                   onClick={() => setLeftSidebarOpen(false)}
                   title="Collapse Sidebar"
@@ -1198,9 +1208,10 @@ function LandingPageContent() {
           </div>
         )}
       </aside>
-      {/* Main Content Area */}
       <div className="flex-1 relative z-10">
-        {chartData?.datasets?.length > 0 && hasJSON ? (
+        {isGalleryOpen ? (
+          <FormatGallery />
+        ) : chartData?.datasets?.length > 0 && hasJSON ? (
           <ChartLayout
             leftSidebarOpen={leftSidebarOpen}
             setLeftSidebarOpen={setLeftSidebarOpen}

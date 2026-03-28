@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Sidebar } from "@/components/sidebar"
+import { useState, useEffect, useMemo, useRef } from "react"
+import { Sidebar, CHART_TABS, TEMPLATE_TABS } from "@/components/sidebar"
 import { ChartPreview } from "@/components/chart-preview"
 import { ConfigPanel } from "@/components/config-panel"
 import { useChartStore } from "@/lib/chart-store"
@@ -26,6 +26,8 @@ import { clearCurrentChart } from "@/lib/storage-utils"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { SaveChartDialog } from "@/components/ui/save-chart-dialog"
 import { ClearChartDialog } from "@/components/dialogs/clear-chart-dialog"
+import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
+import { FullSizeFormatView } from "@/components/gallery/FullSizeFormatView"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { EditorWelcomeScreen } from "@/components/editor-welcome-screen"
 import { DimensionMismatchDialog } from "@/components/dialogs/dimension-mismatch-dialog"
@@ -41,17 +43,6 @@ import {
 import { useIsMobile576, useIsTablet, useScreenDimensions } from "@/lib/hooks/use-screen-dimensions"
 import { parseDimension } from "@/lib/utils/dimension-utils"
 
-const TABS = [
-  { id: "types_toggles", label: "Types", icon: AlignEndHorizontal },
-  { id: "datasets_slices", label: "Datasets", icon: Database },
-  { id: "design", label: "Design", icon: Palette },
-  { id: "axes", label: "Axes", icon: Grid },
-  { id: "labels", label: "Labels", icon: Tag },
-  { id: "overlay", label: "Overlay", icon: Layers },
-  { id: "advanced", label: "Advanced", icon: Settings },
-  { id: "templates", label: "Templates", icon: FileText },
-  { id: "export", label: "Export", icon: Download },
-]
 
 export default function EditorPage() {
   return (
@@ -84,6 +75,7 @@ function EditorPageContent() {
 
   const { updateChartConfig } = useChartActions()
   const { setEditorMode, currentTemplate, editorMode, syncTemplatesFromCloud } = useTemplateStore()
+  const { selectedFormatId } = useFormatGalleryStore()
   const { messages, clearMessages, startNewConversation, setBackendConversationId } = useChatStore()
   const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false)
   const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false)
@@ -95,6 +87,20 @@ function EditorPageContent() {
   const [showClearDialog, setShowClearDialog] = useState(false)
   const [showModeConflictDialog, setShowModeConflictDialog] = useState(false)
   const [currentChartName, setCurrentChartName] = useState<string>("")
+
+  // Computed TABS based on editor mode — used for mobile/tablet bottom nav
+  const TABS = useMemo(() => {
+    if (editorMode === 'template') {
+      // Filter out Format Zones if no format is selected
+      return TEMPLATE_TABS.filter(tab => {
+        if (tab.id === 'tpl_format_zones' && !selectedFormatId) return false
+        return true
+      })
+    }
+    return CHART_TABS
+  }, [editorMode, selectedFormatId])
+
+  // --- Remove independent hook for auto-switching to prevent loop ---
 
   // Dimension mismatch dialog state
   const [showDimensionDialog, setShowDimensionDialog] = useState(false)
@@ -155,6 +161,13 @@ function EditorPageContent() {
         latestConfig.manualDimensions !== true ||
         latestConfig.responsive !== false
       ) {
+        console.log("updateChartConfig TRIGGERED from isMobile check!", { 
+           isMobile, screenWidth, 
+           lw: latestConfig.width, mw: mobileWidth,
+           lh: latestConfig.height, mh: mobileHeight,
+           lmd: latestConfig.manualDimensions,
+           lresp: latestConfig.responsive
+        });
         // We can safely call the store's action here
         useChartStore.getState().updateChartConfig({
           ...latestConfig,
@@ -182,35 +195,50 @@ function EditorPageContent() {
     };
   }, []);
 
-  // Handle mode switching based on active tab
-  // BUT preserve template mode if currentTemplate exists (loaded from history)
+  // Unified loop-prevention state syncing
+  const prevEditorMode = useRef(editorMode);
+  const prevActiveTab = useRef(activeTab);
+
   useEffect(() => {
-    // If we have a currentTemplate (loaded from history), preserve template mode
-    if (currentTemplate) {
-      // Only switch to chart mode if explicitly on a non-template tab AND user wants to edit chart
-      // Otherwise, keep template mode to preserve template data when saving
-      const templateTabs = ['templates'];
-      if (!templateTabs.includes(activeTab)) {
-        // User is on a chart tab, but we have a template loaded
-        // Keep template mode to preserve template data when saving
-        // The UI will still show chart editing capabilities
-        return; // Don't change editorMode - keep it as 'template'
+    const isTemplateTabOnly = activeTab.startsWith('tpl_');
+    const isChartTabOnly = CHART_TABS.some(t => t.id === activeTab && !['templates', 'export'].includes(t.id));
+    
+    // Neutral tabs: stay in current mode
+    const isNeutralTab = activeTab === 'export' || activeTab === 'templates';
+    
+    const modeChanged = prevEditorMode.current !== editorMode;
+    const tabChanged = prevActiveTab.current !== activeTab;
+
+    prevEditorMode.current = editorMode;
+    prevActiveTab.current = activeTab;
+
+    if (modeChanged && !tabChanged) {
+      // Mode was toggled by the top toggle
+      if (editorMode === 'template' && isChartTabOnly) {
+        setActiveTab('tpl_templates');
+      } else if (editorMode === 'chart' && isTemplateTabOnly) {
+        setActiveTab('types_toggles');
+      }
+    } else if (tabChanged && !modeChanged) {
+      // Tab was clicked in the sidebar
+      if (isNeutralTab) {
+        // Do nothing, preserve current editorMode
+      } else if (isTemplateTabOnly && editorMode !== 'template') {
+        if (!currentTemplate) setEditorMode('template'); 
+      } else if (isChartTabOnly && editorMode !== 'chart') {
+        if (!currentTemplate) setEditorMode('chart');
+      }
+    } else if (!modeChanged && !tabChanged) {
+      // On mount correction if state is fundamentally incoherent
+      if (isTemplateTabOnly && editorMode === 'chart' && !currentTemplate) {
+        setEditorMode('template');
+        prevEditorMode.current = 'template';
+      } else if (isChartTabOnly && editorMode === 'template') {
+        setActiveTab('tpl_templates');
+        prevActiveTab.current = 'tpl_templates';
       }
     }
-
-    // Template-specific tabs: only templates
-    const templateTabs = ['templates'];
-
-    if (templateTabs.includes(activeTab)) {
-      setEditorMode('template');
-    } else {
-      // Chart-specific tabs: types_toggles, datasets_slices, design, axes, labels, overlay, animations, advanced, export
-      // Only set to chart if we don't have a currentTemplate
-      if (!currentTemplate) {
-        setEditorMode('chart');
-      }
-    }
-  }, [activeTab, setEditorMode, currentTemplate]);
+  }, [activeTab, editorMode, currentTemplate, setActiveTab, setEditorMode]);
 
   // Check if there's a dimension mismatch between chart and template
   const checkDimensionMismatch = (): boolean => {

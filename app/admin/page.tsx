@@ -122,6 +122,26 @@ export default function AdminPage() {
               </div>
             </div>
           </Link>
+
+          {/* Formats Action Card */}
+          <Link href="/admin/formats" className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-900 to-gray-900/50 border border-white/5 p-6 hover:border-orange-500/50 transition-all duration-300 block">
+            <div className="absolute inset-0 bg-gradient-to-br from-orange-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="relative">
+              <div className="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center mb-4 text-orange-400 group-hover:scale-110 transition-transform duration-300">
+                <BarChart3 className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-semibold text-white mb-2">Manage Formats</h3>
+              <p className="text-sm text-gray-400">
+                Create and manage format blueprints for the AI-powered chart gallery.
+              </p>
+              <div className="mt-6 flex items-center text-sm font-medium text-orange-400 group-hover:text-orange-300">
+                Open Formats
+                <svg className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+              </div>
+            </div>
+          </Link>
         </div>
       </main>
 

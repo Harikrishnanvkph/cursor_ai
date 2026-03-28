@@ -34,6 +34,7 @@ import { useZoomPan } from "@/lib/hooks/use-zoom-pan"
 import { ChartPreviewToolbar } from "@/components/chart-preview/chart-preview-toolbar"
 import { ChartPreviewCanvas } from "@/components/chart-preview/chart-preview-canvas"
 import { FullscreenOverlay } from "@/components/chart-preview/fullscreen-overlay"
+import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 
 export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeftSidebar, isLeftSidebarCollapsed, isTablet = false, activeTab, onTabChange, onNewChart }: {
   onToggleSidebar?: () => void,
@@ -54,6 +55,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   const chartType = useChartType();
   const chartMode = useChartMode();
 
+  const { selectedFormatId } = useFormatGalleryStore();
   const resetChart = useChartStore(s => s.resetChart);
   const setHasJSON = useChartStore(s => s.setHasJSON);
   const { shouldShowTemplate, editorMode, setEditorMode } = useTemplateStore();
@@ -255,7 +257,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   }
 
   // --- Template mode: delegate ---
-  if (shouldShowTemplate()) {
+  if (shouldShowTemplate() || (editorMode === 'template' && selectedFormatId)) {
     return (
       <>
         <TemplateChartPreview
@@ -268,7 +270,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
           onNewChart={onNewChart}
         />
         <ChartTransitionDialog
-          open={transitions.scatterBubbleSetup.active && transitions.scatterBubbleSetup.targetType !== null && transitions.scatterBubbleSetup.direction !== null}
+          open={transitions.scatterBubbleSetup.active && transitions.scatterBubbleSetup.targetType !== null && transitions.scatterBubbleSetup.direction !== null && editorMode === 'template'}
           targetChartType={transitions.scatterBubbleSetup.targetType || 'bar'}
           direction={transitions.scatterBubbleSetup.direction || 'toScatter'}
           hasBackup={transitions.scatterBubbleSetup.backupData !== null}

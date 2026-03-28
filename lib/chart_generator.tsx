@@ -176,6 +176,12 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
   const [hoveredDatasetIndex, setHoveredDatasetIndex] = useState<number | null>(null);
   const [isMobile, setIsMobile] = useState(false);
 
+  // Refs for stable event listener callbacks — prevents the event listener
+  // useEffect from re-running on every render when action functions change
+  const actionsRef = useRef({ updateOverlayImage, updateOverlayText, updateOverlayShape, updateDataset, addOverlayShape });
+  const selectionsRef = useRef({ setSelectedImageId, setSelectedTextId, setSelectedShapeId });
+  const stateRef = useRef({ chartData, overlayTexts });
+
   // Zustand hydration gate:
   // Prevents the chart from rendering until the chart store has finished hydrating
   // from localStorage. Without this, the component renders first with empty/default
@@ -235,12 +241,20 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     }
   }, []);
 
+  // Keep refs in sync with latest values (runs every render but does no real work)
+  useEffect(() => {
+    actionsRef.current = { updateOverlayImage, updateOverlayText, updateOverlayShape, updateDataset, addOverlayShape };
+    selectionsRef.current = { setSelectedImageId, setSelectedTextId, setSelectedShapeId };
+    stateRef.current = { chartData, overlayTexts };
+  });
+
   // Register chart ref globally
   useEffect(() => {
     setGlobalChartRef(chartRef);
   }, [setGlobalChartRef]);
 
   // Handle overlay position updates from drag and drop
+  // Uses refs for stable callbacks — effect runs only ONCE when canvas is available
   useEffect(() => {
     const canvas = chartRef.current?.canvas
     if (!canvas) return
@@ -249,13 +263,14 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
 
     const handleOverlayPositionUpdate = (event: CustomEvent) => {
       const { type, id, x, y } = event.detail
+      const actions = actionsRef.current
 
       if (type === 'image') {
-        updateOverlayImage(id, { x, y })
+        actions.updateOverlayImage(id, { x, y })
       } else if (type === 'text') {
-        updateOverlayText(id, { x, y })
+        actions.updateOverlayText(id, { x, y })
       } else if (type === 'shape') {
-        updateOverlayShape(id, { x, y })
+        actions.updateOverlayShape(id, { x, y })
       }
 
       // Update chart to reflect new position
@@ -265,7 +280,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     const handleCalloutPositionUpdate = (event: CustomEvent) => {
       const { datasetIndex, pointIndex, calloutX, calloutY } = event.detail
 
-      const dataset = chartData.datasets[datasetIndex]
+      const dataset = stateRef.current.chartData.datasets[datasetIndex]
       if (!dataset) return
 
       // Create a shallow copy of pointImageConfig array to modify the specific index
@@ -281,7 +296,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
         }
 
         // Update the dataset with the new config
-        updateDataset(datasetIndex, { pointImageConfig: newPointImageConfig })
+        actionsRef.current.updateDataset(datasetIndex, { pointImageConfig: newPointImageConfig })
         console.log('✅ Updated callout position in store:', { datasetIndex, pointIndex, calloutX, calloutY })
       }
     }
@@ -297,7 +312,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     const handleDimensionsUpdate = (event: CustomEvent) => {
       const { imageId, updateData } = event.detail
       console.log('📏 Dimensions update event received:', { imageId, updateData })
-      updateOverlayImage(imageId, updateData)
+      actionsRef.current.updateOverlayImage(imageId, updateData)
 
       // Update chart to reflect new dimensions
       if (chartRef.current) {
@@ -308,7 +323,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     const handleImageSelected = (event: CustomEvent) => {
       const { imageId } = event.detail
       console.log('🎯 Image selected/deselected:', imageId)
-      setSelectedImageId(imageId)
+      selectionsRef.current.setSelectedImageId(imageId)
 
       // Update chart to show/hide selection handles
       if (chartRef.current) {
@@ -320,7 +335,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     const handleTextSelected = (event: CustomEvent) => {
       const { textId } = event.detail
       console.log('🎯 Text selected/deselected:', textId)
-      setSelectedTextId(textId)
+      selectionsRef.current.setSelectedTextId(textId)
 
       // Update chart to show/hide selection handles
       if (chartRef.current) {
@@ -332,7 +347,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     const handleImageResize = (event: CustomEvent) => {
       const { id, x, y, width, height, useNaturalSize } = event.detail
       console.log('🔄 Image resize:', { id, x, y, width, height, useNaturalSize })
-      updateOverlayImage(id, { x, y, width, height, useNaturalSize })
+      actionsRef.current.updateOverlayImage(id, { x, y, width, height, useNaturalSize })
 
       // Update chart to reflect new size
       if (chartRef.current) {
@@ -343,7 +358,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     const handleShapeSelected = (event: CustomEvent) => {
       const { shapeId } = event.detail
       console.log('🎯 Shape selected/deselected:', shapeId)
-      setSelectedShapeId(shapeId)
+      selectionsRef.current.setSelectedShapeId(shapeId)
 
       // Update chart to show/hide selection handles
       if (chartRef.current) {
@@ -354,7 +369,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     const handleShapeResize = (event: CustomEvent) => {
       const { id, x, y, width, height } = event.detail
       console.log('🔄 Shape resize:', { id, x, y, width, height })
-      updateOverlayShape(id, { x, y, width, height })
+      actionsRef.current.updateOverlayShape(id, { x, y, width, height })
 
       // Update chart to reflect new size
       if (chartRef.current) {
@@ -366,7 +381,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
       const { id, x, y, width, height } = event.detail
       console.log('🔄 Text resize:', { id, x, y, width, height })
 
-      const txt = overlayTexts.find(t => t.id === id)
+      const txt = stateRef.current.overlayTexts.find(t => t.id === id)
       if (!txt) return
 
       const paddingX = txt.paddingX || 8
@@ -377,7 +392,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
 
       // txt.x/y are relative to chartArea.left/top
       // The event gives us the top-left of the bounding box (including padding)
-      updateOverlayText(id, {
+      actionsRef.current.updateOverlayText(id, {
         x: x + paddingX,
         y: y + paddingY,
         maxWidth: newMaxWidth
@@ -390,7 +405,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
 
     const handleShapeRotate = (event: CustomEvent) => {
       const { id, rotation } = event.detail
-      updateOverlayShape(id, { rotation })
+      actionsRef.current.updateOverlayShape(id, { rotation })
 
       if (chartRef.current) {
         chartRef.current.update('none')
@@ -399,7 +414,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
 
     const handleImageRotate = (event: CustomEvent) => {
       const { id, rotation } = event.detail
-      updateOverlayImage(id, { rotation })
+      actionsRef.current.updateOverlayImage(id, { rotation })
 
       if (chartRef.current) {
         chartRef.current.update('none')
@@ -408,41 +423,14 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
 
     const handleTextRotate = (event: CustomEvent) => {
       const { id, rotation } = event.detail
-      updateOverlayText(id, { rotation })
+      actionsRef.current.updateOverlayText(id, { rotation })
 
       if (chartRef.current) {
         chartRef.current.update('none')
       }
     }
 
-    const handleDrawingCompleted = (event: CustomEvent) => {
-      const { x, y, width, height, points } = event.detail
-      console.log('✏️ Drawing completed:', { x, y, width, height, points })
 
-      const uiState = useUIStore.getState()
-
-      addOverlayShape({
-        type: 'freehand',
-        x,
-        y,
-        width,
-        height,
-        rotation: 0,
-        skewX: 0,
-        skewY: 0,
-        fillColor: 'transparent',
-        borderColor: uiState.defaultDrawingColor || '#007acc',
-        borderWidth: uiState.defaultDrawingThickness || 2,
-        borderStyle: uiState.defaultDrawingStyle || 'solid',
-        visible: true,
-        zIndex: 10,
-        points
-      })
-
-      if (chartRef.current) {
-        chartRef.current.update('none')
-      }
-    }
 
     const handleContextMenu = (event: CustomEvent) => {
       const { type, id, x, y, data } = event.detail
@@ -472,9 +460,8 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     canvas.addEventListener('overlayImageRotate', handleImageRotate as EventListener)
     canvas.addEventListener('overlayTextRotate', handleTextRotate as EventListener)
     canvas.addEventListener('overlayContextMenu', handleContextMenu as EventListener)
-    canvas.addEventListener('overlayDrawingCompleted', handleDrawingCompleted as EventListener)
 
-    console.log('✅ Event listeners attached to chart canvas')
+      console.log('✅ Event listeners attached to chart canvas')
 
     return () => {
       canvas.removeEventListener('overlayPositionUpdate', handleOverlayPositionUpdate as EventListener)
@@ -491,9 +478,9 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
       canvas.removeEventListener('overlayImageRotate', handleImageRotate as EventListener)
       canvas.removeEventListener('overlayTextRotate', handleTextRotate as EventListener)
       canvas.removeEventListener('overlayContextMenu', handleContextMenu as EventListener)
-      canvas.removeEventListener('overlayDrawingCompleted', handleDrawingCompleted as EventListener)
     }
-  }, [updateOverlayImage, updateOverlayText, updateOverlayShape, updateDataset, setSelectedImageId, setSelectedTextId, setSelectedShapeId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeHydrated]);
 
 
   // Get enabled datasets (respect single/grouped mode and legendFilter)
@@ -1415,15 +1402,19 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                       mode: chartConfig.interaction?.mode ?? 'point',
                     },
                     onHover: (event: any, elements: any[]) => {
+                      // Guard: Chart.js can call onHover during init/re-renders.
+                      // Only update React state when the hovered dataset index actually changes.
                       if (!chartConfig.interaction?.mode) {
-                        setHoveredDatasetIndex(null);
-                        return;
+                        setHoveredDatasetIndex((prev) => (prev === null ? prev : null));
+                        return
                       }
-                      if (chartMode === 'grouped' && elements && elements.length > 0) {
-                        setHoveredDatasetIndex(elements[0].datasetIndex);
-                      } else {
-                        setHoveredDatasetIndex(null);
-                      }
+
+                      const next =
+                        chartMode === 'grouped' && elements && elements.length > 0
+                          ? elements[0].datasetIndex
+                          : null
+
+                      setHoveredDatasetIndex((prev) => (prev === next ? prev : next))
                     },
                     plugins: ({
                       ...chartConfig.plugins,
@@ -1610,15 +1601,19 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                       mode: chartConfig.interaction?.mode ?? 'point',
                     },
                     onHover: (event: any, elements: any[]) => {
+                      // Guard: Chart.js can call onHover during init/re-renders.
+                      // Only update React state when the hovered dataset index actually changes.
                       if (!chartConfig.interaction?.mode) {
-                        setHoveredDatasetIndex(null);
-                        return;
+                        setHoveredDatasetIndex((prev) => (prev === null ? prev : null));
+                        return
                       }
-                      if (chartMode === 'grouped' && elements && elements.length > 0) {
-                        setHoveredDatasetIndex(elements[0].datasetIndex);
-                      } else {
-                        setHoveredDatasetIndex(null);
-                      }
+
+                      const next =
+                        chartMode === 'grouped' && elements && elements.length > 0
+                          ? elements[0].datasetIndex
+                          : null
+
+                      setHoveredDatasetIndex((prev) => (prev === next ? prev : next))
                     },
                     plugins: ({
                       ...chartConfig.plugins,

@@ -308,6 +308,69 @@ class DataService {
   }
 
   // =============================================
+  // FORMAT MANAGEMENT (Format Blueprints)
+  // =============================================
+
+  async getFormats(): Promise<ApiResponse<any[]>> {
+    return this.request('/api/data/formats');
+  }
+
+  async getOfficialFormats(): Promise<ApiResponse<any[]>> {
+    return this.request('/api/data/formats/official');
+  }
+
+  async getFormat(id: string): Promise<ApiResponse<any>> {
+    return this.request(`/api/data/formats/${id}`);
+  }
+
+  async createFormat(formatData: any): Promise<ApiResponse<any>> {
+    this.clearCache();
+    return this.request('/api/data/formats', {
+      method: 'POST',
+      body: JSON.stringify(formatData),
+    }, false);
+  }
+
+  async updateFormat(id: string, updates: any): Promise<ApiResponse<any>> {
+    this.clearCache();
+    return this.request(`/api/data/formats/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    }, false);
+  }
+
+  async deleteFormat(id: string): Promise<ApiResponse<void>> {
+    try {
+      this.clearCache();
+      return await this.request(`/api/data/formats/${id}`, {
+        method: 'DELETE',
+      }, false);
+    } catch (error: any) {
+      console.error('Error in deleteFormat:', error);
+      return {
+        error: error.message || 'Failed to delete format',
+        data: undefined
+      };
+    }
+  }
+
+  async setFormatOfficial(id: string, isOfficial: boolean): Promise<ApiResponse<any>> {
+    this.clearCache();
+    return this.request(`/api/data/formats/${id}/official`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isOfficial }),
+    }, false);
+  }
+
+  async bulkCreateFormats(formats: any[]): Promise<ApiResponse<any>> {
+    this.clearCache();
+    return this.request('/api/data/formats/bulk', {
+      method: 'POST',
+      body: JSON.stringify({ formats }),
+    }, false);
+  }
+
+  // =============================================
   // CACHE MANAGEMENT
   // =============================================
 

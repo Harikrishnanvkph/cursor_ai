@@ -10,6 +10,10 @@ import { ExportPanel } from "./panels/export-panel"
 import { TypesTogglesPanel } from "./panels/types-toggles-panel"
 import { DatasetsSlicesPanel } from "./panels/datasets-slices-panel"
 import { TemplatesPanel } from "./panels/template-settings"
+import { TemplateTextPanel } from "./panels/template-panels/template-text-panel"
+import { TemplateChartZonePanel } from "./panels/template-panels/template-chart-zone-panel"
+import { FormatZonesPanel } from "./panels/template-panels/format-zones-panel"
+import { DecorationsPanel } from "./panels/template-panels/decorations-panel"
 import { Button } from "@/components/ui/button"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
 import { ChevronLeft, Settings, Save, X, Loader2, Plus } from "lucide-react"
@@ -73,6 +77,7 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
 
   const renderPanel = () => {
     switch (activeTab) {
+      // ═══ Chart Mode Panels ═══
       case "types_toggles":
         return <TypesTogglesPanel />
       case "datasets_slices":
@@ -90,9 +95,20 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
       case "advanced":
         return <AdvancedPanel />
       case "templates":
+      case "tpl_templates":
         return <TemplatesPanel />
       case "export":
         return <ExportPanel onTabChange={onTabChange} />
+      // ═══ Template Mode Panels ═══
+      case "tpl_text":
+        return <TemplateTextPanel />
+      case "tpl_chart_zone":
+        return <TemplateChartZonePanel />
+      case "tpl_decorations":
+        return <DecorationsPanel />
+
+      case "tpl_format_zones":
+        return <FormatZonesPanel />
       default:
         return <TypesTogglesPanel />
     }

@@ -5,6 +5,7 @@ import { persist } from "zustand/middleware";
 import { useChatStore, ChatMessage, ChartSnapshot } from "@/lib/chat-store";
 import { useChartStore, type SupportedChartType, type ExtendedChartData } from "@/lib/chart-store";
 import { useTemplateStore } from "@/lib/template-store";
+import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store";
 import { dataService } from "@/lib/data-service";
 import { createExpiringStorage } from "@/lib/storage-utils";
 import type { ChartOptions } from "chart.js";
@@ -205,6 +206,24 @@ export const useHistoryStore = create<HistoryStore>()(
             }
           }
 
+          // Restore format mode if snapshot has format data
+          if (chartConfig?.formatData) {
+            const { formatId, contentPackage, contextualImageUrl } = chartConfig.formatData;
+            const formatStore = useFormatGalleryStore.getState();
+            
+            formatStore.setSelectedFormat(formatId, conv.snapshot.chartType);
+            if (contentPackage) formatStore.setContentPackage(contentPackage);
+            if (contextualImageUrl) formatStore.setContextualImageUrl(contextualImageUrl);
+            
+            const templateStore = useTemplateStore.getState();
+            templateStore.clearAllTemplateState(); // Clear standard templates
+            templateStore.setEditorMode('template'); // Set to template mode for format rendering
+            templateStore.setTemplateSavedToCloud(true);
+            
+            console.log('📊 Restored infographic format:', formatId);
+            return; // We're done restoring
+          }
+
           // Restore template mode if snapshot has template data
           if (conv.snapshot.template_structure || conv.snapshot.is_template_mode) {
             if (conv.snapshot.template_structure) {
@@ -224,13 +243,13 @@ export const useHistoryStore = create<HistoryStore>()(
                 const content = conv.snapshot.template_content;
 
                 // Update text areas with saved content
-                const updatedTextAreas = template.textAreas.map(area => {
+                const updatedTextAreas = template.textAreas.map((area: any) => {
                   const areaContent = content[area.type];
                   if (areaContent !== undefined) {
                     // Handle multiple areas of same type (array) or single content
                     if (Array.isArray(areaContent)) {
                       // Find index of this area among areas of same type
-                      const sameTypeAreas = template.textAreas.filter(ta => ta.type === area.type);
+                      const sameTypeAreas = template.textAreas.filter((ta: any) => ta.type === area.type);
                       const index = sameTypeAreas.indexOf(area);
                       return {
                         ...area,
@@ -255,10 +274,11 @@ export const useHistoryStore = create<HistoryStore>()(
               templateStore.clearUnusedContents()
             }
           } else {
-            // No template data - explicitly clear ALL template state and set chart mode
-            console.log('📊 Loading chart-only conversation - clearing all template state')
+            // No template/format data - explicitly clear ALL template state and set chart mode
+            console.log('📊 Loading chart-only conversation - clearing all template/format state')
             const templateStore = useTemplateStore.getState()
             templateStore.clearAllTemplateState() // This clears templateInBackground, currentTemplate, editorMode to 'chart', etc.
+            useFormatGalleryStore.getState().setSelectedFormat(null, 'bar') // Clear formats too
           }
         }
       },

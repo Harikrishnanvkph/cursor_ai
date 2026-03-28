@@ -23,6 +23,9 @@ import { SaveChartDialog } from "@/components/ui/save-chart-dialog"
 import { SaveModeConflictDialog } from "@/components/dialogs/save-mode-conflict-dialog"
 import { useHistoryStore } from "@/lib/history-store"
 import { ClearChartDialog } from "@/components/dialogs/clear-chart-dialog"
+import { FormatGallery } from "@/components/gallery/FormatGallery"
+import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
+import { FullSizeFormatView } from "@/components/gallery/FullSizeFormatView"
 
 // parseDimension imported from shared utility
 import { parseDimension } from "@/lib/utils/dimension-utils"
@@ -36,6 +39,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
   const hasChartData = chartData.datasets.length > 0
 
   const { isSidebarCollapsed: isCollapsed, toggleSidebar } = useUIStore()
+  const { isGalleryOpen, selectedFormatId } = useFormatGalleryStore()
   const [isHovering, setIsHovering] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -162,21 +166,23 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
   // Check if there's a mode conflict (template chart being saved from chart mode)
   const checkModeConflict = (): boolean => {
     const { editorMode, templateSavedToCloud, currentTemplate, templateInBackground } = useTemplateStore.getState()
-    const hasTemplate = !!(currentTemplate || templateInBackground)
-    // Conflict: in chart mode, but this chart was originally a template chart from cloud
+    const { selectedFormatId } = useFormatGalleryStore.getState()
+    const hasTemplate = !!(currentTemplate || templateInBackground || selectedFormatId)
+    // Conflict: in chart mode, but this chart was originally a template/format chart from cloud
     return editorMode === 'chart' && templateSavedToCloud && hasTemplate
   }
 
-  // Handle "Save Chart & Discard Template" — strips template, saves as chart-only
+  // Handle "Save Chart & Discard Template" — strips template/format, saves as chart-only
   const handleSaveChartDiscardTemplate = async () => {
     setShowModeConflictDialog(false)
-    // Clear template state so extractTemplateData() returns null
+    // Clear template and format state
     useTemplateStore.getState().clearAllTemplateState()
+    useFormatGalleryStore.getState().setSelectedFormat(null, 'bar')
     // Proceed to save dialog (will now save without template)
     proceedToSaveDialog()
   }
 
-  // Handle "Save as Separate Chart" — creates new conversation without template
+  // Handle "Save as Separate Chart" — creates new conversation without template/format
   const handleSaveAsSeparateChart = async () => {
     setShowModeConflictDialog(false)
     if (!user) {
@@ -212,8 +218,9 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
       if (snapshotResult.data?.id) {
         useChartStore.getState().setCurrentSnapshotId(snapshotResult.data.id)
       }
-      // Clear template state locally
+      // Clear template and format state locally
       useTemplateStore.getState().clearAllTemplateState()
+      useFormatGalleryStore.getState().setSelectedFormat(null, 'bar')
       toast.success("Chart saved as separate copy!")
     } catch (error) {
       console.error('Save as separate chart failed:', error)
@@ -301,11 +308,11 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
 
   return (
     <div className="flex flex-1 h-full overflow-hidden relative">
-      {/* Chart Area */}
       <div
         className={cn(
           "p-4 overflow-auto absolute inset-0 right-auto",
-          isCollapsed ? "right-16" : "right-[280px]"
+          isCollapsed ? "right-16" : "right-[280px]",
+          selectedFormatId && editorMode === 'template' ? "p-0 bg-gray-50/50" : "" // Remove padding for full-size view
         )}
         style={{
           left: 0,
@@ -313,9 +320,9 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
         }}
       >
         <ChartPreview
-          onToggleSidebar={toggleSidebar}
-          isSidebarCollapsed={isCollapsed}
-          onToggleLeftSidebar={() => setLeftSidebarOpen(!leftSidebarOpen)}
+          onToggleSidebar={() => setRightSidebarOpen(!rightSidebarOpen)}
+          isSidebarCollapsed={!rightSidebarOpen}
+          onToggleLeftSidebar={setLeftSidebarOpen}
           isLeftSidebarCollapsed={!leftSidebarOpen}
         />
       </div>
@@ -432,7 +439,6 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
           </>
         )}
       </div>
-
       {/* Dimension Mismatch Dialog */}
       {dimensionMismatchInfo && (
         <DimensionMismatchDialog

@@ -30,8 +30,13 @@ import {
   useActiveGroupId,
   useChartGroups
 } from "@/lib/hooks/use-chart-state"
+import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
+import { renderFormat } from "@/lib/variant-engine"
+import { FormatRenderer } from "@/components/gallery/FormatRenderer"
 
 import ChartGenerator from "@/lib/chart_generator"
+import { useUIStore } from "@/lib/stores/ui-store"
+import { DecorationShapeRenderer } from "@/components/decorations/DecorationShapeRenderer"
 
 interface TemplateChartPreviewProps {
   onToggleSidebar?: () => void
@@ -53,6 +58,14 @@ export function TemplateChartPreview({
   onNewChart
 }: TemplateChartPreviewProps) {
   const { currentTemplate, templateInBackground, selectedTextAreaId, setSelectedTextAreaId, editorMode, setEditorMode, contentTypePreferences } = useTemplateStore()
+  const { selectedFormatId, contentPackage, formats, contextualImageUrl } = useFormatGalleryStore()
+
+  const renderedFormat = React.useMemo(() => {
+    if (!selectedFormatId || !contentPackage || formats.length === 0) return null
+    const format = formats.find(f => f.id === selectedFormatId)
+    if (!format) return null
+    return renderFormat(format, contentPackage, undefined, contextualImageUrl || undefined)
+  }, [selectedFormatId, contentPackage, formats, contextualImageUrl])
 
   // Granular hooks
   const chartData = useChartData()
@@ -213,8 +226,19 @@ export function TemplateChartPreview({
       const offsetY = (containerHeight - template.height) / 2
 
       setPanOffset({ x: offsetX, y: offsetY })
+    } else if (renderedFormat && containerRef.current) {
+      const formatW = renderedFormat.skeleton.dimensions.width
+      const formatH = renderedFormat.skeleton.dimensions.height
+      const containerWidth = containerRef.current.clientWidth || 800
+      const containerHeight = containerRef.current.clientHeight || 600
+
+      // Calculate initial offset to center the template
+      const offsetX = (containerWidth - formatW) / 2
+      const offsetY = (containerHeight - formatH) / 2
+
+      setPanOffset({ x: offsetX, y: offsetY })
     }
-  }, [currentTemplate?.id, templateInBackground?.id]) // Only run when template ID changes
+  }, [currentTemplate?.id, templateInBackground?.id, selectedFormatId]) // Only run when template ID changes
 
 
 
@@ -328,6 +352,16 @@ export function TemplateChartPreview({
       const offsetY = (containerHeight - template.height) / 2
 
       setPanOffset({ x: offsetX, y: offsetY })
+    } else if (renderedFormat && containerRef.current) {
+      const formatW = renderedFormat.skeleton.dimensions.width
+      const formatH = renderedFormat.skeleton.dimensions.height
+      const containerWidth = containerRef.current.clientWidth || 800
+      const containerHeight = containerRef.current.clientHeight || 600
+
+      const offsetX = (containerWidth - formatW) / 2
+      const offsetY = (containerHeight - formatH) / 2
+
+      setPanOffset({ x: offsetX, y: offsetY })
     } else {
       setPanOffset({ x: 0, y: 0 })
     }
@@ -402,6 +436,27 @@ export function TemplateChartPreview({
 
   // Calculate template dimensions and scaling
   const getTemplateDimensions = () => {
+    if (renderedFormat) {
+       const formatW = renderedFormat.skeleton.dimensions.width
+       const formatH = renderedFormat.skeleton.dimensions.height
+       
+       const containerWidth = containerRef.current?.clientWidth || 800
+       const containerHeight = containerRef.current?.clientHeight || 600
+       const padding = 40
+       const availableWidth = containerWidth - padding
+       const availableHeight = containerHeight - padding
+       
+       const scaleX = availableWidth / formatW
+       const scaleY = availableHeight / formatH
+       const baseScale = Math.min(scaleX, scaleY, 1)
+
+       return {
+         width: formatW,
+         height: formatH,
+         scale: baseScale * zoom
+       }
+    }
+
     const template = currentTemplate || templateInBackground
     if (!template) return { width: 800, height: 600, scale: 1 }
 
@@ -793,7 +848,7 @@ export function TemplateChartPreview({
   }
 
   const template = currentTemplate || templateInBackground
-  if (!template) {
+  if (!template && !renderedFormat) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
@@ -901,7 +956,11 @@ export function TemplateChartPreview({
               </SelectContent>
             </Select>
             {/* Template dimensions */}
-            <span className="text-xs text-gray-400">{template.width} × {template.height}px</span>
+            {renderedFormat ? (
+              <span className="text-xs text-gray-400">{renderedFormat.skeleton.dimensions.width} × {renderedFormat.skeleton.dimensions.height}px</span>
+            ) : template ? (
+              <span className="text-xs text-gray-400">{template.width} × {template.height}px</span>
+            ) : null}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -1026,14 +1085,42 @@ export function TemplateChartPreview({
               transformOrigin: 'center center'
             }}
           >
-            {/* Template Background */}
-            {renderTemplateBackground()}
 
-            {/* Chart Area */}
-            {renderChartArea()}
 
-            {/* Text Areas */}
-            {renderTextAreas()}
+            {renderedFormat ? (
+              <>
+                <FormatRenderer
+                  rendered={renderedFormat}
+                  scale={1}
+                  interactive={true}
+                  panMode={panMode}
+                />
+                {/* Decoration Shapes Layer (format mode) */}
+                <DecorationShapeRenderer
+                  containerWidth={width}
+                  containerHeight={height}
+                  panMode={panMode}
+                />
+              </>
+            ) : (
+              <>
+                {/* Template Background */}
+                {renderTemplateBackground()}
+
+                {/* Chart Area */}
+                {renderChartArea()}
+
+                {/* Text Areas */}
+                {renderTextAreas()}
+
+                {/* Decoration Shapes Layer (template mode) */}
+                <DecorationShapeRenderer
+                  containerWidth={width}
+                  containerHeight={height}
+                  panMode={panMode}
+                />
+              </>
+            )}
           </div>
         </div>
       </div>
