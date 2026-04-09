@@ -28,7 +28,11 @@ export type DecorationShapeType =
   | 'emoji-star' | 'emoji-warning' | 'emoji-heart' | 'emoji-thumb'
   | 'emoji-fire' | 'emoji-idea' | 'emoji-check' | 'emoji-cross'
   | 'emoji-smile' | 'emoji-sad' | 'emoji-rocket' | 'emoji-target' | 'emoji-laugh'
+  | 'emoji-clap' | 'emoji-eyes' | 'emoji-sparkles' | 'emoji-party'
+  | 'emoji-brain' | 'emoji-muscle' | 'emoji-crown' | 'emoji-diamond'
+  | 'emoji-medal' | 'emoji-clock' | 'emoji-lock' | 'emoji-umbrella'
   | 'exclamation' | 'question' | 'pushpin' | 'bullseye'
+  | 'hexagon' | 'heart' | 'pentagon' | 'diamond-shape'
   // Section element types
   | 'textbox'
   | 'textbox-auto'

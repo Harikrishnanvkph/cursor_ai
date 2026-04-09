@@ -52,7 +52,7 @@ export function DatasetPanel() {
         borderWidth: 2,
         pointRadius: 5,
         pointHoverRadius: 8,
-        tension: 0.3,
+        tension: chartType === 'radar' ? 0 : 0.3,
         fill: false,
         pointImages: Array(5).fill(null),
         pointImageConfig: Array(5).fill({

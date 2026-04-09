@@ -12,6 +12,13 @@ interface UIStore {
     activeSidebarTab: 'general' | 'datasets' | 'templates'
     setActiveSidebarTab: (tab: 'general' | 'datasets' | 'templates') => void
 
+    // Grouped Mode Settings Filter
+    // These track which group/dataset the user is targeting in Design, Labels, Advanced tabs
+    settingsGroupId: string | null   // null = use activeGroupId from chart store
+    settingsDatasetId: string | null // null or 'all' = apply to all datasets in the group
+    setSettingsGroupId: (id: string | null) => void
+    setSettingsDatasetId: (id: string | null) => void
+
     // Selection State (Migrated from ChartStore)
     selectedImageId: string | null
     selectedTextId: string | null
@@ -32,6 +39,12 @@ export const useUIStore = create<UIStore>()(
             // Config Panel
             activeSidebarTab: 'general',
             setActiveSidebarTab: (tab) => set({ activeSidebarTab: tab }),
+
+            // Grouped Mode Settings Filter
+            settingsGroupId: null,
+            settingsDatasetId: null,
+            setSettingsGroupId: (id) => set({ settingsGroupId: id, settingsDatasetId: null }),
+            setSettingsDatasetId: (id) => set({ settingsDatasetId: id }),
 
             // Selection
             selectedImageId: null,

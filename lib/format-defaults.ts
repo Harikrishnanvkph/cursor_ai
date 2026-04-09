@@ -39,12 +39,12 @@ export const defaultFormats: FormatSkeleton[] = [
         id: 'bg-1',
         type: 'background',
         style: {
-          type: 'image',
-          overlay: 'rgba(26, 26, 46, 0.75)',
-          blur: 4,
-          imageFit: 'cover'
-        },
-        contextual: true
+          type: 'gradient',
+          gradientType: 'linear',
+          gradientDirection: '135deg',
+          gradientColor1: '#2525b6ff',
+          gradientColor2: '#16213E'
+        }
       },
       {
         id: 'title-1',

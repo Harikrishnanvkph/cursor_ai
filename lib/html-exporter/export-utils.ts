@@ -180,11 +180,7 @@ export function buildLegendConfigForExport(chartConfig: any, includeLegend: bool
 
 // Shared function to generate custom labels
 export function generateCustomLabelsFromConfig(chartConfig: any, chartData: any, legendFilter: any, dragState: any = {}) {
-    const customLabelsConfig = ((chartConfig.plugins as any)?.customLabelsConfig) || {};
-
-    if (customLabelsConfig.display === false) {
-        return [];
-    }
+    const globalCustomLabelsConfig = ((chartConfig.plugins as any)?.customLabelsConfig) || {};
 
     // Helper function to format numbers based on customLabelsConfig
     const formatLabelValue = (rawValue: any, config: any): string => {
@@ -319,8 +315,14 @@ export function generateCustomLabelsFromConfig(chartConfig: any, chartData: any,
         legendFilter.datasets[index] !== false
     );
 
-    return filteredDatasets.map((ds: any, datasetIdx: number) =>
-        ds.data.map((value: any, pointIdx: number) => {
+    return filteredDatasets.map((ds: any, datasetIdx: number) => {
+        const customLabelsConfig = { ...globalCustomLabelsConfig, ...(ds.customLabelsConfig || {}) };
+        
+        if (customLabelsConfig.display === false) {
+            return ds.data.map(() => ({ text: '' }));
+        }
+
+        return ds.data.map((value: any, pointIdx: number) => {
             let text = '';
 
             // Label content logic
@@ -401,8 +403,8 @@ export function generateCustomLabelsFromConfig(chartConfig: any, chartData: any,
                 x: storedPosition?.x,
                 y: storedPosition?.y,
             };
-        })
-    );
+        });
+    });
 }
 
 // Sync image positions from drag state into chart data before export

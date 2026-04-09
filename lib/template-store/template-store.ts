@@ -324,10 +324,10 @@ export const useTemplateStore = create<TemplateStore>()(
           useChartStore.setState({
             chartConfig: ChartConfigService.normalizeConfig({
               ...chartStore.chartConfig,
-              manualDimensions: true,
+              manualDimensions: false,
               width: `${template.chartArea.width}px`,
               height: `${template.chartArea.height}px`,
-              responsive: false,
+              responsive: true,
               maintainAspectRatio: false
             }, chartStore.chartType as any)
           })
@@ -412,10 +412,10 @@ export const useTemplateStore = create<TemplateStore>()(
         useChartStore.setState({
           chartConfig: ChartConfigService.normalizeConfig({
             ...chartStore.chartConfig,
-            manualDimensions: true,
+            manualDimensions: false,
             width: `${template.chartArea.width}px`,
             height: `${template.chartArea.height}px`,
-            responsive: false,
+            responsive: true,
             maintainAspectRatio: false
           }, chartStore.chartType as any)
         })
@@ -473,8 +473,8 @@ export const useTemplateStore = create<TemplateStore>()(
           useChartStore.setState({
             chartConfig: ChartConfigService.normalizeConfig({
               ...chartConfig,
-              manualDimensions: true,
-              responsive: false,
+              manualDimensions: false,
+              responsive: true,
               dynamicDimension: false,
               width: `${activeTemplate.chartArea.width}px`,
               height: `${activeTemplate.chartArea.height}px`,

@@ -102,64 +102,36 @@ export function TextEditorSection({
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 max-h-72 overflow-y-auto pr-2">
-                {/* Content Type Toggle */}
-                <div className="flex items-center justify-between">
-                    <Label htmlFor="contentType" className="text-xs">Content Type</Label>
-                    <div className="flex items-center gap-2">
-                        <span className={`text-xs ${(selectedTextArea.contentType || 'text') === 'text' ? 'font-semibold' : 'text-gray-500'}`}>
-                            Text
-                        </span>
-                        <Switch
-                            id="contentType"
-                            checked={selectedTextArea.contentType === 'html'}
-                            onCheckedChange={(checked) => {
-                                handleTextAreaUpdate('contentType', checked ? 'html' : 'text')
-                            }}
-                        />
-                        <span className={`text-xs ${selectedTextArea.contentType === 'html' ? 'font-semibold' : 'text-gray-500'}`}>
-                            HTML
-                        </span>
-                    </div>
-                </div>
-
-                {/* Content */}
+                {/* Content (always HTML) */}
                 <div>
                     <div className="flex items-center justify-between mb-1">
                         <Label htmlFor="content" className="text-xs">
-                            Content {selectedTextArea.contentType === 'html' ? '(HTML)' : '(Text)'}
+                            Content (HTML)
                         </Label>
-                        {selectedTextArea.contentType === 'html' && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                    setRichEditorContent(selectedTextArea.content || '')
-                                    setRichEditorOpen(true)
-                                }}
-                                className="h-6 text-xs"
-                            >
-                                <FileEdit className="h-3 w-3 mr-1" />
-                                Rich Editor
-                            </Button>
-                        )}
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                                setRichEditorContent(selectedTextArea.content || '')
+                                setRichEditorOpen(true)
+                            }}
+                            className="h-6 text-xs"
+                        >
+                            <FileEdit className="h-3 w-3 mr-1" />
+                            Rich Editor
+                        </Button>
                     </div>
                     <textarea
                         id="content"
                         value={selectedTextArea.content}
                         onChange={(e) => handleTextAreaUpdate('content', e.target.value)}
                         className="w-full mt-1 p-2 border rounded-md text-xs font-mono"
-                        rows={selectedTextArea.contentType === 'html' ? 6 : 4}
-                        placeholder={
-                            selectedTextArea.contentType === 'html'
-                                ? 'Enter HTML content...\nExample: <p>Hello <strong>World</strong></p>'
-                                : 'Enter text content...'
-                        }
+                        rows={6}
+                        placeholder={'Enter HTML content...\nExample: <p>Hello <strong>World</strong></p>'}
                     />
-                    {selectedTextArea.contentType === 'html' && (
-                        <p className="text-xs text-gray-500 mt-1">
-                            HTML is rendered in preview. Use HTML tags like &lt;p&gt;, &lt;strong&gt;, &lt;em&gt;, &lt;br&gt;, etc.
-                        </p>
-                    )}
+                    <p className="text-xs text-gray-500 mt-1">
+                        HTML is rendered in preview. Use HTML tags like &lt;p&gt;, &lt;strong&gt;, &lt;em&gt;, &lt;br&gt;, etc.
+                    </p>
                 </div>
 
                 <Separator />

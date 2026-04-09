@@ -4,6 +4,7 @@ import { generateOverlayPluginCode } from "./overlay-plugin-code";
 import { generateSubtitlePluginCode } from "./subtitle-plugin-code";
 import { generate3DPiePluginCode } from "./3d-pie-plugin-code";
 import { generate3DBarPluginCode } from "./3d-bar-plugin-code";
+import { generateSlicePatternPluginCode } from "./slice-pattern-plugin-code";
 
 
 // Re-export individual generators for direct use
@@ -14,7 +15,7 @@ export {
     generateSubtitlePluginCode,
     generate3DPiePluginCode,
     generate3DBarPluginCode,
-
+    generateSlicePatternPluginCode,
 };
 
 /**
@@ -57,6 +58,15 @@ export function generateCompletePluginSystem(chartConfig: any): string {
     // Add 3D Bar plugin if needed
     if (has3DBar) {
         pluginCode += generate3DBarPluginCode();
+    }
+
+    // Add Slice Pattern plugin if any dataset has patterns
+    const hasPatterns = chartConfig.data?.datasets?.some((ds: any) =>
+        (ds.datasetPattern && ds.datasetPattern.type) ||
+        (Array.isArray(ds.slicePatterns) && ds.slicePatterns.some((p: any) => p && p.type))
+    );
+    if (hasPatterns) {
+        pluginCode += generateSlicePatternPluginCode();
     }
 
     // Note: SubTitle plugin is built into Chart.js (chart.umd.js includes it)

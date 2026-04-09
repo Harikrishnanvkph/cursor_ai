@@ -10,8 +10,9 @@ import { useHistoryStore } from "@/lib/history-store"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ZoomIn, ZoomOut, RotateCcw, Eye, EyeOff, Ellipsis, Maximize2, Minimize2, Settings, Menu, X, ChevronLeft, Download, Hand, Pencil, Check, Loader2 } from "lucide-react"
-import { downloadTemplateExport } from "@/lib/template-export"
+import { downloadTemplateExport, downloadFormatExport } from "@/lib/template-export"
 import { FileDown, FileImage, FileCode } from "lucide-react"
+import html2canvas from 'html2canvas'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { Sidebar } from "@/components/sidebar"
 import { ConfigPanel } from "@/components/config-panel"
@@ -31,12 +32,14 @@ import {
   useChartGroups
 } from "@/lib/hooks/use-chart-state"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
+import { getPatternCSS } from "@/lib/utils"
 import { renderFormat } from "@/lib/variant-engine"
 import { FormatRenderer } from "@/components/gallery/FormatRenderer"
 
 import ChartGenerator from "@/lib/chart_generator"
 import { useUIStore } from "@/lib/stores/ui-store"
 import { DecorationShapeRenderer } from "@/components/decorations/DecorationShapeRenderer"
+import { useDecorationStore } from "@/lib/stores/decoration-store"
 
 interface TemplateChartPreviewProps {
   onToggleSidebar?: () => void
@@ -120,6 +123,7 @@ export function TemplateChartPreview({
   const pendingTabRef = useRef<string | null>(null)
   const leftSidebarPanelRef = useRef<HTMLDivElement>(null)
   const rightSidebarPanelRef = useRef<HTMLDivElement>(null)
+  const exportCanvasRef = useRef<HTMLDivElement>(null)
 
   const [zoom, setZoom] = useState(1)
   const [isDragging, setIsDragging] = useState(false)
@@ -407,14 +411,72 @@ export function TemplateChartPreview({
 
   // Handle export
   const handleExport = async (format: 'png' | 'jpeg' | 'html') => {
+    const dateStr = new Date().toISOString().slice(0, 10)
+
+    // ── Format mode export ──────────────────────
+    if (renderedFormat) {
+      if (format === 'html') {
+        try {
+          const decorationShapes = useDecorationStore.getState().shapes
+          await downloadFormatExport(
+            renderedFormat,
+            decorationShapes,
+            {
+              fileName: `${renderedFormat.skeleton.name.toLowerCase().replace(/\s+/g, '-')}-${dateStr}`
+            }
+          )
+        } catch (error) {
+          console.error('Format HTML export failed:', error)
+        }
+      } else {
+        // Image export for format mode — capture the preview via html2canvas
+        try {
+          const target = exportCanvasRef.current
+          if (!target) { console.error('Export target not found'); return }
+
+          // Temporarily strip CSS transforms so html2canvas captures at native size
+          const origTransform = target.style.transform
+          const origTransformOrigin = target.style.transformOrigin
+          target.style.transform = 'none'
+          target.style.transformOrigin = 'top left'
+
+          await new Promise(resolve => setTimeout(resolve, 100))
+
+          const canvas = await html2canvas(target, {
+            scale: 4,
+            backgroundColor: null,
+            useCORS: true,
+            allowTaint: true,
+            width: renderedFormat.skeleton.dimensions.width,
+            height: renderedFormat.skeleton.dimensions.height,
+            logging: false,
+          })
+
+          // Restore transforms
+          target.style.transform = origTransform
+          target.style.transformOrigin = origTransformOrigin
+
+          const dataUrl = canvas.toDataURL(`image/${format}`, 1)
+          const link = document.createElement('a')
+          link.href = dataUrl
+          link.download = `${renderedFormat.skeleton.name.toLowerCase().replace(/\s+/g, '-')}-${dateStr}.${format}`
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+        } catch (error) {
+          console.error('Format image export failed:', error)
+        }
+      }
+      return
+    }
+
+    // ── Template mode export ────────────────────
     const template = currentTemplate || templateInBackground
     const chartInstance = globalChartRef?.current
     if (!template || !chartInstance) return
 
     try {
-      // Add a small delay to ensure chart is fully rendered
       await new Promise(resolve => setTimeout(resolve, 100))
-
       const chartCanvas = chartInstance.canvas
 
       await downloadTemplateExport(
@@ -424,9 +486,9 @@ export function TemplateChartPreview({
         chartConfig,
         {
           format,
-          fileName: `${template.name.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}`,
+          fileName: `${template.name.toLowerCase().replace(/\s+/g, '-')}-${dateStr}`,
           quality: 1,
-          scale: 4 // Increased scale for higher quality
+          scale: 4
         }
       )
     } catch (error) {
@@ -507,8 +569,8 @@ export function TemplateChartPreview({
     return template.textAreas
       .filter(textArea => textArea.visible)
       .map((textArea) => {
-        // Check both textArea.contentType AND persisted contentTypePreferences
-        const isHTML = textArea.contentType === 'html' || contentTypePreferences[textArea.id] === 'html'
+        // All text areas are always rendered as HTML
+        const isHTML = true
 
         // Helper to convert hex color to rgba with opacity
         const hexToRgba = (hex: string, opacity: number): string => {
@@ -539,6 +601,18 @@ export function TemplateChartPreview({
             const color = bg.color || '#ffffff'
             return {
               backgroundColor: hexToRgba(color, opacity)
+            }
+          }
+
+          if (bg.type === 'pattern') {
+            const patternColor = bg.patternColor || '#e2e8f0'
+            const patternType = bg.patternType || 'dots'
+            const rgbaColor = hexToRgba(patternColor, opacity)
+            const { backgroundImage, backgroundSize, backgroundRepeat } = getPatternCSS(patternType, rgbaColor, 1)
+            return {
+              backgroundImage,
+              backgroundSize,
+              backgroundRepeat
             }
           }
 
@@ -756,6 +830,18 @@ export function TemplateChartPreview({
         const color = bg.color || '#ffffff'
         return {
           backgroundColor: hexToRgba(color, opacity)
+        }
+      }
+
+      if (bg.type === 'pattern') {
+        const patternColor = bg.patternColor || '#e2e8f0'
+        const patternType = bg.patternType || 'dots'
+        const rgbaColor = hexToRgba(patternColor, opacity)
+        const { backgroundImage, backgroundSize, backgroundRepeat } = getPatternCSS(patternType, rgbaColor, 1)
+        return {
+          backgroundImage,
+          backgroundSize,
+          backgroundRepeat
         }
       }
 
@@ -1032,11 +1118,7 @@ export function TemplateChartPreview({
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => handleExport('png')}>
                 <FileImage className="h-4 w-4 mr-2" />
-                PNG (High Res)
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport('jpeg')}>
-                <FileImage className="h-4 w-4 mr-2" />
-                JPEG (High Res)
+                Image (PNG)
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleExport('html')}>
                 <FileCode className="h-4 w-4 mr-2" />
@@ -1077,6 +1159,7 @@ export function TemplateChartPreview({
           }}
         >
           <div
+            ref={exportCanvasRef}
             className="relative mx-auto"
             style={{
               width: width,

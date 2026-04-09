@@ -284,7 +284,7 @@ export function AddDatasetModal({ open, onOpenChange, onDatasetAdd }: AddDataset
       borderColor: colors.map(c => darkenColor(c, 20)),
       borderWidth: 2,
       pointRadius: 5,
-      tension: 0.3,
+      tension: finalChartType === 'radar' ? 0 : 0.3,
       fill: false,
       pointImages: Array(dataPoints.length).fill(null),
       mode: chartMode,

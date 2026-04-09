@@ -7,8 +7,8 @@ import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import {
   AlignEndHorizontal,
   Database,
-  Palette,
   Grid,
+  PanelTop,
   Tag,
   Layers,
   SlidersHorizontal,
@@ -20,6 +20,8 @@ import {
   LayoutGrid,
   ArrowLeftRight,
   Sparkles,
+  Palette,
+  LayoutTemplate,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -43,9 +45,9 @@ interface SidebarProps {
 const CHART_TABS = [
   { id: "types_toggles", label: "Types and Toggles", icon: AlignEndHorizontal },
   { id: "datasets_slices", label: "Datasets and Slices", icon: Database },
-  { id: "design", label: "Design", icon: Palette },
+  { id: "design", label: "Background & Legend", icon: PanelTop },
   { id: "axes", label: "Axes", icon: Grid },
-  { id: "labels", label: "Legend and Label", icon: Tag },
+  { id: "labels", label: "Styling & Labels", icon: Tag },
   { id: "overlay", label: "Overlay", icon: Layers },
   { id: "advanced", label: "Advanced", icon: SlidersHorizontal },
   { id: "templates", label: "Templates", icon: FileText },
@@ -60,6 +62,7 @@ const TEMPLATE_TABS = [
   { id: "tpl_text", label: "Text Areas", icon: Type },
   { id: "tpl_chart_zone", label: "Chart Zone", icon: BarChart3 },
   { id: "tpl_decorations", label: "Decorations", icon: Sparkles },
+  { id: "tpl_background", label: "Background", icon: Palette },
   { id: "tpl_format_zones", label: "Format Zones", icon: LayoutGrid },
   { id: "export", label: "Export", icon: Download },
 ]

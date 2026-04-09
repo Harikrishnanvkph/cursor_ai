@@ -1,0 +1,196 @@
+﻿app/editor/page.tsx(518,30): error TS2339: Property 'clearAllOverlays' does not exist on type 'ChartStore'.
+components/chart-layout.tsx(180,56): error TS2345: Argument of type 'null' is not assignable to parameter of type 'string'.
+components/chart-layout.tsx(223,58): error TS2345: Argument of type 'null' is not assignable to parameter of type 'string'.
+components/chart-layout.tsx(323,34): error TS2552: Cannot find name 'setRightSidebarOpen'. Did you mean 'setLeftSidebarOpen'?
+components/chart-layout.tsx(323,55): error TS2304: Cannot find name 'rightSidebarOpen'.
+components/chart-layout.tsx(324,32): error TS2304: Cannot find name 'rightSidebarOpen'.
+components/chart-layout.tsx(325,11): error TS2322: Type '(open: boolean) => void' is not assignable to type '() => void'.
+  Target signature provides too few arguments. Expected 1 or more, but got 0.
+components/chart-preview/index.tsx(299,9): error TS2322: Type '(mode: EditorMode) => void' is not assignable to type '(mode: string) => void'.
+  Types of parameters 'mode' and 'mode' are incompatible.
+    Type 'string' is not assignable to type 'EditorMode'.
+components/chart-preview/index.tsx(341,17): error TS2322: Type 'RefObject<HTMLDivElement | null>' is not assignable to type 'RefObject<HTMLDivElement>'.
+  Type 'HTMLDivElement | null' is not assignable to type 'HTMLDivElement'.
+    Type 'null' is not assignable to type 'HTMLDivElement'.
+components/chart-preview/index.tsx(371,11): error TS2322: Type 'RefObject<HTMLDivElement | null>' is not assignable to type 'RefObject<HTMLDivElement>'.
+  Type 'HTMLDivElement | null' is not assignable to type 'HTMLDivElement'.
+    Type 'null' is not assignable to type 'HTMLDivElement'.
+components/chart-preview/index.tsx(372,11): error TS2322: Type 'RefObject<HTMLDivElement | null>' is not assignable to type 'RefObject<HTMLDivElement>'.
+  Type 'HTMLDivElement | null' is not assignable to type 'HTMLDivElement'.
+    Type 'null' is not assignable to type 'HTMLDivElement'.
+components/dialogs/clear-chart-dialog.tsx(76,38): error TS2339: Property 'clearAllOverlays' does not exist on type 'ChartStore'.
+components/gallery/FormatGallery.tsx(61,51): error TS2345: Argument of type 'ExtendedChartData' is not assignable to parameter of type '{ labels: string[]; datasets: any[]; }'.
+  Types of property 'labels' are incompatible.
+    Type 'unknown[] | undefined' is not assignable to type 'string[]'.
+      Type 'undefined' is not assignable to type 'string[]'.
+components/panels/datasets-slices/slice-settings/images-tab.tsx(478,45): error TS2554: Expected 3 arguments, but got 2.
+components/panels/datasets-slices/slice-settings/index.tsx(348,61): error TS2698: Spread types may only be created from object types.
+components/panels/design-settings/styling-tab.tsx(69,75): error TS7006: Parameter 'index' implicitly has an 'any' type.
+components/panels/design-settings/styling-tab.tsx(92,75): error TS7006: Parameter 'index' implicitly has an 'any' type.
+components/panels/design-settings/styling-tab.tsx(118,71): error TS7006: Parameter 'index' implicitly has an 'any' type.
+components/panels/design-settings/styling-tab.tsx(155,75): error TS7006: Parameter 'index' implicitly has an 'any' type.
+components/panels/design-settings/styling-tab.tsx(168,75): error TS7006: Parameter 'index' implicitly has an 'any' type.
+components/panels/design-settings/styling-tab.tsx(204,75): error TS7006: Parameter 'index' implicitly has an 'any' type.
+components/panels/design-settings/styling-tab.tsx(224,71): error TS7006: Parameter 'index' implicitly has an 'any' type.
+components/panels/design-settings/styling-tab.tsx(243,71): error TS7006: Parameter 'index' implicitly has an 'any' type.
+components/panels/design-settings/styling-tab.tsx(263,71): error TS7006: Parameter 'index' implicitly has an 'any' type.
+components/panels/design-settings/styling-tab.tsx(293,71): error TS7006: Parameter 'index' implicitly has an 'any' type.
+components/panels/design-settings/styling-tab.tsx(370,71): error TS7006: Parameter 'index' implicitly has an 'any' type.
+components/panels/design-settings/styling-tab.tsx(387,71): error TS7006: Parameter 'index' implicitly has an 'any' type.
+components/panels/design-settings/styling-tab.tsx(409,71): error TS7006: Parameter 'index' implicitly has an 'any' type.
+components/panels/design-settings/styling-tab.tsx(443,79): error TS7006: Parameter 'index' implicitly has an 'any' type.
+components/panels/design-settings/styling-tab.tsx(495,83): error TS7006: Parameter 'index' implicitly has an 'any' type.
+components/panels/overlay/ShapeOverlaysTab.tsx(165,42): error TS2367: This comparison appears to be unintentional because the types 'ShapeType' and '"freehand"' have no overlap.
+components/panels/overlay/ShapeOverlaysTab.tsx(189,46): error TS2367: This comparison appears to be unintentional because the types 'ShapeType' and '"freehand"' have no overlap.
+components/panels/overlay/ShapeOverlaysTab.tsx(199,61): error TS2367: This comparison appears to be unintentional because the types 'ShapeType' and '"freehand"' have no overlap.
+components/panels/overlay/ShapeOverlaysTab.tsx(208,46): error TS2367: This comparison appears to be unintentional because the types 'ShapeType' and '"freehand"' have no overlap.
+components/panels/overlay/ShapeOverlaysTab.tsx(214,61): error TS2367: This comparison appears to be unintentional because the types 'ShapeType' and '"freehand"' have no overlap.
+components/panels/radar-panel.tsx(36,7): error TS18048: 'newConfig.scales.r' is possibly 'undefined'.
+components/panels/responsive-animations-panel.tsx(48,68): error TS2345: Argument of type '"label-asc"' is not assignable to parameter of type '"asc" | "desc"'.
+components/panels/responsive-animations-panel.tsx(49,68): error TS2345: Argument of type '"label-desc"' is not assignable to parameter of type '"asc" | "desc"'.
+components/panels/responsive-animations-panel.tsx(57,71): error TS2345: Argument of type 'string' is not assignable to parameter of type '[number, number]'.
+components/panels/template-settings/template-list-tab.tsx(88,72): error TS2345: Argument of type 'ExtendedChartData' is not assignable to parameter of type '{ labels: string[]; datasets: any[]; }'.
+  Types of property 'labels' are incompatible.
+    Type 'unknown[] | undefined' is not assignable to type 'string[]'.
+      Type 'undefined' is not assignable to type 'string[]'.
+components/panels/template-settings/template-list-tab.tsx(116,27): error TS2345: Argument of type 'null' is not assignable to parameter of type 'string'.
+components/panels/template-settings/template-list-tab.tsx(321,55): error TS2345: Argument of type 'null' is not assignable to parameter of type 'string'.
+components/template-chart-preview.tsx(82,25): error TS2339: Property 'setChartTitle' does not exist on type '{ addDataset: (dataset: ExtendedChartDataset) => void; removeDataset: (index: number) => void; updateDataset: (index: number, updates: Partial<ExtendedChartDataset> & { ...; }) => void; ... 38 more ...; clearOverlayShapes: () => void; }'.
+components/template-chart-preview.tsx(188,26): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+components/template-chart-preview.tsx(191,61): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+components/template-chart-preview.tsx(260,11): error TS2304: Cannot find name 'setIsUpdatingDimensions'.
+components/template-chart-preview.tsx(281,13): error TS2304: Cannot find name 'setIsUpdatingDimensions'.
+components/template-chart-preview.tsx(291,11): error TS2304: Cannot find name 'setIsUpdatingDimensions'.
+components/template-chart-preview.tsx(306,13): error TS2304: Cannot find name 'setIsUpdatingDimensions'.
+components/tiptap-editor.tsx(13,27): error TS2307: Cannot find module '@tiptap/core' or its corresponding type declarations.
+components/tiptap-editor.tsx(80,36): error TS7006: Parameter 'element' implicitly has an 'any' type.
+components/tiptap-editor.tsx(81,37): error TS7006: Parameter 'attributes' implicitly has an 'any' type.
+lib/chart-store-with-sync.ts(199,46): error TS2345: Argument of type '(state: ChartStore) => { chartData: { datasets: ((_DeepPartialObject<{ type: "line"; } & LineControllerDatasetOptions & FillerControllerDatasetOptions> & ChartDatasetProperties<...> & CustomDatasetProperties & { ...; }) | ... 43 more ... | { ...; })[]; labels?: unknown[] | undefined; xLabels?: unknown[] | undefined;...' is not assignable to parameter of type 'ChartStore | Partial<ChartStore> | ((state: ChartStore) => ChartStore | Partial<ChartStore>)'.
+  Type '(state: ChartStore) => { chartData: { datasets: ((_DeepPartialObject<{ type: "line"; } & LineControllerDatasetOptions & FillerControllerDatasetOptions> & ChartDatasetProperties<...> & CustomDatasetProperties & { ...; }) | ... 43 more ... | { ...; })[]; labels?: unknown[] | undefined; xLabels?: unknown[] | undefined;...' is not assignable to type '(state: ChartStore) => ChartStore | Partial<ChartStore>'.
+    Type '{ chartData: { datasets: ((_DeepPartialObject<{ type: "line"; } & LineControllerDatasetOptions & FillerControllerDatasetOptions> & ChartDatasetProperties<...> & CustomDatasetProperties & { ...; }) | ... 43 more ... | { ...; })[]; labels?: unknown[] | undefined; xLabels?: unknown[] | undefined; yLabels?: unknown[] | ...' is not assignable to type 'ChartStore | Partial<ChartStore>'.
+      Type '{ chartData: { datasets: ((_DeepPartialObject<{ type: "line"; } & LineControllerDatasetOptions & FillerControllerDatasetOptions> & ChartDatasetProperties<...> & CustomDatasetProperties & { ...; }) | ... 43 more ... | { ...; })[]; labels?: unknown[] | undefined; xLabels?: unknown[] | undefined; yLabels?: unknown[] | ...' is not assignable to type 'Partial<ChartStore>'.
+        The types of 'chartData.datasets' are incompatible between these types.
+          Type '((_DeepPartialObject<{ type: "line"; } & LineControllerDatasetOptions & FillerControllerDatasetOptions> & ChartDatasetProperties<...> & CustomDatasetProperties & { ...; }) | ... 43 more ... | { ...; })[]' is not assignable to type 'ExtendedChartDataset<keyof ChartTypeRegistry>[]'.
+            Type '(_DeepPartialObject<{ type: "line"; } & LineControllerDatasetOptions & FillerControllerDatasetOptions> & ChartDatasetProperties<...> & CustomDatasetProperties & { ...; }) | ... 43 more ... | { ...; }' is not assignable to type 'ExtendedChartDataset<keyof ChartTypeRegistry>'.
+              Type '{ type?: "line" | "bar" | undefined; xAxisID?: string | undefined; yAxisID?: string | undefined; barPercentage?: number | undefined; categoryPercentage?: number | undefined; barThickness?: number | ... 1 more ... | undefined; ... 68 more ...; hoverBorderJoinStyle?: "round" | ... 3 more ... | undefined; }' is not assignable to type 'ExtendedChartDataset<keyof ChartTypeRegistry>'.
+                Type '{ type?: "line" | "bar" | undefined; xAxisID?: string | undefined; yAxisID?: string | undefined; barPercentage?: number | undefined; categoryPercentage?: number | undefined; barThickness?: number | ... 1 more ... | undefined; ... 68 more ...; hoverBorderJoinStyle?: "round" | ... 3 more ... | undefined; }' is not assignable to type '_DeepPartialObject<{ type: "radar"; } & RadarControllerDatasetOptions & FillerControllerDatasetOptions> & ChartDatasetProperties<...> & CustomDatasetProperties & { ...; }'.
+                  Type '{ type?: "line" | "bar" | undefined; xAxisID?: string | undefined; yAxisID?: string | undefined; barPercentage?: number | undefined; categoryPercentage?: number | undefined; barThickness?: number | ... 1 more ... | undefined; ... 68 more ...; hoverBorderJoinStyle?: "round" | ... 3 more ... | undefined; }' is not assignable to type '_DeepPartialObject<{ type: "radar"; } & RadarControllerDatasetOptions & FillerControllerDatasetOptions>'.
+                    Types of property 'type' are incompatible.
+                      Type '"line" | "bar" | undefined' is not assignable to type '"radar" | undefined'.
+                        Type '"line"' is not assignable to type '"radar"'.
+lib/chart-store-with-sync.ts(218,25): error TS2698: Spread types may only be created from object types.
+lib/chart-store-with-sync.ts(377,7): error TS2322: Type '{ getItem: (name: string) => string | null; setItem: (name: string, value: string) => void; removeItem: (name: string) => void; } | undefined' is not assignable to type 'PersistStorage<ChartStore> | undefined'.
+  Type '{ getItem: (name: string) => string | null; setItem: (name: string, value: string) => void; removeItem: (name: string) => void; }' is not assignable to type 'PersistStorage<ChartStore>'.
+    The types returned by 'getItem(...)' are incompatible between these types.
+      Type 'string | null' is not assignable to type 'StorageValue<ChartStore> | Promise<StorageValue<ChartStore> | null> | null'.
+        Type 'string' is not assignable to type 'StorageValue<ChartStore> | Promise<StorageValue<ChartStore> | null> | null'.
+lib/chart-store-with-sync.ts(380,7): error TS2322: Type '(state: ChartStore) => { chartType: SupportedChartType; chartData: ExtendedChartData; chartConfig: ExtendedChartOptions; ... 12 more ...; overlayTexts: OverlayText[]; }' is not assignable to type '(state: ChartStore) => ChartStore'.
+  Type '{ chartType: SupportedChartType; chartData: ExtendedChartData; chartConfig: ExtendedChartOptions; chartMode: ChartMode; ... 11 more ...; overlayTexts: OverlayText[]; }' is missing the following properties from type 'ChartStore': globalChartRef, setGlobalChartRef, selectedImageId, selectedTextId, and 24 more.
+lib/chart-store.ts(212,19): error TS2741: Property 'setChartData' is missing in type '{ globalChartRef: null; setGlobalChartRef: (ref: MutableRefObject<any>) => void; chartType: "bar"; chartData: { labels: never[]; datasets: never[]; }; chartConfig: ExtendedChartOptions; ... 58 more ...; clearOverlayShapes: () => void; }' but required in type 'ChartStore'.
+lib/chart-store.ts(262,13): error TS2353: Object literal may only specify known properties, and 'pendingChartTypeChange' does not exist in type 'ChartStore | Partial<ChartStore> | ((state: ChartStore) => ChartStore | Partial<ChartStore>)'.
+lib/chart-store.ts(274,48): error TS2353: Object literal may only specify known properties, and 'pendingChartTypeChange' does not exist in type 'ChartStore | Partial<ChartStore> | ((state: ChartStore) => ChartStore | Partial<ChartStore>)'.
+lib/chart-store.ts(277,7): error TS1117: An object literal cannot have multiple properties with the same name.
+lib/chart-store.ts(278,7): error TS1117: An object literal cannot have multiple properties with the same name.
+lib/chart-store.ts(324,25): error TS7006: Parameter 'datasetIndex' implicitly has an 'any' type.
+lib/chart-store.ts(324,39): error TS7006: Parameter 'pointIndex' implicitly has an 'any' type.
+lib/chart-store.ts(324,51): error TS7006: Parameter 'field' implicitly has an 'any' type.
+lib/chart-store.ts(324,58): error TS7006: Parameter 'value' implicitly has an 'any' type.
+lib/chart_generator.tsx(417,51): error TS2353: Object literal may only specify known properties, and 'rotation' does not exist in type 'Partial<OverlayImage>'.
+lib/chart_generator.tsx(610,3): error TS2322: Type '({ type: "line" | "bar" | "scatter" | "bubble" | "pie" | "doughnut" | "polarArea" | "radar"; data: any[]; backgroundColor: string | any[] | ((ctx: ScriptableContext<"line">, options: AnyObject) => Color | undefined) | ... 7 more ... | undefined; ... 58 more ...; sourceId?: string | undefined; } | ... 7 more ... | { ...' is not assignable to type '({ data: any[]; backgroundColor: string | any[] | ((ctx: ScriptableContext<"line">, options: AnyObject) => Color | undefined) | _DeepPartialObject<CanvasGradient> | ... 6 more ... | undefined; ... 59 more ...; sourceId?: string | undefined; } | ... 7 more ... | { ...; })[]'.
+  Type '{ type: "line" | "bar" | "scatter" | "bubble" | "pie" | "doughnut" | "polarArea" | "radar"; data: any[]; backgroundColor: string | any[] | ((ctx: ScriptableContext<"line">, options: AnyObject) => Color | undefined) | ... 7 more ... | undefined; ... 58 more ...; sourceId?: string | undefined; } | ... 7 more ... | { ....' is not assignable to type '{ data: any[]; backgroundColor: string | any[] | ((ctx: ScriptableContext<"line">, options: AnyObject) => Color | undefined) | _DeepPartialObject<CanvasGradient> | ... 6 more ... | undefined; ... 59 more ...; sourceId?: string | undefined; } | ... 7 more ... | { ...; }'.
+    Type '{ type: "line" | "bar" | "scatter" | "bubble" | "pie" | "doughnut" | "polarArea" | "radar"; data: any[]; backgroundColor: string | any[] | ((ctx: ScriptableContext<"line">, options: AnyObject) => Color | undefined) | ... 7 more ... | undefined; ... 58 more ...; sourceId?: string; }' is not assignable to type '{ data: any[]; backgroundColor: string | any[] | ((ctx: ScriptableContext<"line">, options: AnyObject) => Color | undefined) | _DeepPartialObject<CanvasGradient> | ... 6 more ... | undefined; ... 59 more ...; sourceId?: string | undefined; } | ... 7 more ... | { ...; }'.
+      Type '{ type: "line" | "bar" | "scatter" | "bubble" | "pie" | "doughnut" | "polarArea" | "radar"; data: any[]; backgroundColor: string | any[] | ((ctx: ScriptableContext<"line">, options: AnyObject) => Color | undefined) | ... 7 more ... | undefined; ... 58 more ...; sourceId?: string; }' is not assignable to type '{ data: any[]; backgroundColor: string | any[] | ((ctx: ScriptableContext<"line">, options: AnyObject) => Color | undefined) | _DeepPartialObject<CanvasGradient> | ... 6 more ... | undefined; ... 59 more ...; sourceId?: string | undefined; } | ... 6 more ... | { ...; }'.
+        Type '{ type: "line" | "bar" | "scatter" | "bubble" | "pie" | "doughnut" | "polarArea" | "radar"; data: any[]; backgroundColor: string | any[] | ((ctx: ScriptableContext<"line">, options: AnyObject) => Color | undefined) | ... 7 more ... | undefined; ... 58 more ...; sourceId?: string; }' is not assignable to type '{ data: any[]; backgroundColor: string | any[] | ((ctx: ScriptableContext<"line">, options: AnyObject) => Color | undefined) | _DeepPartialObject<CanvasGradient> | ... 6 more ... | undefined; ... 64 more ...; sourceId?: string; }'.
+          Types of property 'type' are incompatible.
+            Type '"line" | "bar" | "scatter" | "bubble" | "pie" | "doughnut" | "polarArea" | "radar"' is not assignable to type '"radar" | undefined'.
+              Type '"line"' is not assignable to type '"radar"'.
+lib/chart_generator.tsx(666,21): error TS18047: 'numValue' is possibly 'null'.
+lib/chart_generator.tsx(681,51): error TS2345: Argument of type 'number | null' is not assignable to parameter of type 'number'.
+  Type 'null' is not assignable to type 'number'.
+lib/chart_generator.tsx(682,31): error TS2345: Argument of type 'number | null' is not assignable to parameter of type 'number'.
+  Type 'null' is not assignable to type 'number'.
+lib/chart_generator.tsx(691,20): error TS18047: 'numValue' is possibly 'null'.
+lib/chart_generator.tsx(705,21): error TS18047: 'numValue' is possibly 'null'.
+lib/chart_generator.tsx(709,35): error TS2345: Argument of type 'number | null' is not assignable to parameter of type 'number'.
+  Type 'null' is not assignable to type 'number'.
+lib/chart_generator.tsx(710,43): error TS18047: 'numValue' is possibly 'null'.
+lib/chart_generator.tsx(711,48): error TS18047: 'numValue' is possibly 'null'.
+lib/chart_generator.tsx(712,48): error TS18047: 'numValue' is possibly 'null'.
+lib/chart_generator.tsx(718,9): error TS18047: 'numValue' is possibly 'null'.
+lib/chart_generator.tsx(721,9): error TS18047: 'numValue' is possibly 'null'.
+lib/chart_generator.tsx(928,7): error TS2367: This comparison appears to be unintentional because the types '"line" | "bar" | "scatter" | "bubble" | "pie" | "doughnut" | "polarArea" | "radar"' and '"stackedBar"' have no overlap.
+lib/chart_generator.tsx(928,45): error TS2367: This comparison appears to be unintentional because the types '"line" | "bar" | "scatter" | "bubble" | "pie" | "doughnut" | "polarArea" | "radar"' and '"horizontalBar"' have no overlap.
+lib/chart_generator.tsx(930,14): error TS2367: This comparison appears to be unintentional because the types '"line" | "bar" | "scatter" | "bubble" | "pie" | "doughnut" | "polarArea" | "radar"' and '"area"' have no overlap.
+lib/chart_generator.tsx(932,14): error TS2367: This comparison appears to be unintentional because the types '"line" | "bar" | "scatter" | "bubble" | "pie" | "doughnut" | "polarArea" | "radar"' and '"pie3d"' have no overlap.
+lib/chart_generator.tsx(934,14): error TS2367: This comparison appears to be unintentional because the types '"line" | "bar" | "scatter" | "bubble" | "pie" | "doughnut" | "polarArea" | "radar"' and '"doughnut3d"' have no overlap.
+lib/chart_generator.tsx(936,14): error TS2367: This comparison appears to be unintentional because the types '"line" | "bar" | "scatter" | "bubble" | "pie" | "doughnut" | "polarArea" | "radar"' and '"bar3d"' have no overlap.
+lib/chart_generator.tsx(936,47): error TS2367: This comparison appears to be unintentional because the types '"line" | "bar" | "scatter" | "bubble" | "pie" | "doughnut" | "polarArea" | "radar"' and '"horizontalBar3d"' have no overlap.
+lib/chart_generator.tsx(1477,46): error TS7053: Element implicitly has an 'any' type because expression of type 'number' can't be used to index type 'string | any[] | ((ctx: ScriptableContext<"line">, options: AnyObject) => Color | undefined) | _DeepPartialObject<CanvasGradient> | ... 5 more ... | ((ctx: ScriptableContext<...>, options: AnyObject) => Color | undefined)'.
+  No index signature with a parameter of type 'number' was found on type 'string | any[] | ((ctx: ScriptableContext<"line">, options: AnyObject) => Color | undefined) | _DeepPartialObject<CanvasGradient> | ... 5 more ... | ((ctx: ScriptableContext<...>, options: AnyObject) => Color | undefined)'.
+lib/chart_generator.tsx(1478,48): error TS7053: Element implicitly has an 'any' type because expression of type 'number' can't be used to index type 'string | any[] | ((ctx: ScriptableContext<"line">, options: AnyObject) => Color | undefined) | _DeepPartialObject<CanvasGradient> | ... 5 more ... | ((ctx: ScriptableContext<...>, options: AnyObject) => Color | undefined)'.
+  No index signature with a parameter of type 'number' was found on type 'string | any[] | ((ctx: ScriptableContext<"line">, options: AnyObject) => Color | undefined) | _DeepPartialObject<CanvasGradient> | ... 5 more ... | ((ctx: ScriptableContext<...>, options: AnyObject) => Color | undefined)'.
+lib/chart_generator.tsx(1674,46): error TS7053: Element implicitly has an 'any' type because expression of type 'number' can't be used to index type 'string | any[] | ((ctx: ScriptableContext<"line">, options: AnyObject) => Color | undefined) | _DeepPartialObject<CanvasGradient> | ... 5 more ... | ((ctx: ScriptableContext<...>, options: AnyObject) => Color | undefined)'.
+  No index signature with a parameter of type 'number' was found on type 'string | any[] | ((ctx: ScriptableContext<"line">, options: AnyObject) => Color | undefined) | _DeepPartialObject<CanvasGradient> | ... 5 more ... | ((ctx: ScriptableContext<...>, options: AnyObject) => Color | undefined)'.
+lib/chart_generator.tsx(1675,48): error TS7053: Element implicitly has an 'any' type because expression of type 'number' can't be used to index type 'string | any[] | ((ctx: ScriptableContext<"line">, options: AnyObject) => Color | undefined) | _DeepPartialObject<CanvasGradient> | ... 5 more ... | ((ctx: ScriptableContext<...>, options: AnyObject) => Color | undefined)'.
+  No index signature with a parameter of type 'number' was found on type 'string | any[] | ((ctx: ScriptableContext<"line">, options: AnyObject) => Color | undefined) | _DeepPartialObject<CanvasGradient> | ... 5 more ... | ((ctx: ScriptableContext<...>, options: AnyObject) => Color | undefined)'.
+lib/chat-store.ts(755,23): error TS2345: Argument of type '(operation: Omit<UndoableOperation, "id" | "timestamp" | "conversationId" | "userMessage" | "assistantMessage">) => void' is not assignable to parameter of type 'CaptureUndoFn'.
+  Types of parameters 'operation' and 'op' are incompatible.
+    Type 'BridgeCaptureOperation' is not assignable to type 'Omit<UndoableOperation, "id" | "timestamp" | "userMessage" | "assistantMessage" | "conversationId">'.
+      Types of property 'type' are incompatible.
+        Type 'string' is not assignable to type '"ai_chart_creation" | "ai_chart_modification" | "ai_chart_update" | "manual_config_change" | "manual_dataset_change" | "manual_design_change" | "manual_chart_type_change"'.
+lib/custom-label-plugin.ts(314,57): error TS2304: Cannot find name 'elbow'.
+lib/custom-label-plugin.ts(315,70): error TS2304: Cannot find name 'outerRadius'.
+lib/custom-label-plugin.ts(315,84): error TS2304: Cannot find name 'elbow'.
+lib/enhanced-chat-store.ts(210,34): error TS2339: Property 'id' does not exist on type 'ChartSnapshot'.
+lib/export-plugin.ts(270,15): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+lib/history-store.ts(77,53): error TS2339: Property 'id' does not exist on type 'ChartSnapshot'.
+lib/history-store.ts(81,29): error TS2339: Property 'id' does not exist on type 'ChartSnapshot'.
+lib/history-store.ts(123,19): error TS2322: Type '{ id: any; chartType: any; chartData: any; chartConfig: any; template_structure: any; template_content: any; is_template_mode: any; } | null' is not assignable to type 'ChartSnapshot | null'.
+  Object literal may only specify known properties, and 'id' does not exist in type 'ChartSnapshot'.
+lib/history-store.ts(171,44): error TS2339: Property 'id' does not exist on type 'ChartSnapshot'.
+lib/history-store.ts(281,64): error TS2345: Argument of type 'null' is not assignable to parameter of type 'string'.
+lib/hooks/use-chart-actions.ts(245,98): error TS2345: Argument of type '[number, number]' is not assignable to parameter of type 'string'.
+lib/hooks/use-chart-rename.ts(90,13): error TS2322: Type 'string | undefined' is not assignable to type 'string | null'.
+  Type 'undefined' is not assignable to type 'string | null'.
+lib/hooks/use-chart-state.ts(43,77): error TS2339: Property 'pendingChartTypeChange' does not exist on type 'ChartStore'.
+lib/hooks/use-chart-transitions.ts(31,62): error TS2339: Property 'clearPendingChartTypeChange' does not exist on type 'ChartStore'.
+lib/html-exporter/export-utils.ts(202,25): error TS18047: 'numValue' is possibly 'null'.
+lib/html-exporter/export-utils.ts(215,55): error TS2345: Argument of type 'number | null' is not assignable to parameter of type 'number'.
+  Type 'null' is not assignable to type 'number'.
+lib/html-exporter/export-utils.ts(216,37): error TS2345: Argument of type 'number | null' is not assignable to parameter of type 'number'.
+  Type 'null' is not assignable to type 'number'.
+lib/html-exporter/export-utils.ts(225,26): error TS18047: 'numValue' is possibly 'null'.
+lib/html-exporter/export-utils.ts(237,29): error TS18047: 'numValue' is possibly 'null'.
+lib/html-exporter/export-utils.ts(241,45): error TS2345: Argument of type 'number | null' is not assignable to parameter of type 'number'.
+  Type 'null' is not assignable to type 'number'.
+lib/html-exporter/export-utils.ts(242,53): error TS18047: 'numValue' is possibly 'null'.
+lib/html-exporter/export-utils.ts(243,58): error TS18047: 'numValue' is possibly 'null'.
+lib/html-exporter/export-utils.ts(244,58): error TS18047: 'numValue' is possibly 'null'.
+lib/html-exporter/export-utils.ts(249,13): error TS18047: 'numValue' is possibly 'null'.
+lib/overlay-plugin/events/mouse-handlers.ts(63,25): error TS2339: Property 'rotation' does not exist on type 'OverlayImage'.
+lib/overlay-plugin/events/mouse-handlers.ts(64,80): error TS2339: Property 'rotation' does not exist on type 'OverlayImage'.
+lib/overlay-plugin/events/mouse-handlers.ts(80,59): error TS2339: Property 'rotation' does not exist on type 'OverlayImage'.
+lib/overlay-plugin/events/mouse-handlers.ts(569,23): error TS2339: Property 'isDrawingFreehand' does not exist on type '{ isDragging: boolean; dragType: "" | "image" | "text" | "shape"; dragId: string; dragOffsetX: number; dragOffsetY: number; isResizing: boolean; isRotating: boolean; resizeHandle: "" | "rotation" | ... 7 more ... | "w"; ... 10 more ...; hoveredOverlayType: "image" | ... 2 more ... | null; }'.
+lib/overlay-plugin/events/mouse-handlers.ts(570,23): error TS2339: Property 'drawingPoints' does not exist on type '{ isDragging: boolean; dragType: "" | "image" | "text" | "shape"; dragId: string; dragOffsetX: number; dragOffsetY: number; isResizing: boolean; isRotating: boolean; resizeHandle: "" | "rotation" | ... 7 more ... | "w"; ... 10 more ...; hoveredOverlayType: "image" | ... 2 more ... | null; }'.
+lib/overlay-plugin/events/mouse-handlers.ts(577,23): error TS2339: Property 'isCreatingShape' does not exist on type '{ isDragging: boolean; dragType: "" | "image" | "text" | "shape"; dragId: string; dragOffsetX: number; dragOffsetY: number; isResizing: boolean; isRotating: boolean; resizeHandle: "" | "rotation" | ... 7 more ... | "w"; ... 10 more ...; hoveredOverlayType: "image" | ... 2 more ... | null; }'.
+lib/overlay-plugin/events/mouse-handlers.ts(578,23): error TS2339: Property 'shapeCreationCurrentX' does not exist on type '{ isDragging: boolean; dragType: "" | "image" | "text" | "shape"; dragId: string; dragOffsetX: number; dragOffsetY: number; isResizing: boolean; isRotating: boolean; resizeHandle: "" | "rotation" | ... 7 more ... | "w"; ... 10 more ...; hoveredOverlayType: "image" | ... 2 more ... | null; }'.
+lib/overlay-plugin/events/mouse-handlers.ts(579,23): error TS2339: Property 'shapeCreationCurrentY' does not exist on type '{ isDragging: boolean; dragType: "" | "image" | "text" | "shape"; dragId: string; dragOffsetX: number; dragOffsetY: number; isResizing: boolean; isRotating: boolean; resizeHandle: "" | "rotation" | ... 7 more ... | "w"; ... 10 more ...; hoveredOverlayType: "image" | ... 2 more ... | null; }'.
+lib/overlay-plugin/features/image-renderer.ts(221,15): error TS2339: Property 'rotation' does not exist on type 'OverlayImage'.
+lib/overlay-plugin/features/image-renderer.ts(226,27): error TS2339: Property 'rotation' does not exist on type 'OverlayImage'.
+lib/save-utils.ts(238,42): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string | null'.
+  Type 'undefined' is not assignable to type 'string | null'.
+lib/services/chart-type-service.ts(256,46): error TS2339: Property 'chartType' does not exist on type '{ chartData: ExtendedChartData; chartConfig: any; chartMode: ChartMode; activeDatasetIndex: number; uniformityMode?: "mixed" | "uniform" | undefined; }'.
+lib/services/chart-type-service.ts(268,46): error TS2339: Property 'chartType' does not exist on type '{ chartData: ExtendedChartData; chartConfig: any; chartMode: ChartMode; activeDatasetIndex: number; uniformityMode?: "mixed" | "uniform" | undefined; }'.
+lib/template-export/canvas-utils.ts(171,13): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+lib/template-export/template-html-export.ts(68,29): error TS2339: Property 'blur' does not exist on type '{ type: "transparent" | "color" | "gradient" | "image"; color?: string | undefined; gradientType?: "linear" | "radial" | undefined; gradientDirection?: "to right" | "to left" | "to top" | "to bottom" | "135deg" | undefined; ... 4 more ...; imageFit?: "fill" | ... 4 more ... | undefined; }'.
+lib/template-export/template-html-export.ts(68,55): error TS2339: Property 'blur' does not exist on type '{ type: "transparent" | "color" | "gradient" | "image"; color?: string | undefined; gradientType?: "linear" | "radial" | undefined; gradientDirection?: "to right" | "to left" | "to top" | "to bottom" | "135deg" | undefined; ... 4 more ...; imageFit?: "fill" | ... 4 more ... | undefined; }'.
+lib/template-export/template-html-export.ts(458,33): error TS2339: Property 'blur' does not exist on type '{ type: "transparent" | "color" | "gradient" | "image"; color?: string | undefined; gradientType?: "linear" | "radial" | undefined; gradientDirection?: "to right" | "to left" | "to top" | "to bottom" | "135deg" | undefined; ... 4 more ...; imageFit?: "fill" | ... 4 more ... | undefined; }'.
+lib/template-export/template-html-export.ts(458,59): error TS2339: Property 'blur' does not exist on type '{ type: "transparent" | "color" | "gradient" | "image"; color?: string | undefined; gradientType?: "linear" | "radial" | undefined; gradientDirection?: "to right" | "to left" | "to top" | "to bottom" | "135deg" | undefined; ... 4 more ...; imageFit?: "fill" | ... 4 more ... | undefined; }'.
+lib/template-store/template-defaults.ts(5,5): error TS2741: Property 'description' is missing in type '{ id: string; name: string; width: number; height: number; chartArea: { x: number; y: number; width: number; height: number; }; textAreas: ({ id: string; type: "title"; content: string; position: { x: number; y: number; width: number; height: number; }; style: { ...; }; visible: true; } | { ...; } | { ...; })[]; bac...' but required in type 'TemplateLayout'.
+lib/template-store/template-defaults.ts(71,5): error TS2741: Property 'description' is missing in type '{ id: string; name: string; width: number; height: number; chartArea: { x: number; y: number; width: number; height: number; }; textAreas: ({ id: string; type: "title"; content: string; position: { x: number; y: number; width: number; height: number; }; style: { ...; }; visible: true; } | { ...; } | { ...; })[]; bac...' but required in type 'TemplateLayout'.
+lib/template-store/template-defaults.ts(137,5): error TS2741: Property 'description' is missing in type '{ id: string; name: string; width: number; height: number; chartArea: { x: number; y: number; width: number; height: number; }; textAreas: ({ id: string; type: "title"; content: string; position: { x: number; y: number; width: number; height: number; }; style: { ...; }; visible: true; } | { ...; } | { ...; } | { ......' but required in type 'TemplateLayout'.
+lib/utils/image-proxy-utils.ts(2,21): error TS2307: Cannot find module '../api' or its corresponding type declarations.

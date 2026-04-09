@@ -3,10 +3,13 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import { Button } from "@/components/ui/button"
-import { Palette, CircleDot, Activity } from "lucide-react"
+import { Palette, CircleDot, Activity, ChevronDown, Brush, Info } from "lucide-react"
 import { darkenColor } from "@/lib/utils/color-utils"
 import { useState } from "react"
 import type { ChartType } from "chart.js"
+import { useGroupedSettingsTarget } from "@/components/panels/grouped-settings-filter"
+import { useChartStore } from "@/lib/chart-store"
+import { PATTERN_TYPES, type PatternConfig } from "@/lib/plugins/slice-pattern-plugin"
 
 interface ConfigPathUpdate {
     path: string
@@ -25,33 +28,22 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
     const [borderColorMode, setBorderColorMode] = useState<'auto' | 'manual'>('auto')
     const [manualBorderColor, setManualBorderColor] = useState('#000000')
 
-    // Import the store hook to get the mode and active indices so we only update the right datasets
-    const useChartStore = require('@/lib/chart-store').useChartStore
-    const { chartMode, activeDatasetIndex, activeGroupId } = useChartStore()
-
-    // Helper to get which datasets we should be modifying based on the view mode
-    const getTargetDatasetIndices = () => {
-        if (chartMode === 'single') return [activeDatasetIndex];
-        // In grouped mode, find all datasets that belong to this group
-        return chartData.datasets
-            .map((ds: any, i: number) => ({ ds, i }))
-            .filter(({ ds }: any) => ds.groupId === activeGroupId)
-            .map(({ i }: any) => i);
-    }
+    // Use the shared grouped settings target hook for per-dataset filtering
+    const { targetIndices: getTargetDatasetIndicesArray, primaryIndex } = useGroupedSettingsTarget()
+    const getTargetDatasetIndices = () => getTargetDatasetIndicesArray
 
     // Safely get a reference to the primary dataset we are editing to read its current values
-    const primaryIndex = chartMode === 'single' ? activeDatasetIndex : (getTargetDatasetIndices()[0] ?? 0);
     const primaryDataset = chartData.datasets[primaryIndex] || chartData.datasets[0] || {};
 
     return (
         <div className="space-y-3 mt-4">
             {/* Slice Border Styling - Only for slice-based and bar charts */}
-            {(chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea' || chartType === 'bar' || chartType === 'horizontalBar' || chartType === 'stackedBar' as any) && (
+            {(chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea' || chartType === 'bar' || chartType === 'horizontalBar' || chartType === 'stackedBar' as any || chartType === 'pie3d' as any || chartType === 'doughnut3d' as any || chartType === 'bar3d' as any || chartType === 'horizontalBar3d' as any) && (
                 <div className="space-y-3">
                     <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
                         <Palette className="h-4 w-4 text-blue-900" />
                         <h3 className="text-sm font-semibold text-blue-900">
-                            {(chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea') ? 'Slice Border Styling' : 'Bar Border Styling'}
+                            {(chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea' || chartType === 'pie3d' || chartType === 'doughnut3d') ? 'Slice Border Styling' : 'Bar Border Styling'}
                         </h3>
                     </div>
 
@@ -836,8 +828,288 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                     </div>
                 </div>
             )}
+
+            {/* ═══════ Draw Designs on Slices ═══════ */}
+            <DrawDesignsSection
+                chartData={chartData}
+                chartType={chartType}
+                handleUpdateDataset={handleUpdateDataset}
+            />
         </div>
     )
 }
 
+// ── Constants ───────────────────────────────────────────────────────────────
 
+const DEFAULT_PATTERN: PatternConfig = {
+    type: '',
+    color: 'rgba(0,0,0,0.5)',
+    lineWidth: 2,
+    spacing: 8,
+    opacity: 100,
+};
+
+// Chart types that should NOT show this section
+const EXCLUDED_CHART_TYPES = ['line', 'scatter', 'bubble'];
+// Chart types that use dataset-area mode instead of per-slice
+const AREA_MODE_TYPES = ['area', 'radar'];
+
+// ── Sub-component ───────────────────────────────────────────────────────────
+
+interface DrawDesignsSectionProps {
+    chartData: any;
+    chartType: ChartType | 'polarArea' | 'radar' | 'scatter' | 'bubble';
+    handleUpdateDataset: (datasetIndex: number, property: string, value: any) => void;
+}
+
+function DrawDesignsSection({ chartData, chartType, handleUpdateDataset }: DrawDesignsSectionProps) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [selectedSliceIndex, setSelectedSliceIndex] = useState(0);
+
+    const chartMode = useChartStore(s => s.chartMode);
+    const { targetIndices: getTargetDatasetIndicesArray, primaryIndex } = useGroupedSettingsTarget();
+    const getTargetDatasetIndices = () => getTargetDatasetIndicesArray;
+
+    const primaryDataset = chartData.datasets[primaryIndex] || chartData.datasets[0] || {};
+
+    // Don't render for excluded types
+    if (EXCLUDED_CHART_TYPES.includes(chartType as string)) return null;
+
+    const isAreaMode = AREA_MODE_TYPES.includes(chartType as string);
+    const isGroupedMode = chartMode === 'grouped';
+    const isSingleMode = chartMode === 'single';
+
+    // Determine whether we show per-slice selection (only single mode + non-area chart types)
+    const showSlicePicker = isSingleMode && !isAreaMode;
+
+    // Read current pattern config
+    const getCurrentPattern = (): PatternConfig | null => {
+        if (isAreaMode || isGroupedMode) {
+            return primaryDataset.datasetPattern || null;
+        }
+        // Per-slice in single mode
+        const patterns = primaryDataset.slicePatterns;
+        if (patterns && patterns[selectedSliceIndex]) {
+            return patterns[selectedSliceIndex];
+        }
+        return null;
+    };
+
+    const currentPattern = getCurrentPattern();
+    const currentType = currentPattern?.type || '';
+    const currentColor = currentPattern?.color || DEFAULT_PATTERN.color;
+    const currentLineWidth = currentPattern?.lineWidth ?? DEFAULT_PATTERN.lineWidth;
+    const currentSpacing = currentPattern?.spacing ?? DEFAULT_PATTERN.spacing;
+    const currentOpacity = currentPattern?.opacity ?? 100;
+
+    // Apply pattern update
+    const applyPattern = (updates: Partial<PatternConfig>) => {
+        const indices = getTargetDatasetIndices();
+
+        if (isAreaMode || isGroupedMode) {
+            // Whole-dataset pattern
+            const current: PatternConfig = primaryDataset.datasetPattern || { ...DEFAULT_PATTERN };
+            const newPattern: PatternConfig = { ...current, ...updates };
+            // If type is cleared, remove the pattern
+            if (!newPattern.type) {
+                indices.forEach(idx => handleUpdateDataset(idx, 'datasetPattern', null));
+            } else {
+                indices.forEach(idx => handleUpdateDataset(idx, 'datasetPattern', newPattern));
+            }
+        } else {
+            // Per-slice pattern
+            indices.forEach(idx => {
+                const ds = chartData.datasets[idx];
+                if (!ds) return;
+                const sliceCount = (ds.data || []).length;
+                const patterns: (PatternConfig | null)[] = [...(ds.slicePatterns || new Array(sliceCount).fill(null))];
+                // Ensure array is long enough
+                while (patterns.length < sliceCount) patterns.push(null);
+
+                const current: PatternConfig = patterns[selectedSliceIndex] || { ...DEFAULT_PATTERN };
+                const newPattern: PatternConfig = { ...current, ...updates };
+
+                if (!newPattern.type) {
+                    patterns[selectedSliceIndex] = null;
+                } else {
+                    patterns[selectedSliceIndex] = newPattern;
+                }
+                handleUpdateDataset(idx, 'slicePatterns', patterns);
+            });
+        }
+    };
+
+    // Remove pattern
+    const removePattern = () => {
+        applyPattern({ type: '' });
+    };
+
+    // Get slice labels for the picker
+    const sliceLabels: string[] = primaryDataset.sliceLabels ||
+        (chartData.labels || []).map(String) ||
+        (primaryDataset.data || []).map((_: any, i: number) => `Slice ${i + 1}`);
+
+    return (
+        <div className="space-y-2">
+            {/* Collapsible header */}
+            <button
+                type="button"
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full flex items-center gap-2 p-3 bg-indigo-50 rounded-lg border border-indigo-100 hover:bg-indigo-100 transition-colors"
+            >
+                <Brush className="h-4 w-4 text-indigo-900" />
+                <span className="text-sm font-semibold text-indigo-900 flex-1 text-left">Draw Designs on Slices</span>
+                <span
+                    className="relative group"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <Info className="h-3.5 w-3.5 text-indigo-400 hover:text-indigo-700 transition-colors" />
+                    <span className="absolute right-0 top-5 z-50 hidden group-hover:block w-48 p-2 text-xs text-white bg-gray-800 rounded-lg shadow-lg">
+                        {isGroupedMode
+                            ? 'Pattern applies to the entire selected dataset in grouped mode.'
+                            : isAreaMode
+                            ? "Pattern applies to the current dataset's filled area."
+                            : 'Select a slice and apply a decorative pattern overlay.'}
+                    </span>
+                </span>
+                <ChevronDown className={`h-4 w-4 text-indigo-900 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {isOpen && (
+                <div className="space-y-3 pl-1 pr-1">
+                    {/* Slice picker — only for single-mode, non-area chart types */}
+                    {showSlicePicker && (
+                        <div className="space-y-1">
+                            <Label className="text-xs font-medium">Slice</Label>
+                            <Select
+                                value={String(selectedSliceIndex)}
+                                onValueChange={(val) => setSelectedSliceIndex(Number(val))}
+                            >
+                                <SelectTrigger className="h-8 text-xs">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {sliceLabels.map((label: string, idx: number) => (
+                                        <SelectItem key={idx} value={String(idx)}>{label || `Slice ${idx + 1}`}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+
+
+                    {/* Design picker */}
+                    <div className="space-y-1">
+                        <Label className="text-xs font-medium">Design</Label>
+                        <Select
+                            value={currentType || 'none'}
+                            onValueChange={(val) => {
+                                if (val === 'none') {
+                                    removePattern();
+                                } else {
+                                    applyPattern({ type: val });
+                                }
+                            }}
+                        >
+                            <SelectTrigger className="h-8 text-xs">
+                                <SelectValue placeholder="None" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="none">None</SelectItem>
+                                {Object.entries(PATTERN_TYPES).map(([key, label]) => (
+                                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Pattern customization — only show if a pattern is selected */}
+                    {currentType && (
+                        <div className="space-y-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                            {/* Color */}
+                            <div className="space-y-1">
+                                <Label className="text-xs font-medium">Pattern Color</Label>
+                                <div className="flex items-center gap-2 h-8 relative">
+                                    <div
+                                        className="w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform flex-shrink-0"
+                                        style={{ backgroundColor: currentColor }}
+                                        onClick={() => document.getElementById('pattern-color-picker')?.click()}
+                                    />
+                                    <input
+                                        id="pattern-color-picker"
+                                        type="color"
+                                        value={currentColor.startsWith('#') ? currentColor : '#000000'}
+                                        onChange={(e) => applyPattern({ color: e.target.value })}
+                                        className="sr-only"
+                                    />
+                                    <Input
+                                        value={currentColor}
+                                        onChange={(e) => applyPattern({ color: e.target.value })}
+                                        className="h-8 text-xs flex-1"
+                                        placeholder="rgba(0,0,0,0.5)"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Line Width & Spacing */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-xs font-medium">Line Width</Label>
+                                        <span className="text-xs text-gray-500">{currentLineWidth}px</span>
+                                    </div>
+                                    <Slider
+                                        value={[currentLineWidth]}
+                                        onValueChange={([val]) => applyPattern({ lineWidth: val })}
+                                        min={1}
+                                        max={8}
+                                        step={0.5}
+                                    />
+                                </div>
+
+                                <div className="space-y-1">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-xs font-medium">Spacing</Label>
+                                        <span className="text-xs text-gray-500">{currentSpacing}px</span>
+                                    </div>
+                                    <Slider
+                                        value={[currentSpacing]}
+                                        onValueChange={([val]) => applyPattern({ spacing: val })}
+                                        min={4}
+                                        max={30}
+                                        step={1}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Opacity */}
+                            <div className="space-y-1">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-xs font-medium">Opacity</Label>
+                                    <span className="text-xs text-gray-500">{currentOpacity}%</span>
+                                </div>
+                                <Slider
+                                    value={[currentOpacity]}
+                                    onValueChange={([val]) => applyPattern({ opacity: val })}
+                                    min={5}
+                                    max={100}
+                                    step={5}
+                                />
+                            </div>
+
+                            {/* Remove pattern button */}
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full h-7 text-xs text-red-600 border-red-200 hover:bg-red-50"
+                                onClick={removePattern}
+                            >
+                                Remove Pattern
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}

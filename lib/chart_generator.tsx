@@ -42,6 +42,7 @@ import { overlayPlugin } from "@/lib/overlay-plugin"
 import { enhancedTitlePlugin } from "@/lib/enhanced-title-plugin"
 import { pie3dPlugin } from "@/lib/plugins/3d-pie-plugin"
 import { bar3dPlugin } from "@/lib/plugins/3d-bar-plugin"
+import { slicePatternPlugin } from "@/lib/plugins/slice-pattern-plugin"
 import { ResizableChartArea } from "@/components/resizable-chart-area"
 import { OverlayContextMenu } from "@/components/overlay-context-menu"
 import { parseDimension } from "@/lib/utils/dimension-utils"
@@ -78,7 +79,8 @@ ChartJS.register(
   overlayPlugin,
   enhancedTitlePlugin,
   pie3dPlugin,
-  bar3dPlugin
+  bar3dPlugin,
+  slicePatternPlugin
 );
 
 // Plugin registration verified
@@ -646,7 +648,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
   });
 
   // Build custom labels config for the current chart
-  const customLabelsConfig = ((chartConfig.plugins as any)?.customLabelsConfig) || {};
+  const globalCustomLabelsConfig = ((chartConfig.plugins as any)?.customLabelsConfig) || {};
 
   // Helper function to format numbers based on customLabelsConfig
   const formatLabelValue = (rawValue: any, config: any): string => {
@@ -787,8 +789,9 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
     return { text };
   };
 
-  const customLabels = filteredDatasetsPatched.map((ds, datasetIdx) =>
-    ds.data.map((value, filteredPointIdx) => {
+  const customLabels = filteredDatasetsPatched.map((ds, datasetIdx) => {
+    const customLabelsConfig = { ...globalCustomLabelsConfig, ...(ds.customLabelsConfig || {}) };
+    return ds.data.map((value, filteredPointIdx) => {
       // Map filtered index back to original index
       const originalPointIdx = enabledSliceIndices[filteredPointIdx];
 
@@ -884,7 +887,7 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
         arrowEndGap: customLabelsConfig.arrowEndGap ?? 8,
       };
     })
-  );
+  });
 
   // Determine chart type for Chart.js
   let chartTypeForChart = chartType === 'area' ? 'line' :
@@ -1472,10 +1475,30 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                                   ? !chart.getDataVisibility(i)
                                   : false;
 
+                                // For slice legends, find the best color from the first dataset
+                                // Handle both array colors (per-slice) and single string colors
+                                const ds0 = filteredDatasets[0];
+                                let sliceFill = '#ccc';
+                                let sliceStroke = '#333';
+                                if (ds0) {
+                                  const bg = ds0.backgroundColor;
+                                  if (Array.isArray(bg) && bg[i]) {
+                                    sliceFill = bg[i] as string;
+                                  } else if (typeof bg === 'string' && bg) {
+                                    sliceFill = bg;
+                                  }
+                                  const bc = ds0.borderColor;
+                                  if (Array.isArray(bc) && bc[i]) {
+                                    sliceStroke = bc[i] as string;
+                                  } else if (typeof bc === 'string' && bc) {
+                                    sliceStroke = bc;
+                                  }
+                                }
+
                                 items.push(createItem({
                                   text: String(filteredLabels[i]),
-                                  fillStyle: filteredDatasets[0]?.backgroundColor?.[i] || '#ccc',
-                                  strokeStyle: filteredDatasets[0]?.borderColor?.[i] || '#333',
+                                  fillStyle: sliceFill,
+                                  strokeStyle: sliceStroke,
                                   index: i,
                                   datasetIndex: 0,
                                   type: 'slice',
@@ -1669,10 +1692,30 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
                                   ? !chart.getDataVisibility(i)
                                   : false;
 
+                                // For slice legends, find the best color from the first dataset
+                                // Handle both array colors (per-slice) and single string colors
+                                const ds0 = filteredDatasets[0];
+                                let sliceFill = '#ccc';
+                                let sliceStroke = '#333';
+                                if (ds0) {
+                                  const bg = ds0.backgroundColor;
+                                  if (Array.isArray(bg) && bg[i]) {
+                                    sliceFill = bg[i] as string;
+                                  } else if (typeof bg === 'string' && bg) {
+                                    sliceFill = bg;
+                                  }
+                                  const bc = ds0.borderColor;
+                                  if (Array.isArray(bc) && bc[i]) {
+                                    sliceStroke = bc[i] as string;
+                                  } else if (typeof bc === 'string' && bc) {
+                                    sliceStroke = bc;
+                                  }
+                                }
+
                                 items.push(createItem({
                                   text: String(filteredLabels[i]),
-                                  fillStyle: filteredDatasets[0]?.backgroundColor?.[i] || '#ccc',
-                                  strokeStyle: filteredDatasets[0]?.borderColor?.[i] || '#333',
+                                  fillStyle: sliceFill,
+                                  strokeStyle: sliceStroke,
                                   index: i,
                                   datasetIndex: 0,
                                   type: 'slice',

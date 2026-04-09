@@ -1,10 +1,10 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { X, Layout, Edit3, Type, Code2, Info, Plus, StickyNote, Trash2, ChevronLeft, ChevronRight, Check, Eye } from "lucide-react"
+import { X, Layout, Edit3, Code2, Info, Plus, StickyNote, Trash2, ChevronLeft, ChevronRight, Check, Eye } from "lucide-react"
 import { useTemplateStore, type TemplateLayout } from "@/lib/template-store"
 import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
+
 import { Label } from "@/components/ui/label"
 import { useRouter } from "next/navigation"
 
@@ -27,7 +27,6 @@ export function TemplateSelectionModal({
     setSectionNotes: storeSetSectionNotes
   } = useTemplateStore()
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateLayout | null>(null)
-  const [contentTypePreferences, setContentTypePreferences] = useState<Record<string, Record<string, 'text' | 'html'>>>({})
   const [sectionNotes, setSectionNotes] = useState<Record<string, Record<string, string>>>({})
   const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({})
   const [isMobileModal, setIsMobileModal] = useState(false)
@@ -50,25 +49,9 @@ export function TemplateSelectionModal({
     }
   }, [open])
 
-  const getCurrentPreferences = () => {
-    if (!selectedTemplate) return {}
-    return contentTypePreferences[selectedTemplate.id] || {}
-  }
-
   const getCurrentNotes = () => {
     if (!selectedTemplate) return {}
     return sectionNotes[selectedTemplate.id] || {}
-  }
-
-  const updatePreference = (textAreaId: string, contentType: 'text' | 'html') => {
-    if (!selectedTemplate) return
-    setContentTypePreferences(prev => ({
-      ...prev,
-      [selectedTemplate.id]: {
-        ...prev[selectedTemplate.id],
-        [textAreaId]: contentType
-      }
-    }))
   }
 
   const updateNote = (textAreaId: string, note: string) => {
@@ -110,12 +93,12 @@ export function TemplateSelectionModal({
 
   const handleSelect = () => {
     if (selectedTemplate) {
-      const currentPrefs = contentTypePreferences[selectedTemplate.id] || {}
       const currentNotes = sectionNotes[selectedTemplate.id] || {}
 
+      // All areas are HTML by default
       const finalPreferences: Record<string, 'text' | 'html'> = {}
       selectedTemplate.textAreas.forEach(textArea => {
-        finalPreferences[textArea.id] = currentPrefs[textArea.id] || 'text'
+        finalPreferences[textArea.id] = 'html'
       })
 
       const finalNotes: Record<string, string> = {}
@@ -129,10 +112,10 @@ export function TemplateSelectionModal({
       storeSetSectionNotes(finalNotes)
       applyTemplate(selectedTemplate.id)
 
+      // Set all text areas to HTML contentType
       setTimeout(() => {
         selectedTemplate.textAreas.forEach(textArea => {
-          const contentType = finalPreferences[textArea.id] || 'text'
-          updateTextArea(textArea.id, { contentType })
+          updateTextArea(textArea.id, { contentType: 'html' })
         })
       }, 0)
 
@@ -309,23 +292,20 @@ export function TemplateSelectionModal({
                   </div>
                 </div>
 
-                {/* Content Type Configuration - Mobile optimized */}
+                {/* AI Notes Configuration - Mobile optimized */}
                 {selectedTemplate.textAreas.length > 0 && (
                   <div className="rounded-xl border border-indigo-200 bg-gradient-to-br from-indigo-50/50 to-purple-50/30 p-3">
                     <div className="flex items-center gap-2 mb-3">
                       <div className="p-1.5 bg-indigo-100 rounded-lg">
-                        <Code2 className="w-4 h-4 text-indigo-600" />
+                        <StickyNote className="w-4 h-4 text-indigo-600" />
                       </div>
-                      <h4 className="font-semibold text-sm text-gray-900">Content Types</h4>
+                      <h4 className="font-semibold text-sm text-gray-900">AI Generation Notes</h4>
                     </div>
-                    <p className="text-xs text-gray-500 mb-3">Choose text or HTML for each area</p>
+                    <p className="text-xs text-gray-500 mb-3">Add notes to guide AI content generation for each area (all areas use HTML)</p>
 
                     <div className="space-y-2">
                       {selectedTemplate.textAreas.map((textArea) => {
-                        const currentPrefs = getCurrentPreferences()
                         const currentNotes = getCurrentNotes()
-                        const contentType = currentPrefs[textArea.id] || 'text'
-                        const isHTML = contentType === 'html'
                         const areaTypeLabel = textArea.type.charAt(0).toUpperCase() + textArea.type.slice(1)
                         const note = currentNotes[textArea.id] || ''
                         const isNoteExpanded = expandedNotes[textArea.id] || note.length > 0
@@ -335,27 +315,14 @@ export function TemplateSelectionModal({
                             key={textArea.id}
                             className="bg-white rounded-lg border border-gray-200 overflow-hidden"
                           >
-                            {/* Compact mobile row */}
                             <div className="p-3">
-                              <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                  <div className={`p-1 rounded flex-shrink-0 ${isHTML ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-600'}`}>
-                                    {isHTML ? <Code2 className="w-3.5 h-3.5" /> : <Type className="w-3.5 h-3.5" />}
+                                  <div className="p-1 rounded flex-shrink-0 bg-purple-100 text-purple-600">
+                                    <Code2 className="w-3.5 h-3.5" />
                                   </div>
                                   <span className="font-medium text-sm text-gray-900">{areaTypeLabel} Area</span>
-                                  <span className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${isHTML ? 'text-purple-700 bg-purple-100' : 'text-gray-600 bg-gray-100'}`}>
-                                    {isHTML ? 'HTML' : 'Text'}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="flex flex-wrap items-center justify-between gap-y-2">
-                                <div className="flex items-center gap-2">
-                                  <span className={`text-xs font-medium ${!isHTML ? 'text-gray-900' : 'text-gray-400'}`}>Text</span>
-                                  <Switch
-                                    checked={isHTML}
-                                    onCheckedChange={(checked) => updatePreference(textArea.id, checked ? 'html' : 'text')}
-                                  />
-                                  <span className={`text-xs font-medium ${isHTML ? 'text-purple-700' : 'text-gray-400'}`}>HTML</span>
+                                  <span className="px-1.5 py-0.5 text-[10px] font-medium rounded text-purple-700 bg-purple-100">HTML</span>
                                 </div>
                                 <button
                                   onClick={() => toggleNoteExpanded(textArea.id)}
@@ -408,7 +375,7 @@ export function TemplateSelectionModal({
                     <div className="mt-3 p-2.5 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2">
                       <Info className="w-3.5 h-3.5 text-blue-600 flex-shrink-0 mt-0.5" />
                       <p className="text-[11px] text-blue-800 leading-relaxed">
-                        You can change these later in the editor.
+                        All content areas use HTML mode. You can add notes to customize AI output.
                       </p>
                     </div>
                   </div>
@@ -533,29 +500,26 @@ export function TemplateSelectionModal({
                   </div>
                 </div>
 
-                {/* Content Type Configuration Section */}
+                {/* AI Notes Configuration Section */}
                 {selectedTemplate.textAreas.length > 0 && (
                   <div className="mt-6 rounded-xl border-2 border-indigo-200 bg-gradient-to-br from-indigo-50/50 to-purple-50/30 p-4 shadow-sm">
                     <div className="flex items-start gap-3 mb-4">
                       <div className="p-2 bg-indigo-100 rounded-lg">
-                        <Code2 className="w-5 h-5 text-indigo-600" />
+                        <StickyNote className="w-5 h-5 text-indigo-600" />
                       </div>
                       <div className="flex-1">
                         <h3 className="font-semibold text-sm text-gray-900 mb-1">
-                          Configure Content Types for AI Generation
+                          AI Generation Notes
                         </h3>
                         <p className="text-xs text-gray-600 leading-relaxed">
-                          Choose whether each Area should receive <strong>plain text</strong> or <strong>HTML formatted</strong> content from AI.
+                          All areas use <strong>HTML</strong> content. Add optional notes to guide AI generation for each section.
                         </p>
                       </div>
                     </div>
 
                     <div className="space-y-3">
                       {selectedTemplate.textAreas.map((textArea) => {
-                        const currentPrefs = getCurrentPreferences()
                         const currentNotes = getCurrentNotes()
-                        const contentType = currentPrefs[textArea.id] || 'text'
-                        const isHTML = contentType === 'html'
                         const areaTypeLabel = textArea.type.charAt(0).toUpperCase() + textArea.type.slice(1)
                         const note = currentNotes[textArea.id] || ''
                         const isNoteExpanded = expandedNotes[textArea.id] || note.length > 0
@@ -568,31 +532,17 @@ export function TemplateSelectionModal({
                             {/* Main row */}
                             <div className="flex items-center justify-between p-3">
                               <div className="flex items-center gap-3 flex-1 min-w-0">
-                                <div className={`p-1.5 rounded-md flex-shrink-0 ${isHTML
-                                  ? 'bg-purple-100 text-purple-600'
-                                  : 'bg-gray-100 text-gray-600'
-                                  }`}>
-                                  {isHTML ? (
-                                    <Code2 className="w-4 h-4" />
-                                  ) : (
-                                    <Type className="w-4 h-4" />
-                                  )}
+                                <div className="p-1.5 rounded-md flex-shrink-0 bg-purple-100 text-purple-600">
+                                  <Code2 className="w-4 h-4" />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 mb-0.5">
                                     <span className="font-medium text-sm text-gray-900">
                                       {areaTypeLabel} Area
                                     </span>
-                                    {isHTML && (
-                                      <span className="px-1.5 py-0.5 text-[10px] font-medium text-purple-700 bg-purple-100 rounded">
-                                        HTML
-                                      </span>
-                                    )}
-                                    {!isHTML && (
-                                      <span className="px-1.5 py-0.5 text-[10px] font-medium text-gray-600 bg-gray-100 rounded">
-                                        Text
-                                      </span>
-                                    )}
+                                    <span className="px-1.5 py-0.5 text-[10px] font-medium text-purple-700 bg-purple-100 rounded">
+                                      HTML
+                                    </span>
                                     {note && (
                                       <span className="px-1.5 py-0.5 text-[10px] font-medium text-amber-700 bg-amber-100 rounded flex items-center gap-0.5">
                                         <StickyNote className="w-3 h-3" />
@@ -601,9 +551,7 @@ export function TemplateSelectionModal({
                                     )}
                                   </div>
                                   <p className="text-xs text-gray-500">
-                                    {isHTML
-                                      ? 'AI will generate HTML formatted content'
-                                      : 'AI will generate plain text content'}
+                                    AI will generate HTML formatted content
                                   </p>
                                 </div>
                               </div>
@@ -621,21 +569,6 @@ export function TemplateSelectionModal({
                                   <Plus className={`w-3 h-3 ${isNoteExpanded ? 'rotate-45' : ''}`} />
                                   <span>{isNoteExpanded ? 'Hide' : 'Add Note'}</span>
                                 </button>
-
-                                <div className="w-px h-6 bg-gray-200" />
-
-                                <span className={`text-xs font-medium ${!isHTML ? 'text-gray-900' : 'text-gray-400'}`}>
-                                  Text
-                                </span>
-                                <Switch
-                                  checked={isHTML}
-                                  onCheckedChange={(checked) => {
-                                    updatePreference(textArea.id, checked ? 'html' : 'text')
-                                  }}
-                                />
-                                <span className={`text-xs font-medium ${isHTML ? 'text-purple-700' : 'text-gray-400'}`}>
-                                  HTML
-                                </span>
                               </div>
                             </div>
 
@@ -680,8 +613,7 @@ export function TemplateSelectionModal({
                     <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2">
                       <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
                       <p className="text-xs text-blue-800 leading-relaxed">
-                        <strong>Note:</strong> These preferences will be sent to the AI when generating content.
-                        You can change this later in the editor's Content tab.
+                        All content areas use HTML mode. Notes will guide AI to produce more tailored output.
                       </p>
                     </div>
                   </div>

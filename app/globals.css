@@ -149,21 +149,30 @@ body {
 .html-content-area ul {
   list-style-type: disc;
   padding-left: 1.5em;
-  margin: 8px 0;
+  margin: 4px 0;
 }
 
 .html-content-area ol {
   list-style-type: decimal;
   padding-left: 1.5em;
-  margin: 8px 0;
-}
-
-.html-content-area li {
   margin: 4px 0;
 }
 
+.html-content-area li {
+  margin: 0;
+}
+
 .html-content-area p {
-  margin: 8px 0;
+  margin: 0;
+}
+
+/* Ensure empty paragraphs (blank lines from TipTap) preserve their height */
+.html-content-area p:empty {
+  min-height: 1em;
+}
+
+.html-content-area p:has(br:only-child) {
+  min-height: 1em;
 }
 
 /* Support nested lists */
@@ -255,23 +264,23 @@ body {
 }
 
 .tiptap p {
-  margin: 8px 0;
+  margin: 0;
 }
 
 .tiptap ul {
   list-style-type: disc;
   padding-left: 1.5em;
-  margin: 8px 0;
+  margin: 4px 0;
 }
 
 .tiptap ol {
   list-style-type: decimal;
   padding-left: 1.5em;
-  margin: 8px 0;
+  margin: 4px 0;
 }
 
 .tiptap li {
-  margin: 4px 0;
+  margin: 0;
 }
 
 .tiptap h1 {

@@ -15,6 +15,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useChartStore } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
 import { useTemplateStore } from "@/lib/template-store"
+import { useDecorationStore } from "@/lib/stores/decoration-store"
 import { clearCurrentChart } from "@/lib/storage-utils"
 import { toast } from "sonner"
 import { useState } from "react"
@@ -59,6 +60,9 @@ export function ClearChartDialog({
 
         // 4. Clear template state
         useTemplateStore.getState().clearAllTemplateState()
+
+        // 5. Clear all decoration shapes
+        useDecorationStore.getState().clearShapes()
 
         if (clearOption === 'welcome') {
             // "Go to Welcome Preview" - Soft Reset

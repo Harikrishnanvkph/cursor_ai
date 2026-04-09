@@ -169,10 +169,14 @@ export class ChartStateService {
             chartTitle: null, // Clear title
             activeDatasetIndex: 0,
 
-            // Reset flags (these might need explicit typing in the store interface)
             hasJSON: false,
             currentSnapshotId: null,
             originalCloudDimensions: null,
+
+            // Reset Overlays
+            overlayImages: [],
+            overlayTexts: [],
+            overlayShapes: [],
         } as any;
     }
 

@@ -138,6 +138,7 @@ interface ChartStore {
   addOverlayShape: (shape: Omit<OverlayShape, 'id'>) => void;
   updateOverlayShape: (id: string, updates: Partial<OverlayShape>) => void;
   removeOverlayShape: (id: string) => void;
+  clearAllOverlays: () => void;
   clearOverlayShapes: () => void;
   setActiveGroupId: (id: string) => void;
 

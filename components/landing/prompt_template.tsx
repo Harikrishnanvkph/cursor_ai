@@ -73,26 +73,8 @@ export function PromptTemplate({
     }
   }
 
-  // Toggle content type for a specific text area
-  const toggleContentType = (textAreaId: string) => {
-    const currentType = contentTypePreferences[textAreaId] || 'text'
-    const newType = currentType === 'text' ? 'html' : 'text'
 
-    // Update preferences for AI generation
-    setContentTypePreferences({
-      ...contentTypePreferences,
-      [textAreaId]: newType
-    })
 
-    // Also update the actual template text area's contentType for Templates -> Content panel sync
-    const { updateTextArea } = useTemplateStore.getState()
-    updateTextArea(textAreaId, { contentType: newType })
-  }
-
-  // Get content type for a text area (from preferences or default)
-  const getContentType = (textAreaId: string): 'text' | 'html' => {
-    return contentTypePreferences[textAreaId] || 'text'
-  }
 
   // Size variants
   const sizeClasses = {

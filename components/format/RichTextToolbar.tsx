@@ -17,13 +17,14 @@ import {
   MoreHorizontal, Check
 } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { EDITOR_FONT_FAMILIES } from "@/components/tiptap-editor"
 
 // ── Constants ──────────────────────────────────
 
-const FONT_FAMILIES = [
-  'Inter', 'Roboto', 'Poppins', 'Outfit', 'Playfair Display',
-  'Montserrat', 'Lato', 'Oswald', 'DM Sans', 'Space Grotesk'
-]
+// Use the unified font list from tiptap-editor
+const FONT_FAMILIES = EDITOR_FONT_FAMILIES
+  .filter(f => f.value !== 'default')
+  .map(f => f.label)
 
 const QUICK_COLORS = [
   '#1a1a2e', '#0f172a', '#1e3a5f', '#1e40af', '#7c3aed',

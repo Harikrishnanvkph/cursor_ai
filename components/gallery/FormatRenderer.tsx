@@ -28,6 +28,7 @@ import type {
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { useDecorationStore } from "@/lib/stores/decoration-store"
 import { FormatZoneToolbar } from "@/components/format/FormatZoneToolbar"
+import { getPatternCSS } from "@/lib/utils"
 
 // ========================================
 // MAIN RENDERER
@@ -153,6 +154,53 @@ function ZoneView({ renderedZone, scale, palette, canvasWidth, canvasHeight, int
   const pos = zone.position
   if (!pos) return null
 
+  // Background helper
+  const getZoneBackgroundStyle = (): React.CSSProperties => {
+    const zStyle: any = zone.style || {}
+    const bgType = zStyle.bgType || (zStyle.backgroundColor || zStyle.bgColor ? 'color' : 'transparent')
+    if (bgType === 'transparent') return {}
+
+    const opacity = (zStyle.bgOpacity ?? 100) / 100
+    const hexToRgba = (hex: string, op: number) => {
+      const h = hex.replace('#', '')
+      if (h.length !== 6) return hex
+      const r = parseInt(h.substring(0, 2), 16)
+      const g = parseInt(h.substring(2, 4), 16)
+      const b = parseInt(h.substring(4, 6), 16)
+      return `rgba(${r}, ${g}, ${b}, ${op})`
+    }
+
+    if (bgType === 'color') {
+      return { backgroundColor: hexToRgba(zStyle.backgroundColor || zStyle.bgColor || '#ffffff', opacity) }
+    }
+    
+    if (bgType === 'gradient') {
+      const type = zStyle.bgGradientType || 'linear'
+      const c1 = hexToRgba(zStyle.bgGradientColor1 || '#ffffff', opacity)
+      const c2 = hexToRgba(zStyle.bgGradientColor2 || '#000000', opacity)
+      const dir = type === 'linear' ? (zStyle.bgGradientDirection || 'to right') : 'circle'
+      return { backgroundImage: type === 'linear' ? `linear-gradient(${dir}, ${c1}, ${c2})` : `radial-gradient(${dir}, ${c1}, ${c2})` }
+    }
+    
+    if (bgType === 'image' && zStyle.bgImageUrl) {
+      if (opacity < 1) {
+        return {
+          backgroundImage: `linear-gradient(rgba(255, 255, 255, ${1 - opacity}), rgba(255, 255, 255, ${1 - opacity})), url(${zStyle.bgImageUrl})`,
+          backgroundSize: zStyle.bgImageFit === 'fill' ? '100% 100%' : (zStyle.bgImageFit || 'cover'),
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
+        }
+      }
+      return {
+        backgroundImage: `url("${zStyle.bgImageUrl}")`,
+        backgroundSize: zStyle.bgImageFit === 'fill' ? '100% 100%' : (zStyle.bgImageFit || 'cover'),
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      }
+    }
+    return {}
+  }
+
   // Positioned zone wrapper
   const style: React.CSSProperties = {
     position: 'absolute',
@@ -161,6 +209,7 @@ function ZoneView({ renderedZone, scale, palette, canvasWidth, canvasHeight, int
     width: pos.width * scale,
     height: pos.height * scale,
     overflow: 'hidden',
+    ...getZoneBackgroundStyle()
   }
 
   // Determine the inner content
@@ -773,11 +822,12 @@ function BackgroundZoneView({ renderedZone, scale }: {
   }
 
   // Image background
-  if (renderedZone.resolvedImageUrl) {
+  if (zone.style.type === 'image' && (renderedZone.resolvedImageUrl || zone.style.imageUrl)) {
+    const imageUrl = renderedZone.resolvedImageUrl || zone.style.imageUrl
     return (
       <div style={bgStyle}>
         <img
-          src={renderedZone.resolvedImageUrl}
+          src={imageUrl}
           alt=""
           style={{
             width: '100%',
@@ -792,8 +842,8 @@ function BackgroundZoneView({ renderedZone, scale }: {
     )
   }
 
-  // Gradient or solid background
-  if (renderedZone.resolvedGradient) {
+  // Gradient background
+  if (zone.style.type === 'gradient' && renderedZone.resolvedGradient) {
     return (
       <div
         style={{
@@ -825,13 +875,16 @@ function BackgroundZoneView({ renderedZone, scale }: {
   if (zone.style.type === 'pattern') {
     const color = zone.style.patternColor || '#e2e8f0'
     const opacity = zone.style.patternOpacity || 0.3
+    const patternType = zone.style.patternType || 'dots'
+    const { backgroundImage, backgroundSize, backgroundRepeat } = getPatternCSS(patternType, color, scale)
     return (
       <div
         style={{
           ...bgStyle,
           backgroundColor: zone.style.color || '#ffffff',
-          backgroundImage: `radial-gradient(${color} 1px, transparent 1px)`,
-          backgroundSize: `${20 * scale}px ${20 * scale}px`,
+          backgroundImage,
+          backgroundSize,
+          backgroundRepeat,
           opacity,
         }}
       />

@@ -112,6 +112,15 @@ export type SupportedChartType = SupportedChartTypeLocal | CustomChartType;
 export type ChartMode = 'single' | 'grouped';
 
 
+// Pattern overlay config for hatching / dots / crosshatch designs on chart elements
+export interface PatternConfig {
+    type: string       // Pattern type key (e.g. 'verticalLines', 'dots', 'crosshatch')
+    color: string      // Pattern line/dot color
+    lineWidth: number  // Stroke width for lines
+    spacing: number    // Tile repeat size in px
+    opacity?: number   // 0-100 opacity percentage (default 100)
+}
+
 interface CustomDatasetProperties {
     datasetColorMode?: 'single' | 'slice'
     color?: string
@@ -133,6 +142,8 @@ interface CustomDatasetProperties {
     sliceLabels?: string[] // Per-dataset slice names
     chartType?: SupportedChartType // Chart type for this specific dataset (used in mixed mode)
     chartConfig?: ExtendedChartOptions // Per-dataset chart config (single mode: each dataset has its own settings)
+    slicePatterns?: (PatternConfig | null)[]  // Per-slice pattern overlay configs
+    datasetPattern?: PatternConfig | null      // Whole-dataset pattern overlay (area/radar/grouped)
 }
 
 // Create a type that combines ChartDataset with our custom properties

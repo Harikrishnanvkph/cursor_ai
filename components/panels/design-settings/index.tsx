@@ -3,7 +3,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useChartStore } from "@/lib/chart-store"
 import { useChartActions } from "@/lib/hooks/use-chart-actions"
-import { StylingTab } from "./styling-tab"
+import { LegendTab } from "./legend-tab"
 import { TitleTab } from "./title-tab"
 import { BackgroundTab } from "./background-tab"
 import { setNestedProperty } from "@/lib/utils"
@@ -37,21 +37,20 @@ export function DesignPanel() {
 
     return (
         <div className="space-y-4">
-            <Tabs defaultValue="styling" className="w-full">
+            <Tabs defaultValue="legend" className="w-full">
                 <div className="overflow-x-auto">
                     <TabsList className="grid w-full grid-cols-3">
-                        <TabsTrigger value="styling">Styling</TabsTrigger>
+                        <TabsTrigger value="legend">Legend</TabsTrigger>
                         <TabsTrigger value="title">Title</TabsTrigger>
                         <TabsTrigger value="background">Background</TabsTrigger>
                     </TabsList>
                 </div>
 
-                <TabsContent value="styling">
-                    <StylingTab
-                        chartData={chartData}
+                <TabsContent value="legend">
+                    <LegendTab
                         chartConfig={chartConfig}
-                        chartType={chartType as any}
-                        handleUpdateDataset={handleUpdateDataset}
+                        chartType={chartType}
+                        applyConfigUpdates={applyConfigUpdates}
                         handleConfigUpdate={handleConfigUpdate}
                     />
                 </TabsContent>

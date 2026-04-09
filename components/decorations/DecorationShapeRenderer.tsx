@@ -208,6 +208,18 @@ function getStampContent(type: string): string | null {
     case 'emoji-rocket': return '🚀';
     case 'emoji-target': return '🎯';
     case 'emoji-laugh': return '😂';
+    case 'emoji-clap': return '👏';
+    case 'emoji-eyes': return '👀';
+    case 'emoji-sparkles': return '✨';
+    case 'emoji-party': return '🎉';
+    case 'emoji-brain': return '🧠';
+    case 'emoji-muscle': return '💪';
+    case 'emoji-crown': return '👑';
+    case 'emoji-diamond': return '💎';
+    case 'emoji-medal': return '🏅';
+    case 'emoji-clock': return '⏰';
+    case 'emoji-lock': return '🔒';
+    case 'emoji-umbrella': return '☂️';
     case 'exclamation': return '❗';
     case 'question': return '❓';
     case 'pushpin': return '📌';
@@ -254,6 +266,7 @@ const ShapeSVG = React.memo(function ShapeSVGComponent({ shape }: { shape: Decor
 
   const stampText = getStampContent(type)
   if (stampText) {
+    const isNum = type.startsWith('num-')
     return (
       <g transform={transform}>
         <rect x={x} y={y} width={w} height={h} fill="transparent" />
@@ -262,10 +275,14 @@ const ShapeSVG = React.memo(function ShapeSVGComponent({ shape }: { shape: Decor
           y={y + h / 2 + Math.min(w, h) * 0.05}
           fontSize={Math.min(w, h) * 0.8}
           fontFamily="sans-serif"
-          fontWeight={type.startsWith('num-') ? "bold" : "normal"}
+          fontWeight={isNum ? "bold" : "normal"}
           textAnchor="middle"
           dominantBaseline="middle"
-          fill={type.startsWith('num-') ? (fillColor !== 'transparent' ? fillColor : strokeColor) : undefined}
+          fill={isNum ? (fillColor !== 'transparent' ? fillColor : '#3b82f6') : undefined}
+          fillOpacity={isNum ? opacity : undefined}
+          stroke={isNum ? strokeColor : undefined}
+          strokeWidth={isNum ? strokeWidth : undefined}
+          paintOrder={isNum && strokeWidth > 0 ? "stroke" : undefined}
           style={{ userSelect: 'none', pointerEvents: 'none' }}
         >
           {stampText}
@@ -508,6 +525,23 @@ const ShapeSVG = React.memo(function ShapeSVGComponent({ shape }: { shape: Decor
       )
     }
 
+    case 'hexagon':
+      return <path d={polygonPath(regularPolygon(x, y, w, h, 6))} fill={fill} fillOpacity={opacity} {...commonProps} />
+
+    case 'pentagon':
+      return <path d={polygonPath(regularPolygon(x, y, w, h, 5))} fill={fill} fillOpacity={opacity} {...commonProps} />
+
+    case 'diamond-shape':
+      return <polygon points={`${x + w/2},${y} ${x + w},${y + h/2} ${x + w/2},${y + h} ${x},${y + h/2}`} fill={fill} fillOpacity={opacity} {...commonProps} />
+
+    case 'heart': {
+      const hcx = x + w / 2; const hcy = y + h / 2;
+      const hpath = `M ${hcx},${y + h * 0.85} ` +
+        `C ${x},${y + h * 0.55} ${x},${y + h * 0.1} ${hcx},${y + h * 0.3} ` +
+        `C ${x + w},${y + h * 0.1} ${x + w},${y + h * 0.55} ${hcx},${y + h * 0.85} Z`;
+      return <path d={hpath} fill={fill} fillOpacity={opacity} {...commonProps} />
+    }
+
     default:
       return <rect x={x} y={y} width={w} height={h} fill={fill} fillOpacity={opacity} {...commonProps} />
   }
@@ -546,7 +580,7 @@ function DrawingPreview({ drawing }: { drawing: DrawingState }) {
     pointerEvents: 'none' as const,
   }
 
-  if (shiftKey && (['rectangle', 'circle', 'triangle', 'star', 'checkmark', 'crossmark', 'dot'].includes(mode) || mode.startsWith('num-') || mode.startsWith('emoji-'))) {
+  if (shiftKey && (['rectangle', 'circle', 'triangle', 'star', 'checkmark', 'crossmark', 'dot', 'hexagon', 'heart', 'pentagon', 'diamond-shape'].includes(mode) || mode.startsWith('num-') || mode.startsWith('emoji-'))) {
     const dx = endX - startX
     const dy = endY - startY
     const size = Math.max(Math.abs(dx), Math.abs(dy))
@@ -554,24 +588,89 @@ function DrawingPreview({ drawing }: { drawing: DrawingState }) {
     endY = startY + (Math.sign(dy) || 1) * size
   }
 
-  if (['rectangle', 'cloud', 'triangle', 'star', 'checkmark', 'crossmark', 'dot', 'text-callout', 'textbox', 'textbox-auto', 'deco-image', 'deco-svg'].includes(mode) || mode.startsWith('num-') || mode.startsWith('emoji-')) {
-    const x = Math.min(startX, endX)
-    const y = Math.min(startY, endY)
-    const w = Math.abs(endX - startX)
-    const h = Math.abs(endY - startY)
-    return <rect x={x} y={y} width={w} height={h} {...previewProps} rx={['text-callout', 'textbox', 'textbox-auto'].includes(mode) ? 6 : (mode === 'deco-image' ? 4 : 0)} />
-  }
+  // Compute bounding box for rect-based shapes
+  const x = Math.min(startX, endX)
+  const y = Math.min(startY, endY)
+  const w = Math.abs(endX - startX)
+  const h = Math.abs(endY - startY)
 
+  // --- Shape-specific live previews ---
   switch (mode) {
-    case 'circle': {
-      const x = Math.min(startX, endX)
-      const y = Math.min(startY, endY)
-      const w = Math.abs(endX - startX)
-      const h = Math.abs(endY - startY)
+    case 'circle':
       return <ellipse cx={x + w / 2} cy={y + h / 2} rx={w / 2} ry={h / 2} {...previewProps} />
+
+    case 'triangle':
+      return <polygon points={`${x + w / 2},${y} ${x + w},${y + h} ${x},${y + h}`} {...previewProps} />
+
+    case 'star': {
+      const cx = x + w / 2; const cy = y + h / 2;
+      const outerR = Math.min(w, h) / 2; const innerR = outerR * 0.382;
+      const pts = [];
+      for (let i = 0; i < 10; i++) {
+        const r = i % 2 === 0 ? outerR : innerR;
+        const angle = (Math.PI / 5) * i - Math.PI / 2;
+        pts.push(`${cx + Math.cos(angle) * r},${cy + Math.sin(angle) * r}`);
+      }
+      return <polygon points={pts.join(' ')} {...previewProps} />
     }
+
+    case 'cloud':
+      return <path d={cloudPath(x, y, w, h)} {...previewProps} />
+
+    case 'checkmark':
+      return <path d={`M ${x + w*0.2} ${y + h*0.5} L ${x + w*0.4} ${y + h*0.75} L ${x + w*0.8} ${y + h*0.25}`} {...previewProps} fill="none" />
+
+    case 'crossmark':
+      return (
+        <g {...previewProps} fill="none">
+          <line x1={x + w*0.2} y1={y + h*0.2} x2={x + w*0.8} y2={y + h*0.8} />
+          <line x1={x + w*0.8} y1={y + h*0.2} x2={x + w*0.2} y2={y + h*0.8} />
+        </g>
+      )
+
+    case 'dot':
+      return <circle cx={x + w/2} cy={y + h/2} r={Math.min(w,h)/2 * 0.8} {...previewProps} fill="rgba(59, 130, 246, 0.3)" />
+
+    case 'text-callout': {
+      const tailH = Math.min(20, h * 0.3)
+      const boxH = h - tailH
+      return (
+        <g {...previewProps}>
+          <rect x={x} y={y} width={w} height={boxH} rx={6} />
+          <polygon points={`${x + w * 0.3},${y + boxH} ${x + w * 0.5},${y + h} ${x + w * 0.5},${y + boxH}`} />
+        </g>
+      )
+    }
+
+    case 'hexagon':
+      return <path d={polygonPath(regularPolygon(x, y, w, h, 6))} {...previewProps} />
+
+    case 'pentagon':
+      return <path d={polygonPath(regularPolygon(x, y, w, h, 5))} {...previewProps} />
+
+    case 'diamond-shape':
+      return <polygon points={`${x + w/2},${y} ${x + w},${y + h/2} ${x + w/2},${y + h} ${x},${y + h/2}`} {...previewProps} />
+
+    case 'heart': {
+      const hcx = x + w / 2;
+      const hpath = `M ${hcx},${y + h * 0.85} C ${x},${y + h * 0.55} ${x},${y + h * 0.1} ${hcx},${y + h * 0.3} C ${x + w},${y + h * 0.1} ${x + w},${y + h * 0.55} ${hcx},${y + h * 0.85} Z`;
+      return <path d={hpath} {...previewProps} />
+    }
+
+    case 'rectangle':
+      return <rect x={x} y={y} width={w} height={h} {...previewProps} />
+
+    case 'textbox':
+    case 'textbox-auto':
+      return <rect x={x} y={y} width={w} height={h} {...previewProps} rx={6} />
+
+    case 'deco-image':
+    case 'deco-svg':
+      return <rect x={x} y={y} width={w} height={h} {...previewProps} rx={4} />
+
     case 'line':
       return <line x1={startX} y1={startY} x2={endX} y2={endY} {...previewProps} fill="none" />
+
     case 'arrow':
     case 'double-arrow': {
       const arrowSize = 10
@@ -590,9 +689,11 @@ function DrawingPreview({ drawing }: { drawing: DrawingState }) {
         </g>
       )
     }
+
     case 'freehand':
       if (points.length < 2) return null
       return <path d={freehandPath(points)} {...previewProps} fill="none" />
+
     case 'polygon':
     case 'connected-lines':
     case 'cloud-line':
@@ -600,8 +701,33 @@ function DrawingPreview({ drawing }: { drawing: DrawingState }) {
       const allPts = [...points, { x: endX, y: endY }]
       if (mode === 'cloud-line') return <path d={cloudLinePath(allPts)} {...previewProps} fill="rgba(59, 130, 246, 0.1)" />
       return <path d={connectedLinesPath(allPts)} {...previewProps} fill={mode === 'polygon' ? 'rgba(59, 130, 246, 0.1)' : 'none'} />
-    default:
+
+    default: {
+      // Numbers and emojis: show the actual stamp text as preview
+      const stampText = getStampContent(mode)
+      if (stampText) {
+        return (
+          <g pointerEvents="none">
+            <rect x={x} y={y} width={w} height={h} fill="transparent" stroke="none" />
+            <text
+              x={x + w / 2}
+              y={y + h / 2 + Math.min(w, h) * 0.05}
+              fontSize={Math.min(w, h) * 0.8}
+              fontFamily="sans-serif"
+              fontWeight={mode.startsWith('num-') ? 'bold' : 'normal'}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill={mode.startsWith('num-') ? '#3b82f6' : undefined}
+              fillOpacity={0.6}
+              style={{ userSelect: 'none', pointerEvents: 'none' }}
+            >
+              {stampText}
+            </text>
+          </g>
+        )
+      }
       return null
+    }
   }
 }
 

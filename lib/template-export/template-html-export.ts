@@ -5,6 +5,9 @@ import type { TemplateLayout } from "@/lib/template-store"
 import { generateChartHTMLForTemplate, type HTMLExportOptions } from "@/lib/html-exporter"
 import type { TemplateExportOptions } from "./template-export-types"
 import { hexToRgba, getBackgroundSize } from "./canvas-utils"
+import { useDecorationStore } from "@/lib/stores/decoration-store"
+import { generateDecorationsSVG, generateDecorationsCSS } from "./decoration-html-export"
+import { getPatternCSS } from "@/lib/utils"
 
 export const exportTemplateAsHTML = async (
     template: TemplateLayout,
@@ -43,6 +46,14 @@ export const exportTemplateAsHTML = async (
 
         if (bg.type === 'color') {
             return `background-color: ${hexToRgba(bg.color || '#ffffff', opacity)};`
+        }
+
+        if (bg.type === 'pattern') {
+            const patternColor = bg.patternColor || '#e2e8f0'
+            const patternType = bg.patternType || 'dots'
+            const rgbaColor = hexToRgba(patternColor, opacity)
+            const { styleString } = getPatternCSS(patternType, rgbaColor, 1)
+            return `${styleString}`
         }
 
         if (bg.type === 'gradient') {
@@ -97,6 +108,14 @@ export const exportTemplateAsHTML = async (
 
         if (bg.type === 'color') {
             return `background-color: ${hexToRgba(bg.color || '#ffffff', opacity)};`
+        }
+
+        if (bg.type === 'pattern') {
+            const patternColor = bg.patternColor || '#e2e8f0'
+            const patternType = bg.patternType || 'dots'
+            const rgbaColor = hexToRgba(patternColor, opacity)
+            const { styleString } = getPatternCSS(patternType, rgbaColor, 1)
+            return `${styleString}`
         }
 
         if (bg.type === 'gradient') {
@@ -157,6 +176,8 @@ export const exportTemplateAsHTML = async (
             padding: 0;
             box-sizing: border-box;
         }
+        
+        ${generateDecorationsCSS()}
         
         body {
             font-family: Arial, sans-serif;
@@ -376,6 +397,7 @@ export const exportTemplateAsHTML = async (
                 ${backgroundCSS}
             ">${textArea.content}</div>
           `}).join('')}
+        ${generateDecorationsSVG(useDecorationStore.getState().shapes, template.width, template.height)}
     </div>
 
     <script>
@@ -432,6 +454,14 @@ export const exportTemplateAsUnifiedHTML = async (
                 return `background-color: ${hexToRgba(bg.color || '#ffffff', opacity)};`
             }
 
+            if (bg.type === 'pattern') {
+                const patternColor = bg.patternColor || '#e2e8f0'
+                const patternType = bg.patternType || 'dots'
+                const rgbaColor = hexToRgba(patternColor, opacity)
+                const { styleString } = getPatternCSS(patternType, rgbaColor, 1)
+                return `${styleString}`
+            }
+
             if (bg.type === 'gradient') {
                 const color1 = bg.gradientColor1 || '#ffffff'
                 const color2 = bg.gradientColor2 || '#000000'
@@ -484,6 +514,14 @@ export const exportTemplateAsUnifiedHTML = async (
 
             if (bg.type === 'color') {
                 return `background-color: ${hexToRgba(bg.color || '#ffffff', opacity)};`
+            }
+
+            if (bg.type === 'pattern') {
+                const patternColor = bg.patternColor || '#e2e8f0'
+                const patternType = bg.patternType || 'dots'
+                const rgbaColor = hexToRgba(patternColor, opacity)
+                const { styleString } = getPatternCSS(patternType, rgbaColor, 1)
+                return `${styleString}`
             }
 
             if (bg.type === 'gradient') {
@@ -544,6 +582,8 @@ export const exportTemplateAsUnifiedHTML = async (
             padding: 0;
             box-sizing: border-box;
         }
+        
+        ${generateDecorationsCSS()}
         
         body {
             font-family: Arial, sans-serif;
@@ -776,6 +816,7 @@ export const exportTemplateAsUnifiedHTML = async (
                 ${backgroundCSS}
             ">${textArea.content}</div>
           `}).join('')}
+        ${generateDecorationsSVG(useDecorationStore.getState().shapes, template.width, template.height)}
     </div>
 
     <script>

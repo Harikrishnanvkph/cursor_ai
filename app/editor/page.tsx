@@ -27,6 +27,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { SaveChartDialog } from "@/components/ui/save-chart-dialog"
 import { ClearChartDialog } from "@/components/dialogs/clear-chart-dialog"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
+import { useDecorationStore } from "@/lib/stores/decoration-store"
 import { FullSizeFormatView } from "@/components/gallery/FullSizeFormatView"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { EditorWelcomeScreen } from "@/components/editor-welcome-screen"
@@ -516,6 +517,8 @@ function EditorPageContent() {
     resetChart()
     // Clear all overlay data (images, texts, shapes)
     useChartStore.getState().clearAllOverlays()
+    // Clear all decoration shapes
+    useDecorationStore.getState().clearShapes()
     setHasJSON(false)
     setBackendConversationId(null)
     // Clear all template state to prevent data cascading to new charts

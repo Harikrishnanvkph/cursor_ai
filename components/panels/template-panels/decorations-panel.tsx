@@ -13,7 +13,7 @@ import {
   Pencil, Minus, ArrowRight, ArrowRightLeft, Square, CircleIcon, MessageSquare,
   Triangle, Star, Hexagon, Cloud, CloudLightning, GitBranch, ChevronDown, Trash2, Copy,
   Lock, Unlock, Eye, EyeOff, ArrowUpToLine, ArrowDownToLine,
-  Check, X as XIcon, CircleDot,
+  Check, X as XIcon, CircleDot, Pentagon, Diamond, Heart,
   Type, Image as ImageIcon, FileCode, Upload, Bold, Italic, Underline, Strikethrough,
   AlignLeft, AlignCenter, AlignRight
 } from "lucide-react"
@@ -54,6 +54,10 @@ const SHAPE_GROUPS: Array<{ label: string; shapes: { type: DecorationShapeType; 
       { type: 'triangle' as DecorationShapeType, label: 'Triangle', icon: Triangle },
       { type: 'star' as DecorationShapeType, label: 'Star', icon: Star },
       { type: 'polygon' as DecorationShapeType, label: 'Polygon', icon: Hexagon },
+      { type: 'hexagon' as DecorationShapeType, label: 'Hexagon', icon: Hexagon },
+      { type: 'pentagon' as DecorationShapeType, label: 'Pentagon', icon: Pentagon },
+      { type: 'diamond-shape' as DecorationShapeType, label: 'Diamond', icon: Diamond },
+      { type: 'heart' as DecorationShapeType, label: 'Heart', icon: Heart },
       { type: 'cloud' as DecorationShapeType, label: 'Cloud', icon: Cloud },
       { type: 'text-callout' as DecorationShapeType, label: 'Callout', icon: MessageSquare },
     ]
@@ -101,6 +105,18 @@ const SHAPE_GROUPS: Array<{ label: string; shapes: { type: DecorationShapeType; 
       { type: 'emoji-rocket' as DecorationShapeType, label: 'Rocket', icon: (p: any) => <TextIcon text="🚀" {...p} /> },
       { type: 'emoji-target' as DecorationShapeType, label: 'Target', icon: (p: any) => <TextIcon text="🎯" {...p} /> },
       { type: 'emoji-laugh' as DecorationShapeType, label: 'Laugh', icon: (p: any) => <TextIcon text="😂" {...p} /> },
+      { type: 'emoji-clap' as DecorationShapeType, label: 'Clap', icon: (p: any) => <TextIcon text="👏" {...p} /> },
+      { type: 'emoji-eyes' as DecorationShapeType, label: 'Eyes', icon: (p: any) => <TextIcon text="👀" {...p} /> },
+      { type: 'emoji-sparkles' as DecorationShapeType, label: 'Sparkles', icon: (p: any) => <TextIcon text="✨" {...p} /> },
+      { type: 'emoji-party' as DecorationShapeType, label: 'Party', icon: (p: any) => <TextIcon text="🎉" {...p} /> },
+      { type: 'emoji-brain' as DecorationShapeType, label: 'Brain', icon: (p: any) => <TextIcon text="🧠" {...p} /> },
+      { type: 'emoji-muscle' as DecorationShapeType, label: 'Muscle', icon: (p: any) => <TextIcon text="💪" {...p} /> },
+      { type: 'emoji-crown' as DecorationShapeType, label: 'Crown', icon: (p: any) => <TextIcon text="👑" {...p} /> },
+      { type: 'emoji-diamond' as DecorationShapeType, label: 'Diamond', icon: (p: any) => <TextIcon text="💎" {...p} /> },
+      { type: 'emoji-medal' as DecorationShapeType, label: 'Medal', icon: (p: any) => <TextIcon text="🏅" {...p} /> },
+      { type: 'emoji-clock' as DecorationShapeType, label: 'Clock', icon: (p: any) => <TextIcon text="⏰" {...p} /> },
+      { type: 'emoji-lock' as DecorationShapeType, label: 'Lock', icon: (p: any) => <TextIcon text="🔒" {...p} /> },
+      { type: 'emoji-umbrella' as DecorationShapeType, label: 'Umbrella', icon: (p: any) => <TextIcon text="☂️" {...p} /> },
     ]
   }
 ]
@@ -131,7 +147,9 @@ function ShapeListItem({ shape, isSelected, onSelect, onUpdate, onRemove, onDupl
   const isTextbox = shape.type === 'textbox' || shape.type === 'textbox-auto'
   const isImage = shape.type === 'deco-image'
   const isSvg = shape.type === 'deco-svg'
+  const isNumber = shape.type.startsWith('num-')
   const isSection = isTextbox || isImage || isSvg
+  const useBorderLabels = isTextbox || isNumber || isImage
 
   const sectionInfo = SECTION_TYPES[shape.type]
   const ShapeIcon = sectionInfo?.icon || SHAPE_GROUPS.flatMap(g => g.shapes).find(s => s.type === shape.type)?.icon || Square
@@ -150,7 +168,9 @@ function ShapeListItem({ shape, isSelected, onSelect, onUpdate, onRemove, onDupl
         <div className="w-4 h-4 rounded-sm border flex items-center justify-center" style={{
           backgroundColor: isSection ? undefined : (shape.fillColor !== 'transparent' ? shape.fillColor : undefined),
           borderColor: isSection ? '#94a3b8' : shape.strokeColor,
-          background: isImage && shape.imageUrl ? `url(${shape.imageUrl}) center/cover` : undefined,
+          backgroundImage: isImage && shape.imageUrl ? `url(${shape.imageUrl})` : undefined,
+          backgroundPosition: isImage && shape.imageUrl ? 'center' : undefined,
+          backgroundSize: isImage && shape.imageUrl ? 'cover' : undefined,
         }}>
           <ShapeIcon className="w-2.5 h-2.5 text-white mix-blend-difference" />
         </div>
@@ -334,7 +354,7 @@ function ShapeListItem({ shape, isSelected, onSelect, onUpdate, onRemove, onDupl
               <div className="grid grid-cols-2 gap-3">
                 {!['line', 'arrow', 'connected-lines'].includes(shape.type) && (
                   <div>
-                    <Label className="text-[10px] text-slate-500 block mb-1">Fill</Label>
+                    <Label className="text-[10px] text-slate-500 block mb-1">{isNumber ? 'Color' : 'Fill'}</Label>
                     <div className="relative flex items-center gap-2">
                       <Input type="color" value={shape.fillColor.startsWith('#') ? shape.fillColor : '#3b82f6'} onChange={e => onUpdate({ fillColor: e.target.value })} className="h-7 w-7 p-0 border opacity-0 absolute z-10 cursor-pointer" />
                       <div className="h-7 w-7 rounded border border-slate-200 flex-shrink-0" style={{ backgroundColor: shape.fillColor.startsWith('#') ? shape.fillColor : '#3b82f6' }} />
@@ -343,7 +363,7 @@ function ShapeListItem({ shape, isSelected, onSelect, onUpdate, onRemove, onDupl
                   </div>
                 )}
                 <div>
-                  <Label className="text-[10px] text-slate-500 block mb-1">{isTextbox ? 'Border Color' : 'Stroke'}</Label>
+                  <Label className="text-[10px] text-slate-500 block mb-1">{useBorderLabels ? 'Border Color' : 'Stroke'}</Label>
                   <div className="relative flex items-center gap-2">
                     <Input type="color" value={shape.strokeColor.startsWith('#') ? shape.strokeColor : '#1e40af'} onChange={e => onUpdate({ strokeColor: e.target.value })} className="h-7 w-7 p-0 border opacity-0 absolute z-10 cursor-pointer" />
                     <div className="h-7 w-7 rounded border border-slate-200 flex-shrink-0" style={{ backgroundColor: shape.strokeColor.startsWith('#') ? shape.strokeColor : '#1e40af' }} />
@@ -358,25 +378,25 @@ function ShapeListItem({ shape, isSelected, onSelect, onUpdate, onRemove, onDupl
           {!['line', 'arrow', 'connected-lines'].includes(shape.type) && !isImage && !isSvg && (
             <div>
               <div className="flex justify-between mb-1.5">
-                <Label className="text-[10px] text-slate-500">{isTextbox ? 'Background Opacity' : 'Fill Opacity'}</Label>
+                <Label className="text-[10px] text-slate-500">{isTextbox ? 'Background Opacity' : isNumber ? 'Opacity' : 'Fill Opacity'}</Label>
                 <span className="text-[10px] text-slate-400">{shape.fillOpacity}%</span>
               </div>
               <Slider value={[shape.fillOpacity]} onValueChange={([v]) => onUpdate({ fillOpacity: v })} min={0} max={100} />
             </div>
           )}
 
-          {/* Stroke Width & Style */}
-          {!isSvg && (
+          {/* Stroke/Border Width & Style */}
+          {!isSvg && !isImage && (
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <div className="flex justify-between mb-1.5">
-                  <Label className="text-[10px] text-slate-500">{isTextbox ? 'Border Width' : 'Stroke Width'}</Label>
+                  <Label className="text-[10px] text-slate-500">{useBorderLabels ? 'Border Width' : 'Stroke Width'}</Label>
                   <span className="text-[10px] text-slate-400">{shape.strokeWidth}px</span>
                 </div>
                 <Slider value={[shape.strokeWidth]} onValueChange={([v]) => onUpdate({ strokeWidth: v })} min={0} max={20} />
               </div>
               <div>
-                <Label className="text-[10px] text-slate-500 block mb-1.5">{isTextbox ? 'Border Style' : 'Stroke Style'}</Label>
+                <Label className="text-[10px] text-slate-500 block mb-1.5">{useBorderLabels ? 'Border Style' : 'Stroke Style'}</Label>
                 <Select value={shape.strokeStyle} onValueChange={(v: any) => onUpdate({ strokeStyle: v })}>
                   <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -489,6 +509,23 @@ function ImagePropertyEditor({ shape, onUpdate }: { shape: any, onUpdate: (u: an
         </div>
         <Slider value={[shape.borderRadius || 0]} onValueChange={([v]) => onUpdate({ borderRadius: v })} min={0} max={50} />
       </div>
+      {/* Border Width */}
+      <div>
+        <div className="flex justify-between mb-1.5">
+          <Label className="text-[10px] text-slate-500">Border Width</Label>
+          <span className="text-[10px] text-slate-400">{shape.strokeWidth}px</span>
+        </div>
+        <Slider value={[shape.strokeWidth]} onValueChange={([v]) => onUpdate({ strokeWidth: v })} min={0} max={20} />
+      </div>
+      {/* Border Color */}
+      <div>
+        <Label className="text-[10px] text-slate-500 block mb-1">Border Color</Label>
+        <div className="relative flex items-center gap-2">
+          <Input type="color" value={shape.strokeColor?.startsWith('#') ? shape.strokeColor : '#cbd5e1'} onChange={e => onUpdate({ strokeColor: e.target.value })} className="h-7 w-7 p-0 border opacity-0 absolute z-10 cursor-pointer" />
+          <div className="h-7 w-7 rounded border border-slate-200 flex-shrink-0" style={{ backgroundColor: shape.strokeColor?.startsWith('#') ? shape.strokeColor : '#cbd5e1' }} />
+          <span className="text-[9px] text-slate-400 font-mono uppercase truncate">{shape.strokeColor || '#cbd5e1'}</span>
+        </div>
+      </div>
       <div>
         <div className="flex justify-between mb-1.5">
           <Label className="text-[10px] text-slate-500">Opacity</Label>
@@ -556,7 +593,7 @@ export function DecorationsPanel() {
         strokeColor: '#cbd5e1', strokeWidth: 1, strokeStyle: 'solid',
         visible: true, locked: false, zIndex: shapes.length + 1,
         imageUrl: e.target?.result as string,
-        imageFit: 'cover', borderRadius: 0,
+        imageFit: 'contain', borderRadius: 0,
       })
     }
     reader.readAsDataURL(file)
@@ -605,13 +642,34 @@ export function DecorationsPanel() {
       strokeColor: '#cbd5e1', strokeWidth: 1, strokeStyle: 'solid',
       visible: true, locked: false, zIndex: shapes.length + 1,
       imageUrl: url.trim(),
-      imageFit: 'cover', borderRadius: 0,
+      imageFit: 'contain', borderRadius: 0,
     })
   }
 
+  const [showSectionClearConfirm, setShowSectionClearConfirm] = useState(false)
+  const [showShapesClearConfirm, setShowShapesClearConfirm] = useState(false)
+
+  const clearSectionElements = () => {
+    const sectionShapes = shapes.filter(s => SECTION_TYPE_LIST.includes(s.type))
+    sectionShapes.forEach(s => removeShape(s.id))
+    setShowSectionClearConfirm(false)
+  }
+
+  const clearShapeElements = () => {
+    const onlyShapes = shapes.filter(s => !SECTION_TYPE_LIST.includes(s.type))
+    onlyShapes.forEach(s => removeShape(s.id))
+    setShowShapesClearConfirm(false)
+  }
+
   // Build list renderer for any set of shapes
-  const renderElementList = (elements: typeof shapes, emptyIcon: React.ElementType, emptyText: string) => {
+  const renderElementList = (elements: typeof shapes, emptyIcon: React.ElementType, emptyText: string, listType?: 'section' | 'shapes') => {
     const EmptyIcon = emptyIcon
+    const isSection = listType === 'section'
+    const isShapes = listType === 'shapes'
+    const showConfirm = isSection ? showSectionClearConfirm : isShapes ? showShapesClearConfirm : false
+    const setShowConfirm = isSection ? setShowSectionClearConfirm : isShapes ? setShowShapesClearConfirm : () => {}
+    const clearFn = isSection ? clearSectionElements : isShapes ? clearShapeElements : () => {}
+
     if (elements.length === 0 && !drawingMode) {
       return (
         <div className="text-center py-6 text-slate-400">
@@ -625,11 +683,28 @@ export function DecorationsPanel() {
       <div className="space-y-2">
         <div className="flex justify-between items-center px-1 py-1">
           <span className="text-xs text-gray-400 font-medium">{elements.length} element{elements.length !== 1 ? 's' : ''}</span>
-          <div className="flex gap-1.5">
-            {selectedShapeId && elements.find(s => s.id === selectedShapeId) && (
+          <div className="flex gap-1.5 items-center">
+            {!showConfirm && selectedShapeId && elements.find(s => s.id === selectedShapeId) && (
               <Button size="sm" variant="ghost" onClick={() => setSelectedShapeId(null)} className="text-xs text-gray-500 h-6 px-2">
                 Deselect
               </Button>
+            )}
+            {listType && elements.length > 0 && (
+              !showConfirm ? (
+                <Button size="sm" variant="ghost" onClick={() => setShowConfirm(true)} className="text-xs text-red-400 h-6 px-2">
+                  Clear All
+                </Button>
+              ) : (
+                <div className="flex gap-1 items-center">
+                  <span className="text-[10px] text-red-500">Sure?</span>
+                  <Button size="sm" variant="destructive" onClick={clearFn} className="text-xs h-6 px-2">
+                    Confirm
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setShowConfirm(false)} className="text-xs h-6 px-2">
+                    Cancel
+                  </Button>
+                </div>
+              )
             )}
           </div>
         </div>
@@ -674,45 +749,51 @@ export function DecorationsPanel() {
           <div className={`relative overflow-hidden transition-all duration-300 border rounded-lg ${isPickerOpen ? 'bg-slate-50/30 border-blue-200 shadow-sm' : 'bg-white border-slate-100 hover:border-slate-200'}`}>
             <button
               onClick={() => setIsPickerOpen(!isPickerOpen)}
-              className="w-full h-11 px-4 flex items-center justify-between group transition-colors"
+              className="w-full h-9 px-3 flex items-center justify-between group transition-colors"
             >
-              <div className="flex items-center gap-3">
-                <div className={`p-1.5 rounded-lg transition-all duration-300 ${isPickerOpen ? 'bg-amber-500 text-white shadow-amber-200 shadow-lg scale-110' : 'bg-slate-100 text-slate-500 group-hover:bg-amber-50 group-hover:text-amber-500'}`}>
-                  <Hexagon className="h-4 w-4" />
+              <div className="flex items-center gap-2">
+                <div className={`p-1 rounded-md transition-all duration-300 ${isPickerOpen ? 'bg-amber-500 text-white shadow-amber-200 shadow-md scale-105' : 'bg-slate-100 text-slate-500 group-hover:bg-amber-50 group-hover:text-amber-500'}`}>
+                  <Hexagon className="h-3.5 w-3.5" />
                 </div>
-                <span className={`text-sm font-bold transition-colors ${isPickerOpen ? 'text-slate-900' : 'text-slate-600 group-hover:text-amber-600'}`}>
+                <span className={`text-xs font-bold transition-colors ${isPickerOpen ? 'text-slate-900' : 'text-slate-600 group-hover:text-amber-600'}`}>
                   {drawingMode ? `Drawing: ${drawingMode}` : 'Add Shape'}
                 </span>
               </div>
-              <ChevronDown className={`h-4 w-4 transition-all duration-500 ${isPickerOpen ? 'rotate-180 text-amber-500' : 'text-slate-400 group-hover:text-amber-400'}`} />
+              <ChevronDown className={`h-3.5 w-3.5 transition-all duration-500 ${isPickerOpen ? 'rotate-180 text-amber-500' : 'text-slate-400 group-hover:text-amber-400'}`} />
             </button>
 
             {isPickerOpen && (
-              <div className="px-3 pb-5 pt-1 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300 ease-out">
-                {SHAPE_GROUPS.map(g => (
-                  <div key={g.label} className="space-y-2">
+              <div className="px-2 pb-3 pt-1 space-y-2.5 animate-in fade-in slide-in-from-top-2 duration-300 ease-out">
+                {SHAPE_GROUPS.map(g => {
+                  const isFreehandGroup = g.label === 'Drawing'
+                  const isEmojiGroup = g.label === 'Emojis'
+                  const gridCols = isFreehandGroup ? 'flex' : isEmojiGroup ? 'grid grid-cols-7' : 'grid grid-cols-5'
+                  return (
+                  <div key={g.label} className="space-y-1.5">
                     <div className="flex items-center gap-2">
                       <div className="h-[1px] flex-1 bg-slate-100" />
-                      <Label className="text-[10px] uppercase text-slate-400 font-black tracking-[0.15em] whitespace-nowrap">{g.label}</Label>
+                      <Label className="text-[9px] uppercase text-slate-400 font-black tracking-[0.15em] whitespace-nowrap">{g.label}</Label>
                       <div className="h-[1px] flex-1 bg-slate-100" />
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className={`${gridCols} gap-1`}>
                       {g.shapes.map(s => {
                         const isActive = drawingMode === s.type
+                        const isFreehand = s.type === 'freehand'
                         return (
                           <Button
                             key={s.type}
                             variant={isActive ? "default" : "outline"}
-                            className={`h-16 p-0 flex flex-col items-center justify-center gap-1.5 transition-all duration-300 ${
+                            title={s.label}
+                            className={`${isFreehand ? 'h-8 px-3 flex items-center gap-1.5' : 'h-8 w-8 p-0 flex items-center justify-center'} transition-all duration-200 ${
                               isActive
-                                ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-500 shadow-lg shadow-amber-200'
-                                : 'hover:border-amber-400 hover:bg-amber-50/50 hover:text-amber-600 hover:shadow-md border-slate-100 bg-white/50'
+                                ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-500 shadow-md shadow-amber-200/50'
+                                : 'hover:border-amber-400 hover:bg-amber-50/50 hover:text-amber-600 border-slate-100 bg-white/50'
                             }`}
                             onClick={() => handleSelectTool(s.type)}
                           >
-                            <s.icon className="h-5 w-5" />
-                            {!s.type.startsWith('num-') && (
-                              <span className="text-[10px] font-semibold truncate w-full px-1 text-center">
+                            <s.icon className={isFreehand ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
+                            {isFreehand && (
+                              <span className="text-[10px] font-semibold">
                                 {s.label}
                               </span>
                             )}
@@ -721,7 +802,8 @@ export function DecorationsPanel() {
                       })}
                     </div>
                   </div>
-                ))}
+                  )
+                })}
 
                 {/* Cancel drawing mode button */}
                 {drawingMode && (
@@ -762,7 +844,7 @@ export function DecorationsPanel() {
           </div>
 
           {/* Shape List */}
-          {renderElementList(shapeElements, Hexagon, 'No shapes added yet. Select a tool above and draw on the canvas.')}
+          {renderElementList(shapeElements, Hexagon, 'No shapes added yet. Select a tool above and draw on the canvas.', 'shapes')}
 
           {/* Global clear */}
           {shapes.length > 0 && (
@@ -925,7 +1007,7 @@ export function DecorationsPanel() {
           )}
 
           {/* Section Elements List */}
-          {renderElementList(sectionElements, Type, 'No section elements yet. Add a textbox, image, or SVG above.')}
+          {renderElementList(sectionElements, Type, 'No section elements yet. Add a textbox, image, or SVG above.', 'section')}
         </TabsContent>
       </Tabs>
     </div>

@@ -9,11 +9,11 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { STANDARD_CHART_TYPES, THREE_D_CHART_TYPES } from "@/lib/chart-types"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+
 import { ResponsiveAnimationsPanel } from "@/components/panels/responsive-animations-panel"
 import { DatasetsSlicesPanel } from "@/components/panels/datasets-slices-panel"
 import { TemplateListTab } from "@/components/panels/template-settings/template-list-tab"
-import { FileText, Layout, BarChart3, Edit3, Cloud, Settings, Sparkles } from "lucide-react"
+import { FileText, Layout, BarChart3, Edit3, Cloud, Sparkles } from "lucide-react"
 
 import { useState, useCallback } from "react"
 import { useUIStore } from "@/lib/stores/ui-store"
@@ -25,128 +25,8 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
-// Content Setting Dialog Component
-function ContentSettingDialog() {
-  const {
-    currentTemplate,
-    contentTypePreferences,
-    setContentTypePreferences,
-    updateTextArea
-  } = useTemplateStore()
 
-  const [isOpen, setIsOpen] = useState(false)
 
-  // Get all text areas from current template
-  const textAreas = currentTemplate?.textAreas || []
-
-  // Get content type for a text area - check both textArea.contentType and preferences
-  const getContentType = (textArea: { id: string; contentType?: 'text' | 'html' }): 'text' | 'html' => {
-    // Priority: textArea.contentType > preferences > default 'text'
-    return textArea.contentType || (contentTypePreferences[textArea.id] as 'text' | 'html') || 'text'
-  }
-
-  // Toggle content type between text and html
-  const toggleContentType = (textAreaId: string, currentContentType: 'text' | 'html') => {
-    const newType: 'text' | 'html' = currentContentType === 'text' ? 'html' : 'text'
-
-    // Update preferences for AI generation
-    setContentTypePreferences({
-      ...contentTypePreferences,
-      [textAreaId]: newType
-    })
-
-    // ALSO update the actual textArea.contentType for immediate rendering
-    updateTextArea(textAreaId, { contentType: newType })
-
-    toast.success(`Changed to ${newType.toUpperCase()} mode`)
-  }
-
-  return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full flex items-center gap-2 mb-2"
-        >
-          <Settings className="h-4 w-4" />
-          Content Setting
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            Content Type Settings
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="py-4">
-          {!currentTemplate ? (
-            <div className="text-center py-6 text-gray-500">
-              <p className="text-sm">No template selected.</p>
-              <p className="text-xs mt-1">Select a template to configure content types.</p>
-            </div>
-          ) : textAreas.length === 0 ? (
-            <div className="text-center py-6 text-gray-500">
-              <p className="text-sm">No text areas in this template.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <p className="text-xs text-gray-500 mb-4">
-                Set whether each text area should use plain text or HTML content for AI generation.
-              </p>
-
-              {textAreas.map((textArea) => {
-                const contentType = getContentType(textArea)
-                return (
-                  <div
-                    key={textArea.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border"
-                  >
-                    <div className="flex-1">
-                      <div className="font-medium text-sm capitalize">
-                        {textArea.type}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {textArea.type === 'title' && 'Main title area'}
-                        {textArea.type === 'heading' && 'Subtitle / heading'}
-                        {textArea.type === 'main' && 'Main content area'}
-                        {textArea.type === 'custom' && 'Custom text area'}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs px-2 py-1 rounded ${contentType === 'html'
-                        ? 'bg-purple-100 text-purple-700'
-                        : 'bg-gray-200 text-gray-600'
-                        }`}>
-                        {contentType.toUpperCase()}
-                      </span>
-                      <Switch
-                        checked={contentType === 'html'}
-                        onCheckedChange={() => toggleContentType(textArea.id, contentType)}
-                      />
-                    </div>
-                  </div>
-                )
-              })}
-
-              <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-xs text-blue-700">
-                  <strong>HTML mode:</strong> AI can generate rich content with images, lists, formatting.
-                </p>
-                <p className="text-xs text-blue-700 mt-1">
-                  <strong>Text mode:</strong> AI generates plain text only.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
-}
 
 export function ConfigSidebar() {
   const router = useRouter()

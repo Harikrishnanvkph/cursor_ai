@@ -1,9 +1,12 @@
 "use client"
 
 import type { TemplateLayout } from "@/lib/template-store"
+import type { RenderedFormat } from "@/lib/format-types"
+import type { DecorationShape } from "@/lib/stores/decoration-store"
 import type { TemplateExportOptions } from "./template-export-types"
 import { exportTemplateAsImage } from "./template-image-export"
 import { exportTemplateAsHTML } from "./template-html-export"
+import { exportFormatAsHTML } from "./format-html-export"
 
 export const downloadTemplateExport = async (
     template: TemplateLayout,
@@ -55,6 +58,38 @@ export const downloadTemplateExport = async (
 
     } catch (error) {
         console.error('Error exporting template:', error)
+        throw error
+    }
+}
+
+/**
+ * Download a format-mode export as HTML.
+ * Used when the editor is in format mode (RenderedFormat) instead of template mode.
+ */
+export const downloadFormatExport = async (
+    rendered: RenderedFormat,
+    decorationShapes: DecorationShape[],
+    options: { fileName?: string } = {}
+): Promise<void> => {
+    const { fileName = 'chart-format' } = options
+
+    try {
+        const html = await exportFormatAsHTML(rendered, decorationShapes, { fileName })
+
+        // Create blob and download
+        const blob = new Blob([html], { type: 'text/html' })
+        const url = URL.createObjectURL(blob)
+
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `${fileName}.html`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+
+    } catch (error) {
+        console.error('Error exporting format:', error)
         throw error
     }
 }

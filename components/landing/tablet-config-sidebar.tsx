@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
-import { AlignEndHorizontal, Database, Palette, Grid, Tag, Settings, Download, FileText } from "lucide-react"
+import { AlignEndHorizontal, Database, PanelTop, LayoutTemplate, Palette, Grid, Tag, Settings, Download, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TypesTogglesPanel } from "@/components/panels/types-toggles-panel"
@@ -16,7 +16,7 @@ import { TemplatesPanel } from "@/components/panels/template-settings"
 const TABLET_TABS = [
   { id: "types_toggles", label: "Types", icon: AlignEndHorizontal },
   { id: "datasets_slices", label: "Data", icon: Database },
-  { id: "design", label: "Style", icon: Palette },
+  { id: "design", label: "Background & Legend", icon: PanelTop },
   { id: "axes", label: "Axes", icon: Grid },
   { id: "labels", label: "Labels", icon: Tag },
   { id: "templates", label: "Templates", icon: FileText },

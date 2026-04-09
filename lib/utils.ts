@@ -63,3 +63,41 @@ export function clearStoreData() {
     console.log('Store data cleared from localStorage');
   }
 }
+
+export function getPatternCSS(patternType: string, color: string, scale: number = 1): React.CSSProperties & { styleString: string } {
+  const size = 20 * scale;
+  let bgImage = '';
+  let bgSize = '';
+  let bgRepeat = 'repeat';
+  
+  switch (patternType) {
+    case 'lines':
+      // Horizontal lines using repeating-linear-gradient for bulletproof rendering
+      bgImage = `repeating-linear-gradient(to bottom, ${color} 0px, ${color} 1px, transparent 1px, transparent ${size}px)`;
+      bgSize = '100% 100%';
+      break;
+    case 'grid':
+      // Standard graph paper grid
+      bgImage = `linear-gradient(to right, ${color} 1px, transparent 1px), linear-gradient(to bottom, ${color} 1px, transparent 1px)`;
+      bgSize = `${size}px ${size}px`;
+      break;
+    case 'mesh':
+      // Diagonal grid requires repeating-linear-gradients to wrap properly without artifacts
+      bgImage = `repeating-linear-gradient(45deg, ${color} 0px, ${color} 1px, transparent 1px, transparent ${size}px), repeating-linear-gradient(-45deg, ${color} 0px, ${color} 1px, transparent 1px, transparent ${size}px)`;
+      bgSize = '100% 100%';
+      break;
+    case 'dots':
+    default:
+      // Circular dots
+      bgImage = `radial-gradient(circle, ${color} 1px, transparent 1px)`;
+      bgSize = `${size}px ${size}px`;
+      break;
+  }
+
+  return {
+    backgroundImage: bgImage,
+    backgroundSize: bgSize,
+    backgroundRepeat: bgRepeat,
+    styleString: `background-image: ${bgImage}; background-size: ${bgSize}; background-repeat: ${bgRepeat};`
+  };
+}

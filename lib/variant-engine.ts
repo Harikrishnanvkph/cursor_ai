@@ -365,8 +365,8 @@ function renderBackgroundZone(
 ): RenderedZone {
   const result: RenderedZone = { zone }
 
-  // If the zone has a pre-filled background, use it as-is
-  if (zone.style.imageUrl) {
+  // If the zone has a pre-filled background image, use it only if type is 'image'
+  if (zone.style.type === 'image' && zone.style.imageUrl) {
     result.resolvedImageUrl = zone.style.imageUrl
     return result
   }
