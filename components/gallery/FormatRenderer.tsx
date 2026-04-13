@@ -156,7 +156,7 @@ function ZoneView({ renderedZone, scale, palette, canvasWidth, canvasHeight, int
 
   // Background helper
   const getZoneBackgroundStyle = (): React.CSSProperties => {
-    const zStyle: any = zone.style || {}
+    const zStyle: any = (zone as any).style || {}
     const bgType = zStyle.bgType || (zStyle.backgroundColor || zStyle.bgColor ? 'color' : 'transparent')
     if (bgType === 'transparent') return {}
 

@@ -20,6 +20,8 @@ export type DecorationShapeType =
   | 'polygon'
   | 'cloud'
   | 'connected-lines'
+  | 'bezier-line'
+  | 'bspline-curve'
   | 'crossmark'
   | 'checkmark'
   | 'dot'
@@ -54,6 +56,7 @@ export interface DecorationShape {
   strokeColor: string
   strokeWidth: number
   strokeStyle: 'solid' | 'dashed' | 'dotted'
+  strokeDashPattern?: string
   /** Text content for text-callout and textbox shapes */
   text?: string
   visible: boolean
@@ -78,7 +81,7 @@ export interface DecorationShape {
   svgContent?: string
 }
 
-export type DrawingMode = DecorationShapeType
+export type DrawingMode = DecorationShapeType | 'marquee-select'
 
 export interface DrawingState {
   /** The shape type being drawn */
@@ -99,12 +102,25 @@ export interface DrawingState {
 // Store
 // ═══════════════════════════════════════════════════════
 
+export interface GlobalShapeSettings {
+  fillColor: string
+  fillOpacity: number
+  strokeColor: string
+  strokeWidth: number
+  strokeStyle: 'solid' | 'dashed' | 'dotted'
+  strokeDashPattern?: string
+}
+
 interface DecorationStore {
   shapes: DecorationShape[]
   selectedShapeId: string | null
-  hoveredShapeId: string | null
+  /** Multiple selected shape IDs (marquee / shift-click) */
+  selectedShapeIds: string[]
   drawingMode: DrawingMode | null
-  drawingInProgress: DrawingState | null
+  globalShapeSettings: GlobalShapeSettings
+
+  // Global Settings
+  setGlobalShapeSettings: (settings: Partial<GlobalShapeSettings>) => void
 
   // Shape CRUD
   addShape: (shape: Omit<DecorationShape, 'id'>) => string
@@ -114,11 +130,15 @@ interface DecorationStore {
 
   // Selection
   setSelectedShapeId: (id: string | null) => void
-  setHoveredShapeId: (id: string | null) => void
+  /** Set multiple selected shape IDs (replaces any existing multi-select) */
+  setSelectedShapeIds: (ids: string[]) => void
+  /** Toggle a single shape id in/out of multi-select */
+  toggleShapeSelection: (id: string) => void
+  /** Clear multi-select */
+  clearMultiSelect: () => void
 
   // Drawing
   setDrawingMode: (mode: DrawingMode | null) => void
-  setDrawingInProgress: (state: DrawingState | null) => void
 
   // Convenience actions
   duplicateShape: (id: string) => void
@@ -132,9 +152,20 @@ const generateId = () => `deco-${Date.now()}-${Math.random().toString(36).substr
 export const useDecorationStore = create<DecorationStore>()((set, get) => ({
   shapes: [],
   selectedShapeId: null,
-  hoveredShapeId: null,
+  selectedShapeIds: [],
   drawingMode: null,
-  drawingInProgress: null,
+  globalShapeSettings: {
+    fillColor: 'transparent',
+    fillOpacity: 100,
+    strokeColor: '#3b82f6',
+    strokeWidth: 2,
+    strokeStyle: 'solid',
+    strokeDashPattern: ''
+  },
+
+  setGlobalShapeSettings: (updates) => set((state) => ({
+    globalShapeSettings: { ...state.globalShapeSettings, ...updates }
+  })),
 
   // ── Shape CRUD ──────────────────────────────────────
 
@@ -143,9 +174,7 @@ export const useDecorationStore = create<DecorationStore>()((set, get) => ({
     const newShape: DecorationShape = { ...shape, id }
     set((state) => ({
       shapes: [...state.shapes, newShape],
-      selectedShapeId: id,
-      drawingMode: null,     // Exit drawing mode after adding
-      drawingInProgress: null
+      selectedShapeId: state.drawingMode ? state.selectedShapeId : id
     }))
     return id
   },
@@ -162,24 +191,37 @@ export const useDecorationStore = create<DecorationStore>()((set, get) => ({
   clearShapes: () => set({
     shapes: [],
     selectedShapeId: null,
-    hoveredShapeId: null,
-    drawingInProgress: null
+    selectedShapeIds: []
   }),
 
   // ── Selection ───────────────────────────────────────
 
-  setSelectedShapeId: (id) => set({ selectedShapeId: id }),
-  setHoveredShapeId: (id) => set({ hoveredShapeId: id }),
+  setSelectedShapeId: (id) => set({ selectedShapeId: id, selectedShapeIds: [] }),
+
+  setSelectedShapeIds: (ids) => set({
+    selectedShapeIds: ids,
+    selectedShapeId: ids.length === 1 ? ids[0] : null
+  }),
+
+  toggleShapeSelection: (id) => set((state) => {
+    const exists = state.selectedShapeIds.includes(id)
+    const newIds = exists
+      ? state.selectedShapeIds.filter(sid => sid !== id)
+      : [...state.selectedShapeIds, id]
+    return {
+      selectedShapeIds: newIds,
+      selectedShapeId: newIds.length === 1 ? newIds[0] : null
+    }
+  }),
+
+  clearMultiSelect: () => set({ selectedShapeIds: [], selectedShapeId: null }),
 
   // ── Drawing ─────────────────────────────────────────
 
   setDrawingMode: (mode) => set({
     drawingMode: mode,
     selectedShapeId: mode ? null : get().selectedShapeId, // Deselect when entering drawing mode
-    drawingInProgress: null
   }),
-
-  setDrawingInProgress: (state) => set({ drawingInProgress: state }),
 
   // ── Convenience ─────────────────────────────────────
 

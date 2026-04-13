@@ -1,8 +1,14 @@
 "use client"
 
 import React, { useRef, useCallback, useEffect, useState } from "react"
-import { useDecorationStore, type DecorationShape, type DrawingState } from "@/lib/stores/decoration-store"
+import { useDecorationStore, type DecorationShape, type DrawingState, type GlobalShapeSettings } from "@/lib/stores/decoration-store"
 import { DecorationToolbar } from "./DecorationToolbar"
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+} from '@/components/ui/context-menu'
 
 // ═══════════════════════════════════════════════════════
 // SVG Path Generators
@@ -38,12 +44,12 @@ function cloudLinePath(points: { x: number; y: number }[]): string {
   if (points.length < 2) return ''
   let d = `M ${points[0].x} ${points[0].y}`
   for (let i = 1; i < points.length; i++) {
-    const p1 = points[i-1], p2 = points[i]
+    const p1 = points[i - 1], p2 = points[i]
     const dx = p2.x - p1.x, dy = p2.y - p1.y
-    const dist = Math.sqrt(dx*dx + dy*dy)
+    const dist = Math.sqrt(dx * dx + dy * dy)
     const bumpSize = 25
     const bumps = Math.max(1, Math.round(dist / bumpSize))
-    
+
     for (let j = 0; j < bumps; j++) {
       const t1 = j / bumps
       const t2 = (j + 1) / bumps
@@ -51,7 +57,7 @@ function cloudLinePath(points: { x: number; y: number }[]): string {
       const startY = p1.y + dy * t1
       const endX = p1.x + dx * t2
       const endY = p1.y + dy * t2
-      
+
       const segmentDist = dist / bumps;
       const radius = segmentDist / 2;
       d += ` A ${radius} ${radius} 0 0 1 ${endX} ${endY}`
@@ -70,14 +76,112 @@ function connectedLinesPath(points: { x: number; y: number }[]): string {
   return points.map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`)).join(' ')
 }
 
+function bezierPath(points: { x: number; y: number }[]): string {
+  if (points.length === 0) return ''
+  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`
+  if (points.length === 2) return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`
+
+  // Catmull-Rom Spline implementation.
+  // This curve is an "interpolating" spline, which means it guarantees
+  // passing through EVERY single point provided by the user.
+  let d = `M ${points[0].x} ${points[0].y}`
+
+  for (let i = 0; i < points.length - 1; i++) {
+    // Collect the 4 points needed for the current segment (p0, p1, p2, p3).
+    // If we're at the boundaries, simply double-up on the end points.
+    const p0 = i === 0 ? points[0] : points[i - 1]
+    const p1 = points[i]
+    const p2 = points[i + 1]
+    const p3 = i + 2 < points.length ? points[i + 2] : points[i + 1]
+
+    // Calculate Cubic Bézier control points based on Catmull-Rom tangents
+    // Default tension of 0 mathematically simplifies to dividing by 6.
+    const cp1x = p1.x + (p2.x - p0.x) / 6
+    const cp1y = p1.y + (p2.y - p0.y) / 6
+    
+    const cp2x = p2.x - (p3.x - p1.x) / 6
+    const cp2y = p2.y - (p3.y - p1.y) / 6
+
+    d += ` C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${p2.x} ${p2.y}`
+  }
+
+  return d
+}
+
+/**
+ * Cubic B-Spline path generator – DaVinci Resolve / Fusion style.
+ *
+ * Uses a piecewise uniform cubic B-spline with clamped (tripled) endpoints:
+ *  • The curve passes exactly through the FIRST and LAST control points.
+ *  • Intermediate points act as smooth attractors – the curve flows
+ *    towards them without necessarily intersecting them.
+ *  • Produces C² continuous curves (curvature-continuous).
+ *
+ * Each B-spline segment is analytically converted to an exact cubic Bézier
+ * `C` command. This guarantees **local stability**: adding a new control
+ * point at the end only changes the last ~2 segments; all prior segments
+ * produce identical SVG path commands.
+ */
+function bsplinePath(points: { x: number; y: number }[]): string {
+  if (points.length === 0) return ''
+  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`
+  if (points.length === 2) return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`
+  if (points.length === 3) {
+    // With only 3 points, use a quadratic Bézier through the control point
+    return `M ${points[0].x} ${points[0].y} Q ${points[1].x} ${points[1].y} ${points[2].x} ${points[2].y}`
+  }
+
+  // Build extended control point array with clamped (tripled) endpoints.
+  // This pins the curve to pass exactly through the first and last points.
+  //   Original:  [P0, P1, P2, ..., Pn]
+  //   Extended:  [P0, P0, P0, P1, P2, ..., Pn, Pn, Pn]
+  const first = points[0]
+  const last = points[points.length - 1]
+  const ext = [first, first, ...points, last, last]
+
+  // Each group of 4 consecutive extended points defines one cubic B-spline
+  // segment. Convert each analytically to an SVG cubic Bézier `C` command.
+  //
+  // For uniform cubic B-spline segment with control points [Q0, Q1, Q2, Q3]:
+  //   Bézier start = (Q0 + 4·Q1 + Q2) / 6
+  //   Bézier CP1   = (2·Q1 + Q2) / 3
+  //   Bézier CP2   = (Q1 + 2·Q2) / 3
+  //   Bézier end   = (Q1 + 4·Q2 + Q3) / 6
+  //
+  // Note: end of segment i == start of segment i+1 (C² continuity).
+
+  const numSegs = ext.length - 3
+
+  // Start point (= first point due to clamping)
+  const q0 = ext[0], q1 = ext[1], q2 = ext[2]
+  const sx = (q0.x + 4 * q1.x + q2.x) / 6
+  const sy = (q0.y + 4 * q1.y + q2.y) / 6
+  let d = `M ${sx} ${sy}`
+
+  for (let i = 0; i < numSegs; i++) {
+    const p0 = ext[i], p1 = ext[i + 1], p2 = ext[i + 2], p3 = ext[i + 3]
+
+    const cp1x = (2 * p1.x + p2.x) / 3
+    const cp1y = (2 * p1.y + p2.y) / 3
+    const cp2x = (p1.x + 2 * p2.x) / 3
+    const cp2y = (p1.y + 2 * p2.y) / 3
+    const endX = (p1.x + 4 * p2.x + p3.x) / 6
+    const endY = (p1.y + 4 * p2.y + p3.y) / 6
+
+    d += ` C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${endX} ${endY}`
+  }
+
+  return d
+}
+
 function freehandPath(points: { x: number; y: number }[]): string {
   if (points.length < 2) return ''
   let d = `M ${points[0].x} ${points[0].y}`
-  
+
   if (points.length === 2) {
     return d + ` L ${points[1].x} ${points[1].y}`
   }
-  
+
   // Use midpoints as destinations and original points as control points
   // for perfectly smooth continuous curves
   for (let i = 1; i < points.length - 1; i++) {
@@ -87,19 +191,20 @@ function freehandPath(points: { x: number; y: number }[]): string {
     const nextY = points[i + 1].y
     const midX = (cpX + nextX) / 2
     const midY = (cpY + nextY) / 2
-    
+
     d += ` Q ${cpX} ${cpY} ${midX} ${midY}`
   }
-  
+
   // Connect the very last point
   d += ` L ${points[points.length - 1].x} ${points[points.length - 1].y}`
   return d
 }
 
-function getStrokeDasharray(style: string): string {
+function getStrokeDasharray(style: string, customPattern?: string): string {
+  if (customPattern) return customPattern
   switch (style) {
     case 'dashed': return '8,6'
-    case 'dotted': return '2,4'
+    case 'dotted': return '0,8'
     default: return 'none'
   }
 }
@@ -134,9 +239,9 @@ function rotatePoint(x: number, y: number, cx: number, cy: number, angleDegrees:
 // Shape Helpers
 // ═══════════════════════════════════════════════════════
 
-const LINE_LIKE_TYPES = ['line', 'arrow', 'double-arrow', 'connected-lines', 'freehand']
+const LINE_LIKE_TYPES = ['line', 'arrow', 'double-arrow', 'connected-lines', 'bezier-line', 'bspline-curve', 'freehand']
 const POINTS_BASED_TYPES = [...LINE_LIKE_TYPES, 'polygon', 'cloud-line']
-const EDITABLE_POINTS_TYPES = ['line', 'arrow', 'double-arrow', 'connected-lines', 'cloud-line', 'polygon']
+const EDITABLE_POINTS_TYPES = ['line', 'arrow', 'double-arrow', 'connected-lines', 'bezier-line', 'bspline-curve', 'cloud-line', 'polygon']
 
 function isLineLike(type: string) { return LINE_LIKE_TYPES.includes(type) }
 function isPointsBased(type: string) { return POINTS_BASED_TYPES.includes(type) }
@@ -163,6 +268,85 @@ function getShapeBounds(shape: DecorationShape): { x: number; y: number; width: 
     }
   }
   return { x: shape.x, y: shape.y, width: shape.width, height: shape.height }
+}
+
+/** Snap a coordinate to the nearest grid increment */
+function snapToGrid(val: number, grid: number): number {
+  if (grid <= 0) return val
+  return Math.round(val / grid) * grid
+}
+
+/** Compute snapping nodes for shape endpoints */
+function getSnapNodes(shapes: DecorationShape[], excludeId?: string): { x: number, y: number }[] {
+  const nodes: { x: number, y: number }[] = []
+  shapes.forEach(s => {
+    if (s.id === excludeId || !s.visible) return
+    const b = getShapeBounds(s)
+    const cx = b.x + b.width / 2
+    const cy = b.y + b.height / 2
+
+    // Always include the center point
+    const baseNodes = [{ x: cx, y: cy }]
+
+    // Path/line endpoint nodes
+    if (s.points && s.points.length >= 2 && isPointsBased(s.type)) {
+      baseNodes.push(s.points[0])
+      baseNodes.push(s.points[s.points.length - 1])
+    } else {
+      switch (s.type) {
+        case 'triangle':
+          baseNodes.push({ x: b.x + b.width / 2, y: b.y }) // top
+          baseNodes.push({ x: b.x + b.width, y: b.y + b.height }) // right bottom
+          baseNodes.push({ x: b.x, y: b.y + b.height }) // left bottom
+          break
+        case 'diamond-shape':
+          baseNodes.push({ x: b.x + b.width / 2, y: b.y })
+          baseNodes.push({ x: b.x + b.width, y: b.y + b.height / 2 })
+          baseNodes.push({ x: b.x + b.width / 2, y: b.y + b.height })
+          baseNodes.push({ x: b.x, y: b.y + b.height / 2 })
+          break
+        case 'hexagon':
+        case 'pentagon':
+          baseNodes.push(...regularPolygon(b.x, b.y, b.width, b.height, s.type === 'hexagon' ? 6 : 5))
+          break
+        case 'star': {
+          const outerR = Math.min(b.width, b.height) / 2
+          const innerR = outerR * 0.382
+          for (let i = 0; i < 10; i++) {
+            const r = i % 2 === 0 ? outerR : innerR
+            const angle = (Math.PI / 5) * i - Math.PI / 2
+            baseNodes.push({ x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r })
+          }
+          break
+        }
+        case 'circle':
+        case 'dot':
+          // Center is already added, just add the compass points (N, S, E, W)
+          baseNodes.push({ x: cx, y: b.y }) // N
+          baseNodes.push({ x: cx, y: b.y + b.height }) // S
+          baseNodes.push({ x: b.x, y: cy }) // W
+          baseNodes.push({ x: b.x + b.width, y: cy }) // E
+          break
+        default:
+          // Rectangles, images, and other shapes: bounding box corners and edge centers
+          baseNodes.push(
+            { x: b.x, y: b.y }, { x: b.x + b.width, y: b.y }, { x: b.x, y: b.y + b.height }, { x: b.x + b.width, y: b.y + b.height },
+            { x: cx, y: b.y }, { x: cx, y: b.y + b.height }, { x: b.x, y: cy }, { x: b.x + b.width, y: cy }
+          )
+          break
+      }
+    }
+
+    const rotation = s.rotation || 0
+    if (Math.abs(rotation) > 0.01) {
+      for (const n of baseNodes) {
+        nodes.push(rotatePoint(n.x, n.y, cx, cy, rotation))
+      }
+    } else {
+      nodes.push(...baseNodes)
+    }
+  })
+  return nodes
 }
 
 // ═══════════════════════════════════════════════════════
@@ -232,7 +416,7 @@ const ShapeSVG = React.memo(function ShapeSVGComponent({ shape }: { shape: Decor
   const { x, y, width: w, height: h, fillColor, fillOpacity, strokeColor, strokeWidth, strokeStyle, rotation, type } = shape
   const fill = isLineLike(type) ? 'none' : fillColor
   const opacity = fillOpacity / 100
-  const dash = getStrokeDasharray(strokeStyle)
+  const dash = getStrokeDasharray(strokeStyle, shape.strokeDashPattern)
   const bounds = getShapeBounds(shape)
   const transform = rotation ? `rotate(${rotation} ${bounds.x + bounds.width / 2} ${bounds.y + bounds.height / 2})` : undefined
   const contentRef = useRef<HTMLDivElement>(null)
@@ -314,18 +498,18 @@ const ShapeSVG = React.memo(function ShapeSVGComponent({ shape }: { shape: Decor
     }
 
     case 'checkmark':
-      return <path d={`M ${x + w*0.2} ${y + h*0.5} L ${x + w*0.4} ${y + h*0.75} L ${x + w*0.8} ${y + h*0.25}`} fill="none" {...commonProps} />
+      return <path d={`M ${x + w * 0.2} ${y + h * 0.5} L ${x + w * 0.4} ${y + h * 0.75} L ${x + w * 0.8} ${y + h * 0.25}`} fill="none" {...commonProps} />
 
     case 'crossmark':
       return (
         <g>
-          <line x1={x + w*0.2} y1={y + h*0.2} x2={x + w*0.8} y2={y + h*0.8} {...commonProps} />
-          <line x1={x + w*0.8} y1={y + h*0.2} x2={x + w*0.2} y2={y + h*0.8} {...commonProps} />
+          <line x1={x + w * 0.2} y1={y + h * 0.2} x2={x + w * 0.8} y2={y + h * 0.8} {...commonProps} />
+          <line x1={x + w * 0.8} y1={y + h * 0.2} x2={x + w * 0.2} y2={y + h * 0.8} {...commonProps} />
         </g>
       )
 
     case 'dot':
-      return <circle cx={x + w/2} cy={y + h/2} r={Math.min(w,h)/2 * 0.8} fill={strokeColor} />
+      return <circle cx={x + w / 2} cy={y + h / 2} r={Math.min(w, h) / 2 * 0.8} fill={strokeColor} />
 
     case 'line': {
       const pts = shape.points
@@ -354,12 +538,12 @@ const ShapeSVG = React.memo(function ShapeSVGComponent({ shape }: { shape: Decor
           <g transform={transform}>
             <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke="transparent" strokeWidth={Math.max(strokeWidth, 16)} />
             <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} {...commonProps} transform={undefined} />
-            <line x1={p2.x - arrowSize * Math.cos(angle - 0.4)} y1={p2.y - arrowSize * Math.sin(angle - 0.4)} x2={p2.x} y2={p2.y} {...commonProps} transform={undefined} />
-            <line x1={p2.x - arrowSize * Math.cos(angle + 0.4)} y1={p2.y - arrowSize * Math.sin(angle + 0.4)} x2={p2.x} y2={p2.y} {...commonProps} transform={undefined} />
+            <line x1={p2.x - arrowSize * Math.cos(angle - 0.4)} y1={p2.y - arrowSize * Math.sin(angle - 0.4)} x2={p2.x} y2={p2.y} {...commonProps} transform={undefined} strokeDasharray="none" />
+            <line x1={p2.x - arrowSize * Math.cos(angle + 0.4)} y1={p2.y - arrowSize * Math.sin(angle + 0.4)} x2={p2.x} y2={p2.y} {...commonProps} transform={undefined} strokeDasharray="none" />
             {type === 'double-arrow' && (
               <>
-                <line x1={p1.x + arrowSize * Math.cos(angle - 0.4)} y1={p1.y + arrowSize * Math.sin(angle - 0.4)} x2={p1.x} y2={p1.y} {...commonProps} transform={undefined} />
-                <line x1={p1.x + arrowSize * Math.cos(angle + 0.4)} y1={p1.y + arrowSize * Math.sin(angle + 0.4)} x2={p1.x} y2={p1.y} {...commonProps} transform={undefined} />
+                <line x1={p1.x + arrowSize * Math.cos(angle - 0.4)} y1={p1.y + arrowSize * Math.sin(angle - 0.4)} x2={p1.x} y2={p1.y} {...commonProps} transform={undefined} strokeDasharray="none" />
+                <line x1={p1.x + arrowSize * Math.cos(angle + 0.4)} y1={p1.y + arrowSize * Math.sin(angle + 0.4)} x2={p1.x} y2={p1.y} {...commonProps} transform={undefined} strokeDasharray="none" />
               </>
             )}
           </g>
@@ -380,6 +564,18 @@ const ShapeSVG = React.memo(function ShapeSVGComponent({ shape }: { shape: Decor
     case 'connected-lines':
       if (shape.points && shape.points.length >= 2) {
         return <path d={connectedLinesPath(shape.points)} fill="none" {...commonProps} />
+      }
+      return <line x1={x} y1={y + h / 2} x2={x + w} y2={y + h / 2} {...commonProps} />
+
+    case 'bezier-line':
+      if (shape.points && shape.points.length >= 2) {
+        return <path d={bezierPath(shape.points)} fill="none" {...commonProps} />
+      }
+      return <line x1={x} y1={y + h / 2} x2={x + w} y2={y + h / 2} {...commonProps} />
+
+    case 'bspline-curve':
+      if (shape.points && shape.points.length >= 2) {
+        return <path d={bsplinePath(shape.points)} fill="none" {...commonProps} />
       }
       return <line x1={x} y1={y + h / 2} x2={x + w} y2={y + h / 2} {...commonProps} />
 
@@ -532,7 +728,7 @@ const ShapeSVG = React.memo(function ShapeSVGComponent({ shape }: { shape: Decor
       return <path d={polygonPath(regularPolygon(x, y, w, h, 5))} fill={fill} fillOpacity={opacity} {...commonProps} />
 
     case 'diamond-shape':
-      return <polygon points={`${x + w/2},${y} ${x + w},${y + h/2} ${x + w/2},${y + h} ${x},${y + h/2}`} fill={fill} fillOpacity={opacity} {...commonProps} />
+      return <polygon points={`${x + w / 2},${y} ${x + w},${y + h / 2} ${x + w / 2},${y + h} ${x},${y + h / 2}`} fill={fill} fillOpacity={opacity} {...commonProps} />
 
     case 'heart': {
       const hcx = x + w / 2; const hcy = y + h / 2;
@@ -562,21 +758,26 @@ function regularPolygon(x: number, y: number, w: number, h: number, sides: numbe
 // Drawing Preview
 // ═══════════════════════════════════════════════════════
 
-function DrawingPreview({ drawing }: { drawing: DrawingState }) {
+function DrawingPreview({ drawing, settings }: { drawing: DrawingState, settings: GlobalShapeSettings }) {
   const { mode, startX, startY, currentX, currentY, points, shiftKey } = drawing
 
   let endX = currentX, endY = currentY
-  if (shiftKey && (mode === 'line' || mode === 'arrow' || mode === 'double-arrow' || mode === 'connected-lines' || mode === 'cloud-line')) {
+  if (shiftKey && (mode === 'line' || mode === 'arrow' || mode === 'double-arrow' || mode === 'connected-lines' || mode === 'bezier-line' || mode === 'bspline-curve' || mode === 'cloud-line')) {
     const snapped = snapAngle(startX, startY, currentX, currentY)
     endX = snapped.x
     endY = snapped.y
   }
 
+  const isLineMode = ['freehand', 'line', 'arrow', 'double-arrow', 'connected-lines', 'bezier-line', 'bspline-curve', 'cloud-line'].includes(mode)
+  
   const previewProps = {
-    stroke: '#3b82f6',
-    strokeWidth: 2,
-    strokeDasharray: '4,4',
-    fill: 'rgba(59, 130, 246, 0.1)',
+    stroke: settings.strokeColor,
+    strokeWidth: settings.strokeWidth,
+    strokeDasharray: getStrokeDasharray(settings.strokeStyle, settings.strokeDashPattern) === 'none' ? undefined : getStrokeDasharray(settings.strokeStyle, settings.strokeDashPattern),
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    fill: isLineMode ? 'none' : settings.fillColor,
+    fillOpacity: isLineMode ? undefined : settings.fillOpacity / 100,
     pointerEvents: 'none' as const,
   }
 
@@ -618,18 +819,18 @@ function DrawingPreview({ drawing }: { drawing: DrawingState }) {
       return <path d={cloudPath(x, y, w, h)} {...previewProps} />
 
     case 'checkmark':
-      return <path d={`M ${x + w*0.2} ${y + h*0.5} L ${x + w*0.4} ${y + h*0.75} L ${x + w*0.8} ${y + h*0.25}`} {...previewProps} fill="none" />
+      return <path d={`M ${x + w * 0.2} ${y + h * 0.5} L ${x + w * 0.4} ${y + h * 0.75} L ${x + w * 0.8} ${y + h * 0.25}`} {...previewProps} fill="none" />
 
     case 'crossmark':
       return (
         <g {...previewProps} fill="none">
-          <line x1={x + w*0.2} y1={y + h*0.2} x2={x + w*0.8} y2={y + h*0.8} />
-          <line x1={x + w*0.8} y1={y + h*0.2} x2={x + w*0.2} y2={y + h*0.8} />
+          <line x1={x + w * 0.2} y1={y + h * 0.2} x2={x + w * 0.8} y2={y + h * 0.8} />
+          <line x1={x + w * 0.8} y1={y + h * 0.2} x2={x + w * 0.2} y2={y + h * 0.8} />
         </g>
       )
 
     case 'dot':
-      return <circle cx={x + w/2} cy={y + h/2} r={Math.min(w,h)/2 * 0.8} {...previewProps} fill="rgba(59, 130, 246, 0.3)" />
+      return <circle cx={x + w / 2} cy={y + h / 2} r={Math.min(w, h) / 2 * 0.8} {...previewProps} />
 
     case 'text-callout': {
       const tailH = Math.min(20, h * 0.3)
@@ -649,7 +850,7 @@ function DrawingPreview({ drawing }: { drawing: DrawingState }) {
       return <path d={polygonPath(regularPolygon(x, y, w, h, 5))} {...previewProps} />
 
     case 'diamond-shape':
-      return <polygon points={`${x + w/2},${y} ${x + w},${y + h/2} ${x + w/2},${y + h} ${x},${y + h/2}`} {...previewProps} />
+      return <polygon points={`${x + w / 2},${y} ${x + w},${y + h / 2} ${x + w / 2},${y + h} ${x},${y + h / 2}`} {...previewProps} />
 
     case 'heart': {
       const hcx = x + w / 2;
@@ -678,12 +879,12 @@ function DrawingPreview({ drawing }: { drawing: DrawingState }) {
       return (
         <g {...previewProps} fill="none">
           <line x1={startX} y1={startY} x2={endX} y2={endY} />
-          <line x1={endX - arrowSize * Math.cos(angle - 0.4)} y1={endY - arrowSize * Math.sin(angle - 0.4)} x2={endX} y2={endY} />
-          <line x1={endX - arrowSize * Math.cos(angle + 0.4)} y1={endY - arrowSize * Math.sin(angle + 0.4)} x2={endX} y2={endY} />
+          <line x1={endX - arrowSize * Math.cos(angle - 0.4)} y1={endY - arrowSize * Math.sin(angle - 0.4)} x2={endX} y2={endY} strokeDasharray="none" />
+          <line x1={endX - arrowSize * Math.cos(angle + 0.4)} y1={endY - arrowSize * Math.sin(angle + 0.4)} x2={endX} y2={endY} strokeDasharray="none" />
           {mode === 'double-arrow' && (
             <>
-              <line x1={startX + arrowSize * Math.cos(angle - 0.4)} y1={startY + arrowSize * Math.sin(angle - 0.4)} x2={startX} y2={startY} />
-              <line x1={startX + arrowSize * Math.cos(angle + 0.4)} y1={startY + arrowSize * Math.sin(angle + 0.4)} x2={startX} y2={startY} />
+              <line x1={startX + arrowSize * Math.cos(angle - 0.4)} y1={startY + arrowSize * Math.sin(angle - 0.4)} x2={startX} y2={startY} strokeDasharray="none" />
+              <line x1={startX + arrowSize * Math.cos(angle + 0.4)} y1={startY + arrowSize * Math.sin(angle + 0.4)} x2={startX} y2={startY} strokeDasharray="none" />
             </>
           )}
         </g>
@@ -696,11 +897,20 @@ function DrawingPreview({ drawing }: { drawing: DrawingState }) {
 
     case 'polygon':
     case 'connected-lines':
+    case 'bezier-line':
+    case 'bspline-curve':
     case 'cloud-line':
       if (points.length === 0) return null
-      const allPts = [...points, { x: endX, y: endY }]
-      if (mode === 'cloud-line') return <path d={cloudLinePath(allPts)} {...previewProps} fill="rgba(59, 130, 246, 0.1)" />
-      return <path d={connectedLinesPath(allPts)} {...previewProps} fill={mode === 'polygon' ? 'rgba(59, 130, 246, 0.1)' : 'none'} />
+      // Only append cursor position if it has moved away from the last clicked point.
+      // Right after a click the cursor is at the same spot, and appending it would
+      // create a duplicate control point that shifts B-spline / bezier curvature.
+      const lastPt = points[points.length - 1]
+      const cursorIsDuplicate = lastPt && Math.abs(endX - lastPt.x) < 2 && Math.abs(endY - lastPt.y) < 2
+      const allPts = cursorIsDuplicate ? points : [...points, { x: endX, y: endY }]
+      if (mode === 'cloud-line') return <path d={cloudLinePath(allPts)} {...previewProps} />
+      if (mode === 'bezier-line') return <path d={bezierPath(allPts)} {...previewProps} />
+      if (mode === 'bspline-curve') return <path d={bsplinePath(allPts)} {...previewProps} />
+      return <path d={connectedLinesPath(allPts)} {...previewProps} />
 
     default: {
       // Numbers and emojis: show the actual stamp text as preview
@@ -739,18 +949,25 @@ interface DecorationShapeRendererProps {
   containerWidth: number
   containerHeight: number
   panMode?: boolean
+  gridSize?: number
 }
 
-export function DecorationShapeRenderer({ containerWidth, containerHeight, panMode }: DecorationShapeRendererProps) {
+export function DecorationShapeRenderer({ containerWidth, containerHeight, panMode, gridSize = 0 }: DecorationShapeRendererProps) {
   const {
-    shapes, selectedShapeId, hoveredShapeId, drawingMode, drawingInProgress,
-    setSelectedShapeId, setHoveredShapeId, setDrawingInProgress, addShape, updateShape
+    shapes, selectedShapeId, selectedShapeIds, drawingMode, globalShapeSettings,
+    setSelectedShapeId, setSelectedShapeIds, toggleShapeSelection, clearMultiSelect,
+    setDrawingMode, addShape, updateShape
   } = useDecorationStore()
+
+  const [hoveredShapeId, setHoveredShapeId] = useState<string | null>(null)
+  const [drawingInProgress, setDrawingInProgress] = useState<DrawingState | null>(null)
+  const [marqueeState, setMarqueeState] = useState<{ startX: number; startY: number; currentX: number; currentY: number } | null>(null)
 
   const svgRef = useRef<SVGSVGElement>(null)
   const [editingShapeId, setEditingShapeId] = useState<string | null>(null)
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null)
   const [snapGuides, setSnapGuides] = useState<{ x: number | null, y: number | null }>({ x: null, y: null })
+  const [nodeSnapGuide, setNodeSnapGuide] = useState<{ x: number, y: number } | null>(null)
   const editRef = useRef<HTMLDivElement>(null)
   const lastMouseDownTargetRef = useRef<EventTarget | null>(null)
   const ignoreNextClickRef = useRef<boolean>(false)
@@ -760,6 +977,7 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
     startX: number
     startY: number
     origShape: DecorationShape
+    currentShape?: DecorationShape
     handle?: HandlePosition
     endpointIndex?: number  // 0 = start, 1 = end (for line/arrow endpoint drag)
   } | null>(null)
@@ -801,28 +1019,59 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
     const pt = getSVGPoint(e as any)
     if (!pt) return
 
+    // ── Marquee select mode: start selection rectangle ──
+    if (drawingMode === 'marquee-select') {
+      e.preventDefault()
+      e.stopPropagation()
+      setMarqueeState({ startX: pt.x, startY: pt.y, currentX: pt.x, currentY: pt.y })
+      return
+    }
+
     e.preventDefault()
     e.stopPropagation()
 
+    let startX = pt.x
+    let startY = pt.y
+    let didNodeSnap = false
+
+    if (!e.altKey && ['line', 'arrow', 'double-arrow', 'connected-lines', 'bezier-line', 'bspline-curve', 'cloud-line', 'polygon'].includes(drawingMode)) {
+      const snapNodes = getSnapNodes(shapes)
+      let bestDist = 8
+      for (const node of snapNodes) {
+        if (Math.sqrt(Math.pow(startX - node.x, 2) + Math.pow(startY - node.y, 2)) < bestDist) {
+          bestDist = Math.sqrt(Math.pow(startX - node.x, 2) + Math.pow(startY - node.y, 2))
+          startX = node.x
+          startY = node.y
+          didNodeSnap = true
+        }
+      }
+    }
+
+    // Grid snap (if no node snap happened)
+    if (!didNodeSnap && gridSize > 0) {
+      startX = snapToGrid(startX, gridSize)
+      startY = snapToGrid(startY, gridSize)
+    }
+
     const shiftKey = 'shiftKey' in e ? (e as React.MouseEvent).shiftKey : false
 
-    if (drawingMode === 'polygon' || drawingMode === 'connected-lines' || drawingMode === 'cloud-line') {
+    if (drawingMode === 'polygon' || drawingMode === 'connected-lines' || drawingMode === 'bezier-line' || drawingMode === 'bspline-curve' || drawingMode === 'cloud-line') {
       // Multi-point mode: add point on each click
       const current = drawingInProgress
       if (current && current.mode === drawingMode) {
         setDrawingInProgress({
           ...current,
-          points: [...current.points, { x: pt.x, y: pt.y }],
-          currentX: pt.x,
-          currentY: pt.y,
+          points: [...current.points, { x: startX, y: startY }],
+          currentX: startX,
+          currentY: startY,
           shiftKey
         })
       } else {
         setDrawingInProgress({
           mode: drawingMode,
-          startX: pt.x, startY: pt.y,
-          currentX: pt.x, currentY: pt.y,
-          points: [{ x: pt.x, y: pt.y }],
+          startX: startX, startY: startY,
+          currentX: startX, currentY: startY,
+          points: [{ x: startX, y: startY }],
           shiftKey
         })
       }
@@ -832,8 +1081,8 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
     // Single-gesture shapes
     if (drawingMode === 'textbox-auto') {
       // ── Click-to-place: auto-sized textbox at click point (NO DRAG CREATION) ──
-      const clickX = pt.x
-      const clickY = pt.y
+      const clickX = startX
+      const clickY = startY
       const fontSize = 14
       const shapeData: any = {
         type: 'textbox-auto' as any,
@@ -858,26 +1107,86 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
       }
       const newId = addShape(shapeData)
       ignoreNextClickRef.current = true
-      useDecorationStore.getState().setDrawingMode(null) // Turn off tool after single click
       requestAnimationFrame(() => setEditingShapeId(newId))
       return
     }
 
     setDrawingInProgress({
       mode: drawingMode,
-      startX: pt.x, startY: pt.y,
-      currentX: pt.x, currentY: pt.y,
-      points: [{ x: pt.x, y: pt.y }],
+      startX: startX, startY: startY,
+      currentX: startX, currentY: startY,
+      points: [{ x: startX, y: startY }],
       shiftKey
     })
   }, [drawingMode, panMode, getSVGPoint, drawingInProgress, setDrawingInProgress, addShape, shapes.length])
 
   const handleCanvasPointerMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    if (!drawingInProgress && !dragState) return
+    // ── Marquee drag update ──
+    if (marqueeState) {
+      const pt = getSVGPoint(e as any)
+      if (pt) {
+        setMarqueeState(prev => prev ? { ...prev, currentX: pt.x, currentY: pt.y } : null)
+      }
+      return
+    }
+
+    const SNAPPABLE_MODES = ['line', 'arrow', 'double-arrow', 'connected-lines', 'bezier-line', 'bspline-curve', 'cloud-line', 'polygon']
+    const hasSnappableMode = drawingMode && SNAPPABLE_MODES.includes(drawingMode)
+
+    if (!drawingInProgress && !dragState && !hasSnappableMode) return
     const pt = getSVGPoint(e as any)
     if (!pt) return
 
+    // Node Snapping for endpoints or drawing lines — also fires when
+    // a snappable drawing tool is selected but drawing hasn't started yet,
+    // so the user sees snap indicators before their first click.
+    let snappedNode = false
+    if (!e.altKey && (
+      (drawingInProgress && SNAPPABLE_MODES.includes(drawingInProgress.mode)) ||
+      (dragState && dragState.type === 'endpoint') ||
+      (!drawingInProgress && hasSnappableMode)
+    )) {
+      const excludeId = dragState ? dragState.shapeId : undefined
+      const snapNodes = getSnapNodes(shapes, excludeId)
+      let bestDist = 8 // Snap threshold
+      let targetX = pt.x
+      let targetY = pt.y
+
+      for (const node of snapNodes) {
+        const dist = Math.sqrt(Math.pow(pt.x - node.x, 2) + Math.pow(pt.y - node.y, 2))
+        if (dist < bestDist) {
+          bestDist = dist
+          targetX = node.x
+          targetY = node.y
+          snappedNode = true
+        }
+      }
+
+      if (snappedNode) {
+        pt.x = targetX
+        pt.y = targetY
+        setNodeSnapGuide({ x: targetX, y: targetY })
+      } else {
+        setNodeSnapGuide(null)
+        // Grid snap fallback for line drawing
+        if (gridSize > 0 && drawingInProgress) {
+          pt.x = snapToGrid(pt.x, gridSize)
+          pt.y = snapToGrid(pt.y, gridSize)
+        }
+      }
+    } else {
+      setNodeSnapGuide(null)
+      // Grid snap for non-line drawing modes
+      if (gridSize > 0 && drawingInProgress) {
+        pt.x = snapToGrid(pt.x, gridSize)
+        pt.y = snapToGrid(pt.y, gridSize)
+      }
+    }
+
     const shiftKey = 'shiftKey' in e ? (e as React.MouseEvent).shiftKey : false
+
+    // Optionally record cursor position for some features like textbox
+    setCursorPos(pt)
 
     // Handle drag/resize/rotate/endpoint
     if (dragState) {
@@ -886,7 +1195,7 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
       const dx = pt.x - dragState.startX
       const dy = pt.y - dragState.startY
       const orig = dragState.origShape
-      
+
       const rotation = orig.rotation || 0
       let localDx = dx
       let localDy = dy
@@ -908,7 +1217,7 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
         let finalDy = dy
         let snapX: number | null = null
         let snapY: number | null = null
-        
+
         // Smart snapping (disable if altKey/option is pressed)
         if (!e.altKey) {
           const SNAP_THRESHOLD = 5
@@ -917,9 +1226,9 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
             x: draggedBounds.x + draggedBounds.width / 2 + dx,
             y: draggedBounds.y + draggedBounds.height / 2 + dy
           }
-          
+
           const targetXs = [containerWidth / 2]; const targetYs = [containerHeight / 2]
-          
+
           shapes.forEach(s => {
             if (s.id === dragState.shapeId || !s.visible) return
             const b = getShapeBounds(s)
@@ -952,31 +1261,65 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
             finalDy += bestYMatch.diff; snapY = bestYMatch.target
           }
         }
-        
+
+        // Grid snap fallback for move (only if no smart guide matched)
+        if (gridSize > 0 && snapX === null && snapY === null) {
+          const draggedBounds = getShapeBounds(orig)
+          const newX = draggedBounds.x + finalDx
+          const newY = draggedBounds.y + finalDy
+          const gridX = snapToGrid(newX, gridSize)
+          const gridY = snapToGrid(newY, gridSize)
+          finalDx += (gridX - newX)
+          finalDy += (gridY - newY)
+        }
+
         setSnapGuides({ x: snapX, y: snapY })
 
         // Apply
         if (orig.points && orig.points.length > 0) {
           const movedPoints = orig.points.map(p => ({ x: p.x + finalDx, y: p.y + finalDy }))
-          updateShape(dragState.shapeId, { x: orig.x + finalDx, y: orig.y + finalDy, points: movedPoints })
+          setDragState(p => p ? { ...p, currentShape: { ...p.origShape, x: orig.x + finalDx, y: orig.y + finalDy, points: movedPoints } } : null)
         } else {
-          updateShape(dragState.shapeId, { x: orig.x + finalDx, y: orig.y + finalDy })
+          setDragState(p => p ? { ...p, currentShape: { ...p.origShape, x: orig.x + finalDx, y: orig.y + finalDy } } : null)
         }
       } else if (dragState.type === 'endpoint' && dragState.endpointIndex !== undefined) {
         // Drag individual endpoint of line/arrow
         const newPoints = [...(orig.points || [])]
         const idx = dragState.endpointIndex
         if (newPoints[idx]) {
-          newPoints[idx] = { x: orig.points![idx].x + localDx, y: orig.points![idx].y + localDy }
+          const rotation = orig.rotation || 0
+          let localPt = { x: pt.x, y: pt.y }
+          if (Math.abs(rotation) > 0.01) {
+            const oBounds = getShapeBounds(orig)
+            const cx = oBounds.x + oBounds.width / 2
+            const cy = oBounds.y + oBounds.height / 2
+            localPt = rotatePoint(pt.x, pt.y, cx, cy, -rotation)
+          }
+
+          let finalX = localPt.x
+          let finalY = localPt.y
+
+          // Handle shift-key constraint if needed (straight horizontal/vertical)
+          const shiftKey = 'shiftKey' in e ? (e as React.MouseEvent).shiftKey : false
+          if (shiftKey && orig.points && orig.points.length >= 2) {
+            const otherIdx = idx === 0 ? orig.points.length - 1 : (idx === orig.points.length - 1 ? 0 : idx - 1)
+            const otherPt = orig.points[otherIdx]
+            const snapped = snapAngle(otherPt.x, otherPt.y, finalX, finalY)
+            finalX = snapped.x
+            finalY = snapped.y
+          }
+
+          newPoints[idx] = { x: finalX, y: finalY }
+
           // Recompute bounding box from points
           const xs = newPoints.map(p => p.x)
           const ys = newPoints.map(p => p.y)
-          updateShape(dragState.shapeId, {
+          setDragState(p => p ? { ...p, currentShape: { ...p.origShape,
             points: newPoints,
             x: Math.min(...xs), y: Math.min(...ys),
             width: Math.max(Math.abs(Math.max(...xs) - Math.min(...xs)), 1),
             height: Math.max(Math.abs(Math.max(...ys) - Math.min(...ys)), 1)
-          })
+          } } : null)
         }
       } else if (dragState.type === 'rotate') {
         // Rotation: compute angle from center of shape to current mouse
@@ -992,11 +1335,11 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
         if (shiftKey) {
           newRotation = Math.round(newRotation / 15) * 15
         }
-        updateShape(dragState.shapeId, { rotation: newRotation })
+        setDragState(p => p ? { ...p, currentShape: { ...p.origShape, rotation: newRotation } } : null)
       } else if (dragState.type === 'resize' && dragState.handle) {
         const h = dragState.handle
         const oBounds = getShapeBounds(orig)
-        
+
         let newX = oBounds.x, newY = oBounds.y, newW = oBounds.width, newH = oBounds.height
         if (h.includes('w')) { newX = oBounds.x + localDx; newW = oBounds.width - localDx }
         if (h.includes('e')) { newW = oBounds.width + localDx }
@@ -1037,7 +1380,7 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
           // Proportionally scale the fontSize when resizing point text based on height scale
           const scaleRatio = newH / oBounds.height
           const newFontSize = Math.max(6, Math.min(240, (orig.fontSize || 14) * scaleRatio))
-          updateShape(dragState.shapeId, { x: newX, y: newY, width: newW, height: newH, fontSize: newFontSize })
+          setDragState(p => p ? { ...p, currentShape: { ...p.origShape, x: newX, y: newY, width: newW, height: newH, fontSize: newFontSize } } : null)
         } else if (orig.points && orig.points.length > 0) {
           const prevW = oBounds.width
           const prevH = oBounds.height
@@ -1047,9 +1390,9 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
             x: newX + (p.x - oBounds.x) * scaleX,
             y: newY + (p.y - oBounds.y) * scaleY
           }))
-          updateShape(dragState.shapeId, { x: newX, y: newY, width: newW, height: newH, points: newPoints })
+          setDragState(p => p ? { ...p, currentShape: { ...p.origShape, x: newX, y: newY, width: newW, height: newH, points: newPoints } } : null)
         } else {
-          updateShape(dragState.shapeId, { x: newX, y: newY, width: newW, height: newH })
+          setDragState(p => p ? { ...p, currentShape: { ...p.origShape, x: newX, y: newY, width: newW, height: newH } } : null)
         }
       }
       return
@@ -1066,7 +1409,7 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
           points: [...drawingInProgress.points, { x: pt.x, y: pt.y }],
           shiftKey
         })
-      } else if (drawingInProgress.mode === 'polygon' || drawingInProgress.mode === 'connected-lines' || drawingInProgress.mode === 'cloud-line') {
+      } else if (drawingInProgress.mode === 'polygon' || drawingInProgress.mode === 'connected-lines' || drawingInProgress.mode === 'bezier-line' || drawingInProgress.mode === 'bspline-curve' || drawingInProgress.mode === 'cloud-line') {
         setDrawingInProgress({
           ...drawingInProgress,
           currentX: pt.x, currentY: pt.y,
@@ -1080,13 +1423,52 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
         })
       }
     }
-  }, [drawingInProgress, dragState, getSVGPoint, setDrawingInProgress, updateShape])
+  }, [drawingMode, drawingInProgress, dragState, marqueeState, getSVGPoint, setDrawingInProgress])
+
+  const finalizeMarqueeSelection = useCallback(() => {
+    if (!marqueeState) return
+    const mx = Math.min(marqueeState.startX, marqueeState.currentX)
+    const my = Math.min(marqueeState.startY, marqueeState.currentY)
+    const mw = Math.abs(marqueeState.currentX - marqueeState.startX)
+    const mh = Math.abs(marqueeState.currentY - marqueeState.startY)
+
+    if (mw > 3 && mh > 3) {
+      const hitIds: string[] = []
+      shapes.forEach(shape => {
+        if (!shape.visible) return
+        const sb = getShapeBounds(shape)
+        const intersects = !(
+          sb.x + sb.width < mx ||
+          sb.x > mx + mw ||
+          sb.y + sb.height < my ||
+          sb.y > my + mh
+        )
+        if (intersects) hitIds.push(shape.id)
+      })
+      if (hitIds.length > 0) {
+        setSelectedShapeIds(hitIds)
+      } else {
+        clearMultiSelect()
+      }
+    }
+    setMarqueeState(null)
+  }, [marqueeState, shapes, setSelectedShapeIds, clearMultiSelect])
 
   const handleCanvasPointerUp = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    // ── Finish marquee selection ──
+    if (marqueeState) {
+      finalizeMarqueeSelection()
+      return
+    }
+
     // Finish drag
     if (dragState) {
+      if (dragState.currentShape) {
+        updateShape(dragState.shapeId, dragState.currentShape)
+      }
       setDragState(null)
       setSnapGuides({ x: null, y: null })
+      setNodeSnapGuide(null)
       return
     }
 
@@ -1094,7 +1476,7 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
     const pt = getSVGPoint(e as any)
 
     // For multi-point modes, don't finalize on mouse up
-    if (drawingInProgress.mode === 'polygon' || drawingInProgress.mode === 'connected-lines' || drawingInProgress.mode === 'cloud-line') {
+    if (drawingInProgress.mode === 'polygon' || drawingInProgress.mode === 'connected-lines' || drawingInProgress.mode === 'bezier-line' || drawingInProgress.mode === 'bspline-curve' || drawingInProgress.mode === 'cloud-line') {
       return
     }
 
@@ -1102,6 +1484,26 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
     const { mode, startX, startY, points, shiftKey } = drawingInProgress
     let endX = pt?.x ?? drawingInProgress.currentX
     let endY = pt?.y ?? drawingInProgress.currentY
+
+    let didNodeSnapEnd = false
+    if (!e.altKey && ['line', 'arrow', 'double-arrow', 'connected-lines', 'bezier-line', 'bspline-curve', 'cloud-line', 'polygon'].includes(mode)) {
+      const snapNodes = getSnapNodes(shapes)
+      let bestDist = 8
+      for (const node of snapNodes) {
+        if (Math.sqrt(Math.pow(endX - node.x, 2) + Math.pow(endY - node.y, 2)) < bestDist) {
+          bestDist = Math.sqrt(Math.pow(endX - node.x, 2) + Math.pow(endY - node.y, 2))
+          endX = node.x
+          endY = node.y
+          didNodeSnapEnd = true
+        }
+      }
+    }
+
+    // Grid snap fallback for end point
+    if (!didNodeSnapEnd && gridSize > 0) {
+      endX = snapToGrid(endX, gridSize)
+      endY = snapToGrid(endY, gridSize)
+    }
 
     if (shiftKey && (mode === 'line' || mode === 'arrow' || mode === 'double-arrow')) {
       const snapped = snapAngle(startX, startY, endX, endY)
@@ -1126,7 +1528,7 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
         addShape({
           type: 'freehand', x: 0, y: 0, width: 0, height: 0,
           rotation: 0, points, fillColor: 'transparent', fillOpacity: 100,
-          strokeColor: '#1e40af', strokeWidth: 2, strokeStyle: 'solid',
+          strokeColor: globalShapeSettings.strokeColor, strokeWidth: globalShapeSettings.strokeWidth, strokeStyle: globalShapeSettings.strokeStyle, strokeDashPattern: globalShapeSettings.strokeDashPattern,
           visible: true, locked: false, zIndex: shapes.length + 1
         })
       }
@@ -1143,13 +1545,14 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
         points: isLine ? [{ x: startX, y: startY }, { x: endX, y: endY }] : undefined,
         fillColor: isLine ? 'transparent'
           : isTextbox ? 'rgba(255,255,255,0.9)'
-          : isDecoImage ? 'transparent'
-          : isDecoSvg ? 'transparent'
-          : (['checkmark', 'crossmark', 'dot'].includes(mode) ? 'none' : 'rgba(59, 130, 246, 0.3)'),
-        fillOpacity: 100,
-        strokeColor: isTextbox ? '#94a3b8' : isDecoImage ? '#cbd5e1' : isDecoSvg ? '#a5b4fc' : (['dot'].includes(mode) ? 'rgba(59, 130, 246, 0.3)' : '#1e40af'),
-        strokeWidth: isTextbox || isDecoImage || isDecoSvg ? 1 : 2,
-        strokeStyle: 'solid' as const,
+            : isDecoImage ? 'transparent'
+              : isDecoSvg ? 'transparent'
+                : (['checkmark', 'crossmark', 'dot'].includes(mode) ? 'none' : globalShapeSettings.fillColor),
+        fillOpacity: globalShapeSettings.fillOpacity,
+        strokeColor: isTextbox ? '#94a3b8' : isDecoImage ? '#cbd5e1' : isDecoSvg ? '#a5b4fc' : (['dot'].includes(mode) ? 'rgba(59, 130, 246, 0.3)' : globalShapeSettings.strokeColor),
+        strokeWidth: isTextbox || isDecoImage || isDecoSvg ? 1 : globalShapeSettings.strokeWidth,
+        strokeStyle: isTextbox || isDecoImage || isDecoSvg ? 'solid' : globalShapeSettings.strokeStyle,
+        strokeDashPattern: isTextbox || isDecoImage || isDecoSvg ? undefined : globalShapeSettings.strokeDashPattern,
         visible: true, locked: false, zIndex: shapes.length + 1,
         text: mode === 'text-callout' ? 'Text' : isTextbox ? 'Type here...' : undefined,
       }
@@ -1181,39 +1584,56 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
     }
 
     setDrawingInProgress(null)
+    setNodeSnapGuide(null)
   }, [drawingInProgress, dragState, getSVGPoint, addShape, shapes.length, setDrawingInProgress])
 
   // Double-click to finalize polygon / connected-lines
   const handleCanvasDoubleClick = useCallback((e: React.MouseEvent) => {
     if (!drawingInProgress) return
-    const { mode, points } = drawingInProgress
+    const { mode, points: rawPoints } = drawingInProgress
+
+    // Double-click fires TWO mousedown events before dblclick, adding
+    // the same point twice. Strip trailing duplicates so the final
+    // curve matches the preview (which only showed N+1 points).
+    const points = [...rawPoints]
+    while (points.length > 1) {
+      const last = points[points.length - 1]
+      const prev = points[points.length - 2]
+      if (Math.abs(last.x - prev.x) < 2 && Math.abs(last.y - prev.y) < 2) {
+        points.pop()
+      } else {
+        break
+      }
+    }
 
     if (mode === 'polygon' && points.length >= 3) {
       addShape({
         type: 'polygon',
         x: 0, y: 0, width: 0, height: 0,
         rotation: 0, points,
-        fillColor: 'rgba(59, 130, 246, 0.3)', fillOpacity: 100,
-        strokeColor: '#1e40af', strokeWidth: 2, strokeStyle: 'solid',
+        fillColor: globalShapeSettings.fillColor, fillOpacity: globalShapeSettings.fillOpacity,
+        strokeColor: globalShapeSettings.strokeColor, strokeWidth: globalShapeSettings.strokeWidth, strokeStyle: globalShapeSettings.strokeStyle, strokeDashPattern: globalShapeSettings.strokeDashPattern,
         visible: true, locked: false, zIndex: shapes.length + 1
       })
       setDrawingInProgress(null)
-    } else if ((mode === 'connected-lines' || mode === 'cloud-line') && points.length >= 2) {
+      setNodeSnapGuide(null)
+    } else if ((mode === 'connected-lines' || mode === 'bezier-line' || mode === 'bspline-curve' || mode === 'cloud-line') && points.length >= 2) {
       const finalPoints = mode === 'cloud-line' && points.length >= 3
         ? [...points, { ...points[0] }]
         : points;
-      
+
       addShape({
         type: mode,
         x: 0, y: 0, width: 0, height: 0,
         rotation: 0, points: finalPoints,
-        fillColor: mode === 'cloud-line' ? 'rgba(59, 130, 246, 0.3)' : 'transparent', fillOpacity: 100,
-        strokeColor: '#1e40af', strokeWidth: 2, strokeStyle: 'solid',
+        fillColor: mode === 'cloud-line' ? globalShapeSettings.fillColor : 'transparent', fillOpacity: globalShapeSettings.fillOpacity,
+        strokeColor: globalShapeSettings.strokeColor, strokeWidth: globalShapeSettings.strokeWidth, strokeStyle: globalShapeSettings.strokeStyle, strokeDashPattern: globalShapeSettings.strokeDashPattern,
         visible: true, locked: false, zIndex: shapes.length + 1
       })
       setDrawingInProgress(null)
+      setNodeSnapGuide(null)
     }
-  }, [drawingInProgress, addShape, shapes.length, setDrawingInProgress])
+  }, [marqueeState, finalizeMarqueeSelection, shapes, setSelectedShapeIds, clearMultiSelect, drawingInProgress, dragState, addShape, updateShape, setDragState, setSnapGuides, setNodeSnapGuide, setDrawingInProgress, globalShapeSettings])
 
   // ── Shape interaction handlers ─────────────────────
 
@@ -1266,11 +1686,18 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
     // Only deselect if both mousedown and click happened directly on the SVG background.
     // This prevents deselecting when clicking a shape's thin stroke (mousedown), which renders the thick invisible
     // hit area under the mouse, causing the browser's synthesized click event to target the common parent (SVG).
-    if (e.target === svgRef.current && lastMouseDownTargetRef.current === svgRef.current && !drawingMode && !drawingInProgress) {
-      setSelectedShapeId(null)
-      setEditingShapeId(null)
+    if (e.target === svgRef.current && lastMouseDownTargetRef.current === svgRef.current && !drawingInProgress) {
+      if (drawingMode === 'marquee-select') {
+        // Don't deselect on background click in marquee mode — only the drag gesture matters
+        return
+      }
+      if (!drawingMode) {
+        setSelectedShapeId(null)
+        clearMultiSelect()
+        setEditingShapeId(null)
+      }
     }
-  }, [drawingMode, drawingInProgress, setSelectedShapeId])
+  }, [drawingMode, drawingInProgress, setSelectedShapeId, clearMultiSelect])
 
   // ── Double-click on textbox to enter editing ──────
 
@@ -1287,11 +1714,11 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
   const handleEditingSave = useCallback(() => {
     if (!editingShapeId || !editRef.current) return
     let html = editRef.current.innerHTML || ''
-    
+
     // Clean up trailing browser-inserted break tags safely without breaking intended blank lines
     // We only remove a trailing <br> if it's the very last thing, as browsers inject them for caret positioning
     if (html.endsWith('<br>')) { html = html.slice(0, -4) }
-    
+
     // Also remove empty <p></p> or <div></div> that might have sneaked in
     html = html.replace(/<p>(\s|&nbsp;|<br>)*<\/p>$/, '')
     html = html.replace(/<div>(\s|&nbsp;|<br>)*<\/div>$/, '')
@@ -1310,11 +1737,11 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
     if (editingShapeId && editRef.current) {
       const storeState = useDecorationStore.getState()
       const shape = storeState.shapes.find(s => s.id === editingShapeId)
-      
+
       if (shape) {
         editRef.current.innerHTML = shape.text || ''
       }
-      
+
       editRef.current.focus()
       // Place cursor at end
       const range = document.createRange()
@@ -1337,7 +1764,7 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
             // Therefore, we only subtract the 4px border.
             const newW = Math.max(0, el.offsetWidth - 4)
             const newH = Math.max(0, el.offsetHeight - 4)
-            
+
             const currentShape = useDecorationStore.getState().shapes.find(s => s.id === editingShapeId)
             if (currentShape && (Math.abs(currentShape.width - newW) > 1 || Math.abs(currentShape.height - newH) > 1)) {
               useDecorationStore.getState().updateShape(editingShapeId, { width: newW, height: newH })
@@ -1346,7 +1773,7 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
         })
         observer.observe(editRef.current)
       }
-      
+
       return () => {
         if (observer) observer.disconnect()
       }
@@ -1371,6 +1798,10 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
       if (dragState) {
         setDragState(null)
         setSnapGuides({ x: null, y: null })
+        setNodeSnapGuide(null)
+      }
+      if (marqueeState) {
+        finalizeMarqueeSelection()
       }
     }
     window.addEventListener('mouseup', handleGlobalUp)
@@ -1379,7 +1810,7 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
       window.removeEventListener('mouseup', handleGlobalUp)
       window.removeEventListener('touchend', handleGlobalUp)
     }
-  }, [dragState])
+  }, [dragState, marqueeState, finalizeMarqueeSelection])
 
   // ── Escape key to cancel drawing ──────────────────
 
@@ -1387,12 +1818,21 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setDrawingInProgress(null)
+        setMarqueeState(null)
         useDecorationStore.getState().setDrawingMode(null)
+        setNodeSnapGuide(null)
       }
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        const { selectedShapeId: selId } = useDecorationStore.getState()
-        if (selId) {
-          useDecorationStore.getState().removeShape(selId)
+        const state = useDecorationStore.getState()
+        // Delete multi-selected shapes
+        if (state.selectedShapeIds.length > 0) {
+          state.selectedShapeIds.forEach(id => state.removeShape(id))
+          state.clearMultiSelect()
+          return
+        }
+        // Delete single-selected shape
+        if (state.selectedShapeId) {
+          state.removeShape(state.selectedShapeId)
         }
       }
     }
@@ -1400,10 +1840,19 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [setDrawingInProgress])
 
+  // Sync drawingMode -> clear drawingInProgress if cancelled externally
+  useEffect(() => {
+    if (!drawingMode) {
+      setDrawingInProgress(null)
+    }
+  }, [drawingMode, setDrawingInProgress])
+
   // ── Determine cursor ──────────────────────────────
 
   const getCursor = (): string => {
     if (panMode) return 'grab'
+    if (marqueeState) return 'crosshair'
+    if (drawingMode === 'marquee-select') return 'crosshair'
     if (drawingMode) return 'crosshair'
     if (dragState?.type === 'move') return 'move'
     if (dragState?.type === 'rotate') return 'grabbing'
@@ -1412,34 +1861,40 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
 
   // ── Sort shapes by zIndex ─────────────────────────
 
-  const sortedShapes = React.useMemo(() => {
-    return [...shapes].filter(s => s.visible).sort((a, b) => a.zIndex - b.zIndex)
-  }, [shapes])
-  
-  const selectedShape = React.useMemo(() => {
-    return shapes.find(s => s.id === selectedShapeId)
-  }, [shapes, selectedShapeId])
+  // Merge drag state overrides down using purely local rendering
+  const activeShapes = React.useMemo(() => {
+    if (!dragState || !dragState.currentShape) return shapes
+    return shapes.map(s => s.id === dragState.shapeId ? dragState.currentShape! : s)
+  }, [shapes, dragState])
 
-  return (
+  const sortedShapes = React.useMemo(() => {
+    return [...activeShapes].filter(s => s.visible).sort((a, b) => a.zIndex - b.zIndex)
+  }, [activeShapes])
+
+  const selectedShape = React.useMemo(() => {
+    return activeShapes.find(s => s.id === selectedShapeId)
+  }, [activeShapes, selectedShapeId])
+
+  const svgElement = (
     <svg
       ref={svgRef}
-      className="absolute inset-0 w-full h-full"
+      className={`absolute inset-0 w-full h-full ${drawingMode ? 'outline-none focus:outline-none' : ''}`}
       viewBox={`0 0 ${containerWidth} ${containerHeight}`}
       style={{
         cursor: getCursor(),
         // Exclusive Focus Mode: If a shape is selected, or we are drawing/dragging, 
         // the SVG catches ALL clicks and blocks the underlying format zones.
-        pointerEvents: (!panMode && (drawingMode || dragState || selectedShapeId || editingShapeId)) ? 'auto' : 'none',
+        pointerEvents: (!panMode && (drawingMode || dragState || marqueeState || selectedShapeId || selectedShapeIds.length > 0 || editingShapeId)) ? 'auto' : 'none',
         zIndex: 20
       }}
       // These events will only fire on the SVG itself when drawingMode is true OR during drag
-      onMouseDown={(drawingMode || dragState) ? (handleCanvasPointerDown as any) : undefined}
+      onMouseDown={(drawingMode || dragState || marqueeState) ? (handleCanvasPointerDown as any) : undefined}
       onMouseDownCapture={(e) => { lastMouseDownTargetRef.current = e.target }}
       onMouseMove={(e: any) => { handleCursorTrack(e); (handleCanvasPointerMove as any)(e) }}
       onMouseUp={handleCanvasPointerUp as any}
-      onMouseLeave={() => { if (dragState) { setDragState(null); setSnapGuides({x:null,y:null}) }; setCursorPos(null) }}
+      onMouseLeave={() => { if (dragState) { setDragState(null); setSnapGuides({ x: null, y: null }) }; setCursorPos(null) }}
       onDoubleClick={drawingMode ? handleCanvasDoubleClick : undefined}
-      onTouchStart={(drawingMode || dragState) ? (handleCanvasPointerDown as any) : undefined}
+      onTouchStart={(drawingMode || dragState || marqueeState) ? (handleCanvasPointerDown as any) : undefined}
       onTouchMove={handleCanvasPointerMove as any}
       onTouchEnd={handleCanvasPointerUp as any}
       onClick={handleBackgroundClick}
@@ -1451,12 +1906,12 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
           If we have this rect, it blocks Format Zones! 
           Instead, we rely on the FormatRenderer's background click handler to clear BOTH format selection AND decoration selection.
       */}
-      
+
       {/* Shapes */}
       {sortedShapes.map(shape => (
         <g
           key={shape.id}
-          style={{ 
+          style={{
             opacity: shape.locked ? 0.8 : 1,
             pointerEvents: 'auto', // Important: shapes catch clicks even if SVG doesn't
             cursor: drawingMode ? 'crosshair' : (shape.locked ? 'default' : 'move')
@@ -1485,6 +1940,26 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
         </g>
       ))}
 
+      {/* Multi-select highlights */}
+      {selectedShapeIds.length > 1 && selectedShapeIds.map(sid => {
+        const ms = activeShapes.find(s => s.id === sid)
+        if (!ms || !ms.visible) return null
+        const msb = getShapeBounds(ms)
+        const msCx = msb.x + msb.width / 2
+        const msCy = msb.y + msb.height / 2
+        return (
+          <g key={`multisel-${sid}`}>
+            <rect
+              x={msb.x - 3} y={msb.y - 3}
+              width={msb.width + 6} height={msb.height + 6}
+              fill="none" stroke="#8b5cf6" strokeWidth={1.5} strokeDasharray="5,3"
+              rx={3} pointerEvents="none"
+              transform={ms.rotation ? `rotate(${ms.rotation} ${msCx} ${msCy})` : undefined}
+            />
+          </g>
+        )
+      })}
+
       {/* Selection UI */}
       {selectedShape && (() => {
         const sb = getShapeBounds(selectedShape)
@@ -1492,11 +1967,11 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
         const hasPointsUI = hasEditablePoints(selectedShape.type)
         const rotCx = sb.x + sb.width / 2
         const rotCy = sb.y - ROTATION_HANDLE_DISTANCE
-        
+
         const cx = sb.x + sb.width / 2
         const cy = sb.y + sb.height / 2
         const rotation = selectedShape.rotation || 0
-        
+
         // Global bounds of the shape including rotation
         const corners = [
           { x: sb.x, y: sb.y },
@@ -1507,7 +1982,7 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
         const rotatedCorners = corners.map(pt => rotatePoint(pt.x, pt.y, cx, cy, rotation))
         const globalMinY = Math.min(...rotatedCorners.map(pt => pt.y))
         const globalMaxY = Math.max(...rotatedCorners.map(pt => pt.y))
-        
+
         // Include rotation handle in top/bottom extent
         const rotHandleRotated = rotatePoint(rotCx, rotCy, cx, cy, rotation)
         const topObjectY = Math.min(globalMinY, rotHandleRotated.y)
@@ -1536,12 +2011,12 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
             {/* ── Elements outside rotation ────────────────── */}
             {/* Toolbar — stays horizontal, correctly positioned outside bounds, invisible during drag/rotate. */}
             {!dragState && (
-              <DecorationToolbar 
-                shapeId={selectedShape.id} 
-                x={toolbarXPosition} 
-                y={toolbarYPosition} 
-                editingShapeId={editingShapeId} 
-                onStartEditing={(id) => setEditingShapeId(id)} 
+              <DecorationToolbar
+                shapeId={selectedShape.id}
+                x={toolbarXPosition}
+                y={toolbarYPosition}
+                editingShapeId={editingShapeId}
+                onStartEditing={(id) => setEditingShapeId(id)}
               />
             )}
 
@@ -1680,7 +2155,33 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
       })()}
 
       {/* Drawing preview */}
-      {drawingInProgress && <DrawingPreview drawing={drawingInProgress} />}
+      {drawingInProgress && <DrawingPreview drawing={drawingInProgress} settings={globalShapeSettings} />}
+
+      {/* Marquee selection rectangle */}
+      {marqueeState && (() => {
+        const mx = Math.min(marqueeState.startX, marqueeState.currentX)
+        const my = Math.min(marqueeState.startY, marqueeState.currentY)
+        const mw = Math.abs(marqueeState.currentX - marqueeState.startX)
+        const mh = Math.abs(marqueeState.currentY - marqueeState.startY)
+        return (
+          <g pointerEvents="none">
+            {/* Fill */}
+            <rect
+              x={mx} y={my} width={mw} height={mh}
+              fill="rgba(139, 92, 246, 0.08)"
+              stroke="#8b5cf6"
+              strokeWidth={1.5}
+              strokeDasharray="6,3"
+              rx={2}
+            />
+            {/* Corner dots */}
+            <circle cx={mx} cy={my} r={3} fill="#8b5cf6" />
+            <circle cx={mx + mw} cy={my} r={3} fill="#8b5cf6" />
+            <circle cx={mx} cy={my + mh} r={3} fill="#8b5cf6" />
+            <circle cx={mx + mw} cy={my + mh} r={3} fill="#8b5cf6" />
+          </g>
+        )
+      })()}
 
       {/* Snap Guides */}
       {snapGuides.x !== null && (
@@ -1688,6 +2189,11 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
       )}
       {snapGuides.y !== null && (
         <line x1={0} y1={snapGuides.y} x2={containerWidth} y2={snapGuides.y} stroke="#ec4899" strokeWidth={1} strokeDasharray="4,4" pointerEvents="none" opacity={0.6} />
+      )}
+
+      {/* Node Snap Guide Indicator */}
+      {nodeSnapGuide && (
+        <circle cx={nodeSnapGuide.x} cy={nodeSnapGuide.y} r={5} fill="#ec4899" opacity={0.6} pointerEvents="none" stroke="#fff" strokeWidth={1.5} />
       )}
 
       {/* "A" cursor preview for textbox-auto tool */}
@@ -1795,4 +2301,29 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
       })()}
     </svg>
   )
+
+  if (drawingMode) {
+    return (
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          {svgElement}
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem
+            onClick={() => {
+              setDrawingMode(null)
+              setDrawingInProgress(null)
+            }}
+          >
+            Unselect Tool
+          </ContextMenuItem>
+          <ContextMenuItem>
+            Cancel
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+    )
+  }
+
+  return svgElement
 }

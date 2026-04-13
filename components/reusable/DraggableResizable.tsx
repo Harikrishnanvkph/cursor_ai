@@ -61,10 +61,12 @@ export function DraggableResizable({
   }
 
   const clampRect = useCallback((rect: { x: number; y: number; width: number; height: number }) => {
-    let nx = Math.max(0, Math.min(rect.x, bounds.width - minWidth))
-    let ny = Math.max(0, Math.min(rect.y, bounds.height - minHeight))
-    let nwidth = Math.max(minWidth, Math.min(rect.width, bounds.width - nx))
-    let nheight = Math.max(minHeight, Math.min(rect.height, bounds.height - ny))
+    // Clamp width/height first (for resize operations)
+    let nwidth = Math.max(minWidth, Math.min(rect.width, bounds.width))
+    let nheight = Math.max(minHeight, Math.min(rect.height, bounds.height))
+    // Clamp x/y so the zone stays fully within bounds (preserves size during drag)
+    let nx = Math.max(0, Math.min(rect.x, bounds.width - nwidth))
+    let ny = Math.max(0, Math.min(rect.y, bounds.height - nheight))
     return { x: nx, y: ny, width: nwidth, height: nheight }
   }, [bounds.height, bounds.width, minHeight, minWidth])
 

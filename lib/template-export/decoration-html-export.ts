@@ -93,10 +93,11 @@ function regularPolygon(x: number, y: number, w: number, h: number, sides: numbe
   return pts
 }
 
-function getStrokeDasharray(style: string): string | undefined {
+function getStrokeDasharray(style: string, customPattern?: string): string | undefined {
+  if (customPattern) return customPattern
   switch (style) {
     case 'dashed': return '8,6'
-    case 'dotted': return '2,4'
+    case 'dotted': return '0,8'
     default: return undefined
   }
 }
@@ -163,7 +164,7 @@ function shapeSVGContent(shape: DecorationShape): string {
   const { x, y, width: w, height: h, fillColor, fillOpacity, strokeColor, strokeWidth, strokeStyle, rotation, type } = shape
   const fill = isLineLike(type) ? 'none' : fillColor
   const opacity = fillOpacity / 100
-  const dash = getStrokeDasharray(strokeStyle)
+  const dash = getStrokeDasharray(strokeStyle, shape.strokeDashPattern)
   const bounds = getShapeBounds(shape)
   const transform = rotation ? `rotate(${rotation} ${bounds.x + bounds.width / 2} ${bounds.y + bounds.height / 2})` : ''
   const dashAttr = dash ? ` stroke-dasharray="${dash}"` : ''
@@ -236,15 +237,16 @@ function shapeSVGContent(shape: DecorationShape): string {
         const angle = Math.atan2(dy, dx)
         const arrowSize = Math.max(10, Math.min(Math.sqrt(dx * dx + dy * dy) * 0.12, 18))
         const lineAttrs = `stroke="${strokeColor}" stroke-width="${strokeWidth}"${dashAttr} stroke-linecap="round" stroke-linejoin="round"`
+        const solidLineAttrs = `stroke="${strokeColor}" stroke-width="${strokeWidth}" stroke-dasharray="none" stroke-linecap="round" stroke-linejoin="round"`
         const tAttr = transform ? ` transform="${transform}"` : ''
         let svg = `<g${tAttr}>
           <line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" ${lineAttrs}/>
-          <line x1="${p2.x - arrowSize * Math.cos(angle - 0.4)}" y1="${p2.y - arrowSize * Math.sin(angle - 0.4)}" x2="${p2.x}" y2="${p2.y}" ${lineAttrs}/>
-          <line x1="${p2.x - arrowSize * Math.cos(angle + 0.4)}" y1="${p2.y - arrowSize * Math.sin(angle + 0.4)}" x2="${p2.x}" y2="${p2.y}" ${lineAttrs}/>`
+          <line x1="${p2.x - arrowSize * Math.cos(angle - 0.4)}" y1="${p2.y - arrowSize * Math.sin(angle - 0.4)}" x2="${p2.x}" y2="${p2.y}" ${solidLineAttrs}/>
+          <line x1="${p2.x - arrowSize * Math.cos(angle + 0.4)}" y1="${p2.y - arrowSize * Math.sin(angle + 0.4)}" x2="${p2.x}" y2="${p2.y}" ${solidLineAttrs}/>`
         if (type === 'double-arrow') {
           svg += `
-          <line x1="${p1.x + arrowSize * Math.cos(angle - 0.4)}" y1="${p1.y + arrowSize * Math.sin(angle - 0.4)}" x2="${p1.x}" y2="${p1.y}" ${lineAttrs}/>
-          <line x1="${p1.x + arrowSize * Math.cos(angle + 0.4)}" y1="${p1.y + arrowSize * Math.sin(angle + 0.4)}" x2="${p1.x}" y2="${p1.y}" ${lineAttrs}/>`
+          <line x1="${p1.x + arrowSize * Math.cos(angle - 0.4)}" y1="${p1.y + arrowSize * Math.sin(angle - 0.4)}" x2="${p1.x}" y2="${p1.y}" ${solidLineAttrs}/>
+          <line x1="${p1.x + arrowSize * Math.cos(angle + 0.4)}" y1="${p1.y + arrowSize * Math.sin(angle + 0.4)}" x2="${p1.x}" y2="${p1.y}" ${solidLineAttrs}/>`
         }
         svg += '</g>'
         return svg

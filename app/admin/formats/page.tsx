@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import {
-  Layers, Plus, Globe, Trash2, ArrowLeft, Upload,
+  Layers, Plus, Globe, Trash2, ArrowLeft, Upload, Edit,
   Maximize2, BarChart3, Type, Hash, Image, Shapes
 } from "lucide-react"
 import { toast } from "sonner"
@@ -184,6 +184,13 @@ export default function AdminFormatsPage() {
                 {isSeeding ? 'Seeding...' : `Seed ${defaultFormats.length} Defaults`}
               </Button>
             )}
+            <Button
+              onClick={() => router.push('/admin/formats/create-format')}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create Format
+            </Button>
           </div>
         </div>
 
@@ -220,6 +227,7 @@ export default function AdminFormatsPage() {
                 format={format}
                 onPushOfficial={handlePushOfficial}
                 onDelete={handleDeleteClick}
+                onEdit={(id) => router.push(`/admin/formats/create-format?id=${id}`)}
               />
             ))}
 
@@ -270,10 +278,12 @@ function FormatCard({
   format,
   onPushOfficial,
   onDelete,
+  onEdit,
 }: {
   format: FormatRow
   onPushOfficial: (id: string, isOfficial: boolean) => void
   onDelete: (id: string) => void
+  onEdit: (id: string) => void
 }) {
   const skeleton = format.skeleton
   const zones = skeleton?.zones || []
@@ -422,6 +432,16 @@ function FormatCard({
 
         {/* Actions */}
         <div className="flex gap-2 mt-auto pt-3 border-t border-gray-800">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1 text-xs bg-gray-800 hover:bg-gray-700 border-gray-700 text-white"
+            onClick={() => onEdit(format.id)}
+          >
+            <Edit className="w-3.5 h-3.5 mr-1.5" />
+            Edit
+          </Button>
+
           <Button
             variant={format.is_official ? "outline" : "default"}
             size="sm"

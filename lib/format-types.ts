@@ -4,8 +4,9 @@
  * A Format is a visual blueprint (skeleton) that defines how chart data
  * and content are arranged, styled, and decorated to create an infographic-like output.
  * 
- * Formats extend the existing template system with zone-based architecture,
- * decoration layers, contextual intelligence, and multi-dimension support.
+ * Architecture:
+ *   zones[]       — Content slots filled by AI (text, chart, stat, background)
+ *   decorations[] — Static visual elements (shapes, lines, icons, images, SVGs)
  */
 
 // ========================================
@@ -21,8 +22,9 @@ export type TextZoneRole = 'title' | 'subtitle' | 'body' | 'source' | 'callout';
 /** Stat zone roles define which stat from the content package to show */
 export type StatZoneRole = 'highlight' | 'secondary' | 'tertiary';
 
-/** Decoration subtypes */
-export type DecorationSubtype = 'svg-icon' | 'border' | 'divider' | 'shape' | 'watermark';
+/** Decoration subtypes (new categories + legacy values for backward compat) */
+export type DecorationSubtype = 'shape' | 'line' | 'connector' | 'icon' | 'image' | 'svg-upload'
+  | 'svg-icon' | 'border' | 'divider' | 'watermark';  // legacy — kept for existing formats
 
 /** Background subtypes */
 export type BackgroundSubtype = 'image' | 'gradient' | 'pattern' | 'solid';
@@ -93,26 +95,41 @@ export interface BackgroundZoneStyle {
   patternOpacity?: number;
 }
 
-/** Decoration zone styling */
+/** Decoration zone styling (legacy — decoration zones are deprecated in builder, use FormatDecoration instead) */
 export interface DecorationZoneStyle {
-  // Border
+  // Shape
+  shapeType?: string;
+  shapeColor?: string;
+  shapeOpacity?: number;
+  strokeColor?: string;
+  strokeWidth?: number;
+  strokeStyle?: 'solid' | 'dashed' | 'dotted';
+  borderRadius?: number;
+  // Line / Arrow / Connector
+  lineType?: 'line' | 'arrow' | 'double-arrow' | 'connected-lines' | 'bezier-line' | 'cloud-line' | 'freehand';
+  lineColor?: string;
+  lineThickness?: number;
+  lineStyle?: 'solid' | 'dashed' | 'dotted';
+  // Icon
+  iconType?: string;
+  iconColor?: string;
+  iconSize?: number;
+  // Image
+  imageUrl?: string;
+  imageFit?: 'cover' | 'contain' | 'fill';
+  imageBorderRadius?: number;
+  // SVG
+  svgContent?: string;
+  svgColor?: string;
+  svgOpacity?: number;
+  // Legacy fields — kept for backward compat with existing format defaults
   borderColor?: string;
   borderWidth?: number;
-  borderRadius?: number;
   borderStyle?: 'solid' | 'dashed' | 'dotted';
-  // Divider
   dividerColor?: string;
   dividerThickness?: number;
   dividerStyle?: 'solid' | 'dashed' | 'gradient';
-  // Shape
-  shapeType?: 'circle' | 'rectangle' | 'line' | 'dots';
-  shapeColor?: string;
-  shapeOpacity?: number;
-  // SVG icon
-  svgContent?: string;         // Inline SVG content (pre-filled by admin)
-  svgCategory?: string;        // Category for contextual lookup (e.g., 'agriculture', 'finance')
-  svgColor?: string;
-  svgOpacity?: number;
+  svgCategory?: string;
 }
 
 /** Chart zone configuration */
@@ -130,12 +147,16 @@ export interface ChartZoneConfig {
 // ========================================
 
 /** Base zone properties shared by all zone types */
-interface BaseZone {
+export interface BaseZone {
   id: string;
   type: ZoneType;
   position?: ZonePosition;       // Background and border zones may not need position
   visible?: boolean;             // Defaults to true
   contextual?: boolean;          // If true, content is filled from keywords at runtime
+  /** Admin-authored AI prompt/instruction for content generation in this zone */
+  message?: string;
+  /** Expected output type from the AI for this zone's message */
+  messageType?: 'text' | 'html' | 'image' | 'data' | 'auto';
 }
 
 /** Text zone — displays text content */
@@ -217,7 +238,13 @@ export interface FormatSkeleton {
   description: string;
   category: FormatCategory;
   dimensions: FormatDimensions;
+
+  /** Content zones — semantic slots filled by AI at render time */
   zones: FormatZone[];
+
+  /** Decoration layer — static visual elements (shapes, lines, icons, images, SVGs) */
+  decorations?: FormatDecoration[];
+
   colorPalette: FormatColorPalette;
   tags: string[];
 
@@ -237,6 +264,41 @@ export interface FormatSkeleton {
   createdAt?: string;
   updatedAt?: string;
 }
+
+/** A decoration element in the format (static visual, not AI-filled) */
+export interface FormatDecoration {
+  id: string;
+  type: FormatDecorationType;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation?: number;
+  /** For freehand, polygon, connected-lines: array of points relative to (x,y) */
+  points?: { x: number; y: number }[];
+  fillColor: string;
+  fillOpacity: number;
+  strokeColor: string;
+  strokeWidth: number;
+  strokeStyle: 'solid' | 'dashed' | 'dotted';
+  visible?: boolean;
+  zIndex?: number;
+  // Image fields
+  imageUrl?: string;
+  imageFit?: 'fill' | 'cover' | 'contain';
+  borderRadius?: number;
+  // SVG fields
+  svgContent?: string;
+}
+
+/** Decoration shape types available in the format builder */
+export type FormatDecorationType =
+  | 'rectangle' | 'circle' | 'triangle' | 'star' | 'hexagon' | 'pentagon'
+  | 'diamond-shape' | 'heart' | 'cloud' | 'polygon' | 'dot'
+  | 'checkmark' | 'crossmark' | 'text-callout'
+  | 'line' | 'arrow' | 'double-arrow'
+  | 'connected-lines' | 'bezier-line' | 'cloud-line' | 'freehand'
+  | 'deco-image' | 'deco-svg';
 
 // ========================================
 // LLM CONTENT PACKAGE — What the AI returns
