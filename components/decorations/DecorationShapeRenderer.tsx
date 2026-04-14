@@ -497,6 +497,15 @@ const ShapeSVG = React.memo(function ShapeSVGComponent({ shape }: { shape: Decor
       return <polygon points={pts.join(' ')} fill={fill} fillOpacity={opacity} {...commonProps} />
     }
 
+    case 'info':
+      return (
+        <g {...commonProps}>
+          <circle cx={x + w / 2} cy={y + h / 2} r={Math.min(w, h) / 2 * 0.9} fill={fill} fillOpacity={opacity} />
+          <line x1={x + w / 2} y1={y + h * 0.45} x2={x + w / 2} y2={y + h * 0.75} strokeLinecap="round" />
+          <line x1={x + w / 2} y1={y + h * 0.25} x2={x + w / 2} y2={y + h * 0.25} strokeLinecap="round" strokeWidth={Math.max(2, strokeWidth * 1.5)} />
+        </g>
+      )
+
     case 'checkmark':
       return <path d={`M ${x + w * 0.2} ${y + h * 0.5} L ${x + w * 0.4} ${y + h * 0.75} L ${x + w * 0.8} ${y + h * 0.25}`} fill="none" {...commonProps} />
 
@@ -817,6 +826,15 @@ function DrawingPreview({ drawing, settings }: { drawing: DrawingState, settings
 
     case 'cloud':
       return <path d={cloudPath(x, y, w, h)} {...previewProps} />
+
+    case 'info':
+      return (
+        <g {...previewProps}>
+          <circle cx={x + w / 2} cy={y + h / 2} r={Math.min(w, h) / 2 * 0.9} />
+          <line x1={x + w / 2} y1={y + h * 0.45} x2={x + w / 2} y2={y + h * 0.75} strokeLinecap="round" />
+          <line x1={x + w / 2} y1={y + h * 0.25} x2={x + w / 2} y2={y + h * 0.25} strokeLinecap="round" strokeWidth={Math.max(2, settings.strokeWidth * 1.5)} />
+        </g>
+      )
 
     case 'checkmark':
       return <path d={`M ${x + w * 0.2} ${y + h * 0.5} L ${x + w * 0.4} ${y + h * 0.75} L ${x + w * 0.8} ${y + h * 0.25}`} {...previewProps} fill="none" />
@@ -1767,7 +1785,7 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
 
             const currentShape = useDecorationStore.getState().shapes.find(s => s.id === editingShapeId)
             if (currentShape && (Math.abs(currentShape.width - newW) > 1 || Math.abs(currentShape.height - newH) > 1)) {
-              useDecorationStore.getState().updateShape(editingShapeId, { width: newW, height: newH })
+              useDecorationStore.getState().updateShape(editingShapeId, { width: newW, height: newH }, true)
             }
           }
         })
@@ -1816,14 +1834,42 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      // Do not intercept keystrokes if the user is typing in an input, textarea, or contentEditable element.
+      // E.g., when they are renaming a chart, or editing text within a template zone.
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target.isContentEditable) {
+        return;
+      }
+
+      const state = useDecorationStore.getState()
+
+      // ── Undo / Redo ───────────────────────────────────
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
+        if (state.canUndo()) {
+          e.preventDefault()
+          state.undoShapeAction()
+        }
+        return
+      }
+
+      if ((e.metaKey || e.ctrlKey) && ((e.shiftKey && e.key.toLowerCase() === 'z') || e.key.toLowerCase() === 'y')) {
+        if (state.canRedo()) {
+          e.preventDefault()
+          state.redoShapeAction()
+        }
+        return
+      }
+
+      // ── Escape ────────────────────────────────────────
       if (e.key === 'Escape') {
         setDrawingInProgress(null)
         setMarqueeState(null)
-        useDecorationStore.getState().setDrawingMode(null)
+        state.setDrawingMode(null)
         setNodeSnapGuide(null)
       }
+
+      // ── Delete ────────────────────────────────────────
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        const state = useDecorationStore.getState()
         // Delete multi-selected shapes
         if (state.selectedShapeIds.length > 0) {
           state.selectedShapeIds.forEach(id => state.removeShape(id))

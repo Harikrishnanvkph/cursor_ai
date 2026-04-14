@@ -56,7 +56,7 @@ export function FormatRenderer({
   const { skeleton, renderedZones, colorPalette } = rendered
   const { width, height } = skeleton.dimensions
   const { selectedZoneId, setSelectedZoneId, setEditingZoneId } = useFormatGalleryStore()
-  const { setSelectedShapeId } = useDecorationStore()
+  const { setSelectedShapeId, drawingMode } = useDecorationStore()
 
   const scaledW = width * scale
   const scaledH = height * scale
@@ -77,7 +77,7 @@ export function FormatRenderer({
         width: scaledW,
         height: scaledH,
         fontSize: `${Math.max(scale * 100, 30)}%`,
-        pointerEvents: panMode ? 'none' : 'auto',
+        pointerEvents: (panMode || drawingMode === 'marquee-select') ? 'none' : 'auto',
       }}
       onClick={handleBgClick}
     >

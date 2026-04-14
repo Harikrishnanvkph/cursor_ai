@@ -1,6 +1,8 @@
 "use client"
 
 import { create } from "zustand"
+import { persist } from "zustand/middleware"
+import { createExpiringStorage } from "@/lib/storage-utils"
 
 // ═══════════════════════════════════════════════════════
 // Types
@@ -11,92 +13,93 @@ export type DecorationShapeType =
   | 'line'
   | 'arrow'
   | 'double-arrow'
+  | 'connected-lines'
+  | 'bezier-line'
+  | 'bspline-curve'
   | 'cloud-line'
   | 'rectangle'
   | 'circle'
   | 'triangle'
   | 'star'
-  | 'text-callout'
   | 'polygon'
+  | 'hexagon'
+  | 'pentagon'
+  | 'diamond-shape'
+  | 'heart'
   | 'cloud'
-  | 'connected-lines'
-  | 'bezier-line'
-  | 'bspline-curve'
-  | 'crossmark'
-  | 'checkmark'
-  | 'dot'
-  | 'num-0' | 'num-1' | 'num-2' | 'num-3' | 'num-4'
-  | 'num-5' | 'num-6' | 'num-7' | 'num-8' | 'num-9'
-  | 'emoji-star' | 'emoji-warning' | 'emoji-heart' | 'emoji-thumb'
-  | 'emoji-fire' | 'emoji-idea' | 'emoji-check' | 'emoji-cross'
-  | 'emoji-smile' | 'emoji-sad' | 'emoji-rocket' | 'emoji-target' | 'emoji-laugh'
-  | 'emoji-clap' | 'emoji-eyes' | 'emoji-sparkles' | 'emoji-party'
-  | 'emoji-brain' | 'emoji-muscle' | 'emoji-crown' | 'emoji-diamond'
-  | 'emoji-medal' | 'emoji-clock' | 'emoji-lock' | 'emoji-umbrella'
-  | 'exclamation' | 'question' | 'pushpin' | 'bullseye'
-  | 'hexagon' | 'heart' | 'pentagon' | 'diamond-shape'
-  // Section element types
+  | 'text-callout'
   | 'textbox'
   | 'textbox-auto'
   | 'deco-image'
   | 'deco-svg'
+  | 'checkmark'
+  | 'crossmark'
+  | 'dot'
+  | 'pushpin'
+  | 'bullseye'
+  // Or dynamic text types
+  | `emoji-${string}`
+  | `num-${number}`
 
+export type DrawingMode = DecorationShapeType | null
+
+export interface Point {
+  x: number
+  y: number
+}
+
+// Minimal shape structure — common to all decoration objects
 export interface DecorationShape {
   id: string
   type: DecorationShapeType
+
+  // Bounds
   x: number
   y: number
   width: number
   height: number
   rotation: number
-  /** For freehand, polygon, connected-lines: array of points relative to (x,y) */
-  points?: { x: number; y: number }[]
+
+  // Used by paths/lines
+  points?: Point[]
+
+  // Styling
   fillColor: string
-  fillOpacity: number
+  fillOpacity: number // 0 to 100
   strokeColor: string
   strokeWidth: number
   strokeStyle: 'solid' | 'dashed' | 'dotted'
   strokeDashPattern?: string
-  /** Text content for text-callout and textbox shapes */
-  text?: string
+
+  // Hierarchy / Visibility
   visible: boolean
   locked: boolean
   zIndex: number
-  // ── Textbox fields ────────────────────────────────
-  /** When true, textbox auto-sizes based on content (no fixed w/h) */
-  autoSize?: boolean
-  fontFamily?: string
+
+  // Specialized attributes (optional)
+  text?: string
   fontSize?: number
-  fontWeight?: 'normal' | 'bold'
-  fontStyle?: 'normal' | 'italic'
-  textDecoration?: 'none' | 'underline' | 'line-through'
+  fontFamily?: string
+  fontWeight?: string
+  fontStyle?: string
+  textDecoration?: string
   textAlign?: 'left' | 'center' | 'right'
   textColor?: string
   lineHeight?: number
-  // ── Image fields ──────────────────────────────────
+
   imageUrl?: string
-  imageFit?: 'fill' | 'cover' | 'contain'
+  imageFit?: 'cover' | 'contain' | 'fill'
   borderRadius?: number
-  // ── SVG fields ────────────────────────────────────
+
   svgContent?: string
 }
 
-export type DrawingMode = DecorationShapeType | 'marquee-select'
-
-export interface DrawingState {
-  /** The shape type being drawn */
-  mode: DrawingMode
-  /** Start coordinate (canvas-local) */
-  startX: number
-  startY: number
-  /** Current coordinate (canvas-local) */
-  currentX: number
-  currentY: number
-  /** Accumulated points for multi-point shapes */
-  points: { x: number; y: number }[]
-  /** Whether shift key is held (for angle snapping) */
-  shiftKey: boolean
-}
+export type DrawingState =
+  | 'idle'
+  | 'drawing-path'      // Multi-point freehand
+  | 'drawing-shape'     // Dragging bound box (rect, circle)
+  | 'drawing-polyline'  // Click by click path
+  | 'drawing-bspline'   // Click by click bspline
 
 // ═══════════════════════════════════════════════════════
 // Store
@@ -124,7 +127,7 @@ interface DecorationStore {
 
   // Shape CRUD
   addShape: (shape: Omit<DecorationShape, 'id'>) => string
-  updateShape: (id: string, updates: Partial<DecorationShape>) => void
+  updateShape: (id: string, updates: Partial<DecorationShape>, skipHistory?: boolean) => void
   removeShape: (id: string) => void
   clearShapes: () => void
 
@@ -145,119 +148,221 @@ interface DecorationStore {
   toggleLock: (id: string) => void
   bringToFront: (id: string) => void
   sendToBack: (id: string) => void
+
+  // Undo/Redo Engine
+  pastShapes: DecorationShape[][]
+  futureShapes: DecorationShape[][]
+  isUndoing: boolean
+  commitHistory: () => void
+  undoShapeAction: () => void
+  redoShapeAction: () => void
+  clearShapeHistory: () => void
+  canUndo: () => boolean
+  canRedo: () => boolean
 }
 
-const generateId = () => `deco-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+const generateId = () => `deco-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
 
-export const useDecorationStore = create<DecorationStore>()((set, get) => ({
-  shapes: [],
-  selectedShapeId: null,
-  selectedShapeIds: [],
-  drawingMode: null,
-  globalShapeSettings: {
-    fillColor: 'transparent',
-    fillOpacity: 100,
-    strokeColor: '#3b82f6',
-    strokeWidth: 2,
-    strokeStyle: 'solid',
-    strokeDashPattern: ''
-  },
+export const useDecorationStore = create<DecorationStore>()(
+  persist(
+    (set, get) => ({
+      shapes: [],
+      selectedShapeId: null,
+      selectedShapeIds: [],
+      drawingMode: null,
+      globalShapeSettings: {
+        fillColor: 'transparent',
+        fillOpacity: 100,
+        strokeColor: '#3b82f6',
+        strokeWidth: 2,
+        strokeStyle: 'solid',
+        strokeDashPattern: ''
+      },
 
-  setGlobalShapeSettings: (updates) => set((state) => ({
-    globalShapeSettings: { ...state.globalShapeSettings, ...updates }
-  })),
+      pastShapes: [],
+      futureShapes: [],
+      isUndoing: false,
 
-  // ── Shape CRUD ──────────────────────────────────────
+      commitHistory: () => {
+        set((state) => {
+          if (state.isUndoing) return {}
+          const clones = JSON.parse(JSON.stringify(state.shapes))
+          const newPast = [...state.pastShapes, clones]
+          if (newPast.length > 30) newPast.shift()
+          return {
+            pastShapes: newPast,
+            futureShapes: []
+          }
+        })
+      },
 
-  addShape: (shape) => {
-    const id = generateId()
-    const newShape: DecorationShape = { ...shape, id }
-    set((state) => ({
-      shapes: [...state.shapes, newShape],
-      selectedShapeId: state.drawingMode ? state.selectedShapeId : id
-    }))
-    return id
-  },
+      undoShapeAction: () => {
+        set((state) => {
+          if (state.pastShapes.length === 0) return {}
+          const newPastShapes = [...state.pastShapes]
+          const nextShapes = newPastShapes.pop()!
+          const currShapes = JSON.parse(JSON.stringify(state.shapes))
+          return {
+            isUndoing: true,
+            shapes: nextShapes,
+            pastShapes: newPastShapes,
+            futureShapes: [currShapes, ...state.futureShapes],
+            selectedShapeId: null,
+            selectedShapeIds: [],
+            drawingMode: null
+          }
+        })
+        setTimeout(() => set({ isUndoing: false }), 10)
+      },
 
-  updateShape: (id, updates) => set((state) => ({
-    shapes: state.shapes.map(s => s.id === id ? { ...s, ...updates } : s)
-  })),
+      redoShapeAction: () => {
+        set((state) => {
+          if (state.futureShapes.length === 0) return {}
+          const newFutureShapes = [...state.futureShapes]
+          const nextShapes = newFutureShapes.shift()!
+          const currShapes = JSON.parse(JSON.stringify(state.shapes))
+          return {
+            isUndoing: true,
+            shapes: nextShapes,
+            pastShapes: [...state.pastShapes, currShapes],
+            futureShapes: newFutureShapes,
+            selectedShapeId: null,
+            selectedShapeIds: [],
+            drawingMode: null
+          }
+        })
+        setTimeout(() => set({ isUndoing: false }), 10)
+      },
 
-  removeShape: (id) => set((state) => ({
-    shapes: state.shapes.filter(s => s.id !== id),
-    selectedShapeId: state.selectedShapeId === id ? null : state.selectedShapeId
-  })),
+      clearShapeHistory: () => set({ pastShapes: [], futureShapes: [], isUndoing: false }),
+      canUndo: () => get().pastShapes.length > 0,
+      canRedo: () => get().futureShapes.length > 0,
 
-  clearShapes: () => set({
-    shapes: [],
-    selectedShapeId: null,
-    selectedShapeIds: []
-  }),
+      setGlobalShapeSettings: (updates) => set((state) => ({
+        globalShapeSettings: { ...state.globalShapeSettings, ...updates }
+      })),
 
-  // ── Selection ───────────────────────────────────────
+      // ── Shape CRUD ──────────────────────────────────────
 
-  setSelectedShapeId: (id) => set({ selectedShapeId: id, selectedShapeIds: [] }),
+      addShape: (shape) => {
+        get().commitHistory()
+        const id = generateId()
+        set((state) => ({
+          shapes: [...state.shapes, { ...shape, id }],
+          selectedShapeId: id,
+          selectedShapeIds: [id],
+        }))
+        return id
+      },
 
-  setSelectedShapeIds: (ids) => set({
-    selectedShapeIds: ids,
-    selectedShapeId: ids.length === 1 ? ids[0] : null
-  }),
+      updateShape: (id, updates, skipHistory = false) => {
+        if (!skipHistory) get().commitHistory()
+        set((state) => ({
+          shapes: state.shapes.map(s => s.id === id ? { ...s, ...updates } : s)
+        }))
+      },
 
-  toggleShapeSelection: (id) => set((state) => {
-    const exists = state.selectedShapeIds.includes(id)
-    const newIds = exists
-      ? state.selectedShapeIds.filter(sid => sid !== id)
-      : [...state.selectedShapeIds, id]
-    return {
-      selectedShapeIds: newIds,
-      selectedShapeId: newIds.length === 1 ? newIds[0] : null
+      removeShape: (id) => {
+        get().commitHistory()
+        set((state) => ({
+          shapes: state.shapes.filter(s => s.id !== id),
+          selectedShapeId: state.selectedShapeId === id ? null : state.selectedShapeId,
+          selectedShapeIds: state.selectedShapeIds.filter(sid => sid !== id)
+        }))
+      },
+
+      clearShapes: () => {
+        get().commitHistory()
+        set({ shapes: [], selectedShapeId: null, selectedShapeIds: [] })
+      },
+
+      setSelectedShapeId: (id) => set((state) => ({
+        selectedShapeId: id,
+        selectedShapeIds: id ? [id] : [],
+        drawingMode: id ? null : state.drawingMode
+      })),
+
+      setSelectedShapeIds: (ids) => set((state) => ({
+        selectedShapeIds: ids,
+        selectedShapeId: ids.length === 1 ? ids[0] : null,
+        drawingMode: ids.length > 0 ? null : state.drawingMode
+      })),
+
+      toggleShapeSelection: (id) => set((state) => {
+        const isSelected = state.selectedShapeIds.includes(id)
+        const newIds = isSelected 
+          ? state.selectedShapeIds.filter(sid => sid !== id)
+          : [...state.selectedShapeIds, id]
+        
+        return {
+          selectedShapeIds: newIds,
+          selectedShapeId: newIds.length === 1 ? newIds[0] : null,
+          drawingMode: newIds.length > 0 ? null : state.drawingMode
+        }
+      }),
+
+      clearMultiSelect: () => set({ selectedShapeIds: [], selectedShapeId: null }),
+
+      setDrawingMode: (mode) => set({ drawingMode: mode, selectedShapeId: null, selectedShapeIds: [] }),
+
+      duplicateShape: (id) => {
+        get().commitHistory()
+        set((state) => {
+          const shape = state.shapes.find(s => s.id === id)
+          if (!shape) return {}
+
+          const newId = generateId()
+          const offset = 20
+          const newShape = {
+            ...shape,
+            id: newId,
+            x: shape.x + offset,
+            y: shape.y + offset,
+            points: shape.points?.map(p => ({ x: p.x + offset, y: p.y + offset }))
+          }
+
+          return {
+            shapes: [...state.shapes, newShape],
+            selectedShapeId: newId,
+            selectedShapeIds: [newId]
+          }
+        })
+      },
+
+      toggleLock: (id) => {
+        get().commitHistory()
+        set((state) => ({
+          shapes: state.shapes.map(s => s.id === id ? { ...s, locked: !s.locked } : s)
+        }))
+      },
+
+      bringToFront: (id) => {
+        get().commitHistory()
+        set((state) => {
+          const maxZ = Math.max(...state.shapes.map(s => s.zIndex), 0)
+          return {
+            shapes: state.shapes.map(s => s.id === id ? { ...s, zIndex: maxZ + 1 } : s)
+          }
+        })
+      },
+
+      sendToBack: (id) => {
+        get().commitHistory()
+        set((state) => {
+          const minZ = Math.min(...state.shapes.map(s => s.zIndex), 0)
+          return {
+            shapes: state.shapes.map(s => s.id === id ? { ...s, zIndex: minZ - 1 } : s)
+          }
+        })
+      }
+    }),
+    {
+      name: 'decoration-store',
+      storage: createExpiringStorage('decoration-store'),
+      partialize: (state) => ({ 
+        shapes: state.shapes, 
+        globalShapeSettings: state.globalShapeSettings 
+      })
     }
-  }),
-
-  clearMultiSelect: () => set({ selectedShapeIds: [], selectedShapeId: null }),
-
-  // ── Drawing ─────────────────────────────────────────
-
-  setDrawingMode: (mode) => set({
-    drawingMode: mode,
-    selectedShapeId: mode ? null : get().selectedShapeId, // Deselect when entering drawing mode
-  }),
-
-  // ── Convenience ─────────────────────────────────────
-
-  duplicateShape: (id) => {
-    const state = get()
-    const shape = state.shapes.find(s => s.id === id)
-    if (!shape) return
-    const newId = generateId()
-    const duplicate: DecorationShape = {
-      ...shape,
-      id: newId,
-      x: shape.x + 20,
-      y: shape.y + 20,
-      locked: false
-    }
-    set((state) => ({
-      shapes: [...state.shapes, duplicate],
-      selectedShapeId: newId
-    }))
-  },
-
-  toggleLock: (id) => set((state) => ({
-    shapes: state.shapes.map(s => s.id === id ? { ...s, locked: !s.locked } : s)
-  })),
-
-  bringToFront: (id) => set((state) => {
-    const maxZ = Math.max(...state.shapes.map(s => s.zIndex), 0)
-    return {
-      shapes: state.shapes.map(s => s.id === id ? { ...s, zIndex: maxZ + 1 } : s)
-    }
-  }),
-
-  sendToBack: (id) => set((state) => {
-    const minZ = Math.min(...state.shapes.map(s => s.zIndex), 0)
-    return {
-      shapes: state.shapes.map(s => s.id === id ? { ...s, zIndex: minZ - 1 } : s)
-    }
-  })
-}))
+  )
+)

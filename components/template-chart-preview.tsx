@@ -118,6 +118,8 @@ export function TemplateChartPreview({
 
   const { backendConversationId } = useChatStore()
   const { conversations, updateConversation } = useHistoryStore()
+  const { drawingMode } = useDecorationStore()
+  
   const containerRef = useRef<HTMLDivElement>(null)
   const fullscreenContainerRef = useRef<HTMLDivElement>(null)
   const pendingTabRef = useRef<string | null>(null)
@@ -690,7 +692,8 @@ export function TemplateChartPreview({
               }`}
             style={{
               ...baseStyle,
-              cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'pointer'
+              cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'pointer',
+              pointerEvents: drawingMode === 'marquee-select' ? 'none' : 'auto'
             }}
             onMouseDown={(e) => { if (!panMode) e.stopPropagation() }}
             onMouseMove={(e) => { if (!panMode) e.stopPropagation() }}
@@ -752,7 +755,8 @@ export function TemplateChartPreview({
           border: showGuides ? '2px solid #3b82f6' : 'none',
           backgroundColor: showGuides ? 'rgba(59, 130, 246, 0.05)' : 'transparent',
           borderRadius: '4px',
-          cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'default'
+          cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'default',
+          pointerEvents: drawingMode === 'marquee-select' ? 'none' : 'auto'
         }}
         onMouseDown={(e) => { if (!panMode) e.stopPropagation() }}
         onMouseMove={(e) => { if (!panMode) e.stopPropagation() }}
@@ -769,7 +773,7 @@ export function TemplateChartPreview({
           </div>
         )}
 
-        <div style={{ pointerEvents: panMode ? 'none' : 'auto', width: '100%', height: '100%' }}>
+        <div style={{ pointerEvents: (panMode || drawingMode === 'marquee-select') ? 'none' : 'auto', width: '100%', height: '100%' }}>
           <ChartGenerator key={`template-${template.id}-${template.chartArea.width}-${template.chartArea.height}`} />
         </div>
       </div>

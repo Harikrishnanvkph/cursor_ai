@@ -82,6 +82,63 @@ function freehandPath(points: { x: number; y: number }[]): string {
   return d
 }
 
+function bezierPath(points: { x: number; y: number }[]): string {
+  if (points.length === 0) return ''
+  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`
+  if (points.length === 2) return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`
+
+  // Catmull-Rom Spline – interpolating spline that passes through every point.
+  let d = `M ${points[0].x} ${points[0].y}`
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = i === 0 ? points[0] : points[i - 1]
+    const p1 = points[i]
+    const p2 = points[i + 1]
+    const p3 = i + 2 < points.length ? points[i + 2] : points[i + 1]
+
+    const cp1x = p1.x + (p2.x - p0.x) / 6
+    const cp1y = p1.y + (p2.y - p0.y) / 6
+    const cp2x = p2.x - (p3.x - p1.x) / 6
+    const cp2y = p2.y - (p3.y - p1.y) / 6
+
+    d += ` C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${p2.x} ${p2.y}`
+  }
+
+  return d
+}
+
+function bsplinePath(points: { x: number; y: number }[]): string {
+  if (points.length === 0) return ''
+  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`
+  if (points.length === 2) return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`
+  if (points.length === 3) {
+    return `M ${points[0].x} ${points[0].y} Q ${points[1].x} ${points[1].y} ${points[2].x} ${points[2].y}`
+  }
+
+  const first = points[0]
+  const last = points[points.length - 1]
+  const ext = [first, first, ...points, last, last]
+
+  const numSegs = ext.length - 3
+  const q0 = ext[0], q1 = ext[1], q2 = ext[2]
+  const sx = (q0.x + 4 * q1.x + q2.x) / 6
+  const sy = (q0.y + 4 * q1.y + q2.y) / 6
+  let d = `M ${sx} ${sy}`
+
+  for (let i = 0; i < numSegs; i++) {
+    const p0 = ext[i], p1 = ext[i + 1], p2 = ext[i + 2], p3 = ext[i + 3]
+    const cp1x = (2 * p1.x + p2.x) / 3
+    const cp1y = (2 * p1.y + p2.y) / 3
+    const cp2x = (p1.x + 2 * p2.x) / 3
+    const cp2y = (p1.y + 2 * p2.y) / 3
+    const endX = (p1.x + 4 * p2.x + p3.x) / 6
+    const endY = (p1.y + 4 * p2.y + p3.y) / 6
+    d += ` C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${endX} ${endY}`
+  }
+
+  return d
+}
+
 function regularPolygon(x: number, y: number, w: number, h: number, sides: number): { x: number; y: number }[] {
   const cx = x + w / 2, cy = y + h / 2
   const rx = w / 2, ry = h / 2
@@ -118,15 +175,26 @@ function getStampContent(type: string): string | null {
     case 'emoji-rocket': return '🚀'
     case 'emoji-target': return '🎯'
     case 'emoji-laugh': return '😂'
+    case 'emoji-clap': return '👏'
+    case 'emoji-eyes': return '👀'
+    case 'emoji-sparkles': return '✨'
+    case 'emoji-party': return '🎉'
+    case 'emoji-brain': return '🧠'
+    case 'emoji-muscle': return '💪'
+    case 'emoji-crown': return '👑'
+    case 'emoji-diamond': return '💎'
+    case 'emoji-medal': return '🏅'
+    case 'emoji-clock': return '⏰'
+    case 'emoji-lock': return '🔒'
+    case 'emoji-umbrella': return '☂️'
     case 'exclamation': return '❗'
     case 'question': return '❓'
     case 'pushpin': return '📌'
-    case 'bullseye': return '◎'
   }
   return null
 }
 
-const LINE_LIKE_TYPES = ['line', 'arrow', 'double-arrow', 'connected-lines', 'freehand']
+const LINE_LIKE_TYPES = ['line', 'arrow', 'double-arrow', 'connected-lines', 'bezier-line', 'bspline-curve', 'freehand']
 const POINTS_BASED_TYPES = [...LINE_LIKE_TYPES, 'polygon', 'cloud-line']
 
 function isLineLike(type: string) { return LINE_LIKE_TYPES.includes(type) }
@@ -275,11 +343,32 @@ function shapeSVGContent(shape: DecorationShape): string {
       }
       return `<line x1="${x}" y1="${y + h / 2}" x2="${x + w}" y2="${y + h / 2}" ${commonAttrs}/>`
 
+    case 'bezier-line':
+      if (shape.points && shape.points.length >= 2) {
+        return `<path d="${bezierPath(shape.points)}" fill="none" ${commonAttrs}/>`
+      }
+      return `<line x1="${x}" y1="${y + h / 2}" x2="${x + w}" y2="${y + h / 2}" ${commonAttrs}/>`
+
+    case 'bspline-curve':
+      if (shape.points && shape.points.length >= 2) {
+        return `<path d="${bsplinePath(shape.points)}" fill="none" ${commonAttrs}/>`
+      }
+      return `<line x1="${x}" y1="${y + h / 2}" x2="${x + w}" y2="${y + h / 2}" ${commonAttrs}/>`
+
     case 'freehand':
       if (shape.points && shape.points.length >= 2) {
         return `<path d="${freehandPath(shape.points)}" fill="none" ${commonAttrs}/>`
       }
       return ''
+
+    case 'info': {
+      const tAttr = transform ? ` transform="${transform}"` : ''
+      return `<g${tAttr} stroke="${strokeColor}" stroke-width="${strokeWidth}"${dashAttr} stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="${x + w / 2}" cy="${y + h / 2}" r="${Math.min(w, h) / 2 * 0.9}" fill="${fill}" fill-opacity="${opacity}"/>
+        <line x1="${x + w / 2}" y1="${y + h * 0.45}" x2="${x + w / 2}" y2="${y + h * 0.75}" stroke-linecap="round"/>
+        <line x1="${x + w / 2}" y1="${y + h * 0.25}" x2="${x + w / 2}" y2="${y + h * 0.25}" stroke-linecap="round" stroke-width="${Math.max(2, strokeWidth * 1.5)}"/>
+      </g>`
+    }
 
     case 'text-callout': {
       const tailH = Math.min(20, h * 0.3)
@@ -330,6 +419,21 @@ function shapeSVGContent(shape: DecorationShape): string {
         <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="transparent" stroke="none"/>
         ${shape.svgContent ? `<foreignObject x="${x}" y="${y}" width="${w}" height="${h}"><div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;pointer-events:none;display:flex;align-items:center;justify-content:center">${shape.svgContent}</div></foreignObject>` : ''}
       </g>`
+    }
+
+    case 'hexagon':
+      return `<path d="${polygonPath(regularPolygon(x, y, w, h, 6))}" fill="${fill}" fill-opacity="${opacity}" ${commonAttrs}/>`
+
+    case 'pentagon':
+      return `<path d="${polygonPath(regularPolygon(x, y, w, h, 5))}" fill="${fill}" fill-opacity="${opacity}" ${commonAttrs}/>`
+
+    case 'diamond-shape':
+      return `<polygon points="${x + w / 2},${y} ${x + w},${y + h / 2} ${x + w / 2},${y + h} ${x},${y + h / 2}" fill="${fill}" fill-opacity="${opacity}" ${commonAttrs}/>`
+
+    case 'heart': {
+      const hcx = x + w / 2
+      const hpath = `M ${hcx},${y + h * 0.85} C ${x},${y + h * 0.55} ${x},${y + h * 0.1} ${hcx},${y + h * 0.3} C ${x + w},${y + h * 0.1} ${x + w},${y + h * 0.55} ${hcx},${y + h * 0.85} Z`
+      return `<path d="${hpath}" fill="${fill}" fill-opacity="${opacity}" ${commonAttrs}/>`
     }
 
     default:

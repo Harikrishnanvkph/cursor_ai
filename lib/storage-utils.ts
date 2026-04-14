@@ -44,6 +44,7 @@ const CLEARABLE_STORES = [
   'offline-chart-data',
   'undo-store',
   'template-store',
+  'decoration-store',
 ];
 
 /**
@@ -114,6 +115,7 @@ export function clearUserSpecificStorage(userId: string): void {
     'chat-history',
     'offline-conversations',
     'offline-chart-data',
+    'decoration-store',
   ];
 
   const keysToRemove = storeNames.map(name => `${name}-${userId}`);
@@ -413,6 +415,7 @@ export function clearCurrentChart(): void {
     'chat-store',
     'enhanced-chat-store',
     'template-store', // Also clear template data to prevent cascading to new charts
+    'decoration-store',
   ];
 
   chartKeys.forEach(name => {
