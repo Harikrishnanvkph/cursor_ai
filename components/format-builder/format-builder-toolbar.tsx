@@ -20,6 +20,7 @@ export function FormatBuilderToolbar() {
     zoom, setZoom, showGuides, setShowGuides,
     gridSize, setGridSize,
     isEditing, editFormat,
+    adminMode,
   } = useFormatBuilder()
 
   const [isBusy, setIsBusy] = React.useState(false)
@@ -40,8 +41,8 @@ export function FormatBuilderToolbar() {
         category,
         tags,
         sortOrder,
-        isOfficial: true,
-        isPublic: true,
+        isOfficial: adminMode,
+        isPublic: adminMode,
       }
       const payload = {
         name: formatName,
@@ -50,8 +51,8 @@ export function FormatBuilderToolbar() {
         skeleton: finalSkeleton,
         dimensions: skeleton.dimensions,
         tags,
-        isOfficial: true,
-        isPublic: true,
+        isOfficial: adminMode,
+        isPublic: adminMode,
         sortOrder,
       }
       const res = isEditing && editFormat?.id
@@ -59,7 +60,7 @@ export function FormatBuilderToolbar() {
         : await dataService.createFormat(payload)
       if (res.error) throw new Error(res.error)
       toast.success(isEditing ? 'Format updated!' : 'Format created!')
-      router.push('/admin/formats')
+      router.push(adminMode ? '/admin/formats' : '/editor')
     } catch (err: any) {
       toast.error(err.message || 'Failed to save')
     } finally {
@@ -67,7 +68,7 @@ export function FormatBuilderToolbar() {
     }
   }
 
-  const handleCancel = () => router.push('/admin/formats')
+  const handleCancel = () => router.push(adminMode ? '/admin/formats' : '/editor')
 
   return (
     <>

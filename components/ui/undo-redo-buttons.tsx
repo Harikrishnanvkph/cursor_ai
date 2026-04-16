@@ -12,13 +12,15 @@ interface UndoRedoButtonsProps {
   size?: 'sm' | 'md' | 'lg'
   showLabels?: boolean
   className?: string
+  buttonClassName?: string
 }
 
 export function UndoRedoButtons({
   variant = 'default',
   size = 'sm',
   showLabels = true,
-  className = ''
+  className = '',
+  buttonClassName = ''
 }: UndoRedoButtonsProps) {
   const { canUndo, canRedo, undo, redo, currentChartState, updateChartState } = useChatStore()
   const { chartType, chartData, chartConfig, hasJSON } = useChartStore()
@@ -105,6 +107,7 @@ export function UndoRedoButtons({
         title="Undo (Ctrl+Z)"
         className={cn(
           "transition-all duration-200",
+          buttonClassName,
           canUndo ? "opacity-100 hover:scale-105" : "opacity-50 cursor-not-allowed"
         )}
       >
@@ -121,6 +124,7 @@ export function UndoRedoButtons({
         title="Redo (Ctrl+Y)"
         className={cn(
           "transition-all duration-200",
+          buttonClassName,
           canRedo ? "opacity-100 hover:scale-105" : "opacity-50 cursor-not-allowed"
         )}
       >

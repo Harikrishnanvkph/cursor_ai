@@ -3,7 +3,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react"
 import { useTemplateStore } from "@/lib/template-store"
 import { useChatStore } from "@/lib/chat-store"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { TiptapEditor } from "@/components/tiptap-editor"
@@ -27,6 +26,41 @@ export function TemplatesPanel() {
     const currentChartState = useChatStore((state) => state.currentChartState)
 
     const [activeTab, setActiveTab] = useState("templates")
+
+    const currentCloudTemplate = React.useMemo(() => {
+        if (currentChartState?.template_structure) {
+            return {
+                ...currentChartState.template_structure,
+                id: 'current-cloud-template',
+                name: 'Current Cloud Template',
+                description: 'Original template structure from backend snapshot',
+                isCustom: false,
+                isCloudTemplate: true
+            }
+        }
+
+        if (originalCloudTemplateContent?.id === 'current-cloud-template') {
+            return originalCloudTemplateContent
+        }
+
+        return null
+    }, [currentChartState?.template_structure, originalCloudTemplateContent])
+
+    return (
+        <div className="space-y-4">
+            <TemplateListTab currentCloudTemplate={currentCloudTemplate} />
+        </div>
+    )
+}
+
+export function TemplateContentPanel() {
+    const {
+        currentTemplate,
+        selectedTextAreaId,
+        setSelectedTextAreaId,
+        updateTextArea
+    } = useTemplateStore()
+
     const [richEditorOpen, setRichEditorOpen] = useState(false)
     const [richEditorContent, setRichEditorContent] = useState('')
     const [editorLayout, setEditorLayout] = useState<'side-by-side' | 'stacked'>('side-by-side')
@@ -68,73 +102,35 @@ export function TemplatesPanel() {
         }
     }, [computeScale, richEditorOpen, editorLayout, fitToPreview])
 
-    const currentCloudTemplate = React.useMemo(() => {
-        if (currentChartState?.template_structure) {
-            return {
-                ...currentChartState.template_structure,
-                id: 'current-cloud-template',
-                name: 'Current Cloud Template',
-                description: 'Original template structure from backend snapshot',
-                isCustom: false,
-                isCloudTemplate: true
-            }
-        }
-
-        if (originalCloudTemplateContent?.id === 'current-cloud-template') {
-            return originalCloudTemplateContent
-        }
-
-        return null
-    }, [currentChartState?.template_structure, originalCloudTemplateContent])
-
     return (
-        <div className="space-y-4">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="templates" className="flex items-center gap-2">
-                        <LayoutTemplate className="h-4 w-4" />
-                        Templates
-                    </TabsTrigger>
-                    <TabsTrigger value="content" className="flex items-center gap-2">
-                        <Type className="h-4 w-4" />
-                        Content
-                    </TabsTrigger>
-                </TabsList>
+        <div className="space-y-4 pt-1">
+            {currentTemplate ? (
+                <>
+                    <TextAreasList
+                        currentTemplate={currentTemplate}
+                        selectedTextAreaId={selectedTextAreaId}
+                        setSelectedTextAreaId={setSelectedTextAreaId}
+                    />
 
-                <TabsContent value="templates" className="space-y-4">
-                    <TemplateListTab currentCloudTemplate={currentCloudTemplate} />
-                </TabsContent>
-
-                <TabsContent value="content" className="space-y-4 mt-4">
-                    {currentTemplate ? (
-                        <>
-                            <TextAreasList
-                                currentTemplate={currentTemplate}
-                                selectedTextAreaId={selectedTextAreaId}
-                                setSelectedTextAreaId={setSelectedTextAreaId}
-                            />
-
-                            <TextEditorSection
-                                currentTemplate={currentTemplate}
-                                selectedTextAreaId={selectedTextAreaId}
-                                setRichEditorContent={setRichEditorContent}
-                                setRichEditorOpen={setRichEditorOpen}
-                            />
-                        </>
-                    ) : (
-                        <Card>
-                            <CardContent className="pt-6">
-                                <div className="text-center p-4 bg-gray-50 rounded-lg">
-                                    <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                                    <p className="text-sm text-gray-600">
-                                        Select a template from the Templates tab to edit content.
-                                    </p>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    )}
-                </TabsContent>
-            </Tabs>
+                    <TextEditorSection
+                        currentTemplate={currentTemplate}
+                        selectedTextAreaId={selectedTextAreaId}
+                        setRichEditorContent={setRichEditorContent}
+                        setRichEditorOpen={setRichEditorOpen}
+                    />
+                </>
+            ) : (
+                <Card>
+                    <CardContent className="pt-6">
+                        <div className="text-center p-4 bg-gray-50 rounded-lg">
+                            <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                            <p className="text-sm text-gray-600">
+                                Select a template from the Templates tab to edit content.
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Rich Text Editor Dialog */}
             {selectedTextAreaId && currentTemplate && (

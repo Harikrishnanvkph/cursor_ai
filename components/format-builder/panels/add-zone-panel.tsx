@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from 'react'
-import { Plus, BarChart3, Type, Hash, Image, ChevronRight } from 'lucide-react'
+import { Plus, BarChart3, Type, Hash, Image, ImageIcon, ChevronRight } from 'lucide-react'
 import { useFormatBuilder } from '../format-builder-context'
 import { TEXT_ROLES, STAT_ROLES } from '../format-builder-utils'
 import { PanelSection } from './panel-section'
@@ -87,6 +87,14 @@ export function AddZonePanel() {
           color="purple"
           onClick={() => addZone('background')}
         />
+
+        {/* Image — direct add */}
+        <ZoneTypeRow
+          icon={<ImageIcon className="w-3.5 h-3.5" />}
+          label="Image"
+          color="cyan"
+          onClick={() => addZone('image')}
+        />
       </div>
     </PanelSection>
   )
@@ -107,6 +115,7 @@ function ZoneTypeRow({
     blue: 'hover:bg-blue-500/10 text-blue-400',
     amber: 'hover:bg-amber-500/10 text-amber-400',
     purple: 'hover:bg-purple-500/10 text-purple-400',
+    cyan: 'hover:bg-cyan-500/10 text-cyan-400',
   }
 
   return (

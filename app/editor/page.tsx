@@ -162,12 +162,12 @@ function EditorPageContent() {
         latestConfig.manualDimensions !== true ||
         latestConfig.responsive !== false
       ) {
-        console.log("updateChartConfig TRIGGERED from isMobile check!", { 
-           isMobile, screenWidth, 
-           lw: latestConfig.width, mw: mobileWidth,
-           lh: latestConfig.height, mh: mobileHeight,
-           lmd: latestConfig.manualDimensions,
-           lresp: latestConfig.responsive
+        console.log("updateChartConfig TRIGGERED from isMobile check!", {
+          isMobile, screenWidth,
+          lw: latestConfig.width, mw: mobileWidth,
+          lh: latestConfig.height, mh: mobileHeight,
+          lmd: latestConfig.manualDimensions,
+          lresp: latestConfig.responsive
         });
         // We can safely call the store's action here
         useChartStore.getState().updateChartConfig({
@@ -203,10 +203,10 @@ function EditorPageContent() {
   useEffect(() => {
     const isTemplateTabOnly = activeTab.startsWith('tpl_');
     const isChartTabOnly = CHART_TABS.some(t => t.id === activeTab && !['templates', 'export'].includes(t.id));
-    
+
     // Neutral tabs: stay in current mode
     const isNeutralTab = activeTab === 'export' || activeTab === 'templates';
-    
+
     const modeChanged = prevEditorMode.current !== editorMode;
     const tabChanged = prevActiveTab.current !== activeTab;
 
@@ -225,7 +225,7 @@ function EditorPageContent() {
       if (isNeutralTab) {
         // Do nothing, preserve current editorMode
       } else if (isTemplateTabOnly && editorMode !== 'template') {
-        if (!currentTemplate) setEditorMode('template'); 
+        if (!currentTemplate) setEditorMode('template');
       } else if (isChartTabOnly && editorMode !== 'chart') {
         if (!currentTemplate) setEditorMode('chart');
       }
@@ -754,7 +754,7 @@ function EditorPageContent() {
         </div>
 
         {/* Chart Area (between left and right sidebars) */}
-        <div className="flex-1 min-w-0 pr-4 pl-2 py-4">
+        <div className="flex-1 min-w-0 pr-4 pl-2 pt-2 pb-4">
           {hasJSON ? (
             <ChartPreview
               onToggleLeftSidebar={() => setLeftSidebarCollapsed((v) => !v)}
@@ -839,28 +839,26 @@ function EditorPageContent() {
           <div className="fixed top-0 left-0 h-full w-64 z-40 bg-white shadow-2xl border-r border-gray-200 flex flex-col">
             <div className="p-4">
               {/* Navigation Section */}
-              <div className="mb-4">
-                <div className="flex items-center gap-0 bg-gray-50 rounded-lg p-1">
+              <div className="mb-3">
+                <div className="flex justify-center mb-2.5">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.15em]">
+                    Advanced Editor
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
                   <button
                     onClick={() => router.push('/board')}
-                    className="flex items-center justify-center px-3 py-2 text-xs font-semibold text-blue-700 bg-blue-50 rounded-md shadow-sm transition-all relative hover:bg-blue-100"
-                    title="Dashboard"
+                    className="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium text-gray-600 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"
                   >
-                    <LayoutDashboard className="w-4 h-4 text-blue-600" />
+                    <LayoutDashboard className="w-3.5 h-3.5" />
+                    <span>Board</span>
                   </button>
                   <button
                     onClick={() => router.push('/landing')}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-colors relative"
+                    className="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium text-gray-600 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"
                   >
                     <MessageSquare className="w-3.5 h-3.5" />
                     <span>AI Chat</span>
-                  </button>
-                  <button
-                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-700 bg-white rounded-md shadow-sm transition-colors relative"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                    <span>Editor</span>
-                    <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-indigo-600 rounded-full"></div>
                   </button>
                 </div>
               </div>
@@ -963,30 +961,28 @@ function EditorPageContent() {
         </div>
       ) : (
         <div className="w-64 flex-shrink-0 flex flex-col h-full">
-          <div className="p-4">
+          <div className="p-2">
             {/* Navigation Section */}
-            <div className="mb-4">
-              <div className="flex items-center gap-0 bg-gray-50 rounded-lg p-1">
+            <div className="mb-2">
+              <div className="flex justify-center mb-2.5">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.15em]">
+                  Advanced Editor
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
                 <button
                   onClick={() => router.push('/board')}
-                  className="flex items-center justify-center px-3 py-2 text-xs font-semibold text-blue-700 bg-blue-50 rounded-md shadow-sm transition-all relative hover:bg-blue-100"
-                  title="Board"
+                  className="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium text-gray-600 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"
                 >
-                  <LayoutDashboard className="w-4 h-4 text-blue-600" />
+                  <LayoutDashboard className="w-3.5 h-3.5" />
+                  <span>Board</span>
                 </button>
                 <button
                   onClick={() => router.push('/landing')}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-colors relative"
+                  className="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium text-gray-600 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"
                 >
                   <MessageSquare className="w-3.5 h-3.5" />
                   <span>AI Chat</span>
-                </button>
-                <button
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-700 bg-white rounded-md shadow-sm transition-colors relative"
-                >
-                  <Edit3 className="w-3.5 h-3.5" />
-                  <span>Editor</span>
-                  <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-indigo-600 rounded-full"></div>
                 </button>
               </div>
             </div>
@@ -1001,7 +997,7 @@ function EditorPageContent() {
         </div>
       )}
       {/* Center Area - Chart Preview */}
-      <div className="flex-1 min-w-0 pr-4 pl-2 py-4 h-full overflow-hidden flex flex-col">
+      <div className="flex-1 min-w-0 pr-4 pl-1 pt-2 pb-4 h-full overflow-hidden flex flex-col">
         {hasJSON ? (
           <ChartPreview
             onToggleLeftSidebar={() => setLeftSidebarCollapsed((v) => !v)}

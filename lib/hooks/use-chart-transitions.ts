@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { useChartStore, type ExtendedChartData, type ExtendedChartDataset, type SupportedChartType } from "@/lib/chart-store"
 import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import {
@@ -208,7 +208,7 @@ export function useChartTransitions() {
         setScatterBubbleSetup({ active: false, targetType: null, direction: null, backupData: null });
     }, []);
 
-    return {
+    return useMemo(() => ({
         scatterBubbleSetup,
         showCreateDataModal,
         setShowCreateDataModal,
@@ -220,5 +220,16 @@ export function useChartTransitions() {
         handleOpenCreateModal,
         handleCreateDataset,
         handleCancelSetup,
-    };
+    }), [
+        scatterBubbleSetup,
+        showCreateDataModal,
+        handleQuickTransform,
+        handleLoadSampleData,
+        handleLoadCategoricalData,
+        handleRestoreCategoricalData,
+        handleRestoreScatterData,
+        handleOpenCreateModal,
+        handleCreateDataset,
+        handleCancelSetup,
+    ]);
 }

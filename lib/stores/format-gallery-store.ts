@@ -15,10 +15,16 @@ interface FormatGalleryStore {
   closeGallery: () => void
 
   // Available format blueprints (from database)
-  formats: FormatBlueprintRow[]
+  formats: FormatBlueprintRow[]       // official/global formats
   setFormats: (formats: FormatBlueprintRow[]) => void
   isLoadingFormats: boolean
   setLoadingFormats: (loading: boolean) => void
+
+  // User's own custom formats (separate from official)
+  userFormats: FormatBlueprintRow[]
+  setUserFormats: (formats: FormatBlueprintRow[]) => void
+  isLoadingUserFormats: boolean
+  setLoadingUserFormats: (loading: boolean) => void
 
   // LLM content package (from AI response — used by variant engine)
   contentPackage: any | null
@@ -63,11 +69,17 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
     openGallery: () => set({ isGalleryOpen: true }),
     closeGallery: () => set({ isGalleryOpen: false }),
 
-    // Formats
+    // Formats (official/global)
     formats: [],
     setFormats: (formats) => set({ formats }),
     isLoadingFormats: false,
     setLoadingFormats: (loading) => set({ isLoadingFormats: loading }),
+
+    // User's own custom formats
+    userFormats: [],
+    setUserFormats: (formats) => set({ userFormats: formats }),
+    isLoadingUserFormats: false,
+    setLoadingUserFormats: (loading) => set({ isLoadingUserFormats: loading }),
 
     // Content Package
     contentPackage: null,
@@ -122,11 +134,13 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
     resetGallery: () => set({
       isGalleryOpen: false,
       formats: [],
+      userFormats: [],
       contentPackage: null,
       selectedFormatId: null,
       selectedChartType: null,
       filters: {},
       isLoadingFormats: false,
+      isLoadingUserFormats: false,
       contextualImageUrl: null,
       hoveredZoneId: null,
       selectedZoneId: null,

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useState, useMemo, useCallback } from 'react'
+import React, { createContext, useContext, useState, useMemo, useCallback, useEffect } from 'react'
 import type {
   FormatSkeleton, FormatZone, ZoneType, FormatColorPalette,
   FormatDimensions, ZonePosition, BaseZone, FormatCategory,
@@ -73,6 +73,7 @@ interface FormatBuilderContextValue {
   // ─── Edit mode ─────────────────────────────
   isEditing: boolean
   editFormat: EditFormatData | null
+  adminMode: boolean
 }
 
 const FormatBuilderContext = createContext<FormatBuilderContextValue | null>(null)
@@ -90,16 +91,35 @@ export function useFormatBuilder() {
 export function FormatBuilderProvider({
   children,
   editFormat = null,
+  adminMode = false,
 }: {
   children: React.ReactNode
   editFormat?: EditFormatData | null
+  adminMode?: boolean
 }) {
   const isEditing = !!editFormat?.id
 
   // ─── Core state ────────────────────────────
-  const [skeleton, setSkeleton] = useState<FormatSkeleton>(() =>
-    editFormat?.skeleton ? editFormat.skeleton : createDefaultSkeleton()
-  )
+  const [skeleton, setSkeleton] = useState<FormatSkeleton>(() => {
+    if (editFormat?.skeleton) return editFormat.skeleton
+    // Try to load draft from session storage so we don't lose progress on page refresh!
+    if (typeof window !== 'undefined') {
+      try {
+        const draft = sessionStorage.getItem('format-builder-draft-skeleton')
+        if (draft) return JSON.parse(draft)
+      } catch (e) {
+        console.error('Failed to parse format builder draft', e)
+      }
+    }
+    return createDefaultSkeleton()
+  })
+
+  // Sync draft to session storage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('format-builder-draft-skeleton', JSON.stringify(skeleton))
+    }
+  }, [skeleton])
   const [formatName, setFormatName] = useState(editFormat?.name || 'New Format')
   const [formatDesc, setFormatDesc] = useState(editFormat?.description || '')
   const [category, setCategory] = useState<FormatCategory>(editFormat?.category || 'infographic')
@@ -281,7 +301,7 @@ export function FormatBuilderProvider({
     selectedDeco,
     drawingMode, setDrawingMode,
     addDecoration, updateDecoration, deleteDecoration, duplicateDecoration,
-    isEditing, editFormat,
+    isEditing, editFormat, adminMode,
   }), [
     skeleton, formatName, formatDesc, category, tagsInput, sortOrder,
     selectedZoneId, selectedZone, zoom, showGuides, gridSize,
@@ -289,7 +309,7 @@ export function FormatBuilderProvider({
     updateZonePosition, moveZoneOrder, setDimensions, setPalette, alignZone,
     selectedDecoId, selectedDeco, drawingMode,
     addDecoration, updateDecoration, deleteDecoration, duplicateDecoration,
-    isEditing, editFormat,
+    isEditing, editFormat, adminMode,
   ])
 
   return (

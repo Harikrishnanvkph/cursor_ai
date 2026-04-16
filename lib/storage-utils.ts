@@ -764,16 +764,39 @@ export function createExpiringStorage(baseName: string) {
   const storage: StateStorage = {
     getItem: (name: string): string | Promise<string | null> | null => {
       const key = getUserStorageKey(baseName);
+      
+      // Isolate format builder drafts into sessionStorage to prevent bleeding into the main editor
+      if (baseName === 'decoration-store' && typeof window !== 'undefined' && 
+          (window.location.pathname.includes('/admin/format') || window.location.pathname.includes('/editor/custom-format'))) {
+        const draft = sessionStorage.getItem(`${key}-format-draft`);
+        return draft ? draft : null; // return null to force Zustand to initialize empty instead of loading editor shapes!
+      }
+      
       return localStorage.getItem(key);
     },
     setItem: (name: string, value: string): void | Promise<void> => {
       const key = getUserStorageKey(baseName);
+      
+      // Isolate format builder drafts into sessionStorage
+      if (baseName === 'decoration-store' && typeof window !== 'undefined' && 
+          (window.location.pathname.includes('/admin/format') || window.location.pathname.includes('/editor/custom-format'))) {
+        sessionStorage.setItem(`${key}-format-draft`, value);
+        return;
+      }
+      
       localStorage.setItem(key, value);
       // Update timestamp when data is saved (also updates activity)
       updateStorageTimestamp(key);
     },
     removeItem: (name: string): void | Promise<void> => {
       const key = getUserStorageKey(baseName);
+      
+      if (baseName === 'decoration-store' && typeof window !== 'undefined' && 
+          (window.location.pathname.includes('/admin/format') || window.location.pathname.includes('/editor/custom-format'))) {
+        sessionStorage.removeItem(`${key}-format-draft`);
+        return;
+      }
+      
       localStorage.removeItem(key);
       removeStorageTimestamp(key);
     },

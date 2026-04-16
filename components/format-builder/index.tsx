@@ -30,7 +30,7 @@ import type { FormatBuilderProps } from './format-builder-types'
  */
 export function FormatBuilder({ adminMode = false, editFormat = null }: FormatBuilderProps) {
   return (
-    <FormatBuilderProvider editFormat={editFormat}>
+    <FormatBuilderProvider editFormat={editFormat} adminMode={adminMode}>
       <div className="flex h-full bg-gray-950 text-gray-100">
         {/* Canvas area (toolbar + canvas) */}
         <div className="flex-1 flex flex-col overflow-hidden">

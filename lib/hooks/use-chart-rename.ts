@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react"
+import { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import { useChartStore } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
 import { useHistoryStore } from "@/lib/history-store"
@@ -131,7 +131,7 @@ export function useChartRename() {
         }
     }, [handleSaveRename]);
 
-    return {
+    return useMemo(() => ({
         chartTitle,
         isRenaming,
         renameValue,
@@ -143,5 +143,14 @@ export function useChartRename() {
         handleRenameKeyDown,
         setRenameValue,
         setIsRenaming,
-    };
+    }), [
+        chartTitle,
+        isRenaming,
+        renameValue,
+        isSavingRename,
+        canEditTitle,
+        handleStartRename,
+        handleSaveRename,
+        handleRenameKeyDown,
+    ]);
 }

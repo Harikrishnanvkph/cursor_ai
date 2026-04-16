@@ -4,7 +4,7 @@
 // This file contains the chart rendering component with all necessary imports
 
 import React from "react"
-import { useRef, useEffect, useState } from "react"
+import { useRef, useEffect, useState, memo } from "react"
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -133,7 +133,7 @@ export interface ChartGeneratorProps {
   className?: string;
 }
 
-export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
+export const ChartGenerator = memo(function ChartGenerator({ className = "" }: ChartGeneratorProps) {
   // Granular hooks to prevent unnecessary re-renders
   const chartConfig = useChartConfig();
   const chartData = useChartData();
@@ -1896,6 +1896,6 @@ export function ChartGenerator({ className = "" }: ChartGeneratorProps) {
       />
     </div>
   );
-}
+});
 
 export default ChartGenerator;

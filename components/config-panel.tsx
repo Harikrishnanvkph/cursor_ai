@@ -9,7 +9,7 @@ import { AdvancedPanel } from "./panels/advanced-panel"
 import { ExportPanel } from "./panels/export-panel"
 import { TypesTogglesPanel } from "./panels/types-toggles-panel"
 import { DatasetsSlicesPanel } from "./panels/datasets-slices-panel"
-import { TemplatesPanel } from "./panels/template-settings"
+import { TemplatesPanel, TemplateContentPanel } from "./panels/template-settings"
 import { TemplateTextPanel } from "./panels/template-panels/template-text-panel"
 import { TemplateChartZonePanel } from "./panels/template-panels/template-chart-zone-panel"
 import { FormatZonesPanel } from "./panels/template-panels/format-zones-panel"
@@ -101,7 +101,8 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
         return <TemplatesPanel />
       case "export":
         return <ExportPanel onTabChange={onTabChange} />
-      // ═══ Template Mode Panels ═══
+      case "tpl_content":
+        return <TemplateContentPanel />
       case "tpl_text":
         return <TemplateTextPanel />
       case "tpl_chart_zone":

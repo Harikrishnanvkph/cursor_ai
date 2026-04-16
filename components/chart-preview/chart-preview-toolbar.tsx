@@ -1,34 +1,95 @@
 "use client"
 
-import React from "react"
+import React, { memo } from "react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { STANDARD_CHART_TYPES, THREE_D_CHART_TYPES } from "@/lib/chart-types"
 import {
     Download, RefreshCw, Maximize2, RotateCcw,
-    Ellipsis, ZoomIn, ZoomOut, Hand, Pencil, Check, Loader2
+    Ellipsis, ZoomIn, ZoomOut, Hand, Pencil, Check, Loader2,
+    ChartColumn, RulerDimensionLine
 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { FileCode, FileImage, FileText, ImageIcon, Settings } from "lucide-react"
 import { UndoRedoButtons } from "@/components/ui/undo-redo-buttons"
 import { useTemplateStore } from "@/lib/template-store"
 import { useUIStore } from "@/lib/stores/ui-store"
 
-interface ChartPreviewToolbarProps {
-    // Layout
-    isMobile: boolean;
-    // Editor mode
+// --- 1. Mode & Type Section (Independent) ---
+
+const ModeAndTypeSection = memo(({ 
+    editorMode, setEditorMode, 
+    chartType, onChartTypeChange, 
+    isResponsive, chartContainerRef, 
+    chartWidth, chartHeight,
+    isMobile 
+}: {
     editorMode: string;
     setEditorMode: (mode: string) => void;
-    // Chart type
     chartType: string;
     onChartTypeChange: (type: string) => void;
-    // Dimensions
     isResponsive: boolean;
-    containerDimensions: { width: number; height: number };
+    chartContainerRef: React.RefObject<HTMLDivElement | null>;
     chartWidth?: number;
     chartHeight?: number;
-    // Rename hook
+    isMobile: boolean;
+}) => {
+    const btnClassName = isMobile ? "px-2 py-0.5 text-[11px] min-w-[50px]" : "px-2 py-0.5 text-[10px] min-w-[50px]";
+    const triggerClassName = isMobile 
+        ? "h-7 w-12 text-[10px] px-1.5 py-0 border-gray-200 bg-white rounded-lg flex-shrink-0"
+        : "h-6 w-9 lg:w-[90px] text-[10px] px-1 lg:px-2 py-0 border-gray-200 bg-white";
+
+    return (
+        <div className="flex items-center gap-1 flex-shrink-0">
+            <div className="flex items-center gap-0 bg-gray-100 rounded-full p-[2px] border border-gray-200">
+                <button
+                    onClick={() => setEditorMode('chart')}
+                    className={`${btnClassName} font-medium rounded-full transition-all ${editorMode === 'chart' ? 'bg-blue-500 text-white shadow-sm' : 'bg-transparent text-gray-500 hover:text-gray-700'}`}
+                >Chart</button>
+                <button
+                    onClick={() => {
+                        const templateStore = useTemplateStore.getState()
+                        if (!templateStore.currentTemplate) {
+                            templateStore.applyTemplate('template-1')
+                            useUIStore.getState().setActiveSidebarTab('templates')
+                        }
+                        setEditorMode('template')
+                    }}
+                    className={`${btnClassName} font-medium rounded-full transition-all ${editorMode === 'template' ? 'bg-blue-500 text-white shadow-sm' : 'bg-transparent text-gray-500 hover:text-gray-700'}`}
+                >Template</button>
+            </div>
+
+            <Select value={chartType} onValueChange={onChartTypeChange}>
+                <SelectTrigger className={triggerClassName}>
+                    <ChartColumn className="h-3.5 w-3.5 lg:hidden text-slate-600 shrink-0 stroke-[2.5]" />
+                    <div className="hidden lg:block truncate"><SelectValue placeholder="Type" /></div>
+                </SelectTrigger>
+                <SelectContent>
+                    {STANDARD_CHART_TYPES.map((type) => (
+                        <SelectItem key={type.value} value={type.value} className="text-xs py-1.5">{type.label}</SelectItem>
+                    ))}
+                    <SelectSeparator />
+                    {THREE_D_CHART_TYPES.map((type) => (
+                        <SelectItem key={type.value} value={type.value} className="text-xs py-1.5 font-medium text-blue-600">{type.label}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+
+            <DimensionDisplay 
+                isResponsive={isResponsive} 
+                chartContainerRef={chartContainerRef} 
+                chartWidth={chartWidth} 
+                chartHeight={chartHeight} 
+            />
+        </div>
+    );
+});
+ModeAndTypeSection.displayName = "ModeAndTypeSection";
+
+// --- 2. Title Section (Independent) ---
+
+const TitleSection = memo(({ rename }: { 
     rename: {
         chartTitle: string;
         isRenaming: boolean;
@@ -41,8 +102,52 @@ interface ChartPreviewToolbarProps {
         handleRenameKeyDown: (e: React.KeyboardEvent) => void;
         setRenameValue: (v: string) => void;
         setIsRenaming: React.Dispatch<React.SetStateAction<boolean>>;
-    };
-    // Zoom/pan
+    }
+}) => {
+    if (!rename.chartTitle) return null;
+
+    return (
+        <div className="flex items-center gap-1.5 mb-0 min-w-0">
+            {rename.canEditTitle && (
+                <button onClick={rename.handleStartRename} className="p-0.5 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0" title="Rename">
+                    <Pencil className="h-3 w-3" />
+                </button>
+            )}
+            <div className="flex items-center gap-1 flex-1 min-w-0">
+                {rename.isRenaming && rename.canEditTitle ? (
+                    <>
+                        <input
+                            ref={rename.renameInputRef as any}
+                            type="text"
+                            value={rename.renameValue}
+                            onChange={(e) => rename.setRenameValue(e.target.value)}
+                            onKeyDown={rename.handleRenameKeyDown}
+                            onBlur={() => rename.setIsRenaming(false)}
+                            className="flex-1 min-w-0 font-semibold text-gray-900 text-sm bg-transparent border-b-2 border-blue-400 outline-none w-full text-ellipsis overflow-hidden whitespace-nowrap px-0 pb-0.5 focus:border-blue-500"
+                            disabled={rename.isSavingRename}
+                        />
+                        <button
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={rename.handleSaveRename}
+                            disabled={rename.isSavingRename}
+                            className="p-0.5 hover:bg-green-50 rounded text-green-600 flex-shrink-0"
+                            title="Save"
+                        >
+                            {rename.isSavingRename ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                        </button>
+                    </>
+                ) : (
+                    <h4 className="font-semibold text-gray-900 text-sm truncate border-b-2 border-transparent" title={rename.chartTitle}>{rename.chartTitle}</h4>
+                )}
+            </div>
+        </div>
+    );
+});
+TitleSection.displayName = "TitleSection";
+
+// --- 3. Controls & Actions Section (Independent) ---
+
+const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, onResetChart, isMobile }: {
     zoomPan: {
         zoom: number;
         panMode: boolean;
@@ -51,7 +156,6 @@ interface ChartPreviewToolbarProps {
         handleZoomOut: () => void;
         handleResetZoom: () => void;
     };
-    // Export
     exports: {
         handleExport: () => void;
         handleExportHTML: () => void;
@@ -60,23 +164,144 @@ interface ChartPreviewToolbarProps {
         handleExportSettings: () => void;
         handleRefresh: () => void;
     };
-    // Fullscreen
     handleFullscreen: () => void;
-    // Chart reset
+    onResetChart: () => void;
+    isMobile: boolean;
+}) => {
+    return (
+        <div className="flex items-center gap-0.5 border border-slate-200 rounded-md p-0.5 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+            <Button variant="ghost" size="sm" onClick={zoomPan.handleZoomOut} disabled={zoomPan.zoom <= 0.1} className="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600 disabled:opacity-30" title="Zoom Out">
+                <ZoomOut className="h-4 w-4" />
+            </Button>
+            <span className={`${isMobile ? 'text-[10px] min-w-[30px]' : 'text-xs min-w-[45px] px-1'} text-slate-600 text-center font-medium select-none`}>
+                {Math.round(zoomPan.zoom * 100)}%
+            </span>
+            <Button variant="ghost" size="sm" onClick={zoomPan.handleZoomIn} disabled={zoomPan.zoom >= 3} className="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600 disabled:opacity-30" title="Zoom In">
+                <ZoomIn className="h-4 w-4" />
+            </Button>
+
+            <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
+
+            <Button variant="ghost" size="sm" onClick={() => zoomPan.setPanMode(!zoomPan.panMode)} className={`h-7 w-7 p-0 text-slate-600 transition-colors ${zoomPan.panMode ? 'bg-slate-200 shadow-inner' : 'hover:bg-slate-100'}`} title={zoomPan.panMode ? "Disable Pan Mode" : "Enable Pan Mode"}>
+                <Hand className="h-4 w-4" />
+            </Button>
+
+            <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
+
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600" title="Actions"><Ellipsis className="h-4 w-4" /></Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={exports.handleRefresh}><RefreshCw className="h-4 w-4 mr-2" /><span>Refresh Chart</span></DropdownMenuItem>
+                    <DropdownMenuItem onClick={zoomPan.handleResetZoom}><RotateCcw className="h-4 w-4 mr-2" /><span>Reset Zoom</span></DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleFullscreen}><Maximize2 className="h-4 w-4 mr-2" /><span>Fullscreen</span></DropdownMenuItem>
+                    <DropdownMenuItem onClick={onResetChart}><RotateCcw className="h-4 w-4 mr-2" /><span>Reset Chart</span></DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+
+            <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
+
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600" title="Export"><Download className="h-4 w-4" /></Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={exports.handleExport}><FileImage className="h-4 w-4 mr-2" /> PNG</DropdownMenuItem>
+                    <DropdownMenuItem onClick={exports.handleExportJPEG}><ImageIcon className="h-4 w-4 mr-2" /> JPEG</DropdownMenuItem>
+                    <DropdownMenuItem onClick={exports.handleExportHTML}><FileCode className="h-4 w-4 mr-2" /> HTML</DropdownMenuItem>
+                    <DropdownMenuItem onClick={exports.handleExportCSV}><FileText className="h-4 w-4 mr-2" /> CSV</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={exports.handleExportSettings} className="bg-blue-50 hover:bg-blue-100"><Settings className="h-4 w-4 mr-2" /> Settings</DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+
+            <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
+
+            <UndoRedoButtons variant="ghost" size="sm" showLabels={false} className="gap-0.5" buttonClassName="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600 hover:scale-100" />
+        </div>
+    );
+});
+ControlsSection.displayName = "ControlsSection";
+
+const DimensionDisplay = memo(({ 
+    isResponsive, 
+    chartContainerRef, 
+    chartWidth, 
+    chartHeight 
+}: { 
+    isResponsive: boolean; 
+    chartContainerRef: React.RefObject<HTMLDivElement | null>;
+    chartWidth?: number;
+    chartHeight?: number;
+}) => {
+    const [hoverDimensions, setHoverDimensions] = React.useState<{ width: number, height: number } | null>(null);
+
+    const handleMeasureDimensions = () => {
+        if (!isResponsive || !chartContainerRef.current) return;
+        const rect = chartContainerRef.current.getBoundingClientRect();
+        setHoverDimensions({
+            width: Math.round(rect.width),
+            height: Math.round(rect.height)
+        });
+    };
+
+    const getDimensionText = () => {
+        if (!isResponsive) {
+            return `${chartWidth || 0} × ${chartHeight || 0}`;
+        }
+        if (!hoverDimensions) return 'Responsive (hover to measure)';
+        return `${hoverDimensions.width} × ${hoverDimensions.height} (responsive)`;
+    };
+
+    return (
+        <TooltipProvider delayDuration={0}>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <div 
+                        className="flex items-center justify-center p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded cursor-help transition-colors relative"
+                        onMouseEnter={handleMeasureDimensions}
+                        onClick={handleMeasureDimensions}
+                    >
+                        <RulerDimensionLine className="w-4 h-4" />
+                    </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" sideOffset={5} className="z-[100] text-xs font-medium">
+                    {getDimensionText()}
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
+    );
+});
+DimensionDisplay.displayName = "DimensionDisplay";
+
+// --- Main Toolbar ---
+
+interface ChartPreviewToolbarProps {
+    isMobile: boolean;
+    editorMode: string;
+    setEditorMode: (mode: string) => void;
+    chartType: string;
+    onChartTypeChange: (type: string) => void;
+    isResponsive: boolean;
+    chartContainerRef: React.RefObject<HTMLDivElement | null>;
+    chartWidth?: number;
+    chartHeight?: number;
+    rename: any;
+    zoomPan: any;
+    exports: any;
+    handleFullscreen: () => void;
     onResetChart: () => void;
 }
 
-/**
- * The top toolbar of ChartPreview: title, mode toggle, type selector, zoom controls, export/actions dropdown.
- */
-export function ChartPreviewToolbar({
+export const ChartPreviewToolbar = memo(({
     isMobile,
     editorMode,
     setEditorMode,
     chartType,
     onChartTypeChange,
     isResponsive,
-    containerDimensions,
+    chartContainerRef,
     chartWidth,
     chartHeight,
     rename,
@@ -84,215 +309,53 @@ export function ChartPreviewToolbar({
     exports,
     handleFullscreen,
     onResetChart,
-}: ChartPreviewToolbarProps) {
-
-    const ChartTypeSelector = ({ triggerClassName }: { triggerClassName: string }) => (
-        <Select value={chartType} onValueChange={onChartTypeChange}>
-            <SelectTrigger className={triggerClassName}>
-                <SelectValue placeholder="Type" />
-            </SelectTrigger>
-            <SelectContent>
-                {/* Standard Charts */}
-                {STANDARD_CHART_TYPES.map((type) => (
-                    <SelectItem key={type.value} value={type.value} className="text-xs py-1.5">{type.label}</SelectItem>
-                ))}
-                
-                <SelectSeparator />
-                
-                {/* 3D Charts */}
-                {THREE_D_CHART_TYPES.map((type) => (
-                    <SelectItem key={type.value} value={type.value} className="text-xs py-1.5 font-medium text-blue-600">{type.label}</SelectItem>
-                ))}
-            </SelectContent>
-        </Select>
-    );
-
-    const ModeToggle = ({ btnClassName }: { btnClassName: string }) => (
-        <div className="flex items-center gap-1 bg-gray-100 rounded-full p-0.5 border border-gray-200"
-            style={{ display: 'flex', visibility: 'visible', opacity: 1 }}>
-            <button
-                onClick={() => setEditorMode('chart')}
-                className={`${btnClassName} font-medium rounded-full transition-all ${editorMode === 'chart' ? 'bg-blue-500 text-white shadow-sm' : 'bg-transparent text-gray-500 hover:text-gray-700'}`}
-                style={{ display: 'inline-block', visibility: 'visible', opacity: 1 }}
-            >Chart</button>
-            <button
-                onClick={() => {
-                    const templateStore = useTemplateStore.getState()
-                    if (!templateStore.currentTemplate) {
-                        templateStore.applyTemplate('template-1')
-                        useUIStore.getState().setActiveSidebarTab('templates')
-                    }
-                    setEditorMode('template')
-                }}
-                className={`${btnClassName} font-medium rounded-full transition-all ${editorMode === 'template' ? 'bg-blue-500 text-white shadow-sm' : 'bg-transparent text-gray-500 hover:text-gray-700'}`}
-                style={{ display: 'inline-block', visibility: 'visible', opacity: 1 }}
-            >Template</button>
-        </div>
-    );
-
-    const DimensionDisplay = () => (
-        <div className="flex items-center gap-1 text-xs text-gray-400">
-            {isResponsive ? (
-                <span>{Math.round(containerDimensions.width)}px × {Math.round(containerDimensions.height)}px</span>
-            ) : (
-                <span>{chartWidth}px × {chartHeight}px</span>
-            )}
-        </div>
-    );
+}: ChartPreviewToolbarProps) => {
 
     return (
-        <div className={`${isMobile ? '' : 'mb-4'} flex-shrink-0`}>
-            <div className={`flex${isMobile ? ' mb-1 flex-col' : ' items-center justify-between flex-wrap'} gap-1.5 px-2`}>
-                {/* Left: title + chart info */}
+        <div className={`${isMobile ? '' : 'mb-1'} flex-shrink-0`}>
+            <div className={`flex${isMobile ? ' mb-1 flex-col' : ' items-center justify-between flex-wrap'} gap-1 px-1`}>
+                
                 {isMobile ? (
                     <div className="min-w-0 flex flex-nowrap items-center gap-x-2 overflow-x-auto pb-1.5 scrollbar-hide select-none px-1">
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                            <ModeToggle btnClassName="px-2.5 py-1 text-[11px]" />
-                            <ChartTypeSelector triggerClassName="h-7 w-[75px] text-[10px] px-2 py-0 border-gray-200 bg-white rounded-lg flex-shrink-0" />
-                        </div>
-                        
+                        <ModeAndTypeSection 
+                            editorMode={editorMode} setEditorMode={setEditorMode}
+                            chartType={chartType} onChartTypeChange={onChartTypeChange}
+                            isResponsive={isResponsive} chartContainerRef={chartContainerRef}
+                            chartWidth={chartWidth} chartHeight={chartHeight}
+                            isMobile={true}
+                        />
                         <div className="h-4 w-px bg-gray-200 flex-shrink-0 mx-0.5" />
-
-                        <div className="flex items-center gap-1.5 flex-shrink-0 pr-2">
-                            {/* Compact zoom for mobile */}
-                            <div className="flex items-center gap-0 border rounded-lg p-0.5 bg-white flex-shrink-0">
-                                <Button variant="ghost" size="sm" onClick={zoomPan.handleZoomOut} disabled={zoomPan.zoom <= 0.1} className="h-6 w-6 p-0" title="Zoom Out">
-                                    <ZoomOut className="h-3 w-3" />
-                                </Button>
-                                <span className="text-[10px] text-gray-600 min-w-[30px] text-center font-medium">{Math.round(zoomPan.zoom * 100)}%</span>
-                                <Button variant="ghost" size="sm" onClick={zoomPan.handleZoomIn} disabled={zoomPan.zoom >= 3} className="h-6 w-6 p-0" title="Zoom In">
-                                    <ZoomIn className="h-3 w-3" />
-                                </Button>
-                            </div>
-                            {/* Pan */}
-                            <Button variant={zoomPan.panMode ? "default" : "outline"} size="sm" onClick={() => zoomPan.setPanMode(!zoomPan.panMode)} className="h-7 w-7 p-0 flex-shrink-0 rounded-lg" title={zoomPan.panMode ? "Disable Pan" : "Pan"}>
-                                <Hand className="h-4 w-4" />
-                            </Button>
-                            {/* Actions */}
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" size="sm" className="h-7 w-7 p-0 flex-shrink-0 rounded-lg" title="Actions"><Ellipsis className="h-4 w-4" /></Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={exports.handleRefresh}><RefreshCw className="h-4 w-4 mr-2" /><span>Refresh Chart</span></DropdownMenuItem>
-                                    <DropdownMenuItem onClick={zoomPan.handleResetZoom}><RotateCcw className="h-4 w-4 mr-2" /><span>Reset Zoom</span></DropdownMenuItem>
-                                    <DropdownMenuItem onClick={handleFullscreen}><Maximize2 className="h-4 w-4 mr-2" /><span>Fullscreen</span></DropdownMenuItem>
-                                    <DropdownMenuItem onClick={onResetChart}><RotateCcw className="h-4 w-4 mr-2" /><span>Reset Chart</span></DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                            {/* Export */}
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button size="sm" variant="default" className="h-7 w-7 p-0 flex-shrink-0 rounded-lg shadow-sm" title="Export"><Download className="h-4 w-4" /></Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={exports.handleExport}><FileImage className="h-4 w-4 mr-2" /> PNG</DropdownMenuItem>
-                                    <DropdownMenuItem onClick={exports.handleExportJPEG}><ImageIcon className="h-4 w-4 mr-2" /> JPEG</DropdownMenuItem>
-                                    <DropdownMenuItem onClick={exports.handleExportHTML}><FileCode className="h-4 w-4 mr-2" /> HTML</DropdownMenuItem>
-                                    <DropdownMenuItem onClick={exports.handleExportCSV}><FileText className="h-4 w-4 mr-2" /> CSV</DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={exports.handleExportSettings} className="bg-blue-50 hover:bg-blue-100"><Settings className="h-4 w-4 mr-2" /> Settings</DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                            {/* Undo/Redo */}
-                            <UndoRedoButtons variant="default" size="sm" showLabels={false} />
-                        </div>
+                        <ControlsSection 
+                            zoomPan={zoomPan} exports={exports} 
+                            handleFullscreen={handleFullscreen} onResetChart={onResetChart} 
+                            isMobile={true} 
+                        />
                     </div>
                 ) : (
-                    <div className="min-w-0 flex-1 max-w-[500px]">
-                        {/* Chart Title with edit icon */}
-                        {rename.chartTitle && (
-                            <div className="flex items-center gap-1.5 mb-0.5">
-                                {rename.canEditTitle && (
-                                    <button onClick={rename.handleStartRename} className="p-0.5 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0" title="Rename">
-                                        <Pencil className="h-3 w-3" />
-                                    </button>
-                                )}
-                                <div className="flex items-center gap-1 flex-1">
-                                    {rename.isRenaming && rename.canEditTitle ? (
-                                        <>
-                                            <input
-                                                ref={rename.renameInputRef as any}
-                                                type="text"
-                                                value={rename.renameValue}
-                                                onChange={(e) => rename.setRenameValue(e.target.value)}
-                                                onKeyDown={rename.handleRenameKeyDown}
-                                                onBlur={() => rename.setIsRenaming(false)}
-                                                className="flex-1 font-semibold text-gray-900 text-base bg-transparent border-b-2 border-blue-400 outline-none w-full"
-                                                disabled={rename.isSavingRename}
-                                            />
-                                            <button
-                                                onMouseDown={(e) => e.preventDefault()}
-                                                onClick={rename.handleSaveRename}
-                                                disabled={rename.isSavingRename}
-                                                className="p-0.5 hover:bg-green-50 rounded text-green-600 flex-shrink-0"
-                                                title="Save"
-                                            >
-                                                {rename.isSavingRename ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <h4 className="font-semibold text-gray-900 text-base truncate border-b-2 border-transparent" title={rename.chartTitle}>{rename.chartTitle}</h4>
-                                    )}
-                                </div>
+                    <>
+                        <div className="min-w-0 flex-1">
+                            <TitleSection rename={rename} />
+                            <div className="flex items-center gap-2 mt-0.5">
+                                <ModeAndTypeSection 
+                                    editorMode={editorMode} setEditorMode={setEditorMode}
+                                    chartType={chartType} onChartTypeChange={onChartTypeChange}
+                                    isResponsive={isResponsive} chartContainerRef={chartContainerRef}
+                                    chartWidth={chartWidth} chartHeight={chartHeight}
+                                    isMobile={false}
+                                />
                             </div>
-                        )}
-                        {/* Toggle and Chart info row */}
-                        <div className="flex items-center gap-2">
-                            <ModeToggle btnClassName="px-2 py-0.5 text-[10px]" />
-                            <ChartTypeSelector triggerClassName="h-6 w-[90px] text-[10px] px-2 py-0 border-gray-200 bg-white" />
-                            <DimensionDisplay />
                         </div>
-                    </div>
-                )}
-                {/* Right: action buttons - desktop only (mobile has them inline above) */}
-                {!isMobile && (
-                <div className="flex gap-1 flex-shrink-0 ml-4">
-                    {/* Zoom Controls */}
-                    <div className="flex items-center gap-0.5 border rounded-md p-0.5 bg-white">
-                        <Button variant="ghost" size="sm" onClick={zoomPan.handleZoomOut} disabled={zoomPan.zoom <= 0.1} className="h-7 w-7 p-0" title="Zoom Out">
-                            <ZoomOut className="h-3.5 w-3.5" />
-                        </Button>
-                        <span className="text-xs text-gray-600 min-w-[45px] text-center px-1">{Math.round(zoomPan.zoom * 100)}%</span>
-                        <Button variant="ghost" size="sm" onClick={zoomPan.handleZoomIn} disabled={zoomPan.zoom >= 3} className="h-7 w-7 p-0" title="Zoom In">
-                            <ZoomIn className="h-3.5 w-3.5" />
-                        </Button>
-                    </div>
-                    {/* Pan Mode Toggle */}
-                    <Button variant={zoomPan.panMode ? "default" : "outline"} size="sm" onClick={() => zoomPan.setPanMode(!zoomPan.panMode)} title={zoomPan.panMode ? "Disable Pan Mode" : "Enable Pan Mode"}>
-                        <Hand className="h-4 w-4" />
-                    </Button>
-                    {/* Actions Dropdown */}
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm" title="Actions"><Ellipsis className="h-4 w-4" /></Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={exports.handleRefresh}><RefreshCw className="h-4 w-4 mr-2" /><span>Refresh Chart</span></DropdownMenuItem>
-                            <DropdownMenuItem onClick={zoomPan.handleResetZoom}><RotateCcw className="h-4 w-4 mr-2" /><span>Reset Zoom</span></DropdownMenuItem>
-                            <DropdownMenuItem onClick={handleFullscreen}><Maximize2 className="h-4 w-4 mr-2" /><span>Fullscreen</span></DropdownMenuItem>
-                            <DropdownMenuItem onClick={onResetChart}><RotateCcw className="h-4 w-4 mr-2" /><span>Reset Chart</span></DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                    {/* Export Dropdown */}
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button size="sm" variant="default" title="Export"><Download className="h-4 w-4" /></Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={exports.handleExport}><FileImage className="h-4 w-4 mr-2" /> PNG</DropdownMenuItem>
-                            <DropdownMenuItem onClick={exports.handleExportJPEG}><ImageIcon className="h-4 w-4 mr-2" /> JPEG</DropdownMenuItem>
-                            <DropdownMenuItem onClick={exports.handleExportHTML}><FileCode className="h-4 w-4 mr-2" /> HTML</DropdownMenuItem>
-                            <DropdownMenuItem onClick={exports.handleExportCSV}><FileText className="h-4 w-4 mr-2" /> CSV</DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={exports.handleExportSettings} className="bg-blue-50 hover:bg-blue-100"><Settings className="h-4 w-4 mr-2" /> Settings</DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                    {/* Undo/Redo Buttons */}
-                    <UndoRedoButtons variant="default" size="sm" showLabels={false} />
-                </div>
+                        <div className="flex gap-1 flex-shrink-0 ml-4">
+                            <ControlsSection 
+                                zoomPan={zoomPan} exports={exports} 
+                                handleFullscreen={handleFullscreen} onResetChart={onResetChart} 
+                                isMobile={false} 
+                            />
+                        </div>
+                    </>
                 )}
             </div>
         </div>
     );
-}
+});
+ChartPreviewToolbar.displayName = "ChartPreviewToolbar";

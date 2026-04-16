@@ -1,4 +1,4 @@
-import { useCallback } from "react"
+import { useCallback, useMemo } from "react"
 import { useChartStore } from "@/lib/chart-store"
 import { downloadChartAsHTML } from "@/lib/html-exporter"
 import {
@@ -132,12 +132,19 @@ export function useChartExport(options?: {
         }
     }, []);
 
-    return {
+    return useMemo(() => ({
         handleExport,
         handleExportHTML,
         handleExportJPEG,
         handleExportCSV,
         handleExportSettings,
         handleRefresh,
-    };
+    }), [
+        handleExport,
+        handleExportHTML,
+        handleExportJPEG,
+        handleExportCSV,
+        handleExportSettings,
+        handleRefresh,
+    ]);
 }

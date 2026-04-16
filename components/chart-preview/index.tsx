@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useEffect, useState } from "react"
+import { useRef, useEffect, useState, useCallback } from "react"
 import { useChartStore } from "@/lib/chart-store"
 import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import {
@@ -79,7 +79,6 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   const zoomPan = useZoomPan();
 
   // --- Local state ---
-  const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
   const [isMobile, setIsMobile] = useState(false);
 
   // --- Responsive check ---
@@ -90,26 +89,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  // --- Track container dimensions ---
-  useEffect(() => {
-    if (!chartContainerRef.current) return;
-    let rafId: number;
-    const resizeObserver = new ResizeObserver((entries) => {
-      if (rafId) cancelAnimationFrame(rafId);
-      rafId = window.requestAnimationFrame(() => {
-        if (!Array.isArray(entries) || !entries.length) return;
-        for (const entry of entries) {
-          const { width, height } = entry.contentRect;
-          setContainerDimensions({ width, height });
-        }
-      });
-    });
-    resizeObserver.observe(chartContainerRef.current);
-    return () => {
-      if (rafId) cancelAnimationFrame(rafId);
-      resizeObserver.disconnect();
-    };
-  }, []);
+
 
   // --- Reset pan/zoom when switching to chart mode ---
   useEffect(() => {
@@ -240,16 +220,16 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   }
 
   // --- Chart type change handler ---
-  const handleChartTypeChange = (type: string) => {
+  const handleChartTypeChange = useCallback((type: string) => {
     setChartType(type as any);
-  };
+  }, [setChartType]);
 
   // --- Reset chart handler ---
-  const handleResetChart = () => {
+  const handleResetChart = useCallback(() => {
     clearMessages();
     resetChart();
     setHasJSON(false);
-  };
+  }, [clearMessages, resetChart, setHasJSON]);
 
   // --- Guard: hydration ---
   if (!storesHydrated) {
@@ -300,7 +280,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
         chartType={chartType}
         onChartTypeChange={handleChartTypeChange}
         isResponsive={isResponsive}
-        containerDimensions={containerDimensions}
+        chartContainerRef={chartContainerRef}
         chartWidth={chartWidth}
         chartHeight={chartHeight}
         rename={rename}

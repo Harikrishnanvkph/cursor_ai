@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 
 /**
  * Manages zoom level and pan (drag) state for the chart preview canvas.
@@ -72,7 +72,7 @@ export function useZoomPan() {
         };
     }, [isDragging, dragStart]);
 
-    return {
+    return useMemo(() => ({
         zoom,
         panMode,
         isDragging,
@@ -87,5 +87,17 @@ export function useZoomPan() {
         handleMouseDown,
         handleMouseMove,
         handleMouseUp,
-    };
+    }), [
+        zoom,
+        panMode,
+        isDragging,
+        panOffset,
+        dragStart,
+        handleZoomIn,
+        handleZoomOut,
+        handleResetZoom,
+        handleMouseDown,
+        handleMouseMove,
+        handleMouseUp,
+    ]);
 }

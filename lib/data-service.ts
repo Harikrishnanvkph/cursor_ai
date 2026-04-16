@@ -319,6 +319,10 @@ class DataService {
     return this.request('/api/data/formats/official');
   }
 
+  async getUserFormats(): Promise<ApiResponse<any[]>> {
+    return this.request('/api/data/formats/mine');
+  }
+
   async getFormat(id: string): Promise<ApiResponse<any>> {
     return this.request(`/api/data/formats/${id}`);
   }

@@ -8,12 +8,14 @@ import { useChatStore } from "@/lib/chat-store"
 import { useHistoryStore } from "@/lib/history-store"
 
 import { Button } from "@/components/ui/button"
+import { UndoRedoButtons } from "@/components/ui/undo-redo-buttons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ZoomIn, ZoomOut, RotateCcw, Eye, EyeOff, Ellipsis, Maximize2, Minimize2, Settings, Menu, X, ChevronLeft, Download, Hand, Pencil, Check, Loader2 } from "lucide-react"
+import { ZoomIn, ZoomOut, RotateCcw, Eye, EyeOff, Ellipsis, Maximize2, Minimize2, Settings, Menu, X, ChevronLeft, Download, Hand, Pencil, Check, Loader2, ChartColumn, RulerDimensionLine } from "lucide-react"
 import { downloadTemplateExport, downloadFormatExport } from "@/lib/template-export"
 import { FileDown, FileImage, FileCode } from "lucide-react"
 import html2canvas from 'html2canvas'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Sidebar } from "@/components/sidebar"
 import { ConfigPanel } from "@/components/config-panel"
 import { SidebarPortalProvider } from "@/components/sidebar-portal-context"
@@ -61,14 +63,18 @@ export function TemplateChartPreview({
   onNewChart
 }: TemplateChartPreviewProps) {
   const { currentTemplate, templateInBackground, selectedTextAreaId, setSelectedTextAreaId, editorMode, setEditorMode, contentTypePreferences } = useTemplateStore()
-  const { selectedFormatId, contentPackage, formats, contextualImageUrl } = useFormatGalleryStore()
+  const { selectedFormatId, contentPackage, formats, userFormats, contextualImageUrl } = useFormatGalleryStore()
 
   const renderedFormat = React.useMemo(() => {
-    if (!selectedFormatId || !contentPackage || formats.length === 0) return null
-    const format = formats.find(f => f.id === selectedFormatId)
+    if (!selectedFormatId || !contentPackage) return null
+    
+    // Search both official formats and user's custom formats
+    const allFormats = [...formats, ...userFormats]
+    const format = allFormats.find(f => f.id === selectedFormatId)
+    
     if (!format) return null
     return renderFormat(format, contentPackage, undefined, contextualImageUrl || undefined)
-  }, [selectedFormatId, contentPackage, formats, contextualImageUrl])
+  }, [selectedFormatId, contentPackage, formats, userFormats, contextualImageUrl])
 
   // Granular hooks
   const chartData = useChartData()
@@ -81,7 +87,8 @@ export function TemplateChartPreview({
   const activeGroupId = useActiveGroupId()
   const groups = useChartGroups()
 
-  const { setChartType, setChartTitle, setActiveGroup } = useChartActions()
+  const { setChartType, setActiveGroup } = useChartActions()
+  const setChartTitle = useChartStore(s => s.setChartTitle)
 
   // Derive targetId for editing
   // Default to null - we ONLY want to enable editing if the active item has a proven sourceId
@@ -119,7 +126,7 @@ export function TemplateChartPreview({
   const { backendConversationId } = useChatStore()
   const { conversations, updateConversation } = useHistoryStore()
   const { drawingMode } = useDecorationStore()
-  
+
   const containerRef = useRef<HTMLDivElement>(null)
   const fullscreenContainerRef = useRef<HTMLDivElement>(null)
   const pendingTabRef = useRef<string | null>(null)
@@ -501,24 +508,24 @@ export function TemplateChartPreview({
   // Calculate template dimensions and scaling
   const getTemplateDimensions = () => {
     if (renderedFormat) {
-       const formatW = renderedFormat.skeleton.dimensions.width
-       const formatH = renderedFormat.skeleton.dimensions.height
-       
-       const containerWidth = containerRef.current?.clientWidth || 800
-       const containerHeight = containerRef.current?.clientHeight || 600
-       const padding = 40
-       const availableWidth = containerWidth - padding
-       const availableHeight = containerHeight - padding
-       
-       const scaleX = availableWidth / formatW
-       const scaleY = availableHeight / formatH
-       const baseScale = Math.min(scaleX, scaleY, 1)
+      const formatW = renderedFormat.skeleton.dimensions.width
+      const formatH = renderedFormat.skeleton.dimensions.height
 
-       return {
-         width: formatW,
-         height: formatH,
-         scale: baseScale * zoom
-       }
+      const containerWidth = containerRef.current?.clientWidth || 800
+      const containerHeight = containerRef.current?.clientHeight || 600
+      const padding = 40
+      const availableWidth = containerWidth - padding
+      const availableHeight = containerHeight - padding
+
+      const scaleX = availableWidth / formatW
+      const scaleY = availableHeight / formatH
+      const baseScale = Math.min(scaleX, scaleY, 1)
+
+      return {
+        width: formatW,
+        height: formatH,
+        scale: baseScale * zoom
+      }
     }
 
     const template = currentTemplate || templateInBackground
@@ -956,196 +963,179 @@ export function TemplateChartPreview({
         <div className="fixed inset-0 bg-white z-40" />
       )}
       {/* Template Controls */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex-1 max-w-[500px]">
-          {/* Chart Title (from history) - Primary heading with edit */}
-          {chartTitle && (
-            <div className="flex items-center gap-1.5 mb-1">
-              {canEditTitle && (
-                <button
-                  onClick={handleStartRename}
-                  className="p-0.5 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
-                  title="Rename"
-                >
-                  <Pencil className="h-3 w-3" />
-                </button>
-              )}
-              <div className="flex items-center gap-1 flex-1">
-                {isRenaming && canEditTitle ? (
-                  <>
-                    <input
-                      ref={renameInputRef}
-                      type="text"
-                      value={renameValue}
-                      onChange={(e) => setRenameValue(e.target.value)}
-                      onKeyDown={handleRenameKeyDown}
-                      onBlur={() => setIsRenaming(false)}
-                      className="flex-1 font-semibold text-gray-900 text-base bg-transparent border-b-2 border-blue-400 outline-none w-full"
-                      disabled={isSavingRename}
-                    />
-                    <button
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={handleSaveRename}
-                      disabled={isSavingRename}
-                      className="p-0.5 hover:bg-green-50 rounded text-green-600 flex-shrink-0"
-                      title="Save"
-                    >
-                      {isSavingRename ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                    </button>
-                  </>
-                ) : (
-                  <h4 className="font-semibold text-gray-900 text-base truncate border-b-2 border-transparent" title={chartTitle}>{chartTitle}</h4>
+      <div className="flex-shrink-0 mb-1">
+        <div className="flex items-center justify-between flex-wrap gap-1 px-1">
+          {/* Left: title + chart info */}
+          <div className="min-w-0 flex-1">
+            {chartTitle && (
+              <div className="flex items-center gap-1.5 mb-0 min-w-0">
+                {canEditTitle && (
+                  <button onClick={handleStartRename} className="p-0.5 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0" title="Rename">
+                    <Pencil className="h-3 w-3" />
+                  </button>
                 )}
+                <div className="flex items-center gap-1 flex-1 min-w-0">
+                  {isRenaming && canEditTitle ? (
+                    <>
+                      <input
+                        ref={renameInputRef}
+                        type="text"
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onKeyDown={handleRenameKeyDown}
+                        onBlur={() => setIsRenaming(false)}
+                        className="flex-1 min-w-0 font-semibold text-gray-900 text-sm bg-transparent border-b-2 border-blue-400 outline-none w-full text-ellipsis overflow-hidden whitespace-nowrap px-0 pb-0.5 focus:border-blue-500"
+                        disabled={isSavingRename}
+                      />
+                      <button onMouseDown={(e) => e.preventDefault()} onClick={handleSaveRename} disabled={isSavingRename} className="p-0.5 hover:bg-green-50 rounded text-green-600 flex-shrink-0" title="Save">
+                        {isSavingRename ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                      </button>
+                    </>
+                  ) : (
+                    <h4 className="font-semibold text-gray-900 text-sm truncate border-b-2 border-transparent" title={chartTitle}>{chartTitle}</h4>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
-          {/* Toggle and Dimensions row */}
-          <div className="flex items-center gap-2">
-            {/* Chart/Template Mode Toggle */}
-            <div className="flex items-center gap-1 bg-gray-100 rounded-full p-0.5 border border-gray-200">
-              <button
-                onClick={() => setEditorMode('chart')}
-                className={`px-2 py-0.5 text-[10px] font-medium rounded-full transition-all ${editorMode === 'chart'
-                  ? 'bg-blue-500 text-white shadow-sm'
-                  : 'bg-transparent text-gray-500 hover:text-gray-700'
-                  }`}
-              >
-                Chart
-              </button>
-              <button
-                onClick={() => setEditorMode('template')}
-                className={`px-2 py-0.5 text-[10px] font-medium rounded-full transition-all ${editorMode === 'template'
-                  ? 'bg-blue-500 text-white shadow-sm'
-                  : 'bg-transparent text-gray-500 hover:text-gray-700'
-                  }`}
-              >
-                Template
-              </button>
-            </div>
-            {/* Compact Chart Type Selector */}
-            <Select value={chartType} onValueChange={handleChartTypeChange}>
-              <SelectTrigger className="h-6 w-[90px] text-[10px] px-2 py-0 border-gray-200 bg-white">
-                <SelectValue placeholder="Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="bar" className="text-xs">Bar</SelectItem>
-                <SelectItem value="horizontalBar" className="text-xs">H. Bar</SelectItem>
-                <SelectItem value="stackedBar" className="text-xs">Stacked</SelectItem>
-                <SelectItem value="line" className="text-xs">Line</SelectItem>
-                <SelectItem value="area" className="text-xs">Area</SelectItem>
-                <SelectItem value="pie" className="text-xs">Pie</SelectItem>
-                <SelectItem value="pie3d" className="text-xs">3D Pie</SelectItem>
-                <SelectItem value="doughnut3d" className="text-xs">3D Doughnut</SelectItem>
-                <SelectItem value="bar3d" className="text-xs">3D Bar</SelectItem>
-                <SelectItem value="horizontalBar3d" className="text-xs">3D Horizontal Bar</SelectItem>
-                <SelectItem value="doughnut3d" className="text-xs">3D Doughnut</SelectItem>
-                <SelectItem value="radar" className="text-xs">Radar</SelectItem>
-                <SelectItem value="polarArea" className="text-xs">Polar</SelectItem>
-                <SelectItem value="scatter" className="text-xs">Scatter</SelectItem>
-                <SelectItem value="bubble" className="text-xs">Bubble</SelectItem>
-              </SelectContent>
-            </Select>
-            {/* Template dimensions */}
-            {renderedFormat ? (
-              <span className="text-xs text-gray-400">{renderedFormat.skeleton.dimensions.width} × {renderedFormat.skeleton.dimensions.height}px</span>
-            ) : template ? (
-              <span className="text-xs text-gray-400">{template.width} × {template.height}px</span>
-            ) : null}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Zoom Controls - Compact grouped style */}
-          <div className="flex items-center gap-1 border rounded-md p-0.5 bg-white">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleZoomOut}
-              disabled={zoom <= 0.1}
-              className="h-7 w-7 p-0"
-              title="Zoom Out"
-            >
-              <ZoomOut className="h-3.5 w-3.5" />
-            </Button>
-            <span className="text-xs text-gray-600 min-w-[45px] text-center px-1">
-              {Math.round(zoom * 100)}%
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleZoomIn}
-              disabled={zoom >= 3}
-              className="h-7 w-7 p-0"
-              title="Zoom In"
-            >
-              <ZoomIn className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-          {/* Pan Mode Toggle */}
-          <Button
-            variant={panMode ? "default" : "outline"}
-            size="sm"
-            onClick={() => setPanMode(!panMode)}
-            title={panMode ? "Disable Pan Mode" : "Enable Pan Mode"}
-          >
-            <Hand className="h-4 w-4" />
-          </Button>
-          {/* Actions Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" title="Actions">
-                <Ellipsis className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleResetZoom}>
-                <RotateCcw className="h-4 w-4 mr-2" />
-                <span>Reset Zoom</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setShowGuides(!showGuides)}>
-                {showGuides ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-                <span>{showGuides ? "Hide Guides" : "Show Guides"}</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleFullscreen}>
-                <Maximize2 className="h-4 w-4 mr-2" />
-                <span>Fullscreen</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            )}
 
-          {/* Export Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="default" title="Export">
-                <Download className="h-4 w-4" />
+            {/* Toggle and Dimensions row */}
+            <div className="flex items-center gap-1 mt-0.5">
+              {/* Chart/Template Mode Toggle */}
+              <div className="flex items-center gap-0 bg-gray-100 rounded-full p-[2px] border border-gray-200">
+                <button
+                  onClick={() => setEditorMode('chart')}
+                  className={`px-2 py-0.5 text-[10px] min-w-[50px] font-medium rounded-full transition-all ${editorMode === 'chart'
+                    ? 'bg-blue-500 text-white shadow-sm'
+                    : 'bg-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                >
+                  Chart
+                </button>
+                <button
+                  onClick={() => setEditorMode('template')}
+                  className={`px-2 py-0.5 text-[10px] min-w-[50px] font-medium rounded-full transition-all ${editorMode === 'template'
+                    ? 'bg-blue-500 text-white shadow-sm'
+                    : 'bg-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                >
+                  Template
+                </button>
+              </div>
+              {/* Compact Chart Type Selector */}
+              <Select value={chartType} onValueChange={handleChartTypeChange}>
+                <SelectTrigger className="h-6 w-9 lg:w-[90px] text-[10px] px-1 lg:px-2 py-0 border-gray-200 bg-white shadow-none">
+                  <ChartColumn className="h-3.5 w-3.5 lg:hidden text-slate-600 shrink-0 stroke-[2.5]" />
+                  <div className="hidden lg:block truncate"><SelectValue placeholder="Type" /></div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bar" className="text-xs">Bar</SelectItem>
+                  <SelectItem value="horizontalBar" className="text-xs">H. Bar</SelectItem>
+                  <SelectItem value="stackedBar" className="text-xs">Stacked</SelectItem>
+                  <SelectItem value="line" className="text-xs">Line</SelectItem>
+                  <SelectItem value="area" className="text-xs">Area</SelectItem>
+                  <SelectItem value="pie" className="text-xs">Pie</SelectItem>
+                  <SelectItem value="pie3d" className="text-xs">3D Pie</SelectItem>
+                  <SelectItem value="doughnut3d" className="text-xs">3D Doughnut</SelectItem>
+                  <SelectItem value="bar3d" className="text-xs">3D Bar</SelectItem>
+                  <SelectItem value="horizontalBar3d" className="text-xs">3D Horizontal Bar</SelectItem>
+                  <SelectItem value="doughnut3d" className="text-xs">3D Doughnut</SelectItem>
+                  <SelectItem value="radar" className="text-xs">Radar</SelectItem>
+                  <SelectItem value="polarArea" className="text-xs">Polar</SelectItem>
+                  <SelectItem value="scatter" className="text-xs">Scatter</SelectItem>
+                  <SelectItem value="bubble" className="text-xs">Bubble</SelectItem>
+                </SelectContent>
+              </Select>
+              {renderedFormat ? (
+                <TooltipProvider delayDuration={0}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center justify-center p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded cursor-help transition-colors">
+                        <RulerDimensionLine className="w-4 h-4" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" sideOffset={5} className="z-[100] text-xs font-medium">
+                      {renderedFormat.skeleton.dimensions.width} × {renderedFormat.skeleton.dimensions.height}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : template ? (
+                <TooltipProvider delayDuration={0}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center justify-center p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded cursor-help transition-colors">
+                        <RulerDimensionLine className="w-4 h-4" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" sideOffset={5} className="z-[100] text-xs font-medium">
+                      {template.width} × {template.height}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : null}
+            </div>
+          </div>
+
+          {/* Right: action buttons */}
+          <div className="flex gap-1 flex-shrink-0 ml-4">
+            <div className="flex items-center gap-0.5 border border-slate-200 rounded-md p-0.5 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+              <Button variant="ghost" size="sm" onClick={handleZoomOut} disabled={zoom <= 0.1} className="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600 disabled:opacity-30" title="Zoom Out">
+                <ZoomOut className="h-4 w-4" />
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleExport('png')}>
-                <FileImage className="h-4 w-4 mr-2" />
-                Image (PNG)
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport('html')}>
-                <FileCode className="h-4 w-4 mr-2" />
-                HTML
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => {
-                  // Expand the left sidebar if it's collapsed
-                  if (onToggleLeftSidebar && isLeftSidebarCollapsed) {
-                    onToggleLeftSidebar();
-                  }
-                  // Trigger custom event to change active tab to export
-                  const event = new CustomEvent('changeActiveTab', { detail: { tab: 'export' } });
-                  window.dispatchEvent(event);
-                }}
-                className="bg-blue-50 hover:bg-blue-100"
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                Settings
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <span className="text-xs text-slate-600 min-w-[45px] px-1 text-center font-medium select-none">{Math.round(zoom * 100)}%</span>
+              <Button variant="ghost" size="sm" onClick={handleZoomIn} disabled={zoom >= 3} className="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600 disabled:opacity-30" title="Zoom In">
+                <ZoomIn className="h-4 w-4" />
+              </Button>
+
+              <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
+
+              <Button variant="ghost" size="sm" onClick={() => setPanMode(!panMode)} className={`h-7 w-7 p-0 transition-colors text-slate-600 ${panMode ? 'bg-slate-200 shadow-inner' : 'hover:bg-slate-100'}`} title={panMode ? "Disable Pan Mode" : "Enable Pan Mode"}>
+                <Hand className="h-4 w-4" />
+              </Button>
+
+              <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-600 hover:bg-slate-100" title="Actions"><Ellipsis className="h-4 w-4" /></Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleResetZoom}>
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    <span>Reset Zoom</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowGuides(!showGuides)}>
+                    {showGuides ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                    <span>{showGuides ? "Hide Guides" : "Show Guides"}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleFullscreen}>
+                    <Maximize2 className="h-4 w-4 mr-2" />
+                    <span>Fullscreen</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-600 hover:bg-slate-100" title="Export"><Download className="h-4 w-4" /></Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleExport('png')}><FileImage className="h-4 w-4 mr-2" /> Image (PNG)</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExport('html')}><FileCode className="h-4 w-4 mr-2" /> HTML</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => {
+                    if (onToggleLeftSidebar && isLeftSidebarCollapsed) onToggleLeftSidebar();
+                    window.dispatchEvent(new CustomEvent('changeActiveTab', { detail: { tab: 'export' } }));
+                  }} className="bg-blue-50 hover:bg-blue-100"><Settings className="h-4 w-4 mr-2" /> Settings</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
+
+              <UndoRedoButtons variant="ghost" size="sm" showLabels={false} className="gap-0.5" buttonClassName="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600 hover:scale-100" />
+            </div>
+          </div>
         </div>
       </div>
 

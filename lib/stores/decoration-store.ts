@@ -128,6 +128,7 @@ interface DecorationStore {
   // Shape CRUD
   addShape: (shape: Omit<DecorationShape, 'id'>) => string
   updateShape: (id: string, updates: Partial<DecorationShape>, skipHistory?: boolean) => void
+  updateShapes: (updatesList: { id: string, updates: Partial<DecorationShape> }[], skipHistory?: boolean) => void
   removeShape: (id: string) => void
   clearShapes: () => void
 
@@ -247,10 +248,11 @@ export const useDecorationStore = create<DecorationStore>()(
       addShape: (shape) => {
         get().commitHistory()
         const id = generateId()
+        const isDrawing = get().drawingMode !== null
         set((state) => ({
           shapes: [...state.shapes, { ...shape, id }],
-          selectedShapeId: id,
-          selectedShapeIds: [id],
+          selectedShapeId: isDrawing ? null : id,
+          selectedShapeIds: isDrawing ? [] : [id],
         }))
         return id
       },
@@ -260,6 +262,16 @@ export const useDecorationStore = create<DecorationStore>()(
         set((state) => ({
           shapes: state.shapes.map(s => s.id === id ? { ...s, ...updates } : s)
         }))
+      },
+
+      updateShapes: (updatesList, skipHistory = false) => {
+        if (!skipHistory) get().commitHistory()
+        set((state) => {
+          const updateMap = new Map(updatesList.map(u => [u.id, u.updates]))
+          return {
+            shapes: state.shapes.map(s => updateMap.has(s.id) ? { ...s, ...updateMap.get(s.id) } : s)
+          }
+        })
       },
 
       removeShape: (id) => {

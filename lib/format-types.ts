@@ -14,7 +14,7 @@
 // ========================================
 
 /** Zone types define what kind of content a zone holds */
-export type ZoneType = 'text' | 'chart' | 'stat' | 'background' | 'decoration';
+export type ZoneType = 'text' | 'chart' | 'stat' | 'background' | 'decoration' | 'image';
 
 /** Text zone roles map to specific content fields from the LLM */
 export type TextZoneRole = 'title' | 'subtitle' | 'body' | 'source' | 'callout';
@@ -193,8 +193,24 @@ export interface DecorationZone extends BaseZone {
   style: DecorationZoneStyle;
 }
 
+/** Image zone — displays an image (contextual or pre-set) */
+export interface ImageZoneStyle {
+  imageFit: 'cover' | 'contain' | 'fill';
+  borderRadius?: number;
+  objectPosition?: string;       // e.g., 'center', 'top'
+  backgroundColor?: string;      // Fallback color behind image
+  overlay?: string;              // e.g., 'rgba(0,0,0,0.3)'
+}
+
+export interface ImageZone extends BaseZone {
+  type: 'image';
+  style: ImageZoneStyle;
+  imageUrl?: string;             // Pre-set by admin or filled at runtime
+  placeholder?: string;          // Hint for AI: 'technology', 'nature', etc.
+}
+
 /** Union type for all zone variants */
-export type FormatZone = TextZone | ChartZone | StatZone | BackgroundZone | DecorationZone;
+export type FormatZone = TextZone | ChartZone | StatZone | BackgroundZone | DecorationZone | ImageZone;
 
 // ========================================
 // COLOR PALETTE

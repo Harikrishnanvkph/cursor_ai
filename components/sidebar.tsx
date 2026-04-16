@@ -59,6 +59,7 @@ const CHART_TABS = [
 // ═══════════════════════════════════════════
 const TEMPLATE_TABS = [
   { id: "tpl_templates", label: "Templates", icon: FileText },
+  { id: "tpl_content", label: "Content", icon: Type },
   { id: "tpl_text", label: "Text Areas", icon: Type },
   { id: "tpl_chart_zone", label: "Chart Zone", icon: BarChart3 },
   { id: "tpl_decorations", label: "Decorations", icon: Sparkles },

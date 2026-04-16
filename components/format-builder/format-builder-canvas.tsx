@@ -2,7 +2,7 @@
 
 import React from 'react'
 import DraggableResizable from '@/components/reusable/DraggableResizable'
-import { MessageSquare } from 'lucide-react'
+import { MessageSquare, ImageIcon } from 'lucide-react'
 import { useFormatBuilder } from './format-builder-context'
 import { ZONE_COLORS, getZoneLabel } from './format-builder-utils'
 import type { FormatZone, BaseZone } from '@/lib/format-types'
@@ -12,21 +12,30 @@ import { DecorationShapeRenderer } from '@/components/decorations/DecorationShap
 function DecorationStoreSync({ skeleton, setSkeleton }: { skeleton: any, setSkeleton: any }) {
   const shapes = useDecorationStore(s => s.shapes)
   const isInitialized = React.useRef(false)
-  const previousShapes = React.useRef<any[]>([])
 
   React.useEffect(() => {
     if (!isInitialized.current && skeleton) {
-      // Backup the shapes that were in the store (e.g. from the template editor)
-      previousShapes.current = useDecorationStore.getState().shapes
-      useDecorationStore.setState({ shapes: skeleton.decorations || [], drawingMode: null })
+      // With our new storage isolation in storage-utils.ts, the store natively handles format vs editor states.
+      // However, if we're editing a format from the database, we need to push its shapes into the store.
+      // If the store is already populated (via session draft), we don't clobber it if skeleton is empty.
+      const currentShapes = useDecorationStore.getState().shapes;
+      if (skeleton.decorations && skeleton.decorations.length > 0 && currentShapes.length === 0) {
+         useDecorationStore.setState({ shapes: skeleton.decorations, drawingMode: null })
+      }
       isInitialized.current = true
     }
   }, [skeleton])
 
   React.useEffect(() => {
-    // On unmount, restore the shapes back to the store so the editor is unaffected
+    // When leaving Format Builder, we MUST force the decoration store to rehydrate its local storage 
+    // so the Template Editor gets its normal shapes back, because client-side routing bypasses initial load.
     return () => {
-      useDecorationStore.setState({ shapes: previousShapes.current, drawingMode: null })
+      if (typeof window !== 'undefined') {
+        setTimeout(() => {
+          // Re-evaluate storage keys via Zustand's persist if possible, or just force reload
+          useDecorationStore.persist?.rehydrate?.()
+        }, 10)
+      }
     }
   }, [])
 
@@ -42,7 +51,7 @@ export function FormatBuilderCanvas() {
   const {
     skeleton, selectedZoneId, setSelectedZoneId,
     zoom, showGuides, gridSize,
-    updateZonePosition, setSkeleton
+    updateZonePosition, setSkeleton, deleteZone
   } = useFormatBuilder()
 
   const { setSelectedShapeId } = useDecorationStore()
@@ -51,6 +60,23 @@ export function FormatBuilderCanvas() {
   const palette = skeleton.colorPalette
   const scale = zoom
   const bounds = { width: dims.width, height: dims.height }
+
+  // ── Delete key handler for zones ──
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        // Don't delete if user is typing in an input
+        const tag = (e.target as HTMLElement).tagName
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement).isContentEditable) return
+        if (selectedZoneId) {
+          e.preventDefault()
+          deleteZone(selectedZoneId)
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedZoneId, deleteZone])
 
   return (
     <>
@@ -117,7 +143,7 @@ export function FormatBuilderCanvas() {
 
           {/* Render positioned content zones with DraggableResizable */}
           {skeleton.zones
-            .filter(z => z.position && z.type !== 'decoration')
+            .filter(z => z.position && z.type !== 'decoration' && z.type !== 'background')
             .map(zone => {
               const colors = ZONE_COLORS[zone.type] || ZONE_COLORS.text
               const isSelected = selectedZoneId === zone.id
@@ -133,7 +159,7 @@ export function FormatBuilderCanvas() {
                   grid={gridSize}
                   scale={scale}
                   selected={isSelected}
-                  onSelect={() => { setSelectedZoneId(zone.id); setSelectedDecoId(null) }}
+                  onSelect={() => { setSelectedZoneId(zone.id); setSelectedShapeId(null) }}
                   onChange={(rect) => updateZonePosition(zone.id, rect)}
                   label={getZoneLabel(zone)}
                   accentColor={colors.accent}
@@ -190,36 +216,38 @@ function ZoneVisualContent({ zone, isSelected, onClick }: {
     )
   }
 
-  // ─── TEXT: show styled text placeholder ───
+  // ─── TEXT: show role name placeholder sized to fill the box ───
   if (zone.type === 'text') {
     const role = (zone as any).role || 'body'
+    const roleLabel = role === 'title' ? 'Title' :
+                      role === 'subtitle' ? 'Subtitle' :
+                      role === 'source' ? 'Source' :
+                      role === 'callout' ? 'Callout' : 'Body'
+    const pos = zone.position || { width: 200, height: 60 }
+    // Size the label to fill ~80% of height, clamped by width
+    const fontSize = Math.min(pos.height * 0.65, pos.width * 0.35, 120)
     return (
       <div
-        className="w-full h-full flex items-center overflow-hidden"
+        className="w-full h-full flex items-center justify-center overflow-hidden"
         onClick={e => { e.stopPropagation(); onClick() }}
         style={{
           background: isSelected ? colors.bg : 'transparent',
           border: isSelected
             ? `2px solid ${colors.accent}`
-            : `1px dashed ${colors.border}40`,
-          padding: '4px 8px',
-          fontFamily: s.fontFamily || 'Inter, sans-serif',
-          fontSize: `${Math.min(s.fontSize || 16, 36)}px`,
-          fontWeight: s.fontWeight || '400',
-          color: s.color || '#ffffff',
-          textAlign: s.textAlign || 'left',
-          lineHeight: s.lineHeight || 1.3,
-          letterSpacing: s.letterSpacing ? `${s.letterSpacing}px` : undefined,
-          textTransform: s.textTransform || 'none',
-          opacity: 0.7,
+            : `2px dashed ${colors.border}`,
         }}
       >
-        <span className="w-full truncate pointer-events-none select-none">
-          {role === 'title' ? 'Title Text Here' :
-           role === 'subtitle' ? 'Subtitle goes here' :
-           role === 'source' ? 'Source: Data Attribution' :
-           role === 'callout' ? '★ Key callout text' :
-           'Body text paragraph content'}
+        <span
+          className="pointer-events-none select-none font-bold uppercase tracking-wider"
+          style={{
+            fontSize: `${fontSize}px`,
+            color: s.color || colors.accent,
+            opacity: 0.35,
+            lineHeight: 1,
+            textAlign: 'center',
+          }}
+        >
+          {roleLabel}
         </span>
       </div>
     )
@@ -235,7 +263,7 @@ function ZoneVisualContent({ zone, isSelected, onClick }: {
           background: isSelected ? colors.bg : 'transparent',
           border: isSelected
             ? `2px solid ${colors.accent}`
-            : `1px dashed ${colors.border}40`,
+            : `2px dashed ${colors.border}`,
           flexDirection: s.layout === 'horizontal' ? 'row' : 'column',
           gap: '2px',
         }}
@@ -274,7 +302,7 @@ function ZoneVisualContent({ zone, isSelected, onClick }: {
           background: isSelected ? colors.bg : `${colors.bg}`,
           border: isSelected
             ? `2px solid ${colors.accent}`
-            : `1px dashed ${colors.border}40`,
+            : `2px dashed ${colors.border}`,
         }}
       >
         {/* Mini chart bars for visual effect */}
@@ -298,6 +326,35 @@ function ZoneVisualContent({ zone, isSelected, onClick }: {
     )
   }
 
+  // ─── IMAGE: show placeholder with image icon ───
+  if (zone.type === 'image') {
+    const pos = zone.position || { width: 200, height: 200 }
+    const iconSize = Math.min(pos.width * 0.3, pos.height * 0.3, 80)
+    return (
+      <div
+        className="w-full h-full flex flex-col items-center justify-center overflow-hidden rounded"
+        onClick={e => { e.stopPropagation(); onClick() }}
+        style={{
+          background: isSelected ? colors.bg : (s.backgroundColor || '#1e293b'),
+          border: isSelected
+            ? `2px solid ${colors.accent}`
+            : `2px dashed ${colors.border}`,
+          borderRadius: s.borderRadius || 0,
+        }}
+      >
+        <ImageIcon
+          className="pointer-events-none select-none"
+          style={{ width: iconSize, height: iconSize, color: colors.accent, opacity: 0.4 }}
+        />
+        {iconSize > 24 && (
+          <span className="text-[10px] uppercase tracking-wider mt-1 pointer-events-none select-none" style={{ color: colors.accent, opacity: 0.5 }}>
+            Image
+          </span>
+        )}
+      </div>
+    )
+  }
+
   // ─── Fallback ───
   return (
     <div
@@ -305,7 +362,7 @@ function ZoneVisualContent({ zone, isSelected, onClick }: {
       onClick={e => { e.stopPropagation(); onClick() }}
       style={{
         background: colors.bg,
-        border: isSelected ? `2px solid ${colors.accent}` : `1px dashed ${colors.border}50`,
+        border: isSelected ? `2px solid ${colors.accent}` : `2px dashed ${colors.border}`,
       }}
     >
       <ZoneLabel label={getZoneLabel(zone)} color={colors.accent} message={(zone as BaseZone).message} />

@@ -11,7 +11,7 @@ import { AxesPanel } from "@/components/panels/axes/axes-panel"
 import { LabelsPanel } from "@/components/panels/labels-panel"
 import { AdvancedPanel } from "@/components/panels/advanced-panel"
 import { ExportPanel } from "@/components/panels/export-panel"
-import { TemplatesPanel } from "@/components/panels/template-settings"
+import { TemplatesPanel, TemplateContentPanel } from "@/components/panels/template-settings"
 
 const TABLET_TABS = [
   { id: "types_toggles", label: "Types", icon: AlignEndHorizontal },
@@ -20,6 +20,7 @@ const TABLET_TABS = [
   { id: "axes", label: "Axes", icon: Grid },
   { id: "labels", label: "Labels", icon: Tag },
   { id: "templates", label: "Templates", icon: FileText },
+  { id: "tpl_content", label: "Content", icon: FileText },
   { id: "advanced", label: "Advanced", icon: Settings },
   { id: "export", label: "Export", icon: Download },
 ]
@@ -49,6 +50,8 @@ export function TabletConfigSidebar({
         return <LabelsPanel />
       case "templates":
         return <TemplatesPanel />
+      case "tpl_content":
+        return <TemplateContentPanel />
       case "advanced":
         return <AdvancedPanel />
       case "export":

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, RefObject } from "react"
+import { useState, useEffect, useCallback, RefObject, useMemo } from "react"
 import { useChartStore } from "@/lib/chart-store"
 
 /**
@@ -64,12 +64,17 @@ export function useFullscreen(containerRef: RefObject<HTMLDivElement | null>) {
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
     }, []);
 
-    return {
+    return useMemo(() => ({
         isFullscreen,
         showLeftOverlay,
         showRightOverlay,
         setShowLeftOverlay,
         setShowRightOverlay,
         handleFullscreen,
-    };
+    }), [
+        isFullscreen,
+        showLeftOverlay,
+        showRightOverlay,
+        handleFullscreen,
+    ]);
 }

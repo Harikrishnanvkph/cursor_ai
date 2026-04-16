@@ -98,7 +98,7 @@ function bezierPath(points: { x: number; y: number }[]): string {
     // Default tension of 0 mathematically simplifies to dividing by 6.
     const cp1x = p1.x + (p2.x - p0.x) / 6
     const cp1y = p1.y + (p2.y - p0.y) / 6
-    
+
     const cp2x = p2.x - (p3.x - p1.x) / 6
     const cp2y = p2.y - (p3.y - p1.y) / 6
 
@@ -778,7 +778,7 @@ function DrawingPreview({ drawing, settings }: { drawing: DrawingState, settings
   }
 
   const isLineMode = ['freehand', 'line', 'arrow', 'double-arrow', 'connected-lines', 'bezier-line', 'bspline-curve', 'cloud-line'].includes(mode)
-  
+
   const previewProps = {
     stroke: settings.strokeColor,
     strokeWidth: settings.strokeWidth,
@@ -995,7 +995,9 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
     startX: number
     startY: number
     origShape: DecorationShape
+    origShapes?: DecorationShape[]
     currentShape?: DecorationShape
+    currentShapes?: Record<string, DecorationShape>
     handle?: HandlePosition
     endpointIndex?: number  // 0 = start, 1 = end (for line/arrow endpoint drag)
   } | null>(null)
@@ -1291,15 +1293,53 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
           finalDy += (gridY - newY)
         }
 
+        // Clamp to container boundaries (like Zones) so shapes don't go off-screen
+        let finalClampedDx = finalDx
+        let finalClampedDy = finalDy
+        if (dragState.origShapes) {
+          const draggedShapes = dragState.origShapes
+          const minX = Math.min(...draggedShapes.map(s => getShapeBounds(s).x))
+          const minY = Math.min(...draggedShapes.map(s => getShapeBounds(s).y))
+          const maxR = Math.max(...draggedShapes.map(s => { const b = getShapeBounds(s); return b.x + b.width }))
+          const maxB = Math.max(...draggedShapes.map(s => { const b = getShapeBounds(s); return b.y + b.height }))
+          const groupWidth = maxR - minX
+          const groupHeight = maxB - minY
+          let clampedX = minX + finalDx
+          let clampedY = minY + finalDy
+          clampedX = Math.max(0, Math.min(clampedX, containerWidth - groupWidth))
+          clampedY = Math.max(0, Math.min(clampedY, containerHeight - groupHeight))
+          finalClampedDx = clampedX - minX
+          finalClampedDy = clampedY - minY
+        } else {
+          const draggedBounds = getShapeBounds(orig)
+          let clampedX = draggedBounds.x + finalDx
+          let clampedY = draggedBounds.y + finalDy
+          clampedX = Math.max(0, Math.min(clampedX, containerWidth - draggedBounds.width))
+          clampedY = Math.max(0, Math.min(clampedY, containerHeight - draggedBounds.height))
+          finalClampedDx = clampedX - draggedBounds.x
+          finalClampedDy = clampedY - draggedBounds.y
+        }
+
         setSnapGuides({ x: snapX, y: snapY })
 
         // Apply
-        if (orig.points && orig.points.length > 0) {
-          const movedPoints = orig.points.map(p => ({ x: p.x + finalDx, y: p.y + finalDy }))
-          setDragState(p => p ? { ...p, currentShape: { ...p.origShape, x: orig.x + finalDx, y: orig.y + finalDy, points: movedPoints } } : null)
-        } else {
-          setDragState(p => p ? { ...p, currentShape: { ...p.origShape, x: orig.x + finalDx, y: orig.y + finalDy } } : null)
-        }
+        const draggingShapes = dragState.origShapes || [orig]
+        const newCurrentShapes: Record<string, DecorationShape> = {}
+        let mainMoved: DecorationShape | undefined
+
+        draggingShapes.forEach(os => {
+          let moved: DecorationShape
+          if (os.points && os.points.length > 0) {
+            const movedPoints = os.points.map(p => ({ x: p.x + finalClampedDx, y: p.y + finalClampedDy }))
+            moved = { ...os, x: os.x + finalClampedDx, y: os.y + finalClampedDy, points: movedPoints }
+          } else {
+            moved = { ...os, x: os.x + finalClampedDx, y: os.y + finalClampedDy }
+          }
+          newCurrentShapes[os.id] = moved
+          if (os.id === dragState.shapeId) mainMoved = moved
+        })
+
+        setDragState(p => p ? { ...p, currentShapes: newCurrentShapes, currentShape: mainMoved } : null)
       } else if (dragState.type === 'endpoint' && dragState.endpointIndex !== undefined) {
         // Drag individual endpoint of line/arrow
         const newPoints = [...(orig.points || [])]
@@ -1332,12 +1372,15 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
           // Recompute bounding box from points
           const xs = newPoints.map(p => p.x)
           const ys = newPoints.map(p => p.y)
-          setDragState(p => p ? { ...p, currentShape: { ...p.origShape,
-            points: newPoints,
-            x: Math.min(...xs), y: Math.min(...ys),
-            width: Math.max(Math.abs(Math.max(...xs) - Math.min(...xs)), 1),
-            height: Math.max(Math.abs(Math.max(...ys) - Math.min(...ys)), 1)
-          } } : null)
+          setDragState(p => p ? {
+            ...p, currentShape: {
+              ...p.origShape,
+              points: newPoints,
+              x: Math.min(...xs), y: Math.min(...ys),
+              width: Math.max(Math.abs(Math.max(...xs) - Math.min(...xs)), 1),
+              height: Math.max(Math.abs(Math.max(...ys) - Math.min(...ys)), 1)
+            }
+          } : null)
         }
       } else if (dragState.type === 'rotate') {
         // Rotation: compute angle from center of shape to current mouse
@@ -1481,7 +1524,11 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
 
     // Finish drag
     if (dragState) {
-      if (dragState.currentShape) {
+      if (dragState.currentShapes) {
+        useDecorationStore.getState().updateShapes(
+          Object.values(dragState.currentShapes).map(cs => ({ id: cs.id, updates: cs }))
+        )
+      } else if (dragState.currentShape) {
         updateShape(dragState.shapeId, dragState.currentShape)
       }
       setDragState(null)
@@ -1660,23 +1707,40 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
     e.preventDefault()
     e.stopPropagation()
 
+    const isShift = 'shiftKey' in e ? (e as React.MouseEvent).shiftKey : false
+
     if (shape.locked) {
-      setSelectedShapeId(shape.id)
+      if (isShift) toggleShapeSelection(shape.id)
+      else setSelectedShapeId(shape.id)
       return
     }
 
-    setSelectedShapeId(shape.id)
+    if (isShift) {
+      toggleShapeSelection(shape.id)
+    } else {
+      if (!selectedShapeIds.includes(shape.id)) {
+        setSelectedShapeId(shape.id)
+      }
+    }
+
     const pt = getSVGPoint(e as any)
     if (!pt) return
+
+    let draggingShapes = [shape]
+    // Note: use local 'isShift' state since updated selectedShapeIds won't reflect synchronously for shift clicks
+    if (!isShift && selectedShapeIds.includes(shape.id) && selectedShapeIds.length > 1) {
+      draggingShapes = shapes.filter(s => selectedShapeIds.includes(s.id))
+    }
 
     setDragState({
       type: 'move',
       shapeId: shape.id,
       startX: pt.x,
       startY: pt.y,
-      origShape: { ...shape }
+      origShape: { ...shape },
+      origShapes: draggingShapes.map(s => ({ ...s }))
     })
-  }, [panMode, drawingMode, getSVGPoint, setSelectedShapeId])
+  }, [panMode, drawingMode, getSVGPoint, setSelectedShapeId, toggleShapeSelection, selectedShapeIds, shapes])
 
   const handleResizePointerDown = useCallback((e: React.MouseEvent | React.TouchEvent, shape: DecorationShape, handle: HandlePosition) => {
     e.preventDefault()
@@ -1814,6 +1878,13 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
   useEffect(() => {
     const handleGlobalUp = () => {
       if (dragState) {
+        if (dragState.currentShapes) {
+          useDecorationStore.getState().updateShapes(
+            Object.values(dragState.currentShapes).map(cs => ({ id: cs.id, updates: cs }))
+          )
+        } else if (dragState.currentShape) {
+          updateShape(dragState.shapeId, dragState.currentShape)
+        }
         setDragState(null)
         setSnapGuides({ x: null, y: null })
         setNodeSnapGuide(null)
@@ -1828,7 +1899,7 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
       window.removeEventListener('mouseup', handleGlobalUp)
       window.removeEventListener('touchend', handleGlobalUp)
     }
-  }, [dragState, marqueeState, finalizeMarqueeSelection])
+  }, [dragState, marqueeState, finalizeMarqueeSelection, updateShape])
 
   // ── Escape key to cancel drawing ──────────────────
 
@@ -1909,8 +1980,14 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
 
   // Merge drag state overrides down using purely local rendering
   const activeShapes = React.useMemo(() => {
-    if (!dragState || !dragState.currentShape) return shapes
-    return shapes.map(s => s.id === dragState.shapeId ? dragState.currentShape! : s)
+    if (!dragState) return shapes
+    if (dragState.type === 'move' && dragState.currentShapes) {
+      return shapes.map(s => dragState.currentShapes![s.id] || s)
+    }
+    if (dragState.currentShape) {
+      return shapes.map(s => s.id === dragState.shapeId ? dragState.currentShape! : s)
+    }
+    return shapes
   }, [shapes, dragState])
 
   const sortedShapes = React.useMemo(() => {
@@ -1938,7 +2015,7 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
       onMouseDownCapture={(e) => { lastMouseDownTargetRef.current = e.target }}
       onMouseMove={(e: any) => { handleCursorTrack(e); (handleCanvasPointerMove as any)(e) }}
       onMouseUp={handleCanvasPointerUp as any}
-      onMouseLeave={() => { if (dragState) { setDragState(null); setSnapGuides({ x: null, y: null }) }; setCursorPos(null) }}
+      onMouseLeave={() => { setCursorPos(null) }}
       onDoubleClick={drawingMode ? handleCanvasDoubleClick : undefined}
       onTouchStart={(drawingMode || dragState || marqueeState) ? (handleCanvasPointerDown as any) : undefined}
       onTouchMove={handleCanvasPointerMove as any}

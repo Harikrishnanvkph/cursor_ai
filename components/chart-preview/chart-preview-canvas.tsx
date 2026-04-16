@@ -22,11 +22,11 @@ interface ChartPreviewCanvasProps {
  * The chart canvas area — handles both responsive (fills container) and
  * fixed-dimension modes, wraps <ChartGenerator/> with zoom/pan support.
  */
-export function ChartPreviewCanvas({
+export const ChartPreviewCanvas = React.memo(({
     chartContainerRef,
     chartConfig,
     zoomPan,
-}: ChartPreviewCanvasProps) {
+}: ChartPreviewCanvasProps) => {
     const { zoom, panMode, isDragging, panOffset, handleMouseDown } = zoomPan;
 
     const isResponsive = chartConfig?.responsive !== false;
@@ -59,7 +59,7 @@ export function ChartPreviewCanvas({
                     style={{
                         width: '100%', height: '100%',
                         top: 0, left: 0, right: 0, bottom: 0,
-                        transform: zoom !== 1 ? `scale(${zoom})` : 'none',
+                        transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
                         transformOrigin: 'center center',
                         transition: isDragging ? 'none' : 'transform 0.1s ease-out',
                         zIndex: 10,
@@ -127,11 +127,11 @@ export function ChartPreviewCanvas({
             <div
                 className="absolute"
                 style={{
-                    left: `${initialLeft + panOffset.x}px`,
-                    top: `${initialTop + panOffset.y}px`,
+                    left: `${initialLeft}px`,
+                    top: `${initialTop}px`,
                     width: `${chartWidth}px`,
                     height: `${chartHeight}px`,
-                    transform: `scale(${zoom})`,
+                    transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
                     transformOrigin: 'top left',
                     transition: isDragging ? 'none' : 'transform 0.1s ease-out',
                     zIndex: 10,
@@ -160,4 +160,4 @@ export function ChartPreviewCanvas({
             </div>
         </div>
     );
-}
+});

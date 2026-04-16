@@ -2,9 +2,10 @@ import type {
   FormatSkeleton, FormatZone, ZoneType, TextZoneRole,
   StatZoneRole, DecorationSubtype, FormatCategory,
   FormatColorPalette, FormatDimensions, ZonePosition,
+  ImageZoneStyle,
 } from '@/lib/format-types'
 import {
-  BarChart3, Type, Hash, Image, Shapes
+  BarChart3, Type, Hash, Image, Shapes, ImageIcon
 } from 'lucide-react'
 import React from 'react'
 
@@ -18,6 +19,7 @@ export const ZONE_COLORS: Record<string, { bg: string; border: string; accent: s
   stat:       { bg: 'rgba(245, 158, 11, 0.08)',  border: '#f59e0b', accent: '#f59e0b', label: 'Stat' },
   background: { bg: 'rgba(139, 92, 246, 0.08)',  border: '#8b5cf6', accent: '#8b5cf6', label: 'BG' },
   decoration: { bg: 'rgba(236, 72, 153, 0.08)',  border: '#ec4899', accent: '#ec4899', label: 'Deco' },
+  image:      { bg: 'rgba(6, 182, 212, 0.08)',   border: '#06b6d4', accent: '#06b6d4', label: 'Image' },
 }
 
 export const ZONE_ICONS: Record<string, React.ReactNode> = {
@@ -26,6 +28,7 @@ export const ZONE_ICONS: Record<string, React.ReactNode> = {
   stat: React.createElement(Hash, { className: 'w-3.5 h-3.5' }),
   background: React.createElement(Image, { className: 'w-3.5 h-3.5' }),
   decoration: React.createElement(Shapes, { className: 'w-3.5 h-3.5' }),
+  image: React.createElement(ImageIcon, { className: 'w-3.5 h-3.5' }),
 }
 
 // ==========================================
@@ -227,6 +230,18 @@ export function createZone(
         },
       }
     }
+    case 'image': {
+      return {
+        id, type: 'image',
+        position: { x: 60, y: dims.height * 0.3, width: dims.width - 120, height: dims.height * 0.35 },
+        style: {
+          imageFit: 'cover',
+          borderRadius: 8,
+          backgroundColor: '#1e293b',
+        } as ImageZoneStyle,
+        placeholder: subConfig?.placeholder || 'contextual',
+      } as any
+    }
     default:
       throw new Error(`Unknown zone type: ${type}`)
   }
@@ -240,6 +255,7 @@ export function getZoneLabel(zone: FormatZone): string {
     case 'decoration': return zone.subtype
     case 'chart': return 'chart'
     case 'background': return 'background'
+    case 'image': return 'image'
   }
 }
 
