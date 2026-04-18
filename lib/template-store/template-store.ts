@@ -20,8 +20,8 @@ interface TemplateStore {
   clearDraft: () => void
 
   // Generate mode (chart or template)
-  generateMode: 'chart' | 'template'
-  setGenerateMode: (mode: 'chart' | 'template') => void
+  generateMode: 'chart' | 'template' | 'format'
+  setGenerateMode: (mode: 'chart' | 'template' | 'format') => void
 
   // Editor mode state
   editorMode: EditorMode

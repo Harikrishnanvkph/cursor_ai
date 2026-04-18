@@ -320,9 +320,9 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
         }}
       >
         <ChartPreview
-          onToggleSidebar={() => setRightSidebarOpen(!rightSidebarOpen)}
-          isSidebarCollapsed={!rightSidebarOpen}
-          onToggleLeftSidebar={setLeftSidebarOpen}
+          onToggleSidebar={toggleSidebar}
+          isSidebarCollapsed={isCollapsed}
+          onToggleLeftSidebar={() => setLeftSidebarOpen(!leftSidebarOpen)}
           isLeftSidebarCollapsed={!leftSidebarOpen}
         />
       </div>

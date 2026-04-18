@@ -6,7 +6,7 @@ import { extractTemplateStructure, type TemplateStructureMetadata } from './temp
 import { createExpiringStorage } from './storage-utils';
 import type { ChartOptions } from 'chart.js';
 
-// Helper function to get the appropriate initial message based on template mode
+// Helper function to get the appropriate initial message based on template/format mode
 const getInitialMessage = (): ChatMessage => {
   try {
     const templateStore = useTemplateStore.getState();
@@ -16,6 +16,19 @@ const getInitialMessage = (): ChatMessage => {
         content: 'Please attach a template to start the conversation. Select a template from the options above to proceed.',
         timestamp: Date.now()
       };
+    }
+    if (templateStore.generateMode === 'format') {
+      try {
+        const { useFormatGalleryStore } = require('./stores/format-gallery-store');
+        const formatStore = useFormatGalleryStore.getState();
+        if (!formatStore.selectedFormatId) {
+          return {
+            role: 'assistant',
+            content: 'Please select a format to start the conversation. Choose a format from the options above to proceed.',
+            timestamp: Date.now()
+          };
+        }
+      } catch { }
     }
   } catch (error) {
     // If template store is not available, fall back to default
@@ -323,8 +336,34 @@ export const useChatStore = create<ChatStore>()(
           try { controller.abort(); } catch { }
         }, REQUEST_TIMEOUT_MS);
 
+        // Build final input string by appending format notes if in format mode
+        let finalInput = input;
+        const templateStore = useTemplateStore.getState();
+        if (templateStore.generateMode === 'format') {
+          try {
+            const { useFormatGalleryStore } = require('./stores/format-gallery-store');
+            const galleryStore = useFormatGalleryStore.getState();
+            if (galleryStore.selectedFormatId) {
+              const format = galleryStore.formats.find((f: any) => f.id === galleryStore.selectedFormatId) || 
+                             galleryStore.userFormats.find((f: any) => f.id === galleryStore.selectedFormatId);
+              if (format && galleryStore.formatZoneNotes[format.id]) {
+                const notes = galleryStore.formatZoneNotes[format.id];
+                if (Object.keys(notes).length > 0) {
+                  finalInput += `\n\nAdditionally, please follow these instructions for the chart generation:\n`;
+                  Object.entries(notes).forEach(([zoneId, note]) => {
+                    const zoneName = format.skeleton?.zones?.find((z: any) => z.id === zoneId)?.type || zoneId;
+                    finalInput += `- For the ${zoneName} area: ${note}\n`;
+                  });
+                }
+              }
+            }
+          } catch (e) {
+            console.warn('Could not inject format notes:', e);
+          }
+        }
+
         const requestBody: any = {
-          input,
+          input: finalInput,
           conversationId: currentConversationId,
           messageHistory: compactHistory
         };
@@ -333,7 +372,6 @@ export const useChatStore = create<ChatStore>()(
         }
 
         // Include template structure if a template is selected
-        const templateStore = useTemplateStore.getState();
         if (templateStore.currentTemplate) {
           // Pass content type preferences and section notes to extractTemplateStructure
           requestBody.templateStructure = extractTemplateStructure(
@@ -454,14 +492,40 @@ export const useChatStore = create<ChatStore>()(
 
               // Auto-open Format Gallery for new chart creations (not template mode)
               const templateStore = useTemplateStore.getState();
-              if (templateStore.generateMode !== 'template') {
+              if (templateStore.generateMode === 'chart') {
+                // Chart mode: open gallery for user to pick a format
                 try {
                   const { useFormatGalleryStore } = require('./stores/format-gallery-store');
                   useFormatGalleryStore.getState().openGallery();
                 } catch (e) {
                   console.warn('Could not auto-open format gallery:', e);
                 }
+              } else if (templateStore.generateMode === 'format') {
+                // Format mode: format is pre-selected, auto-apply it
+                try {
+                  const { useFormatGalleryStore } = require('./stores/format-gallery-store');
+                  const formatStore = useFormatGalleryStore.getState();
+                  const { renderFormat } = require('./variant-engine');
+                  const { extractContentFromChartData } = require('./variant-engine');
+
+                  if (formatStore.selectedFormatId && formatStore.formats.length > 0) {
+                    const format = formatStore.formats.find((f: any) => f.id === formatStore.selectedFormatId);
+                    if (format && result.chartData) {
+                      // Build content package from the AI result
+                      const contentPackage = extractContentFromChartData(result.chartType, result.chartData, result.chartConfig);
+                      if (contentPackage) {
+                        formatStore.setContentPackage(contentPackage);
+                        // Clear templates and switch to template editor mode for format rendering
+                        templateStore.clearAllTemplateState();
+                        templateStore.setEditorMode('template');
+                      }
+                    }
+                  }
+                } catch (e) {
+                  console.warn('Could not auto-apply pre-selected format:', e);
+                }
               }
+              // Template mode: skip gallery entirely (template handles its own rendering)
             }
 
             // Capture undo point for AI-generated changes, but only if there are actual changes

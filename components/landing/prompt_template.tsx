@@ -1,7 +1,7 @@
 "use client"
 
-import React, { useState } from "react"
-import { BarChart2, Bot, Brain, Forward, FileText, Layout, X, Settings, Info } from "lucide-react"
+import React, { useState, useEffect } from "react"
+import { BarChart2, Bot, Brain, Forward, FileText, Layout, X, Settings, Info, LayoutGrid } from "lucide-react"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/popover"
 import { TemplateSelectionModal } from "./template-selection-modal"
 import { useTemplateStore } from "@/lib/template-store"
+import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
+import { dataService } from "@/lib/data-service"
 
 const chartTemplate = "Create a bar chart comparing the top 5 countries by smartphone usage in 2025. Include country names on the x-axis and number of users on the y-axis."
 
@@ -47,7 +49,42 @@ export function PromptTemplate({
     setContentTypePreferences
   } = useTemplateStore()
 
+  // Format gallery store for format mode
+  const {
+    formats,
+    setFormats,
+    selectedFormatId,
+    isLoadingFormats,
+    setLoadingFormats,
+    setSelectedFormat,
+    clearSelection: clearFormatSelection,
+    isGalleryOpen,
+    openGallery,
+    closeGallery,
+  } = useFormatGalleryStore()
+
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+
+  // Load formats when format mode is first selected
+  useEffect(() => {
+    if (generateMode === 'format' && formats.length === 0 && !isLoadingFormats) {
+      loadFormats()
+    }
+  }, [generateMode, formats.length, isLoadingFormats])
+
+  const loadFormats = async () => {
+    setLoadingFormats(true)
+    try {
+      const res = await dataService.getOfficialFormats()
+      if (!res.error && res.data) {
+        setFormats(res.data)
+      }
+    } catch (err) {
+      console.error('Failed to load formats:', err)
+    } finally {
+      setLoadingFormats(false)
+    }
+  }
 
   const handleSampleClick = () => {
     if (onSampleClick) {
@@ -72,6 +109,17 @@ export function PromptTemplate({
       applyTemplate(templates[0].id)
     }
   }
+
+  const handleChooseFormat = () => {
+    openGallery()
+  }
+
+  const handleCancelFormat = () => {
+    clearFormatSelection()
+  }
+
+  // Get the selected format name
+  const selectedFormat = selectedFormatId ? formats.find(f => f.id === selectedFormatId) : null
 
 
 
@@ -131,10 +179,12 @@ export function PromptTemplate({
               value={generateMode}
               onValueChange={(value) => {
                 if (value) {
-                  const mode = value as 'chart' | 'template'
+                  const mode = value as 'chart' | 'template' | 'format'
                   setGenerateMode(mode)
                   // Also update editorMode so template data gets saved correctly
-                  setEditorMode(mode)
+                  if (mode === 'chart' || mode === 'template') {
+                    setEditorMode(mode)
+                  }
                 }
               }}
               className="w-full bg-white/60 backdrop-blur-md rounded-xl p-1.5 border border-white/80 shadow-inner"
@@ -154,6 +204,14 @@ export function PromptTemplate({
               >
                 <FileText className="w-4 h-4 mr-2" />
                 Template
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value="format"
+                aria-label="Format"
+                className="flex-1 rounded-lg data-[state=on]:bg-gradient-to-r data-[state=on]:from-purple-500 data-[state=on]:to-pink-500 data-[state=on]:text-white data-[state=on]:shadow-md transition-all duration-300 text-slate-600 hover:text-slate-900 data-[state=on]:hover:text-white"
+              >
+                <LayoutGrid className="w-4 h-4 mr-2" />
+                Format
               </ToggleGroupItem>
             </ToggleGroup>
           </div>
@@ -180,7 +238,7 @@ export function PromptTemplate({
                 </div>
               </div>
             </>
-          ) : (
+          ) : generateMode === 'template' ? (
             <>
               {currentTemplate ? (
                 <>
@@ -247,6 +305,76 @@ export function PromptTemplate({
                 </>
               )}
             </>
+          ) : (
+            /* Format Mode */
+            <>
+              {selectedFormat ? (
+                <>
+                  {/* Status Indicator */}
+                  <div className="text-xs text-slate-600 mb-2">
+                    Status: <span className="font-semibold text-purple-600">Attached Format</span>
+                  </div>
+
+                  {/* Format Name with Settings and Cancel Buttons */}
+                  <div className="flex items-center gap-2 w-full">
+                    <div className="flex-1 bg-purple-50 border-2 border-purple-500 rounded-lg px-4 py-3 flex items-center">
+                      <LayoutGrid className="w-4 h-4 text-purple-600 mr-2 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <span className="font-semibold text-purple-900 text-sm truncate block">
+                          {selectedFormat.name}
+                        </span>
+                        <span className="text-[10px] text-purple-600">
+                          {selectedFormat.dimensions?.width}×{selectedFormat.dimensions?.height} · {selectedFormat.category}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Change Format Button */}
+                    <button
+                      onClick={handleChooseFormat}
+                      className="w-10 h-10 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-600 hover:text-purple-700 flex items-center justify-center hover:scale-105 flex-shrink-0 border border-purple-200"
+                      aria-label="Change format"
+                    >
+                      <Settings className="w-5 h-5" />
+                    </button>
+
+                    {/* Cancel Button */}
+                    <button
+                      onClick={handleCancelFormat}
+                      className="w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 flex items-center justify-center hover:scale-105 flex-shrink-0"
+                      aria-label="Remove format"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  {/* Instruction text */}
+                  <div className="text-center">
+                    <div className="text-xs text-slate-500">
+                      Now describe your chart in the chat panel →
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Button
+                    onClick={handleChooseFormat}
+                    disabled={isLoadingFormats}
+                    className="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-medium px-4 py-6 rounded-2xl hover:shadow-xl hover:shadow-purple-500/20 transition-all duration-300 hover:-translate-y-0.5"
+                  >
+                    <LayoutGrid className="w-5 h-5 mr-2" />
+                    {isLoadingFormats ? 'Loading Formats...' : 'Choose a Format'}
+                  </Button>
+
+                  <div className="p-3 bg-purple-50/60 border border-purple-200/50 rounded-xl flex items-start gap-2">
+                    <Info className="w-3.5 h-3.5 text-purple-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-[11px] text-purple-800 leading-relaxed">
+                      Formats are visual layouts that turn your chart into a polished infographic with statistics, text, and styled backgrounds.
+                    </p>
+                  </div>
+                </>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -261,4 +389,4 @@ export function PromptTemplate({
 }
 
 // Export the template text for use in other components
-export { chartTemplate } 
+export { chartTemplate }

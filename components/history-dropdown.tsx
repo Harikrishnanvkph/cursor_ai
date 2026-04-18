@@ -12,7 +12,7 @@ import { useRouter, usePathname } from "next/navigation"
 import { toast } from "sonner"
 
 interface HistoryDropdownProps {
-  variant?: 'full' | 'compact' | 'inline' | 'sidebar'
+  variant?: 'full' | 'compact' | 'inline' | 'sidebar' | 'icon-badge'
 }
 
 export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
@@ -119,8 +119,8 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
     setClearConfirmOpen(true)
   }
 
-  if (variant === 'compact') {
-    // Compact mode: icon only with dropdown indicator (for collapsed sidebar)
+  if (variant === 'compact' || variant === 'icon-badge') {
+    // Compact mode / Icon-Badge mode
     return (
       <>
         <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -130,9 +130,14 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
               aria-label="Open history"
               variant="outline"
               size="sm"
-              className="h-10 w-10 p-0 border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-transparent"
+              className={`relative h-10 w-10 p-0 border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-transparent ${variant === 'icon-badge' ? 'rounded-full bg-white shadow-sm h-9 w-9 border' : ''}`}
             >
               <History className="h-4 w-4" />
+              {variant === 'icon-badge' && safeConversations.length > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 bg-purple-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center shadow-md border border-white">
+                  {safeConversations.length > 99 ? '99+' : safeConversations.length}
+                </span>
+              )}
             </Button>
           </DropdownMenuTrigger>
 

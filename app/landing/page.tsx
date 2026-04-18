@@ -53,7 +53,7 @@ function LandingPageContent() {
 
   const { addConversation, loadConversationsFromBackend, restoreConversation } = useHistoryStore()
   const { generateMode, currentTemplate, syncTemplatesFromCloud } = useTemplateStore()
-  const { isGalleryOpen, openGallery } = useFormatGalleryStore()
+  const { isGalleryOpen, openGallery, selectedFormatId } = useFormatGalleryStore()
   const [input, setInput] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -98,17 +98,19 @@ function LandingPageContent() {
     }
   }, []) // Empty deps - only runs on mount
 
-  // Check if chat should be disabled (template mode but no template attached)
-  const isChatDisabled = generateMode === 'template' && !currentTemplate
+  // Check if chat should be disabled (template mode but no template attached, or format mode but no format selected)
+  const isChatDisabled = (generateMode === 'template' && !currentTemplate) || (generateMode === 'format' && !selectedFormatId)
 
-  // Update initial message when template mode changes
+  // Update initial message when template/format mode changes
   useEffect(() => {
     // Only update if we have just the initial message
     if (messages.length === 1 && messages[0].role === 'assistant') {
       const templateMessage = 'Please attach a template to start the conversation. Select a template from the options via "Choose From Templates".';
+      const formatMessage = 'Please select a format to start the conversation. Choose a format from the options above to proceed.';
       const defaultMessage = 'Hi! Describe the chart you want to create, or ask me to modify an existing chart.';
 
       const shouldShowTemplateMessage = generateMode === 'template' && !currentTemplate;
+      const shouldShowFormatMessage = generateMode === 'format' && !selectedFormatId;
       const currentMessage = messages[0].content;
 
       if (shouldShowTemplateMessage && currentMessage !== templateMessage) {
@@ -116,14 +118,19 @@ function LandingPageContent() {
           ...messages[0],
           content: templateMessage
         }]);
-      } else if (!shouldShowTemplateMessage && currentMessage === templateMessage) {
+      } else if (shouldShowFormatMessage && currentMessage !== formatMessage) {
+        setMessages([{
+          ...messages[0],
+          content: formatMessage
+        }]);
+      } else if (!shouldShowTemplateMessage && !shouldShowFormatMessage && (currentMessage === templateMessage || currentMessage === formatMessage)) {
         setMessages([{
           ...messages[0],
           content: defaultMessage
         }]);
       }
     }
-  }, [generateMode, currentTemplate, messages, setMessages])
+  }, [generateMode, currentTemplate, selectedFormatId, messages, setMessages])
   const [showActiveBanner, setShowActiveBanner] = useState(false)
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true)
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true)
@@ -629,7 +636,7 @@ function LandingPageContent() {
                       <textarea
                         ref={textareaRef}
                         className="flex-1 rounded-lg border border-slate-200/100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white/80 resize-none max-h-24 min-h-[36px] leading-relaxed transition-colors font-sans shadow-sm backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                        placeholder={isChatDisabled ? "Attach a template to start..." : (hasActiveChart ? "Modify the chart..." : "Describe your chart...")}
+                        placeholder={isChatDisabled ? (generateMode === 'format' ? "Select a format to start..." : "Attach a template to start...") : (hasActiveChart ? "Modify the chart..." : "Describe your chart...")}
                         value={input}
                         onChange={handleInputChange}
                         onPaste={handlePaste}
@@ -873,7 +880,7 @@ function LandingPageContent() {
                       <textarea
                         ref={textareaRef}
                         className="flex-1 rounded-lg border border-slate-200/100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white/80 resize-none max-h-20 min-h-[36px] leading-relaxed transition-colors font-sans shadow-sm backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                        placeholder={isChatDisabled ? "Attach a template to start..." : (hasActiveChart ? "Modify the chart..." : "Describe your chart...")}
+                        placeholder={isChatDisabled ? (generateMode === 'format' ? "Select a format to start..." : "Attach a template to start...") : (hasActiveChart ? "Modify the chart..." : "Describe your chart...")}
                         value={input}
                         onChange={handleInputChange}
                         onPaste={handlePaste}
@@ -941,7 +948,7 @@ function LandingPageContent() {
     <div className="flex h-screen w-screen bg-gradient-to-b from-indigo-50/50 via-white to-slate-50 relative overflow-hidden">
       <AnimatedBackground />
       {/* Floating global header for history and avatar, only when no chart is created and no template modal is open - Desktop only */}
-      {(!chartData?.datasets?.length || !hasJSON) && !isTablet && !isMobile && !isTemplateModalOpen && (
+      {(!chartData?.datasets?.length || !hasJSON) && !isTablet && !isMobile && !isTemplateModalOpen && !isGalleryOpen && (
         <div className="fixed top-4 right-4 z-50 flex items-center gap-3">
 
           <HistoryDropdown variant="full" />
@@ -1024,7 +1031,7 @@ function LandingPageContent() {
               <textarea
                 ref={textareaRef}
                 className="flex-1 rounded-lg border border-slate-200/100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white/80 resize-none max-h-24 min-h-[40px] leading-relaxed transition-colors font-sans shadow-sm backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                placeholder={isChatDisabled ? "Attach a template to start..." : (hasActiveChart ? "Modify the chart..." : "Describe your chart...")}
+                placeholder={isChatDisabled ? (generateMode === 'format' ? "Select a format to start..." : "Attach a template to start...") : (hasActiveChart ? "Modify the chart..." : "Describe your chart...")}
                 value={input}
                 onChange={handleInputChange}
                 onPaste={handlePaste}

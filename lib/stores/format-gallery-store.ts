@@ -46,6 +46,7 @@ interface FormatGalleryStore {
   clearFilters: () => void
 
   // ── Interactive Zone State ──────────────────────────
+  // Interactive Zone State
   /** Currently hovered zone (highlight on hover) */
   hoveredZoneId: string | null
   setHoveredZoneId: (id: string | null) => void
@@ -57,6 +58,12 @@ interface FormatGalleryStore {
   setEditingZoneId: (id: string | null) => void
   /** Update a specific zone's style in the selected format skeleton */
   updateZoneStyle: (zoneId: string, styleUpdates: Record<string, any>) => void
+
+  // AI Generation Notes
+  /** Format-specific notes provided by the user for generation. formatId -> zoneId -> noteText */
+  formatZoneNotes: Record<string, Record<string, string>>
+  setFormatZoneNote: (formatId: string, zoneId: string, note: string) => void
+  clearFormatZoneNote: (formatId: string, zoneId: string) => void
 
   // Reset all gallery state
   resetGallery: () => void
@@ -130,6 +137,25 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
       return { formats }
     }),
 
+    // AI Generation Notes
+    formatZoneNotes: {},
+    setFormatZoneNote: (formatId, zoneId, note) => set((state) => ({
+      formatZoneNotes: {
+        ...state.formatZoneNotes,
+        [formatId]: {
+          ...(state.formatZoneNotes[formatId] || {}),
+          [zoneId]: note
+        }
+      }
+    })),
+    clearFormatZoneNote: (formatId, zoneId) => set((state) => {
+      const updatedNotes = { ...state.formatZoneNotes };
+      if (updatedNotes[formatId]) {
+        delete updatedNotes[formatId][zoneId];
+      }
+      return { formatZoneNotes: updatedNotes };
+    }),
+
     // Reset
     resetGallery: () => set({
       isGalleryOpen: false,
@@ -144,7 +170,8 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
       contextualImageUrl: null,
       hoveredZoneId: null,
       selectedZoneId: null,
-      editingZoneId: null
+      editingZoneId: null,
+      formatZoneNotes: {}
     })
   })
 )
