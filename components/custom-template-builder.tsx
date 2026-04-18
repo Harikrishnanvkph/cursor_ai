@@ -508,7 +508,7 @@ export function CustomTemplateBuilder({ adminMode = false }: CustomTemplateBuild
   return (
     <div className="flex h-full">
       {isBusy && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/20 backdrop-blur-[2px]">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50">
           <div className="flex items-center gap-3 rounded-md bg-white px-5 py-3 shadow-lg border border-gray-200">
             <div className="h-6 w-6 rounded-full border-2 border-blue-600 border-t-transparent animate-spin" />
             <span className="text-sm font-semibold text-gray-800">

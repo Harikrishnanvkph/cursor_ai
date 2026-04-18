@@ -752,7 +752,7 @@ export default function DocumentationPage() {
   return (
     <div className="min-h-screen bg-white text-slate-900 flex flex-col">
       {/* Navbar / Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur-sm">
+      <header className="sticky top-0 z-50 w-full border-b bg-white shadow-sm">
         <div className="mx-auto flex h-14 max-w-[1400px] items-center gap-4 px-4 sm:px-6 lg:px-8">
           <Button
             variant="ghost"
@@ -838,7 +838,7 @@ export default function DocumentationPage() {
         {/* Backdrop for mobile */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 z-30 bg-black/20 backdrop-blur-sm md:hidden"
+            className="fixed inset-0 z-30 bg-black/50 md:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}

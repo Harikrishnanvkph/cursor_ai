@@ -42,7 +42,7 @@ export function SiteHeader() {
     <header 
       className={`fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300 border-b ${
         scrolled 
-          ? "bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-slate-200/80 dark:border-slate-800/80 shadow-sm" 
+          ? "bg-white dark:bg-slate-950 border-slate-200/80 dark:border-slate-800/80 shadow-sm" 
           : isHomepage 
             ? "bg-transparent border-transparent" 
             : "bg-white dark:bg-slate-950 border-transparent dark:border-slate-900"

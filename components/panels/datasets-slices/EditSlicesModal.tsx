@@ -359,7 +359,7 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
             <div className="min-w-fit inline-block w-full">
               {/* Sticky Header Row */}
               <div
-                className="sticky top-0 z-10 grid gap-3 items-center px-4 py-2 bg-gray-50 border-b text-[11px] font-medium text-gray-500 uppercase tracking-wider backdrop-blur-sm bg-gray-50/90"
+                className="sticky top-0 z-10 grid gap-3 items-center px-4 py-2 bg-gray-50 border-b text-[11px] font-medium text-gray-500 uppercase tracking-wider"
                 style={{ gridTemplateColumns, minWidth: '100%' }}
               >
                 <div className="text-center">#</div>

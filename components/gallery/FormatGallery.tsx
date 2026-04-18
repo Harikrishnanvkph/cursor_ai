@@ -35,7 +35,12 @@ const CATEGORY_OPTIONS: { label: string; value: string; color: string }[] = [
   { label: 'Template', value: 'template', color: 'bg-cyan-50 text-cyan-600 border-cyan-200' },
 ]
 
-export function FormatGallery() {
+interface FormatGalleryProps {
+  leftSidebarOpen?: boolean;
+  setLeftSidebarOpen?: (open: boolean) => void;
+}
+
+export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGalleryProps) {
   const {
     formats,
     setFormats,
@@ -62,6 +67,13 @@ export function FormatGallery() {
   const [activeTab, setActiveTab] = useState<'official' | 'mine'>('official')
   const [previewFormatId, setPreviewFormatId] = useState<string | null>(null)
   const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({})
+
+  // If left sidebar expands, collapse the format side section
+  useEffect(() => {
+    if (leftSidebarOpen && previewFormatId) {
+      setPreviewFormatId(null)
+    }
+  }, [leftSidebarOpen])
 
   // Access chart store for current chart data
   const { chartType, chartData, chartConfig, hasJSON } = useChartStore()
@@ -167,6 +179,7 @@ export function FormatGallery() {
 
   const handlePreviewClick = (formatId: string) => {
     setPreviewFormatId(formatId)
+    if (setLeftSidebarOpen) setLeftSidebarOpen(false)
   }
 
   const toggleNoteExpanded = (zoneId: string) => {
@@ -193,12 +206,16 @@ export function FormatGallery() {
       setSelectedFormat(previewFormat.id, 'bar')
       toast.info(`Format "${previewFormat.name}" selected. Generate a chart to see it applied.`)
     }
+
+    // Once handled, close gallery and automatically open the chat sidebar for immediate usage
+    closeGallery()
+    if (setLeftSidebarOpen) setLeftSidebarOpen(true)
   }
 
   return (
     <div className="flex flex-col flex-1 h-full bg-gradient-to-br from-gray-50 to-white w-full overflow-hidden">
       {/* Header */}
-      <div className="flex flex-shrink-0 items-center justify-between px-5 py-3 border-b border-gray-200 bg-white/80 backdrop-blur-sm z-10">
+      <div className="flex flex-shrink-0 items-center justify-between px-5 py-3 border-b border-gray-200 bg-white z-10">
         <div className="flex items-center gap-4">
           <button
             onClick={closeGallery}
@@ -337,51 +354,82 @@ export function FormatGallery() {
                 <div className="flex items-center gap-4">
                   <h2 className="text-xl font-extrabold text-gray-900">{previewFormat.name}</h2>
                 </div>
-                <Button
-                  onClick={handleConfirmSelect}
-                  className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md transition-all h-9 px-4"
-                >
-                  <Check className="w-4 h-4 mr-1.5" />
-                  Use This Format
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleConfirmSelect}
+                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md transition-all h-9 px-4"
+                  >
+                    <Check className="w-4 h-4 mr-1.5" />
+                    Use Format
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setPreviewFormatId(null)}
+                    className="h-9 w-9 p-0 text-gray-400 hover:text-gray-600 border-gray-200"
+                    title="Cancel Selection"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
 
               {/* Scaled Preview */}
-              <div className="rounded-xl overflow-hidden bg-gray-50 border border-gray-200 p-4 mb-6 shadow-inner">
+              <div className="flex-shrink-0 rounded-xl overflow-hidden bg-gray-50 border border-gray-200 p-4 mb-6 shadow-inner">
                 <div className="flex items-center gap-2 mb-3">
                   <Eye className="w-4 h-4 text-gray-600" />
                   <h4 className="text-sm font-semibold text-gray-800">Format Structure</h4>
                 </div>
-                <div 
-                  className="relative mx-auto border border-gray-300 bg-white rounded-sm shadow-md"
-                  style={{
-                    width: `${Math.min(previewFormat.dimensions.width * 0.3, 300)}px`,
-                    height: `${Math.min(previewFormat.dimensions.height * 0.3, 250)}px`,
-                    backgroundColor: (previewFormat.skeleton as any)?.colorPalette?.background || '#ffffff',
-                  }}
-                >
-                  {((previewFormat.skeleton as any)?.zones || []).map((zone: any) => {
-                    const scale = Math.min(0.3, 300 / previewFormat.dimensions.width)
-                    if (zone.type === 'chart') {
-                      return (
-                        <div key={zone.id} className="absolute border border-dashed border-indigo-400 bg-indigo-50/50 flex items-center justify-center text-[9px] text-indigo-700 font-medium rounded"
-                          style={{ left: `${zone.position.x * scale}px`, top: `${zone.position.y * scale}px`, width: `${zone.position.width * scale}px`, height: `${zone.position.height * scale}px` }}
-                        >
-                          Chart
-                        </div>
-                      )
-                    } else if (zone.type === 'text' || zone.type === 'stat') {
-                      return (
-                         <div key={zone.id} className="absolute border border-pink-400 bg-pink-50/60 text-pink-700 flex items-center justify-center text-[9px] font-medium rounded"
-                          style={{ left: `${zone.position.x * scale}px`, top: `${zone.position.y * scale}px`, width: `${zone.position.width * scale}px`, height: `${zone.position.height * scale}px` }}
-                        >
-                          {zone.role || zone.type}
-                        </div>
-                      )
-                    }
-                    return null
-                  })}
-                </div>
+                {(() => {
+                  const scaleW = 280 / previewFormat.dimensions.width;
+                  const scaleH = 200 / previewFormat.dimensions.height;
+                  const scale = Math.min(0.3, Math.min(scaleW, scaleH));
+                  return (
+                    <div 
+                      className="relative mx-auto border border-gray-300 bg-white rounded-sm shadow-md"
+                      style={{
+                        width: `${previewFormat.dimensions.width * scale}px`,
+                        height: `${previewFormat.dimensions.height * scale}px`,
+                        backgroundColor: (previewFormat.skeleton as any)?.colorPalette?.background || '#ffffff',
+                      }}
+                    >
+                      {((previewFormat.skeleton as any)?.zones || []).map((zone: any) => {
+                        const pos = zone.position || { x: 0, y: 0, width: previewFormat.dimensions.width, height: previewFormat.dimensions.height }
+                        if (zone.type === 'chart') {
+                          return (
+                            <div key={zone.id} className="absolute border border-dashed border-indigo-400 bg-indigo-50/50 flex items-center justify-center text-[9px] text-indigo-700 font-medium rounded"
+                              style={{ left: `${pos.x * scale}px`, top: `${pos.y * scale}px`, width: `${pos.width * scale}px`, height: `${pos.height * scale}px`, zIndex: 10 }}
+                            >
+                              Chart
+                            </div>
+                          )
+                        } else if (zone.type === 'text' || zone.type === 'stat') {
+                          return (
+                             <div key={zone.id} className="absolute border border-pink-400 bg-pink-50/60 text-pink-700 flex items-center justify-center text-[9px] font-medium rounded p-1 text-center overflow-hidden leading-tight"
+                              style={{ left: `${pos.x * scale}px`, top: `${pos.y * scale}px`, width: `${pos.width * scale}px`, height: `${pos.height * scale}px`, zIndex: 20 }}
+                            >
+                              {zone.role || zone.type}
+                            </div>
+                          )
+                        } else if (zone.type === 'image') {
+                          return (
+                             <div key={zone.id} className="absolute border border-teal-400 bg-teal-50/40 text-teal-700 flex items-center justify-center text-[9px] font-medium rounded p-1 text-center overflow-hidden leading-tight"
+                              style={{ left: `${pos.x * scale}px`, top: `${pos.y * scale}px`, width: `${pos.width * scale}px`, height: `${pos.height * scale}px`, zIndex: 5 }}
+                            >
+                              Image
+                            </div>
+                          )
+                        } else if (zone.type === 'background') {
+                          return (
+                             <div key={zone.id} className="absolute"
+                              style={{ left: `${pos.x * scale}px`, top: `${pos.y * scale}px`, width: `${pos.width * scale}px`, height: `${pos.height * scale}px`, backgroundColor: (zone as any)?.styles?.backgroundColor || '#f1f5f9', zIndex: 1 }}
+                            />
+                          )
+                        }
+                        return null
+                      })}
+                    </div>
+                  )
+                })()}
               </div>
 
               {/* AI Generation Notes Area */}

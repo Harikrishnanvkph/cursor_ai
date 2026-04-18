@@ -214,7 +214,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
 
   if (viewMode === "list") {
     return (
-      <Card className="group border-0 shadow-lg bg-white/90 backdrop-blur-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5">
+      <Card className="group border shadow-sm border-gray-200 bg-white hover:shadow-md transition-all duration-300 hover:-translate-y-0.5">
         <CardContent className="p-4">
           <div className="flex items-center gap-4">
             {/* Enhanced Mini Preview */}
@@ -332,7 +332,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
 
   // Grid view
   return (
-    <Card className="group relative overflow-hidden border-0 shadow-lg bg-white/90 backdrop-blur-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+    <Card className="group relative overflow-hidden border shadow-sm border-gray-200 bg-white hover:shadow-md transition-all duration-300 hover:-translate-y-1">
       {/* Gradient Border Effect */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 via-purple-500/20 to-indigo-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
@@ -348,13 +348,13 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
           </div>
 
           {/* Chart Icon */}
-          <div className="relative z-10 p-4 bg-white/80 backdrop-blur-sm rounded-xl shadow-sm">
+          <div className="relative z-10 p-4 bg-white rounded-xl shadow-sm border border-gray-100">
             {getChartIcon()}
           </div>
 
           {/* Hover Overlay */}
           <div className="absolute inset-0 bg-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-            <div className="bg-white/90 backdrop-blur-sm rounded-full p-2 transform scale-75 group-hover:scale-100 transition-transform duration-300">
+            <div className="bg-white rounded-full p-2 border border-gray-100 transform scale-75 group-hover:scale-100 transition-transform duration-300">
               <Eye className="w-5 h-5 text-blue-600" />
             </div>
           </div>

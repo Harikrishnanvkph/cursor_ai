@@ -113,7 +113,7 @@ export function VariantCard({ format, onSelect, isSelected, renderedVariant }: V
 
         {/* Hover overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-3">
-          <span className="text-white text-xs font-medium px-3 py-1 rounded-full bg-purple-600/90 backdrop-blur-sm">
+          <span className="text-white text-xs font-medium px-3 py-1 rounded-full bg-purple-600">
             Select Format
           </span>
         </div>

@@ -31,7 +31,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   // If user is not authenticated, show sign-in prompt
   return (
     <div className="flex h-screen w-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 items-center justify-center p-4">
-      <Card className="w-full max-w-md bg-white/90 backdrop-blur-xl border-white/20 shadow-2xl">
+      <Card className="w-full max-w-md bg-white border-gray-200 shadow-2xl">
         <CardHeader className="text-center pb-4">
           <div className="mx-auto mb-4 p-3 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl shadow-lg">
             <BarChart2 className="h-8 w-8 text-white" />

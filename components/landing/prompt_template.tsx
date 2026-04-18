@@ -156,13 +156,13 @@ export function PromptTemplate({
 
   return (
     <div className={`flex items-center justify-center h-full ${styles.padding} ${className}`}>
-      <div className={`relative flex flex-col items-center justify-center w-full ${styles.container} bg-white/70 backdrop-blur-2xl rounded-3xl shadow-[0_8px_32px_0_rgba(79,70,229,0.1)] border border-white/60 overflow-hidden`}>
+      <div className={`relative flex flex-col items-center justify-center w-full ${styles.container} bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden`}>
         {/* Subtle inner highlight */}
         <div className="absolute inset-0 bg-gradient-to-b from-white/40 to-transparent pointer-events-none"></div>
 
         <div className="relative flex flex-col items-center justify-center mb-6 w-full">
           <div className={`${styles.title} inline-flex items-center font-extrabold bg-gradient-to-r from-slate-900 via-indigo-800 to-purple-800 bg-clip-text text-transparent mb-3 text-center tracking-tight`}>
-            <span className="text-sm inline text-slate-500 mr-3 p-2 bg-white/50 rounded-xl shadow-sm border border-slate-100/50 backdrop-blur-md"><Bot className="w-5 h-5" /></span>
+            <span className="text-sm inline text-slate-500 mr-3 p-2 bg-white rounded-xl shadow-sm border border-gray-100"><Bot className="w-5 h-5" /></span>
             <h2>Create Your Chart with AI Prompt</h2>
           </div>
           <p className={`text-slate-500 text-center max-w-md mx-auto leading-relaxed ${styles.description}`}>
@@ -187,7 +187,7 @@ export function PromptTemplate({
                   }
                 }
               }}
-              className="w-full bg-white/60 backdrop-blur-md rounded-xl p-1.5 border border-white/80 shadow-inner"
+              className="w-full bg-gray-50 rounded-xl p-1.5 border border-gray-200 shadow-inner"
             >
               <ToggleGroupItem
                 value="chart"
@@ -221,7 +221,7 @@ export function PromptTemplate({
             <>
               <button
                 onClick={handleSampleClick}
-                className="w-full bg-gradient-to-r from-indigo-50/80 to-purple-50/80 hover:from-indigo-100/90 hover:to-purple-100/90 text-slate-800 font-medium px-5 py-4 rounded-2xl border border-indigo-200/50 text-left hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 group text-sm backdrop-blur-sm"
+                className="w-full bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-slate-800 font-medium px-5 py-4 rounded-2xl border border-indigo-200/50 text-left hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 group text-sm"
               >
                 <div className="font-semibold flex items-center gap-2 mb-1.5">
                   <div className="p-1.5 bg-white/60 rounded-md group-hover:bg-white/80 shadow-sm transition-colors border border-indigo-100/50">
@@ -297,7 +297,7 @@ export function PromptTemplate({
                   <Button
                     variant="outline"
                     onClick={handleChooseTemplates}
-                    className="w-full bg-white/50 backdrop-blur-sm border-indigo-200/60 text-indigo-600 hover:bg-white/80 hover:border-indigo-300 font-medium px-4 py-6 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5"
+                    className="w-full bg-white border-indigo-200/60 text-indigo-600 hover:bg-gray-50 hover:border-indigo-300 font-medium px-4 py-6 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5"
                   >
                     <FileText className="w-5 h-5 mr-2" />
                     Choose From Templates

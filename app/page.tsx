@@ -166,7 +166,7 @@ export default function HomePage() {
           {/* Floating Welcome Popup for Authenticated Users */}
           {user && showWelcome && (
             <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] animate-pop-in pointer-events-auto">
-              <div className="bg-white/80 dark:bg-slate-900/90 backdrop-blur-xl border border-indigo-500/20 rounded-2xl p-1 shadow-2xl shadow-indigo-500/20 max-w-sm w-full mx-auto ring-1 ring-white/20">
+              <div className="bg-white dark:bg-slate-900 border border-indigo-500/20 rounded-2xl p-1 shadow-2xl shadow-indigo-500/20 max-w-sm w-full mx-auto ring-1 ring-black/5 dark:ring-white/10">
                 <div className="flex items-center justify-between gap-4 pl-3 pr-2 py-1.5">
                   <div className="flex items-center gap-3">
                     {user.avatar_url ? (
@@ -236,7 +236,7 @@ export default function HomePage() {
             <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 sm:pt-28 sm:pb-32">
               <div className="text-center space-y-8">
                 {/* Badge */}
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 dark:bg-white/5 border border-indigo-100 dark:border-white/10 backdrop-blur-sm text-indigo-600 dark:text-indigo-300 text-sm font-medium transition-colors">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 dark:bg-slate-800 border border-indigo-100 dark:border-slate-700 text-indigo-600 dark:text-indigo-300 text-sm font-medium transition-colors">
                   <Sparkles className="w-4 h-4" />
                   AI-Powered Chart Creation Platform
                   <ArrowRight className="w-3 h-3 ml-1" />
@@ -267,14 +267,14 @@ export default function HomePage() {
                   </Button>
 
                   {user ? (
-                    <Button asChild size="lg" variant="outline" className="px-8 py-6 text-base font-semibold bg-transparent border-slate-200 dark:border-white/20 text-slate-700 dark:text-white hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/10 backdrop-blur-sm transition-all duration-300 rounded-xl">
+                    <Button asChild size="lg" variant="outline" className="px-8 py-6 text-base font-semibold bg-white border-slate-200 dark:border-slate-700 dark:bg-slate-800 text-slate-700 dark:text-white hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-700 transition-all duration-300 rounded-xl">
                       <Link href="/board">
                         <LayoutDashboard className="w-5 h-5 mr-2" />
                         View Dashboard
                       </Link>
                     </Button>
                   ) : (
-                    <Button asChild size="lg" variant="outline" className="px-8 py-6 text-base font-semibold bg-transparent border-slate-200 dark:border-white/20 text-slate-700 dark:text-white hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/10 backdrop-blur-sm transition-all duration-300 rounded-xl">
+                    <Button asChild size="lg" variant="outline" className="px-8 py-6 text-base font-semibold bg-white border-slate-200 dark:border-slate-700 dark:bg-slate-800 text-slate-700 dark:text-white hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-700 transition-all duration-300 rounded-xl">
                       <Link href="/editor">
                         <Edit3 className="w-5 h-5 mr-2" />
                         Try Advanced Editor
@@ -493,7 +493,7 @@ export default function HomePage() {
                       </Link>
                     </Button>
 
-                    <Button asChild size="lg" variant="outline" className="px-8 py-6 text-base font-semibold bg-transparent border-2 border-white/25 text-white hover:text-white hover:bg-white/10 backdrop-blur-sm transition-all duration-300 rounded-xl">
+                    <Button asChild size="lg" variant="outline" className="px-8 py-6 text-base font-semibold bg-slate-800 border-2 border-slate-700 text-white hover:text-white hover:bg-slate-700 transition-all duration-300 rounded-xl">
                       <Link href="/editor">
                         <Edit3 className="w-5 h-5 mr-2" />
                         Explore Editor

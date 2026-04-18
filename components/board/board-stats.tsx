@@ -160,7 +160,7 @@ export function BoardStats({ conversations, allConversations }: BoardStatsProps)
       {/* Main Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((stat, index) => (
-          <Card key={index} className="relative overflow-hidden border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300 group">
+          <Card key={index} className="relative overflow-hidden border shadow-sm border-gray-200 bg-white hover:shadow-md transition-all duration-300 group">
             {/* Background Gradient */}
             <div className={`absolute inset-0 bg-gradient-to-br ${stat.bgGradient} opacity-50`} />
 
@@ -200,7 +200,7 @@ export function BoardStats({ conversations, allConversations }: BoardStatsProps)
 
       {/* Chart Mode Breakdown */}
       {stats.totalCharts > 0 && (
-        <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+        <Card className="border shadow-sm border-gray-200 bg-white">
           <CardHeader className="py-3 px-5">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-semibold text-gray-900 flex items-center gap-2">

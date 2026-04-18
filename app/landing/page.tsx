@@ -462,7 +462,7 @@ function LandingPageContent() {
       <div className="flex h-screen w-screen bg-gradient-to-b from-indigo-50/50 via-white to-slate-50 relative overflow-hidden">
         <AnimatedBackground />
         {/* Header */}
-        <header className="fixed top-0 left-0 right-0 z-40 h-16 bg-white/95 backdrop-blur-xl border-b border-white/30 shadow-lg">
+        <header className="fixed top-0 left-0 right-0 z-40 h-16 bg-white border-b border-gray-200 shadow-sm">
           <div className="flex items-center justify-between h-full px-6">
             {/* Left: App Logo */}
             <div className="flex items-center gap-3 min-w-0">
@@ -486,7 +486,7 @@ function LandingPageContent() {
         </header>
 
         {/* Left Icon Sidebar */}
-        <aside className="fixed left-0 top-16 bottom-0 w-16 bg-white/90 backdrop-blur-xl border-r border-white/20 shadow-lg z-30 flex flex-col items-center py-4 space-y-4">
+        <aside className="fixed left-0 top-16 bottom-0 w-16 bg-white border-r border-gray-200 shadow-sm z-30 flex flex-col items-center py-4 space-y-4">
 
           {/* New Chat Icon */}
           <button
@@ -578,7 +578,7 @@ function LandingPageContent() {
           <div className="fixed inset-0 z-50">
             {/* Backdrop */}
             <div
-              className="absolute inset-0 bg-black/20 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/50"
               onClick={closeTabletSidebar}
             />
 
@@ -631,12 +631,12 @@ function LandingPageContent() {
                     {/* Chat Input - Tablet */}
                     <form
                       onSubmit={handleSend}
-                      className="p-2 border-b border-white/20 bg-gradient-to-br from-blue/90 to-blue-50/90 flex gap-2 shadow-inner backdrop-blur-sm flex-shrink-0"
+                      className="p-2 border-b border-gray-200 bg-white flex gap-2 flex-shrink-0"
                     >
                       <textarea
                         ref={textareaRef}
-                        className="flex-1 rounded-lg border border-slate-200/100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white/80 resize-none max-h-24 min-h-[36px] leading-relaxed transition-colors font-sans shadow-sm backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                        placeholder={isChatDisabled ? (generateMode === 'format' ? "Select a format to start..." : "Attach a template to start...") : (hasActiveChart ? "Modify the chart..." : "Describe your chart...")}
+                        className="flex-1 rounded-lg border border-slate-200/100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white resize-none max-h-24 min-h-[36px] leading-relaxed transition-colors font-sans shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        placeholder={isChatDisabled ? (generateMode === 'format' ? "Select a format to start..." : "Attach a template to start...") : (hasActiveChart ? "Modify the chart..." : "Ask AI to Generate Chart...")}
                         value={input}
                         onChange={handleInputChange}
                         onPaste={handlePaste}
@@ -706,7 +706,7 @@ function LandingPageContent() {
       <div className="flex flex-col h-screen w-screen bg-gradient-to-b from-indigo-50/50 via-white to-slate-50 relative overflow-hidden">
         <AnimatedBackground />
         {/* Header */}
-        <header className="fixed top-0 left-0 right-0 z-40 h-14 bg-white/95 backdrop-blur-xl border-b border-white/30 shadow-lg">
+        <header className="fixed top-0 left-0 right-0 z-40 h-14 bg-white border-b border-gray-200 shadow-sm">
           <div className="flex items-center justify-between h-full px-4">
             {/* Left: App Logo */}
             <div className="flex items-center gap-2 min-w-0">
@@ -758,7 +758,7 @@ function LandingPageContent() {
         </main>
 
         {/* Bottom Navigation Bar */}
-        <nav className="fixed bottom-0 left-0 right-0 z-30 h-16 bg-white/95 backdrop-blur-xl border-t border-white/30 shadow-lg">
+        <nav className="fixed bottom-0 left-0 right-0 z-30 h-16 bg-white border-t border-gray-200 shadow-sm">
           <div className="flex items-center justify-around h-full px-2">
 
             {/* New Chat Icon */}
@@ -823,9 +823,9 @@ function LandingPageContent() {
 
         {/* Right Overlay Sidebar for Mobile */}
         {mobileRightSidebarOpen && (
-          <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm" onClick={closeMobileSidebar}>
+          <div className="fixed inset-0 z-50 bg-black/50" onClick={closeMobileSidebar}>
             <div
-              className="absolute right-0 top-0 bottom-0 w-[92vw] sm:w-80 max-w-md bg-white/95 backdrop-blur-xl shadow-2xl border-l border-white/30 flex flex-col"
+              className="absolute right-0 top-0 bottom-0 w-[92vw] sm:w-80 max-w-md bg-white shadow-2xl border-l border-gray-200 flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Sidebar Header */}
@@ -875,12 +875,12 @@ function LandingPageContent() {
                     {/* Chat Input - Mobile */}
                     <form
                       onSubmit={handleSend}
-                      className="p-2 border-b border-white/20 bg-gradient-to-br from-blue/90 to-blue-50/90 flex gap-2 shadow-inner backdrop-blur-sm flex-shrink-0"
+                      className="p-2 border-b border-gray-200 bg-white flex gap-2 flex-shrink-0"
                     >
                       <textarea
                         ref={textareaRef}
-                        className="flex-1 rounded-lg border border-slate-200/100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white/80 resize-none max-h-20 min-h-[36px] leading-relaxed transition-colors font-sans shadow-sm backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                        placeholder={isChatDisabled ? (generateMode === 'format' ? "Select a format to start..." : "Attach a template to start...") : (hasActiveChart ? "Modify the chart..." : "Describe your chart...")}
+                        className="flex-1 rounded-lg border border-slate-200/100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white resize-none max-h-20 min-h-[36px] leading-relaxed transition-colors font-sans shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        placeholder={isChatDisabled ? (generateMode === 'format' ? "Select a format to start..." : "Attach a template to start...") : (hasActiveChart ? "Modify the chart..." : "Ask AI to Generate Chart...")}
                         value={input}
                         onChange={handleInputChange}
                         onPaste={handlePaste}
@@ -956,82 +956,65 @@ function LandingPageContent() {
         </div>
       )}
       {/* Left Sidebar / Chat */}
-      <aside className={`z-10 flex flex-col border-r border-white/20 shadow-2xl bg-white/90 backdrop-blur-xl ${leftSidebarOpen ? 'w-[320px]' : 'w-14'} rounded-tl-2xl rounded-bl-2xl`}>
+      <aside className={`z-10 flex flex-col border-r border-gray-200 shadow-2xl bg-white ${leftSidebarOpen ? 'w-[320px]' : 'w-14'} overflow-hidden`}>
         {leftSidebarOpen ? (
           <>
-            {/* Navigation Section */}
-            <div className="p-2 bg-white/95">
-              <div className="flex items-center gap-0 bg-gray-50 rounded-lg p-1">
-                <button
-                  onClick={() => router.push('/board')}
-                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-colors relative"
-                  title="Dashboard"
-                >
-                  <LayoutDashboard className="w-3.5 h-3.5" />
-                  <span>Board</span>
-                </button>
-                <button
-                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-semibold text-indigo-700 bg-white rounded-md shadow-sm transition-colors relative"
-                >
-                  <MessageSquare className="w-3.5 h-3.5" />
-                  <span>AI Chat</span>
-                  <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-indigo-600 rounded-full"></div>
-                </button>
-                <button
-                  onClick={() => router.push('/editor')}
-                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-md transition-colors relative"
-                >
-                  <Edit3 className="w-3.5 h-3.5" />
-                  <span>Editor</span>
-                </button>
+            {/* Unified Header with Title */}
+            <div className="flex flex-col border-b border-white/20 bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg">
+              <div className="flex justify-center pt-3 pb-2">
+                <span className="text-[11px] font-bold text-white/90 uppercase tracking-[0.15em] drop-shadow-sm flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-blue-300" />
+                  AI Chart Generator
+                </span>
               </div>
-            </div>
 
-            {/* Header */}
-            <div className="flex items-center justify-between p-3 border-b border-white/20 bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => router.push('/')}
-                  className="p-1 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-sm transition-colors"
-                  aria-label="Home"
-                >
-                  <BarChart2 className="w-5 h-5 text-white" />
-                </button>
-              </div>
-              <div className="flex gap-1">
-                <button
-                  className="bg-white/20 hover:bg-white/30 text-white font-semibold px-2 py-1.5 rounded-lg backdrop-blur-sm transition-colors text-xs border border-white/20 flex items-center gap-1"
-                  onClick={handleNewConversation}
-                  title="New Conversation"
-                >
-                  <SquarePen className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  className="bg-white/20 hover:bg-white/30 text-white font-semibold px-2 py-1.5 rounded-lg backdrop-blur-sm transition-colors text-xs border border-white/20 flex items-center gap-1"
-                  onClick={openGallery}
-                  title="Browse Format Gallery"
-                >
-                  <Layers className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  className="bg-white/20 hover:bg-white/30 text-white font-semibold px-2 py-1.5 rounded-lg backdrop-blur-sm transition-colors text-xs border border-white/20"
-                  onClick={() => setLeftSidebarOpen(false)}
-                  title="Collapse Sidebar"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                </button>
+              <div className="flex items-center justify-between px-3 pb-3">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => router.push('/board')}
+                    className="bg-white/20 hover:bg-white/30 text-white font-semibold px-3 py-1.5 rounded-lg transition-colors text-xs border border-white/20 flex items-center gap-1.5"
+                    title="Go to Dashboard"
+                  >
+                    <LayoutDashboard className="w-3.5 h-3.5" />
+                    <span>Board</span>
+                  </button>
+                  <button
+                    onClick={() => router.push('/editor')}
+                    className="bg-white/20 hover:bg-white/30 text-white font-semibold px-3 py-1.5 rounded-lg transition-colors text-xs border border-white/20 flex items-center gap-1.5"
+                    title="Go to Infographic Editor"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Editor</span>
+                  </button>
+                </div>
+                <div className="flex gap-1">
+                  <button
+                    className="bg-white/20 hover:bg-white/30 text-white font-semibold px-2 py-1.5 rounded-lg transition-colors text-xs border border-white/20 flex items-center gap-1"
+                    onClick={handleNewConversation}
+                    title="New Conversation"
+                  >
+                    <SquarePen className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    className="bg-white/20 hover:bg-white/30 text-white font-semibold px-2 py-1.5 rounded-lg transition-colors text-xs border border-white/20"
+                    onClick={() => setLeftSidebarOpen(false)}
+                    title="Collapse Sidebar"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Input */}
             <form
               onSubmit={handleSend}
-              className="p-2 border-t border-white/20 bg-gradient-to-br from-blue/90 to-blue-50/90 flex gap-2 shadow-inner backdrop-blur-sm flex-shrink-0"
+              className="p-2 border-t border-gray-200 bg-white flex gap-2 flex-shrink-0"
             >
               <textarea
                 ref={textareaRef}
-                className="flex-1 rounded-lg border border-slate-200/100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white/80 resize-none max-h-24 min-h-[40px] leading-relaxed transition-colors font-sans shadow-sm backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                placeholder={isChatDisabled ? (generateMode === 'format' ? "Select a format to start..." : "Attach a template to start...") : (hasActiveChart ? "Modify the chart..." : "Describe your chart...")}
+                className="flex-1 rounded-lg border border-slate-200/100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white resize-none max-h-24 min-h-[40px] leading-relaxed transition-colors font-sans shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                placeholder={isChatDisabled ? (generateMode === 'format' ? "Select a format to start..." : "Attach a template to start...") : (hasActiveChart ? "Modify the chart..." : "Ask AI to Generate Chart...")}
                 value={input}
                 onChange={handleInputChange}
                 onPaste={handlePaste}
@@ -1217,7 +1200,10 @@ function LandingPageContent() {
       </aside>
       <div className="flex-1 relative z-10">
         {isGalleryOpen ? (
-          <FormatGallery />
+          <FormatGallery
+            leftSidebarOpen={leftSidebarOpen}
+            setLeftSidebarOpen={setLeftSidebarOpen}
+          />
         ) : chartData?.datasets?.length > 0 && hasJSON ? (
           <ChartLayout
             leftSidebarOpen={leftSidebarOpen}
@@ -1244,14 +1230,14 @@ function AnimatedBackground() {
       <div className="absolute top-1/3 right-0 w-[350px] h-[350px] rounded-full bg-purple-500/10 dark:bg-purple-600/20 blur-[100px]"></div>
       <div className="absolute bottom-0 left-1/3 w-[300px] h-[300px] rounded-full bg-cyan-400/10 dark:bg-cyan-500/15 blur-[100px]"></div>
       {/* Grid pattern */}
-      <div 
+      <div
         className="absolute inset-0 transition-opacity duration-300"
         style={{
           backgroundImage: `linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px)`,
           backgroundSize: '60px 60px'
         }}
       ></div>
-      <div 
+      <div
         className="absolute inset-0 opacity-0 dark:opacity-100 transition-opacity duration-300"
         style={{
           backgroundImage: `linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px)`,

@@ -186,7 +186,7 @@ function BoardPageContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50">
       {/* Modern Header */}
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-200/50 shadow-sm">
+      <header className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo and Title */}
@@ -210,7 +210,7 @@ function BoardPageContent() {
             </div>
 
             {/* Navigation Pills */}
-            <div className="hidden md:flex items-center gap-1 bg-gray-100/80 backdrop-blur-sm rounded-xl p-1 border border-gray-200/50">
+            <div className="hidden md:flex items-center gap-1 bg-gray-50 rounded-xl p-1 border border-gray-200">
               <button className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg shadow-sm transition-all">
                 <LayoutDashboard className="w-4 h-4" />
                 <span>Dashboard</span>
@@ -255,7 +255,7 @@ function BoardPageContent() {
 
         {/* Modern Search and Filters */}
         <div className="mb-8">
-          <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+          <Card className="border shadow-sm border-gray-200 bg-white">
             <CardContent className="p-6">
               <div className="flex flex-col lg:flex-row gap-4">
                 {/* Enhanced Search */}
@@ -409,7 +409,7 @@ function BoardPageContent() {
 
         {/* Enhanced Charts Grid/List */}
         {filteredConversations.length === 0 ? (
-          <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+          <Card className="border shadow-sm border-gray-200 bg-white">
             <CardContent className="py-16 text-center">
               <div className="max-w-md mx-auto space-y-6">
                 {/* Enhanced Empty State */}

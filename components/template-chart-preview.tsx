@@ -1211,7 +1211,7 @@ export function TemplateChartPreview({
               variant="ghost"
               size="icon"
               onClick={() => setShowLeftOverlay(true)}
-              className="fixed top-4 left-4 z-50 bg-white/95 backdrop-blur-md rounded-xl shadow-xl border border-gray-300/50 hover:bg-white hover:shadow-2xl hover:border-gray-400/60 transition-all duration-200 h-11 w-11"
+              className="fixed top-4 left-4 z-50 bg-white rounded-xl shadow-xl border border-gray-300 hover:shadow-2xl hover:border-gray-400 transition-all duration-200 h-11 w-11"
               title="Open Options"
             >
               <Menu className="h-5 w-5 text-gray-700" />
@@ -1219,7 +1219,7 @@ export function TemplateChartPreview({
           )}
 
           {/* Top Right Toolbar */}
-          <div className="fixed top-4 right-4 z-50 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-2 flex gap-2 border border-gray-200 animate-in fade-in duration-200">
+          <div className="fixed top-4 right-4 z-50 bg-white rounded-lg shadow-lg p-2 flex gap-2 border border-gray-200 animate-in fade-in duration-200">
             {/* Zoom Controls */}
             <div className="flex items-center gap-1 border rounded-md p-0.5 bg-white mr-1">
               <Button
@@ -1323,7 +1323,7 @@ export function TemplateChartPreview({
                   </div>
                   {/* Backdrop */}
                   <div
-                    className="flex-1 bg-black/20 backdrop-blur-sm"
+                    className="flex-1 bg-black/50"
                     onClick={() => setShowLeftOverlay(false)}
                   />
                 </div>
@@ -1381,7 +1381,7 @@ export function TemplateChartPreview({
                   </div>
                   {/* Backdrop */}
                   <div
-                    className="flex-1 bg-black/20 backdrop-blur-sm"
+                    className="flex-1 bg-black/50"
                     onClick={() => setShowRightOverlay(false)}
                   />
                 </div>

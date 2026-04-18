@@ -74,7 +74,7 @@ export function FormatBuilderToolbar() {
     <>
       {/* Busy overlay */}
       {isBusy && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-[2px]">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80">
           <div className="flex items-center gap-3 rounded-xl bg-gray-900 px-6 py-4 shadow-2xl border border-gray-700">
             <div className="h-5 w-5 rounded-full border-2 border-orange-500 border-t-transparent animate-spin" />
             <span className="text-sm font-medium text-gray-200">
@@ -84,7 +84,7 @@ export function FormatBuilderToolbar() {
         </div>
       )}
 
-      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-800 bg-gray-950/80 backdrop-blur-sm shrink-0">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-800 bg-gray-950 shrink-0">
         {/* Left: Nav + Zoom + Tools */}
         <div className="flex items-center gap-1.5">
           <button
