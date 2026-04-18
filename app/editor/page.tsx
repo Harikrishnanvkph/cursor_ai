@@ -57,6 +57,13 @@ function EditorPageContent() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
+  // ── Decoration store isolation ──
+  // When entering the editor, force rehydrate from localStorage to flush any
+  // format-builder shapes that may have leaked via client-side navigation.
+  useEffect(() => {
+    useDecorationStore.persist?.rehydrate?.()
+  }, [])
+
   const { user, signOut } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()

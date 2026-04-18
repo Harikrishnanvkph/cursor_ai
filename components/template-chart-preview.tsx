@@ -138,7 +138,7 @@ export function TemplateChartPreview({
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
-  const [showGuides, setShowGuides] = useState(true)
+  const [showGuides, setShowGuides] = useState(false)
   const [panMode, setPanMode] = useState(false)
 
   // Fullscreen state
@@ -226,32 +226,11 @@ export function TemplateChartPreview({
     }
   }
 
-  // Simple centering effect when template is first loaded
+  // Reset pan offset when template changes (mx-auto on the layout wrapper
+  // handles visual centering; panOffset is only for user-initiated panning)
   useEffect(() => {
-    const template = currentTemplate || templateInBackground
-    if (template && containerRef.current) {
-      // Simple centering - move template to center of viewport
-      const containerWidth = containerRef.current.clientWidth || 800
-      const containerHeight = containerRef.current.clientHeight || 600
-
-      // Calculate initial offset to center the template
-      const offsetX = (containerWidth - template.width) / 2
-      const offsetY = (containerHeight - template.height) / 2
-
-      setPanOffset({ x: offsetX, y: offsetY })
-    } else if (renderedFormat && containerRef.current) {
-      const formatW = renderedFormat.skeleton.dimensions.width
-      const formatH = renderedFormat.skeleton.dimensions.height
-      const containerWidth = containerRef.current.clientWidth || 800
-      const containerHeight = containerRef.current.clientHeight || 600
-
-      // Calculate initial offset to center the template
-      const offsetX = (containerWidth - formatW) / 2
-      const offsetY = (containerHeight - formatH) / 2
-
-      setPanOffset({ x: offsetX, y: offsetY })
-    }
-  }, [currentTemplate?.id, templateInBackground?.id, selectedFormatId]) // Only run when template ID changes
+    setPanOffset({ x: 0, y: 0 })
+  }, [currentTemplate?.id, templateInBackground?.id, selectedFormatId])
 
 
 
@@ -355,29 +334,7 @@ export function TemplateChartPreview({
   const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.1, 0.1))
   const handleResetZoom = () => {
     setZoom(1)
-    // Center the template when resetting
-    const template = currentTemplate || templateInBackground
-    if (template && containerRef.current) {
-      const containerWidth = containerRef.current.clientWidth || 800
-      const containerHeight = containerRef.current.clientHeight || 600
-
-      const offsetX = (containerWidth - template.width) / 2
-      const offsetY = (containerHeight - template.height) / 2
-
-      setPanOffset({ x: offsetX, y: offsetY })
-    } else if (renderedFormat && containerRef.current) {
-      const formatW = renderedFormat.skeleton.dimensions.width
-      const formatH = renderedFormat.skeleton.dimensions.height
-      const containerWidth = containerRef.current.clientWidth || 800
-      const containerHeight = containerRef.current.clientHeight || 600
-
-      const offsetX = (containerWidth - formatW) / 2
-      const offsetY = (containerHeight - formatH) / 2
-
-      setPanOffset({ x: offsetX, y: offsetY })
-    } else {
-      setPanOffset({ x: 0, y: 0 })
-    }
+    setPanOffset({ x: 0, y: 0 })
   }
 
   // Handle mouse/touch events for panning
@@ -1143,7 +1100,7 @@ export function TemplateChartPreview({
       <div className="flex-1 overflow-hidden">
         <div
           ref={containerRef}
-          className={`relative w-full h-full overflow-auto border rounded-lg shadow-sm${isFullscreen ? ' fixed inset-4 z-50 m-0' : ''}`}
+          className={`relative w-full h-full overflow-auto border rounded-lg shadow-sm flex items-center justify-center${isFullscreen ? ' fixed inset-4 z-50 m-0' : ''}`}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
@@ -1152,14 +1109,23 @@ export function TemplateChartPreview({
             cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'default'
           }}
         >
+          {/* Layout wrapper — sized to the scaled template so the scrollable
+              area matches the visual size (CSS transform doesn't affect layout). */}
+          <div
+            className="relative mx-auto"
+            style={{
+              width: width * scale,
+              height: height * scale,
+            }}
+          >
           <div
             ref={exportCanvasRef}
-            className="relative mx-auto"
+            className="absolute top-0 left-0"
             style={{
               width: width,
               height: height,
               transform: `scale(${scale}) translate(${panOffset.x / scale}px, ${panOffset.y / scale}px)`,
-              transformOrigin: 'center center'
+              transformOrigin: 'top left'
             }}
           >
 
@@ -1198,6 +1164,7 @@ export function TemplateChartPreview({
                 />
               </>
             )}
+          </div>
           </div>
         </div>
       </div>

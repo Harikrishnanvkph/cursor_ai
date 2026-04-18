@@ -101,25 +101,35 @@ export function FormatBuilderProvider({
 
   // ─── Core state ────────────────────────────
   const [skeleton, setSkeleton] = useState<FormatSkeleton>(() => {
+    // Editing an existing format from DB — use its skeleton
     if (editFormat?.skeleton) return editFormat.skeleton
-    // Try to load draft from session storage so we don't lose progress on page refresh!
+
+    // Creating a new format — always start fresh.
+    // Clear any stale draft from a previous session so it doesn't bleed in.
     if (typeof window !== 'undefined') {
-      try {
-        const draft = sessionStorage.getItem('format-builder-draft-skeleton')
-        if (draft) return JSON.parse(draft)
-      } catch (e) {
-        console.error('Failed to parse format builder draft', e)
-      }
+      sessionStorage.removeItem('format-builder-draft-skeleton')
+      sessionStorage.removeItem('format-builder-draft-meta')
     }
     return createDefaultSkeleton()
   })
 
-  // Sync draft to session storage
+  // Sync draft to session storage (only while actively working)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('format-builder-draft-skeleton', JSON.stringify(skeleton))
     }
   }, [skeleton])
+
+  // Clear draft on unmount so it doesn't leak into future "Create" sessions
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('format-builder-draft-skeleton')
+        sessionStorage.removeItem('format-builder-draft-meta')
+      }
+    }
+  }, [])
+
   const [formatName, setFormatName] = useState(editFormat?.name || 'New Format')
   const [formatDesc, setFormatDesc] = useState(editFormat?.description || '')
   const [category, setCategory] = useState<FormatCategory>(editFormat?.category || 'infographic')

@@ -13,28 +13,46 @@ function DecorationStoreSync({ skeleton, setSkeleton }: { skeleton: any, setSkel
   const shapes = useDecorationStore(s => s.shapes)
   const isInitialized = React.useRef(false)
 
+  // On mount: flush any editor shapes from the in-memory store, then load
+  // the format's own decorations (from DB) or start with a clean slate.
   React.useEffect(() => {
     if (!isInitialized.current && skeleton) {
-      // With our new storage isolation in storage-utils.ts, the store natively handles format vs editor states.
-      // However, if we're editing a format from the database, we need to push its shapes into the store.
-      // If the store is already populated (via session draft), we don't clobber it if skeleton is empty.
-      const currentShapes = useDecorationStore.getState().shapes;
-      if (skeleton.decorations && skeleton.decorations.length > 0 && currentShapes.length === 0) {
-         useDecorationStore.setState({ shapes: skeleton.decorations, drawingMode: null })
-      }
+      const formatDecorations = (skeleton.decorations && skeleton.decorations.length > 0)
+        ? skeleton.decorations
+        : []
+
+      // Always replace whatever is in memory (which could be editor shapes)
+      // with the format's decorations (or empty if creating a new format).
+      useDecorationStore.setState({
+        shapes: formatDecorations,
+        selectedShapeId: null,
+        selectedShapeIds: [],
+        drawingMode: null,
+        pastShapes: [],
+        futureShapes: []
+      })
       isInitialized.current = true
     }
   }, [skeleton])
 
   React.useEffect(() => {
-    // When leaving Format Builder, we MUST force the decoration store to rehydrate its local storage 
-    // so the Template Editor gets its normal shapes back, because client-side routing bypasses initial load.
+    // When leaving Format Builder, immediately flush format shapes from the
+    // in-memory store so they don't leak into the Template Editor/main editor.
     return () => {
+      // 1. Immediately clear the in-memory shapes (no commit to history)
+      useDecorationStore.setState({ 
+        shapes: [], 
+        selectedShapeId: null, 
+        selectedShapeIds: [], 
+        drawingMode: null,
+        pastShapes: [],
+        futureShapes: []
+      })
+      // 2. Then rehydrate from localStorage so the editor gets its own shapes back
       if (typeof window !== 'undefined') {
         setTimeout(() => {
-          // Re-evaluate storage keys via Zustand's persist if possible, or just force reload
           useDecorationStore.persist?.rehydrate?.()
-        }, 10)
+        }, 50)
       }
     }
   }, [])
