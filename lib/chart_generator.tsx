@@ -790,10 +790,16 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
   };
 
   const customLabels = filteredDatasetsPatched.map((ds, datasetIdx) => {
-    const customLabelsConfig = { ...globalCustomLabelsConfig, ...(ds.customLabelsConfig || {}) };
+    let baseConfig = { ...globalCustomLabelsConfig, ...(ds.customLabelsConfig || {}) };
     return ds.data.map((value, filteredPointIdx) => {
       // Map filtered index back to original index
       const originalPointIdx = enabledSliceIndices[filteredPointIdx];
+
+      // Merge per-slice label overrides if they exist (highest priority)
+      const sliceOverride = ds.sliceLabelOverrides?.[originalPointIdx];
+      const customLabelsConfig = sliceOverride
+        ? { ...baseConfig, ...sliceOverride }
+        : baseConfig;
 
       // If this slice is hidden by legend, also hide its label
       if (originalPointIdx === undefined || !isSliceVisible(originalPointIdx)) {

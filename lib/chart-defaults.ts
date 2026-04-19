@@ -144,6 +144,8 @@ interface CustomDatasetProperties {
     chartConfig?: ExtendedChartOptions // Per-dataset chart config (single mode: each dataset has its own settings)
     slicePatterns?: (PatternConfig | null)[]  // Per-slice pattern overlay configs
     datasetPattern?: PatternConfig | null      // Whole-dataset pattern overlay (area/radar/grouped)
+    customLabelsConfig?: Record<string, any>  // Per-dataset label config overrides
+    sliceLabelOverrides?: Record<number, Record<string, any>>  // Per-slice label config overrides (sparse)
 }
 
 // Create a type that combines ChartDataset with our custom properties

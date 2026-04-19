@@ -54,6 +54,19 @@ export function filterChartDataForExport(
             if (!arr || !Array.isArray(arr)) return arr;
             return enabledSliceIndices.map(idx => arr[idx]);
         };
+
+        // Remap sliceLabelOverrides keys from original indices to filtered indices
+        let remappedOverrides = ds.sliceLabelOverrides;
+        if (remappedOverrides && typeof remappedOverrides === 'object') {
+            const newOverrides: Record<number, any> = {};
+            enabledSliceIndices.forEach((originalIdx, newIdx) => {
+                if (remappedOverrides[originalIdx]) {
+                    newOverrides[newIdx] = remappedOverrides[originalIdx];
+                }
+            });
+            remappedOverrides = Object.keys(newOverrides).length > 0 ? newOverrides : undefined;
+        }
+
         return {
             ...ds,
             // Map custom chart types (like 'bar3d') to base Chart.js types for the dataset
@@ -64,6 +77,7 @@ export function filterChartDataForExport(
             pointImages: Array.isArray(ds.pointImages) ? filterSlice(ds.pointImages) : ds.pointImages,
             pointImageConfig: Array.isArray(ds.pointImageConfig) ? filterSlice(ds.pointImageConfig) : ds.pointImageConfig,
             sliceLabels: Array.isArray(ds.sliceLabels) ? filterSlice(ds.sliceLabels) : ds.sliceLabels,
+            sliceLabelOverrides: remappedOverrides,
         };
     });
 
@@ -316,13 +330,19 @@ export function generateCustomLabelsFromConfig(chartConfig: any, chartData: any,
     );
 
     return filteredDatasets.map((ds: any, datasetIdx: number) => {
-        const customLabelsConfig = { ...globalCustomLabelsConfig, ...(ds.customLabelsConfig || {}) };
+        const baseConfig = { ...globalCustomLabelsConfig, ...(ds.customLabelsConfig || {}) };
         
-        if (customLabelsConfig.display === false) {
+        if (baseConfig.display === false) {
             return ds.data.map(() => ({ text: '' }));
         }
 
         return ds.data.map((value: any, pointIdx: number) => {
+            // Merge per-slice label overrides if they exist (highest priority)
+            const sliceOverride = ds.sliceLabelOverrides?.[pointIdx];
+            const customLabelsConfig = sliceOverride
+                ? { ...baseConfig, ...sliceOverride }
+                : baseConfig;
+
             let text = '';
 
             // Label content logic

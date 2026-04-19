@@ -19,6 +19,11 @@ interface UIStore {
     setSettingsGroupId: (id: string | null) => void
     setSettingsDatasetId: (id: string | null) => void
 
+    // Single Mode Slice Filter
+    // Tracks which slice the user is targeting in the Labels/Styling panel
+    settingsSliceIndex: number | null // null = "All Slices"
+    setSettingsSliceIndex: (index: number | null) => void
+
     // Selection State (Migrated from ChartStore)
     selectedImageId: string | null
     selectedTextId: string | null
@@ -45,6 +50,10 @@ export const useUIStore = create<UIStore>()(
             settingsDatasetId: null,
             setSettingsGroupId: (id) => set({ settingsGroupId: id, settingsDatasetId: null }),
             setSettingsDatasetId: (id) => set({ settingsDatasetId: id }),
+
+            // Slice Filter
+            settingsSliceIndex: null,
+            setSettingsSliceIndex: (index) => set({ settingsSliceIndex: index }),
 
             // Selection
             selectedImageId: null,

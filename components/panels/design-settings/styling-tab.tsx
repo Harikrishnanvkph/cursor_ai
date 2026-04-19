@@ -9,6 +9,7 @@ import { useState } from "react"
 import type { ChartType } from "chart.js"
 import { useGroupedSettingsTarget } from "@/components/panels/grouped-settings-filter"
 import { useChartStore } from "@/lib/chart-store"
+import { useUIStore } from "@/lib/stores/ui-store"
 import { PATTERN_TYPES, type PatternConfig } from "@/lib/plugins/slice-pattern-plugin"
 
 interface ConfigPathUpdate {
@@ -32,8 +33,59 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
     const { targetIndices: getTargetDatasetIndicesArray, primaryIndex } = useGroupedSettingsTarget()
     const getTargetDatasetIndices = () => getTargetDatasetIndicesArray
 
+    // Slice-level targeting (single mode only)
+    const chartMode = useChartStore(s => s.chartMode)
+    const { settingsSliceIndex } = useUIStore()
+    const isSingleMode = chartMode === 'single'
+    const isSliceMode = isSingleMode && settingsSliceIndex !== null
+
     // Safely get a reference to the primary dataset we are editing to read its current values
     const primaryDataset = chartData.datasets[primaryIndex] || chartData.datasets[0] || {};
+
+    /**
+     * Helper: update a dataset property with per-slice awareness.
+     * - If a specific slice is selected, converts scalar property to an array and modifies only that index.
+     * - If "All" is selected, applies uniformly to all slices.
+     */
+    const handleSliceAwareUpdate = (property: string, value: any, defaultValue: any) => {
+        if (isSliceMode) {
+            // Per-slice update: modify only the selected index
+            getTargetDatasetIndices().forEach(index => {
+                const ds = chartData.datasets[index]
+                if (!ds) return
+                const sliceCount = (ds.data || []).length
+                const existing = ds[property]
+                // Convert to array if needed
+                let arr: any[]
+                if (Array.isArray(existing)) {
+                    arr = [...existing]
+                } else {
+                    arr = new Array(sliceCount).fill(existing ?? defaultValue)
+                }
+                // Ensure array is long enough
+                while (arr.length < sliceCount) arr.push(defaultValue)
+                arr[settingsSliceIndex] = value
+                handleUpdateDataset(index, property, arr)
+            })
+        } else {
+            // "All" mode: apply uniformly
+            getTargetDatasetIndices().forEach(index => {
+                handleUpdateDataset(index, property, value)
+            })
+        }
+    }
+
+    /**
+     * Read a property value for the current slice or the whole dataset.
+     * If a specific slice is selected, tries to read from the array at that index.
+     */
+    const readSliceAwareValue = (property: string, defaultValue: any) => {
+        const val = primaryDataset[property]
+        if (isSliceMode && Array.isArray(val) && settingsSliceIndex < val.length) {
+            return val[settingsSliceIndex]
+        }
+        return Array.isArray(val) ? val[0] : (val ?? defaultValue)
+    }
 
     return (
         <div className="space-y-3 mt-4">
@@ -55,12 +107,10 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                             <div className="flex items-center gap-2">
                                 <Input
                                     type="number"
-                                    value={Number(primaryDataset.borderWidth ?? 2)}
+                                    value={Number(readSliceAwareValue('borderWidth', 2))}
                                     onChange={(e) => {
                                         const value = e.target.value ? Number(e.target.value) : 2
-                                        getTargetDatasetIndices().forEach(index => {
-                                            handleUpdateDataset(index, 'borderWidth', value)
-                                        })
+                                        handleSliceAwareUpdate('borderWidth', value, 2)
                                     }}
                                     className="w-full h-8 text-xs"
                                     placeholder="2"
@@ -78,12 +128,10 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                             <div className="flex items-center gap-2">
                                 <Input
                                     type="number"
-                                    value={Number(primaryDataset.borderRadius ?? 0)}
+                                    value={Number(readSliceAwareValue('borderRadius', 0))}
                                     onChange={(e) => {
                                         const value = e.target.value ? Number(e.target.value) : 0
-                                        getTargetDatasetIndices().forEach(index => {
-                                            handleUpdateDataset(index, 'borderRadius', value)
-                                        })
+                                        handleSliceAwareUpdate('borderRadius', value, 0)
                                     }}
                                     className="w-full h-8 text-xs"
                                     placeholder="0"
@@ -143,13 +191,7 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                                     value={manualBorderColor}
                                     onChange={(e) => {
                                         setManualBorderColor(e.target.value)
-                                        // Apply manual border color to all datasets uniformly
-                                        getTargetDatasetIndices().forEach(index => {
-                                            const dataset = chartData.datasets[index];
-                                            if (!dataset || !dataset.data) return;
-                                            const sliceCount = dataset.data.length
-                                            handleUpdateDataset(index, 'borderColor', Array(sliceCount).fill(e.target.value))
-                                        })
+                                        handleSliceAwareUpdate('borderColor', e.target.value, '#000000')
                                     }}
                                     className="absolute opacity-0 w-0 h-0"
                                 />
@@ -157,12 +199,7 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                                     value={manualBorderColor}
                                     onChange={(e) => {
                                         setManualBorderColor(e.target.value)
-                                        getTargetDatasetIndices().forEach(index => {
-                                            const dataset = chartData.datasets[index];
-                                            if (!dataset || !dataset.data) return;
-                                            const sliceCount = dataset.data.length
-                                            handleUpdateDataset(index, 'borderColor', Array(sliceCount).fill(e.target.value))
-                                        })
+                                        handleSliceAwareUpdate('borderColor', e.target.value, '#000000')
                                     }}
                                     className="h-8 text-xs flex-1"
                                 />

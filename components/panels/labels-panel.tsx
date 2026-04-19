@@ -16,7 +16,9 @@ import { PiePanel } from "./pie-panel"
 import { PolarAreaPanel } from "./polar-area-panel"
 import { setNestedProperty } from "@/lib/utils"
 import { useGroupedSettingsTarget, GroupedSettingsFilter } from "./grouped-settings-filter"
+import { SliceSettingsFilter } from "./slice-settings-filter"
 import { StylingTab } from "./design-settings/styling-tab"
+import { useUIStore } from "@/lib/stores/ui-store"
 
 type ConfigPathUpdate = {
     path: string;
@@ -29,11 +31,27 @@ export function LabelsPanel() {
     const { targetIndices, isAllDatasets } = useGroupedSettingsTarget()
 
     const isGroupedMode = chartMode === 'grouped';
+    const isSingleMode = chartMode === 'single';
     const applyToAll = isAllDatasets;
+
+    // Slice-level targeting (single mode only)
+    const { settingsSliceIndex } = useUIStore()
+    const isSliceMode = isSingleMode && settingsSliceIndex !== null
+    const activeDatasetIndex = useChartStore(s => s.activeDatasetIndex)
 
     // Helper to update customLabelsConfig in chartConfig
     const handleCustomLabelConfigUpdate = (path: string, value: any) => {
-        if (!applyToAll) {
+        if (isSliceMode) {
+            // Per-slice override: store only the changed property in sliceLabelOverrides
+            const dsIndex = targetIndices[0] ?? activeDatasetIndex
+            const ds = chartData.datasets[dsIndex]
+            if (!ds) return
+            const overrides = { ...((ds as any).sliceLabelOverrides || {}) }
+            const sliceOverride = { ...(overrides[settingsSliceIndex] || {}) }
+            sliceOverride[path] = value
+            overrides[settingsSliceIndex] = sliceOverride
+            updateDataset(dsIndex, { sliceLabelOverrides: overrides })
+        } else if (!applyToAll) {
             targetIndices.forEach((index: number) => {
                 const ds = chartData.datasets[index];
                 if (!ds) return;
@@ -52,6 +70,28 @@ export function LabelsPanel() {
                     const clonedConfig = { ...ds.customLabelsConfig };
                     delete clonedConfig[path];
                     updateDataset(index, { customLabelsConfig: clonedConfig });
+                }
+            });
+
+            // Also clear this specific property from all sliceLabelOverrides
+            chartData.datasets.forEach((ds: any, index: number) => {
+                if (ds && ds.sliceLabelOverrides) {
+                    const overrides = { ...ds.sliceLabelOverrides }
+                    let changed = false
+                    for (const sliceIdx of Object.keys(overrides)) {
+                        if (overrides[sliceIdx] && overrides[sliceIdx][path] !== undefined) {
+                            overrides[sliceIdx] = { ...overrides[sliceIdx] }
+                            delete overrides[sliceIdx][path]
+                            // Clean up empty overrides
+                            if (Object.keys(overrides[sliceIdx]).length === 0) {
+                                delete overrides[sliceIdx]
+                            }
+                            changed = true
+                        }
+                    }
+                    if (changed) {
+                        updateDataset(index, { sliceLabelOverrides: Object.keys(overrides).length > 0 ? overrides : undefined })
+                    }
                 }
             });
         }
@@ -79,7 +119,7 @@ export function LabelsPanel() {
     // Read current custom label config
     let customLabelsConfig = ((chartConfig.plugins as any)?.customLabelsConfig) || {};
     
-    // Override with dataset specific config if in targeting specific dataset
+    // Override with dataset specific config if targeting a specific dataset
     if (!applyToAll) {
         if (targetIndices.length > 0) {
             const ds = chartData.datasets[targetIndices[0]];
@@ -90,8 +130,28 @@ export function LabelsPanel() {
         }
     }
 
+    // Override with per-slice config if a specific slice is selected
+    if (isSliceMode) {
+        const dsIndex = targetIndices[0] ?? activeDatasetIndex
+        const ds = chartData.datasets[dsIndex]
+        if (ds) {
+            // First merge dataset-level overrides
+            if ((ds as any).customLabelsConfig) {
+                customLabelsConfig = { ...customLabelsConfig, ...(ds as any).customLabelsConfig };
+            }
+            // Then merge slice-level overrides (highest priority)
+            const sliceOverride = (ds as any).sliceLabelOverrides?.[settingsSliceIndex]
+            if (sliceOverride) {
+                customLabelsConfig = { ...customLabelsConfig, ...sliceOverride }
+            }
+        }
+    }
+
     return (
         <div className="space-y-4">
+            {/* Slice Filter for single mode */}
+            {isSingleMode && <SliceSettingsFilter />}
+
             {/* Top-level Label/Styling tabs */}
             <Tabs defaultValue="styling" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 text-xs">
