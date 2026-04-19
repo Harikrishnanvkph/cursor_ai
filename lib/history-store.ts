@@ -218,6 +218,7 @@ export const useHistoryStore = create<HistoryStore>()(
             const templateStore = useTemplateStore.getState();
             templateStore.clearAllTemplateState(); // Clear standard templates
             templateStore.setEditorMode('template'); // Set to template mode for format rendering
+            templateStore.setGenerateMode('format'); // Set to format mode so Browse Formats button remains
             templateStore.setTemplateSavedToCloud(true);
             
             console.log('📊 Restored infographic format:', formatId);
@@ -278,7 +279,11 @@ export const useHistoryStore = create<HistoryStore>()(
             console.log('📊 Loading chart-only conversation - clearing all template/format state')
             const templateStore = useTemplateStore.getState()
             templateStore.clearAllTemplateState() // This clears templateInBackground, currentTemplate, editorMode to 'chart', etc.
-            useFormatGalleryStore.getState().setSelectedFormat(null, 'bar') // Clear formats too
+            
+            const formatStore = useFormatGalleryStore.getState();
+            formatStore.setSelectedFormat(null, 'bar'); // Clear formats too
+            formatStore.setContentPackage(null); // Clear AI generated format content
+            formatStore.setContextualImageUrl(null);
           }
         }
       },

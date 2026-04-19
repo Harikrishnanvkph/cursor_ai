@@ -864,7 +864,7 @@ export function getMouseHandlers(chart: Chart) {
             }
 
             const chartStore = useChartStore.getState()
-            
+
             // Apply resize based on dragType
             if (dragState.dragType === 'shape') {
                 chartStore.updateOverlayShape(dragState.dragId, {
@@ -877,9 +877,9 @@ export function getMouseHandlers(chart: Chart) {
                 const scaleX = newWidth / dragState.startWidth
                 const scaleY = newHeight / dragState.startHeight
                 const avgScale = (scaleX + scaleY) / 2
-                
+
                 let updateData: any = { x: newX, y: newY }
-                
+
                 if (dragState.resizeHandle === 'e' || dragState.resizeHandle === 'w') {
                     updateData.maxWidth = newWidth
                 } else if (dragState.resizeHandle !== 'n' && dragState.resizeHandle !== 's') {

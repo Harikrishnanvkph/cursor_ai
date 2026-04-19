@@ -98,19 +98,19 @@ function LandingPageContent() {
     }
   }, []) // Empty deps - only runs on mount
 
-  // Check if chat should be disabled (template mode but no template attached, or format mode but no format selected)
-  const isChatDisabled = (generateMode === 'template' && !currentTemplate) || (generateMode === 'format' && !selectedFormatId)
+  // Check if chat should be disabled (only template mode requires a template; format mode is always enabled)
+  const isChatDisabled = (generateMode === 'template' && !currentTemplate)
 
   // Update initial message when template/format mode changes
   useEffect(() => {
     // Only update if we have just the initial message
     if (messages.length === 1 && messages[0].role === 'assistant') {
       const templateMessage = 'Please attach a template to start the conversation. Select a template from the options via "Choose From Templates".';
-      const formatMessage = 'Please select a format to start the conversation. Choose a format from the options above to proceed.';
+      const formatMessage = 'Describe your chart content. You can optionally select a format first, or browse formats after generation.';
       const defaultMessage = 'Hi! Describe the chart you want to create, or ask me to modify an existing chart.';
 
       const shouldShowTemplateMessage = generateMode === 'template' && !currentTemplate;
-      const shouldShowFormatMessage = generateMode === 'format' && !selectedFormatId;
+      const isFormatMode = generateMode === 'format';
       const currentMessage = messages[0].content;
 
       if (shouldShowTemplateMessage && currentMessage !== templateMessage) {
@@ -118,12 +118,12 @@ function LandingPageContent() {
           ...messages[0],
           content: templateMessage
         }]);
-      } else if (shouldShowFormatMessage && currentMessage !== formatMessage) {
+      } else if (isFormatMode && !selectedFormatId && currentMessage !== formatMessage && currentMessage !== defaultMessage) {
         setMessages([{
           ...messages[0],
           content: formatMessage
         }]);
-      } else if (!shouldShowTemplateMessage && !shouldShowFormatMessage && (currentMessage === templateMessage || currentMessage === formatMessage)) {
+      } else if (!shouldShowTemplateMessage && !isFormatMode && (currentMessage === templateMessage || currentMessage === formatMessage)) {
         setMessages([{
           ...messages[0],
           content: defaultMessage
@@ -636,7 +636,7 @@ function LandingPageContent() {
                       <textarea
                         ref={textareaRef}
                         className="flex-1 rounded-lg border border-slate-200/100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white resize-none max-h-24 min-h-[36px] leading-relaxed transition-colors font-sans shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                        placeholder={isChatDisabled ? (generateMode === 'format' ? "Select a format to start..." : "Attach a template to start...") : (hasActiveChart ? "Modify the chart..." : "Ask AI to Generate Chart...")}
+                        placeholder={isChatDisabled ? "Attach a template to start..." : (hasActiveChart ? "Modify the chart..." : "Ask AI to Generate Chart...")}
                         value={input}
                         onChange={handleInputChange}
                         onPaste={handlePaste}
@@ -880,7 +880,7 @@ function LandingPageContent() {
                       <textarea
                         ref={textareaRef}
                         className="flex-1 rounded-lg border border-slate-200/100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white resize-none max-h-20 min-h-[36px] leading-relaxed transition-colors font-sans shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                        placeholder={isChatDisabled ? (generateMode === 'format' ? "Select a format to start..." : "Attach a template to start...") : (hasActiveChart ? "Modify the chart..." : "Ask AI to Generate Chart...")}
+                        placeholder={isChatDisabled ? "Attach a template to start..." : (hasActiveChart ? "Modify the chart..." : "Ask AI to Generate Chart...")}
                         value={input}
                         onChange={handleInputChange}
                         onPaste={handlePaste}
@@ -1014,7 +1014,7 @@ function LandingPageContent() {
               <textarea
                 ref={textareaRef}
                 className="flex-1 rounded-lg border border-slate-200/100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white resize-none max-h-24 min-h-[40px] leading-relaxed transition-colors font-sans shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                placeholder={isChatDisabled ? (generateMode === 'format' ? "Select a format to start..." : "Attach a template to start...") : (hasActiveChart ? "Modify the chart..." : "Ask AI to Generate Chart...")}
+                placeholder={isChatDisabled ? "Attach a template to start..." : (hasActiveChart ? "Modify the chart..." : "Ask AI to Generate Chart...")}
                 value={input}
                 onChange={handleInputChange}
                 onPaste={handlePaste}

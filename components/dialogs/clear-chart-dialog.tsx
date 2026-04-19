@@ -64,6 +64,17 @@ export function ClearChartDialog({
         // 5. Clear all decoration shapes
         useDecorationStore.getState().clearShapes()
 
+        // 6. Clear format gallery state
+        try {
+            const { useFormatGalleryStore } = require('@/lib/stores/format-gallery-store');
+            const formatStore = useFormatGalleryStore.getState();
+            formatStore.setContentPackage(null);
+            formatStore.setSelectedFormat(null, 'bar');
+            formatStore.setContextualImageUrl(null);
+        } catch(e) {
+            console.warn("Could not clear format store", e)
+        }
+
         if (clearOption === 'welcome') {
             // "Go to Welcome Preview" - Soft Reset
             // - Hide the chart preview (hasJSON = false)

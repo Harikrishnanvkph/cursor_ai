@@ -178,6 +178,28 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
   }, [previewFormatId, formats, userFormats])
 
   const handlePreviewClick = (formatId: string) => {
+    // If content is already available (AI has generated data), directly apply the format
+    if (localContentPackage) {
+      const format = [...formats, ...userFormats].find(f => f.id === formatId)
+      if (format) {
+        try {
+          const templateStore = useTemplateStore.getState()
+          templateStore.clearAllTemplateState()
+          templateStore.setEditorMode('template')
+          templateStore.setGenerateMode('format')
+          const rendered = renderFormat(format, localContentPackage)
+          setSelectedFormat(format.id, rendered.chartType)
+          closeGallery()
+          if (setLeftSidebarOpen) setLeftSidebarOpen(true)
+          toast.success(`Format "${format.name}" applied!`)
+          return
+        } catch (err) {
+          console.error('Failed to render format:', err)
+          // Fall through to preview mode
+        }
+      }
+    }
+    // No content available — show the side preview panel
     setPreviewFormatId(formatId)
     if (setLeftSidebarOpen) setLeftSidebarOpen(false)
   }
@@ -192,6 +214,7 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
     const templateStore = useTemplateStore.getState()
     templateStore.clearAllTemplateState()
     templateStore.setEditorMode('template')
+    templateStore.setGenerateMode('format')
 
     if (localContentPackage) {
       try {

@@ -4,6 +4,7 @@ import { useChartStore, type SupportedChartType, type ExtendedChartData } from '
 import { useTemplateStore } from './template-store';
 import { extractTemplateStructure, type TemplateStructureMetadata } from './template-utils';
 import { createExpiringStorage } from './storage-utils';
+import { useFormatGalleryStore } from './stores/format-gallery-store';
 import type { ChartOptions } from 'chart.js';
 
 // Helper function to get the appropriate initial message based on template/format mode
@@ -296,6 +297,20 @@ export const useChatStore = create<ChatStore>()(
         // Only reset chart if not explicitly told to keep data
         if (!keepChartData) {
           useChartStore.getState().resetChart();
+          
+          // Clear format gallery state when clearing chart data
+          const formatStore = useFormatGalleryStore.getState();
+          formatStore.setContentPackage(null);
+          formatStore.setSelectedFormat(null, 'bar');
+          formatStore.setContextualImageUrl(null);
+
+          // Clear template state when clearing chart data
+          try {
+            const { useTemplateStore } = require('./template-store');
+            useTemplateStore.getState().clearAllTemplateState();
+          } catch(e) {
+            console.warn("Could not clear template store", e);
+          }
         }
 
         // Always hide JSON (welcome screen shown)
@@ -359,6 +374,18 @@ export const useChatStore = create<ChatStore>()(
             }
           } catch (e) {
             console.warn('Could not inject format notes:', e);
+          }
+        } else {
+          // If we are generating a standard chart or template (NOT format mode), 
+          // clear any existing format data so 'Browse Formats' doesn't persist
+          try {
+            const { useFormatGalleryStore } = require('./stores/format-gallery-store');
+            const galleryStore = useFormatGalleryStore.getState();
+            galleryStore.setContentPackage(null);
+            galleryStore.setSelectedFormat(null, 'bar');
+            galleryStore.setContextualImageUrl(null);
+          } catch (e) {
+            console.warn('Could not clear format store data:', e);
           }
         }
 
@@ -493,33 +520,44 @@ export const useChatStore = create<ChatStore>()(
               // Auto-open Format Gallery for new chart creations (not template mode)
               const templateStore = useTemplateStore.getState();
               if (templateStore.generateMode === 'chart') {
-                // Chart mode: open gallery for user to pick a format
+                // Chart mode: only open gallery if no format is already selected
                 try {
                   const { useFormatGalleryStore } = require('./stores/format-gallery-store');
-                  useFormatGalleryStore.getState().openGallery();
+                  const formatStore = useFormatGalleryStore.getState();
+                  if (!formatStore.selectedFormatId) {
+                    formatStore.openGallery();
+                  }
                 } catch (e) {
                   console.warn('Could not auto-open format gallery:', e);
                 }
               } else if (templateStore.generateMode === 'format') {
-                // Format mode: format is pre-selected, auto-apply it
+                // Format mode: apply content to the selected format (or open gallery to browse)
                 try {
                   const { useFormatGalleryStore } = require('./stores/format-gallery-store');
                   const formatStore = useFormatGalleryStore.getState();
-                  const { renderFormat } = require('./variant-engine');
                   const { extractContentFromChartData } = require('./variant-engine');
 
+                  // Always extract content package from AI result
+                  const contentPackage = result.chartData
+                    ? extractContentFromChartData(result.chartType, result.chartData, result.chartConfig)
+                    : null;
+
                   if (formatStore.selectedFormatId && formatStore.formats.length > 0) {
-                    const format = formatStore.formats.find((f: any) => f.id === formatStore.selectedFormatId);
-                    if (format && result.chartData) {
-                      // Build content package from the AI result
-                      const contentPackage = extractContentFromChartData(result.chartType, result.chartData, result.chartConfig);
-                      if (contentPackage) {
-                        formatStore.setContentPackage(contentPackage);
-                        // Clear templates and switch to template editor mode for format rendering
-                        templateStore.clearAllTemplateState();
-                        templateStore.setEditorMode('template');
-                      }
+                    // Format is pre-selected → auto-apply and close gallery
+                    const format = formatStore.formats.find((f: any) => f.id === formatStore.selectedFormatId) ||
+                                   formatStore.userFormats.find((f: any) => f.id === formatStore.selectedFormatId);
+                    if (format && contentPackage) {
+                      formatStore.setContentPackage(contentPackage);
+                      templateStore.clearAllTemplateState();
+                      templateStore.setEditorMode('template');
+                      templateStore.setGenerateMode('format');
+                      formatStore.closeGallery(); // Close gallery so rendered format shows
                     }
+                  } else if (contentPackage) {
+                    // No format pre-selected → set content and open gallery for browsing
+                    formatStore.setContentPackage(contentPackage);
+                    templateStore.setGenerateMode('format');
+                    formatStore.openGallery();
                   }
                 } catch (e) {
                   console.warn('Could not auto-apply pre-selected format:', e);

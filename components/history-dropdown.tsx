@@ -249,7 +249,7 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
               aria-label="Open history"
               variant="outline"
               size="sm"
-              className="h-8 px-3 text-xs border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-transparent"
+              className="h-8 w-10 p-0 text-xs border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-transparent"
             >
               <History className="w-3 h-3" />
             </Button>

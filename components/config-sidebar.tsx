@@ -13,9 +13,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ResponsiveAnimationsPanel } from "@/components/panels/responsive-animations-panel"
 import { DatasetsSlicesPanel } from "@/components/panels/datasets-slices-panel"
 import { TemplateListTab } from "@/components/panels/template-settings/template-list-tab"
-import { FileText, Layout, BarChart3, Edit3, Cloud, Sparkles } from "lucide-react"
+import { FileText, Layout, BarChart3, Edit3, Cloud, Sparkles, LayoutGrid } from "lucide-react"
+import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { useUIStore } from "@/lib/stores/ui-store"
 import { Plus, Trash2, Eye, EyeOff } from "lucide-react"
 import { Input } from "@/components/ui/input"
@@ -59,14 +60,37 @@ export function ConfigSidebar() {
     setEditorMode,
     applyTemplate,
     originalCloudTemplateContent,
+    generateMode,
   } = useTemplateStore()
 
   const { activeSidebarTab, setActiveSidebarTab } = useUIStore()
+  const contentPackage = useFormatGalleryStore(s => s.contentPackage)
+  const openGallery = useFormatGalleryStore(s => s.openGallery)
 
   // Determine if we have a "Current Cloud Template" available from snapshot
   const currentCloudTemplate = originalCloudTemplateContent?.id === "current-cloud-template"
     ? originalCloudTemplateContent
     : null
+
+  const handleApplyTemplate = () => {
+    toast.success("Design Applied Successfully!")
+  }
+
+  // Effect to sync overlay images visibility with showImages toggle
+  useEffect(() => {
+    // Only toggle if showImages is explicitly true or false
+    if (showImages === undefined) return
+    
+    // Also toggle overlay images visibility (only if different to prevent infinite loops)
+    let needsUpdate = false
+    overlayImages.forEach((image) => {
+      // visible is a boolean in type Definition
+      if (image.visible !== showImages) {
+        updateOverlayImage(image.id, { visible: showImages as any })
+        needsUpdate = true
+      }
+    })
+  }, [showImages, updateOverlayImage]) // Deliberately omitting overlayImages to prevent loops
 
   const handleToggleFillArea = useCallback((checked: boolean) => {
     toggleFillArea()
@@ -94,37 +118,22 @@ export function ConfigSidebar() {
   return (
     <div className="h-full flex flex-col">
       <div className="flex-1 p-4 space-y-4 overflow-y-auto">
-        {/* Mode Toggle */}
-        <div className="flex items-center justify-between gap-2 bg-gray-50 rounded-lg p-1">
-          <button
-            onClick={() => setEditorMode('chart')}
-            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md transition-all text-sm font-medium ${editorMode === 'chart'
-              ? 'bg-blue-600 text-white shadow-md'
-              : 'bg-white text-gray-600 hover:text-gray-900 shadow-sm'
-              }`}
-          >
-            <BarChart3 className="h-4 w-4" />
-            <span>Chart</span>
-          </button>
-          <button
-            onClick={() => {
-              if (!currentTemplate) {
-                applyTemplate('template-1')
-                setActiveSidebarTab('templates')
-              }
-              setEditorMode('template')
-            }}
-            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md transition-all text-sm font-medium ${editorMode === 'template'
-              ? 'bg-purple-600 text-white shadow-md'
-              : 'bg-white text-gray-600 hover:text-gray-900 shadow-sm'
-              }`}
-          >
-            <Layout className="h-4 w-4" />
-            <span>Template</span>
-          </button>
-        </div>
+
 
         <div className="w-full">
+          {/* Browse Formats button - shows when content is available AND we are in format mode */}
+          {contentPackage && generateMode === 'format' && (
+            <div className="mb-3 px-1">
+              <button
+                onClick={() => openGallery()}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-all w-full justify-center shadow-sm"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                Browse Formats
+              </button>
+            </div>
+          )}
+
           <div className="grid w-full grid-cols-3 gap-1 h-auto p-1 bg-gray-100 rounded-lg">
             <button
               onClick={() => setActiveSidebarTab('general')}
@@ -141,28 +150,40 @@ export function ConfigSidebar() {
           </div>
 
           <div className={`mt-4 space-y-4 ${activeSidebarTab === 'general' ? 'block' : 'hidden'}`}>
-            {/* Chart Type */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Chart Type</Label>
+            {/* Mode Toggle + Chart Type (inline) */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-0 bg-gray-100 rounded-full p-[2px] border border-gray-200 flex-shrink-0">
+                <button
+                  onClick={() => setEditorMode('chart')}
+                  className={`px-2 py-1 text-[10px] font-medium rounded-full transition-all ${editorMode === 'chart' ? 'bg-blue-500 text-white shadow-sm' : 'bg-transparent text-gray-500 hover:text-gray-700'}`}
+                >Chart</button>
+                <button
+                  onClick={() => {
+                    if (!currentTemplate) {
+                      applyTemplate('template-1')
+                      setActiveSidebarTab('templates')
+                    }
+                    setEditorMode('template')
+                  }}
+                  className={`px-2 py-1 text-[10px] font-medium rounded-full transition-all ${editorMode === 'template' ? 'bg-blue-500 text-white shadow-sm' : 'bg-transparent text-gray-500 hover:text-gray-700'}`}
+                >Template</button>
+              </div>
               <Select value={chartType} onValueChange={(value: any) => setChartType(value)}>
-                <SelectTrigger className="w-full h-10 text-sm border-gray-200 bg-white">
-                  <SelectValue placeholder="Select chart type" />
+                <SelectTrigger className="flex-1 h-8 text-xs border-gray-200 bg-white">
+                  <SelectValue placeholder="Type" />
                 </SelectTrigger>
                 <SelectContent className="z-[1001] max-h-[300px]">
-                  {/* Standard Charts */}
                   {STANDARD_CHART_TYPES.map((type) => (
                     <SelectItem key={type.value} value={type.value} className="text-sm py-2">{type.label}</SelectItem>
                   ))}
-                  
                   <SelectSeparator />
-                  
-                  {/* 3D Charts */}
                   {THREE_D_CHART_TYPES.map((type) => (
                     <SelectItem key={type.value} value={type.value} className="text-sm py-2 font-medium text-blue-600">{type.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+
 
             {/* Compact Toggles (Single Row) */}
             <div className="flex items-center justify-between gap-1 px-1 mb-2">

@@ -311,8 +311,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
       <div
         className={cn(
           "p-4 overflow-auto absolute inset-0 right-auto",
-          isCollapsed ? "right-16" : "right-[280px]",
-          selectedFormatId && editorMode === 'template' ? "p-0 bg-gray-50/50" : "" // Remove padding for full-size view
+          isCollapsed ? "right-16" : "right-[280px]"
         )}
         style={{
           left: 0,
@@ -390,14 +389,14 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
         ) : (
           // Expanded state: show ConfigSidebar with top bar (expand, history, profile)
           <>
-            <div className="flex items-center p-3 border-b bg-gray-50/50 gap-3">
+            <div className="flex items-center p-2.5 border-b bg-gray-50/50 gap-2">
               {/* Expand/Collapse Button */}
               <button
                 onClick={toggleSidebar}
-                className="p-2 rounded-lg hover:bg-gray-100 transition-all duration-200 text-gray-600 hover:text-gray-800 flex-shrink-0"
+                className="h-8 w-8 p-0 flex items-center justify-center rounded-md hover:bg-gray-100 transition-all duration-200 text-gray-600 hover:text-gray-800 flex-shrink-0"
                 title="Collapse Settings"
               >
-                <ChevronRight className="w-5 h-5" />
+                <ChevronRight className="w-4 h-4" />
               </button>
 
               {/* Action Buttons: Save, Cancel, History */}
@@ -407,7 +406,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
                   variant="default"
                   onClick={handleSaveClick}
                   disabled={!hasJSON || isSaving}
-                  className="h-8 px-3 text-xs bg-green-600 hover:bg-green-700 text-white"
+                  className="h-8 w-10 p-0 text-xs bg-green-600 hover:bg-green-700 text-white"
                   title="Save chart to online database"
                 >
                   {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
@@ -417,7 +416,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
                   variant="outline"
                   onClick={handleCancel}
                   disabled={!hasJSON}
-                  className="h-8 px-3 text-xs border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                  className="h-8 w-10 p-0 text-xs border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
                   title="Clear chart and start new"
                 >
                   <X className="w-3 h-3" />

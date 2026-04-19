@@ -109,9 +109,10 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
         }
     }, [formatView, setUserFormats, setLoadingUserFormats])
         
-    // Ensure content package is synced from current chart data if missing
     React.useEffect(() => {
-        if (!contentPackage && chartData?.datasets?.length > 0) {
+        // Only reconstruct content package if this is an actual format chart
+        // (identified by the formatData block in chartConfig)
+        if (!contentPackage && chartData?.datasets?.length > 0 && chartConfig?.formatData) {
             import('@/lib/variant-engine').then(({ extractContentFromChartData }) => {
                 try {
                     const pkg = extractContentFromChartData(chartType, chartData, chartConfig)

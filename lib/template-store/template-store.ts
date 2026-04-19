@@ -634,7 +634,8 @@ export const useTemplateStore = create<TemplateStore>()(
           contentTypePreferences: {},
           sectionNotes: {},
           templateSavedToCloud: false,
-          editorMode: 'chart'
+          editorMode: 'chart',
+          generateMode: 'chart'
         })
       }
     }),
