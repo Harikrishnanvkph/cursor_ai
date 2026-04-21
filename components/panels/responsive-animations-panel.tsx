@@ -481,11 +481,11 @@ export function ResponsiveAnimationsPanel() {
                   name="chart-mode-anim"
                   checked={chartConfig.manualDimensions === true && !(chartConfig as any).templateDimensions && !(chartConfig as any).originalDimensions}
                   onChange={() => {
-                    // Initialize width/height if they don't exist
+                    // Initialize width/height if they don't exist or are percentages
                     const currentWidth = (chartConfig as any)?.width;
                     const currentHeight = (chartConfig as any)?.height;
-                    const width = currentWidth || '600px';
-                    const height = currentHeight || '500px';
+                    const width = (!currentWidth || currentWidth.toString().includes('%')) ? '600px' : currentWidth;
+                    const height = (!currentHeight || currentHeight.toString().includes('%')) ? '500px' : currentHeight;
 
                     updateChartConfig({
                       ...chartConfig,

@@ -13,6 +13,7 @@ export function parseDimension(value: any, fallback = 500): number {
         return isNaN(value) ? fallback : value;
     }
     if (typeof value === 'string') {
+        if (value.includes('%')) return fallback;
         const numericValue = parseFloat(value.replace(/[^\d.-]/g, ''));
         return isNaN(numericValue) ? fallback : numericValue;
     }

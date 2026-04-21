@@ -18,18 +18,35 @@ import {
  * Generate a complete standalone HTML file with the chart
  */
 export async function generateChartHTML(options: HTMLExportOptions = {}) {
+    const storeState = useChartStore.getState();
     const {
         chartType,
         chartData,
-        chartConfig,
         chartMode,
         activeDatasetIndex,
         legendFilter,
         activeGroupId
-    } = useChartStore.getState();
+    } = storeState;
+
+    // Resolve per-chart config (same logic as use-chart-state hooks)
+    let chartConfig = storeState.chartConfig;
+    if (chartMode === 'single') {
+        const ds = chartData?.datasets?.[activeDatasetIndex];
+        chartConfig = (ds as any)?.chartConfig ?? chartConfig;
+    } else {
+        const group = (storeState as any).groups?.find((g: any) => g.id === activeGroupId);
+        chartConfig = group?.chartConfig ?? chartConfig;
+    }
 
     // Map custom chart types to actual Chart.js types
-    const mappedChartType = chartTypeMapping[chartType as SupportedChartType] || chartType;
+    // In grouped mixed mode, the base chart type should be 'bar' (each dataset has its own type)
+    const uniformityMode = (storeState as any).uniformityMode || 'uniform';
+    let mappedChartType: string;
+    if (chartMode !== 'single' && uniformityMode === 'mixed') {
+        mappedChartType = 'bar';
+    } else {
+        mappedChartType = chartTypeMapping[chartType as SupportedChartType] || chartType;
+    }
 
     // Use provided drag state or try to capture current drag state from any active chart instance
     let currentDragState = options.dragState || {};
@@ -81,14 +98,17 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
     if ((options.fillArea !== undefined || options.showBorder !== undefined) && Array.isArray(processedChartData.datasets)) {
         processedChartData.datasets = processedChartData.datasets.map((ds: any) => {
             const out = { ...ds } as any;
-            if (options.fillArea !== undefined) {
+            if (options.fillArea === false) {
+                if (Array.isArray(out.backgroundColor)) out.backgroundColor = out.backgroundColor.map(() => 'transparent');
+                else out.backgroundColor = 'transparent';
+                
                 const isLineLike = (chartType === 'line' || chartType === 'area' || chartType === 'radar');
                 if (isLineLike) {
-                    out.fill = !!options.fillArea;
+                    out.fill = false;
                 }
-                if (options.fillArea === false) {
-                    if (Array.isArray(out.backgroundColor)) out.backgroundColor = out.backgroundColor.map(() => 'transparent');
-                    else out.backgroundColor = 'transparent';
+            } else if (options.fillArea === true) {
+                if (chartType === 'area' && (out.fill === undefined || out.fill === false)) {
+                    out.fill = 'origin';
                 }
             } else {
                 // FALLBACK CASE: When no explicit export option is provided, 
@@ -97,7 +117,6 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
                     out.fill = (ds.fill !== undefined) ? ds.fill : true;
                 } else if (chartType === 'line') {
                     // Strictly respect the dataset's fill property for line charts
-                    // Line charts should NEVER default to true unless explicitly requested
                     out.fill = (ds.fill !== undefined) ? ds.fill : false;
                 }
             }

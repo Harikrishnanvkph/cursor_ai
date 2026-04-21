@@ -5,6 +5,7 @@ import type { DecorationShape } from "@/lib/stores/decoration-store"
 import { generateChartHTMLForTemplate, type HTMLExportOptions } from "@/lib/html-exporter"
 import { generateDecorationsSVG, generateDecorationsCSS } from "./decoration-html-export"
 import { getPatternCSS } from "@/lib/utils"
+import { useChartStore } from "@/lib/chart-store"
 
 // ═══════════════════════════════════════════════════════
 // Format → HTML Export
@@ -27,6 +28,19 @@ export async function exportFormatAsHTML(
     const chartZone = renderedZones.find(rz => rz.zone.type === 'chart')
     const chartPos = chartZone?.zone.position
 
+    // Resolve per-chart config (same logic as use-chart-state hooks)
+    const storeState = useChartStore.getState()
+    const { chartConfig } = storeState
+    let resolvedConfig = chartConfig
+    if (storeState.chartMode === 'single') {
+        const ds = storeState.chartData?.datasets?.[storeState.activeDatasetIndex]
+        resolvedConfig = (ds as any)?.chartConfig ?? chartConfig
+    } else {
+        const group = (storeState as any).groups?.find((g: any) => g.id === storeState.activeGroupId)
+        resolvedConfig = group?.chartConfig ?? chartConfig
+    }
+    const visualSettings = (resolvedConfig as any)?.visualSettings ?? {}
+
     // Generate chart components using existing infrastructure
     let chartComponents = { pluginsScript: '', chartStyles: '', chartContainer: '', chartScript: '' }
     if (chartPos) {
@@ -38,7 +52,11 @@ export async function exportFormatAsHTML(
             includeResponsive: true,
             includeAnimations: true,
             includeTooltips: true,
-            includeLegend: true,
+            includeLegend: resolvedConfig?.plugins?.legend?.display ?? true,
+            fillArea: visualSettings.fillArea,
+            showBorder: visualSettings.showBorder,
+            showImages: visualSettings.showImages ?? true,
+            showLabels: visualSettings.showLabels ?? true,
             fileName: `${fileName}.html`,
             template: "standard",
             ...(options.htmlOptions || {})
@@ -90,7 +108,7 @@ export async function exportFormatAsHTML(
             width: ${width}px;
             height: ${height}px;
             overflow: hidden;
-            border-radius: 8px;
+            border-radius: 0px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
         

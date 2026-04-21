@@ -202,10 +202,15 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
         let { templateStructure, templateContent } = extractTemplateData();
 
         // Inject format data into config so it's persisted in the snapshot
-        const { editorMode } = useTemplateStore.getState();
+        const { editorMode, generateMode } = useTemplateStore.getState();
         const { selectedFormatId, contentPackage, contextualImageUrl } = useFormatGalleryStore.getState();
         
-        if (editorMode === 'template' && selectedFormatId) {
+        // Only inject format data when BOTH in template mode AND actively using format generate mode.
+        // Previously this only checked selectedFormatId, which could be stale if the user
+        // switched from format to template mode without the format store being cleared.
+        const isActiveFormatMode = editorMode === 'template' && generateMode === 'format' && selectedFormatId;
+        
+        if (isActiveFormatMode) {
             normalizedConfig.formatData = {
                 formatId: selectedFormatId,
                 contentPackage,
@@ -223,6 +228,10 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
                     note: 'Dummy structure to trigger backend is_template_mode flag for formats'
                 };
             }
+        } else if (editorMode === 'template') {
+            // Saving as a standard template — make sure to strip any leftover formatData
+            // from a previous format session so the load logic doesn't misidentify it as a format.
+            delete normalizedConfig.formatData;
         }
 
         // Get current snapshot ID for updates

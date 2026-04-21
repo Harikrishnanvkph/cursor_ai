@@ -44,6 +44,8 @@ interface FormatRendererProps {
   interactive?: boolean
   /** Whether pan mode is active (disables interaction) */
   panMode?: boolean
+  /** Force real ChartJS rendering even when not interactive (used in share page) */
+  forceRealChart?: boolean
 }
 
 export function FormatRenderer({
@@ -52,6 +54,7 @@ export function FormatRenderer({
   className = "",
   interactive = false,
   panMode = false,
+  forceRealChart = false,
 }: FormatRendererProps) {
   const { skeleton, renderedZones, colorPalette } = rendered
   const { width, height } = skeleton.dimensions
@@ -93,6 +96,7 @@ export function FormatRenderer({
             canvasWidth={width}
             canvasHeight={height}
             interactive={interactive}
+            forceRealChart={forceRealChart}
           />
         ))}
 
@@ -140,9 +144,10 @@ interface ZoneViewProps {
   canvasWidth: number
   canvasHeight: number
   interactive?: boolean
+  forceRealChart?: boolean
 }
 
-function ZoneView({ renderedZone, scale, palette, canvasWidth, canvasHeight, interactive }: ZoneViewProps) {
+function ZoneView({ renderedZone, scale, palette, canvasWidth, canvasHeight, interactive, forceRealChart }: ZoneViewProps) {
   const { zone } = renderedZone
 
   // Background zones don't need position — they fill the canvas
@@ -219,7 +224,7 @@ function ZoneView({ renderedZone, scale, palette, canvasWidth, canvasHeight, int
       content = <TextZoneContent renderedZone={renderedZone} scale={scale} interactive={!!interactive} />
       break
     case 'chart':
-      content = <ChartZoneView renderedZone={renderedZone} scale={scale} style={{}} palette={palette} interactive={interactive} />
+      content = <ChartZoneView renderedZone={renderedZone} scale={scale} style={{}} palette={palette} interactive={interactive} forceRealChart={forceRealChart} />
       break
     case 'stat':
       content = <StatZoneContent renderedZone={renderedZone} scale={scale} interactive={!!interactive} />
@@ -633,12 +638,13 @@ function StatZoneContent({ renderedZone, scale, interactive }: {
 
 import { ChartGenerator } from "@/lib/chart_generator"
 
-function ChartZoneView({ renderedZone, scale, style, palette, interactive }: {
+function ChartZoneView({ renderedZone, scale, style, palette, interactive, forceRealChart }: {
   renderedZone: RenderedZone
   scale: number
   style: React.CSSProperties
   palette: FormatColorPalette
   interactive?: boolean
+  forceRealChart?: boolean
 }) {
   const chartType = renderedZone.resolvedChartType || 'bar'
   const data = renderedZone.resolvedChartData
@@ -657,7 +663,7 @@ function ChartZoneView({ renderedZone, scale, style, palette, interactive }: {
   }
 
   // Interactive mode renders the actual Chart.js chart
-  if (interactive) {
+  if (interactive || forceRealChart) {
     return (
       <div style={{ ...containerStyle, padding: 0 }}>
         {/* We use pointer-events-none on the wrapper to let FormatRenderer handle clicks, 

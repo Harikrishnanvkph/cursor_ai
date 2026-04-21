@@ -26,6 +26,7 @@ import type {
   FormatColorPalette,
   ContentStat,
 } from '@/lib/format-types'
+import { deepCloneConfig } from '@/lib/utils/config-freeze'
 
 // ========================================
 // CONTENT EXTRACTION — Build LLMContentPackage from existing chart data
@@ -73,7 +74,7 @@ export function extractContentFromChartData(
       datasets,
     },
     suggestedChartTypes,
-    chartConfig,
+    chartConfig: deepCloneConfig(chartConfig),
   }
 }
 
@@ -285,11 +286,10 @@ function renderChartZone(
   const coloredData = applyPaletteToData(content.chartData, palette)
 
   // Build chart config
-  const config: Record<string, any> = {
-    ...(content.chartConfig || {}),
-    responsive: true,
-    maintainAspectRatio: false,
-  }
+  // Deep clone to prevent mutation leaking back to chart store's source config
+  const config: Record<string, any> = deepCloneConfig(content.chartConfig || {});
+  config.responsive = true;
+  config.maintainAspectRatio = false;
 
   // Apply zone-specific chart config
   if (zone.chartConfig) {

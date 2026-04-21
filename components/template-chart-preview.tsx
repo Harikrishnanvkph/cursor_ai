@@ -868,7 +868,7 @@ export function TemplateChartPreview({
           style={{
             ...backgroundStyle,
             border: `${template.borderWidth}px solid ${template.borderColor}`,
-            borderRadius: '8px',
+            borderRadius: '0px',
             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
           }}
         />
@@ -883,7 +883,7 @@ export function TemplateChartPreview({
                 linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px)
               `,
               backgroundSize: '20px 20px',
-              borderRadius: '8px'
+              borderRadius: '0px'
             }}
           />
         )}

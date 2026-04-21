@@ -41,7 +41,8 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
         unusedContents,
         removeUnusedContent,
         updateUnusedContent,
-        setEditorMode
+        setEditorMode,
+        setGenerateMode
     } = useTemplateStore()
 
     const { formats, selectedFormatId, setSelectedFormat } = useFormatGalleryStore()
@@ -110,9 +111,8 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
     }, [formatView, setUserFormats, setLoadingUserFormats])
         
     React.useEffect(() => {
-        // Only reconstruct content package if this is an actual format chart
-        // (identified by the formatData block in chartConfig)
-        if (!contentPackage && chartData?.datasets?.length > 0 && chartConfig?.formatData) {
+        // Reconstruct content package if this is an actual format chart or preparing to be one
+        if (!contentPackage && chartData?.datasets?.length > 0) {
             import('@/lib/variant-engine').then(({ extractContentFromChartData }) => {
                 try {
                     const pkg = extractContentFromChartData(chartType, chartData, chartConfig)
@@ -146,6 +146,7 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
         setSelectedFormat(null, 'bar')
         applyTemplate(templateId)
         setEditorMode('template')
+        setGenerateMode('template') // Ensure save logic knows we're in template mode, not format
     }
 
     const handleFormatSelect = (formatId: string) => {
@@ -153,6 +154,7 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
         useTemplateStore.getState().clearAllTemplateState()
         setSelectedFormat(formatId, 'bar')
         setEditorMode('template')
+        setGenerateMode('format') // Ensure save logic knows we're in format mode
     }
 
     const getTemplateType = (template: TemplateLayout) => {

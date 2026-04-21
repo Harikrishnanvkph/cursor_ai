@@ -6,7 +6,7 @@ import { useChartStore } from "../chart-store"
 import { createExpiringStorage } from "../storage-utils"
 import type { TemplateTextArea, TemplateLayout, EditorMode, ChartDimensionState } from "./template-types"
 import { defaultTemplates } from "./template-defaults"
-import { ChartConfigService } from "../services/chart-config-service"
+
 
 // Template store interface
 
@@ -29,6 +29,12 @@ interface TemplateStore {
   chartDimensionBackup: ChartDimensionState | null // Preserve chart dimensions when switching modes
   templateSavedToCloud: boolean // True only if template was loaded from a saved cloud conversation
   setTemplateSavedToCloud: (value: boolean) => void
+
+  // Dimension override — used by rendering layer when in template mode.
+  // This NEVER writes to chartConfig. The chart store's chartConfig remains
+  // the immutable source of truth owned exclusively by chart mode.
+  dimensionOverride: { width: number; height: number } | null
+  setDimensionOverride: (dims: { width: number; height: number } | null) => void
 
   // Template management
   templates: TemplateLayout[]
@@ -98,6 +104,7 @@ export const useTemplateStore = create<TemplateStore>()(
       templateInBackground: null,
       chartDimensionBackup: null,
       templateSavedToCloud: false, // Only true if template was loaded from a saved cloud conversation
+      dimensionOverride: null,
       isSyncing: false,
       originalCloudTemplateContent: null,
       modifiedCloudTemplateContent: null,
@@ -316,21 +323,11 @@ export const useTemplateStore = create<TemplateStore>()(
             currentTemplate: { ...template },
             templateInBackground: { ...template },
             editorMode: 'template',
-            unusedContents: [] // Clear unused contents
+            unusedContents: [], // Clear unused contents
+            // Set dimension override instead of mutating chart store's chartConfig
+            dimensionOverride: { width: template.chartArea.width, height: template.chartArea.height }
           })
 
-          // Update chart dimensions
-          const chartStore = useChartStore.getState()
-          useChartStore.setState({
-            chartConfig: ChartConfigService.normalizeConfig({
-              ...chartStore.chartConfig,
-              manualDimensions: false,
-              width: `${template.chartArea.width}px`,
-              height: `${template.chartArea.height}px`,
-              responsive: true,
-              maintainAspectRatio: false
-            }, chartStore.chartType as any)
-          })
           return
         }
 
@@ -404,20 +401,9 @@ export const useTemplateStore = create<TemplateStore>()(
             textAreas: updatedTextAreas
           },
           editorMode: 'template',
-          unusedContents
-        })
-
-        // Update chart dimensions to match template chart area
-        const chartStore = useChartStore.getState()
-        useChartStore.setState({
-          chartConfig: ChartConfigService.normalizeConfig({
-            ...chartStore.chartConfig,
-            manualDimensions: false,
-            width: `${template.chartArea.width}px`,
-            height: `${template.chartArea.height}px`,
-            responsive: true,
-            maintainAspectRatio: false
-          }, chartStore.chartType as any)
+          unusedContents,
+          // Set dimension override instead of mutating chart store's chartConfig
+          dimensionOverride: { width: template.chartArea.width, height: template.chartArea.height }
         })
       },
 
@@ -440,6 +426,8 @@ export const useTemplateStore = create<TemplateStore>()(
           }
         }
       },
+
+      setDimensionOverride: (dims) => set({ dimensionOverride: dims }),
 
       setEditorMode: (mode) => set((state) => {
         if (mode === state.editorMode) {
@@ -470,46 +458,52 @@ export const useTemplateStore = create<TemplateStore>()(
 
           const dimensionBackup = state.chartDimensionBackup || captureDimensions()
 
-          useChartStore.setState({
-            chartConfig: ChartConfigService.normalizeConfig({
-              ...chartConfig,
-              manualDimensions: false,
-              responsive: true,
-              dynamicDimension: false,
-              width: `${activeTemplate.chartArea.width}px`,
-              height: `${activeTemplate.chartArea.height}px`,
-              maintainAspectRatio: false
-            }, chartStore.chartType as any)
-          })
-
+          // NO LONGER mutates chart store's chartConfig.
+          // Instead, set dimensionOverride — the rendering layer reads this.
           return {
             editorMode: mode,
             currentTemplate: activeTemplate,
             templateInBackground: activeTemplate,
-            chartDimensionBackup: dimensionBackup
+            chartDimensionBackup: dimensionBackup,
+            dimensionOverride: {
+              width: activeTemplate.chartArea.width,
+              height: activeTemplate.chartArea.height
+            }
           }
         }
 
         if (mode === 'chart') {
-          // When switching back to chart mode, we want to KEEP the dimensions
-          // that were applied in template mode (which already copied the
-          // template's chartArea width/height into chartConfig and enabled
-          // manualDimensions). This ensures that in the Layout & Dimensions
-          // section the Manual Dimensions option remains selected with the
-          // template's width/height.
-          //
-          // So we intentionally DO NOT restore the previous backup dimensions here.
-          // We simply switch the logical editorMode flag and preserve:
-          // - chartConfig.width / height (already set from template)
-          // - chartConfig.manualDimensions = true (from template mode)
-          // - chartDimensionBackup (in case we need it for a future flow)
-          // - currentTemplate (so saves still include template structure)
+          // When switching back to chart mode, clear the dimension override.
+          // For cloud-saved template conversations, persist template dimensions
+          // as a "Template Dimension" option in Layout & Dimensions.
+          // For non-cloud charts, the chartConfig remains completely unchanged.
+          const isCloudSaved = state.templateSavedToCloud
+          const activeTemplate = state.currentTemplate || state.templateInBackground
+
+          if (isCloudSaved && activeTemplate?.chartArea) {
+            // Cloud-saved template: set templateDimensions on chartConfig
+            // so the Layout & Dimensions panel shows "Template Dimension" option
+            useChartStore.setState({
+              chartConfig: {
+                ...chartConfig,
+                templateDimensions: true,
+                originalDimensions: false,
+                manualDimensions: true,
+                responsive: false,
+                dynamicDimension: false,
+                width: `${activeTemplate.chartArea.width}px`,
+                height: `${activeTemplate.chartArea.height}px`
+              }
+            })
+          }
+          // For non-cloud charts, chartConfig remains completely untouched
 
           return {
             editorMode: mode,
             templateInBackground: state.currentTemplate,
             currentTemplate: state.currentTemplate,
-            chartDimensionBackup: state.chartDimensionBackup
+            chartDimensionBackup: state.chartDimensionBackup,
+            dimensionOverride: null // Clear the override
           }
         }
 
@@ -635,7 +629,8 @@ export const useTemplateStore = create<TemplateStore>()(
           sectionNotes: {},
           templateSavedToCloud: false,
           editorMode: 'chart',
-          generateMode: 'chart'
+          generateMode: 'chart',
+          dimensionOverride: null
         })
       }
     }),

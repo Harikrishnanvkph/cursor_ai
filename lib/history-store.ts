@@ -189,21 +189,20 @@ export const useHistoryStore = create<HistoryStore>()(
             chartConfig: conv.snapshot.chartConfig
           });
 
-          // Save original cloud dimensions for restoration (for chart-only conversations)
-          // ONLY if they haven't been set yet, to preserve the true "Original" reference
+          // Update original cloud dimensions for the loaded chart.
+          // This captures the dimensions native to the snapshot being loaded.
           const chartConfig = conv.snapshot.chartConfig as any;
           if (chartConfig) {
-            const { originalCloudDimensions, setOriginalCloudDimensions } = useChartStore.getState();
+            const { setOriginalCloudDimensions } = useChartStore.getState();
+            
+            // Try to use the chart's actual bounds, fallback to default sizes if fully responsive/null
+            const width = chartConfig.width ? String(chartConfig.width) : '800';
+            const height = chartConfig.height ? String(chartConfig.height) : '600';
 
-            if (!originalCloudDimensions) {
-              const width = chartConfig.width ? String(chartConfig.width) : '600px';
-              const height = chartConfig.height ? String(chartConfig.height) : '500px';
-
-              setOriginalCloudDimensions({
-                width: width.includes('px') ? width : `${width}px`,
-                height: height.includes('px') ? height : `${height}px`
-              });
-            }
+            setOriginalCloudDimensions({
+              width: width.includes('px') ? width : (width.includes('%') ? width : `${width}px`),
+              height: height.includes('px') ? height : (height.includes('%') ? height : `${height}px`)
+            });
           }
 
           // Restore format mode if snapshot has format data
@@ -271,8 +270,15 @@ export const useHistoryStore = create<HistoryStore>()(
               templateStore.setOriginalCloudTemplateContent(cloudTemplate)
               templateStore.setCurrentTemplate(cloudTemplate)
               templateStore.setEditorMode('template');
+              templateStore.setGenerateMode('template'); // Explicitly mark as template, not format
               templateStore.setTemplateSavedToCloud(true); // Mark template as saved to cloud
               templateStore.clearUnusedContents()
+              
+              // Clear any leftover format state so save won't confuse template with format
+              const formatStore = useFormatGalleryStore.getState();
+              formatStore.setSelectedFormat(null, conv.snapshot.chartType || 'bar');
+              formatStore.setContentPackage(null);
+              formatStore.setContextualImageUrl(null);
             }
           } else {
             // No template/format data - explicitly clear ALL template state and set chart mode

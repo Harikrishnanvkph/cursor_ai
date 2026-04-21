@@ -151,6 +151,11 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
   const overlayTexts = useOverlayTexts();
   const overlayShapes = useOverlayShapes();
 
+  // When rendered inside a template or format, force responsive mode
+  // so the chart always fills its container zone regardless of its own fixed dimensions.
+  const editorMode = useTemplateStore(s => s.editorMode);
+  const isInsideTemplateOrFormat = editorMode === 'template';
+
   const selectedImageId = useUIStore(s => s.selectedImageId);
   const selectedTextId = useUIStore(s => s.selectedTextId);
   const selectedShapeId = useUIStore(s => s.selectedShapeId);
@@ -1017,10 +1022,12 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
   };
 
   // Chart size logic
-  const isResponsive = (chartConfig as any)?.responsive !== false;
+  // When inside a template or format, always force responsive — the chart zone container
+  // already defines the correct size. Fixed dimensions must not overflow the zone.
+  const isResponsive = isInsideTemplateOrFormat || (chartConfig as any)?.responsive !== false;
 
   // parseDimension imported from @/lib/utils/dimension-utils
-
+  // Dimensions are irrelevant (always undefined) inside template/format since isResponsive is forced true
   const chartWidth = !isResponsive ? parseDimension((chartConfig as any)?.width) : undefined;
   const chartHeight = !isResponsive ? parseDimension((chartConfig as any)?.height) : undefined;
 
@@ -1588,22 +1595,20 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
                       },
                     } as any),
                   }}
-                  width={((chartConfig.manualDimensions || chartConfig.dynamicDimension) ? chartWidth : undefined)}
-                  height={((chartConfig.manualDimensions || chartConfig.dynamicDimension) ? chartHeight : undefined)}
                 />
               </ResizableChartArea>
             ) : (
               <div
                 style={{
-                  width: '100%',
-                  height: '100%',
+                  width: (chartConfig.manualDimensions && !isInsideTemplateOrFormat) ? `${chartWidth}px` : '100%',
+                  height: (chartConfig.manualDimensions && !isInsideTemplateOrFormat) ? `${chartHeight}px` : '100%',
                   position: 'relative',
                   minHeight: isResponsive ? '100%' : 'auto',
                   minWidth: isResponsive ? '100%' : 'auto'
                 }}
               >
                 <Chart
-                  key={`${chartTypeForChart}-${isResponsive ? 'responsive' : 'fixed'}-${chartConfig.manualDimensions ? 'manual' : 'auto'}`}
+                  key={`${chartTypeForChart}-${isResponsive ? 'responsive' : 'fixed'}-${chartConfig.manualDimensions ? `manual-${chartWidth}-${chartHeight}` : 'auto'}`}
                   ref={chartRef}
                   type={chartTypeForChart as any}
                   data={chartDataForChart}
@@ -1613,8 +1618,8 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
                   })}
                   options={{
                     ...appliedOptions,
-                    responsive: chartConfig.manualDimensions ? false : isResponsive,
-                    maintainAspectRatio: !(isResponsive),
+                    responsive: isInsideTemplateOrFormat || chartConfig.manualDimensions ? true : isResponsive,
+                    maintainAspectRatio: false,
                     overlayImages,
                     overlayTexts,
                     overlayShapes,
@@ -1805,8 +1810,6 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
                       },
                     } as any),
                   }}
-                  width={((chartConfig.manualDimensions || chartConfig.dynamicDimension) ? chartWidth : undefined)}
-                  height={((chartConfig.manualDimensions || chartConfig.dynamicDimension) ? chartHeight : undefined)}
                 />
               </div>
             )}

@@ -17,6 +17,18 @@ export const exportTemplateAsHTML = async (
 ): Promise<string> => {
     const { fileName = 'chart-template', htmlOptions = {} } = options
 
+    // Resolve per-chart config (same logic as use-chart-state hooks)
+    const storeState = useChartStore.getState()
+    let resolvedConfig = chartConfig
+    if (storeState.chartMode === 'single') {
+        const ds = storeState.chartData?.datasets?.[storeState.activeDatasetIndex]
+        resolvedConfig = (ds as any)?.chartConfig ?? chartConfig
+    } else {
+        const group = (storeState as any).groups?.find((g: any) => g.id === storeState.activeGroupId)
+        resolvedConfig = group?.chartConfig ?? chartConfig
+    }
+    const visualSettings = (resolvedConfig as any)?.visualSettings ?? {}
+
     // Use the existing chart HTML export logic as the base
     const baseHtmlOptions: HTMLExportOptions = {
         title: template.name,
@@ -26,7 +38,11 @@ export const exportTemplateAsHTML = async (
         includeResponsive: true,
         includeAnimations: true,
         includeTooltips: true,
-        includeLegend: true,
+        includeLegend: resolvedConfig?.plugins?.legend?.display ?? true,
+        fillArea: visualSettings.fillArea,
+        showBorder: visualSettings.showBorder,
+        showImages: visualSettings.showImages ?? true,
+        showLabels: visualSettings.showLabels ?? true,
         fileName: `${fileName}.html`,
         template: "standard", // Use standard template as base
         ...htmlOptions
@@ -192,7 +208,7 @@ export const exportTemplateAsHTML = async (
             ${getTemplateBackgroundCSS()}
             border: ${template.borderWidth}px solid ${template.borderColor};
             margin: 0 auto;
-            border-radius: 8px;
+            border-radius: 0px;
             overflow: hidden;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
@@ -203,8 +219,8 @@ export const exportTemplateAsHTML = async (
             top: ${template.chartArea.y}px;
             width: ${template.chartArea.width}px;
             height: ${template.chartArea.height}px;
-            background: white;
-            border-radius: 8px;
+            background: transparent;
+            border-radius: 0px;
             overflow: hidden;
         }
         
@@ -216,7 +232,7 @@ export const exportTemplateAsHTML = async (
             word-wrap: break-word;
             padding: 8px;
             box-sizing: border-box;
-            border-radius: 4px;
+            border-radius: 0px;
         }
         
         .text-area.text-content {
@@ -421,7 +437,19 @@ export const exportTemplateAsUnifiedHTML = async (
 
     try {
         // Get current chart data from the store
-        const { chartType, chartData, chartConfig } = useChartStore.getState()
+        const storeState = useChartStore.getState()
+        const { chartType, chartData, chartConfig } = storeState
+
+        // Resolve per-chart config (same logic as use-chart-state hooks)
+        let resolvedConfig = chartConfig
+        if (storeState.chartMode === 'single') {
+            const ds = storeState.chartData?.datasets?.[storeState.activeDatasetIndex]
+            resolvedConfig = (ds as any)?.chartConfig ?? chartConfig
+        } else {
+            const group = (storeState as any).groups?.find((g: any) => g.id === storeState.activeGroupId)
+            resolvedConfig = group?.chartConfig ?? chartConfig
+        }
+        const visualSettings = (resolvedConfig as any)?.visualSettings ?? {}
 
         // Use the existing chart HTML export logic as the base
         const baseHtmlOptions: HTMLExportOptions = {
@@ -432,7 +460,11 @@ export const exportTemplateAsUnifiedHTML = async (
             includeResponsive: true,
             includeAnimations: true,
             includeTooltips: true,
-            includeLegend: true,
+            includeLegend: resolvedConfig?.plugins?.legend?.display ?? true,
+            fillArea: visualSettings.fillArea,
+            showBorder: visualSettings.showBorder,
+            showImages: visualSettings.showImages ?? true,
+            showLabels: visualSettings.showLabels ?? true,
             fileName: `${fileName}.html`,
             template: "standard", // Use standard template as base
             ...htmlOptions
@@ -598,7 +630,7 @@ export const exportTemplateAsUnifiedHTML = async (
             /* background handled by child div */
             border: ${template.borderWidth}px solid ${template.borderColor};
             margin: 0 auto;
-            border-radius: 8px;
+            border-radius: 0px;
             overflow: hidden;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
@@ -619,8 +651,8 @@ export const exportTemplateAsUnifiedHTML = async (
             top: ${template.chartArea.y}px;
             width: ${template.chartArea.width}px;
             height: ${template.chartArea.height}px;
-            background: white;
-            border-radius: 8px;
+            background: transparent;
+            border-radius: 0px;
             overflow: hidden;
             z-index: 1;
         }
@@ -633,7 +665,7 @@ export const exportTemplateAsUnifiedHTML = async (
             word-wrap: break-word;
             padding: 8px;
             box-sizing: border-box;
-            border-radius: 4px;
+            border-radius: 0px;
             z-index: 2;
         }
         

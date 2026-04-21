@@ -61,7 +61,6 @@ export const ChartPreviewCanvas = React.memo(({
                         top: 0, left: 0, right: 0, bottom: 0,
                         transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
                         transformOrigin: 'center center',
-                        transition: isDragging ? 'none' : 'transform 0.1s ease-out',
                         zIndex: 10,
                         cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'default',
                         pointerEvents: 'auto'
@@ -133,7 +132,6 @@ export const ChartPreviewCanvas = React.memo(({
                     height: `${chartHeight}px`,
                     transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
                     transformOrigin: 'top left',
-                    transition: isDragging ? 'none' : 'transform 0.1s ease-out',
                     zIndex: 10,
                     cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'default',
                     pointerEvents: 'auto'

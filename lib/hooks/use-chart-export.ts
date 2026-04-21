@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react"
 import { useChartStore } from "@/lib/chart-store"
+import { useTemplateStore } from "@/lib/template-store"
 import { downloadChartAsHTML } from "@/lib/html-exporter"
 import {
     useChartConfig,
@@ -63,6 +64,11 @@ export function useChartExport(options?: {
         }
 
         const getExportDimensions = (): { width: number; height: number } => {
+            // Prefer template dimension override when in template mode
+            const templateStore = useTemplateStore.getState();
+            if (templateStore.dimensionOverride) {
+                return templateStore.dimensionOverride;
+            }
             if (getGlobalChartRef()?.current?.canvas) {
                 return {
                     width: getGlobalChartRef()?.current?.canvas.width,
@@ -86,7 +92,7 @@ export function useChartExport(options?: {
                 includeResponsive: true,
                 includeAnimations: true,
                 includeTooltips: true,
-                includeLegend: true,
+                includeLegend: chartConfig?.plugins?.legend?.display ?? true,
                 fileName: `chart-${chartType}-${new Date().toISOString().slice(0, 10)}.html`,
                 template: "plain",
                 dragState: currentDragState,

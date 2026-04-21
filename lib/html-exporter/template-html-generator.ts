@@ -1,6 +1,7 @@
 import { useChartStore } from "../chart-store";
 import { type SupportedChartType } from "../chart-store";
 import { chartTypeMapping } from "../chart-store";
+import { useTemplateStore } from "../template-store";
 import { generateCompletePluginSystem } from "../html-plugins";
 import { getCurrentDragState } from "../custom-label-plugin";
 import type { HTMLExportOptions } from "./export-types";
@@ -34,12 +35,31 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
     } = useChartStore.getState();
 
     // Map custom chart types to actual Chart.js types
-    const mappedChartType = chartTypeMapping[chartType as SupportedChartType] || chartType;
-    const storeToggles = useChartStore.getState();
-    const effectiveShowImages = options.showImages ?? (storeToggles as any).showImages ?? true;
-    const effectiveShowLabels = options.showLabels ?? (storeToggles as any).showLabels ?? true;
-    const effectiveFillArea = options.fillArea ?? (storeToggles as any).fillArea;
-    const effectiveShowBorder = options.showBorder ?? (storeToggles as any).showBorder;
+    // In grouped mixed mode, the base chart type should be 'bar' (each dataset has its own type)
+    const uniformityMode = (useChartStore.getState() as any).uniformityMode || 'uniform';
+    let mappedChartType: string;
+    if (chartMode !== 'single' && uniformityMode === 'mixed') {
+        mappedChartType = 'bar';
+    } else {
+        mappedChartType = chartTypeMapping[chartType as SupportedChartType] || chartType;
+    }
+
+    // Resolve visual settings from the per-chart config (same logic as use-chart-state hooks)
+    // This ensures we read the same truth the UI and chart_generator see.
+    const storeState = useChartStore.getState();
+    let resolvedConfig = chartConfig;
+    if (storeState.chartMode === 'single') {
+        const ds = storeState.chartData?.datasets?.[storeState.activeDatasetIndex];
+        resolvedConfig = ds?.chartConfig ?? chartConfig;
+    } else {
+        const group = (storeState as any).groups?.find((g: any) => g.id === storeState.activeGroupId);
+        resolvedConfig = group?.chartConfig ?? chartConfig;
+    }
+    const visualSettings = (resolvedConfig as any)?.visualSettings ?? {};
+    const effectiveShowImages = options.showImages ?? visualSettings.showImages ?? true;
+    const effectiveShowLabels = options.showLabels ?? visualSettings.showLabels ?? true;
+    const effectiveFillArea = options.fillArea ?? visualSettings.fillArea;
+    const effectiveShowBorder = options.showBorder ?? visualSettings.showBorder;
 
     // Use provided drag state or try to capture current drag state from any active chart instance
     let currentDragState = options.dragState || {};
@@ -87,15 +107,17 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
     if ((effectiveFillArea !== undefined || effectiveShowBorder !== undefined) && Array.isArray(processedChartData.datasets)) {
         processedChartData.datasets = processedChartData.datasets.map((ds: any) => {
             const out = { ...ds } as any;
-            if (effectiveFillArea !== undefined) {
+            if (effectiveFillArea === false) {
+                if (Array.isArray(out.backgroundColor)) out.backgroundColor = out.backgroundColor.map(() => 'transparent');
+                else out.backgroundColor = 'transparent';
+                
                 const isLineLike = (chartType === 'line' || chartType === 'area' || chartType === 'radar');
                 if (isLineLike) {
-                    // Force the override if we have an explicit preference
-                    out.fill = !!effectiveFillArea;
+                    out.fill = false;
                 }
-                if (effectiveFillArea === false) {
-                    if (Array.isArray(out.backgroundColor)) out.backgroundColor = out.backgroundColor.map(() => 'transparent');
-                    else out.backgroundColor = 'transparent';
+            } else if (effectiveFillArea === true) {
+                if (chartType === 'area' && (out.fill === undefined || out.fill === false)) {
+                    out.fill = 'origin';
                 }
             } else {
                 // FALLBACK CASE: When no explicit option is provided, 
@@ -104,7 +126,6 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
                     out.fill = (ds.fill !== undefined) ? ds.fill : true;
                 } else if (chartType === 'line') {
                     // Strictly respect the dataset's fill property for line charts
-                    // Line charts should NEVER default to true unless explicitly requested
                     out.fill = (ds.fill !== undefined) ? ds.fill : false;
                 }
             }
@@ -132,18 +153,45 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
     );
 
     // Generate custom labels and enhance chart config
-    const effectiveConfig = JSON.parse(JSON.stringify(chartConfig));
+    const effectiveConfig = JSON.parse(JSON.stringify(resolvedConfig));
     if (effectiveShowLabels === false) {
         if (effectiveConfig.plugins?.customLabelsConfig) {
             effectiveConfig.plugins.customLabelsConfig.display = false;
         }
     }
     const customLabels = generateCustomLabelsFromConfig(effectiveConfig, processedChartData, legendFilter, currentDragState);
+
+    // Process background image URL to base64 if needed
+    const processedChartConfig = JSON.parse(JSON.stringify(resolvedConfig));
+    
+    // Remove scales for pie and doughnut charts to prevent background lines
+    if (chartType === 'pie' || chartType === 'doughnut') {
+        delete processedChartConfig.scales;
+    }
+    
+    // Add stacked scales for stackedBar chart type
+    if (chartType === 'stackedBar') {
+        processedChartConfig.scales = {
+            ...(processedChartConfig.scales || {}),
+            x: { ...((processedChartConfig.scales && processedChartConfig.scales.x) || {}), stacked: true },
+            y: { ...((processedChartConfig.scales && processedChartConfig.scales.y) || {}), stacked: true },
+        };
+    }
+
+    // Add horizontal indexAxis for horizontalBar chart type
+    if (chartType === 'horizontalBar' || chartType === 'horizontalBar3d') {
+        processedChartConfig.indexAxis = 'y';
+    }
+
+    if (processedChartConfig.background?.type === 'image' && processedChartConfig.background?.imageUrl) {
+        processedChartConfig.background.imageUrl = await convertImageToBase64(processedChartConfig.background.imageUrl);
+    }
+
     const enhancedChartConfig = {
-        ...chartConfig,
+        ...processedChartConfig,
         data: processedChartData,
         plugins: {
-            ...chartConfig.plugins,
+            ...processedChartConfig.plugins,
             customLabels: (effectiveShowLabels === false) ? undefined : (customLabels.length > 0 ? {
                 shapeSize: 32,
                 labels: customLabels
@@ -152,18 +200,32 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
                 overlayImages: processedOverlayImages,
                 overlayTexts: overlayTexts,
                 overlayShapes: overlayShapes
+            },
+            // Explicitly enable 3D plugins based on chartType
+            pie3d: {
+                ...(processedChartConfig.plugins?.pie3d || {}),
+                enabled: chartType === 'pie3d' || chartType === 'doughnut3d'
+            },
+            bar3d: {
+                ...(processedChartConfig.plugins?.bar3d || {}),
+                enabled: chartType === 'bar3d' || chartType === 'horizontalBar3d'
             }
         }
     };
 
     const {
-        width = 800,
-        height = 600,
         includeResponsive = true,
         includeAnimations = true,
         includeTooltips = true,
-        includeLegend = true,
+        includeLegend = resolvedConfig?.plugins?.legend?.display ?? true,
     } = options;
+
+    // Read dimension override from template store — this is the immutable way
+    // to get template dimensions without reading from the (now unchanged) chartConfig
+    const templateStore = useTemplateStore.getState();
+    const dimensionOverride = templateStore.dimensionOverride;
+    const width = options.width ?? dimensionOverride?.width ?? 800;
+    const height = options.height ?? dimensionOverride?.height ?? 600;
 
     const legendForExport = buildLegendConfigForExport(enhancedChartConfig, includeLegend);
 
@@ -284,8 +346,8 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
         position: relative;
         width: ${width}px;
         height: ${height}px;
-        background: white;
-        border-radius: 8px;
+        background: transparent;
+        border-radius: 0px;
         overflow: hidden;
     }
     
@@ -295,12 +357,33 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
     }
   `;
 
+    // Generate background HTML
+    let backgroundHTML = '';
+    const bg = enhancedChartConfig.background || { type: 'color', color: '#ffffff' };
+    const bgOpacity = bg.opacity || 100;
+
+    if (bg.type === 'image' && bg.imageUrl) {
+        backgroundHTML = `<div style="position: absolute; inset: 0; z-index: 0; background-image: url('${bg.imageUrl}'); background-size: ${bg.imageFit === 'fill' ? '100% 100%' : (bg.imageFit === 'contain' ? 'contain' : 'cover')}; background-position: center; background-repeat: no-repeat; opacity: ${bgOpacity / 100}; pointer-events: none; ${bg.blur ? `filter: blur(${bg.blur}px);` : ''}"></div>`;
+    } else if (bg.type === 'gradient') {
+        const color1 = bg.gradientColor1 || '#ffffff';
+        const color2 = bg.gradientColor2 || '#000000';
+        const type = bg.gradientType || 'linear';
+        const direction = bg.gradientDirection || 'to right';
+        const gradient = type === 'radial' ? `radial-gradient(circle, ${color1}, ${color2})` : `linear-gradient(${direction}, ${color1}, ${color2})`;
+        backgroundHTML = `<div style="position: absolute; inset: 0; z-index: 0; background-image: ${gradient}; opacity: ${bgOpacity / 100}; pointer-events: none;"></div>`;
+    } else if (bg.type === 'color' || bg.type === undefined) {
+        const color = bg.color || '#ffffff';
+        const hexOpacity = Math.round(bgOpacity * 2.55).toString(16).padStart(2, '0');
+        backgroundHTML = `<div style="position: absolute; inset: 0; z-index: 0; background-color: ${color}${hexOpacity}; pointer-events: none;"></div>`;
+    }
+
     // Generate plugins script
     const pluginsScript = generateCompletePluginSystem(enhancedChartConfig);
 
     // Generate chart container
     const chartContainer = `
-    <canvas id="chartCanvas" class="chart-canvas" width="${width}" height="${height}"></canvas>
+    ${backgroundHTML}
+    <canvas id="chartCanvas" class="chart-canvas" width="${width}" height="${height}" style="position: relative; z-index: 10;"></canvas>
   `;
 
     return {
