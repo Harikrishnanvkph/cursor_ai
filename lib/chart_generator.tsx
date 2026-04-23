@@ -93,13 +93,37 @@ interface SliceColorPickerPopoverProps {
   y: number;
   currentColor: string;
   currentBorderColor: string;
+  currentValue: number | string;
   onClose: () => void;
   onColorChange: (color: string) => void;
   onBorderColorChange: (color: string) => void;
+  onValueChange: (value: string) => void;
 }
 
-const SliceColorPickerPopover = ({ isOpen, x, y, currentColor, currentBorderColor, onClose, onColorChange, onBorderColorChange }: SliceColorPickerPopoverProps) => {
+const SliceColorPickerPopover = ({ isOpen, x, y, currentColor, currentBorderColor, currentValue, onClose, onColorChange, onBorderColorChange, onValueChange }: SliceColorPickerPopoverProps) => {
   const menuRef = useRef<HTMLDivElement>(null);
+  const [localValue, setLocalValue] = useState(currentValue);
+
+  // Sync local state when external value changes (e.g. initial open)
+  useEffect(() => {
+    setLocalValue(currentValue);
+  }, [currentValue]);
+
+  // Use ref to hold latest callback to avoid resetting the timer on parent re-renders
+  const onValueChangeRef = useRef(onValueChange);
+  useEffect(() => {
+    onValueChangeRef.current = onValueChange;
+  }, [onValueChange]);
+
+  // Debounce the value change
+  useEffect(() => {
+    if (localValue.toString() !== currentValue.toString()) {
+      const handler = setTimeout(() => {
+        onValueChangeRef.current(localValue.toString());
+      }, 700);
+      return () => clearTimeout(handler);
+    }
+  }, [localValue, currentValue]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -115,11 +139,11 @@ const SliceColorPickerPopover = ({ isOpen, x, y, currentColor, currentBorderColo
 
   if (!isOpen) return null;
 
-  const menuWidth = 84;
+  const menuWidth = 140;
   const menuHeight = 44;
-  const offsetX = menuWidth / 2;
+  const offsetX = 42; // Center horizontally somewhat
   const offsetY = 10;
-  
+
   // Default to placing it centered directly above the cursor
   let finalX = x - offsetX;
   let finalY = y - menuHeight - offsetY;
@@ -127,9 +151,9 @@ const SliceColorPickerPopover = ({ isOpen, x, y, currentColor, currentBorderColo
   if (typeof window !== 'undefined') {
     // If it hits the top edge of the screen, fallback to placing it directly below the cursor
     if (finalY < 5) {
-       finalY = y + offsetY;
+      finalY = y + offsetY;
     }
-    
+
     // Ensure bounds
     finalX = Math.max(5, Math.min(finalX, window.innerWidth - menuWidth - 5));
     finalY = Math.max(5, Math.min(finalY, window.innerHeight - menuHeight - 5));
@@ -138,18 +162,18 @@ const SliceColorPickerPopover = ({ isOpen, x, y, currentColor, currentBorderColo
   const content = (
     <div
       ref={menuRef}
-      className="fixed z-[9999] p-1.5 bg-white border border-gray-200 rounded-lg shadow-xl animate-in zoom-in-95 duration-200 flex gap-2"
+      className="fixed z-[9999] p-1.5 bg-white border border-gray-200 rounded-lg shadow-xl animate-in zoom-in-95 duration-200 flex items-center gap-2"
       style={{ left: `${finalX}px`, top: `${finalY}px` }}
       onContextMenu={(e) => e.preventDefault()}
     >
       <div className="relative" title="Fill Color">
         <button
           className="w-5 h-5 rounded shadow-sm cursor-pointer hover:scale-105 transition-all overflow-hidden bg-cover bg-center p-0 m-0 block"
-          style={{ 
-              backgroundColor: currentColor,
-              backgroundImage: currentColor.startsWith('rgba') && currentColor.includes(', 0)') ? 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)' : 'none',
-              backgroundSize: '5px 5px',
-              backgroundPosition: '0 0, 0 2.5px, 2.5px -2.5px, -2.5px 0px'
+          style={{
+            backgroundColor: currentColor,
+            backgroundImage: currentColor.startsWith('rgba') && currentColor.includes(', 0)') ? 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)' : 'none',
+            backgroundSize: '5px 5px',
+            backgroundPosition: '0 0, 0 2.5px, 2.5px -2.5px, -2.5px 0px'
           }}
           onClick={() => document.getElementById('slice-context-color-popover')?.click()}
         />
@@ -177,6 +201,25 @@ const SliceColorPickerPopover = ({ isOpen, x, y, currentColor, currentBorderColo
           value={getHexFromColor(currentBorderColor)}
           onChange={(e) => onBorderColorChange(e.target.value)}
           className="absolute inset-0 opacity-0 w-full h-full cursor-pointer pointer-events-none"
+        />
+      </div>
+
+      <div className="w-[1px] h-4 bg-gray-200 mx-0.5"></div>
+
+      <div className="flex items-center" title="Slice Value">
+        <input
+          type="number"
+          value={localValue}
+          onChange={(e) => setLocalValue(e.target.value)}
+          className="w-16 h-6 text-xs border border-gray-200 rounded px-1.5 outline-none focus:border-blue-400 font-medium text-gray-700"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              onValueChange(localValue.toString());
+              onClose();
+            }
+            e.stopPropagation();
+          }}
+          onClick={(e) => e.stopPropagation()}
         />
       </div>
     </div>
@@ -348,6 +391,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
     sliceIndex: number;
     currentColor: string;
     currentBorderColor: string;
+    currentValue: number | string;
   }>({
     isOpen: false,
     x: 0,
@@ -355,7 +399,8 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
     datasetIndex: 0,
     sliceIndex: 0,
     currentColor: '#3b82f6',
-    currentBorderColor: '#1d4ed8'
+    currentBorderColor: '#1d4ed8',
+    currentValue: 0
   });
 
   // Mobile detection
@@ -590,7 +635,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
     canvas.addEventListener('overlayTextRotate', handleTextRotate as EventListener)
     canvas.addEventListener('overlayContextMenu', handleContextMenu as EventListener)
 
-      console.log('✅ Event listeners attached to chart canvas')
+    console.log('✅ Event listeners attached to chart canvas')
 
     return () => {
       canvas.removeEventListener('overlayPositionUpdate', handleOverlayPositionUpdate as EventListener)
@@ -608,7 +653,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
       canvas.removeEventListener('overlayTextRotate', handleTextRotate as EventListener)
       canvas.removeEventListener('overlayContextMenu', handleContextMenu as EventListener)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storeHydrated, chartConfig.type, chartConfig.responsive, chartConfig.manualDimensions, chartConfig.width, chartConfig.height]);
 
 
@@ -744,7 +789,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
     const validType = datasetType === 'stackedBar' || datasetType === 'horizontalBar' || datasetType === 'horizontalBar3d' ? 'bar' :
       (datasetType === 'area' ? 'line' :
         (datasetType === 'pie3d' ? 'pie' :
-          (datasetType === 'doughnut3d' ? 'doughnut' : 
+          (datasetType === 'doughnut3d' ? 'doughnut' :
             (datasetType === 'bar3d' ? 'bar' : datasetType))));
 
     let patched = { ...ds, type: validType };
@@ -1027,8 +1072,8 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
     (chartType === 'stackedBar' ? 'bar' :
       (chartType === 'horizontalBar' ? 'bar' :
         (chartType === 'pie3d' ? 'pie' :
-          (chartType === 'doughnut3d' ? 'doughnut' : 
-            (chartType === 'bar3d' ? 'bar' : 
+          (chartType === 'doughnut3d' ? 'doughnut' :
+            (chartType === 'bar3d' ? 'bar' :
               (chartType === 'horizontalBar3d' ? 'bar' : chartType))))));
 
   // In single mode, ALWAYS use the global chart type (user expects to change the whole chart)
@@ -1044,8 +1089,8 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
         (chartType === 'stackedBar' ? 'bar' :
           (chartType === 'horizontalBar' ? 'bar' :
             (chartType === 'pie3d' ? 'pie' :
-              (chartType === 'doughnut3d' ? 'doughnut' : 
-                (chartType === 'bar3d' ? 'bar' : 
+              (chartType === 'doughnut3d' ? 'doughnut' :
+                (chartType === 'bar3d' ? 'bar' :
                   (chartType === 'horizontalBar3d' ? 'bar' : chartType))))));
     } else {
       // Mixed mode: the chart type is 'bar' as base, but each dataset has its own type
@@ -1184,9 +1229,9 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
   // This prevents leftover x/y scales from Cartesian charts from appearing
   const radialOnlyScales = isRadialType && safeScales?.r ? { r: safeScales.r } : {};
   // Determine if any dataset (or the chart) requests horizontal orientation
-  const needsHorizontal = chartType === 'horizontalBar' || chartType === 'horizontalBar3d' || 
-    filteredDatasetsPatched.some((ds: any) => 
-      (ds?.chartType || chartType) === 'horizontalBar' || 
+  const needsHorizontal = chartType === 'horizontalBar' || chartType === 'horizontalBar3d' ||
+    filteredDatasetsPatched.some((ds: any) =>
+      (ds?.chartType || chartType) === 'horizontalBar' ||
       (ds?.chartType || chartType) === 'horizontalBar3d'
     );
   const baseOptions = {
@@ -1289,41 +1334,46 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
     // If we clicked on an overlay, overlayContextMenu should handle it via CustomEvent. 
     // We can rely on Chart.js getElementsAtEventForMode to see if we truly hit a chart slice.
     if (!chartRef.current) return;
-    
+
     let elements = chartRef.current.getElementsAtEventForMode(event, 'nearest', { intersect: true }, false);
-    
+
     if (!elements || elements.length === 0) {
-        elements = chartRef.current.getElementsAtEventForMode(event, 'point', { intersect: true }, false);
+      elements = chartRef.current.getElementsAtEventForMode(event, 'point', { intersect: true }, false);
     }
     if (!elements || elements.length === 0) {
-        // In some chart types (Pie/Doughnut), complex arc math or 3D plugins can make 
-        // the immediate contextmenu event coordinates fail intersection tests. 
-        // However, hovering reliably populates ChartJS's active elements array right before click.
-        const active = chartRef.current.getActiveElements();
-        if (active && active.length > 0) {
-            elements = active;
-        }
+      // In some chart types (Pie/Doughnut), complex arc math or 3D plugins can make 
+      // the immediate contextmenu event coordinates fail intersection tests. 
+      // However, hovering reliably populates ChartJS's active elements array right before click.
+      const active = chartRef.current.getActiveElements();
+      if (active && active.length > 0) {
+        elements = active;
+      }
     }
 
     if (elements && elements.length > 0) {
       event.preventDefault();
       event.stopPropagation();
-      
+
       const element = elements[0];
       const dataset = stateRef.current.chartData.datasets[element.datasetIndex];
-      
+
       let currentColor = '#3b82f6';
       if (dataset && Array.isArray(dataset.backgroundColor) && dataset.backgroundColor[element.index]) {
-          currentColor = dataset.backgroundColor[element.index];
+        currentColor = dataset.backgroundColor[element.index];
       } else if (dataset && dataset.backgroundColor && typeof dataset.backgroundColor === 'string') {
-          currentColor = dataset.backgroundColor;
+        currentColor = dataset.backgroundColor;
       }
 
       let currentBorderColor = '#1d4ed8';
       if (dataset && Array.isArray(dataset.borderColor) && dataset.borderColor[element.index]) {
-          currentBorderColor = dataset.borderColor[element.index];
+        currentBorderColor = dataset.borderColor[element.index];
       } else if (dataset && dataset.borderColor && typeof dataset.borderColor === 'string') {
-          currentBorderColor = dataset.borderColor;
+        currentBorderColor = dataset.borderColor;
+      }
+
+      let sliceValue = dataset.data ? dataset.data[element.index] : 0;
+      if (sliceValue !== null && typeof sliceValue === 'object' && 'y' in sliceValue) {
+        sliceValue = sliceValue.y;
       }
 
       setSliceContextMenu({
@@ -1333,7 +1383,8 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
         datasetIndex: element.datasetIndex,
         sliceIndex: element.index,
         currentColor,
-        currentBorderColor
+        currentBorderColor,
+        currentValue: sliceValue ?? 0
       });
     }
   };
@@ -1610,8 +1661,8 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
                     },
                     plugins: ({
                       ...chartConfig.plugins,
-                      pie3d: (chartType === 'pie3d' || chartType === 'doughnut3d') 
-                        ? { ...((chartConfig.plugins as any)?.pie3d || {}), enabled: true } 
+                      pie3d: (chartType === 'pie3d' || chartType === 'doughnut3d')
+                        ? { ...((chartConfig.plugins as any)?.pie3d || {}), enabled: true }
                         : (chartConfig.plugins as any)?.pie3d,
                       bar3d: (chartType === 'bar3d' || chartType === 'horizontalBar3d')
                         ? { ...((chartConfig.plugins as any)?.bar3d || {}), enabled: true }
@@ -1784,24 +1835,24 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
                 }}
               >
                 <Chart
-                    key={`${chartTypeForChart}-${isResponsive ? 'responsive' : 'fixed'}-${chartConfig.manualDimensions ? `manual-${chartWidth}-${chartHeight}` : 'auto'}`}
-                    ref={chartRef}
-                    type={chartTypeForChart as any}
-                    data={chartDataForChart}
-                    {...((chartConfig.manualDimensions || chartConfig.dynamicDimension) && {
-                      'data-debug-width': chartConfig.width,
-                      'data-debug-height': chartConfig.height
-                    })}
-                    options={{
-                      ...appliedOptions,
-                      responsive: isInsideTemplateOrFormat || chartConfig.manualDimensions ? true : isResponsive,
-                      maintainAspectRatio: false,
-                      overlayImages,
-                      overlayTexts,
-                      overlayShapes,
-                      layout: {
-                        padding: chartConfig.layout?.padding || 0
-                      },
+                  key={`${chartTypeForChart}-${isResponsive ? 'responsive' : 'fixed'}-${chartConfig.manualDimensions ? `manual-${chartWidth}-${chartHeight}` : 'auto'}`}
+                  ref={chartRef}
+                  type={chartTypeForChart as any}
+                  data={chartDataForChart}
+                  {...((chartConfig.manualDimensions || chartConfig.dynamicDimension) && {
+                    'data-debug-width': chartConfig.width,
+                    'data-debug-height': chartConfig.height
+                  })}
+                  options={{
+                    ...appliedOptions,
+                    responsive: isInsideTemplateOrFormat || chartConfig.manualDimensions ? true : isResponsive,
+                    maintainAspectRatio: false,
+                    overlayImages,
+                    overlayTexts,
+                    overlayShapes,
+                    layout: {
+                      padding: chartConfig.layout?.padding || 0
+                    },
                     hover: {
                       intersect: chartConfig.hover?.intersect ?? false,
                       animationDuration: chartConfig.hover?.animationDuration ?? 400,
@@ -1827,8 +1878,8 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
                     },
                     plugins: ({
                       ...chartConfig.plugins,
-                      pie3d: (chartType === 'pie3d' || chartType === 'doughnut3d') 
-                        ? { ...((chartConfig.plugins as any)?.pie3d || {}), enabled: true } 
+                      pie3d: (chartType === 'pie3d' || chartType === 'doughnut3d')
+                        ? { ...((chartConfig.plugins as any)?.pie3d || {}), enabled: true }
                         : (chartConfig.plugins as any)?.pie3d,
                       bar3d: (chartType === 'bar3d' || chartType === 'horizontalBar3d')
                         ? { ...((chartConfig.plugins as any)?.bar3d || {}), enabled: true }
@@ -2087,129 +2138,150 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
         y={sliceContextMenu.y}
         currentColor={sliceContextMenu.currentColor}
         currentBorderColor={sliceContextMenu.currentBorderColor}
+        currentValue={sliceContextMenu.currentValue}
         onClose={() => setSliceContextMenu(prev => ({ ...prev, isOpen: false }))}
         onColorChange={(newColor) => {
-            setSliceContextMenu(prev => ({ ...prev, currentColor: newColor }));
-            
-            const currentMode = useChartStore.getState().chartMode;
-            const { datasetIndex, sliceIndex } = sliceContextMenu;
+          setSliceContextMenu(prev => ({ ...prev, currentColor: newColor }));
 
-            if (currentMode === 'single') {
-              const dataset = chartData.datasets[datasetIndex];
-              if (!dataset) return;
+          const currentMode = useChartStore.getState().chartMode;
+          const { datasetIndex, sliceIndex } = sliceContextMenu;
 
-              const newBgColors = Array.isArray(dataset.backgroundColor)
-                  ? [...dataset.backgroundColor]
-                  : Array(dataset.data.length).fill(dataset.backgroundColor || '#3b82f6');
-              const newBorderColors = Array.isArray(dataset.borderColor)
-                  ? [...dataset.borderColor]
-                  : Array(dataset.data.length).fill(dataset.borderColor || darkenColor(dataset.backgroundColor || '#3b82f6', 20));
+          if (currentMode === 'single') {
+            const dataset = chartData.datasets[datasetIndex];
+            if (!dataset) return;
 
-              newBgColors[sliceIndex] = newColor;
-              newBorderColors[sliceIndex] = darkenColor(newColor, 20);
+            const newBgColors = Array.isArray(dataset.backgroundColor)
+              ? [...dataset.backgroundColor]
+              : Array(dataset.data.length).fill(dataset.backgroundColor || '#3b82f6');
+            const newBorderColors = Array.isArray(dataset.borderColor)
+              ? [...dataset.borderColor]
+              : Array(dataset.data.length).fill(dataset.borderColor || darkenColor(dataset.backgroundColor || '#3b82f6', 20));
 
+            newBgColors[sliceIndex] = newColor;
+            newBorderColors[sliceIndex] = darkenColor(newColor, 20);
+
+            actionsRef.current.updateDataset(datasetIndex, {
+              backgroundColor: newBgColors,
+              borderColor: newBorderColors
+            });
+          } else {
+            const dataset = chartData.datasets[datasetIndex];
+            if (!dataset) return;
+
+            const isSingleString = typeof dataset.backgroundColor === 'string';
+            const bgArr = Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor : [];
+            const normalize = (c: any) => typeof c === 'string' ? c.replace(/\s/g, '').toLowerCase() : '';
+            const allSame = bgArr.length > 0 && bgArr.every((c: any) => normalize(c) === normalize(bgArr[0]));
+            const isDatasetColorMode = (dataset as any).datasetColorMode === 'single' || isSingleString || allSame;
+
+            if (isDatasetColorMode) {
+              const sliceCount = dataset.data.length;
               actionsRef.current.updateDataset(datasetIndex, {
-                  backgroundColor: newBgColors,
-                  borderColor: newBorderColors
+                backgroundColor: Array(sliceCount).fill(newColor),
+                borderColor: Array(sliceCount).fill(darkenColor(newColor, 20)),
+                lastDatasetColor: newColor,
+                datasetColorMode: 'single'
               });
             } else {
-              const dataset = chartData.datasets[datasetIndex];
-              if (!dataset) return;
+              const groupId = (dataset as any).groupId;
+              chartData.datasets.forEach((ds: any, dsIdx: number) => {
+                if ((ds as any).groupId !== groupId) return;
+                if ((ds as any).mode !== 'grouped') return;
 
-              const isSingleString = typeof dataset.backgroundColor === 'string';
-              const bgArr = Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor : [];
-              const normalize = (c: any) => typeof c === 'string' ? c.replace(/\s/g, '').toLowerCase() : '';
-              const allSame = bgArr.length > 0 && bgArr.every((c: any) => normalize(c) === normalize(bgArr[0]));
-              const isDatasetColorMode = (dataset as any).datasetColorMode === 'single' || isSingleString || allSame;
+                const dsBgColors = Array.isArray(ds.backgroundColor)
+                  ? [...ds.backgroundColor]
+                  : Array(ds.data.length).fill(ds.backgroundColor || '#3b82f6');
+                const dsBorderColors = Array.isArray(ds.borderColor)
+                  ? [...ds.borderColor]
+                  : Array(ds.data.length).fill(ds.borderColor || darkenColor(ds.backgroundColor || '#3b82f6', 20));
 
-              if (isDatasetColorMode) {
-                const sliceCount = dataset.data.length;
-                actionsRef.current.updateDataset(datasetIndex, {
-                    backgroundColor: Array(sliceCount).fill(newColor),
-                    borderColor: Array(sliceCount).fill(darkenColor(newColor, 20)),
-                    lastDatasetColor: newColor,
-                    datasetColorMode: 'single'
-                });
-              } else {
-                const groupId = (dataset as any).groupId;
-                chartData.datasets.forEach((ds: any, dsIdx: number) => {
-                    if ((ds as any).groupId !== groupId) return;
-                    if ((ds as any).mode !== 'grouped') return;
-
-                    const dsBgColors = Array.isArray(ds.backgroundColor)
-                        ? [...ds.backgroundColor]
-                        : Array(ds.data.length).fill(ds.backgroundColor || '#3b82f6');
-                    const dsBorderColors = Array.isArray(ds.borderColor)
-                        ? [...ds.borderColor]
-                        : Array(ds.data.length).fill(ds.borderColor || darkenColor(ds.backgroundColor || '#3b82f6', 20));
-
-                    if (sliceIndex < dsBgColors.length) {
-                        dsBgColors[sliceIndex] = newColor;
-                        dsBorderColors[sliceIndex] = darkenColor(newColor, 20);
-                        actionsRef.current.updateDataset(dsIdx, {
-                            backgroundColor: dsBgColors,
-                            borderColor: dsBorderColors,
-                            lastSliceColors: dsBgColors,
-                            datasetColorMode: 'slice'
-                        });
-                    }
-                });
-              }
+                if (sliceIndex < dsBgColors.length) {
+                  dsBgColors[sliceIndex] = newColor;
+                  dsBorderColors[sliceIndex] = darkenColor(newColor, 20);
+                  actionsRef.current.updateDataset(dsIdx, {
+                    backgroundColor: dsBgColors,
+                    borderColor: dsBorderColors,
+                    lastSliceColors: dsBgColors,
+                    datasetColorMode: 'slice'
+                  });
+                }
+              });
             }
+          }
         }}
         onBorderColorChange={(newBorderColor) => {
-            setSliceContextMenu(prev => ({ ...prev, currentBorderColor: newBorderColor }));
-            
-            const currentMode = useChartStore.getState().chartMode;
-            const { datasetIndex, sliceIndex } = sliceContextMenu;
+          setSliceContextMenu(prev => ({ ...prev, currentBorderColor: newBorderColor }));
 
-            if (currentMode === 'single') {
-              const dataset = chartData.datasets[datasetIndex];
-              if (!dataset) return;
+          const currentMode = useChartStore.getState().chartMode;
+          const { datasetIndex, sliceIndex } = sliceContextMenu;
 
-              const newBorderColors = Array.isArray(dataset.borderColor)
-                  ? [...dataset.borderColor]
-                  : Array(dataset.data.length).fill(dataset.borderColor || '#1d4ed8');
+          if (currentMode === 'single') {
+            const dataset = chartData.datasets[datasetIndex];
+            if (!dataset) return;
 
-              newBorderColors[sliceIndex] = newBorderColor;
+            const newBorderColors = Array.isArray(dataset.borderColor)
+              ? [...dataset.borderColor]
+              : Array(dataset.data.length).fill(dataset.borderColor || '#1d4ed8');
 
+            newBorderColors[sliceIndex] = newBorderColor;
+
+            actionsRef.current.updateDataset(datasetIndex, {
+              borderColor: newBorderColors
+            });
+          } else {
+            const dataset = chartData.datasets[datasetIndex];
+            if (!dataset) return;
+
+            const isSingleString = typeof dataset.backgroundColor === 'string';
+            const bgArr = Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor : [];
+            const normalize = (c: any) => typeof c === 'string' ? c.replace(/\s/g, '').toLowerCase() : '';
+            const allSame = bgArr.length > 0 && bgArr.every((c: any) => normalize(c) === normalize(bgArr[0]));
+            const isDatasetColorMode = (dataset as any).datasetColorMode === 'single' || isSingleString || allSame;
+
+            if (isDatasetColorMode) {
+              const sliceCount = dataset.data.length;
               actionsRef.current.updateDataset(datasetIndex, {
-                  borderColor: newBorderColors
+                borderColor: Array(sliceCount).fill(newBorderColor)
               });
             } else {
-              const dataset = chartData.datasets[datasetIndex];
-              if (!dataset) return;
+              const groupId = (dataset as any).groupId;
+              chartData.datasets.forEach((ds: any, dsIdx: number) => {
+                if ((ds as any).groupId !== groupId) return;
+                if ((ds as any).mode !== 'grouped') return;
 
-              const isSingleString = typeof dataset.backgroundColor === 'string';
-              const bgArr = Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor : [];
-              const normalize = (c: any) => typeof c === 'string' ? c.replace(/\s/g, '').toLowerCase() : '';
-              const allSame = bgArr.length > 0 && bgArr.every((c: any) => normalize(c) === normalize(bgArr[0]));
-              const isDatasetColorMode = (dataset as any).datasetColorMode === 'single' || isSingleString || allSame;
+                const dsBorderColors = Array.isArray(ds.borderColor)
+                  ? [...ds.borderColor]
+                  : Array(ds.data.length).fill(ds.borderColor || '#1d4ed8');
 
-              if (isDatasetColorMode) {
-                const sliceCount = dataset.data.length;
-                actionsRef.current.updateDataset(datasetIndex, {
-                    borderColor: Array(sliceCount).fill(newBorderColor)
-                });
-              } else {
-                const groupId = (dataset as any).groupId;
-                chartData.datasets.forEach((ds: any, dsIdx: number) => {
-                    if ((ds as any).groupId !== groupId) return;
-                    if ((ds as any).mode !== 'grouped') return;
-
-                    const dsBorderColors = Array.isArray(ds.borderColor)
-                        ? [...ds.borderColor]
-                        : Array(ds.data.length).fill(ds.borderColor || '#1d4ed8');
-
-                    if (sliceIndex < dsBorderColors.length) {
-                        dsBorderColors[sliceIndex] = newBorderColor;
-                        actionsRef.current.updateDataset(dsIdx, {
-                            borderColor: dsBorderColors
-                        });
-                    }
-                });
-              }
+                if (sliceIndex < dsBorderColors.length) {
+                  dsBorderColors[sliceIndex] = newBorderColor;
+                  actionsRef.current.updateDataset(dsIdx, {
+                    borderColor: dsBorderColors
+                  });
+                }
+              });
             }
+          }
+        }}
+        onValueChange={(newValueStr) => {
+          setSliceContextMenu(prev => ({ ...prev, currentValue: newValueStr }));
+
+          const { datasetIndex, sliceIndex } = sliceContextMenu;
+          const dataset = chartData.datasets[datasetIndex];
+          if (!dataset) return;
+
+          const newData = [...dataset.data];
+          const parsedValue = newValueStr === '' ? 0 : Number(newValueStr);
+
+          if (newData[sliceIndex] !== null && typeof newData[sliceIndex] === 'object' && 'y' in newData[sliceIndex]) {
+            newData[sliceIndex] = { ...newData[sliceIndex], y: isNaN(parsedValue) ? 0 : parsedValue };
+          } else {
+            newData[sliceIndex] = isNaN(parsedValue) ? 0 : parsedValue;
+          }
+
+          actionsRef.current.updateDataset(datasetIndex, {
+            data: newData
+          });
         }}
       />
     </div>
