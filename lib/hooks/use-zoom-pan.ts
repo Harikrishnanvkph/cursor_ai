@@ -11,7 +11,7 @@ export function useZoomPan() {
     const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
 
     const handleZoomIn = useCallback(() => {
-        setZoom(prev => Math.min(prev + 0.1, 3));
+        setZoom(prev => Math.min(prev + 0.1, 5));
     }, []);
 
     const handleZoomOut = useCallback(() => {

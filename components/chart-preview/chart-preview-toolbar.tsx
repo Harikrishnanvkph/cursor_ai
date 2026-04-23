@@ -11,10 +11,23 @@ import {
 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Slider } from "@/components/ui/slider"
 import { FileCode, FileImage, FileText, ImageIcon, Settings } from "lucide-react"
 import { UndoRedoButtons } from "@/components/ui/undo-redo-buttons"
 import { useTemplateStore } from "@/lib/template-store"
 import { useUIStore } from "@/lib/stores/ui-store"
+
+const ZOOM_VALUES: number[] = (() => {
+    let values: number[] = [];
+    for (let i = 10; i <= 50; i += 1) values.push(i);
+    for (let i = 52; i <= 100; i += 2) values.push(i);
+    for (let i = 103; i <= 160; i += 3) values.push(i);
+    for (let i = 165; i <= 210; i += 5) values.push(i);
+    for (let i = 216; i <= 300; i += 6) values.push(i);
+    for (let i = 310; i <= 380; i += 10) values.push(i);
+    for (let i = 392; i <= 500; i += 12) values.push(i);
+    return values;
+})();
 
 // --- 1. Mode & Type Section (Independent) ---
 
@@ -147,7 +160,7 @@ TitleSection.displayName = "TitleSection";
 
 // --- 3. Controls & Actions Section (Independent) ---
 
-const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, onResetChart, isMobile }: {
+const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, onResetChart, isMobile, chartContainerRef, chartWidth, chartHeight }: {
     zoomPan: {
         zoom: number;
         panMode: boolean;
@@ -155,6 +168,7 @@ const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, onResetChart
         handleZoomIn: () => void;
         handleZoomOut: () => void;
         handleResetZoom: () => void;
+        setZoom: (z: number) => void;
     };
     exports: {
         handleExport: () => void;
@@ -167,18 +181,96 @@ const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, onResetChart
     handleFullscreen: () => void;
     onResetChart: () => void;
     isMobile: boolean;
+    chartContainerRef?: React.RefObject<HTMLDivElement | null>;
+    chartWidth?: number;
+    chartHeight?: number;
 }) => {
+    const currentZoomPct = Math.round(zoomPan.zoom * 100);
+    
+    let closestIndex = 0;
+    let minDiff = Infinity;
+    for (let i = 0; i < ZOOM_VALUES.length; i++) {
+        const diff = Math.abs(ZOOM_VALUES[i] - currentZoomPct);
+        if (diff < minDiff) {
+            minDiff = diff;
+            closestIndex = i;
+        }
+    }
+
+    const handleSliderChange = (value: number[]) => {
+        const newZoomPct = ZOOM_VALUES[value[0]];
+        zoomPan.setZoom(newZoomPct / 100);
+    };
+
+    const handleFitZoom = () => {
+        if (chartContainerRef?.current && chartWidth && chartHeight) {
+            const container = chartContainerRef.current;
+            const containerWidth = container.clientWidth - 100;
+            const containerHeight = container.clientHeight - 100;
+            if (containerWidth > 0 && containerHeight > 0) {
+                const widthRatio = containerWidth / chartWidth;
+                const heightRatio = containerHeight / chartHeight;
+                const fitZoom = Math.min(widthRatio, heightRatio, 1.0);
+                const roundedZoom = Math.floor(fitZoom * 20) / 20;
+                const finalZoom = Math.max(0.1, roundedZoom);
+                zoomPan.setZoom(finalZoom);
+                zoomPan.setPanOffset({ x: 0, y: 0 });
+                setTimeout(() => {
+                    if (container) {
+                        container.scrollLeft = (container.scrollWidth - container.clientWidth) / 2;
+                        container.scrollTop = (container.scrollHeight - container.clientHeight) / 2;
+                    }
+                }, 10);
+            }
+        } else {
+            zoomPan.setZoom(1);
+            zoomPan.setPanOffset({ x: 0, y: 0 });
+        }
+    };
+
     return (
         <div className="flex items-center gap-0.5 border border-slate-200 rounded-md p-0.5 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-            <Button variant="ghost" size="sm" onClick={zoomPan.handleZoomOut} disabled={zoomPan.zoom <= 0.1} className="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600 disabled:opacity-30" title="Zoom Out">
-                <ZoomOut className="h-4 w-4" />
-            </Button>
-            <span className={`${isMobile ? 'text-[10px] min-w-[30px]' : 'text-xs min-w-[45px] px-1'} text-slate-600 text-center font-medium select-none`}>
-                {Math.round(zoomPan.zoom * 100)}%
-            </span>
-            <Button variant="ghost" size="sm" onClick={zoomPan.handleZoomIn} disabled={zoomPan.zoom >= 3} className="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600 disabled:opacity-30" title="Zoom In">
-                <ZoomIn className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-2 px-2 w-[130px] lg:w-[160px]">
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className={`${isMobile ? 'text-[10px] px-1' : 'text-xs px-1.5'} h-6 text-slate-700 font-semibold select-none w-12 text-center hover:bg-slate-100 flex-shrink-0 transition-colors`}>
+                            {currentZoomPct}%
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-40 p-1">
+                        <DropdownMenuItem onClick={() => { zoomPan.setZoom(1); zoomPan.setPanOffset({ x: 0, y: 0 }); }} className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100">
+                            <span className="flex-1">100% (Original)</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleFitZoom} className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100">
+                            <Maximize2 className="h-3.5 w-3.5 mr-2 text-slate-500" />
+                            <span className="flex-1">Fit to view</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator className="my-1" />
+                        <DropdownMenuItem 
+                            onSelect={(e) => { e.preventDefault(); zoomPan.handleZoomIn(); }} 
+                            className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100"
+                        >
+                            <ZoomIn className="h-3.5 w-3.5 mr-2 text-slate-500" />
+                            <span className="flex-1">Zoom In</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                            onSelect={(e) => { e.preventDefault(); zoomPan.handleZoomOut(); }} 
+                            className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100"
+                        >
+                            <ZoomOut className="h-3.5 w-3.5 mr-2 text-slate-500" />
+                            <span className="flex-1">Zoom Out</span>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+                <Slider
+                    min={0}
+                    max={ZOOM_VALUES.length - 1}
+                    step={1}
+                    value={[closestIndex]}
+                    onValueChange={handleSliderChange}
+                    className="flex-1 cursor-pointer"
+                />
+            </div>
 
             <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
 
@@ -329,6 +421,9 @@ export const ChartPreviewToolbar = memo(({
                             zoomPan={zoomPan} exports={exports} 
                             handleFullscreen={handleFullscreen} onResetChart={onResetChart} 
                             isMobile={true} 
+                            chartContainerRef={chartContainerRef}
+                            chartWidth={chartWidth}
+                            chartHeight={chartHeight}
                         />
                     </div>
                 ) : (
@@ -350,6 +445,9 @@ export const ChartPreviewToolbar = memo(({
                                 zoomPan={zoomPan} exports={exports} 
                                 handleFullscreen={handleFullscreen} onResetChart={onResetChart} 
                                 isMobile={false} 
+                                chartContainerRef={chartContainerRef}
+                                chartWidth={chartWidth}
+                                chartHeight={chartHeight}
                             />
                         </div>
                     </>
