@@ -92,11 +92,13 @@ interface SliceColorPickerPopoverProps {
   x: number;
   y: number;
   currentColor: string;
+  currentBorderColor: string;
   onClose: () => void;
   onColorChange: (color: string) => void;
+  onBorderColorChange: (color: string) => void;
 }
 
-const SliceColorPickerPopover = ({ isOpen, x, y, currentColor, onClose, onColorChange }: SliceColorPickerPopoverProps) => {
+const SliceColorPickerPopover = ({ isOpen, x, y, currentColor, currentBorderColor, onClose, onColorChange, onBorderColorChange }: SliceColorPickerPopoverProps) => {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -113,7 +115,7 @@ const SliceColorPickerPopover = ({ isOpen, x, y, currentColor, onClose, onColorC
 
   if (!isOpen) return null;
 
-  const menuWidth = 44;
+  const menuWidth = 84;
   const menuHeight = 44;
   const offsetX = menuWidth / 2;
   const offsetY = 10;
@@ -136,18 +138,18 @@ const SliceColorPickerPopover = ({ isOpen, x, y, currentColor, onClose, onColorC
   const content = (
     <div
       ref={menuRef}
-      className="fixed z-[9999] p-1.5 bg-white border border-gray-200 rounded-lg shadow-xl animate-in zoom-in-95 duration-200"
+      className="fixed z-[9999] p-1.5 bg-white border border-gray-200 rounded-lg shadow-xl animate-in zoom-in-95 duration-200 flex gap-2"
       style={{ left: `${finalX}px`, top: `${finalY}px` }}
       onContextMenu={(e) => e.preventDefault()}
     >
-      <div className="relative">
+      <div className="relative" title="Fill Color">
         <button
-          className="w-8 h-8 rounded border border-gray-200 shadow-sm cursor-pointer hover:border-pink-400 hover:scale-105 transition-all overflow-hidden bg-cover bg-center p-0 m-0 block"
+          className="w-5 h-5 rounded shadow-sm cursor-pointer hover:scale-105 transition-all overflow-hidden bg-cover bg-center p-0 m-0 block"
           style={{ 
               backgroundColor: currentColor,
               backgroundImage: currentColor.startsWith('rgba') && currentColor.includes(', 0)') ? 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)' : 'none',
-              backgroundSize: '8px 8px',
-              backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px'
+              backgroundSize: '5px 5px',
+              backgroundPosition: '0 0, 0 2.5px, 2.5px -2.5px, -2.5px 0px'
           }}
           onClick={() => document.getElementById('slice-context-color-popover')?.click()}
         />
@@ -156,6 +158,24 @@ const SliceColorPickerPopover = ({ isOpen, x, y, currentColor, onClose, onColorC
           type="color"
           value={getHexFromColor(currentColor)}
           onChange={(e) => onColorChange(e.target.value)}
+          className="absolute inset-0 opacity-0 w-full h-full cursor-pointer pointer-events-none"
+        />
+      </div>
+
+      <div className="relative" title="Border Color">
+        <button
+          className="w-5 h-5 rounded shadow-sm cursor-pointer hover:scale-105 transition-all overflow-hidden bg-white p-0 m-0 flex items-center justify-center relative"
+          onClick={() => document.getElementById('slice-context-border-color-popover')?.click()}
+        >
+          <div className="w-full h-full rounded" style={{
+            border: `3px solid ${currentBorderColor}`
+          }}></div>
+        </button>
+        <input
+          id="slice-context-border-color-popover"
+          type="color"
+          value={getHexFromColor(currentBorderColor)}
+          onChange={(e) => onBorderColorChange(e.target.value)}
           className="absolute inset-0 opacity-0 w-full h-full cursor-pointer pointer-events-none"
         />
       </div>
@@ -327,13 +347,15 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
     datasetIndex: number;
     sliceIndex: number;
     currentColor: string;
+    currentBorderColor: string;
   }>({
     isOpen: false,
     x: 0,
     y: 0,
     datasetIndex: 0,
     sliceIndex: 0,
-    currentColor: '#3b82f6'
+    currentColor: '#3b82f6',
+    currentBorderColor: '#1d4ed8'
   });
 
   // Mobile detection
@@ -1297,13 +1319,21 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
           currentColor = dataset.backgroundColor;
       }
 
+      let currentBorderColor = '#1d4ed8';
+      if (dataset && Array.isArray(dataset.borderColor) && dataset.borderColor[element.index]) {
+          currentBorderColor = dataset.borderColor[element.index];
+      } else if (dataset && dataset.borderColor && typeof dataset.borderColor === 'string') {
+          currentBorderColor = dataset.borderColor;
+      }
+
       setSliceContextMenu({
         isOpen: true,
         x: event.clientX,
         y: event.clientY,
         datasetIndex: element.datasetIndex,
         sliceIndex: element.index,
-        currentColor
+        currentColor,
+        currentBorderColor
       });
     }
   };
@@ -2056,6 +2086,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
         x={sliceContextMenu.x}
         y={sliceContextMenu.y}
         currentColor={sliceContextMenu.currentColor}
+        currentBorderColor={sliceContextMenu.currentBorderColor}
         onClose={() => setSliceContextMenu(prev => ({ ...prev, isOpen: false }))}
         onColorChange={(newColor) => {
             setSliceContextMenu(prev => ({ ...prev, currentColor: newColor }));
@@ -2064,7 +2095,6 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
             const { datasetIndex, sliceIndex } = sliceContextMenu;
 
             if (currentMode === 'single') {
-              // Single mode: update just the clicked slice in the active dataset
               const dataset = chartData.datasets[datasetIndex];
               if (!dataset) return;
 
@@ -2083,15 +2113,9 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
                   borderColor: newBorderColors
               });
             } else {
-              // Grouped mode: behavior depends on color mode
               const dataset = chartData.datasets[datasetIndex];
               if (!dataset) return;
 
-              // Detect color mode from stored properties and color shape:
-              // 1. Explicit datasetColorMode === 'single' → dataset mode
-              // 2. backgroundColor is a single string (not an array) → dataset mode
-              // 3. backgroundColor is an array where all entries are identical → dataset mode
-              // 4. Otherwise → slice mode
               const isSingleString = typeof dataset.backgroundColor === 'string';
               const bgArr = Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor : [];
               const normalize = (c: any) => typeof c === 'string' ? c.replace(/\s/g, '').toLowerCase() : '';
@@ -2099,7 +2123,6 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
               const isDatasetColorMode = (dataset as any).datasetColorMode === 'single' || isSingleString || allSame;
 
               if (isDatasetColorMode) {
-                // Dataset color mode: flood ALL slices of the clicked dataset with the new color
                 const sliceCount = dataset.data.length;
                 actionsRef.current.updateDataset(datasetIndex, {
                     backgroundColor: Array(sliceCount).fill(newColor),
@@ -2108,7 +2131,6 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
                     datasetColorMode: 'single'
                 });
               } else {
-                // Slice color mode: update the clicked slice index across ALL datasets in the same group
                 const groupId = (dataset as any).groupId;
                 chartData.datasets.forEach((ds: any, dsIdx: number) => {
                     if ((ds as any).groupId !== groupId) return;
@@ -2129,6 +2151,60 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
                             borderColor: dsBorderColors,
                             lastSliceColors: dsBgColors,
                             datasetColorMode: 'slice'
+                        });
+                    }
+                });
+              }
+            }
+        }}
+        onBorderColorChange={(newBorderColor) => {
+            setSliceContextMenu(prev => ({ ...prev, currentBorderColor: newBorderColor }));
+            
+            const currentMode = useChartStore.getState().chartMode;
+            const { datasetIndex, sliceIndex } = sliceContextMenu;
+
+            if (currentMode === 'single') {
+              const dataset = chartData.datasets[datasetIndex];
+              if (!dataset) return;
+
+              const newBorderColors = Array.isArray(dataset.borderColor)
+                  ? [...dataset.borderColor]
+                  : Array(dataset.data.length).fill(dataset.borderColor || '#1d4ed8');
+
+              newBorderColors[sliceIndex] = newBorderColor;
+
+              actionsRef.current.updateDataset(datasetIndex, {
+                  borderColor: newBorderColors
+              });
+            } else {
+              const dataset = chartData.datasets[datasetIndex];
+              if (!dataset) return;
+
+              const isSingleString = typeof dataset.backgroundColor === 'string';
+              const bgArr = Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor : [];
+              const normalize = (c: any) => typeof c === 'string' ? c.replace(/\s/g, '').toLowerCase() : '';
+              const allSame = bgArr.length > 0 && bgArr.every((c: any) => normalize(c) === normalize(bgArr[0]));
+              const isDatasetColorMode = (dataset as any).datasetColorMode === 'single' || isSingleString || allSame;
+
+              if (isDatasetColorMode) {
+                const sliceCount = dataset.data.length;
+                actionsRef.current.updateDataset(datasetIndex, {
+                    borderColor: Array(sliceCount).fill(newBorderColor)
+                });
+              } else {
+                const groupId = (dataset as any).groupId;
+                chartData.datasets.forEach((ds: any, dsIdx: number) => {
+                    if ((ds as any).groupId !== groupId) return;
+                    if ((ds as any).mode !== 'grouped') return;
+
+                    const dsBorderColors = Array.isArray(ds.borderColor)
+                        ? [...ds.borderColor]
+                        : Array(ds.data.length).fill(ds.borderColor || '#1d4ed8');
+
+                    if (sliceIndex < dsBorderColors.length) {
+                        dsBorderColors[sliceIndex] = newBorderColor;
+                        actionsRef.current.updateDataset(dsIdx, {
+                            borderColor: dsBorderColors
                         });
                     }
                 });
