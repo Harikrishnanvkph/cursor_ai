@@ -199,8 +199,26 @@ export function LabelsPanel() {
                                 />
                             </div>
 
-                            {/* Content and Position */}
+                            {/* Position and Content */}
                             <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                    <Label className="text-xs font-medium">Position</Label>
+                                    <Select
+                                        value={customLabelsConfig.anchor || "center"}
+                                        onValueChange={(value) => handleCustomLabelConfigUpdate("anchor", value)}
+                                    >
+                                        <SelectTrigger className="h-8 text-xs">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="top">Top</SelectItem>
+                                            <SelectItem value="center">Center</SelectItem>
+                                            <SelectItem value="bottom">Bottom</SelectItem>
+                                            <SelectItem value="callout">Callout</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
                                 <div className="space-y-1">
                                     <Label className="text-xs font-medium">Content</Label>
                                     <Select
@@ -216,24 +234,6 @@ export function LabelsPanel() {
                                             <SelectItem value="percentage">Percentage</SelectItem>
                                             <SelectItem value="index">Index</SelectItem>
                                             <SelectItem value="dataset">Dataset</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="space-y-1">
-                                    <Label className="text-xs font-medium">Position</Label>
-                                    <Select
-                                        value={customLabelsConfig.anchor || "center"}
-                                        onValueChange={(value) => handleCustomLabelConfigUpdate("anchor", value)}
-                                    >
-                                        <SelectTrigger className="h-8 text-xs">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="top">Top</SelectItem>
-                                            <SelectItem value="center">Center</SelectItem>
-                                            <SelectItem value="bottom">Bottom</SelectItem>
-                                            <SelectItem value="callout">Callout</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>

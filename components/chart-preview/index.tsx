@@ -67,6 +67,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const leftSidebarPanelRef = useRef<HTMLDivElement>(null);
   const rightSidebarPanelRef = useRef<HTMLDivElement>(null);
+  const prevEditorModeRef = useRef<string>(editorMode);
 
   // --- Extracted hooks ---
   const rename = useChartRename();
@@ -92,8 +93,14 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
 
 
   // --- Reset pan/zoom when switching to chart mode ---
+  // Uses a ref to track the previous editor mode so this only fires on actual
+  // mode transitions (e.g. template → chart), NOT on every re-render.
   useEffect(() => {
-    if (editorMode === 'chart' && !shouldShowTemplate()) {
+    const prev = prevEditorModeRef.current;
+    prevEditorModeRef.current = editorMode;
+
+    // Only reset when actually transitioning INTO chart mode from another mode
+    if (editorMode === 'chart' && prev !== 'chart' && !shouldShowTemplate()) {
       zoomPan.setPanMode(false);
       zoomPan.handleResetZoom();
       setTimeout(() => {
@@ -118,6 +125,93 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       }, 100);
     }
   }, [zoomPan.zoom, zoomPan.panOffset.x, zoomPan.panOffset.y]);
+
+  // --- Auto-fit large charts ---
+  // Runs after a short delay to ensure all other effects (including the reset
+  // zoom effect) have settled. This guarantees auto-fit is the final zoom setter.
+  useEffect(() => {
+    if (editorMode !== 'chart' || !chartConfig.width || !chartConfig.height || chartConfig.responsive || shouldShowTemplate()) {
+      return;
+    }
+
+    const chartWidth = parseInt(chartConfig.width.toString());
+    const chartHeight = parseInt(chartConfig.height.toString());
+    if (isNaN(chartWidth) || isNaN(chartHeight) || chartWidth <= 0 || chartHeight <= 0) return;
+
+    let cancelled = false;
+    let observer: ResizeObserver | null = null;
+
+    const runAutoFit = (container: HTMLDivElement) => {
+      const containerWidth = container.clientWidth - 100;
+      const containerHeight = container.clientHeight - 100;
+      if (containerWidth <= 0 || containerHeight <= 0) return false;
+
+      // Compute the zoom that makes the chart fit, capped at 1.0 (100%).
+      // This ensures the chart only zooms DOWN to fit — never zooms IN beyond 100%.
+      const widthRatio = containerWidth / chartWidth;
+      const heightRatio = containerHeight / chartHeight;
+      const fitZoom = Math.min(widthRatio, heightRatio, 1.0);
+
+      if (fitZoom < 1.0) {
+        // Chart is larger than the container — zoom down to fit
+        const roundedZoom = Math.floor(fitZoom * 20) / 20;
+        const finalZoom = Math.max(0.1, roundedZoom);
+        zoomPan.setZoom(finalZoom);
+        zoomPan.setPanOffset({ x: 0, y: 0 });
+
+        setTimeout(() => {
+          if (!cancelled && container) {
+            container.scrollLeft = (container.scrollWidth - container.clientWidth) / 2;
+            container.scrollTop = (container.scrollHeight - container.clientHeight) / 2;
+          }
+        }, 10);
+      } else if (zoomPan.zoom < 1.0) {
+        // Chart now fits at 100% but zoom is still reduced from a previous
+        // auto-fit (e.g. user shrank chart dimensions) — restore to 100%
+        zoomPan.setZoom(1.0);
+        zoomPan.setPanOffset({ x: 0, y: 0 });
+
+        setTimeout(() => {
+          if (!cancelled && container) {
+            container.scrollLeft = (container.scrollWidth - container.clientWidth) / 2;
+            container.scrollTop = (container.scrollHeight - container.clientHeight) / 2;
+          }
+        }, 10);
+      }
+      return true;
+    };
+
+    // Delay auto-fit by 100ms so it runs AFTER any synchronous effects
+    // (reset-zoom, center-view) have completed their state updates.
+    const timerId = setTimeout(() => {
+      if (cancelled) return;
+      const container = chartContainerRef.current;
+      if (!container) return;
+
+      if (container.clientWidth > 0 && container.clientHeight > 0) {
+        runAutoFit(container);
+      } else {
+        // Container not yet laid out — wait for it via ResizeObserver
+        observer = new ResizeObserver((entries) => {
+          for (const entry of entries) {
+            if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+              if (!cancelled) runAutoFit(container);
+              observer?.disconnect();
+              observer = null;
+              break;
+            }
+          }
+        });
+        observer.observe(container);
+      }
+    }, 100);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timerId);
+      observer?.disconnect();
+    };
+  }, [chartConfig.width, chartConfig.height, chartConfig.responsive, editorMode, shouldShowTemplate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- Radar chart config fix ---
   useEffect(() => {

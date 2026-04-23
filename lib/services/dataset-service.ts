@@ -225,9 +225,12 @@ export const DatasetService = {
         if (updates.datasetColorMode) {
             if (updates.datasetColorMode === 'single') {
                 if (Array.isArray(dataset.backgroundColor)) {
-                    updatedDataset.lastSliceColors = [...dataset.backgroundColor];
+                    const hasDifferentColors = dataset.backgroundColor.some((c: string) => c !== dataset.backgroundColor[0]);
+                    if (hasDifferentColors) {
+                        updatedDataset.lastSliceColors = [...dataset.backgroundColor];
+                    }
                 }
-                const baseColor = dataset.color || (Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor[0] : dataset.backgroundColor) || generateColorPalette(1)[0];
+                const baseColor = (updates as any).lastDatasetColor || dataset.color || (Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor[0] : dataset.backgroundColor) || generateColorPalette(1)[0];
                 updatedDataset.backgroundColor = Array(dataset.data.length).fill(baseColor);
                 updatedDataset.borderColor = Array(dataset.data.length).fill(darkenColor(baseColor, 20));
             } else if (updates.datasetColorMode === 'slice') {
@@ -247,8 +250,12 @@ export const DatasetService = {
             if (!('borderColor' in updates)) {
                 updatedDataset.borderColor = colors.map((c: string) => darkenColor(c, 20));
             }
-            updatedDataset.lastSliceColors = colors;
-            updatedDataset.datasetColorMode = 'slice';
+            
+            // Only force lastSliceColors and datasetColorMode if the caller didn't explicitly request a specific color mode
+            if (!updates.datasetColorMode) {
+                updatedDataset.lastSliceColors = colors;
+                updatedDataset.datasetColorMode = 'slice';
+            }
         }
 
         // Explicit single color

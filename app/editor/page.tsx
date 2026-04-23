@@ -33,6 +33,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { EditorWelcomeScreen } from "@/components/editor-welcome-screen"
 import { DimensionMismatchDialog } from "@/components/dialogs/dimension-mismatch-dialog"
 import { SaveModeConflictDialog } from "@/components/dialogs/save-mode-conflict-dialog"
+import { ChartSetupDialog, type ChartDimensions } from "@/components/dialogs/chart-setup-dialog"
 
 import {
   useChartConfig,
@@ -90,7 +91,7 @@ function EditorPageContent() {
   const [mobilePanel, setMobilePanel] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false)
-  const [showNewChartInfoDialog, setShowNewChartInfoDialog] = useState(false)
+  const [showSetupDialog, setShowSetupDialog] = useState(false)
   const [showSaveChartDialog, setShowSaveChartDialog] = useState(false)
   const [showClearDialog, setShowClearDialog] = useState(false)
   const [showModeConflictDialog, setShowModeConflictDialog] = useState(false)
@@ -504,8 +505,8 @@ function EditorPageContent() {
       // Show confirmation dialog
       setShowSaveConfirmDialog(true)
     } else {
-      // No meaningful data, show info dialog directly
-      setShowNewChartInfoDialog(true)
+      // No meaningful data, show setup dialog directly
+      setShowSetupDialog(true)
     }
   };
 
@@ -530,38 +531,41 @@ function EditorPageContent() {
     setBackendConversationId(null)
     // Clear all template state to prevent data cascading to new charts
     useTemplateStore.getState().clearAllTemplateState()
-    // Show new chart info
-    setShowNewChartInfoDialog(true)
+    // Show new chart setup
+    setShowSetupDialog(true)
   };
 
-  const handleLoadSampleData = () => {
-    setShowNewChartInfoDialog(false)
-    // Set editor mode to chart when loading sample data
+  // Handle dimensions confirmed from the setup dialog
+  const handleDimensionsConfirmed = (dims: ChartDimensions) => {
+    setShowSetupDialog(false)
+    
+    // Set editor mode to chart
     setEditorMode('chart')
-    // Load sample data
-    const sampleData = {
-      labels: ['January', 'February', 'March', 'April', 'May', 'June'],
-      datasets: [{
-        label: 'Sample Dataset',
-        data: [12, 19, 3, 5, 2, 3],
-        backgroundColor: 'rgba(54, 162, 235, 0.5)',
-        borderColor: 'rgba(54, 162, 235, 1)',
-        borderWidth: 1
-      }]
-    }
+    
+    // Push the chosen dimensions into the store config
+    useChartStore.getState().initializeChartDimensions(dims.width, dims.height, dims.isResponsive)
+    
+    // Clear everything just in case
+    clearCurrentChart()
+    clearMessages()
+    startNewConversation()
+    
+    // Initialize empty chart
     useChartStore.getState().setFullChart({
-      chartType: 'bar',
-      chartData: sampleData,
-      chartConfig: {}
+      chartType: 'bar', // default type
+      chartData: { labels: [], datasets: [] },
+      chartConfig: useChartStore.getState().chartConfig // this now has the dimensions applied
     })
-    setHasJSON(true)
-    toast.success("Sample data loaded")
-  };
-
-  const handleGoToDataset = () => {
-    setShowNewChartInfoDialog(false)
+    
+    // Clear all overlay data
+    useChartStore.getState().clearAllOverlays()
+    useDecorationStore.getState().clearShapes()
+    setHasJSON(false) // Wait until they add data to set to true
+    
+    // Go to datasets tab
     setActiveTab('datasets_slices')
-    toast.info("Navigate to Datasets to add your data")
+    const sizeLabel = dims.isResponsive ? 'Responsive' : `${dims.width}×${dims.height} px`
+    toast.success(`Chart created (${sizeLabel}). Navigate to Datasets to add your data.`)
   };
 
   // ❌ BACKEND SYNC DISABLED - Editor changes should NOT auto-save
@@ -1150,50 +1154,12 @@ function EditorPageContent() {
         isSaving={isSaving}
       />
 
-      {/* Info Dialog for New Chart Options */}
-      <Dialog open={showNewChartInfoDialog} onOpenChange={setShowNewChartInfoDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <div className="flex items-center gap-2">
-              <Info className="h-5 w-5 text-blue-600" />
-              <DialogTitle>Create New Chart</DialogTitle>
-            </div>
-            <DialogDescription className="pt-2">
-              Choose how you'd like to start creating your chart:
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex flex-col gap-3 py-4">
-            <Button
-              onClick={handleLoadSampleData}
-              className="w-full h-auto py-4 flex flex-col items-start gap-1"
-              variant="outline"
-            >
-              <div className="flex items-center gap-2 w-full">
-                <Sparkles className="h-5 w-5 text-purple-600" />
-                <span className="font-semibold">Load Sample Data</span>
-              </div>
-              <span className="text-xs text-left text-gray-500">
-                Start with pre-loaded example data to explore chart features
-              </span>
-            </Button>
-
-            <Button
-              onClick={handleGoToDataset}
-              className="w-full h-auto py-4 flex flex-col items-start gap-1"
-              variant="outline"
-            >
-              <div className="flex items-center gap-2 w-full">
-                <Database className="h-5 w-5 text-blue-600" />
-                <span className="font-semibold">Add Your Own Data</span>
-              </div>
-              <span className="text-xs text-left text-gray-500">
-                Navigate to the Datasets panel to input your custom data
-              </span>
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Setup Dialog for New Charts */}
+      <ChartSetupDialog
+        open={showSetupDialog}
+        onClose={() => setShowSetupDialog(false)}
+        onConfirm={handleDimensionsConfirmed}
+      />
     </div>
   )
 }

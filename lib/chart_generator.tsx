@@ -4,6 +4,7 @@
 // This file contains the chart rendering component with all necessary imports
 
 import React from "react"
+import { createPortal } from "react-dom"
 import { useRef, useEffect, useState, memo } from "react"
 import {
   Chart as ChartJS,
@@ -46,6 +47,7 @@ import { slicePatternPlugin } from "@/lib/plugins/slice-pattern-plugin"
 import { ResizableChartArea } from "@/components/resizable-chart-area"
 import { OverlayContextMenu } from "@/components/overlay-context-menu"
 import { parseDimension } from "@/lib/utils/dimension-utils"
+import { darkenColor, getHexFromColor } from "@/lib/utils/color-utils"
 // Date adapter for time scales - auto-registers with Chart.js
 import 'chartjs-adapter-date-fns'
 
@@ -84,6 +86,87 @@ ChartJS.register(
 );
 
 // Plugin registration verified
+
+interface SliceColorPickerPopoverProps {
+  isOpen: boolean;
+  x: number;
+  y: number;
+  currentColor: string;
+  onClose: () => void;
+  onColorChange: (color: string) => void;
+}
+
+const SliceColorPickerPopover = ({ isOpen, x, y, currentColor, onClose, onColorChange }: SliceColorPickerPopoverProps) => {
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  const menuWidth = 44;
+  const menuHeight = 44;
+  const offsetX = menuWidth / 2;
+  const offsetY = 10;
+  
+  // Default to placing it centered directly above the cursor
+  let finalX = x - offsetX;
+  let finalY = y - menuHeight - offsetY;
+
+  if (typeof window !== 'undefined') {
+    // If it hits the top edge of the screen, fallback to placing it directly below the cursor
+    if (finalY < 5) {
+       finalY = y + offsetY;
+    }
+    
+    // Ensure bounds
+    finalX = Math.max(5, Math.min(finalX, window.innerWidth - menuWidth - 5));
+    finalY = Math.max(5, Math.min(finalY, window.innerHeight - menuHeight - 5));
+  }
+
+  const content = (
+    <div
+      ref={menuRef}
+      className="fixed z-[9999] p-1.5 bg-white border border-gray-200 rounded-lg shadow-xl animate-in zoom-in-95 duration-200"
+      style={{ left: `${finalX}px`, top: `${finalY}px` }}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      <div className="relative">
+        <button
+          className="w-8 h-8 rounded border border-gray-200 shadow-sm cursor-pointer hover:border-pink-400 hover:scale-105 transition-all overflow-hidden bg-cover bg-center p-0 m-0 block"
+          style={{ 
+              backgroundColor: currentColor,
+              backgroundImage: currentColor.startsWith('rgba') && currentColor.includes(', 0)') ? 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)' : 'none',
+              backgroundSize: '8px 8px',
+              backgroundPosition: '0 0, 0 4px, 4px -4px, -4px 0px'
+          }}
+          onClick={() => document.getElementById('slice-context-color-popover')?.click()}
+        />
+        <input
+          id="slice-context-color-popover"
+          type="color"
+          value={getHexFromColor(currentColor)}
+          onChange={(e) => onColorChange(e.target.value)}
+          className="absolute inset-0 opacity-0 w-full h-full cursor-pointer pointer-events-none"
+        />
+      </div>
+    </div>
+  );
+
+  if (typeof window !== 'undefined') {
+    return createPortal(content, document.body);
+  }
+  return null;
+};
 
 // Utility to fade any color to a given alpha
 function fadeColor(color: any, alpha = 0.15) {
@@ -234,6 +317,23 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
     type: 'image',
     id: '',
     data: null
+  });
+
+  // Slice specific context menu
+  const [sliceContextMenu, setSliceContextMenu] = useState<{
+    isOpen: boolean;
+    x: number;
+    y: number;
+    datasetIndex: number;
+    sliceIndex: number;
+    currentColor: string;
+  }>({
+    isOpen: false,
+    x: 0,
+    y: 0,
+    datasetIndex: 0,
+    sliceIndex: 0,
+    currentColor: '#3b82f6'
   });
 
   // Mobile detection
@@ -487,7 +587,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
       canvas.removeEventListener('overlayContextMenu', handleContextMenu as EventListener)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storeHydrated]);
+  }, [storeHydrated, chartConfig.type, chartConfig.responsive, chartConfig.manualDimensions, chartConfig.width, chartConfig.height]);
 
 
   // Get enabled datasets (respect single/grouped mode and legendFilter)
@@ -1163,6 +1263,51 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
   appliedOptions = parseCallbacks(appliedOptions);
 
   // Context menu handlers
+  const handleNativeContextMenu = (event: MouseEvent) => {
+    // If we clicked on an overlay, overlayContextMenu should handle it via CustomEvent. 
+    // We can rely on Chart.js getElementsAtEventForMode to see if we truly hit a chart slice.
+    if (!chartRef.current) return;
+    
+    let elements = chartRef.current.getElementsAtEventForMode(event, 'nearest', { intersect: true }, false);
+    
+    if (!elements || elements.length === 0) {
+        elements = chartRef.current.getElementsAtEventForMode(event, 'point', { intersect: true }, false);
+    }
+    if (!elements || elements.length === 0) {
+        // In some chart types (Pie/Doughnut), complex arc math or 3D plugins can make 
+        // the immediate contextmenu event coordinates fail intersection tests. 
+        // However, hovering reliably populates ChartJS's active elements array right before click.
+        const active = chartRef.current.getActiveElements();
+        if (active && active.length > 0) {
+            elements = active;
+        }
+    }
+
+    if (elements && elements.length > 0) {
+      event.preventDefault();
+      event.stopPropagation();
+      
+      const element = elements[0];
+      const dataset = stateRef.current.chartData.datasets[element.datasetIndex];
+      
+      let currentColor = '#3b82f6';
+      if (dataset && Array.isArray(dataset.backgroundColor) && dataset.backgroundColor[element.index]) {
+          currentColor = dataset.backgroundColor[element.index];
+      } else if (dataset && dataset.backgroundColor && typeof dataset.backgroundColor === 'string') {
+          currentColor = dataset.backgroundColor;
+      }
+
+      setSliceContextMenu({
+        isOpen: true,
+        x: event.clientX,
+        y: event.clientY,
+        datasetIndex: element.datasetIndex,
+        sliceIndex: element.index,
+        currentColor
+      });
+    }
+  };
+
   const handleContextMenuClose = () => {
     setContextMenu(prev => ({ ...prev, isOpen: false }))
   }
@@ -1387,6 +1532,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
               maxHeight: '100%',
             }}
             onMouseLeave={() => setHoveredDatasetIndex(null)}
+            onContextMenu={(e) => handleNativeContextMenu(e.nativeEvent as MouseEvent)}
           >
             {chartConfig.dynamicDimension ? (
               <ResizableChartArea>
@@ -1608,24 +1754,24 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
                 }}
               >
                 <Chart
-                  key={`${chartTypeForChart}-${isResponsive ? 'responsive' : 'fixed'}-${chartConfig.manualDimensions ? `manual-${chartWidth}-${chartHeight}` : 'auto'}`}
-                  ref={chartRef}
-                  type={chartTypeForChart as any}
-                  data={chartDataForChart}
-                  {...((chartConfig.manualDimensions || chartConfig.dynamicDimension) && {
-                    'data-debug-width': chartConfig.width,
-                    'data-debug-height': chartConfig.height
-                  })}
-                  options={{
-                    ...appliedOptions,
-                    responsive: isInsideTemplateOrFormat || chartConfig.manualDimensions ? true : isResponsive,
-                    maintainAspectRatio: false,
-                    overlayImages,
-                    overlayTexts,
-                    overlayShapes,
-                    layout: {
-                      padding: chartConfig.layout?.padding || 0
-                    },
+                    key={`${chartTypeForChart}-${isResponsive ? 'responsive' : 'fixed'}-${chartConfig.manualDimensions ? `manual-${chartWidth}-${chartHeight}` : 'auto'}`}
+                    ref={chartRef}
+                    type={chartTypeForChart as any}
+                    data={chartDataForChart}
+                    {...((chartConfig.manualDimensions || chartConfig.dynamicDimension) && {
+                      'data-debug-width': chartConfig.width,
+                      'data-debug-height': chartConfig.height
+                    })}
+                    options={{
+                      ...appliedOptions,
+                      responsive: isInsideTemplateOrFormat || chartConfig.manualDimensions ? true : isResponsive,
+                      maintainAspectRatio: false,
+                      overlayImages,
+                      overlayTexts,
+                      overlayShapes,
+                      layout: {
+                        padding: chartConfig.layout?.padding || 0
+                      },
                     hover: {
                       intersect: chartConfig.hover?.intersect ?? false,
                       animationDuration: chartConfig.hover?.animationDuration ?? 400,
@@ -1902,6 +2048,93 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
         onDelete={handleContextMenuDelete}
         onHide={handleContextMenuHide}
         onUnselect={handleContextMenuUnselect}
+      />
+
+      {/* Slice Color Context Menu */}
+      <SliceColorPickerPopover
+        isOpen={sliceContextMenu.isOpen}
+        x={sliceContextMenu.x}
+        y={sliceContextMenu.y}
+        currentColor={sliceContextMenu.currentColor}
+        onClose={() => setSliceContextMenu(prev => ({ ...prev, isOpen: false }))}
+        onColorChange={(newColor) => {
+            setSliceContextMenu(prev => ({ ...prev, currentColor: newColor }));
+            
+            const currentMode = useChartStore.getState().chartMode;
+            const { datasetIndex, sliceIndex } = sliceContextMenu;
+
+            if (currentMode === 'single') {
+              // Single mode: update just the clicked slice in the active dataset
+              const dataset = chartData.datasets[datasetIndex];
+              if (!dataset) return;
+
+              const newBgColors = Array.isArray(dataset.backgroundColor)
+                  ? [...dataset.backgroundColor]
+                  : Array(dataset.data.length).fill(dataset.backgroundColor || '#3b82f6');
+              const newBorderColors = Array.isArray(dataset.borderColor)
+                  ? [...dataset.borderColor]
+                  : Array(dataset.data.length).fill(dataset.borderColor || darkenColor(dataset.backgroundColor || '#3b82f6', 20));
+
+              newBgColors[sliceIndex] = newColor;
+              newBorderColors[sliceIndex] = darkenColor(newColor, 20);
+
+              actionsRef.current.updateDataset(datasetIndex, {
+                  backgroundColor: newBgColors,
+                  borderColor: newBorderColors
+              });
+            } else {
+              // Grouped mode: behavior depends on color mode
+              const dataset = chartData.datasets[datasetIndex];
+              if (!dataset) return;
+
+              // Detect color mode from stored properties and color shape:
+              // 1. Explicit datasetColorMode === 'single' → dataset mode
+              // 2. backgroundColor is a single string (not an array) → dataset mode
+              // 3. backgroundColor is an array where all entries are identical → dataset mode
+              // 4. Otherwise → slice mode
+              const isSingleString = typeof dataset.backgroundColor === 'string';
+              const bgArr = Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor : [];
+              const normalize = (c: any) => typeof c === 'string' ? c.replace(/\s/g, '').toLowerCase() : '';
+              const allSame = bgArr.length > 0 && bgArr.every((c: any) => normalize(c) === normalize(bgArr[0]));
+              const isDatasetColorMode = (dataset as any).datasetColorMode === 'single' || isSingleString || allSame;
+
+              if (isDatasetColorMode) {
+                // Dataset color mode: flood ALL slices of the clicked dataset with the new color
+                const sliceCount = dataset.data.length;
+                actionsRef.current.updateDataset(datasetIndex, {
+                    backgroundColor: Array(sliceCount).fill(newColor),
+                    borderColor: Array(sliceCount).fill(darkenColor(newColor, 20)),
+                    lastDatasetColor: newColor,
+                    datasetColorMode: 'single'
+                });
+              } else {
+                // Slice color mode: update the clicked slice index across ALL datasets in the same group
+                const groupId = (dataset as any).groupId;
+                chartData.datasets.forEach((ds: any, dsIdx: number) => {
+                    if ((ds as any).groupId !== groupId) return;
+                    if ((ds as any).mode !== 'grouped') return;
+
+                    const dsBgColors = Array.isArray(ds.backgroundColor)
+                        ? [...ds.backgroundColor]
+                        : Array(ds.data.length).fill(ds.backgroundColor || '#3b82f6');
+                    const dsBorderColors = Array.isArray(ds.borderColor)
+                        ? [...ds.borderColor]
+                        : Array(ds.data.length).fill(ds.borderColor || darkenColor(ds.backgroundColor || '#3b82f6', 20));
+
+                    if (sliceIndex < dsBgColors.length) {
+                        dsBgColors[sliceIndex] = newColor;
+                        dsBorderColors[sliceIndex] = darkenColor(newColor, 20);
+                        actionsRef.current.updateDataset(dsIdx, {
+                            backgroundColor: dsBgColors,
+                            borderColor: dsBorderColors,
+                            lastSliceColors: dsBgColors,
+                            datasetColorMode: 'slice'
+                        });
+                    }
+                });
+              }
+            }
+        }}
       />
     </div>
   );

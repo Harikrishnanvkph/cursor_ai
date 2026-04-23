@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { useChartStore } from "@/lib/chart-store";
 import { useChartActions } from "@/lib/hooks/use-chart-actions";
 import { useTemplateStore } from "@/lib/template-store";
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Eye, EyeOff, ArrowUpNarrowWide, ArrowDownWideNarrow, ArrowUpAZ, ArrowDownZA, ArrowUpDown, Trophy, TrendingUp, TrendingDown, BarChart3, Percent, Hash, X, Divide, Undo2 } from "lucide-react";
 import { toast } from "sonner";
+import { type DimensionUnit, convertFromPixels, convertToPixels } from "@/lib/utils/dimension-utils";
 
 export function ResponsiveAnimationsPanel() {
   const {
@@ -39,6 +40,80 @@ export function ResponsiveAnimationsPanel() {
   const [sliceVisibilityOpen, setSliceVisibilityOpen] = useState(false);
   const [quickToolsOpen, setQuickToolsOpen] = useState(false);
   const [thresholdValue, setThresholdValue] = useState(50);
+  const [unit, setUnit] = useState<DimensionUnit>('px');
+  
+  // Helper to parse dimension values
+  const parseDimensionValue = (value: any, fallback: number): { value: number, unit: 'px' | '%' } => {
+    if (typeof value === 'string') {
+      if (value.includes('%')) {
+        const parsed = parseFloat(value);
+        return { value: isNaN(parsed) ? 100 : parsed, unit: '%' };
+      } else if (value.includes('px')) {
+        const parsed = parseFloat(value);
+        return { value: isNaN(parsed) ? fallback : parsed, unit: 'px' };
+      }
+      const parsed = parseFloat(value);
+      return { value: isNaN(parsed) ? fallback : parsed, unit: 'px' };
+    }
+    if (typeof value === 'number') {
+      return { value: isNaN(value) ? fallback : value, unit: 'px' };
+    }
+    return { value: fallback, unit: 'px' };
+  };
+
+  const widthDimension = parseDimensionValue((chartConfig as any).width, 500);
+  const heightDimension = parseDimensionValue((chartConfig as any).height, 400);
+  const widthValue = widthDimension.value;
+  const heightValue = heightDimension.value;
+
+  // Local string state for inputs
+  const [widthInput, setWidthInput] = useState(() => convertFromPixels(widthValue, unit).toString());
+  const [heightInput, setHeightInput] = useState(() => convertFromPixels(heightValue, unit).toString());
+
+  // Sync inputs with external chartConfig changes (e.g. Reset, load new chart)
+  useEffect(() => {
+    const wNum = parseFloat(widthInput);
+    if (isNaN(wNum) || Math.round(convertToPixels(wNum, unit)) !== Math.round(widthValue)) {
+      setWidthInput(convertFromPixels(widthValue, unit).toString());
+    }
+    const hNum = parseFloat(heightInput);
+    if (isNaN(hNum) || Math.round(convertToPixels(hNum, unit)) !== Math.round(heightValue)) {
+      setHeightInput(convertFromPixels(heightValue, unit).toString());
+    }
+  }, [widthValue, heightValue, unit]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Debounce input changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const wNum = parseFloat(widthInput);
+      const hNum = parseFloat(heightInput);
+      let updated = false;
+      
+      const latestConfig = useChartStore.getState().chartConfig;
+      const newConfig = { ...latestConfig } as any;
+      
+      if (!isNaN(wNum) && wNum > 0) {
+        const pxVal = Math.round(convertToPixels(wNum, unit));
+        if (newConfig.width !== `${pxVal}px`) {
+           newConfig.width = `${pxVal}px`;
+           updated = true;
+        }
+      }
+      if (!isNaN(hNum) && hNum > 0) {
+        const pxVal = Math.round(convertToPixels(hNum, unit));
+        if (newConfig.height !== `${pxVal}px`) {
+           newConfig.height = `${pxVal}px`;
+           updated = true;
+        }
+      }
+      
+      if (updated) {
+        newConfig.originalDimensions = false;
+        updateChartConfig(newConfig);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [widthInput, heightInput, unit, updateChartConfig]);
 
   const currentDatasetIndex = chartMode === 'single' ? activeDatasetIndex : 0;
   const hasBackup = datasetBackups.has(currentDatasetIndex);
@@ -69,29 +144,6 @@ export function ResponsiveAnimationsPanel() {
   // Check if template mode is active
   const isTemplateMode = editorMode === 'template';
 
-  // Helper to parse dimension values
-  const parseDimensionValue = (value: any, fallback: number): { value: number, unit: 'px' | '%' } => {
-    if (typeof value === 'string') {
-      if (value.includes('%')) {
-        const parsed = parseFloat(value);
-        return { value: isNaN(parsed) ? 100 : parsed, unit: '%' };
-      } else if (value.includes('px')) {
-        const parsed = parseFloat(value);
-        return { value: isNaN(parsed) ? fallback : parsed, unit: 'px' };
-      }
-      const parsed = parseFloat(value);
-      return { value: isNaN(parsed) ? fallback : parsed, unit: 'px' };
-    }
-    if (typeof value === 'number') {
-      return { value: isNaN(value) ? fallback : value, unit: 'px' };
-    }
-    return { value: fallback, unit: 'px' };
-  };
-
-  const widthDimension = parseDimensionValue((chartConfig as any).width, 500);
-  const heightDimension = parseDimensionValue((chartConfig as any).height, 400);
-  const widthValue = widthDimension.value;
-  const heightValue = heightDimension.value;
 
   const handleConfigUpdate = (path: string, value: any) => {
     const keys = path.split(".");
@@ -427,8 +479,9 @@ export function ResponsiveAnimationsPanel() {
               </div>
             )}
             {/* Radio Buttons for Chart Mode */}
-            <div className={`space-y-2 ${isTemplateMode ? 'opacity-50 pointer-events-none' : ''}`}>
-              <div className="flex items-center space-x-2">
+            <div className={`space-y-3 ${isTemplateMode ? 'opacity-50 pointer-events-none' : ''}`}>
+              {/* Responsive Option */}
+              <div className="flex items-start space-x-3 p-2 rounded-md hover:bg-green-100/50 transition-colors">
                 <input
                   type="radio"
                   id="responsive-mode-anim"
@@ -444,66 +497,136 @@ export function ResponsiveAnimationsPanel() {
                       originalDimensions: false
                     });
                   }}
-                  className="text-green-600 focus:ring-green-500"
+                  className="mt-1 text-green-600 focus:ring-green-500"
                 />
-                <Label htmlFor="responsive-mode-anim" className="text-xs font-medium cursor-pointer">
-                  Responsive {chartConfig.responsive === true && !chartConfig.templateDimensions && !(chartConfig as any).originalDimensions ? '(Active)' : ''}
-                </Label>
+                <div className="flex flex-col">
+                  <Label htmlFor="responsive-mode-anim" className="text-sm font-medium cursor-pointer">
+                    Responsive {chartConfig.responsive === true && !chartConfig.templateDimensions && !(chartConfig as any).originalDimensions ? '(Active)' : ''}
+                  </Label>
+                  <span className="text-xs text-gray-500">Chart auto-fills its container</span>
+                </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="radio"
-                  id="dynamic-dimension-mode-anim"
-                  name="chart-mode-anim"
-                  checked={chartConfig.dynamicDimension === true && !chartConfig.templateDimensions && !(chartConfig as any).originalDimensions}
-                  onChange={() => {
-                    updateChartConfig({
-                      ...chartConfig,
-                      dynamicDimension: true,
-                      responsive: false,
-                      manualDimensions: false,
-                      templateDimensions: false,
-                      originalDimensions: false,
-                      width: '400px',
-                      height: '400px'
-                    });
-                  }}
-                  className="text-green-600 focus:ring-green-500"
-                />
-                <Label htmlFor="dynamic-dimension-mode-anim" className="text-xs font-medium cursor-pointer">
-                  Dynamic Dimension {chartConfig.dynamicDimension === true && !chartConfig.templateDimensions && !(chartConfig as any).originalDimensions ? '(Active)' : ''}
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
+
+              {/* Fixed Dimensions Option */}
+              <div className="flex items-start space-x-3 p-2 rounded-md hover:bg-green-100/50 transition-colors">
                 <input
                   type="radio"
                   id="manual-mode-anim"
                   name="chart-mode-anim"
-                  checked={chartConfig.manualDimensions === true && !(chartConfig as any).templateDimensions && !(chartConfig as any).originalDimensions}
+                  checked={(chartConfig.manualDimensions === true || chartConfig.dynamicDimension === true) && !(chartConfig as any).templateDimensions && !(chartConfig as any).originalDimensions}
                   onChange={() => {
-                    // Initialize width/height if they don't exist or are percentages
                     const currentWidth = (chartConfig as any)?.width;
                     const currentHeight = (chartConfig as any)?.height;
-                    const width = (!currentWidth || currentWidth.toString().includes('%')) ? '600px' : currentWidth;
-                    const height = (!currentHeight || currentHeight.toString().includes('%')) ? '500px' : currentHeight;
+                    const width = (!currentWidth || currentWidth.toString().includes('%')) ? '800px' : currentWidth;
+                    const height = (!currentHeight || currentHeight.toString().includes('%')) ? '600px' : currentHeight;
 
                     updateChartConfig({
                       ...chartConfig,
                       manualDimensions: true,
                       responsive: false,
-                      dynamicDimension: false,
+                      dynamicDimension: false, // Default off when switching
                       templateDimensions: false,
                       originalDimensions: false,
                       width: width,
                       height: height
                     });
                   }}
-                  className="text-green-600 focus:ring-green-500"
+                  className="mt-1 text-green-600 focus:ring-green-500"
                 />
-                <Label htmlFor="manual-mode-anim" className="text-xs font-medium cursor-pointer">
-                  Manual Dimensions {chartConfig.manualDimensions === true && !(chartConfig as any).templateDimensions && !(chartConfig as any).originalDimensions ? '(Active)' : ''}
-                </Label>
+                <div className="flex flex-col flex-1">
+                  <Label htmlFor="manual-mode-anim" className="text-sm font-medium cursor-pointer mb-1">
+                    Fixed Dimensions {(chartConfig.manualDimensions === true || chartConfig.dynamicDimension === true) && !(chartConfig as any).templateDimensions && !(chartConfig as any).originalDimensions ? '(Active)' : ''}
+                  </Label>
+                  
+                  {/* Inputs shown only when Fixed Dimensions is active */}
+                  {(chartConfig.manualDimensions === true || chartConfig.dynamicDimension === true) && !(chartConfig as any).templateDimensions && !(chartConfig as any).originalDimensions && (
+                    <div className="mt-2 space-y-3 bg-white p-3 rounded-md border border-green-200">
+                      <div className="flex items-center gap-2">
+                        <Label className="text-xs font-medium w-12">Unit</Label>
+                        <select
+                          value={unit}
+                          onChange={(e) => {
+                            const newUnit = e.target.value as DimensionUnit;
+                            setUnit(newUnit);
+                            setWidthInput(convertFromPixels(widthValue, newUnit).toString());
+                            setHeightInput(convertFromPixels(heightValue, newUnit).toString());
+                          }}
+                          className="h-8 text-xs border border-gray-300 rounded-md px-2 flex-1"
+                        >
+                          <option value="px">Pixels (px)</option>
+                          <option value="mm">Millimeters (mm)</option>
+                          <option value="cm">Centimeters (cm)</option>
+                        </select>
+                      </div>
+
+                      {/* Width & Height inputs are managed via local state in the component */}
+                      <div className="flex items-center gap-2">
+                        <Label className="text-xs font-medium w-12">Width</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={widthInput}
+                          onChange={e => setWidthInput(e.target.value)}
+                          onBlur={() => {
+                            const num = parseFloat(widthInput);
+                            if (isNaN(num) || num <= 0) {
+                              setWidthInput(convertFromPixels(widthValue, unit).toString());
+                            } else {
+                              setWidthInput(num.toString());
+                            }
+                          }}
+                          className="h-8 text-xs flex-1"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Label className="text-xs font-medium w-12">Height</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={heightInput}
+                          onChange={e => setHeightInput(e.target.value)}
+                          onBlur={() => {
+                            const num = parseFloat(heightInput);
+                            if (isNaN(num) || num <= 0) {
+                              setHeightInput(convertFromPixels(heightValue, unit).toString());
+                            } else {
+                              setHeightInput(num.toString());
+                            }
+                          }}
+                          className="h-8 text-xs flex-1"
+                        />
+                      </div>
+
+                      {unit !== 'px' && (
+                        <div className="text-[10px] text-gray-500 text-right">
+                          ≈ {widthValue} × {heightValue} px
+                        </div>
+                      )}
+
+                      {/* Drag to resize option as a sub-setting */}
+                      <div className="flex items-center space-x-2 pt-2 border-t mt-2">
+                        <input
+                          type="checkbox"
+                          id="enable-drag-resize"
+                          checked={chartConfig.dynamicDimension === true}
+                          onChange={(e) => {
+                            updateChartConfig({
+                              ...chartConfig,
+                              dynamicDimension: e.target.checked
+                            });
+                          }}
+                          className="rounded text-green-600 focus:ring-green-500 border-gray-300"
+                        />
+                        <Label htmlFor="enable-drag-resize" className="text-xs text-gray-600 cursor-pointer">
+                          Enable drag-to-resize handles on chart
+                        </Label>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
+
               {/* Template Dimensions - Only shown when a template with chartArea exists */}
               {(() => {
                 const templateStore = useTemplateStore.getState();
@@ -517,7 +640,7 @@ export function ResponsiveAnimationsPanel() {
                 // For template conversations, show Template Dimension
                 if (isTemplateConversation && hasTemplateDimensions) {
                   return (
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-start space-x-3 p-2 rounded-md hover:bg-blue-50 transition-colors">
                       <input
                         type="radio"
                         id="template-dimension-mode-anim"
@@ -538,26 +661,27 @@ export function ResponsiveAnimationsPanel() {
                             });
                           }
                         }}
-                        className="text-blue-600 focus:ring-blue-500"
+                        className="mt-1 text-blue-600 focus:ring-blue-500"
                       />
-                      <Label htmlFor="template-dimension-mode-anim" className="text-xs font-medium cursor-pointer text-blue-700">
-                        Template Dimensions {(chartConfig as any).templateDimensions === true ? '(Active)' : ''}
-                        <span className="text-gray-500 ml-1">
-                          ({templateWithDimensions?.chartArea?.width}×{templateWithDimensions?.chartArea?.height})
+                      <div className="flex flex-col">
+                        <Label htmlFor="template-dimension-mode-anim" className="text-sm font-medium cursor-pointer text-blue-700">
+                          Template Dimensions {(chartConfig as any).templateDimensions === true ? '(Active)' : ''}
+                        </Label>
+                        <span className="text-xs text-gray-500">
+                          {templateWithDimensions?.chartArea?.width} × {templateWithDimensions?.chartArea?.height} px
                         </span>
-                      </Label>
+                      </div>
                     </div>
                   );
                 }
 
                 // For chart-only conversations loaded from cloud, show Original Dimension
-                // Relaxed constraint: Show if originalCloudDimensions exist, regardless of template status
                 if (hasOriginalDimensions) {
                   const widthNum = parseInt(originalCloudDimensions.width);
                   const heightNum = parseInt(originalCloudDimensions.height);
 
                   return (
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-start space-x-3 p-2 rounded-md hover:bg-indigo-50 transition-colors">
                       <input
                         type="radio"
                         id="original-dimension-mode-anim"
@@ -570,7 +694,7 @@ export function ResponsiveAnimationsPanel() {
                               ...chartConfig,
                               originalDimensions: true,
                               templateDimensions: false,
-                              manualDimensions: true, // Original dimensions ARE a form of manual dimensions (fixed)
+                              manualDimensions: true,
                               responsive: false,
                               dynamicDimension: false,
                               width: originalCloudDimensions.width,
@@ -578,64 +702,22 @@ export function ResponsiveAnimationsPanel() {
                             });
                           }
                         }}
-                        className="text-indigo-600 focus:ring-indigo-500"
+                        className="mt-1 text-indigo-600 focus:ring-indigo-500"
                       />
-                      <Label htmlFor="original-dimension-mode-anim" className="text-xs font-medium cursor-pointer text-indigo-700">
-                        Original Dimensions {(chartConfig as any).originalDimensions === true ? '(Active)' : ''}
-                        <span className="text-gray-500 ml-1">
-                          ({widthNum}×{heightNum})
+                      <div className="flex flex-col">
+                        <Label htmlFor="original-dimension-mode-anim" className="text-sm font-medium cursor-pointer text-indigo-700">
+                          Original Dimensions {(chartConfig as any).originalDimensions === true ? '(Active)' : ''}
+                        </Label>
+                        <span className="text-xs text-gray-500">
+                          {widthNum} × {heightNum} px
                         </span>
-                      </Label>
+                      </div>
                     </div>
                   );
                 }
 
-                // For new charts (never saved to cloud), show nothing
                 return null;
               })()}
-            </div>
-            {/* Width/Height Controls */}
-            <div className={`grid grid-cols-2 gap-3 ${isTemplateMode ? 'opacity-50 pointer-events-none' : ''}`}>
-              <div>
-                <Label className="text-xs font-medium">Width</Label>
-                <Input
-                  type="number"
-                  min={100}
-                  max={2000}
-                  value={widthValue}
-                  disabled={!(chartConfig.manualDimensions || chartConfig.dynamicDimension) || isTemplateMode || chartConfig.templateDimensions}
-                  onChange={e => {
-                    const newValue = e.target.value ? `${e.target.value}px` : undefined;
-                    // When manually editing, ALWAYS set originalDimensions to false
-                    if (chartConfig.dynamicDimension) {
-                      updateChartConfig({ ...chartConfig, width: newValue, dynamicDimension: true, originalDimensions: false });
-                    } else if (chartConfig.manualDimensions || (chartConfig as any).originalDimensions) {
-                      updateChartConfig({ ...chartConfig, width: newValue, manualDimensions: true, originalDimensions: false });
-                    }
-                  }}
-                  className="h-8 text-xs w-full"
-                />
-              </div>
-              <div>
-                <Label className="text-xs font-medium">Height</Label>
-                <Input
-                  type="number"
-                  min={100}
-                  max={2000}
-                  value={heightValue}
-                  disabled={!(chartConfig.manualDimensions || chartConfig.dynamicDimension) || isTemplateMode || chartConfig.templateDimensions}
-                  onChange={e => {
-                    const newValue = e.target.value ? `${e.target.value}px` : undefined;
-                    // When manually editing, ALWAYS set originalDimensions to false
-                    if (chartConfig.dynamicDimension) {
-                      updateChartConfig({ ...chartConfig, height: newValue, dynamicDimension: true, originalDimensions: false });
-                    } else if (chartConfig.manualDimensions || (chartConfig as any).originalDimensions) {
-                      updateChartConfig({ ...chartConfig, height: newValue, manualDimensions: true, originalDimensions: false });
-                    }
-                  }}
-                  className="h-8 text-xs w-full"
-                />
-              </div>
             </div>
             {/* Padding Controls */}
             <div className={`grid grid-cols-2 gap-3 mt-2 ${isTemplateMode ? 'opacity-50 pointer-events-none' : ''}`}>

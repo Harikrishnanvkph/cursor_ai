@@ -61,6 +61,7 @@ export const ChartPreviewCanvas = React.memo(({
                         top: 0, left: 0, right: 0, bottom: 0,
                         transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
                         transformOrigin: 'center center',
+                        transition: isDragging ? 'none' : 'all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
                         zIndex: 10,
                         cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'default',
                         pointerEvents: 'auto'
@@ -95,11 +96,11 @@ export const ChartPreviewCanvas = React.memo(({
     }
 
     // Non-responsive mode: fixed dimensions with canvas padding
-    const canvasPadding = 200;
+    const canvasPadding = 80;
     const scaledChartWidth = chartWidth * zoom;
     const scaledChartHeight = chartHeight * zoom;
-    const effectiveCanvasWidth = Math.max(chartWidth + canvasPadding, scaledChartWidth + canvasPadding);
-    const effectiveCanvasHeight = Math.max(chartHeight + canvasPadding, scaledChartHeight + canvasPadding);
+    const effectiveCanvasWidth = scaledChartWidth + canvasPadding;
+    const effectiveCanvasHeight = scaledChartHeight + canvasPadding;
     const initialLeft = effectiveCanvasWidth / 2 - scaledChartWidth / 2;
     const initialTop = effectiveCanvasHeight / 2 - scaledChartHeight / 2;
 
@@ -132,6 +133,7 @@ export const ChartPreviewCanvas = React.memo(({
                     height: `${chartHeight}px`,
                     transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
                     transformOrigin: 'top left',
+                    transition: isDragging ? 'none' : 'all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
                     zIndex: 10,
                     cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'default',
                     pointerEvents: 'auto'

@@ -14,6 +14,7 @@ import { useTemplateStore } from "@/lib/template-store"
 import { downloadChartAsHTML, type HTMLExportOptions, filterChartDataForExport } from "@/lib/html-exporter"
 import { downloadTemplateExport, type TemplateExportOptions } from "@/lib/template-export"
 import { templateList } from "@/lib/html-templates"
+import { type DimensionUnit, convertFromPixels, convertToPixels } from "@/lib/utils/dimension-utils"
 import { Download, Copy, FileImage, FileText, Code, FileCode, Settings, Layers, Share2, Link as LinkIcon } from "lucide-react"
 import { dataService } from "@/lib/data-service"
 import { toast } from "sonner"
@@ -30,6 +31,7 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
   const [exportFormat, setExportFormat] = useState("png")
   const [exportScale, setExportScale] = useState("2")
   const [dimensionMode, setDimensionMode] = useState<"auto" | "manual">("auto")
+  const [unit, setUnit] = useState<DimensionUnit>("px")
   const [manualWidth, setManualWidth] = useState(800)
   const [manualHeight, setManualHeight] = useState(600)
   const [widthInput, setWidthInput] = useState("800")
@@ -523,33 +525,63 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
 
           {/* Manual Dimension Inputs */}
           {exportMode === "chart" && dimensionMode === "manual" && !isGlobalTemplateMode && (
-            <div className="grid grid-cols-2 gap-3 pt-2 border-t">
-              <div>
-                <Label className="text-xs font-medium text-gray-700">Width (px)</Label>
-                <Input
-                  type="number"
-                  value={widthInput}
-                  onChange={(e) => handleWidthChange(e.target.value)}
-                  onBlur={handleWidthBlur}
-                  min="250"
-                  className="h-8 text-xs"
-                  placeholder="800"
-                />
-                <p className="text-xs text-gray-500 mt-0.5">Min: 250px</p>
+            <div className="space-y-3 pt-3 border-t">
+              <div className="flex items-center gap-2">
+                <Label className="text-xs font-medium text-gray-700 w-12">Unit</Label>
+                <Select value={unit} onValueChange={(value) => setUnit(value as DimensionUnit)}>
+                  <SelectTrigger className="h-8 text-xs flex-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="px">Pixels (px)</SelectItem>
+                    <SelectItem value="mm">Millimeters (mm)</SelectItem>
+                    <SelectItem value="cm">Centimeters (cm)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div>
-                <Label className="text-xs font-medium text-gray-700">Height (px)</Label>
-                <Input
-                  type="number"
-                  value={heightInput}
-                  onChange={(e) => handleHeightChange(e.target.value)}
-                  onBlur={handleHeightBlur}
-                  min="250"
-                  className="h-8 text-xs"
-                  placeholder="600"
-                />
-                <p className="text-xs text-gray-500 mt-0.5">Min: 250px</p>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs font-medium text-gray-700">Width</Label>
+                  <Input
+                    type="number"
+                    value={unit === 'px' ? widthInput : convertFromPixels(parseFloat(widthInput) || 0, unit)}
+                    onChange={(e) => {
+                      if (!e.target.value) return;
+                      const pxVal = unit === 'px' ? e.target.value : Math.round(convertToPixels(parseFloat(e.target.value), unit)).toString();
+                      handleWidthChange(pxVal);
+                    }}
+                    onBlur={handleWidthBlur}
+                    min={unit === 'px' ? "250" : "1"}
+                    className="h-8 text-xs"
+                    placeholder="800"
+                  />
+                  {unit === 'px' && <p className="text-[10px] text-gray-500 mt-0.5">Min: 250px</p>}
+                </div>
+                <div>
+                  <Label className="text-xs font-medium text-gray-700">Height</Label>
+                  <Input
+                    type="number"
+                    value={unit === 'px' ? heightInput : convertFromPixels(parseFloat(heightInput) || 0, unit)}
+                    onChange={(e) => {
+                      if (!e.target.value) return;
+                      const pxVal = unit === 'px' ? e.target.value : Math.round(convertToPixels(parseFloat(e.target.value), unit)).toString();
+                      handleHeightChange(pxVal);
+                    }}
+                    onBlur={handleHeightBlur}
+                    min={unit === 'px' ? "250" : "1"}
+                    className="h-8 text-xs"
+                    placeholder="600"
+                  />
+                  {unit === 'px' && <p className="text-[10px] text-gray-500 mt-0.5">Min: 250px</p>}
+                </div>
               </div>
+              
+              {unit !== 'px' && (
+                <div className="text-[10px] text-gray-500 text-right">
+                  ≈ {widthInput} × {heightInput} px
+                </div>
+              )}
             </div>
           )}
 

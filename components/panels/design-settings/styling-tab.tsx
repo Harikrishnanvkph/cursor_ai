@@ -227,12 +227,10 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                                 <Label className="text-xs font-medium">Point Radius</Label>
                                 <Input
                                     type="number"
-                                    value={Number(primaryDataset.pointRadius ?? 5)}
+                                    value={Number(readSliceAwareValue('pointRadius', 5))}
                                     onChange={(e) => {
                                         const value = e.target.value ? Number(e.target.value) : 5
-                                        getTargetDatasetIndices().forEach(index => {
-                                            handleUpdateDataset(index, 'pointRadius', value)
-                                        })
+                                        handleSliceAwareUpdate('pointRadius', value, 5)
                                     }}
                                     className="h-8 text-xs"
                                     placeholder="5"
@@ -247,12 +245,10 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                             <Label className="text-xs font-medium">Hover Radius</Label>
                             <Input
                                 type="number"
-                                value={Number(primaryDataset.pointHoverRadius ?? 8)}
+                                value={Number(readSliceAwareValue('pointHoverRadius', 8))}
                                 onChange={(e) => {
                                     const value = e.target.value ? Number(e.target.value) : 8
-                                    getTargetDatasetIndices().forEach(index => {
-                                        handleUpdateDataset(index, 'pointHoverRadius', value)
-                                    })
+                                    handleSliceAwareUpdate('pointHoverRadius', value, 8)
                                 }}
                                 className="h-8 text-xs"
                                 placeholder="8"
@@ -266,12 +262,10 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                             <Label className="text-xs font-medium">Border Width</Label>
                             <Input
                                 type="number"
-                                value={Number(primaryDataset.pointBorderWidth ?? 1)}
+                                value={Number(readSliceAwareValue('pointBorderWidth', 1))}
                                 onChange={(e) => {
                                     const value = e.target.value ? Number(e.target.value) : 1
-                                    getTargetDatasetIndices().forEach(index => {
-                                        handleUpdateDataset(index, 'pointBorderWidth', value)
-                                    })
+                                    handleSliceAwareUpdate('pointBorderWidth', value, 1)
                                 }}
                                 className="h-8 text-xs"
                                 placeholder="1"
@@ -287,11 +281,9 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                         <div className="space-y-1">
                             <Label className="text-xs font-medium">Point Style</Label>
                             <Select
-                                value={primaryDataset.pointStyle || 'circle'}
+                                value={readSliceAwareValue('pointStyle', 'circle')}
                                 onValueChange={(value) => {
-                                    getTargetDatasetIndices().forEach(index => {
-                                        handleUpdateDataset(index, 'pointStyle', value)
-                                    })
+                                    handleSliceAwareUpdate('pointStyle', value, 'circle')
                                 }}
                             >
                                 <SelectTrigger className="h-8 text-xs">
@@ -316,12 +308,10 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                             <Label className="text-xs font-medium">Hover Border Width</Label>
                             <Input
                                 type="number"
-                                value={Number(primaryDataset.pointHoverBorderWidth ?? 2)}
+                                value={Number(readSliceAwareValue('pointHoverBorderWidth', 2))}
                                 onChange={(e) => {
                                     const value = e.target.value ? Number(e.target.value) : 2
-                                    getTargetDatasetIndices().forEach(index => {
-                                        handleUpdateDataset(index, 'pointHoverBorderWidth', value)
-                                    })
+                                    handleSliceAwareUpdate('pointHoverBorderWidth', value, 2)
                                 }}
                                 className="h-8 text-xs"
                                 placeholder="2"

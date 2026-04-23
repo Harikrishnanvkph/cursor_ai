@@ -78,6 +78,7 @@ export function ColorsTab({
                     handleUpdateDataset(datasetIndex, {
                         backgroundColor: Array(dataset.data.length).fill(datasetColor),
                         borderColor: borderColors,
+                        datasetColorMode: 'single'
                     })
                 } else {
                     const sliceColors = colors.slice(0, dataset.data.length)
@@ -87,7 +88,8 @@ export function ColorsTab({
 
                     handleUpdateDataset(datasetIndex, {
                         backgroundColor: sliceColors,
-                        borderColor: borderColors
+                        borderColor: borderColors,
+                        datasetColorMode: 'slice'
                     })
                 }
             })
@@ -114,6 +116,7 @@ export function ColorsTab({
         handleUpdateDataset(activeDatasetIndex, {
             backgroundColor: Array(sliceCount).fill(finalColor),
             borderColor: finalBorderColor,
+            datasetColorMode: chartMode === 'grouped' ? colorMode : undefined
         })
     }
 
@@ -138,7 +141,8 @@ export function ColorsTab({
 
         handleUpdateDataset(activeDatasetIndex, {
             backgroundColor: newBgColors,
-            borderColor: preservedBorderColor as any
+            borderColor: preservedBorderColor as any,
+            datasetColorMode: chartMode === 'grouped' ? colorMode : undefined
         })
     }
 
@@ -246,7 +250,9 @@ export function ColorsTab({
 
                                                                 handleUpdateDataset(datasetIndex, {
                                                                     backgroundColor: newBgColors,
-                                                                    borderColor: newBorderColors
+                                                                    borderColor: newBorderColors,
+                                                                    datasetColorMode: 'slice',
+                                                                    lastSliceColors: newBgColors
                                                                 });
                                                             });
                                                         }}
@@ -268,7 +274,9 @@ export function ColorsTab({
 
                                                                 handleUpdateDataset(datasetIndex, {
                                                                     backgroundColor: newBgColors,
-                                                                    borderColor: newBorderColors
+                                                                    borderColor: newBorderColors,
+                                                                    datasetColorMode: 'slice',
+                                                                    lastSliceColors: newBgColors
                                                                 });
                                                             });
                                                         }}
@@ -307,7 +315,9 @@ export function ColorsTab({
                                                         const sliceCount = dataset.data.length;
                                                         handleUpdateDataset(datasetIndex, {
                                                             backgroundColor: Array(sliceCount).fill(e.target.value),
-                                                            borderColor: Array(sliceCount).fill(darkenColor(e.target.value, 20))
+                                                            borderColor: Array(sliceCount).fill(darkenColor(e.target.value, 20)),
+                                                            datasetColorMode: 'single',
+                                                            lastDatasetColor: e.target.value
                                                         })
                                                     }}
                                                     className="invisible w-0"
@@ -320,7 +330,9 @@ export function ColorsTab({
                                                         const sliceCount = dataset.data.length;
                                                         handleUpdateDataset(datasetIndex, {
                                                             backgroundColor: Array(sliceCount).fill(e.target.value),
-                                                            borderColor: Array(sliceCount).fill(darkenColor(e.target.value, 20))
+                                                            borderColor: Array(sliceCount).fill(darkenColor(e.target.value, 20)),
+                                                            datasetColorMode: 'single',
+                                                            lastDatasetColor: e.target.value
                                                         })
                                                     }}
                                                     className="w-20 h-6 text-xs font-mono uppercase"
@@ -366,7 +378,8 @@ export function ColorsTab({
 
                                             updateDataset(datasetIndex, {
                                                 backgroundColor: newBgColors,
-                                                borderColor: preservedBorderColor as any
+                                                borderColor: preservedBorderColor as any,
+                                                datasetColorMode: colorMode === 'dataset' ? 'single' : 'slice'
                                             })
                                         })
                                     }}
@@ -401,7 +414,8 @@ export function ColorsTab({
 
                                         updateDataset(datasetIndex, {
                                             backgroundColor: newBgColors,
-                                            borderColor: preservedBorderColor as any
+                                            borderColor: preservedBorderColor as any,
+                                            datasetColorMode: colorMode === 'dataset' ? 'single' : 'slice'
                                         })
                                     })
                                 }}

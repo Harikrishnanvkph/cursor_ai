@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useChartStore, type ExtendedChartDataset } from "@/lib/chart-store"
 import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { getDefaultImageConfig as getDefaultImageConfigFromStore } from "@/lib/plugins/universal-image-plugin"
@@ -81,7 +81,6 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     const [showAddDatasetModal, setShowAddDatasetModal] = useState(false)
 
     // ─── Colors tab state ───
-    const [colorMode, setColorMode] = useState<'slice' | 'dataset'>('dataset')
     const [colorOpacity, setColorOpacity] = useState(100)
     const [borderColorMode, setBorderColorMode] = useState<'auto' | 'manual'>('auto')
     const [manualBorderColor, setManualBorderColor] = useState('#000000')
@@ -117,6 +116,29 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
         }
         return true
     })
+
+    // Derive colorMode from persisted dataset state so it survives tab switches
+    const colorMode = useMemo(() => {
+        if (chartMode !== 'grouped' || filteredDatasets.length === 0) return 'dataset';
+        return (filteredDatasets[0] as any)?.datasetColorMode === 'slice' ? 'slice' : 'dataset';
+    }, [chartMode, filteredDatasets]);
+
+    // Sync opacity slider to reflect the actual opacity of the current mode's colors
+    useEffect(() => {
+        if (chartMode !== 'grouped' || filteredDatasets.length === 0) return;
+        const firstDataset = filteredDatasets[0];
+        const firstColor = Array.isArray(firstDataset.backgroundColor)
+            ? firstDataset.backgroundColor[0]
+            : firstDataset.backgroundColor;
+        if (typeof firstColor === 'string' && firstColor.startsWith('rgba')) {
+            const match = firstColor.match(/rgba?\(\d+,\s*\d+,\s*\d+,\s*([\d.]+)\)/);
+            if (match) {
+                setColorOpacity(Math.round(parseFloat(match[1]) * 100));
+                return;
+            }
+        }
+        setColorOpacity(100);
+    }, [colorMode, chartMode, filteredDatasets]);
 
     // ─── Handlers ───
 
@@ -344,32 +366,76 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
         }
     }, [chartType, chartMode, uniformityMode, setUniformityMode]);
 
-    useEffect(() => {
+    // Handle slice/dataset color mode toggling — called explicitly by button clicks only
+    const handleColorModeToggle = (newMode: 'slice' | 'dataset') => {
+        if (chartMode !== 'grouped') return;
+        if (newMode === colorMode) return;
+
+        const DEFAULT_PALETTE = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+
         chartData.datasets.forEach((dataset, datasetIndex) => {
-            if (colorMode === 'dataset' && (dataset as any).datasetColorMode === 'single') {
-                if (Array.isArray(dataset.backgroundColor)) {
-                    handleUpdateDataset(datasetIndex, {
-                        lastSliceColors: [...dataset.backgroundColor],
-                    });
+            if ((dataset as any).mode !== 'grouped') return;
+
+            if (newMode === 'dataset') {
+                // Switching TO dataset mode:
+                let updates: any = {};
+                
+                // 1. Save current slice colors so we can restore them later
+                if (Array.isArray(dataset.backgroundColor) && dataset.backgroundColor.length > 0) {
+                    const bg = dataset.backgroundColor as string[];
+                    const hasDifferentColors = bg.some((c: string) => c !== bg[0]);
+                    if (hasDifferentColors) {
+                        updates.lastSliceColors = [...bg];
+                    }
                 }
-                const baseColor = (dataset as any).color
-                    || (Array.isArray(dataset.backgroundColor) ? (dataset.backgroundColor[0] || '#3b82f6') : (dataset.backgroundColor || '#3b82f6'));
-                handleUpdateDataset(datasetIndex, {
-                    backgroundColor: Array(dataset.data.length).fill(baseColor),
-                    borderColor: Array(dataset.data.length).fill(darkenColor(baseColor, 20)),
-                });
-            }
-            if (colorMode === 'slice' && (dataset as any).datasetColorMode === 'slice') {
-                if (Array.isArray((dataset as any).lastSliceColors) && (dataset as any).lastSliceColors.length === dataset.data.length) {
-                    handleUpdateDataset(datasetIndex, {
-                        backgroundColor: [...(dataset as any).lastSliceColors],
-                        borderColor: (dataset as any).lastSliceColors.map((c: string) => darkenColor(c, 20)),
-                    });
+
+                // 2. Determine the base color: prefer saved dataset color, then current first color, then palette
+                const savedDatasetColor = (dataset as any).lastDatasetColor;
+                const baseColor = savedDatasetColor
+                    || (dataset as any).color
+                    || (Array.isArray(dataset.backgroundColor)
+                        ? (dataset.backgroundColor[0] || DEFAULT_PALETTE[datasetIndex % DEFAULT_PALETTE.length])
+                        : (dataset.backgroundColor || DEFAULT_PALETTE[datasetIndex % DEFAULT_PALETTE.length]));
+
+                // 3. Flood all slices with the uniform dataset color
+                updates.backgroundColor = Array(dataset.data.length).fill(baseColor);
+                updates.borderColor = Array(dataset.data.length).fill(darkenColor(baseColor, 20));
+                updates.datasetColorMode = 'single';
+                
+                // Apply all updates in one call
+                handleUpdateDataset(datasetIndex, updates);
+                
+            } else {
+                // Switching TO slice mode:
+                let updates: any = {};
+                
+                // 1. Save current dataset color so we can restore it when switching back
+                const currentUniformColor = Array.isArray(dataset.backgroundColor)
+                    ? (dataset.backgroundColor[0] || DEFAULT_PALETTE[datasetIndex % DEFAULT_PALETTE.length])
+                    : (dataset.backgroundColor || DEFAULT_PALETTE[datasetIndex % DEFAULT_PALETTE.length]);
+                updates.lastDatasetColor = currentUniformColor;
+
+                // 2. Restore previously saved slice colors, or assign default palette colors
+                const saved = (dataset as any).lastSliceColors;
+                if (Array.isArray(saved) && saved.length === dataset.data.length) {
+                    updates.backgroundColor = [...saved];
+                    updates.borderColor = saved.map((c: string) => darkenColor(c, 20));
+                } else {
+                    // No saved colors — assign default palette colors per slice
+                    const sliceColors = dataset.data.map((_: any, i: number) =>
+                        DEFAULT_PALETTE[i % DEFAULT_PALETTE.length]
+                    );
+                    updates.backgroundColor = sliceColors;
+                    updates.borderColor = sliceColors.map((c: string) => darkenColor(c, 20));
                 }
+                
+                updates.datasetColorMode = 'slice';
+                
+                // Apply all updates in one call
+                handleUpdateDataset(datasetIndex, updates);
             }
         });
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [colorMode]);
+    };
 
     // Update opacity state when dataset changes in single mode
     useEffect(() => {
@@ -463,7 +529,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                         activeDatasetIndex={activeDatasetIndex}
                         filteredDatasets={filteredDatasets}
                         colorMode={colorMode}
-                        setColorMode={setColorMode}
+                        setColorMode={handleColorModeToggle}
                         colorOpacity={colorOpacity}
                         setColorOpacity={setColorOpacity}
                         borderColorMode={borderColorMode}

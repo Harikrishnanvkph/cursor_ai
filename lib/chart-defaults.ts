@@ -342,8 +342,10 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
     }
 
     let baseConfig: ExtendedChartOptions = {
-        responsive: true,
-        manualDimensions: false,
+        responsive: false,
+        manualDimensions: true,
+        width: '800px',
+        height: '600px',
         visualSettings: {
             fillArea: (type !== 'line'), // Line charts should default to no fill
             showBorder: true,

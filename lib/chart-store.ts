@@ -127,6 +127,8 @@ interface ChartStore {
   toggleShowLegend: () => void;
   setFullChart: (chart: { chartType: SupportedChartType; chartData: ExtendedChartData; chartConfig: ExtendedChartOptions; id?: string; name?: string; conversationId?: string; replaceMode?: boolean }) => void;
   setHasJSON: (value: boolean) => void;
+  /** Initialize chart dimensions from the setup dialog. Sets consistent config flags. */
+  initializeChartDimensions: (width: number, height: number, isResponsive: boolean) => void;
 
   // Overlay Actions
   addOverlayImage: (image: Omit<OverlayImage, 'id'>) => void;
@@ -395,6 +397,24 @@ export const useChartStore = create<ChartStore>()(
       setChartTitle: (title: string | null) => set((state) => ChartStateService.setChartTitle(title, state)),
       setFullChart: (params) => set((state) => ChartStateService.setFullChart(params, state)),
       setCurrentSnapshotId: (id: string | null) => set({ currentSnapshotId: id }),
+
+      // Initialize chart dimensions from the setup dialog
+      initializeChartDimensions: (width: number, height: number, isResponsive: boolean) => set((state) => {
+        const dimUpdate: Partial<ExtendedChartOptions> = isResponsive
+          ? { responsive: true, manualDimensions: false, dynamicDimension: false, templateDimensions: false, originalDimensions: false }
+          : { responsive: false, manualDimensions: true, dynamicDimension: false, templateDimensions: false, originalDimensions: false, width: `${width}px`, height: `${height}px` };
+        const newConfig = { ...state.chartConfig, ...dimUpdate };
+        // Also update per-chart config in single mode datasets
+        const newDatasets = state.chartData.datasets.map((ds, i) =>
+          i === state.activeDatasetIndex ? { ...ds, chartConfig: { ...(ds.chartConfig || {}), ...dimUpdate } } : ds
+        );
+        const newChartData = { ...state.chartData, datasets: newDatasets };
+        return {
+          chartConfig: newConfig,
+          chartData: newChartData,
+          ...(state.chartMode === 'single' ? { singleModeData: newChartData } : { groupedModeData: newChartData }),
+        };
+      }),
 
       // Overlay actions implementation
       addOverlayImage: (image) => set((state) =>
