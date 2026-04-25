@@ -282,7 +282,7 @@ export function GeneralTab({
                                 const actualIndex = chartData.datasets.indexOf(dataset);
                                 return (
                                     <SelectItem key={index} value={String(actualIndex)}>
-                                        {dataset.sourceTitle || dataset.label || `Dataset ${actualIndex + 1}`}
+                                        {dataset.label || dataset.sourceTitle || `Dataset ${actualIndex + 1}`}
                                     </SelectItem>
                                 );
                             })}
@@ -370,7 +370,7 @@ export function GeneralTab({
                                             <div className="flex-1 flex flex-col gap-1 min-w-0">
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-sm font-medium text-gray-800 truncate max-w-[200px]">
-                                                        {dataset.sourceTitle || dataset.label || `Dataset ${datasetIndex + 1}`}
+                                                        {dataset.label || dataset.sourceTitle || `Dataset ${datasetIndex + 1}`}
                                                     </span>
                                                 </div>
                                                 <div className="flex items-center gap-2 text-[10px] text-gray-400 pl-0.5">

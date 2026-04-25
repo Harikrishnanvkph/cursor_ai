@@ -275,7 +275,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
 
         setFullEditRows(rows)
         setEditingDatasetIndex(datasetIndex)
-        setEditingDatasetName(dataset.sourceTitle || dataset.label || `Dataset ${datasetIndex + 1}`)
+        setEditingDatasetName(dataset.label || dataset.sourceTitle || `Dataset ${datasetIndex + 1}`)
 
         const isSingleColorMode = (dataset as any).datasetColorMode === 'single' ||
             (typeof dataset.backgroundColor === 'string')
@@ -569,7 +569,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                         {datasetToDelete !== null && (
                             <div className="p-3 bg-gray-50 rounded-lg">
                                 <p className="text-sm font-medium text-gray-900">
-                                    Dataset: {filteredDatasets[datasetToDelete]?.sourceTitle || filteredDatasets[datasetToDelete]?.label || `Dataset ${datasetToDelete + 1}`}
+                                    Dataset: {filteredDatasets[datasetToDelete]?.label || filteredDatasets[datasetToDelete]?.sourceTitle || `Dataset ${datasetToDelete + 1}`}
                                 </p>
                                 <p className="text-xs text-gray-500">
                                     {filteredDatasets[datasetToDelete]?.data.length || 0} data points

@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { BarChart3, Database, Sparkles, TrendingUp, PieChart, LineChart, Ruler, Zap } from "lucide-react"
+import { BarChart3, Database, Sparkles, TrendingUp, PieChart, LineChart, Ruler, Zap, Info } from "lucide-react"
 import { useChartStore } from "@/lib/chart-store"
 import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { useChatStore } from "@/lib/chat-store"
@@ -12,6 +12,9 @@ import { toast } from "sonner"
 import { ChartSetupDialog, type ChartDimensions } from "@/components/dialogs/chart-setup-dialog"
 import { DEFAULT_CHART_WIDTH, DEFAULT_CHART_HEIGHT } from "@/lib/utils/dimension-utils"
 import { getDefaultConfigForType } from "@/lib/chart-defaults"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Label } from "@/components/ui/label"
 
 interface EditorWelcomeScreenProps {
   onDatasetClick?: () => void
@@ -28,11 +31,35 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
   // ── Setup dialog state ──
   const [showSetupDialog, setShowSetupDialog] = useState(false)
   const [pendingAction, setPendingAction] = useState<'sample' | 'custom' | null>(null)
+  const [datasetType, setDatasetType] = useState<'single' | 'grouped'>('single')
 
   // ── Build sample data ──
-  const buildSampleData = () => ({
-    labels: ['January', 'February', 'March', 'April', 'May', 'June'],
-    datasets: [{
+  const buildSampleData = () => {
+    if (datasetType === 'grouped') {
+      return {
+        labels: ['January', 'February', 'March', 'April', 'May', 'June'],
+        datasets: [
+          {
+            label: 'Sales',
+            data: [120, 190, 130, 150, 120, 130],
+            backgroundColor: 'rgba(54, 162, 235, 0.8)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 2,
+          },
+          {
+            label: 'Expenses',
+            data: [80, 110, 70, 150, 90, 60],
+            backgroundColor: 'rgba(255, 99, 132, 0.8)',
+            borderColor: 'rgba(255, 99, 132, 1)',
+            borderWidth: 2,
+          }
+        ]
+      }
+    }
+
+    return {
+      labels: ['January', 'February', 'March', 'April', 'May', 'June'],
+      datasets: [{
       label: 'Sample Dataset',
       data: [12, 19, 3, 5, 2, 3],
       backgroundColor: [
@@ -64,8 +91,9 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
       mode: 'single' as const,
       sliceLabels: ['January', 'February', 'March', 'April', 'May', 'June'],
       chartType: 'bar' as const,
-    }]
-  })
+      }]
+    }
+  }
 
   // ── Apply dimensions to chart config ──
   const buildConfigWithDimensions = (dims: ChartDimensions) => {
@@ -102,7 +130,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
       setHasJSON(true)
       toast.success("Sample dataset added to current chart")
     } else {
-      setChartMode('single')
+      setChartMode(datasetType)
       const config = buildConfigWithDimensions({
         width: DEFAULT_CHART_WIDTH,
         height: DEFAULT_CHART_HEIGHT,
@@ -131,7 +159,12 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
   }
 
   // ── Dialog confirmed ──
-  const handleDimensionsConfirmed = (dims: ChartDimensions) => {
+  const handleDimensionsConfirmed = (
+    dims: ChartDimensions,
+    initialDatasets?: any[],
+    chartType?: any,
+    uniformityMode?: 'uniform' | 'mixed'
+  ) => {
     setShowSetupDialog(false)
     clearMessages()
     setBackendConversationId(null)
@@ -148,7 +181,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
         setHasJSON(true)
         toast.success("Sample dataset added to current chart")
       } else {
-        setChartMode('single')
+        setChartMode(datasetType)
         setFullChart({
           chartType: 'bar',
           chartData: sampleData,
@@ -159,19 +192,33 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
         toast.success(`Sample data loaded (${sizeLabel})`)
       }
     } else if (pendingAction === 'custom') {
-      // Initialize empty chart with the chosen dimensions
-      setChartMode('single')
-      const emptyData = { labels: [], datasets: [] }
+      // Initialize chart with the entered dimensions and dataset
+      setChartMode(datasetType)
+      
+      const newChartData = {
+        labels: initialDatasets?.[0]?.sliceLabels || [],
+        datasets: initialDatasets || []
+      }
+
+      const newConfig = { ...config }
+      if (uniformityMode && datasetType === 'grouped') {
+        newConfig.visualSettings = {
+          ...newConfig.visualSettings,
+          uniformityMode
+        }
+      }
+
       setFullChart({
-        chartType: 'bar',
-        chartData: emptyData,
-        chartConfig: config,
+        chartType: chartType || 'bar',
+        chartData: newChartData,
+        chartConfig: newConfig,
       })
+      setHasJSON(true)
       // Navigate to datasets tab
       if (onDatasetClick) {
         onDatasetClick()
         const sizeLabel = dims.isResponsive ? 'Responsive' : `${dims.width}×${dims.height} px`
-        toast.info(`Chart initialized at ${sizeLabel}. Add your data now.`)
+        toast.info(`Chart initialized at ${sizeLabel}.`)
       }
     }
 
@@ -195,6 +242,46 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
           </CardHeader>
 
           <CardContent className="space-y-4 pb-6">
+            {/* ── Dataset Type Selection ── */}
+            <div className="bg-gray-50/50 p-4 rounded-lg border border-gray-100">
+              <div className="flex items-center gap-2 mb-3">
+                <h3 className="text-sm font-semibold text-gray-700">Dataset Type</h3>
+                <TooltipProvider>
+                  <Tooltip delayDuration={300}>
+                    <TooltipTrigger asChild>
+                      <Info className="h-4 w-4 text-gray-400 hover:text-gray-600 cursor-help transition-colors" />
+                    </TooltipTrigger>
+                    <TooltipContent className="w-[300px] p-3 text-xs z-[100] shadow-lg" side="top" sideOffset={5}>
+                      <div className="space-y-2 leading-relaxed text-gray-600">
+                        <p>
+                          <strong className="text-gray-900">Single Chart:</strong> Visualizes a single dataset or metric across different categories. Best for pie, donut, and basic bar/line charts.
+                        </p>
+                        <p>
+                          <strong className="text-gray-900">Grouped Chart:</strong> Visualizes multiple datasets or metrics simultaneously for comparison. Best for grouped bars, stacked charts, and multi-line charts.
+                        </p>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              
+              <RadioGroup 
+                defaultValue="single" 
+                value={datasetType} 
+                onValueChange={(val) => setDatasetType(val as 'single' | 'grouped')}
+                className="flex gap-6"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="single" id="type-single" />
+                  <Label htmlFor="type-single" className="cursor-pointer text-sm font-medium">Single Chart</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="grouped" id="type-grouped" />
+                  <Label htmlFor="type-grouped" className="cursor-pointer text-sm font-medium">Grouped Chart</Label>
+                </div>
+              </RadioGroup>
+            </div>
+
             {/* ── Load Sample Data Section ── */}
             <div>
               <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
@@ -296,6 +383,8 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
         }}
         onConfirm={handleDimensionsConfirmed}
         title={pendingAction === 'sample' ? 'Choose Chart Size' : 'Set Up Chart Dimensions'}
+        datasetType={datasetType}
+        isCustom={pendingAction === 'custom'}
       />
     </>
   )

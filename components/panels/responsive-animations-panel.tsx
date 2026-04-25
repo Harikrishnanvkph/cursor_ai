@@ -66,9 +66,18 @@ export function ResponsiveAnimationsPanel() {
   const widthValue = widthDimension.value;
   const heightValue = heightDimension.value;
 
+  const padTopValue = (chartConfig.layout?.padding as any)?.top ?? 10;
+  const padRightValue = (chartConfig.layout?.padding as any)?.right ?? 10;
+  const padBottomValue = (chartConfig.layout?.padding as any)?.bottom ?? 10;
+  const padLeftValue = (chartConfig.layout?.padding as any)?.left ?? 10;
+
   // Local string state for inputs
   const [widthInput, setWidthInput] = useState(() => convertFromPixels(widthValue, unit).toString());
   const [heightInput, setHeightInput] = useState(() => convertFromPixels(heightValue, unit).toString());
+  const [padTopInput, setPadTopInput] = useState(() => convertFromPixels(padTopValue, unit).toString());
+  const [padRightInput, setPadRightInput] = useState(() => convertFromPixels(padRightValue, unit).toString());
+  const [padBottomInput, setPadBottomInput] = useState(() => convertFromPixels(padBottomValue, unit).toString());
+  const [padLeftInput, setPadLeftInput] = useState(() => convertFromPixels(padLeftValue, unit).toString());
 
   // Sync inputs with external chartConfig changes (e.g. Reset, load new chart)
   useEffect(() => {
@@ -80,14 +89,36 @@ export function ResponsiveAnimationsPanel() {
     if (isNaN(hNum) || Math.round(convertToPixels(hNum, unit)) !== Math.round(heightValue)) {
       setHeightInput(convertFromPixels(heightValue, unit).toString());
     }
-  }, [widthValue, heightValue, unit]); // eslint-disable-line react-hooks/exhaustive-deps
+    const ptNum = parseFloat(padTopInput);
+    if (isNaN(ptNum) || Math.round(convertToPixels(ptNum, unit)) !== Math.round(padTopValue)) {
+      setPadTopInput(convertFromPixels(padTopValue, unit).toString());
+    }
+    const prNum = parseFloat(padRightInput);
+    if (isNaN(prNum) || Math.round(convertToPixels(prNum, unit)) !== Math.round(padRightValue)) {
+      setPadRightInput(convertFromPixels(padRightValue, unit).toString());
+    }
+    const pbNum = parseFloat(padBottomInput);
+    if (isNaN(pbNum) || Math.round(convertToPixels(pbNum, unit)) !== Math.round(padBottomValue)) {
+      setPadBottomInput(convertFromPixels(padBottomValue, unit).toString());
+    }
+    const plNum = parseFloat(padLeftInput);
+    if (isNaN(plNum) || Math.round(convertToPixels(plNum, unit)) !== Math.round(padLeftValue)) {
+      setPadLeftInput(convertFromPixels(padLeftValue, unit).toString());
+    }
+  }, [widthValue, heightValue, padTopValue, padRightValue, padBottomValue, padLeftValue, unit]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Debounce input changes
   useEffect(() => {
     const timer = setTimeout(() => {
       const wNum = parseFloat(widthInput);
       const hNum = parseFloat(heightInput);
-      let updated = false;
+      const ptNum = parseFloat(padTopInput);
+      const prNum = parseFloat(padRightInput);
+      const pbNum = parseFloat(padBottomInput);
+      const plNum = parseFloat(padLeftInput);
+
+      let dimensionsUpdated = false;
+      let paddingUpdated = false;
       
       const latestConfig = useChartStore.getState().chartConfig;
       const newConfig = { ...latestConfig } as any;
@@ -96,24 +127,58 @@ export function ResponsiveAnimationsPanel() {
         const pxVal = Math.round(convertToPixels(wNum, unit));
         if (newConfig.width !== `${pxVal}px`) {
            newConfig.width = `${pxVal}px`;
-           updated = true;
+           dimensionsUpdated = true;
         }
       }
       if (!isNaN(hNum) && hNum > 0) {
         const pxVal = Math.round(convertToPixels(hNum, unit));
         if (newConfig.height !== `${pxVal}px`) {
            newConfig.height = `${pxVal}px`;
-           updated = true;
+           dimensionsUpdated = true;
+        }
+      }
+
+      if (!newConfig.layout) newConfig.layout = {};
+      if (!newConfig.layout.padding) newConfig.layout.padding = {};
+
+      if (!isNaN(ptNum) && ptNum >= 0) {
+        const pxVal = Math.round(convertToPixels(ptNum, unit));
+        if (newConfig.layout.padding.top !== pxVal) {
+          newConfig.layout.padding.top = pxVal;
+          paddingUpdated = true;
+        }
+      }
+      if (!isNaN(prNum) && prNum >= 0) {
+        const pxVal = Math.round(convertToPixels(prNum, unit));
+        if (newConfig.layout.padding.right !== pxVal) {
+          newConfig.layout.padding.right = pxVal;
+          paddingUpdated = true;
+        }
+      }
+      if (!isNaN(pbNum) && pbNum >= 0) {
+        const pxVal = Math.round(convertToPixels(pbNum, unit));
+        if (newConfig.layout.padding.bottom !== pxVal) {
+          newConfig.layout.padding.bottom = pxVal;
+          paddingUpdated = true;
+        }
+      }
+      if (!isNaN(plNum) && plNum >= 0) {
+        const pxVal = Math.round(convertToPixels(plNum, unit));
+        if (newConfig.layout.padding.left !== pxVal) {
+          newConfig.layout.padding.left = pxVal;
+          paddingUpdated = true;
         }
       }
       
-      if (updated) {
-        newConfig.originalDimensions = false;
+      if (dimensionsUpdated || paddingUpdated) {
+        if (dimensionsUpdated) {
+          newConfig.originalDimensions = false;
+        }
         updateChartConfig(newConfig);
       }
     }, 500);
     return () => clearTimeout(timer);
-  }, [widthInput, heightInput, unit, updateChartConfig]);
+  }, [widthInput, heightInput, padTopInput, padRightInput, padBottomInput, padLeftInput, unit, updateChartConfig]);
 
   const currentDatasetIndex = chartMode === 'single' ? activeDatasetIndex : 0;
   const hasBackup = datasetBackups.has(currentDatasetIndex);
@@ -471,7 +536,7 @@ export function ResponsiveAnimationsPanel() {
           </div>
         </div>
         {responsiveDropdownOpen && (
-          <div className="bg-green-50 rounded-b-lg p-3 space-y-3 border-x border-b border-green-100">
+          <div className="bg-green-50 rounded-b-lg p-2 space-y-2 border-x border-b border-green-100">
             {/* Template Mode Notice */}
             {isTemplateMode && (
               <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200 mb-2">
@@ -540,7 +605,7 @@ export function ResponsiveAnimationsPanel() {
                   
                   {/* Inputs shown only when Fixed Dimensions is active */}
                   {(chartConfig.manualDimensions === true || chartConfig.dynamicDimension === true) && !(chartConfig as any).templateDimensions && !(chartConfig as any).originalDimensions && (
-                    <div className="mt-2 space-y-3 bg-white p-3 rounded-md border border-green-200">
+                    <div className="mt-2 space-y-2 bg-white p-2 rounded-md border border-green-200">
                       <div className="flex items-center gap-2">
                         <Label className="text-xs font-medium w-12">Unit</Label>
                         <select
@@ -550,6 +615,10 @@ export function ResponsiveAnimationsPanel() {
                             setUnit(newUnit);
                             setWidthInput(convertFromPixels(widthValue, newUnit).toString());
                             setHeightInput(convertFromPixels(heightValue, newUnit).toString());
+                            setPadTopInput(convertFromPixels(padTopValue, newUnit).toString());
+                            setPadRightInput(convertFromPixels(padRightValue, newUnit).toString());
+                            setPadBottomInput(convertFromPixels(padBottomValue, newUnit).toString());
+                            setPadLeftInput(convertFromPixels(padLeftValue, newUnit).toString());
                           }}
                           className="h-8 text-xs border border-gray-300 rounded-md px-2 flex-1"
                         >
@@ -720,51 +789,79 @@ export function ResponsiveAnimationsPanel() {
               })()}
             </div>
             {/* Padding Controls */}
-            <div className={`grid grid-cols-2 gap-3 mt-2 ${isTemplateMode ? 'opacity-50 pointer-events-none' : ''}`}>
+            <div className={`grid grid-cols-2 gap-2 mt-2 ${isTemplateMode ? 'opacity-50 pointer-events-none' : ''}`}>
               <div>
-                <Label className="text-xs font-medium">Padding Top</Label>
+                <Label className="text-xs font-medium">Padding Top ({unit})</Label>
                 <Input
                   type="number"
-                  value={(chartConfig.layout?.padding as any)?.top ?? 10}
-                  onChange={(e) =>
-                    handleConfigUpdate("layout.padding.top", e.target.value ? Number.parseInt(e.target.value) : undefined)
-                  }
+                  min={0}
+                  value={padTopInput}
+                  onChange={(e) => setPadTopInput(e.target.value)}
+                  onBlur={() => {
+                    const num = parseFloat(padTopInput);
+                    if (isNaN(num) || num < 0) {
+                      setPadTopInput(convertFromPixels(padTopValue, unit).toString());
+                    } else {
+                      setPadTopInput(num.toString());
+                    }
+                  }}
                   placeholder="0"
                   className="h-8 text-xs"
                 />
               </div>
               <div>
-                <Label className="text-xs font-medium">Padding Right</Label>
+                <Label className="text-xs font-medium">Padding Right ({unit})</Label>
                 <Input
                   type="number"
-                  value={(chartConfig.layout?.padding as any)?.right ?? 10}
-                  onChange={(e) =>
-                    handleConfigUpdate("layout.padding.right", e.target.value ? Number.parseInt(e.target.value) : undefined)
-                  }
+                  min={0}
+                  value={padRightInput}
+                  onChange={(e) => setPadRightInput(e.target.value)}
+                  onBlur={() => {
+                    const num = parseFloat(padRightInput);
+                    if (isNaN(num) || num < 0) {
+                      setPadRightInput(convertFromPixels(padRightValue, unit).toString());
+                    } else {
+                      setPadRightInput(num.toString());
+                    }
+                  }}
                   placeholder="0"
                   className="h-8 text-xs"
                 />
               </div>
               <div>
-                <Label className="text-xs font-medium">Padding Bottom</Label>
+                <Label className="text-xs font-medium">Padding Bottom ({unit})</Label>
                 <Input
                   type="number"
-                  value={(chartConfig.layout?.padding as any)?.bottom ?? 10}
-                  onChange={(e) =>
-                    handleConfigUpdate("layout.padding.bottom", e.target.value ? Number.parseInt(e.target.value) : undefined)
-                  }
+                  min={0}
+                  value={padBottomInput}
+                  onChange={(e) => setPadBottomInput(e.target.value)}
+                  onBlur={() => {
+                    const num = parseFloat(padBottomInput);
+                    if (isNaN(num) || num < 0) {
+                      setPadBottomInput(convertFromPixels(padBottomValue, unit).toString());
+                    } else {
+                      setPadBottomInput(num.toString());
+                    }
+                  }}
                   placeholder="0"
                   className="h-8 text-xs"
                 />
               </div>
               <div>
-                <Label className="text-xs font-medium">Padding Left</Label>
+                <Label className="text-xs font-medium">Padding Left ({unit})</Label>
                 <Input
                   type="number"
-                  value={(chartConfig.layout?.padding as any)?.left ?? 10}
-                  onChange={(e) =>
-                    handleConfigUpdate("layout.padding.left", e.target.value ? Number.parseInt(e.target.value) : undefined)
-                  }
+                  min={0}
+                  value={padLeftInput}
+                  onChange={(e) => setPadLeftInput(e.target.value)}
+                  onBlur={() => {
+                    const num = parseFloat(padLeftInput);
+                    if (isNaN(num) || num < 0) {
+                      setPadLeftInput(convertFromPixels(padLeftValue, unit).toString());
+                    } else {
+                      setPadLeftInput(num.toString());
+                    }
+                  }}
                   placeholder="0"
                   className="h-8 text-xs"
                 />
