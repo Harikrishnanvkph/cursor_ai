@@ -27,14 +27,14 @@ export function RadialAxisSettings({ config, onUpdate, chartType, className }: R
   return (
     <div className={cn("space-y-4", className)}>
       {/* Main Toggle */}
-      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-100">
+      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-blue-100/50 rounded-lg border border-blue-100">
         <div className="space-y-1">
-          <Label className="text-sm font-medium text-green-900">Show Radial Axis</Label>
+          <Label className="text-sm font-medium text-blue-900">Show Radial Axis</Label>
         </div>
         <Switch
           checked={config?.display !== false}
           onCheckedChange={(checked) => updateConfig('display', checked)}
-          className="data-[state=checked]:bg-green-600"
+          className="data-[state=checked]:bg-blue-600"
         />
       </div>
 
@@ -84,13 +84,13 @@ export function RadialAxisSettings({ config, onUpdate, chartType, className }: R
           className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
           onClick={() => setGridDropdownOpen(!gridDropdownOpen)}
         >
-          <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
+          <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
           <h3 className="text-sm font-semibold text-gray-900 flex-1">Grid Lines</h3>
           <div onClick={(e) => e.stopPropagation()}>
             <Switch
               checked={config?.grid?.display !== false}
               onCheckedChange={(checked) => updateConfig('grid.display', checked)}
-              className="data-[state=checked]:bg-purple-600"
+              className="data-[state=checked]:bg-blue-600"
             />
           </div>
           <div className="ml-2 flex items-center gap-2">
@@ -99,7 +99,7 @@ export function RadialAxisSettings({ config, onUpdate, chartType, className }: R
             </svg>
           </div>
         </div>
-        <div className="bg-purple-50 rounded-b-lg border-x border-b border-purple-100">
+        <div className="bg-blue-50 rounded-b-lg border-x border-b border-blue-100">
           {gridDropdownOpen && (
             <div className={`px-3 py-3 space-y-3 ${config?.grid?.display === false ? 'opacity-50 pointer-events-none' : ''}`}>
               <div className="grid grid-cols-2 gap-3">
@@ -108,7 +108,7 @@ export function RadialAxisSettings({ config, onUpdate, chartType, className }: R
                   <Switch
                     checked={chartType === 'polarArea' ? config?.grid?.circular !== false : config?.grid?.circular === true}
                     onCheckedChange={(checked) => updateConfig('grid.circular', checked)}
-                    className="data-[state=checked]:bg-purple-600"
+                    className="data-[state=checked]:bg-blue-600"
                   />
                 </div>
                 <div className="space-y-1">
@@ -143,13 +143,13 @@ export function RadialAxisSettings({ config, onUpdate, chartType, className }: R
           className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
           onClick={() => setAngleLinesDropdownOpen(!angleLinesDropdownOpen)}
         >
-          <div className="w-2 h-2 bg-red-600 rounded-full"></div>
+          <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
           <h3 className="text-sm font-semibold text-gray-900 flex-1">Angle Lines</h3>
           <div onClick={(e) => e.stopPropagation()}>
             <Switch
               checked={chartType === 'polarArea' ? config?.angleLines?.display === true : config?.angleLines?.display !== false}
               onCheckedChange={(checked) => updateConfig('angleLines.display', checked)}
-              className="data-[state=checked]:bg-red-600"
+              className="data-[state=checked]:bg-blue-600"
             />
           </div>
           <div className="ml-2 flex items-center gap-2">
@@ -158,7 +158,7 @@ export function RadialAxisSettings({ config, onUpdate, chartType, className }: R
             </svg>
           </div>
         </div>
-        <div className="bg-red-50 rounded-b-lg border-x border-b border-red-100">
+        <div className="bg-blue-50 rounded-b-lg border-x border-b border-blue-100">
           {angleLinesDropdownOpen && (
             <div className={`px-3 py-3 ${(chartType === 'polarArea' ? config?.angleLines?.display !== true : config?.angleLines?.display === false) ? 'opacity-50 pointer-events-none' : ''}`}>
               <div className="grid grid-cols-2 gap-3">
@@ -256,13 +256,13 @@ export function RadialAxisSettings({ config, onUpdate, chartType, className }: R
           className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
           onClick={() => setTicksDropdownOpen(!ticksDropdownOpen)}
         >
-          <div className="w-2 h-2 bg-orange-600 rounded-full"></div>
+          <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
           <h3 className="text-sm font-semibold text-gray-900 flex-1">Scale Labels</h3>
           <div onClick={(e) => e.stopPropagation()}>
             <Switch
               checked={config?.ticks?.display !== false}
               onCheckedChange={(checked) => updateConfig('ticks.display', checked)}
-              className="data-[state=checked]:bg-orange-600"
+              className="data-[state=checked]:bg-blue-600"
             />
           </div>
           <div className="ml-2 flex items-center gap-2">
@@ -271,7 +271,7 @@ export function RadialAxisSettings({ config, onUpdate, chartType, className }: R
             </svg>
           </div>
         </div>
-        <div className="bg-orange-50 rounded-b-lg border-x border-b border-orange-100">
+        <div className="bg-blue-50 rounded-b-lg border-x border-b border-blue-100">
           {ticksDropdownOpen && (
             <div className={`px-3 py-3 space-y-3 ${config?.ticks?.display === false ? 'opacity-50 pointer-events-none' : ''}`}>
               {/* Row 0: Show Above Chart and Show Backdrop */}
@@ -281,7 +281,7 @@ export function RadialAxisSettings({ config, onUpdate, chartType, className }: R
                   <Switch
                     checked={(config?.ticks?.z ?? 1) > 0}
                     onCheckedChange={(checked) => updateConfig('ticks.z', checked ? 10 : 0)}
-                    className="data-[state=checked]:bg-orange-600"
+                    className="data-[state=checked]:bg-blue-600"
                   />
                 </div>
                 <div className="flex items-center justify-between">
@@ -289,7 +289,7 @@ export function RadialAxisSettings({ config, onUpdate, chartType, className }: R
                   <Switch
                     checked={config?.ticks?.showLabelBackdrop !== false}
                     onCheckedChange={(checked) => updateConfig('ticks.showLabelBackdrop', checked)}
-                    className="data-[state=checked]:bg-orange-600"
+                    className="data-[state=checked]:bg-blue-600"
                   />
                 </div>
               </div>

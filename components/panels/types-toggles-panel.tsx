@@ -48,10 +48,9 @@ export function TypesTogglesPanel() {
     <div className="space-y-3">
       {/* Mode Toggle - Chart/Template */}
       <div className="flex items-center justify-between gap-3  mb-1">
-        <span className="text-sm font-medium text-gray-700">Mode</span>
+        <span className="text-xs font-medium text-gray-700">Mode</span>
         <div
           className="flex items-center gap-1 bg-gray-100 rounded-full p-0.5 border border-gray-200"
-          style={{ display: 'flex', visibility: 'visible', opacity: 1 }}
         >
           <button
             onClick={() => setEditorMode('chart')}
@@ -59,7 +58,6 @@ export function TypesTogglesPanel() {
               ? 'bg-blue-500 text-white shadow-sm'
               : 'bg-transparent text-gray-500 hover:text-gray-700'
               }`}
-            style={{ display: 'inline-block', visibility: 'visible', opacity: 1 }}
           >
             Chart
           </button>
@@ -69,7 +67,6 @@ export function TypesTogglesPanel() {
               ? 'bg-blue-500 text-white shadow-sm'
               : 'bg-transparent text-gray-500 hover:text-gray-700'
               }`}
-            style={{ display: 'inline-block', visibility: 'visible', opacity: 1 }}
           >
             Template
           </button>
@@ -107,23 +104,23 @@ export function TypesTogglesPanel() {
             disabled={chartType === 'line'}
             className="scale-75 data-[state=unchecked]:bg-input/50" 
           />
-          <Label htmlFor="fill-toggle" className="text-[12px] text-gray-600">Fill</Label>
+          <Label htmlFor="fill-toggle" className="text-xs text-gray-600">Fill</Label>
         </div>
         <div className="flex flex-col items-center gap-1">
           <Switch id="border-toggle" checked={showBorder} onCheckedChange={toggleShowBorder} disabled={!fillArea} className="scale-75 data-[state=unchecked]:bg-input/50" />
-          <Label htmlFor="border-toggle" className="text-[12px] text-gray-600">Border</Label>
+          <Label htmlFor="border-toggle" className="text-xs text-gray-600">Border</Label>
         </div>
         <div className="flex flex-col items-center gap-1">
           <Switch id="show-images-toggle" checked={showImages} onCheckedChange={toggleShowImages} className="scale-75 data-[state=unchecked]:bg-input/50" />
-          <Label htmlFor="show-images-toggle" className="text-[12px] text-gray-600">Image</Label>
+          <Label htmlFor="show-images-toggle" className="text-xs text-gray-600">Image</Label>
         </div>
         <div className="flex flex-col items-center gap-1">
           <Switch id="show-labels-toggle" checked={labelChecked} onCheckedChange={toggleShowLabels} className="scale-75 data-[state=unchecked]:bg-input/50" />
-          <Label htmlFor="show-labels-toggle" className="text-[12px] text-gray-600">Label</Label>
+          <Label htmlFor="show-labels-toggle" className="text-xs text-gray-600">Label</Label>
         </div>
         <div className="flex flex-col items-center gap-1">
           <Switch id="show-legend-toggle" checked={legendChecked} onCheckedChange={toggleShowLegend} className="scale-75 data-[state=unchecked]:bg-input/50" />
-          <Label htmlFor="show-legend-toggle" className="text-[12px] text-gray-600">Legend</Label>
+          <Label htmlFor="show-legend-toggle" className="text-xs text-gray-600">Legend</Label>
         </div>
       </div>
 

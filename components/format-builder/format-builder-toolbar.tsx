@@ -11,6 +11,7 @@ import { useFormatBuilder } from './format-builder-context'
 import { useRouter } from 'next/navigation'
 import { dataService } from '@/lib/data-service'
 import { toast } from 'sonner'
+import { useDecorationStore } from '@/lib/stores/decoration-store'
 
 export function FormatBuilderToolbar() {
   const router = useRouter()
@@ -36,6 +37,7 @@ export function FormatBuilderToolbar() {
       const tags = tagsInput.split(',').map(t => t.trim()).filter(Boolean)
       const finalSkeleton = {
         ...skeleton,
+        decorations: useDecorationStore.getState().shapes,
         name: formatName,
         description: formatDesc,
         category,

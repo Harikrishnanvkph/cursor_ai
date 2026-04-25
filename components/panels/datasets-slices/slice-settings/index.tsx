@@ -362,7 +362,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
         return (
             <div className="flex items-center justify-center p-8 text-center">
                 <div className="space-y-2">
-                    <p className="text-[0.80rem] font-medium text-gray-900">No Dataset Available</p>
+                    <p className="text-xs font-medium text-gray-900">No Dataset Available</p>
                     <p className="text-xs text-gray-500">Please add a dataset first to manage slices.</p>
                 </div>
             </div>
@@ -379,7 +379,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                             size="sm"
                             variant="outline"
                             onClick={() => setShowEditSlicesModal(true)}
-                            className="w-full gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 hover:from-blue-100 hover:to-indigo-100 text-blue-700 font-medium shadow-sm"
+                            className="w-full gap-2 bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 hover:from-blue-100 hover:to-blue-200 text-blue-700 font-medium shadow-sm"
                         >
                             <Layers className="w-4 h-4" />
                             Edit All Group Datasets
@@ -434,7 +434,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
 
                                     return (
                                         <Select value={String(selectedDatasetIndex)} onValueChange={(value) => handleDatasetChange(Number(value))}>
-                                            <SelectTrigger className="h-8 w-full text-xs bg-emerald-50 border-emerald-200 hover:bg-emerald-100">
+                                            <SelectTrigger className="h-8 w-full text-xs bg-blue-50 border-blue-200 hover:bg-blue-100">
                                                 <span className="text-xs truncate">
                                                     {filteredDatasets[selectedDatasetIndex]?.label || `Dataset ${selectedDatasetIndex + 1}`}
                                                 </span>
@@ -471,7 +471,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                             <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-8 gap-1.5 bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200 hover:from-purple-100 hover:to-pink-100 text-purple-700 font-medium shadow-sm text-xs"
+                                className="h-8 gap-1.5 bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 hover:from-blue-100 hover:to-blue-200 text-blue-700 font-medium shadow-sm text-xs"
                                 onClick={() => {
                                     if (!currentDataset) return
                                     const isCoordinateChart = isSelectedGroupCoordinateChart
@@ -520,7 +520,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`px-4 py-2 text-[0.80rem] font-medium border-b-2 transition-colors ${activeTab === tab.id
+                        className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors ${activeTab === tab.id
                             ? 'border-blue-600 text-blue-600'
                             : 'border-transparent text-gray-500 hover:text-gray-700'
                             }`}
@@ -540,7 +540,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                         <DialogTitle>Configure Point Image</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
-                        <p className="text-[0.80rem] text-gray-600">
+                        <p className="text-xs text-gray-600">
                             Advanced image configuration options for point #{selectedSliceIndex !== null ? selectedSliceIndex + 1 : 0} will be available here.
                         </p>
                     </div>
@@ -565,7 +565,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                             <input
                                 value={newPointName}
                                 onChange={e => setNewPointName(e.target.value)}
-                                className="w-full h-9 px-3 rounded border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-[0.80rem] font-normal transition"
+                                className="w-full h-9 px-3 rounded border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-xs font-normal transition"
                                 placeholder={chartType === 'scatter' || chartType === 'bubble' ? 'Point label' : 'Name'}
                             />
                         </div>
@@ -579,7 +579,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                                             type="number"
                                             value={newPointX}
                                             onChange={e => setNewPointX(e.target.value)}
-                                            className="w-full h-9 px-3 rounded border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-[0.80rem] font-normal transition"
+                                            className="w-full h-9 px-3 rounded border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-xs font-normal transition"
                                             placeholder="0"
                                             step="0.1"
                                         />
@@ -590,7 +590,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                                             type="number"
                                             value={newPointY}
                                             onChange={e => setNewPointY(e.target.value)}
-                                            className="w-full h-9 px-3 rounded border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-[0.80rem] font-normal transition"
+                                            className="w-full h-9 px-3 rounded border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-xs font-normal transition"
                                             placeholder="0"
                                             step="0.1"
                                         />
@@ -602,7 +602,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                                                 type="number"
                                                 value={newPointR}
                                                 onChange={e => setNewPointR(e.target.value)}
-                                                className="w-full h-9 px-3 rounded border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-[0.80rem] font-normal transition"
+                                                className="w-full h-9 px-3 rounded border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-xs font-normal transition"
                                                 placeholder="10"
                                                 min="1"
                                                 step="1"
@@ -618,7 +618,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                                     type="number"
                                     value={newPointValue}
                                     onChange={e => setNewPointValue(e.target.value)}
-                                    className="w-full h-9 px-3 rounded border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-[0.80rem] font-normal transition"
+                                    className="w-full h-9 px-3 rounded border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 text-xs font-normal transition"
                                     placeholder="Value"
                                 />
                             </div>

@@ -28,9 +28,9 @@ export function TextAreasList({ currentTemplate, selectedTextAreaId, setSelected
     const getTextAreaTypeColor = (type: string) => {
         switch (type) {
             case 'title': return 'text-blue-600 bg-blue-50'
-            case 'heading': return 'text-green-600 bg-green-50'
-            case 'custom': return 'text-purple-600 bg-purple-50'
-            case 'main': return 'text-orange-600 bg-orange-50'
+            case 'heading': return 'text-blue-600 bg-blue-50'
+            case 'custom': return 'text-blue-600 bg-blue-50'
+            case 'main': return 'text-blue-600 bg-blue-50'
             default: return 'text-gray-600 bg-gray-50'
         }
     }

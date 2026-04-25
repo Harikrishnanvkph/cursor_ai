@@ -241,8 +241,8 @@ export function LabelsPanel() {
 
                             {/* Callout Arrow Options - Only show when callout is selected */}
                             {customLabelsConfig.anchor === 'callout' && (
-                                <div className="p-3 bg-orange-50 rounded-lg border border-orange-100 space-y-3">
-                                    <p className="text-xs font-semibold text-orange-800">Callout Arrow Settings</p>
+                                <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 space-y-3">
+                                    <p className="text-xs font-semibold text-blue-800">Callout Arrow Settings</p>
 
                                     <div className="grid grid-cols-2 gap-3">
                                         <div className="flex items-center justify-between">
@@ -250,7 +250,7 @@ export function LabelsPanel() {
                                             <Switch
                                                 checked={customLabelsConfig.arrowLine !== false}
                                                 onCheckedChange={(checked) => handleCustomLabelConfigUpdate("arrowLine", checked)}
-                                                className="data-[state=checked]:bg-orange-600"
+                                                className="data-[state=checked]:bg-blue-600"
                                             />
                                         </div>
 
@@ -259,7 +259,7 @@ export function LabelsPanel() {
                                             <Switch
                                                 checked={customLabelsConfig.arrowHead !== false}
                                                 onCheckedChange={(checked) => handleCustomLabelConfigUpdate("arrowHead", checked)}
-                                                className="data-[state=checked]:bg-orange-600"
+                                                className="data-[state=checked]:bg-blue-600"
                                             />
                                         </div>
                                     </div>
@@ -303,7 +303,7 @@ export function LabelsPanel() {
                                         </div>
                                     </div>
 
-                                    <p className="text-xs text-orange-700">🎯 You can drag labels in the chart to reposition!</p>
+                                    <p className="text-xs text-blue-700">🎯 You can drag labels in the chart to reposition!</p>
                                 </div>
                             )}
 

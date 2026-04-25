@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -129,20 +129,20 @@ export function AdvancedPanel() {
           className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
           onClick={() => setTooltipOpen(!tooltipOpen)}
         >
-          <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+          <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
           <h3 className="text-sm font-semibold text-gray-900 flex-1">Tooltip Settings</h3>
           <div onClick={(e) => e.stopPropagation()}>
             <Switch
               checked={(chartConfig as any).plugins?.tooltip?.enabled !== false}
               onCheckedChange={(checked) => handleConfigUpdate("plugins.tooltip.enabled", checked)}
-              className="data-[state=checked]:bg-green-600"
+              className="data-[state=checked]:bg-blue-600"
             />
           </div>
           <div className="ml-2 flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transform transition-transform ${tooltipOpen ? 'rotate-180' : ''}`}> <path d="M6 9L12 15L18 9" /> </svg>
           </div>
         </div>
-        <div className="bg-green-50 rounded-b-lg border-x border-b border-green-100">
+        <div className="bg-blue-50 rounded-b-lg border-x border-b border-blue-100">
           {tooltipOpen && (
             <div className={`px-3 py-3 space-y-2 ${(chartConfig as any).plugins?.tooltip?.enabled === false ? 'opacity-50 pointer-events-none' : ''}`}>
               <div className="grid grid-cols-2 gap-2">
@@ -335,13 +335,13 @@ export function AdvancedPanel() {
           className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
           onClick={() => setHoverAnimOpen(!hoverAnimOpen)}
         >
-          <div className="w-2 h-2 bg-pink-600 rounded-full"></div>
+          <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
           <h3 className="text-sm font-semibold text-gray-900 flex-1">Hover Animation</h3>
           <div onClick={(e) => e.stopPropagation()}>
             <Switch
               checked={hoverEnabled}
               onCheckedChange={handleHoverEnabledChange}
-              className="data-[state=checked]:bg-pink-600"
+              className="data-[state=checked]:bg-blue-600"
             />
           </div>
           <div className="ml-2 flex items-center gap-2">
@@ -350,7 +350,7 @@ export function AdvancedPanel() {
             </svg>
           </div>
         </div>
-        <div className="bg-pink-50 rounded-b-lg border-x border-b border-pink-100">
+        <div className="bg-blue-50 rounded-b-lg border-x border-b border-blue-100">
           <div className="flex items-center justify-between px-3 py-2">
             <span className="text-xs font-medium text-black">Hover Mode</span>
             <Select
@@ -393,7 +393,7 @@ export function AdvancedPanel() {
           className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
           onClick={() => setWatermarkOpen(!watermarkOpen)}
         >
-          <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
+          <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
           <h3 className="text-sm font-semibold text-gray-900 flex-1">Watermark</h3>
           <div className="ml-auto flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transform transition-transform ${watermarkOpen ? 'rotate-180' : ''}`}> <path d="M6 9L12 15L18 9" /> </svg>
@@ -401,7 +401,7 @@ export function AdvancedPanel() {
         </div>
         {
           watermarkOpen && (
-            <div className="bg-purple-50 rounded-b-lg p-3 space-y-2 border-x border-b border-purple-100">
+            <div className="bg-blue-50 rounded-b-lg p-3 space-y-2 border-x border-b border-blue-100">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-medium">Show Watermark</Label>
                 <Switch
@@ -415,7 +415,7 @@ export function AdvancedPanel() {
                     imageUrl: "",
                     style: "tiled"
                   } : false)}
-                  className="data-[state=checked]:bg-purple-600"
+                  className="data-[state=checked]:bg-blue-600"
                 />
               </div>
               {(chartConfig as any)?.watermark && (

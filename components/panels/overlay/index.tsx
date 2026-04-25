@@ -54,17 +54,17 @@ export function OverlayPanel() {
         <div className="h-full flex flex-col">
             <div className="flex-1 overflow-y-auto">
                 <Tabs defaultValue="images" className="w-full">
-                    <TabsList className="grid w-full grid-cols-3">
-                        <TabsTrigger value="images" className="flex items-center gap-2">
-                            <Image className="h-4 w-4" />
+                    <TabsList className="grid w-full grid-cols-3 text-xs">
+                        <TabsTrigger value="images" className="flex items-center gap-1.5 text-xs">
+                            <Image className="h-3.5 w-3.5" />
                             Images
                         </TabsTrigger>
-                        <TabsTrigger value="text" className="flex items-center gap-2">
-                            <Type className="h-4 w-4" />
+                        <TabsTrigger value="text" className="flex items-center gap-1.5 text-xs">
+                            <Type className="h-3.5 w-3.5" />
                             Text
                         </TabsTrigger>
-                        <TabsTrigger value="shapes" className="flex items-center gap-2">
-                            <Hexagon className="h-4 w-4" />
+                        <TabsTrigger value="shapes" className="flex items-center gap-1.5 text-xs">
+                            <Hexagon className="h-3.5 w-3.5" />
                             Shapes
                         </TabsTrigger>
                     </TabsList>

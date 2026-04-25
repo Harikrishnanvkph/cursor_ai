@@ -45,12 +45,12 @@ export function GeneralTab({ axis, config, updateConfig, updateNestedConfig }: G
     return (
         <div className="space-y-2">
             {/* Main Toggle */}
-            <div className="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-100">
-                <Label className="text-sm font-medium text-green-900">Show {axis.toUpperCase()}-Axis</Label>
+            <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-blue-100/50 rounded-lg border border-blue-100">
+                <Label className="text-sm font-medium text-blue-900">Show {axis.toUpperCase()}-Axis</Label>
                 <Switch
                     checked={config?.display !== false}
                     onCheckedChange={(checked) => updateConfig('display', checked)}
-                    className="data-[state=checked]:bg-green-600"
+                    className="data-[state=checked]:bg-blue-600"
                 />
             </div>
 

@@ -64,9 +64,9 @@ export function TemplateTextPanel() {
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'title': return 'bg-blue-100 text-blue-700 border-blue-200'
-      case 'heading': return 'bg-green-100 text-green-700 border-green-200'
-      case 'main': return 'bg-orange-100 text-orange-700 border-orange-200'
-      case 'custom': return 'bg-purple-100 text-purple-700 border-purple-200'
+      case 'heading': return 'bg-blue-100 text-blue-700 border-blue-200'
+      case 'main': return 'bg-blue-100 text-blue-700 border-blue-200'
+      case 'custom': return 'bg-blue-100 text-blue-700 border-blue-200'
       default: return 'bg-gray-100 text-gray-700 border-gray-200'
     }
   }
@@ -74,7 +74,7 @@ export function TemplateTextPanel() {
   return (
     <div className="space-y-3">
       <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-        <Type className="h-4 w-4 text-green-600" />
+        <Type className="h-4 w-4 text-blue-600" />
         Text Areas ({textAreas.length})
       </h3>
 

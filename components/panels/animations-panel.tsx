@@ -160,13 +160,13 @@ export function AnimationsPanel() {
           className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded"
           onClick={() => setHoverOpen(!hoverOpen)}
         >
-          <div className="w-2 h-2 bg-pink-600 rounded-full"></div>
+          <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
           <h3 className="text-sm font-semibold text-gray-900 flex-1">Hover Animation</h3>
           <div onClick={(e) => e.stopPropagation()}>
             <Switch
               checked={hoverEnabled}
               onCheckedChange={handleHoverEnabledChange}
-              className="data-[state=checked]:bg-pink-600"
+              className="data-[state=checked]:bg-blue-600"
             />
           </div>
           <div className="ml-2 flex items-center gap-2">
@@ -174,7 +174,7 @@ export function AnimationsPanel() {
           </div>
         </div>
         {/* Single container for summary and expanded content */}
-        <div className="bg-pink-50 rounded-lg">
+        <div className="bg-blue-50 rounded-lg">
           <div className="flex items-center justify-between px-3 py-2">
             <span className="text-xs font-medium text-black">Hover Mode</span>
             <Select

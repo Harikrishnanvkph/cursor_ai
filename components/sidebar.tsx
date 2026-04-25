@@ -49,6 +49,7 @@ const CHART_TABS = [
   { id: "axes", label: "Axes", icon: Grid },
   { id: "labels", label: "Styling & Labels", icon: Tag },
   { id: "overlay", label: "Overlay", icon: Layers },
+  { id: "decorations", label: "Decorations", icon: Sparkles },
   { id: "advanced", label: "Advanced", icon: SlidersHorizontal },
   { id: "templates", label: "Templates", icon: FileText },
   { id: "export", label: "Export", icon: Download },

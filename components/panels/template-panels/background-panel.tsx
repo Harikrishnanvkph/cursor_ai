@@ -247,14 +247,14 @@ function SectionBackgroundEditor({ background, sectionLabel, sectionDimensions, 
   return (
     <Card>
       <div className="flex items-center gap-2 px-4 pt-4 pb-2">
-        <Palette className="h-4 w-4 text-indigo-600" />
+        <Palette className="h-4 w-4 text-blue-600" />
         <h3 className="text-sm font-semibold text-slate-800">{sectionLabel} Background</h3>
       </div>
       <CardContent className="space-y-3">
         {/* Section info */}
-        <div className="flex items-center gap-2 px-2 py-1.5 bg-indigo-50 rounded-md border border-indigo-100">
-          <FileText className="h-3.5 w-3.5 text-indigo-500" />
-          <span className="text-xs text-indigo-700">
+        <div className="flex items-center gap-2 px-2 py-1.5 bg-blue-50 rounded-md border border-blue-100">
+          <FileText className="h-3.5 w-3.5 text-blue-500" />
+          <span className="text-xs text-blue-700">
             {sectionLabel} area — {sectionDimensions.width} × {sectionDimensions.height}px
           </span>
         </div>
@@ -714,14 +714,14 @@ function FormatZoneBackgroundEditor({ format, zone }: { format: FormatBlueprintR
   return (
     <Card>
       <div className="flex items-center gap-2 px-4 pt-4 pb-2">
-        <Palette className="h-4 w-4 text-indigo-600" />
+        <Palette className="h-4 w-4 text-blue-600" />
         <h3 className="text-sm font-semibold text-slate-800">{zoneLabel} Background</h3>
       </div>
       <CardContent className="space-y-3">
         {/* Zone info */}
-        <div className="flex items-center gap-2 px-2 py-1.5 bg-indigo-50 rounded-md border border-indigo-100">
-          <FileText className="h-3.5 w-3.5 text-indigo-500" />
-          <span className="text-xs text-indigo-700">
+        <div className="flex items-center gap-2 px-2 py-1.5 bg-blue-50 rounded-md border border-blue-100">
+          <FileText className="h-3.5 w-3.5 text-blue-500" />
+          <span className="text-xs text-blue-700">
             {zoneLabel} zone{zoneDimensions.width > 0 ? ` — ${zoneDimensions.width} × ${zoneDimensions.height}px` : ''}
           </span>
         </div>

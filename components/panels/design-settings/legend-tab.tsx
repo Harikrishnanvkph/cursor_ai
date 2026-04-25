@@ -24,12 +24,12 @@ export function LegendTab({
     return (
         <div className="space-y-4 mt-4">
             {/* Show Legend Toggle */}
-            <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-100">
-                <Label className="text-sm font-medium text-green-900">Show Legend</Label>
+            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
+                <Label className="text-sm font-medium text-blue-900">Show Legend</Label>
                 <Switch
                     checked={chartConfig.plugins?.legend?.display !== false}
                     onCheckedChange={(checked) => handleConfigUpdate("plugins.legend.display", checked)}
-                    className="data-[state=checked]:bg-green-600"
+                    className="data-[state=checked]:bg-blue-600"
                 />
             </div>
 

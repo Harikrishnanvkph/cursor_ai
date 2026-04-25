@@ -26,14 +26,14 @@ export function TicksTab({ axis, config, chartType, updateConfig, updateNestedCo
                         className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
                         onClick={() => setTickMarkConfigDropdownOpen(!tickMarkConfigDropdownOpen)}
                     >
-                        <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+                        <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
                         <h3 className="text-sm font-semibold text-gray-900">Tick Mark</h3>
                         <div className="ml-auto flex items-center gap-2">
                             <div onClick={(e) => e.stopPropagation()}>
                                 <Switch
                                     checked={config?.grid?.tickLength !== 0}
                                     onCheckedChange={(checked) => updateConfig('grid.tickLength', checked ? 8 : 0)}
-                                    className="data-[state=checked]:bg-green-600"
+                                    className="data-[state=checked]:bg-blue-600"
                                 />
                             </div>
                             <svg
@@ -55,7 +55,7 @@ export function TicksTab({ axis, config, chartType, updateConfig, updateNestedCo
 
                     {/* Dropdown Content */}
                     {tickMarkConfigDropdownOpen && (
-                        <div className="bg-green-50 rounded-b-lg p-3 space-y-3 relative overflow-hidden max-h-96 overflow-y-auto border-x border-b border-green-100">
+                        <div className="bg-blue-50 rounded-b-lg p-3 space-y-3 relative overflow-hidden max-h-96 overflow-y-auto border-x border-b border-blue-100">
                             {/* Color */}
                             <div className="space-y-1">
                                 <div className="flex items-center justify-between">
@@ -142,7 +142,7 @@ export function TicksTab({ axis, config, chartType, updateConfig, updateNestedCo
                         className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
                         onClick={() => setTickConfigDropdownOpen(!tickConfigDropdownOpen)}
                     >
-                        <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
+                        <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
                         <h3 className="text-sm font-semibold text-gray-900">Tick Configuration</h3>
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -162,7 +162,7 @@ export function TicksTab({ axis, config, chartType, updateConfig, updateNestedCo
 
                     {/* Dropdown Content */}
                     {tickConfigDropdownOpen && (
-                        <div className="bg-purple-50 rounded-b-lg p-3 space-y-3 relative overflow-hidden border-x border-b border-purple-100">
+                        <div className="bg-blue-50 rounded-b-lg p-3 space-y-3 relative overflow-hidden border-x border-b border-blue-100">
                             {/* Limits */}
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1">
@@ -317,14 +317,14 @@ export function TicksTab({ axis, config, chartType, updateConfig, updateNestedCo
                         className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
                         onClick={() => setMajorTicksDropdownOpen(!majorTicksDropdownOpen)}
                     >
-                        <div className="w-2 h-2 bg-orange-600 rounded-full"></div>
+                        <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
                         <h3 className="text-sm font-semibold text-gray-900">Major Ticks</h3>
                         <div className="ml-auto flex items-center gap-2">
                             <div onClick={(e) => e.stopPropagation()}>
                                 <Switch
                                     checked={!!config?.ticks?.major?.enabled}
                                     onCheckedChange={(checked) => updateNestedConfig('ticks.major', 'enabled', checked)}
-                                    className="data-[state=checked]:bg-orange-600"
+                                    className="data-[state=checked]:bg-blue-600"
                                 />
                             </div>
                             <svg
@@ -346,7 +346,7 @@ export function TicksTab({ axis, config, chartType, updateConfig, updateNestedCo
 
                     {/* Dropdown Content */}
                     {majorTicksDropdownOpen && (
-                        <div className="bg-orange-50 rounded-b-lg p-3 space-y-3 relative overflow-hidden max-h-96 overflow-y-auto border-x border-b border-orange-100">
+                        <div className="bg-blue-50 rounded-b-lg p-3 space-y-3 relative overflow-hidden max-h-96 overflow-y-auto border-x border-b border-blue-100">
                             {/* Color */}
                             <div className="space-y-1">
                                 <div className="flex items-center justify-between">

@@ -750,6 +750,95 @@ export function initializeStorageWithExpiry(): void {
  * Compatible with Zustand v4+ persist middleware
  */
 import { StateStorage, createJSONStorage } from 'zustand/middleware';
+import { toast } from 'sonner';
+
+// =============================================
+// INDEXED DB NATIVE WRAPPER
+// =============================================
+const DB_NAME = 'chartography-idb';
+const STORE_NAME = 'keyval';
+let dbPromise: Promise<IDBDatabase> | null = null;
+
+function getDB(): Promise<IDBDatabase> {
+  if (typeof window === 'undefined') return Promise.reject('SSR');
+  if (!dbPromise) {
+    dbPromise = new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, 1);
+      request.onupgradeneeded = () => {
+        request.result.createObjectStore(STORE_NAME);
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => {
+        dbPromise = null;
+        reject(request.error);
+      };
+    });
+  }
+  return dbPromise;
+}
+
+const idbStorage = {
+  getItem: async (key: string): Promise<string | null> => {
+    try {
+      const db = await getDB();
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(STORE_NAME, 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.get(key);
+        request.onsuccess = () => {
+          let result = request.result || null;
+          // Migration from localStorage: if missing in IDB, check localStorage
+          if (result === null) {
+             const localData = localStorage.getItem(key);
+             if (localData) {
+               result = localData;
+               // Migrate asynchronously to IDB so we don't have to read from localStorage next time
+               idbStorage.setItem(key, localData).catch(() => {});
+             }
+          }
+          resolve(result);
+        };
+        request.onerror = () => reject(request.error);
+      });
+    } catch {
+      // Fallback to localStorage (e.g. Firefox private mode)
+      return localStorage.getItem(key);
+    }
+  },
+  setItem: async (key: string, value: string): Promise<void> => {
+    try {
+      const db = await getDB();
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(STORE_NAME, 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.put(value, key);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    } catch {
+      // Fallback to localStorage
+      try {
+        localStorage.setItem(key, value);
+      } catch (e) {
+        console.error(`QuotaExceededError (IDB fallback): Failed to save to localStorage:`, e);
+      }
+    }
+  },
+  removeItem: async (key: string): Promise<void> => {
+    try {
+      const db = await getDB();
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(STORE_NAME, 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.delete(key);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    } catch {
+      localStorage.removeItem(key);
+    }
+  }
+};
 
 export function createExpiringStorage(baseName: string) {
   if (typeof window === 'undefined') {
@@ -762,7 +851,7 @@ export function createExpiringStorage(baseName: string) {
   }
 
   const storage: StateStorage = {
-    getItem: (name: string): string | Promise<string | null> | null => {
+    getItem: async (name: string): Promise<string | null> => {
       const key = getUserStorageKey(baseName);
       
       // Isolate format builder drafts into sessionStorage to prevent bleeding into the main editor
@@ -772,23 +861,33 @@ export function createExpiringStorage(baseName: string) {
         return draft ? draft : null; // return null to force Zustand to initialize empty instead of loading editor shapes!
       }
       
-      return localStorage.getItem(key);
+      return await idbStorage.getItem(key);
     },
-    setItem: (name: string, value: string): void | Promise<void> => {
+    setItem: async (name: string, value: string): Promise<void> => {
       const key = getUserStorageKey(baseName);
       
       // Isolate format builder drafts into sessionStorage
       if (baseName === 'decoration-store' && typeof window !== 'undefined' && 
           (window.location.pathname.includes('/admin/format') || window.location.pathname.includes('/editor/custom-format'))) {
-        sessionStorage.setItem(`${key}-format-draft`, value);
+        try {
+          sessionStorage.setItem(`${key}-format-draft`, value);
+        } catch (error) {
+          console.error(`QuotaExceededError: Failed to save format draft to sessionStorage:`, error);
+          toast.error('Session storage limit reached! Please remove large images.');
+        }
         return;
       }
       
-      localStorage.setItem(key, value);
-      // Update timestamp when data is saved (also updates activity)
-      updateStorageTimestamp(key);
+      try {
+        await idbStorage.setItem(key, value);
+        // Update timestamp when data is saved (also updates activity)
+        updateStorageTimestamp(key);
+      } catch (error) {
+        console.error(`QuotaExceededError: Failed to save to IndexedDB:`, error);
+        toast.error('Storage limit reached! Please remove large images to continue saving.');
+      }
     },
-    removeItem: (name: string): void | Promise<void> => {
+    removeItem: async (name: string): Promise<void> => {
       const key = getUserStorageKey(baseName);
       
       if (baseName === 'decoration-store' && typeof window !== 'undefined' && 
@@ -797,7 +896,7 @@ export function createExpiringStorage(baseName: string) {
         return;
       }
       
-      localStorage.removeItem(key);
+      await idbStorage.removeItem(key);
       removeStorageTimestamp(key);
     },
   };

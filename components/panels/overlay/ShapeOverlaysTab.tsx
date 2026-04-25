@@ -156,10 +156,10 @@ export function ShapeOverlaysTab() {
                                 {isSelected && (
                                     <CardContent className="space-y-6 pt-2 pb-4">
                                         <div className="grid grid-cols-2 gap-4">
-                                            <div><Label className="text-xs">X</Label><Input type="number" value={shape.x} onChange={e => updateOverlayShape(shape.id, { x: parseInt(e.target.value) || 0 })} className="h-8" /></div>
-                                            <div><Label className="text-xs">Y</Label><Input type="number" value={shape.y} onChange={e => updateOverlayShape(shape.id, { y: parseInt(e.target.value) || 0 })} className="h-8" /></div>
-                                            <div><Label className="text-xs">W</Label><Input type="number" value={shape.width} onChange={e => updateOverlayShape(shape.id, { width: parseInt(e.target.value) || 0 })} className="h-8" /></div>
-                                            <div><Label className="text-xs">H</Label><Input type="number" value={shape.height} onChange={e => updateOverlayShape(shape.id, { height: parseInt(e.target.value) || 0 })} className="h-8" disabled={shape.type.includes('line')} /></div>
+                                            <div><Label className="text-xs">X</Label><Input type="number" value={shape.x} onChange={e => updateOverlayShape(shape.id, { x: parseInt(e.target.value) || 0 })} className="h-8 text-xs" /></div>
+                                            <div><Label className="text-xs">Y</Label><Input type="number" value={shape.y} onChange={e => updateOverlayShape(shape.id, { y: parseInt(e.target.value) || 0 })} className="h-8 text-xs" /></div>
+                                            <div><Label className="text-xs">W</Label><Input type="number" value={shape.width} onChange={e => updateOverlayShape(shape.id, { width: parseInt(e.target.value) || 0 })} className="h-8 text-xs" /></div>
+                                            <div><Label className="text-xs">H</Label><Input type="number" value={shape.height} onChange={e => updateOverlayShape(shape.id, { height: parseInt(e.target.value) || 0 })} className="h-8 text-xs" disabled={shape.type.includes('line')} /></div>
                                         </div>
                                         {/* Transform */}
                                         {shape.type !== 'freehand' && (
@@ -223,13 +223,13 @@ export function ShapeOverlaysTab() {
                                                     <SelectContent>
                                                         <SelectItem value="solid" className="text-xs">Solid</SelectItem>
                                                         <SelectItem value="dashed" className="text-xs">Dashed</SelectItem>
-                                                        <SelectItem value="dotted" className="text-[11px]">Dotted</SelectItem>
+                                                        <SelectItem value="dotted" className="text-xs">Dotted</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </div>
                                             <div>
                                                 <Label className="text-xs text-slate-500 block mb-1.5">Layer Order</Label>
-                                                <Input type="number" value={shape.zIndex} onChange={e => updateOverlayShape(shape.id, { zIndex: parseInt(e.target.value) || 1 })} className="h-8" />
+                                                <Input type="number" value={shape.zIndex} onChange={e => updateOverlayShape(shape.id, { zIndex: parseInt(e.target.value) || 1 })} className="h-8 text-xs" />
                                             </div>
                                         </div>
                                     </CardContent>

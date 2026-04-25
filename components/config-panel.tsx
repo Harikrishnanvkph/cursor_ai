@@ -94,6 +94,8 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
         return <LabelsPanel />
       case "overlay":
         return <OverlayPanel />
+      case "decorations":
+        return <DecorationsPanel />
       case "advanced":
         return <AdvancedPanel />
       case "templates":
@@ -121,10 +123,10 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
 
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-white border-l border-gray-200 shadow-sm">
+    <div className="h-full flex flex-col overflow-hidden bg-background border-l border-border shadow-sm">
       {/* Header - Hidden on mobile */}
       {!isMobile && (
-        <div className="flex items-center p-3 border-b bg-gray-50/50 gap-3">
+        <div className="flex items-center p-3 border-b bg-muted/50 gap-3">
           {/* Expand/Collapse Button */}
           {onToggleSidebar && (
             <Button
@@ -183,7 +185,7 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
       )}
 
       {/* Panel Content */}
-      <div className="flex-1 overflow-y-auto p-4 bg-white">
+      <div className="flex-1 overflow-y-auto p-4 bg-background">
         {/* Grouped Mode Settings Filter - shows Group/Dataset dropdowns */}
         {activeTab === 'labels' && (
           <GroupedSettingsFilter />

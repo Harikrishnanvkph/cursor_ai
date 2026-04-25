@@ -70,12 +70,15 @@ export default function SharedChartPage() {
     }
   }, [isFormat, chart])
 
-  // Hydrate decorations for templates
+  // Hydrate decorations for templates and plain charts
   useEffect(() => {
-    if (chart && isTemplate && chart.template_structure?.decorations) {
-      useDecorationStore.setState({ shapes: chart.template_structure.decorations })
+    if (chart) {
+      const decorations = chart.chart_config?.decorationShapes || chart.template_structure?.decorations;
+      if (decorations && decorations.length > 0) {
+        useDecorationStore.setState({ shapes: decorations })
+      }
     }
-  }, [chart, isTemplate])
+  }, [chart])
 
   useEffect(() => {
     if (!shareId) return

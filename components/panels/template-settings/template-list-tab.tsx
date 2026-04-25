@@ -180,9 +180,9 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
     const getTextAreaTypeColor = (type: string) => {
         switch (type) {
             case 'title': return 'text-blue-600 bg-blue-50'
-            case 'heading': return 'text-green-600 bg-green-50'
-            case 'custom': return 'text-purple-600 bg-purple-50'
-            case 'main': return 'text-orange-600 bg-orange-50'
+            case 'heading': return 'text-blue-600 bg-blue-50'
+            case 'custom': return 'text-blue-600 bg-blue-50'
+            case 'main': return 'text-blue-600 bg-blue-50'
             default: return 'text-gray-600 bg-gray-50'
         }
     }
@@ -256,7 +256,7 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
                             onClick={() => setFormatView('global')}
                             className={`flex items-center gap-1 px-3 py-1 text-[11px] font-medium rounded-full transition-all ${
                                 formatView === 'global'
-                                    ? 'bg-purple-500 text-white shadow-sm'
+                                    ? 'bg-blue-500 text-white shadow-sm'
                                     : 'bg-transparent text-gray-500 hover:text-gray-700'
                             }`}
                         >
@@ -267,7 +267,7 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
                             onClick={() => setFormatView('mine')}
                             className={`flex items-center gap-1 px-3 py-1 text-[11px] font-medium rounded-full transition-all ${
                                 formatView === 'mine'
-                                    ? 'bg-purple-500 text-white shadow-sm'
+                                    ? 'bg-blue-500 text-white shadow-sm'
                                     : 'bg-transparent text-gray-500 hover:text-gray-700'
                             }`}
                         >
@@ -286,7 +286,7 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
                         if (isLoading) {
                             return (
                                 <div className="flex justify-center py-10">
-                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-500" />
+                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500" />
                                 </div>
                             )
                         }
@@ -303,7 +303,7 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
                                     {formatView === 'mine' && mode === 'editor' && (
                                         <Link
                                             href="/editor/custom-format"
-                                            className="inline-flex items-center gap-1 mt-2 px-3 py-1.5 text-xs font-medium text-purple-600 bg-purple-50 border border-purple-200 rounded-md hover:bg-purple-100 transition-colors"
+                                            className="inline-flex items-center gap-1 mt-2 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors"
                                         >
                                             <Plus className="h-3 w-3" />
                                             Create your first format
@@ -332,8 +332,8 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
                                         <div
                                             key={format.id}
                                             className={`group p-2 rounded-lg cursor-pointer transition-all duration-200 border ${isSelected
-                                                ? 'border-purple-400 bg-purple-50 ring-1 ring-purple-200 shadow-sm'
-                                                : 'border-gray-200 bg-white hover:border-purple-300 hover:shadow-sm'
+                                                ? 'border-blue-400 bg-blue-50 ring-1 ring-blue-200 shadow-sm'
+                                                : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-sm'
                                             }`}
                                             onClick={() => handleFormatSelect(format.id)}
                                         >
@@ -385,9 +385,9 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
                                                 
                                                 <div className="flex items-center gap-1.5 mb-1 px-1">
                                                     {isSelected && (
-                                                        <span className="inline-block h-2 w-2 rounded-full bg-purple-600 flex-shrink-0" />
+                                                        <span className="inline-block h-2 w-2 rounded-full bg-blue-600 flex-shrink-0" />
                                                     )}
-                                                    <LayoutGrid className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
+                                                    <LayoutGrid className="h-3.5 w-3.5 text-blue-600 flex-shrink-0" />
                                                     <h4 className="font-semibold text-xs text-gray-900 truncate flex-1">{format.name}</h4>
                                                     {/* Edit/Delete buttons for user's own formats */}
                                                     {isUserFormat && mode === 'editor' && (
@@ -407,7 +407,7 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
                                                     <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium rounded ${
                                                         isUserFormat
                                                             ? 'text-blue-700 bg-blue-50 border border-blue-100'
-                                                            : 'text-purple-700 bg-purple-50 border border-purple-100'
+                                                            : 'text-blue-700 bg-blue-50 border border-blue-100'
                                                     }`}>
                                                         {isUserFormat ? <User className="h-2.5 w-2.5" /> : <Globe className="h-2.5 w-2.5" />}
                                                         {isUserFormat ? 'Custom' : 'Official'}
@@ -429,7 +429,7 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
                         <div className="mt-2">
                             <Link
                                 href="/editor/custom-format"
-                                className="inline-flex items-center px-3 py-1.5 border border-dashed border-purple-400 rounded-md text-sm text-purple-700 hover:bg-purple-50 transition-colors"
+                                className="inline-flex items-center px-3 py-1.5 border border-dashed border-blue-400 rounded-md text-sm text-blue-700 hover:bg-blue-50 transition-colors"
                             >
                                 <Plus className="h-3.5 w-3.5 mr-1.5" />
                                 Create custom format
@@ -537,8 +537,8 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
                                         : templateType === 'default'
                                             ? 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
                                             : templateType === 'cloud'
-                                                ? 'border-purple-200 bg-purple-50/30 hover:border-purple-300 hover:bg-purple-50/50'
-                                                : 'border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50/30'
+                                                ? 'border-blue-200 bg-blue-50/30 hover:border-blue-300 hover:bg-blue-50/50'
+                                                : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/30'
                                         }`}
                                     onClick={() => handleTemplateSelect(template.id)}
                                 >
@@ -551,9 +551,9 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
                                             {templateType === 'default' ? (
                                                 <LayoutTemplate className="h-4 w-4 text-gray-500 flex-shrink-0" />
                                             ) : templateType === 'cloud' ? (
-                                                <Database className="h-4 w-4 text-purple-600 flex-shrink-0" />
+                                                <Database className="h-4 w-4 text-blue-600 flex-shrink-0" />
                                             ) : (
-                                                <FileText className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                                                <FileText className="h-4 w-4 text-blue-500 flex-shrink-0" />
                                             )}
                                             <h4 className="font-semibold text-sm text-gray-900 truncate flex-1">{template.name}</h4>
                                             {mode === 'editor' && template.isCustom && !template.is_official && (
@@ -577,13 +577,13 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
                                                 </span>
                                             )}
                                             {templateType === 'cloud' && (
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-purple-700 bg-purple-100 border border-purple-200 rounded-full">
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-blue-700 bg-blue-100 border border-blue-200 rounded-full">
                                                     <Database className="h-3 w-3" />
                                                     Cloud Synced
                                                 </span>
                                             )}
                                             {templateType === 'custom' && (
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-purple-700 bg-purple-100 border border-purple-200 rounded-full">
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-blue-700 bg-blue-100 border border-blue-200 rounded-full">
                                                     Custom
                                                 </span>
                                             )}
@@ -696,7 +696,7 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
                                                 {item.type}
                                             </span>
                                             {(item as any).contentType === 'html' && (
-                                                <span className="text-[10px] px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded font-medium">
+                                                <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded font-medium">
                                                     HTML
                                                 </span>
                                             )}

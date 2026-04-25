@@ -13,11 +13,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { TiptapEditor } from "@/components/tiptap-editor"
 
 const ZONE_TYPE_META: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
-  text:       { icon: <Type className="h-3.5 w-3.5" />, color: 'bg-green-100 text-green-700 border-green-200', label: 'Text' },
+  text:       { icon: <Type className="h-3.5 w-3.5" />, color: 'bg-blue-100 text-blue-700 border-blue-200', label: 'Text' },
   stat:       { icon: <Hash className="h-3.5 w-3.5" />, color: 'bg-amber-100 text-amber-700 border-amber-200', label: 'Stat' },
   chart:      { icon: <BarChart3 className="h-3.5 w-3.5" />, color: 'bg-blue-100 text-blue-700 border-blue-200', label: 'Chart' },
-  background: { icon: <Image className="h-3.5 w-3.5" />, color: 'bg-purple-100 text-purple-700 border-purple-200', label: 'Background' },
-  decoration: { icon: <Sparkles className="h-3.5 w-3.5" />, color: 'bg-pink-100 text-pink-700 border-pink-200', label: 'Decoration' },
+  background: { icon: <Image className="h-3.5 w-3.5" />, color: 'bg-blue-100 text-blue-700 border-blue-200', label: 'Background' },
+  decoration: { icon: <Sparkles className="h-3.5 w-3.5" />, color: 'bg-blue-100 text-blue-700 border-blue-200', label: 'Decoration' },
 }
 
 export function FormatZonesPanel() {
@@ -139,7 +139,7 @@ export function FormatZonesPanel() {
     <>
     <div className="space-y-4">
       <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-        <LayoutGrid className="h-4 w-4 text-purple-600" />
+        <LayoutGrid className="h-4 w-4 text-blue-600" />
         Format Zones ({zones.length})
       </h3>
 
@@ -194,7 +194,7 @@ export function FormatZonesPanel() {
                         value={(contentPackage as any)?.[zone.role] || ''}
                         onChange={(e) => handleContentPackageChange(zone.role, e.target.value)}
                         placeholder={`Enter ${zone.role}...`}
-                        className="w-full min-h-[40px] text-[12px] border border-gray-200 rounded p-2 resize-y bg-white text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all placeholder:text-gray-300"
+                        className="w-full min-h-[40px] text-xs border border-gray-200 rounded p-2 resize-y bg-white text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all placeholder:text-gray-300"
                         rows={zone.role === 'body' ? 3 : 1}
                       />
                       {/* Rich Editor button for text zones */}
@@ -226,7 +226,7 @@ export function FormatZonesPanel() {
                           value={getStatValue(zone.role, 'value')}
                           onChange={(e) => handleStatChange(zone.role, 'value', e.target.value)}
                           placeholder="e.g. 50%"
-                          className="h-8 text-[12px] bg-white border-gray-200 focus:ring-blue-500 focus:border-blue-500"
+                          className="h-8 text-xs bg-white border-gray-200 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
                       <div>
@@ -235,7 +235,7 @@ export function FormatZonesPanel() {
                           value={getStatValue(zone.role, 'label')}
                           onChange={(e) => handleStatChange(zone.role, 'label', e.target.value)}
                           placeholder="e.g. Growth Rate"
-                          className="h-8 text-[12px] bg-white border-gray-200 focus:ring-blue-500 focus:border-blue-500"
+                          className="h-8 text-xs bg-white border-gray-200 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
                     </div>
@@ -340,7 +340,7 @@ export function FormatZonesPanel() {
                   )}
                   
                   {type === 'decoration' && (
-                     <div className="flex items-center gap-2 p-2 bg-pink-50/50 rounded text-pink-700/80 border border-pink-100">
+                     <div className="flex items-center gap-2 p-2 bg-blue-50/50 rounded text-blue-700/80 border border-blue-100">
                       <Sparkles className="h-4 w-4" />
                       <span className="text-[11px]">Static decoration graphic</span>
                     </div>

@@ -83,10 +83,10 @@ export function GeneralTab({
     return (
         <div className="space-y-4">
             {/* Chart Mode Section */}
-            <div className="mb-4">
-                <div className="font-semibold text-[0.80rem] mb-2">Chart Mode</div>
-                <div className="flex items-center gap-6 bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 shadow-sm">
-                    <label className={`flex items-center gap-2 cursor-pointer transition-colors text-[0.80rem] ${chartMode === 'single' ? 'text-blue-700 font-bold' : 'text-gray-500'}`}>
+            <div>
+                <div className="font-semibold text-xs mb-2">Chart Mode</div>
+                <div className="flex items-center gap-4 bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 shadow-sm">
+                    <label className={`flex items-center gap-2 cursor-pointer transition-colors text-xs ${chartMode === 'single' ? 'text-blue-700 font-bold' : 'text-gray-500'}`}>
                         <input
                             type="radio"
                             className="accent-blue-600"
@@ -96,7 +96,7 @@ export function GeneralTab({
                         <BarChart2 className="h-4 w-4" />
                         Single
                     </label>
-                    <label className={`flex items-center gap-2 cursor-pointer transition-colors text-[0.80rem] ${chartMode === 'grouped' ? 'text-blue-700 font-bold' : 'text-gray-500'}`}>
+                    <label className={`flex items-center gap-2 cursor-pointer transition-colors text-xs ${chartMode === 'grouped' ? 'text-blue-700 font-bold' : 'text-gray-500'}`}>
                         <input
                             type="radio"
                             className="accent-blue-600"
@@ -112,17 +112,17 @@ export function GeneralTab({
             {/* Convert to Grouped Chart - Only visible in Single Mode */}
             {chartMode === 'single' && filteredDatasets.length > 0 && (
                 <div
-                    className="flex items-center gap-2 bg-indigo-50 border border-indigo-200 rounded-md px-3 py-2 cursor-pointer hover:bg-indigo-100 hover:border-indigo-300 transition-all group"
+                    className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-md px-3 py-2 cursor-pointer hover:bg-blue-100 hover:border-blue-300 transition-all group"
                     onClick={() => handleConvertToGrouped()}
                     title="By converting to a grouped chart, you can add more datasets to visualize and compare multiple data series on the same chart."
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-500 flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500 flex-shrink-0">
                         <circle cx="12" cy="12" r="10" />
                         <line x1="12" y1="16" x2="12" y2="12" />
                         <line x1="12" y1="8" x2="12.01" y2="8" />
                     </svg>
-                    <span className="font-medium text-[0.75rem] text-indigo-700 flex-1">Convert to Grouped Chart</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-400 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-all flex-shrink-0">
+                    <span className="font-medium text-xs text-blue-700 flex-1">Convert to Grouped Chart</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all flex-shrink-0">
                         <path d="M9 18l6-6-6-6" />
                     </svg>
                 </div>
@@ -130,13 +130,13 @@ export function GeneralTab({
 
             {/* Uniformity Mode Section - Only for Grouped Mode */}
             {chartMode === 'grouped' && (
-                <div className="mb-4">
-                    <div className="font-semibold text-[0.80rem] mb-2">Uniformity</div>
-                    <div className="flex items-center gap-6 bg-purple-50 border border-purple-100 rounded-lg px-4 py-3 shadow-sm">
-                        <label className={`flex items-center gap-2 cursor-pointer transition-colors text-[0.80rem] ${uniformityMode === 'uniform' ? 'text-purple-700 font-bold' : 'text-gray-500'}`}>
+                <div>
+                    <div className="font-semibold text-xs mb-2">Uniformity</div>
+                    <div className="flex items-center gap-4 bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 shadow-sm">
+                        <label className={`flex items-center gap-2 cursor-pointer transition-colors text-xs ${uniformityMode === 'uniform' ? 'text-blue-700 font-bold' : 'text-gray-500'}`}>
                             <input
                                 type="radio"
-                                className="accent-purple-600"
+                                className="accent-blue-600"
                                 checked={uniformityMode === 'uniform'}
                                 onChange={() => setUniformityMode('uniform')}
                             />
@@ -148,10 +148,10 @@ export function GeneralTab({
                             const isMixedDisabled = firstDatasetType && ['pie', 'doughnut', 'radar', 'polarArea', 'scatter', 'bubble'].includes(firstDatasetType);
 
                             return (
-                                <label className={`flex items-center gap-2 cursor-pointer transition-colors text-[0.80rem] ${uniformityMode === 'mixed' ? 'text-purple-700 font-bold' : 'text-gray-500'} ${isMixedDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                <label className={`flex items-center gap-2 cursor-pointer transition-colors text-xs ${uniformityMode === 'mixed' ? 'text-blue-700 font-bold' : 'text-gray-500'} ${isMixedDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}>
                                     <input
                                         type="radio"
-                                        className="accent-purple-600"
+                                        className="accent-blue-600"
                                         checked={uniformityMode === 'mixed'}
                                         onChange={() => setUniformityMode('mixed')}
                                         disabled={!!isMixedDisabled}
@@ -169,7 +169,7 @@ export function GeneralTab({
 
                             if (isMixedDisabled) {
                                 return (
-                                    <span className="text-orange-600 font-medium">
+                                    <span className="text-blue-600 font-medium">
                                         Mixed mode is not available when the first dataset is {(() => {
                                             const labels: Record<string, string> = {
                                                 pie3d: '3D Pie',
@@ -193,9 +193,9 @@ export function GeneralTab({
 
             {/* Groups Section - Only for Grouped Mode */}
             {chartMode === 'grouped' && (
-                <div className="mb-4">
+                <div>
                     <div className="flex items-center justify-between mb-2">
-                        <div className="font-semibold text-[0.80rem]">Groups</div>
+                        <div className="font-semibold text-xs">Groups</div>
                         <Button
                             variant="ghost"
                             size="sm"
@@ -228,7 +228,7 @@ export function GeneralTab({
                                             <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">Default</span>
                                         )}
                                         {group.category && (
-                                            <span className={`text-[10px] px-1.5 py-0.5 rounded ${group.category === 'coordinate' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>
+                                            <span className={`text-[10px] px-1.5 py-0.5 rounded ${group.category === 'coordinate' ? 'bg-blue-100 text-blue-600' : 'bg-blue-100 text-blue-600'}`}>
                                                 {group.category === 'coordinate' ? 'Coord' : 'Categ'}
                                             </span>
                                         )}
@@ -272,7 +272,7 @@ export function GeneralTab({
             {/* Active Dataset Selector - Single Mode */}
             {chartMode === 'single' && filteredDatasets.length > 0 && (
                 <div className="space-y-2">
-                    <Label className="text-[0.80rem] font-medium">Active Dataset</Label>
+                    <Label className="text-xs font-medium">Active Dataset</Label>
                     <Select value={String(activeDatasetIndex)} onValueChange={(value) => handleActiveDatasetChange(Number(value))}>
                         <SelectTrigger className="h-9">
                             <SelectValue />
@@ -300,8 +300,8 @@ export function GeneralTab({
                         className="flex items-center gap-2 flex-1 cursor-pointer"
                         onClick={() => setDatasetsDropdownOpen(!datasetsDropdownOpen)}
                     >
-                        <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-                        <h3 className="text-[0.80rem] font-semibold text-gray-900">Datasets</h3>
+                        <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                        <h3 className="text-xs font-semibold text-gray-900">Datasets</h3>
                         <span className="bg-gray-100 text-gray-600 text-[10px] font-medium px-1.5 py-0.5 rounded-full border border-gray-200">
                             {filteredDatasets.length}
                         </span>
@@ -315,7 +315,7 @@ export function GeneralTab({
                                 e.stopPropagation()
                                 handleOpenAddDatasetModal()
                             }}
-                            className="h-6 px-2 text-xs bg-white border-green-200 text-green-700 hover:bg-green-50 hover:text-green-800 hover:border-green-300 shadow-sm transition-all"
+                            className="h-6 px-2 text-xs bg-white border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800 hover:border-blue-300 shadow-sm transition-all"
                         >
                             <Plus className="h-3 w-3 mr-1" />
                             Add
@@ -344,7 +344,7 @@ export function GeneralTab({
                 </div>
 
                 {datasetsDropdownOpen && (
-                    <div className="bg-green-50/50 rounded-b-lg p-3 space-y-2 border-x border-b border-green-100">
+                    <div className="bg-blue-50/50 rounded-b-lg p-3 space-y-2 border-x border-b border-blue-100">
                         <div className="max-h-96 overflow-y-auto space-y-2 pr-1">
                             {filteredDatasets.length === 0 ? (
                                 <div className="text-center py-4 px-2">
@@ -390,7 +390,7 @@ export function GeneralTab({
                                                     {(chartMode === 'grouped' || datasetIndex === activeDatasetIndex) && (
                                                         <>
                                                             <span className="w-0.5 h-0.5 rounded-full bg-gray-300"></span>
-                                                            <span className={dataset.hidden ? "text-gray-400" : "text-green-600 font-medium"}>
+                                                            <span className={dataset.hidden ? "text-gray-400" : "text-blue-600 font-medium"}>
                                                                 {dataset.hidden ? "Hidden" : "Visible"}
                                                             </span>
                                                         </>

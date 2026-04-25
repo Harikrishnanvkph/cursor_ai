@@ -326,9 +326,9 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
                           {isUniform ? `Uniform ${chartTypeName}` : 'Mixed'} group
                         </span>
                         <span className="text-gray-400">·</span>
-                        <span className="text-emerald-600 font-medium">{numFilteredDatasets} dataset(s)</span>
+                        <span className="text-blue-600 font-medium">{numFilteredDatasets} dataset(s)</span>
                         <span className="text-gray-400">·</span>
-                        <span className="text-purple-600 font-medium">{sliceLabels.length} {pointsLabel}</span>
+                        <span className="text-blue-600 font-medium">{sliceLabels.length} {pointsLabel}</span>
                       </>
                     );
                   })()}

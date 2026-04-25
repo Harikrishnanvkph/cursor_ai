@@ -13,6 +13,8 @@ import {
     syncImagePositionsToConfig,
     filterChartDataForExport
 } from "./export-utils";
+import { useDecorationStore } from "../stores/decoration-store";
+import { generateDecorationsSVG, generateDecorationsCSS } from "../template-export/decoration-html-export";
 
 /**
  * Generate a complete standalone HTML file with the chart
@@ -230,6 +232,10 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
         legendConfigOverride: legendForExport
     };
 
+    const decorationShapes = useDecorationStore.getState().shapes || [];
+    const decorationsSVG = decorationShapes.length > 0 ? generateDecorationsSVG(decorationShapes, width, height) : "";
+    const decorationsCSS = decorationShapes.length > 0 ? generateDecorationsCSS() : "";
+
     // Use template if specified
     if (template && htmlTemplates[template as keyof typeof htmlTemplates]) {
         const selectedTemplate = htmlTemplates[template as keyof typeof htmlTemplates];
@@ -356,6 +362,7 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
             }
         }
         
+        ${decorationsCSS}
         ${customCSS}
     </style>
 </head>
@@ -364,7 +371,8 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
         <h1 class="chart-title">${title}</h1>
         
         <div class="chart-wrapper">
-            <canvas id="chartCanvas" class="chart-canvas"></canvas>
+            <canvas id="chartCanvas" class="chart-canvas" style="position: relative; z-index: 1;"></canvas>
+            ${decorationsSVG}
         </div>
         
         <div class="chart-info">

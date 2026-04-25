@@ -1,5 +1,7 @@
 import { type HTMLExportOptions } from "./html-exporter";
 import { generateCompletePluginSystem } from "./html-plugins";
+import { useDecorationStore } from "@/lib/stores/decoration-store";
+import { generateDecorationsSVG, generateDecorationsCSS } from "@/lib/template-export/decoration-html-export";
 
 /**
  * Generate legend config with generateLabels function for HTML export
@@ -236,6 +238,7 @@ export const plainTemplate: HTMLTemplate = {
         ${generateCompletePluginSystem(chartConfig)}
     </script>
     <style>
+        ${generateDecorationsCSS()}
         body {
             margin: 0;
             padding: 0;
@@ -265,7 +268,8 @@ export const plainTemplate: HTMLTemplate = {
     <div class="chart-container">
         ${backgroundLayerHTML}
         <div class="chart-wrapper">
-            <canvas id="chartCanvas" width="${width}" height="${height}"></canvas>
+            <canvas id="chartCanvas" width="${width}" height="${height}" style="position: relative; z-index: 1;"></canvas>
+            ${useDecorationStore.getState().shapes?.length ? generateDecorationsSVG(useDecorationStore.getState().shapes, width || 800, height || 600) : ''}
         </div>
     </div>
     <script>${generateChartScript(chartData, chartConfig, chartType, options, legendConfig)}</script>

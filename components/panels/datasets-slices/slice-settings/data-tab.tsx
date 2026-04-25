@@ -35,7 +35,7 @@ export function DataTab({
             <div className="space-y-3">
                 <div className="bg-blue-50 rounded-lg p-3 space-y-3">
                     <div className="flex items-center justify-between">
-                        <Label className="text-[0.80rem] font-medium text-blue-900">
+                        <Label className="text-xs font-medium text-blue-900">
                             {currentDataset.data.length} Data Point{currentDataset.data.length !== 1 ? 's' : ''}
                         </Label>
                         <Button

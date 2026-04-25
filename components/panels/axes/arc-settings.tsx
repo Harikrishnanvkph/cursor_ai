@@ -45,7 +45,7 @@ export function ArcSettings({ chartType, options, onUpdate }: ArcSettingsProps) 
                     className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
                     onClick={() => setGeneralOpen(!generalOpen)}
                 >
-                    <div className="w-2 h-2 bg-orange-600 rounded-full"></div>
+                    <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
                     <h3 className="text-sm font-semibold text-gray-900 flex-1">Slice Configuration</h3>
                     <div className="ml-2 flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transform transition-transform ${generalOpen ? 'rotate-180' : ''}`}>
@@ -55,7 +55,7 @@ export function ArcSettings({ chartType, options, onUpdate }: ArcSettingsProps) 
                 </div>
 
                 {generalOpen && (
-                    <div className="bg-orange-50 rounded-b-lg border-x border-b border-orange-100 p-3 space-y-4">
+                    <div className="bg-blue-50 rounded-b-lg border-x border-b border-blue-100 p-3 space-y-4">
                         {/* Cutout (Doughnut hole size) */}
                         {isPieOrDoughnut && (
                             <div className="space-y-2">
@@ -204,7 +204,7 @@ export function ArcSettings({ chartType, options, onUpdate }: ArcSettingsProps) 
                     className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
                     onClick={() => setHoverOpen(!hoverOpen)}
                 >
-                    <div className="w-2 h-2 bg-pink-600 rounded-full"></div>
+                    <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
                     <h3 className="text-sm font-semibold text-gray-900 flex-1">Hover Effects</h3>
                     <div className="ml-2 flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transform transition-transform ${hoverOpen ? 'rotate-180' : ''}`}>
@@ -214,7 +214,7 @@ export function ArcSettings({ chartType, options, onUpdate }: ArcSettingsProps) 
                 </div>
 
                 {hoverOpen && (
-                    <div className="bg-pink-50 rounded-b-lg border-x border-b border-pink-100 p-3 space-y-4">
+                    <div className="bg-blue-50 rounded-b-lg border-x border-b border-blue-100 p-3 space-y-4">
                         {/* Hover Offset */}
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">

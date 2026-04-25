@@ -8,6 +8,7 @@ import { useTemplateStore } from "@/lib/template-store";
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store";
 import { dataService } from "@/lib/data-service";
 import { createExpiringStorage } from "@/lib/storage-utils";
+import { useDecorationStore } from "@/lib/stores/decoration-store";
 import type { ChartOptions } from "chart.js";
 
 export type Conversation = {
@@ -189,9 +190,18 @@ export const useHistoryStore = create<HistoryStore>()(
             chartConfig: conv.snapshot.chartConfig
           });
 
+          const chartConfig = conv.snapshot.chartConfig as any;
+          
+          // Restore decorations
+          const decorationsToLoad = chartConfig?.decorationShapes || conv.snapshot.template_structure?.decorations || [];
+          if (decorationsToLoad.length > 0) {
+            useDecorationStore.setState({ shapes: decorationsToLoad });
+          } else {
+            useDecorationStore.getState().clearShapes?.();
+          }
+
           // Update original cloud dimensions for the loaded chart.
           // This captures the dimensions native to the snapshot being loaded.
-          const chartConfig = conv.snapshot.chartConfig as any;
           if (chartConfig) {
             const { setOriginalCloudDimensions } = useChartStore.getState();
             

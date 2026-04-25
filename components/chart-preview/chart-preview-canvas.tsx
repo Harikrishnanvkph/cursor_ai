@@ -1,8 +1,10 @@
 "use client"
 
-import React, { RefObject } from "react"
+import React, { RefObject, useState, useEffect } from "react"
 import ChartGenerator from "@/lib/chart_generator"
 import { parseDimension } from "@/lib/utils/dimension-utils"
+import { DecorationShapeRenderer } from "@/components/decorations/DecorationShapeRenderer"
+import { useDecorationStore } from "@/lib/stores/decoration-store"
 
 interface ChartPreviewCanvasProps {
     chartContainerRef: RefObject<HTMLDivElement>;
@@ -28,6 +30,25 @@ export const ChartPreviewCanvas = React.memo(({
     zoomPan,
 }: ChartPreviewCanvasProps) => {
     const { zoom, panMode, isDragging, panOffset, handleMouseDown } = zoomPan;
+    const decorationShapes = useDecorationStore(s => s.shapes);
+    const hasDecorations = decorationShapes.length > 0;
+    const drawingMode = useDecorationStore(s => s.drawingMode);
+
+    // Track container dimensions for DecorationShapeRenderer
+    const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+    const containerRef = React.useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const el = containerRef.current || chartContainerRef.current;
+        if (!el) return;
+        const observer = new ResizeObserver(entries => {
+            for (const entry of entries) {
+                setContainerSize({ width: entry.contentRect.width, height: entry.contentRect.height });
+            }
+        });
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [chartContainerRef]);
 
     const isResponsive = chartConfig?.responsive !== false;
     const chartWidth = !isResponsive ? parseDimension(chartConfig?.width, 800) : 800;
@@ -84,11 +105,22 @@ export const ChartPreviewCanvas = React.memo(({
                         onDragStart={(e) => { if (panMode) e.preventDefault(); }}
                     >
                         <div
+                            ref={containerRef}
                             className="absolute inset-0"
                             style={{ width: '100%', height: '100%', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: panMode ? 'none' : 'auto' }}
                         >
                             <ChartGenerator />
                         </div>
+                        {/* Decoration Shapes Layer (chart mode) */}
+                        {(hasDecorations || drawingMode) && containerSize.width > 0 && (
+                            <div className="absolute inset-0" style={{ width: '100%', height: '100%', top: 0, left: 0, zIndex: 20, pointerEvents: drawingMode ? 'auto' : 'none' }}>
+                                <DecorationShapeRenderer
+                                    containerWidth={containerSize.width}
+                                    containerHeight={containerSize.height}
+                                    panMode={panMode}
+                                />
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -153,8 +185,18 @@ export const ChartPreviewCanvas = React.memo(({
                     }}
                     onDragStart={(e) => { if (panMode) e.preventDefault(); }}
                 >
-                    <div style={{ pointerEvents: panMode ? 'none' : 'auto' }}>
+                    <div ref={containerRef} style={{ pointerEvents: panMode ? 'none' : 'auto', position: 'relative' }}>
                         <ChartGenerator />
+                        {/* Decoration Shapes Layer (chart mode, fixed dimensions) */}
+                        {(hasDecorations || drawingMode) && (
+                            <div className="absolute inset-0" style={{ zIndex: 20, pointerEvents: drawingMode ? 'auto' : 'none' }}>
+                                <DecorationShapeRenderer
+                                    containerWidth={chartWidth}
+                                    containerHeight={chartHeight}
+                                    panMode={panMode}
+                                />
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

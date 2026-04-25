@@ -240,16 +240,16 @@ export function ImagesTab({
             {/* Image Management */}
             <div className="space-y-2.5">
                 <div className="flex items-center gap-2 pb-1.5 border-b border-gray-200">
-                    <ImageIcon className="h-3.5 w-3.5 text-purple-600" />
+                    <ImageIcon className="h-3.5 w-3.5 text-blue-600" />
                     <h3 className="text-xs font-semibold text-gray-900">Global Image Settings</h3>
                 </div>
 
-                <div className="bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-lg p-3 space-y-3 border border-purple-200/50">
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-lg p-3 space-y-3 border border-blue-200/50">
                     {/* Image Preview Section */}
                     {previewImageUrl && (
-                        <div className="bg-white rounded-lg p-2.5 border border-purple-200 shadow-sm">
-                            <Label className="text-xs font-medium text-purple-700 mb-1.5 block">Preview</Label>
-                            <div className="relative aspect-square w-full max-w-[120px] mx-auto rounded-lg overflow-hidden border-2 border-purple-300 bg-gray-50">
+                        <div className="bg-white rounded-lg p-2.5 border border-blue-200 shadow-sm">
+                            <Label className="text-xs font-medium text-blue-700 mb-1.5 block">Preview</Label>
+                            <div className="relative aspect-square w-full max-w-[120px] mx-auto rounded-lg overflow-hidden border-2 border-blue-300 bg-gray-50">
                                 <img
                                     src={previewImageUrl}
                                     alt="Preview"
@@ -275,10 +275,10 @@ export function ImagesTab({
 
                     <div className="space-y-3">
                         {chartMode === 'grouped' && (
-                            <div className="space-y-1.5 pb-2 border-b border-purple-200/60">
+                            <div className="space-y-1.5 pb-2 border-b border-blue-200/60">
                                 <Label className="text-xs font-semibold text-gray-700">Apply Images To</Label>
                                 <Select value={selectedGroupDataset} onValueChange={setSelectedGroupDataset}>
-                                    <SelectTrigger className="h-8 text-xs border-purple-300 focus:border-purple-500 bg-white">
+                                    <SelectTrigger className="h-8 text-xs border-blue-300 focus:border-blue-500 bg-white">
                                         <SelectValue placeholder="Select target" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -304,7 +304,7 @@ export function ImagesTab({
                                 <Button
                                     size="sm"
                                     variant="outline"
-                                    className="flex-1 h-8 text-xs border-purple-300 hover:bg-purple-50"
+                                    className="flex-1 h-8 text-xs border-blue-300 hover:bg-blue-50"
                                     onClick={() => fileInputRef.current?.click()}
                                 >
                                     <Upload className="h-3 w-3 mr-1.5" />
@@ -313,7 +313,7 @@ export function ImagesTab({
                                 <Button
                                     size="sm"
                                     variant="outline"
-                                    className="h-8 px-2 text-xs border-purple-300 hover:bg-purple-50"
+                                    className="h-8 px-2 text-xs border-blue-300 hover:bg-blue-50"
                                     onClick={() => {
                                         const targetIndices = getTargetDatasetIndices();
                                         targetIndices.forEach(dsIdx => {
@@ -361,7 +361,7 @@ export function ImagesTab({
                                     value={imageUploadUrl || ''}
                                     onChange={(e) => setImageUploadUrl(e.target.value)}
                                     placeholder="Paste image URL..."
-                                    className="h-8 text-xs flex-1 border-purple-200 focus:border-purple-400"
+                                    className="h-8 text-xs flex-1 border-blue-200 focus:border-blue-400"
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter' && imageUploadUrl.trim()) {
                                             const targetIndices = getTargetDatasetIndices();
@@ -378,7 +378,7 @@ export function ImagesTab({
                                 />
                                 <Button
                                     size="sm"
-                                    className="h-8 px-2 text-xs bg-purple-600 hover:bg-purple-700"
+                                    className="h-8 px-2 text-xs bg-blue-600 hover:bg-blue-700"
                                     onClick={() => {
                                         const targetIndices = getTargetDatasetIndices();
                                         targetIndices.forEach(dsIdx => {
@@ -398,8 +398,8 @@ export function ImagesTab({
                         </div>
 
                         {/* Configuration Section */}
-                        <div className="space-y-2.5 pt-2 border-t border-purple-200">
-                            <Label className="text-xs font-semibold text-purple-700 uppercase tracking-wide">Configuration</Label>
+                        <div className="space-y-2.5 pt-2 border-t border-blue-200">
+                            <Label className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Configuration</Label>
 
                             <div className="grid grid-cols-2 gap-2">
                                 <div className="space-y-1">
@@ -411,7 +411,7 @@ export function ImagesTab({
                                             handleGlobalImageConfigChange('type', value);
                                         }}
                                     >
-                                        <SelectTrigger className="h-7 text-xs border-purple-200 focus:border-purple-400">
+                                        <SelectTrigger className="h-7 text-xs border-blue-200 focus:border-blue-400">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -434,7 +434,7 @@ export function ImagesTab({
                                     <Input
                                         type="number"
                                         value={activeDataset?.pointImageConfig?.[0]?.size === '' || Number.isNaN(activeDataset?.pointImageConfig?.[0]?.size as number) ? 0 : (activeDataset?.pointImageConfig?.[0]?.size ?? getDefaultImageSize(chartType as any))}
-                                        className="h-7 text-xs border-purple-200 focus:border-purple-400"
+                                        className="h-7 text-xs border-blue-200 focus:border-blue-400"
                                         placeholder="20"
                                         min={5}
                                         max={100}
@@ -451,7 +451,7 @@ export function ImagesTab({
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="h-5 px-1.5 text-[10px] text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                                            className="h-5 px-1.5 text-[10px] text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                                             onClick={() => {
                                                 handleGlobalImageConfigChange('calloutX', undefined);
                                                 handleGlobalImageConfigChange('calloutY', undefined);
@@ -467,7 +467,7 @@ export function ImagesTab({
                                     value={activeDataset?.pointImageConfig?.[0]?.position || 'center'}
                                     onValueChange={(value) => handleGlobalImageConfigChange('position', value)}
                                 >
-                                    <SelectTrigger className="h-7 text-xs border-purple-200 focus:border-purple-400">
+                                    <SelectTrigger className="h-7 text-xs border-blue-200 focus:border-blue-400">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -488,8 +488,8 @@ export function ImagesTab({
 
                             {/* Arrow/Callout Settings */}
                             {imageOptions.supportsArrow && activeDataset?.pointImageConfig?.[0]?.position === 'callout' && (
-                                <div className="space-y-2 pt-2 border-t border-purple-200">
-                                    <Label className="text-xs font-semibold text-purple-700 uppercase tracking-wide">Arrow Settings</Label>
+                                <div className="space-y-2 pt-2 border-t border-blue-200">
+                                    <Label className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Arrow Settings</Label>
 
                                     <div className="grid grid-cols-2 gap-2">
                                         <div className="space-y-1">
@@ -497,7 +497,7 @@ export function ImagesTab({
                                             <Input
                                                 type="number"
                                                 value={activeDataset?.pointImageConfig?.[0]?.borderWidth === '' || Number.isNaN(activeDataset?.pointImageConfig?.[0]?.borderWidth as number) ? 0 : (activeDataset?.pointImageConfig?.[0]?.borderWidth ?? 3)}
-                                                className="h-7 text-xs border-purple-200 focus:border-purple-400"
+                                                className="h-7 text-xs border-blue-200 focus:border-blue-400"
                                                 placeholder="3"
                                                 min={0}
                                                 max={10}
@@ -511,12 +511,12 @@ export function ImagesTab({
                                                 <Input
                                                     type="color"
                                                     value={activeDataset?.pointImageConfig?.[0]?.borderColor || '#ffffff'}
-                                                    className="h-7 w-12 p-0.5 border border-purple-200 rounded cursor-pointer"
+                                                    className="h-7 w-12 p-0.5 border border-blue-200 rounded cursor-pointer"
                                                     onChange={(e) => handleGlobalImageConfigChange('borderColor', e.target.value)}
                                                 />
                                                 <Input
                                                     value={activeDataset?.pointImageConfig?.[0]?.borderColor || '#ffffff'}
-                                                    className="h-7 text-xs flex-1 border-purple-200 focus:border-purple-400 font-mono text-[10px]"
+                                                    className="h-7 text-xs flex-1 border-blue-200 focus:border-blue-400 font-mono text-[10px]"
                                                     onChange={(e) => handleGlobalImageConfigChange('borderColor', e.target.value)}
                                                 />
                                             </div>
@@ -550,7 +550,7 @@ export function ImagesTab({
                                                 <Input
                                                     type="color"
                                                     value={activeDataset?.pointImageConfig?.[0]?.arrowColor || '#666666'}
-                                                    className="h-7 w-full p-0.5 border border-purple-200 rounded cursor-pointer"
+                                                    className="h-7 w-full p-0.5 border border-blue-200 rounded cursor-pointer"
                                                     onChange={(e) => handleGlobalImageConfigChange('arrowColor', e.target.value)}
                                                 />
                                             </div>
@@ -559,7 +559,7 @@ export function ImagesTab({
                                                 <Input
                                                     type="number"
                                                     value={activeDataset?.pointImageConfig?.[0]?.arrowEndGap === '' || Number.isNaN(activeDataset?.pointImageConfig?.[0]?.arrowEndGap as number) ? 0 : (activeDataset?.pointImageConfig?.[0]?.arrowEndGap ?? 8)}
-                                                    className="h-7 text-xs border-purple-200 focus:border-purple-400"
+                                                    className="h-7 text-xs border-blue-200 focus:border-blue-400"
                                                     placeholder="8"
                                                     min={0}
                                                     max={30}
@@ -574,9 +574,9 @@ export function ImagesTab({
 
                             {/* Fill Settings */}
                             {imageOptions.supportsFill && (
-                                <div className="space-y-2 pt-2 border-t border-purple-200">
+                                <div className="space-y-2 pt-2 border-t border-blue-200">
                                     <div className="flex items-center justify-between">
-                                        <Label className="text-xs font-semibold text-purple-700 uppercase tracking-wide">
+                                        <Label className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
                                             {['pie', 'doughnut', 'polarArea', 'pie3d', 'doughnut3d'].includes(chartType) ? 'Fill Slice' : 'Fill Bar'}
                                         </Label>
                                         <Switch
@@ -587,7 +587,7 @@ export function ImagesTab({
                                                 // Update BOTH properties atomically to prevent race condition
                                                 handleGlobalImageConfigChange({ fillSlice: checked, fillBar: checked })
                                             }}
-                                            className="scale-75 data-[state=checked]:bg-purple-600"
+                                            className="scale-75 data-[state=checked]:bg-blue-600"
                                         />
                                     </div>
 
@@ -597,7 +597,7 @@ export function ImagesTab({
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                className={`h-7 text-[10px] ${activeDataset?.pointImageConfig?.[0]?.imageFit === 'fill' ? 'bg-purple-100 border-purple-400 text-purple-700' : ''}`}
+                                                className={`h-7 text-[10px] ${activeDataset?.pointImageConfig?.[0]?.imageFit === 'fill' ? 'bg-blue-100 border-blue-400 text-blue-700' : ''}`}
                                                 onClick={() => handleGlobalImageConfigChange('imageFit', 'fill')}
                                                 disabled={!(['pie', 'doughnut', 'polarArea', 'pie3d', 'doughnut3d'].includes(chartType) ?
                                                     activeDataset?.pointImageConfig?.[0]?.fillSlice :
@@ -609,7 +609,7 @@ export function ImagesTab({
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                className={`h-7 text-[10px] ${activeDataset?.pointImageConfig?.[0]?.imageFit === 'cover' ? 'bg-purple-100 border-purple-400 text-purple-700' : ''}`}
+                                                className={`h-7 text-[10px] ${activeDataset?.pointImageConfig?.[0]?.imageFit === 'cover' ? 'bg-blue-100 border-blue-400 text-blue-700' : ''}`}
                                                 onClick={() => handleGlobalImageConfigChange('imageFit', 'cover')}
                                                 disabled={!(['pie', 'doughnut', 'polarArea', 'pie3d', 'doughnut3d'].includes(chartType) ?
                                                     activeDataset?.pointImageConfig?.[0]?.fillSlice :
@@ -621,7 +621,7 @@ export function ImagesTab({
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                className={`h-7 text-[10px] ${activeDataset?.pointImageConfig?.[0]?.imageFit === 'contain' ? 'bg-purple-100 border-purple-400 text-purple-700' : ''}`}
+                                                className={`h-7 text-[10px] ${activeDataset?.pointImageConfig?.[0]?.imageFit === 'contain' ? 'bg-blue-100 border-blue-400 text-blue-700' : ''}`}
                                                 onClick={() => handleGlobalImageConfigChange('imageFit', 'contain')}
                                                 disabled={!(['pie', 'doughnut', 'polarArea', 'pie3d', 'doughnut3d'].includes(chartType) ?
                                                     activeDataset?.pointImageConfig?.[0]?.fillSlice :
@@ -636,11 +636,11 @@ export function ImagesTab({
                             )}
 
                             {/* Clear All Button */}
-                            <div className="pt-3 border-t border-purple-200">
+                            <div className="pt-3 border-t border-blue-200">
                                 <Button
                                     size="sm"
                                     variant="outline"
-                                    className="w-full h-8 text-xs border-purple-300 hover:bg-purple-50 hover:border-purple-400"
+                                    className="w-full h-8 text-xs border-blue-300 hover:bg-blue-50 hover:border-blue-400"
                                     onClick={() => {
                                         const targetIndices = getTargetDatasetIndices();
                                         targetIndices.forEach(dsIdx => {

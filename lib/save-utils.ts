@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { DatasetService } from './services/dataset-service';
 import { GroupService } from './services/group-service';
 import { useFormatGalleryStore } from './stores/format-gallery-store';
+import { useDecorationStore } from './stores/decoration-store';
 
 export interface SaveChartOptions {
     /** Custom chart name (used for new saves or renaming) */
@@ -198,8 +199,19 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
             normalizedConfig.overlayShapes = overlayShapes;
         }
 
+        // Inject decorations into config so it's persisted in the snapshot
+        const decorationShapes = useDecorationStore.getState().shapes;
+        if (decorationShapes && decorationShapes.length > 0) {
+            normalizedConfig.decorationShapes = decorationShapes;
+        }
+
         // Extract template data
         let { templateStructure, templateContent } = extractTemplateData();
+        
+        // If we are in template mode, also inject decorations directly into template structure
+        if (templateStructure && decorationShapes && decorationShapes.length > 0) {
+            templateStructure.decorations = decorationShapes;
+        }
 
         // Inject format data into config so it's persisted in the snapshot
         const { editorMode, generateMode } = useTemplateStore.getState();

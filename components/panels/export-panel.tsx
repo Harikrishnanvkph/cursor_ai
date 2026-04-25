@@ -470,10 +470,10 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
   return (
     <div className="space-y-4">
       {/* General Settings */}
-      <Card className="border-indigo-100 shadow-sm bg-gradient-to-br from-indigo-50 to-white">
+      <Card className="border-blue-100 shadow-sm bg-gradient-to-br from-blue-50 to-white">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm flex items-center gap-2">
-            <Settings className="h-4 w-4 text-indigo-600" />
+            <Settings className="h-4 w-4 text-blue-600" />
             General
           </CardTitle>
         </CardHeader>
@@ -643,11 +643,11 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
         </CardContent>
       </Card>
 
-      <Card className="border-indigo-100 shadow-sm relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-indigo-100 to-indigo-50 rounded-bl-full -z-10 opacity-50"></div>
+      <Card className="border-blue-100 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-50 rounded-bl-full -z-10 opacity-50"></div>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2 text-indigo-900">
-            <Share2 className="h-4 w-4 text-indigo-600" />
+          <CardTitle className="text-sm flex items-center gap-2 text-blue-900">
+            <Share2 className="h-4 w-4 text-blue-600" />
             Share Online
           </CardTitle>
         </CardHeader>
@@ -657,7 +657,7 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
           </p>
           <Button
             onClick={handleShareLink}
-            className="w-full h-9 text-xs bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+            className="w-full h-9 text-xs bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
             disabled={isSharing || !currentSnapshotId}
             variant="default"
           >
@@ -681,10 +681,10 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
         </CardContent>
       </Card>
 
-      <Card className="border-orange-100 shadow-sm">
+      <Card className="border-blue-100 shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm flex items-center gap-2">
-            <FileCode className="h-4 w-4 text-orange-600" />
+            <FileCode className="h-4 w-4 text-blue-600" />
             HTML Export
           </CardTitle>
         </CardHeader>
@@ -717,7 +717,7 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
 
           <Button
             onClick={handleExportHTML}
-            className="w-full h-9 text-xs bg-orange-600 hover:bg-orange-700 mt-3"
+            className="w-full h-9 text-xs bg-blue-600 hover:bg-blue-700 mt-3"
             disabled={exportMode === "template" && !currentTemplate}
           >
             <Download className="h-3 w-3 mr-2" />
@@ -726,10 +726,10 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
         </CardContent>
       </Card>
 
-      <Card className="border-purple-100 shadow-sm">
+      <Card className="border-blue-100 shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm flex items-center gap-2">
-            <Code className="h-4 w-4 text-purple-600" />
+            <Code className="h-4 w-4 text-blue-600" />
             Configuration
           </CardTitle>
         </CardHeader>
@@ -756,10 +756,10 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
         </CardContent>
       </Card>
 
-      <Card className="border-green-100 shadow-sm">
+      <Card className="border-blue-100 shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm flex items-center gap-2">
-            <FileText className="h-4 w-4 text-green-600" />
+            <FileText className="h-4 w-4 text-blue-600" />
             Data Export
           </CardTitle>
         </CardHeader>

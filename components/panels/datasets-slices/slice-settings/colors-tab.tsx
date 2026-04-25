@@ -30,10 +30,10 @@ export function ColorsTab({
             {chartMode === 'single' && (
                 <div className="space-y-3">
                     <div className="flex items-center gap-2 pb-1 border-b">
-                        <div className="w-2 h-2 bg-indigo-600 rounded-full"></div>
-                        <h3 className="text-[0.80rem] font-semibold text-gray-900">Global Color</h3>
+                        <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                        <h3 className="text-xs font-semibold text-gray-900">Global Color</h3>
                     </div>
-                    <div className="bg-indigo-50 rounded-lg p-3 flex items-center justify-between">
+                    <div className="bg-blue-50 rounded-lg p-3 flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <input
                                 type="color"
@@ -45,7 +45,7 @@ export function ColorsTab({
                         </div>
                         <Button
                             size="sm"
-                            className="h-8 text-xs bg-indigo-600 hover:bg-indigo-700"
+                            className="h-8 text-xs bg-blue-600 hover:bg-blue-700"
                             onClick={() => {
                                 const datasetIndex = chartData.datasets.findIndex((ds: any) => ds === currentDataset)
                                 if (datasetIndex === -1) return
@@ -62,11 +62,11 @@ export function ColorsTab({
             {/* Colors Section */}
             <div className="space-y-3">
                 <div className="flex items-center gap-2 pb-1 border-b">
-                    <div className="w-2 h-2 bg-pink-600 rounded-full"></div>
-                    <h3 className="text-[0.80rem] font-semibold text-gray-900">Individual Colors</h3>
+                    <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                    <h3 className="text-xs font-semibold text-gray-900">Individual Colors</h3>
                 </div>
 
-                <div className="bg-pink-50 rounded-lg p-3">
+                <div className="bg-blue-50 rounded-lg p-3">
                     <div className="space-y-2 max-h-96 overflow-y-auto">
                         {currentDataset.data.map((_: any, pointIndex: number) => {
                             const currentColor = Array.isArray(currentDataset.backgroundColor)

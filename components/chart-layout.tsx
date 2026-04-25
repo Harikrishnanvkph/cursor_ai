@@ -363,7 +363,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
                 variant="default"
                 onClick={handleSaveClick}
                 disabled={!hasJSON || isSaving}
-                className="h-10 w-10 p-0 bg-green-600 hover:bg-green-700 text-white"
+                className="h-10 w-10 p-0 bg-blue-600 hover:bg-blue-700 text-white"
                 title="Save chart to online database"
               >
                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -406,7 +406,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
                   variant="default"
                   onClick={handleSaveClick}
                   disabled={!hasJSON || isSaving}
-                  className="h-8 w-10 p-0 text-xs bg-green-600 hover:bg-green-700 text-white"
+                  className="h-8 w-10 p-0 text-xs bg-blue-600 hover:bg-blue-700 text-white"
                   title="Save chart to online database"
                 >
                   {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}

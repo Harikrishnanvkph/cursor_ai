@@ -41,7 +41,7 @@ export function OverlayHeader({
             </span>
 
             {/* Type Badge */}
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-mono leading-none flex-shrink-0">
+            <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono leading-none flex-shrink-0 ${isSelected ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'}`}>
                 {typeBadge}
             </span>
 

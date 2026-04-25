@@ -204,13 +204,13 @@ export function ImagesTab({
 
         return (
             <div className="space-y-3">
-                <div className="bg-gradient-to-br from-green-50 to-green-100/50 rounded-lg p-3 space-y-3 border border-green-200/50">
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-lg p-3 space-y-3 border border-blue-200/50">
                     {/* Slice Selection & Status */}
                     <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <Label className="text-[10px] font-semibold text-green-700 uppercase tracking-wide">Slice</Label>
+                            <Label className="text-[10px] font-semibold text-blue-700 uppercase tracking-wide">Slice</Label>
                             <Select value={String(idx)} onValueChange={(v) => setImageSelectedIndex(Number(v))}>
-                                <SelectTrigger className="h-7 text-xs flex-1 border-green-200 focus:border-green-400">
+                                <SelectTrigger className="h-7 text-xs flex-1 border-blue-200 focus:border-blue-400">
                                     <span className="text-xs truncate">{`#${idx + 1} — ${currentSliceLabels[idx] || `Slice ${idx + 1}`}`}</span>
                                 </SelectTrigger>
                                 <SelectContent>
@@ -223,7 +223,7 @@ export function ImagesTab({
                             </Select>
                         </div>
                         {hasImage && (
-                            <div className="flex items-center gap-1 text-[10px] text-green-700 bg-green-100 px-2 py-1 rounded-full border border-green-300">
+                            <div className="flex items-center gap-1 text-[10px] text-blue-700 bg-blue-100 px-2 py-1 rounded-full border border-blue-300">
                                 <ImageIcon className="h-2.5 w-2.5" />
                                 <span className="font-medium">Active</span>
                             </div>
@@ -232,9 +232,9 @@ export function ImagesTab({
 
                     {/* Image Preview */}
                     {hasImage && (
-                        <div className="bg-white rounded-lg p-2 border border-green-200 shadow-sm">
-                            <Label className="text-[10px] font-medium text-green-700 mb-1.5 block">Preview</Label>
-                            <div className="relative aspect-square w-full max-w-[100px] mx-auto rounded-lg overflow-hidden border-2 border-green-300 bg-gray-50">
+                        <div className="bg-white rounded-lg p-2 border border-blue-200 shadow-sm">
+                            <Label className="text-[10px] font-medium text-blue-700 mb-1.5 block">Preview</Label>
+                            <div className="relative aspect-square w-full max-w-[100px] mx-auto rounded-lg overflow-hidden border-2 border-blue-300 bg-gray-50">
                                 <img
                                     src={getProxiedImageUrl(hasImage)}
                                     alt="Preview"
@@ -253,7 +253,7 @@ export function ImagesTab({
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="flex-1 h-7 text-xs border-green-300 hover:bg-green-50"
+                                className="flex-1 h-7 text-xs border-blue-300 hover:bg-blue-50"
                                 onClick={() => {
                                     const input = document.createElement('input')
                                     input.type = 'file'
@@ -270,7 +270,7 @@ export function ImagesTab({
                             <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-7 w-7 p-0 border-green-300 hover:bg-green-50"
+                                className="h-7 w-7 p-0 border-blue-300 hover:bg-blue-50"
                                 onClick={() => {
                                     if (datasetIndex === -1) return
                                     const { images, configs } = ensureArrays()
@@ -285,7 +285,7 @@ export function ImagesTab({
                         </div>
                         <Input
                             placeholder="Paste image URL and press Enter"
-                            className="h-7 text-xs flex-1 border-green-200 focus:border-green-400 min-w-0"
+                            className="h-7 text-xs flex-1 border-blue-200 focus:border-blue-400 min-w-0"
                             defaultValue={hasImage || ''}
                             key={`input-single-${idx}-${hasImage}`} // Force re-render when image changes or slice changes
                             onKeyDown={(e) => {
@@ -298,8 +298,8 @@ export function ImagesTab({
                     </div>
 
                     {/* Config for selected slice - Compact */}
-                    <div className="space-y-2 pt-2 border-t border-green-200">
-                        <Label className="text-[10px] font-semibold text-green-700 uppercase tracking-wide">Configuration</Label>
+                    <div className="space-y-2 pt-2 border-t border-blue-200">
+                        <Label className="text-[10px] font-semibold text-blue-700 uppercase tracking-wide">Configuration</Label>
                         <div className="grid grid-cols-2 gap-2">
                             <div className="space-y-1">
                                 <Label className="text-[10px] font-medium text-gray-600">Shape</Label>
@@ -307,7 +307,7 @@ export function ImagesTab({
                                     value={imageConfig.type || 'regular'}
                                     onValueChange={(value) => handleImageConfigChange(idx, 'type', value)}
                                 >
-                                    <SelectTrigger className="h-7 text-xs border-green-200 focus:border-green-400">
+                                    <SelectTrigger className="h-7 text-xs border-blue-200 focus:border-blue-400">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -329,7 +329,7 @@ export function ImagesTab({
                                 <Input
                                     type="number"
                                     value={imageConfig.size === '' || Number.isNaN(imageConfig.size as number) ? 0 : (imageConfig.size ?? getDefaultImageSize(chartType))}
-                                    className="h-7 text-xs border-green-200 focus:border-green-400"
+                                    className="h-7 text-xs border-blue-200 focus:border-blue-400"
                                     min={5}
                                     max={100}
                                     onChange={(e) => handleImageConfigChange(idx, 'size', e.target.value === '' ? 0 : parseInt(e.target.value))}
@@ -343,7 +343,7 @@ export function ImagesTab({
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        className="h-5 px-1.5 text-[10px] text-green-600 hover:text-green-700 hover:bg-green-50"
+                                        className="h-5 px-1.5 text-[10px] text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                                         onClick={() => {
                                             handleImageConfigChange(idx, 'calloutX', undefined);
                                             handleImageConfigChange(idx, 'calloutY', undefined);
@@ -359,7 +359,7 @@ export function ImagesTab({
                                 value={imageConfig.position || 'center'}
                                 onValueChange={(value) => handleImageConfigChange(idx, 'position', value)}
                             >
-                                <SelectTrigger className="h-7 text-xs border-green-200 focus:border-green-400">
+                                <SelectTrigger className="h-7 text-xs border-blue-200 focus:border-blue-400">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -380,8 +380,8 @@ export function ImagesTab({
 
                         {/* Arrow/Callout Settings - Compact */}
                         {imageOptions.supportsArrow && imageConfig.position === 'callout' && (
-                            <div className="space-y-2 pt-2 border-t border-green-200">
-                                <Label className="text-xs font-semibold text-green-700 uppercase tracking-wide">Arrow Settings</Label>
+                            <div className="space-y-2 pt-2 border-t border-blue-200">
+                                <Label className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Arrow Settings</Label>
 
                                 <div className="grid grid-cols-2 gap-2">
                                     <div className="space-y-1">
@@ -389,7 +389,7 @@ export function ImagesTab({
                                         <Input
                                             type="number"
                                             value={imageConfig.borderWidth === '' || Number.isNaN(imageConfig.borderWidth as number) ? 0 : (imageConfig.borderWidth ?? 3)}
-                                            className="h-7 text-xs border-green-200 focus:border-green-400"
+                                            className="h-7 text-xs border-blue-200 focus:border-blue-400"
                                             placeholder="3"
                                             min={0}
                                             max={10}
@@ -403,12 +403,12 @@ export function ImagesTab({
                                             <Input
                                                 type="color"
                                                 value={imageConfig.borderColor || '#ffffff'}
-                                                className="h-7 w-12 p-0.5 border border-green-200 rounded cursor-pointer"
+                                                className="h-7 w-12 p-0.5 border border-blue-200 rounded cursor-pointer"
                                                 onChange={(e) => handleImageConfigChange(idx, 'borderColor', e.target.value)}
                                             />
                                             <Input
                                                 value={imageConfig.borderColor || '#ffffff'}
-                                                className="h-7 text-xs flex-1 border-green-200 focus:border-green-400 font-mono text-[10px]"
+                                                className="h-7 text-xs flex-1 border-blue-200 focus:border-blue-400 font-mono text-[10px]"
                                                 onChange={(e) => handleImageConfigChange(idx, 'borderColor', e.target.value)}
                                             />
                                         </div>
@@ -442,7 +442,7 @@ export function ImagesTab({
                                             <Input
                                                 type="color"
                                                 value={imageConfig.arrowColor || '#666666'}
-                                                className="h-7 w-full p-0.5 border border-green-200 rounded cursor-pointer"
+                                                className="h-7 w-full p-0.5 border border-blue-200 rounded cursor-pointer"
                                                 onChange={(e) => handleImageConfigChange(idx, 'arrowColor', e.target.value)}
                                             />
                                         </div>
@@ -451,7 +451,7 @@ export function ImagesTab({
                                             <Input
                                                 type="number"
                                                 value={imageConfig.arrowEndGap === '' || Number.isNaN(imageConfig.arrowEndGap as number) ? 0 : (imageConfig.arrowEndGap ?? 8)}
-                                                className="h-7 text-xs border-green-200 focus:border-green-400"
+                                                className="h-7 text-xs border-blue-200 focus:border-blue-400"
                                                 placeholder="8"
                                                 min={0}
                                                 max={30}
@@ -466,9 +466,9 @@ export function ImagesTab({
 
                         {/* Fill and Image Fit settings - Compact */}
                         {imageOptions.supportsFill && (
-                            <div className="space-y-2 pt-2 border-t border-green-200">
+                            <div className="space-y-2 pt-2 border-t border-blue-200">
                                 <div className="flex items-center justify-between">
-                                    <Label className="text-[10px] font-semibold text-green-700 uppercase tracking-wide">
+                                    <Label className="text-[10px] font-semibold text-blue-700 uppercase tracking-wide">
                                         {['pie', 'doughnut', 'polarArea', 'pie3d', 'doughnut3d'].includes(chartType) ? 'Fill Slice' : 'Fill Bar'}
                                     </Label>
                                     <Switch
@@ -477,7 +477,7 @@ export function ImagesTab({
                                             // Update BOTH properties atomically to prevent race condition
                                             handleImageConfigChange(idx, { fillSlice: checked, fillBar: checked })
                                         }}
-                                        className="scale-75 data-[state=checked]:bg-green-600"
+                                        className="scale-75 data-[state=checked]:bg-blue-600"
                                     />
                                 </div>
                                 <div className="space-y-1">
@@ -486,7 +486,7 @@ export function ImagesTab({
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            className={`h-7 text-[10px] ${imageConfig.imageFit === 'fill' ? 'bg-green-100 border-green-400 text-green-700' : ''}`}
+                                            className={`h-7 text-[10px] ${imageConfig.imageFit === 'fill' ? 'bg-blue-100 border-blue-400 text-blue-700' : ''}`}
                                             onClick={() => handleImageConfigChange(idx, 'imageFit', 'fill')}
                                             disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ? imageConfig.fillSlice : imageConfig.fillBar)}
                                         >
@@ -496,7 +496,7 @@ export function ImagesTab({
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            className={`h-7 text-[10px] ${imageConfig.imageFit === 'cover' ? 'bg-green-100 border-green-400 text-green-700' : ''}`}
+                                            className={`h-7 text-[10px] ${imageConfig.imageFit === 'cover' ? 'bg-blue-100 border-blue-400 text-blue-700' : ''}`}
                                             onClick={() => handleImageConfigChange(idx, 'imageFit', 'cover')}
                                             disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ? imageConfig.fillSlice : imageConfig.fillBar)}
                                         >
@@ -506,7 +506,7 @@ export function ImagesTab({
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            className={`h-7 text-[10px] ${imageConfig.imageFit === 'contain' ? 'bg-green-100 border-green-400 text-green-700' : ''}`}
+                                            className={`h-7 text-[10px] ${imageConfig.imageFit === 'contain' ? 'bg-blue-100 border-blue-400 text-blue-700' : ''}`}
                                             onClick={() => handleImageConfigChange(idx, 'imageFit', 'contain')}
                                             disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ? imageConfig.fillSlice : imageConfig.fillBar)}
                                         >
@@ -527,16 +527,16 @@ export function ImagesTab({
     return (
         <div className="space-y-3">
             <div className="space-y-2.5">
-                <div className="bg-gradient-to-br from-green-50 to-green-100/50 rounded-lg p-3 space-y-3 border border-green-200/50">
-                    <div className="flex items-center justify-between pb-2 border-b border-green-200">
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-lg p-3 space-y-3 border border-blue-200/50">
+                    <div className="flex items-center justify-between pb-2 border-b border-blue-200">
                         <Label className="text-xs font-semibold text-gray-900 flex items-center gap-2">
-                            <ImageIcon className="h-3.5 w-3.5 text-green-600" />
+                            <ImageIcon className="h-3.5 w-3.5 text-blue-600" />
                             Point Images
                         </Label>
                         <Button
                             size="sm"
                             variant="outline"
-                            className="h-7 text-xs border-green-300 hover:bg-green-50"
+                            className="h-7 text-xs border-blue-300 hover:bg-blue-50"
                             onClick={() => {
                                 currentDataset.data.forEach((_: any, pointIndex: number) => {
                                     const datasetIndex = chartData.datasets.findIndex((ds: any) => ds === currentDataset);
@@ -560,14 +560,14 @@ export function ImagesTab({
                             }
 
                             return (
-                                <div key={pointIndex} className="p-2.5 bg-white rounded-lg border border-green-200 shadow-sm hover:shadow-md transition-shadow">
+                                <div key={pointIndex} className="p-2.5 bg-white rounded-lg border border-blue-200 shadow-sm hover:shadow-md transition-shadow">
                                     <div className="flex items-center justify-between mb-2">
                                         <div className="flex items-center gap-2">
                                             <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">#{pointIndex + 1}</span>
                                             <span className="text-xs font-medium text-gray-700">{String(currentSliceLabels[pointIndex] || `Point ${pointIndex + 1}`)}</span>
                                         </div>
                                         {hasImage && (
-                                            <div className="flex items-center gap-1 text-[10px] text-green-700 bg-green-100 px-2 py-0.5 rounded-full border border-green-300">
+                                            <div className="flex items-center gap-1 text-[10px] text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full border border-blue-300">
                                                 <ImageIcon className="h-2.5 w-2.5" />
                                                 <span className="font-medium">Active</span>
                                             </div>
@@ -576,8 +576,8 @@ export function ImagesTab({
 
                                     {/* Image Preview */}
                                     {hasImage && (
-                                        <div className="mb-2 bg-gray-50 rounded p-1.5 border border-green-200">
-                                            <div className="relative aspect-square w-full max-w-[80px] mx-auto rounded overflow-hidden border border-green-300 bg-white">
+                                        <div className="mb-2 bg-gray-50 rounded p-1.5 border border-blue-200">
+                                            <div className="relative aspect-square w-full max-w-[80px] mx-auto rounded overflow-hidden border border-blue-300 bg-white">
                                                 <img
                                                     src={getProxiedImageUrl(hasImage)}
                                                     alt={`Preview ${pointIndex + 1}`}
@@ -596,7 +596,7 @@ export function ImagesTab({
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                className="flex-1 h-7 text-xs border-green-300 hover:bg-green-50"
+                                                className="flex-1 h-7 text-xs border-blue-300 hover:bg-blue-50"
                                                 onClick={() => {
                                                     const input = document.createElement('input');
                                                     input.type = 'file';
@@ -614,7 +614,7 @@ export function ImagesTab({
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                className="h-7 w-7 p-0 border-green-300 hover:bg-green-50"
+                                                className="h-7 w-7 p-0 border-blue-300 hover:bg-blue-50"
                                                 onClick={() => {
                                                     const datasetIndex = chartData.datasets.findIndex((ds: any) => ds === currentDataset);
                                                     updatePointImage(datasetIndex, pointIndex, '', getDefaultImageConfig(chartType));
@@ -627,7 +627,7 @@ export function ImagesTab({
 
                                         <Input
                                             placeholder="Paste URL and press Enter"
-                                            className="h-7 text-xs flex-1 border-green-200 focus:border-green-400 min-w-0"
+                                            className="h-7 text-xs flex-1 border-blue-200 focus:border-blue-400 min-w-0"
                                             defaultValue={hasImage || ''}
                                             key={`input-grouped-${pointIndex}-${hasImage}`} // force re-render when image changes
                                             onKeyDown={(e) => {
@@ -640,8 +640,8 @@ export function ImagesTab({
                                     </div>
 
                                     {/* Image Configuration - Compact */}
-                                    <div className="space-y-2 pt-2 border-t border-green-200">
-                                        <Label className="text-[10px] font-semibold text-green-700 uppercase tracking-wide">Configuration</Label>
+                                    <div className="space-y-2 pt-2 border-t border-blue-200">
+                                        <Label className="text-[10px] font-semibold text-blue-700 uppercase tracking-wide">Configuration</Label>
 
                                         <div className="grid grid-cols-2 gap-2">
                                             <div className="space-y-1">
@@ -650,7 +650,7 @@ export function ImagesTab({
                                                     value={imageConfig.type || 'regular'}
                                                     onValueChange={(value) => handleImageConfigChange(pointIndex, 'type', value)}
                                                 >
-                                                    <SelectTrigger className="h-7 text-xs border-green-200 focus:border-green-400">
+                                                    <SelectTrigger className="h-7 text-xs border-blue-200 focus:border-blue-400">
                                                         <SelectValue />
                                                     </SelectTrigger>
                                                     <SelectContent>
@@ -673,7 +673,7 @@ export function ImagesTab({
                                                 <Input
                                                     type="number"
                                                     value={imageConfig.size === '' || Number.isNaN(imageConfig.size as number) ? 0 : (imageConfig.size ?? getDefaultImageSize(chartType))}
-                                                    className="h-7 text-xs border-green-200 focus:border-green-400"
+                                                    className="h-7 text-xs border-blue-200 focus:border-blue-400"
                                                     placeholder="20"
                                                     min={5}
                                                     max={100}
@@ -689,7 +689,7 @@ export function ImagesTab({
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
-                                                        className="h-5 px-1.5 text-[10px] text-green-600 hover:text-green-700 hover:bg-green-50"
+                                                        className="h-5 px-1.5 text-[10px] text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                                                         onClick={() => {
                                                             handleImageConfigChange(pointIndex, 'calloutX', undefined);
                                                             handleImageConfigChange(pointIndex, 'calloutY', undefined);
@@ -705,7 +705,7 @@ export function ImagesTab({
                                                 value={imageConfig.position || 'center'}
                                                 onValueChange={(value) => handleImageConfigChange(pointIndex, 'position', value)}
                                             >
-                                                <SelectTrigger className="h-7 text-xs border-green-200 focus:border-green-400">
+                                                <SelectTrigger className="h-7 text-xs border-blue-200 focus:border-blue-400">
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
@@ -726,8 +726,8 @@ export function ImagesTab({
 
                                         {/* Arrow/Callout Settings - Compact */}
                                         {imageOptions.supportsArrow && imageConfig.position === 'callout' && (
-                                            <div className="space-y-2 pt-2 border-t border-green-200">
-                                                <Label className="text-xs font-semibold text-green-700 uppercase tracking-wide">Arrow Settings</Label>
+                                            <div className="space-y-2 pt-2 border-t border-blue-200">
+                                                <Label className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Arrow Settings</Label>
 
                                                 <div className="grid grid-cols-2 gap-2">
                                                     <div className="space-y-1">
@@ -735,7 +735,7 @@ export function ImagesTab({
                                                         <Input
                                                             type="number"
                                                             value={imageConfig.borderWidth === '' || Number.isNaN(imageConfig.borderWidth as number) ? 0 : (imageConfig.borderWidth ?? 3)}
-                                                            className="h-7 text-xs border-green-200 focus:border-green-400"
+                                                            className="h-7 text-xs border-blue-200 focus:border-blue-400"
                                                             placeholder="3"
                                                             min={0}
                                                             max={10}
@@ -749,12 +749,12 @@ export function ImagesTab({
                                                             <Input
                                                                 type="color"
                                                                 value={imageConfig.borderColor || '#ffffff'}
-                                                                className="h-7 w-12 p-0.5 border border-green-200 rounded cursor-pointer"
+                                                                className="h-7 w-12 p-0.5 border border-blue-200 rounded cursor-pointer"
                                                                 onChange={(e) => handleImageConfigChange(pointIndex, 'borderColor', e.target.value)}
                                                             />
                                                             <Input
                                                                 value={imageConfig.borderColor || '#ffffff'}
-                                                                className="h-7 text-xs flex-1 border-green-200 focus:border-green-400 font-mono text-[10px]"
+                                                                className="h-7 text-xs flex-1 border-blue-200 focus:border-blue-400 font-mono text-[10px]"
                                                                 onChange={(e) => handleImageConfigChange(pointIndex, 'borderColor', e.target.value)}
                                                             />
                                                         </div>
@@ -788,7 +788,7 @@ export function ImagesTab({
                                                             <Input
                                                                 type="color"
                                                                 value={imageConfig.arrowColor || '#666666'}
-                                                                className="h-7 w-full p-0.5 border border-green-200 rounded cursor-pointer"
+                                                                className="h-7 w-full p-0.5 border border-blue-200 rounded cursor-pointer"
                                                                 onChange={(e) => handleImageConfigChange(pointIndex, 'arrowColor', e.target.value)}
                                                             />
                                                         </div>
@@ -797,7 +797,7 @@ export function ImagesTab({
                                                             <Input
                                                                 type="number"
                                                                 value={imageConfig.arrowEndGap === '' || Number.isNaN(imageConfig.arrowEndGap as number) ? 0 : (imageConfig.arrowEndGap ?? 8)}
-                                                                className="h-7 text-xs border-green-200 focus:border-green-400"
+                                                                className="h-7 text-xs border-blue-200 focus:border-blue-400"
                                                                 placeholder="8"
                                                                 min={0}
                                                                 max={30}
@@ -812,9 +812,9 @@ export function ImagesTab({
 
                                         {/* Fill Settings - Compact */}
                                         {imageOptions.supportsFill && (
-                                            <div className="space-y-2 pt-2 border-t border-green-200">
+                                            <div className="space-y-2 pt-2 border-t border-blue-200">
                                                 <div className="flex items-center justify-between">
-                                                    <Label className="text-[10px] font-semibold text-green-700 uppercase tracking-wide">
+                                                    <Label className="text-[10px] font-semibold text-blue-700 uppercase tracking-wide">
                                                         {['pie', 'doughnut', 'polarArea'].includes(chartType) ? 'Fill Slice' : 'Fill Bar'}
                                                     </Label>
                                                     <Switch
@@ -828,7 +828,7 @@ export function ImagesTab({
                                                                 handleImageConfigChange(pointIndex, 'fillBar', checked)
                                                             }
                                                         }}
-                                                        className="scale-75 data-[state=checked]:bg-green-600"
+                                                        className="scale-75 data-[state=checked]:bg-blue-600"
                                                     />
                                                 </div>
                                                 <div className="space-y-1">
@@ -837,7 +837,7 @@ export function ImagesTab({
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
-                                                            className={`h-7 text-[10px] ${imageConfig.imageFit === 'fill' ? 'bg-green-100 border-green-400 text-green-700' : ''}`}
+                                                            className={`h-7 text-[10px] ${imageConfig.imageFit === 'fill' ? 'bg-blue-100 border-blue-400 text-blue-700' : ''}`}
                                                             onClick={() => handleImageConfigChange(pointIndex, 'imageFit', 'fill')}
                                                             disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ?
                                                                 imageConfig.fillSlice :
@@ -849,7 +849,7 @@ export function ImagesTab({
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
-                                                            className={`h-7 text-[10px] ${imageConfig.imageFit === 'cover' ? 'bg-green-100 border-green-400 text-green-700' : ''}`}
+                                                            className={`h-7 text-[10px] ${imageConfig.imageFit === 'cover' ? 'bg-blue-100 border-blue-400 text-blue-700' : ''}`}
                                                             onClick={() => handleImageConfigChange(pointIndex, 'imageFit', 'cover')}
                                                             disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ?
                                                                 imageConfig.fillSlice :
@@ -861,7 +861,7 @@ export function ImagesTab({
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
-                                                            className={`h-7 text-[10px] ${imageConfig.imageFit === 'contain' ? 'bg-green-100 border-green-400 text-green-700' : ''}`}
+                                                            className={`h-7 text-[10px] ${imageConfig.imageFit === 'contain' ? 'bg-blue-100 border-blue-400 text-blue-700' : ''}`}
                                                             onClick={() => handleImageConfigChange(pointIndex, 'imageFit', 'contain')}
                                                             disabled={!(['pie', 'doughnut', 'polarArea'].includes(chartType) ?
                                                                 imageConfig.fillSlice :
@@ -876,13 +876,13 @@ export function ImagesTab({
                                         )}
 
                                         {/* Border Settings - Compact */}
-                                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-green-200">
+                                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-blue-200">
                                             <div className="space-y-1">
                                                 <Label className="text-[10px] font-medium text-gray-600">Border Width</Label>
                                                 <Input
                                                     type="number"
                                                     value={imageConfig.borderWidth === '' || Number.isNaN(imageConfig.borderWidth as number) ? 0 : (imageConfig.borderWidth ?? 3)}
-                                                    className="h-7 text-xs border-green-200 focus:border-green-400"
+                                                    className="h-7 text-xs border-blue-200 focus:border-blue-400"
                                                     placeholder="3"
                                                     min={0}
                                                     max={10}
@@ -896,12 +896,12 @@ export function ImagesTab({
                                                     <Input
                                                         type="color"
                                                         value={imageConfig.borderColor || '#ffffff'}
-                                                        className="h-7 w-12 p-0.5 border border-green-200 rounded cursor-pointer"
+                                                        className="h-7 w-12 p-0.5 border border-blue-200 rounded cursor-pointer"
                                                         onChange={(e) => handleImageConfigChange(pointIndex, 'borderColor', e.target.value)}
                                                     />
                                                     <Input
                                                         value={imageConfig.borderColor || '#ffffff'}
-                                                        className="h-7 text-xs flex-1 border-green-200 focus:border-green-400 font-mono text-[10px]"
+                                                        className="h-7 text-xs flex-1 border-blue-200 focus:border-blue-400 font-mono text-[10px]"
                                                         onChange={(e) => handleImageConfigChange(pointIndex, 'borderColor', e.target.value)}
                                                     />
                                                 </div>

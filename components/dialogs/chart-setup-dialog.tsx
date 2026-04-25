@@ -559,7 +559,7 @@ export function ChartSetupDialog({
               </Button>
             )}
             <div>
-              <DialogTitle className="text-xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
+              <DialogTitle className="text-lg font-semibold">
                 {step === 1 ? title : "Initialize Dataset"}
               </DialogTitle>
             </div>

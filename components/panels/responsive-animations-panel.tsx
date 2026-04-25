@@ -239,8 +239,8 @@ export function ResponsiveAnimationsPanel() {
             className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
             onClick={() => setSliceVisibilityOpen(!sliceVisibilityOpen)}
           >
-            <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
-            <h3 className="text-sm font-semibold text-gray-900">Quick Slice Filter</h3>
+            <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+            <h3 className="text-xs font-semibold text-gray-900">Quick Slice Filter</h3>
             <div className="ml-auto flex items-center gap-2">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -260,7 +260,7 @@ export function ResponsiveAnimationsPanel() {
           </div>
 
           {sliceVisibilityOpen && (
-            <div className="bg-purple-50 rounded-b-lg p-3 space-y-2 border-x border-b border-purple-100">
+            <div className="bg-blue-50 rounded-b-lg p-3 space-y-2 border-x border-b border-blue-100">
               <p className="text-xs text-gray-600 mb-2">Click to hide/show slices from the chart</p>
               <div className="flex flex-wrap gap-2">
                 {sliceLabels.map((label: any, index: number) => {
@@ -275,7 +275,7 @@ export function ResponsiveAnimationsPanel() {
                       onClick={() => handleToggleSliceVisibility(index)}
                       className={`h-8 text-xs ${isHidden
                         ? 'bg-gray-100 text-gray-500 hover:bg-gray-200 border-gray-300'
-                        : 'bg-purple-600 hover:bg-purple-700 text-white'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
                         }`}
                     >
                       {isHidden ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
@@ -297,7 +297,7 @@ export function ResponsiveAnimationsPanel() {
             onClick={() => setQuickToolsOpen(!quickToolsOpen)}
           >
             <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-            <h3 className="text-sm font-semibold text-gray-900 flex-1">Quick Tools</h3>
+            <h3 className="text-xs font-semibold text-gray-900 flex-1">Quick Tools</h3>
             <div className="ml-auto flex items-center gap-2">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -316,7 +316,7 @@ export function ResponsiveAnimationsPanel() {
             </div>
           </div>
           {quickToolsOpen && (
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-b-lg p-3 space-y-3 border-x border-b border-blue-100">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-b-lg p-3 space-y-3 border-x border-b border-blue-100">
               {/* Reordering Operations */}
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-blue-900">🔄 Reordering</Label>
@@ -377,37 +377,37 @@ export function ResponsiveAnimationsPanel() {
                     variant="outline"
                     size="sm"
                     onClick={handleTop5}
-                    className="h-8 bg-white hover:bg-green-50 hover:border-green-300 transition-all group"
+                    className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"
                     title="Show Top 5 Values"
                   >
-                    <Trophy className="h-4 w-4 text-green-600 group-hover:scale-110 transition-transform" />
+                    <Trophy className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleTop10}
-                    className="h-8 bg-white hover:bg-green-50 hover:border-green-300 transition-all group"
+                    className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"
                     title="Show Top 10 Values"
                   >
-                    <Trophy className="h-4 w-4 text-green-600 group-hover:scale-110 transition-transform" />
+                    <Trophy className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleAboveThreshold}
-                    className="h-8 bg-white hover:bg-green-50 hover:border-green-300 transition-all group"
+                    className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"
                     title={`Show values above ${thresholdValue}`}
                   >
-                    <TrendingUp className="h-4 w-4 text-green-600 group-hover:scale-110 transition-transform" />
+                    <TrendingUp className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleBelowThreshold}
-                    className="h-8 bg-white hover:bg-green-50 hover:border-green-300 transition-all group"
+                    className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"
                     title={`Show values below ${thresholdValue}`}
                   >
-                    <TrendingDown className="h-4 w-4 text-green-600 group-hover:scale-110 transition-transform" />
+                    <TrendingDown className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
                   </Button>
                 </div>
                 <div className="flex items-center gap-2">
@@ -430,55 +430,55 @@ export function ResponsiveAnimationsPanel() {
                     variant="outline"
                     size="sm"
                     onClick={handleNormalize}
-                    className="h-8 bg-white hover:bg-purple-50 hover:border-purple-300 transition-all group"
+                    className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"
                     title="Normalize to 0-100 range"
                   >
-                    <BarChart3 className="h-4 w-4 text-purple-600 group-hover:scale-110 transition-transform" />
+                    <BarChart3 className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleConvertToPercentage}
-                    className="h-8 bg-white hover:bg-purple-50 hover:border-purple-300 transition-all group"
+                    className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"
                     title="Convert to percentages"
                   >
-                    <Percent className="h-4 w-4 text-purple-600 group-hover:scale-110 transition-transform" />
+                    <Percent className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleRound1Decimal}
-                    className="h-8 bg-white hover:bg-purple-50 hover:border-purple-300 transition-all group"
+                    className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"
                     title="Round to 1 decimal place"
                   >
-                    <Hash className="h-4 w-4 text-purple-600 group-hover:scale-110 transition-transform" />
+                    <Hash className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleRound2Decimals}
-                    className="h-8 bg-white hover:bg-purple-50 hover:border-purple-300 transition-all group"
+                    className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"
                     title="Round to 2 decimal places"
                   >
-                    <Hash className="h-4 w-4 text-purple-600 group-hover:scale-110 transition-transform" />
+                    <Hash className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleDoubleValues}
-                    className="h-8 bg-white hover:bg-purple-50 hover:border-purple-300 transition-all group"
+                    className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"
                     title="Double all values"
                   >
-                    <X className="h-4 w-4 text-purple-600 group-hover:scale-110 transition-transform" />
+                    <X className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleHalfValues}
-                    className="h-8 bg-white hover:bg-purple-50 hover:border-purple-300 transition-all group"
+                    className="h-8 bg-white hover:bg-blue-50 hover:border-blue-300 transition-all group"
                     title="Half all values"
                   >
-                    <Divide className="h-4 w-4 text-purple-600 group-hover:scale-110 transition-transform" />
+                    <Divide className="h-4 w-4 text-blue-600 group-hover:scale-110 transition-transform" />
                   </Button>
                 </div>
               </div>
@@ -516,8 +516,8 @@ export function ResponsiveAnimationsPanel() {
           className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
           onClick={() => setResponsiveDropdownOpen(!responsiveDropdownOpen)}
         >
-          <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-          <h3 className="text-sm font-semibold text-gray-900">Layout and Dimensions</h3>
+          <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+          <h3 className="text-xs font-semibold text-gray-900">Layout and Dimensions</h3>
           <div className="ml-auto flex items-center gap-2">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -536,7 +536,7 @@ export function ResponsiveAnimationsPanel() {
           </div>
         </div>
         {responsiveDropdownOpen && (
-          <div className="bg-green-50 rounded-b-lg p-2 space-y-2 border-x border-b border-green-100">
+          <div className="bg-blue-50 rounded-b-lg p-2 space-y-2 border-x border-b border-blue-100">
             {/* Template Mode Notice */}
             {isTemplateMode && (
               <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200 mb-2">
@@ -546,7 +546,7 @@ export function ResponsiveAnimationsPanel() {
             {/* Radio Buttons for Chart Mode */}
             <div className={`space-y-3 ${isTemplateMode ? 'opacity-50 pointer-events-none' : ''}`}>
               {/* Responsive Option */}
-              <div className="flex items-start space-x-3 p-2 rounded-md hover:bg-green-100/50 transition-colors">
+              <div className="flex items-start space-x-3 p-2 rounded-md hover:bg-blue-100/50 transition-colors">
                 <input
                   type="radio"
                   id="responsive-mode-anim"
@@ -562,7 +562,7 @@ export function ResponsiveAnimationsPanel() {
                       originalDimensions: false
                     });
                   }}
-                  className="mt-1 text-green-600 focus:ring-green-500"
+                  className="mt-1 text-blue-600 focus:ring-blue-500"
                 />
                 <div className="flex flex-col">
                   <Label htmlFor="responsive-mode-anim" className="text-sm font-medium cursor-pointer">
@@ -573,7 +573,7 @@ export function ResponsiveAnimationsPanel() {
               </div>
 
               {/* Fixed Dimensions Option */}
-              <div className="flex items-start space-x-3 p-2 rounded-md hover:bg-green-100/50 transition-colors">
+              <div className="flex items-start space-x-3 p-2 rounded-md hover:bg-blue-100/50 transition-colors">
                 <input
                   type="radio"
                   id="manual-mode-anim"
@@ -596,7 +596,7 @@ export function ResponsiveAnimationsPanel() {
                       height: height
                     });
                   }}
-                  className="mt-1 text-green-600 focus:ring-green-500"
+                  className="mt-1 text-blue-600 focus:ring-blue-500"
                 />
                 <div className="flex flex-col flex-1">
                   <Label htmlFor="manual-mode-anim" className="text-sm font-medium cursor-pointer mb-1">
@@ -605,7 +605,7 @@ export function ResponsiveAnimationsPanel() {
                   
                   {/* Inputs shown only when Fixed Dimensions is active */}
                   {(chartConfig.manualDimensions === true || chartConfig.dynamicDimension === true) && !(chartConfig as any).templateDimensions && !(chartConfig as any).originalDimensions && (
-                    <div className="mt-2 space-y-2 bg-white p-2 rounded-md border border-green-200">
+                    <div className="mt-2 space-y-2 bg-white p-2 rounded-md border border-blue-200">
                       <div className="flex items-center gap-2">
                         <Label className="text-xs font-medium w-12">Unit</Label>
                         <select
@@ -685,7 +685,7 @@ export function ResponsiveAnimationsPanel() {
                               dynamicDimension: e.target.checked
                             });
                           }}
-                          className="rounded text-green-600 focus:ring-green-500 border-gray-300"
+                          className="rounded text-blue-600 focus:ring-blue-500 border-gray-300"
                         />
                         <Label htmlFor="enable-drag-resize" className="text-xs text-gray-600 cursor-pointer">
                           Enable drag-to-resize handles on chart
@@ -750,7 +750,7 @@ export function ResponsiveAnimationsPanel() {
                   const heightNum = parseInt(originalCloudDimensions.height);
 
                   return (
-                    <div className="flex items-start space-x-3 p-2 rounded-md hover:bg-indigo-50 transition-colors">
+                    <div className="flex items-start space-x-3 p-2 rounded-md hover:bg-blue-50 transition-colors">
                       <input
                         type="radio"
                         id="original-dimension-mode-anim"
@@ -771,10 +771,10 @@ export function ResponsiveAnimationsPanel() {
                             });
                           }
                         }}
-                        className="mt-1 text-indigo-600 focus:ring-indigo-500"
+                        className="mt-1 text-blue-600 focus:ring-blue-500"
                       />
                       <div className="flex flex-col">
-                        <Label htmlFor="original-dimension-mode-anim" className="text-sm font-medium cursor-pointer text-indigo-700">
+                        <Label htmlFor="original-dimension-mode-anim" className="text-sm font-medium cursor-pointer text-blue-700">
                           Original Dimensions {(chartConfig as any).originalDimensions === true ? '(Active)' : ''}
                         </Label>
                         <span className="text-xs text-gray-500">

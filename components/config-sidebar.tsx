@@ -126,7 +126,7 @@ export function ConfigSidebar() {
             <div className="mb-3 px-1">
               <button
                 onClick={() => openGallery()}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-all w-full justify-center shadow-sm"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-all w-full justify-center shadow-sm"
               >
                 <LayoutGrid className="w-3.5 h-3.5" />
                 Browse Formats
@@ -155,7 +155,7 @@ export function ConfigSidebar() {
               <div className="flex items-center gap-0 bg-gray-100 rounded-full p-[2px] border border-gray-200 flex-shrink-0">
                 <button
                   onClick={() => setEditorMode('chart')}
-                  className={`px-2 py-1 text-[10px] font-medium rounded-full transition-all ${editorMode === 'chart' ? 'bg-blue-500 text-white shadow-sm' : 'bg-transparent text-gray-500 hover:text-gray-700'}`}
+                  className={`px-2 py-1 text-xs font-medium rounded-full transition-all ${editorMode === 'chart' ? 'bg-blue-500 text-white shadow-sm' : 'bg-transparent text-gray-500 hover:text-gray-700'}`}
                 >Chart</button>
                 <button
                   onClick={() => {
@@ -165,7 +165,7 @@ export function ConfigSidebar() {
                     }
                     setEditorMode('template')
                   }}
-                  className={`px-2 py-1 text-[10px] font-medium rounded-full transition-all ${editorMode === 'template' ? 'bg-blue-500 text-white shadow-sm' : 'bg-transparent text-gray-500 hover:text-gray-700'}`}
+                  className={`px-2 py-1 text-xs font-medium rounded-full transition-all ${editorMode === 'template' ? 'bg-blue-500 text-white shadow-sm' : 'bg-transparent text-gray-500 hover:text-gray-700'}`}
                 >Template</button>
               </div>
               <Select value={chartType} onValueChange={(value: any) => setChartType(value)}>
@@ -194,7 +194,7 @@ export function ConfigSidebar() {
                   onCheckedChange={handleToggleFillArea}
                   className="scale-75 data-[state=unchecked]:bg-input/50"
                 />
-                <Label htmlFor="fill-toggle" className="text-[12px] text-gray-600">Fill</Label>
+                <Label htmlFor="fill-toggle" className="text-xs text-gray-600">Fill</Label>
               </div>
               <div className="flex flex-col items-center gap-1">
                 <Switch
@@ -204,7 +204,7 @@ export function ConfigSidebar() {
                   disabled={!fillArea}
                   className="scale-75 data-[state=unchecked]:bg-input/50"
                 />
-                <Label htmlFor="border-toggle" className="text-[12px] text-gray-600">Border</Label>
+                <Label htmlFor="border-toggle" className="text-xs text-gray-600">Border</Label>
               </div>
               <div className="flex flex-col items-center gap-1">
                 <Switch
@@ -213,7 +213,7 @@ export function ConfigSidebar() {
                   onCheckedChange={handleToggleShowImages}
                   className="scale-75 data-[state=unchecked]:bg-input/50"
                 />
-                <Label htmlFor="show-images-toggle" className="text-[12px] text-gray-600">Image</Label>
+                <Label htmlFor="show-images-toggle" className="text-xs text-gray-600">Image</Label>
               </div>
               <div className="flex flex-col items-center gap-1">
                 <Switch
@@ -222,7 +222,7 @@ export function ConfigSidebar() {
                   onCheckedChange={toggleShowLabels}
                   className="scale-75 data-[state=unchecked]:bg-input/50"
                 />
-                <Label htmlFor="show-labels-toggle" className="text-[12px] text-gray-600">Label</Label>
+                <Label htmlFor="show-labels-toggle" className="text-xs text-gray-600">Label</Label>
               </div>
             </div>
 

@@ -47,11 +47,11 @@ export function TextOverlaysTab() {
     return (
         <div className="space-y-4">
             <Card>
-                <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Type className="h-4 w-4" />Add Text</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Type className="h-3.5 w-3.5 text-blue-600" />Add Text</CardTitle></CardHeader>
                 <CardContent>
                     <div className="space-y-2">
-                        <Textarea value={newText} onChange={(e) => setNewText(e.target.value)} placeholder="Enter text..." className="min-h-[80px] resize-none" rows={3} />
-                        <Button onClick={handleAddText} disabled={!newText.trim()}>Add Text</Button>
+                        <Textarea value={newText} onChange={(e) => setNewText(e.target.value)} placeholder="Enter text..." className="min-h-[80px] resize-none text-xs" rows={3} />
+                        <Button onClick={handleAddText} disabled={!newText.trim()} size="sm" className="text-xs">Add Text</Button>
                     </div>
                 </CardContent>
             </Card>
@@ -99,30 +99,30 @@ export function TextOverlaysTab() {
 
                                 {isSelected && (
                                     <CardContent className="space-y-4 pt-3 pb-4">
-                                        <div><Label className="text-xs">Text</Label><Textarea value={text.text} onChange={(e) => updateOverlayText(text.id, { text: e.target.value })} className="min-h-[80px]" /></div>
+                                        <div><Label className="text-xs">Text</Label><Textarea value={text.text} onChange={(e) => updateOverlayText(text.id, { text: e.target.value })} className="min-h-[80px] text-xs" /></div>
                                         <div className="grid grid-cols-2 gap-2">
-                                            <div><Label className="text-xs">X</Label><Input type="number" value={text.x} onChange={e => updateOverlayText(text.id, { x: parseInt(e.target.value) || 0 })} className="h-8" /></div>
-                                            <div><Label className="text-xs">Y</Label><Input type="number" value={text.y} onChange={e => updateOverlayText(text.id, { y: parseInt(e.target.value) || 0 })} className="h-8" /></div>
+                                            <div><Label className="text-xs">X</Label><Input type="number" value={text.x} onChange={e => updateOverlayText(text.id, { x: parseInt(e.target.value) || 0 })} className="h-8 text-xs" /></div>
+                                            <div><Label className="text-xs">Y</Label><Input type="number" value={text.y} onChange={e => updateOverlayText(text.id, { y: parseInt(e.target.value) || 0 })} className="h-8 text-xs" /></div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-2">
-                                            <div><Label className="text-xs">Size</Label><Input type="number" value={text.fontSize} onChange={e => updateOverlayText(text.id, { fontSize: parseInt(e.target.value) || 12 })} className="h-8" /></div>
+                                            <div><Label className="text-xs">Size</Label><Input type="number" value={text.fontSize} onChange={e => updateOverlayText(text.id, { fontSize: parseInt(e.target.value) || 12 })} className="h-8 text-xs" /></div>
                                             <div><Label className="text-xs">Font</Label>
                                                 <Select value={text.fontFamily} onValueChange={v => updateOverlayText(text.id, { fontFamily: v })}>
-                                                    <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                                                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                                                     <SelectContent>{['Arial', 'Helvetica', 'Times New Roman', 'Courier New', 'Georgia'].map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
                                                 </Select>
                                             </div>
                                         </div>
-                                        <div><Label className="text-xs">Color</Label><Input type="color" value={text.color} onChange={e => updateOverlayText(text.id, { color: e.target.value })} className="h-8 w-full" /></div>
-                                        <div><Label className="text-xs">Max Width</Label><Input type="number" value={text.maxWidth || ''} onChange={e => updateOverlayText(text.id, { maxWidth: parseInt(e.target.value) || undefined })} className="h-8" /></div>
+                                        <div><Label className="text-xs">Color</Label><Input type="color" value={text.color} onChange={e => updateOverlayText(text.id, { color: e.target.value })} className="h-8 w-full cursor-pointer" /></div>
+                                        <div><Label className="text-xs">Max Width</Label><Input type="number" value={text.maxWidth || ''} onChange={e => updateOverlayText(text.id, { maxWidth: parseInt(e.target.value) || undefined })} className="h-8 text-xs" /></div>
                                         <div className="flex items-center space-x-2"><Switch id={`trans-${text.id}`} checked={text.backgroundTransparent} onCheckedChange={v => updateOverlayText(text.id, { backgroundTransparent: v })} /><Label htmlFor={`trans-${text.id}`} className="text-xs">Transparent BG</Label></div>
-                                        {!text.backgroundTransparent && <div><Label className="text-xs">BG Color</Label><Input type="color" value={text.backgroundColor} onChange={e => updateOverlayText(text.id, { backgroundColor: e.target.value })} className="h-8 w-full" /></div>}
+                                        {!text.backgroundTransparent && <div><Label className="text-xs">BG Color</Label><Input type="color" value={text.backgroundColor} onChange={e => updateOverlayText(text.id, { backgroundColor: e.target.value })} className="h-8 w-full cursor-pointer" /></div>}
                                         <div className="grid grid-cols-2 gap-2">
                                             <div><Label className="text-xs">Pad X</Label><Slider value={[text.paddingX || 8]} onValueChange={([v]) => updateOverlayText(text.id, { paddingX: v })} max={20} className="mt-2" /></div>
                                             <div><Label className="text-xs">Pad Y</Label><Slider value={[text.paddingY || 4]} onValueChange={([v]) => updateOverlayText(text.id, { paddingY: v })} max={20} className="mt-2" /></div>
                                         </div>
                                         <div><Label className="text-xs">Rotation</Label> <Slider value={[text.rotation]} onValueChange={([v]) => updateOverlayText(text.id, { rotation: v })} min={-180} max={180} className="mt-2" /></div>
-                                        <div><Label className="text-xs">Order</Label><Input type="number" value={text.zIndex} onChange={e => updateOverlayText(text.id, { zIndex: parseInt(e.target.value) || 1 })} className="h-8" /></div>
+                                        <div><Label className="text-xs">Order</Label><Input type="number" value={text.zIndex} onChange={e => updateOverlayText(text.id, { zIndex: parseInt(e.target.value) || 1 })} className="h-8 text-xs" /></div>
                                     </CardContent>
                                 )}
                             </Card>

@@ -35,14 +35,14 @@ export function MoreTab({ axis, config, onUpdate, updateConfig }: MoreTabProps) 
                     className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
                     onClick={() => setAxisLineDropdownOpen(!axisLineDropdownOpen)}
                 >
-                    <div className="w-2 h-2 bg-orange-600 rounded-full"></div>
+                    <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
                     <h3 className="text-sm font-semibold text-gray-900">Axis Line</h3>
                     <div className="ml-auto flex items-center gap-2">
                         <div onClick={(e) => e.stopPropagation()}>
                             <Switch
                                 checked={config?.border?.display !== false}
                                 onCheckedChange={(checked) => updateConfig('border.display', checked)}
-                                className="data-[state=checked]:bg-orange-600"
+                                className="data-[state=checked]:bg-blue-600"
                             />
                         </div>
                         <svg
@@ -64,7 +64,7 @@ export function MoreTab({ axis, config, onUpdate, updateConfig }: MoreTabProps) 
 
                 {/* Dropdown Content */}
                 {axisLineDropdownOpen && (
-                    <div className="bg-orange-50 rounded-b-lg p-3 space-y-3 border-x border-b border-orange-100">
+                    <div className="bg-blue-50 rounded-b-lg p-3 space-y-3 border-x border-b border-blue-100">
                         <div className="grid grid-cols-2 gap-3">
                             {/* Color */}
                             <div className="flex flex-col items-start gap-1">
@@ -116,7 +116,7 @@ export function MoreTab({ axis, config, onUpdate, updateConfig }: MoreTabProps) 
                     className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
                     onClick={() => setScaleConfigDropdownOpen(!scaleConfigDropdownOpen)}
                 >
-                    <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
+                    <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
                     <h3 className="text-sm font-semibold text-gray-900">Scale Configuration</h3>
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -136,7 +136,7 @@ export function MoreTab({ axis, config, onUpdate, updateConfig }: MoreTabProps) 
 
                 {/* Dropdown Content */}
                 {scaleConfigDropdownOpen && (
-                    <div className="bg-purple-50 rounded-b-lg p-3 space-y-3 relative overflow-hidden border-x border-b border-purple-100">
+                    <div className="bg-blue-50 rounded-b-lg p-3 space-y-3 relative overflow-hidden border-x border-b border-blue-100">
                         {/* Scale Bounds */}
                         <div className="space-y-1">
                             <Label className="text-xs font-medium">Scale Bounds</Label>

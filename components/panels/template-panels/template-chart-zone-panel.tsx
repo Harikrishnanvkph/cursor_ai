@@ -239,7 +239,7 @@ export function TemplateChartZonePanel() {
               </div>
               <div className="flex justify-between">
                 <span>Mode</span>
-                <span className="font-medium text-green-600">Responsive</span>
+                <span className="font-medium text-blue-600">Responsive</span>
               </div>
             </div>
           </div>

@@ -553,12 +553,12 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
             {/* 3D Effect Settings - Only for pie3d and doughnut3d */}
             {(chartType === 'pie3d' as any || chartType === 'doughnut3d' as any) && (
                 <div className="space-y-3">
-                    <div className="flex items-center gap-2 p-3 bg-purple-50 rounded-lg border border-purple-100">
-                        <svg className="h-4 w-4 text-purple-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                        <svg className="h-4 w-4 text-blue-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <ellipse cx="12" cy="10" rx="10" ry="6" />
                             <path d="M2 10v4c0 3.31 4.48 6 10 6s10-2.69 10-6v-4" />
                         </svg>
-                        <h3 className="text-sm font-semibold text-purple-900">
+                        <h3 className="text-sm font-semibold text-blue-900">
                             3D Effect Settings
                         </h3>
                     </div>
@@ -613,8 +613,8 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                     </div>
 
                     {/* Shadow Settings */}
-                    <div className="pt-2 border-t border-purple-100 space-y-3">
-                        <div className="text-xs font-medium text-purple-900">Shadow</div>
+                    <div className="pt-2 border-t border-blue-100 space-y-3">
+                        <div className="text-xs font-medium text-blue-900">Shadow</div>
 
                         <div className="space-y-3">
                             {/* Shadow Blur */}
@@ -982,15 +982,15 @@ function DrawDesignsSection({ chartData, chartType, handleUpdateDataset }: DrawD
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex items-center gap-2 p-3 bg-indigo-50 rounded-lg border border-indigo-100 hover:bg-indigo-100 transition-colors"
+                className="w-full flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100 hover:bg-blue-100 transition-colors"
             >
-                <Brush className="h-4 w-4 text-indigo-900" />
-                <span className="text-sm font-semibold text-indigo-900 flex-1 text-left">Draw Designs on Slices</span>
+                <Brush className="h-4 w-4 text-blue-900" />
+                <span className="text-sm font-semibold text-blue-900 flex-1 text-left">Draw Designs on Slices</span>
                 <span
                     className="relative group"
                     onClick={(e) => e.stopPropagation()}
                 >
-                    <Info className="h-3.5 w-3.5 text-indigo-400 hover:text-indigo-700 transition-colors" />
+                    <Info className="h-3.5 w-3.5 text-blue-400 hover:text-blue-700 transition-colors" />
                     <span className="absolute right-0 top-5 z-50 hidden group-hover:block w-48 p-2 text-xs text-white bg-gray-800 rounded-lg shadow-lg">
                         {isGroupedMode
                             ? 'Pattern applies to the entire selected dataset in grouped mode.'
@@ -999,7 +999,7 @@ function DrawDesignsSection({ chartData, chartType, handleUpdateDataset }: DrawD
                             : 'Select a slice and apply a decorative pattern overlay.'}
                     </span>
                 </span>
-                <ChevronDown className={`h-4 w-4 text-indigo-900 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`h-4 w-4 text-blue-900 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {isOpen && (

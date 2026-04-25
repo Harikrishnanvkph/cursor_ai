@@ -66,13 +66,13 @@ export function ImageOverlaysTab() {
             <Card>
                 <CardHeader>
                     <CardTitle className="text-sm flex items-center gap-2">
-                        <ImageIcon className="h-4 w-4" />
+                        <ImageIcon className="h-3.5 w-3.5 text-blue-600" />
                         Add Image
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                     <div>
-                        <Label className="text-xs text-gray-600 mb-2 block">Upload from file</Label>
+                        <Label className="text-xs text-gray-500 mb-2 block">Upload from file</Label>
                         <input
                             ref={fileInputRef}
                             type="file"
@@ -116,11 +116,11 @@ export function ImageOverlaysTab() {
                     </div>
 
                     <div>
-                        <Label className="text-xs text-gray-600 mb-2 block">Add from URL</Label>
+                        <Label className="text-xs text-gray-500 mb-2 block">Add from URL</Label>
                         <div className="flex gap-2">
                             <Input
                                 placeholder="Enter image URL (https://...)"
-                                className="h-8 flex-1"
+                                className="h-8 flex-1 text-xs"
                                 onKeyPress={(e) => {
                                     if (e.key === 'Enter') {
                                         const url = e.currentTarget.value.trim()
@@ -233,11 +233,11 @@ export function ImageOverlaysTab() {
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
                                                 <Label className="text-xs">X Position</Label>
-                                                <Input type="number" value={image.x} onChange={(e) => updateOverlayImage(image.id, { x: parseInt(e.target.value) || 0 })} className="h-8" />
+                                                <Input type="number" value={image.x} onChange={(e) => updateOverlayImage(image.id, { x: parseInt(e.target.value) || 0 })} className="h-8 text-xs" />
                                             </div>
                                             <div>
                                                 <Label className="text-xs">Y Position</Label>
-                                                <Input type="number" value={image.y} onChange={(e) => updateOverlayImage(image.id, { y: parseInt(e.target.value) || 0 })} className="h-8" />
+                                                <Input type="number" value={image.y} onChange={(e) => updateOverlayImage(image.id, { y: parseInt(e.target.value) || 0 })} className="h-8 text-xs" />
                                             </div>
                                         </div>
 
@@ -250,11 +250,11 @@ export function ImageOverlaysTab() {
                                                 <div className="grid grid-cols-2 gap-2">
                                                     <div>
                                                         <Label className="text-xs">Width</Label>
-                                                        <Input type="number" value={image.width} onChange={(e) => updateOverlayImage(image.id, { width: parseInt(e.target.value) || 0 })} className="h-8" />
+                                                        <Input type="number" value={image.width} onChange={(e) => updateOverlayImage(image.id, { width: parseInt(e.target.value) || 0 })} className="h-8 text-xs" />
                                                     </div>
                                                     <div>
                                                         <Label className="text-xs">Height</Label>
-                                                        <Input type="number" value={image.height} onChange={(e) => updateOverlayImage(image.id, { height: parseInt(e.target.value) || 0 })} className="h-8" />
+                                                        <Input type="number" value={image.height} onChange={(e) => updateOverlayImage(image.id, { height: parseInt(e.target.value) || 0 })} className="h-8 text-xs" />
                                                     </div>
                                                 </div>
                                             )}
@@ -263,7 +263,7 @@ export function ImageOverlaysTab() {
                                         <div>
                                             <Label className="text-xs">Shape</Label>
                                             <Select value={image.shape} onValueChange={(value: 'rectangle' | 'circle' | 'rounded') => updateOverlayImage(image.id, { shape: value, imageFit: value === 'circle' ? 'cover' : 'fill' })}>
-                                                <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                                                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="rectangle"><div className="flex items-center gap-2"><Square className="h-4 w-4" /> Rectangle</div></SelectItem>
                                                     <SelectItem value="circle"><div className="flex items-center gap-2"><Circle className="h-4 w-4" /> Circle</div></SelectItem>
@@ -289,13 +289,13 @@ export function ImageOverlaysTab() {
                                         {image.borderWidth > 0 && (
                                             <div>
                                                 <Label className="text-xs">Border Color</Label>
-                                                <Input type="color" value={image.borderColor} onChange={(e) => updateOverlayImage(image.id, { borderColor: e.target.value })} className="h-8 w-full" />
+                                                <Input type="color" value={image.borderColor} onChange={(e) => updateOverlayImage(image.id, { borderColor: e.target.value })} className="h-8 w-full cursor-pointer" />
                                             </div>
                                         )}
 
                                         <div>
                                             <Label className="text-xs">Layer Order</Label>
-                                            <Input type="number" value={image.zIndex} onChange={(e) => updateOverlayImage(image.id, { zIndex: parseInt(e.target.value) || 1 })} className="h-8" />
+                                            <Input type="number" value={image.zIndex} onChange={(e) => updateOverlayImage(image.id, { zIndex: parseInt(e.target.value) || 1 })} className="h-8 text-xs" />
                                         </div>
                                     </CardContent>
                                 )}
@@ -305,9 +305,9 @@ export function ImageOverlaysTab() {
                 }
 
                 {overlayImages.length === 0 && (
-                    <div className="text-center py-8 text-gray-500">
-                        <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                        <p>No overlay images added</p>
+                    <div className="text-center py-8 text-gray-400">
+                        <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                        <p className="text-xs">No overlay images added</p>
                     </div>
                 )}
             </div>

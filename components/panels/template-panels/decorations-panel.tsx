@@ -189,7 +189,7 @@ function ShapeListItem({ shape, isSelected, onSelect, onUpdate, onRemove, onDupl
   return (
     <Card
       className={`transition-all cursor-pointer ${isSelected
-          ? 'ring-2 ring-amber-500 border-amber-300 shadow-md'
+          ? 'ring-2 ring-blue-500 border-blue-300 shadow-md'
           : 'border-gray-100 hover:border-gray-200 hover:shadow-sm'
         }`}
       onClick={onSelect}
@@ -224,19 +224,19 @@ function ShapeListItem({ shape, isSelected, onSelect, onUpdate, onRemove, onDupl
         <CardContent className="space-y-5 pt-1 pb-4 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
           {/* Quick actions */}
           <div className="flex gap-1.5 pt-2">
-            <Button variant="outline" size="sm" className="h-7 text-[10px] flex-1" onClick={onDuplicate}>
+            <Button variant="outline" size="sm" className="h-8 text-[10px] flex-1" onClick={onDuplicate}>
               <Copy className="h-3 w-3 mr-1" /> Duplicate
             </Button>
-            <Button variant="outline" size="sm" className="h-7 text-[10px] flex-1" onClick={onToggleLock}>
+            <Button variant="outline" size="sm" className="h-8 text-[10px] flex-1" onClick={onToggleLock}>
               {shape.locked ? <Lock className="h-3 w-3 mr-1" /> : <Unlock className="h-3 w-3 mr-1" />}
               {shape.locked ? 'Locked' : 'Lock'}
             </Button>
           </div>
           <div className="flex gap-1.5">
-            <Button variant="outline" size="sm" className="h-7 text-[10px] flex-1" onClick={onBringFront}>
+            <Button variant="outline" size="sm" className="h-8 text-[10px] flex-1" onClick={onBringFront}>
               <ArrowUpToLine className="h-3 w-3 mr-1" /> Front
             </Button>
-            <Button variant="outline" size="sm" className="h-7 text-[10px] flex-1" onClick={onSendBack}>
+            <Button variant="outline" size="sm" className="h-8 text-[10px] flex-1" onClick={onSendBack}>
               <ArrowDownToLine className="h-3 w-3 mr-1" /> Back
             </Button>
           </div>
@@ -257,32 +257,32 @@ function ShapeListItem({ shape, isSelected, onSelect, onUpdate, onRemove, onDupl
               <div>
                 <Label className="text-[10px] uppercase text-slate-400 font-bold tracking-wider block mb-2">Formatting</Label>
                 <div className="flex gap-1 mb-3">
-                  <Button variant={shape.fontWeight === 'bold' ? 'default' : 'outline'} size="sm" className="h-7 w-7 p-0"
+                  <Button variant={shape.fontWeight === 'bold' ? 'default' : 'outline'} size="sm" className="h-8 w-8 p-0"
                     onClick={() => onUpdate({ fontWeight: shape.fontWeight === 'bold' ? 'normal' : 'bold' })}>
                     <Bold className="h-3.5 w-3.5" />
                   </Button>
-                  <Button variant={shape.fontStyle === 'italic' ? 'default' : 'outline'} size="sm" className="h-7 w-7 p-0"
+                  <Button variant={shape.fontStyle === 'italic' ? 'default' : 'outline'} size="sm" className="h-8 w-8 p-0"
                     onClick={() => onUpdate({ fontStyle: shape.fontStyle === 'italic' ? 'normal' : 'italic' })}>
                     <Italic className="h-3.5 w-3.5" />
                   </Button>
-                  <Button variant={shape.textDecoration === 'underline' ? 'default' : 'outline'} size="sm" className="h-7 w-7 p-0"
+                  <Button variant={shape.textDecoration === 'underline' ? 'default' : 'outline'} size="sm" className="h-8 w-8 p-0"
                     onClick={() => onUpdate({ textDecoration: shape.textDecoration === 'underline' ? 'none' : 'underline' })}>
                     <Underline className="h-3.5 w-3.5" />
                   </Button>
-                  <Button variant={shape.textDecoration === 'line-through' ? 'default' : 'outline'} size="sm" className="h-7 w-7 p-0"
+                  <Button variant={shape.textDecoration === 'line-through' ? 'default' : 'outline'} size="sm" className="h-8 w-8 p-0"
                     onClick={() => onUpdate({ textDecoration: shape.textDecoration === 'line-through' ? 'none' : 'line-through' })}>
                     <Strikethrough className="h-3.5 w-3.5" />
                   </Button>
                   <div className="w-[1px] bg-slate-200 mx-1" />
-                  <Button variant={shape.textAlign === 'left' || !shape.textAlign ? 'default' : 'outline'} size="sm" className="h-7 w-7 p-0"
+                  <Button variant={shape.textAlign === 'left' || !shape.textAlign ? 'default' : 'outline'} size="sm" className="h-8 w-8 p-0"
                     onClick={() => onUpdate({ textAlign: 'left' })}>
                     <AlignLeft className="h-3.5 w-3.5" />
                   </Button>
-                  <Button variant={shape.textAlign === 'center' ? 'default' : 'outline'} size="sm" className="h-7 w-7 p-0"
+                  <Button variant={shape.textAlign === 'center' ? 'default' : 'outline'} size="sm" className="h-8 w-8 p-0"
                     onClick={() => onUpdate({ textAlign: 'center' })}>
                     <AlignCenter className="h-3.5 w-3.5" />
                   </Button>
-                  <Button variant={shape.textAlign === 'right' ? 'default' : 'outline'} size="sm" className="h-7 w-7 p-0"
+                  <Button variant={shape.textAlign === 'right' ? 'default' : 'outline'} size="sm" className="h-8 w-8 p-0"
                     onClick={() => onUpdate({ textAlign: 'right' })}>
                     <AlignRight className="h-3.5 w-3.5" />
                   </Button>
@@ -291,7 +291,7 @@ function ShapeListItem({ shape, isSelected, onSelect, onUpdate, onRemove, onDupl
                   <div>
                     <Label className="text-[10px] text-slate-500">Font Family</Label>
                     <Select value={shape.fontFamily || 'Arial'} onValueChange={v => onUpdate({ fontFamily: v })}>
-                      <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {['Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Courier New', 'Inter', 'Roboto', 'Verdana'].map(f =>
                           <SelectItem key={f} value={f} className="text-xs">{f}</SelectItem>
@@ -302,7 +302,7 @@ function ShapeListItem({ shape, isSelected, onSelect, onUpdate, onRemove, onDupl
                   {shape.type === 'textbox' && (
                     <div>
                       <Label className="text-[10px] text-slate-500">Font Size</Label>
-                      <Input type="number" value={shape.fontSize || 14} onChange={e => onUpdate({ fontSize: Math.max(6, parseInt(e.target.value) || 14) })} className="h-7 text-xs" />
+                      <Input type="number" value={shape.fontSize || 14} onChange={e => onUpdate({ fontSize: Math.max(6, parseInt(e.target.value) || 14) })} className="h-8 text-xs" />
                     </div>
                   )}
                 </div>
@@ -311,8 +311,8 @@ function ShapeListItem({ shape, isSelected, onSelect, onUpdate, onRemove, onDupl
                 <div>
                   <Label className="text-[10px] text-slate-500 block mb-1">Text Color</Label>
                   <div className="relative flex items-center gap-2">
-                    <Input type="color" value={shape.textColor || '#1e293b'} onChange={e => onUpdate({ textColor: e.target.value })} className="h-7 w-7 p-0 border opacity-0 absolute z-10 cursor-pointer" />
-                    <div className="h-7 w-7 rounded border border-slate-200 flex-shrink-0" style={{ backgroundColor: shape.textColor || '#1e293b' }} />
+                    <Input type="color" value={shape.textColor || '#1e293b'} onChange={e => onUpdate({ textColor: e.target.value })} className="h-8 w-8 p-0 border opacity-0 absolute z-10 cursor-pointer" />
+                    <div className="h-8 w-8 rounded border border-slate-200 flex-shrink-0" style={{ backgroundColor: shape.textColor || '#1e293b' }} />
                     <span className="text-[9px] text-slate-400 font-mono uppercase truncate">{shape.textColor || '#1e293b'}</span>
                   </div>
                 </div>
@@ -352,19 +352,19 @@ function ShapeListItem({ shape, isSelected, onSelect, onUpdate, onRemove, onDupl
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-[10px] text-slate-500">X</Label>
-                <Input type="number" value={Math.round(shape.x)} onChange={e => onUpdate({ x: parseFloat(e.target.value) || 0 })} className="h-7 text-xs" disabled={shape.locked} />
+                <Input type="number" value={Math.round(shape.x)} onChange={e => onUpdate({ x: parseFloat(e.target.value) || 0 })} className="h-8 text-xs" disabled={shape.locked} />
               </div>
               <div>
                 <Label className="text-[10px] text-slate-500">Y</Label>
-                <Input type="number" value={Math.round(shape.y)} onChange={e => onUpdate({ y: parseFloat(e.target.value) || 0 })} className="h-7 text-xs" disabled={shape.locked} />
+                <Input type="number" value={Math.round(shape.y)} onChange={e => onUpdate({ y: parseFloat(e.target.value) || 0 })} className="h-8 text-xs" disabled={shape.locked} />
               </div>
               <div>
                 <Label className="text-[10px] text-slate-500">W</Label>
-                <Input type="number" value={Math.round(shape.width)} onChange={e => onUpdate({ width: parseFloat(e.target.value) || 0 })} className="h-7 text-xs" disabled={shape.locked} />
+                <Input type="number" value={Math.round(shape.width)} onChange={e => onUpdate({ width: parseFloat(e.target.value) || 0 })} className="h-8 text-xs" disabled={shape.locked} />
               </div>
               <div>
                 <Label className="text-[10px] text-slate-500">H</Label>
-                <Input type="number" value={Math.round(shape.height)} onChange={e => onUpdate({ height: parseFloat(e.target.value) || 0 })} className="h-7 text-xs" disabled={shape.locked} />
+                <Input type="number" value={Math.round(shape.height)} onChange={e => onUpdate({ height: parseFloat(e.target.value) || 0 })} className="h-8 text-xs" disabled={shape.locked} />
               </div>
             </div>
           </div>
@@ -387,8 +387,8 @@ function ShapeListItem({ shape, isSelected, onSelect, onUpdate, onRemove, onDupl
                   <div>
                     <Label className="text-[10px] text-slate-500 block mb-1">{isNumber ? 'Color' : 'Fill'}</Label>
                     <div className="relative flex items-center gap-2">
-                      <Input type="color" value={shape.fillColor.startsWith('#') ? shape.fillColor : '#3b82f6'} onChange={e => onUpdate({ fillColor: e.target.value })} className="h-7 w-7 p-0 border opacity-0 absolute z-10 cursor-pointer" />
-                      <div className="h-7 w-7 rounded border border-slate-200 flex-shrink-0" style={{ backgroundColor: shape.fillColor.startsWith('#') ? shape.fillColor : '#3b82f6' }} />
+                      <Input type="color" value={shape.fillColor.startsWith('#') ? shape.fillColor : '#3b82f6'} onChange={e => onUpdate({ fillColor: e.target.value })} className="h-8 w-8 p-0 border opacity-0 absolute z-10 cursor-pointer" />
+                      <div className="h-8 w-8 rounded border border-slate-200 flex-shrink-0" style={{ backgroundColor: shape.fillColor.startsWith('#') ? shape.fillColor : '#3b82f6' }} />
                       <span className="text-[9px] text-slate-400 font-mono uppercase truncate">{shape.fillColor}</span>
                     </div>
                   </div>
@@ -396,8 +396,8 @@ function ShapeListItem({ shape, isSelected, onSelect, onUpdate, onRemove, onDupl
                 <div>
                   <Label className="text-[10px] text-slate-500 block mb-1">{useBorderLabels ? 'Border Color' : 'Stroke'}</Label>
                   <div className="relative flex items-center gap-2">
-                    <Input type="color" value={shape.strokeColor.startsWith('#') ? shape.strokeColor : '#1e40af'} onChange={e => onUpdate({ strokeColor: e.target.value })} className="h-7 w-7 p-0 border opacity-0 absolute z-10 cursor-pointer" />
-                    <div className="h-7 w-7 rounded border border-slate-200 flex-shrink-0" style={{ backgroundColor: shape.strokeColor.startsWith('#') ? shape.strokeColor : '#1e40af' }} />
+                    <Input type="color" value={shape.strokeColor.startsWith('#') ? shape.strokeColor : '#1e40af'} onChange={e => onUpdate({ strokeColor: e.target.value })} className="h-8 w-8 p-0 border opacity-0 absolute z-10 cursor-pointer" />
+                    <div className="h-8 w-8 rounded border border-slate-200 flex-shrink-0" style={{ backgroundColor: shape.strokeColor.startsWith('#') ? shape.strokeColor : '#1e40af' }} />
                     <span className="text-[9px] text-slate-400 font-mono uppercase truncate">{shape.strokeColor}</span>
                   </div>
                 </div>
@@ -425,7 +425,7 @@ function ShapeListItem({ shape, isSelected, onSelect, onUpdate, onRemove, onDupl
                   <Input 
                     type="number"
                     min="0" max="100"
-                    className="h-7 text-xs bg-white" 
+                    className="h-8 text-xs bg-white" 
                     value={shape.strokeWidth}
                     onChange={(e) => onUpdate({ strokeWidth: Math.max(0, parseFloat(e.target.value) || 0) })}
                   />
@@ -433,7 +433,7 @@ function ShapeListItem({ shape, isSelected, onSelect, onUpdate, onRemove, onDupl
                 <div>
                   <Label className="text-[10px] text-slate-500 block mb-1.5">{useBorderLabels ? 'Border Style' : 'Stroke Style'}</Label>
                   <Select value={shape.strokeStyle} onValueChange={(v: any) => onUpdate({ strokeStyle: v, strokeDashPattern: undefined })}>
-                    <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="solid" className="text-xs">Solid</SelectItem>
                       <SelectItem value="dashed" className="text-xs">Dashed</SelectItem>
@@ -488,7 +488,7 @@ function ShapeListItem({ shape, isSelected, onSelect, onUpdate, onRemove, onDupl
                 value={shape.text || ''}
                 onChange={e => onUpdate({ text: e.target.value })}
                 placeholder="Enter text..."
-                className="h-7 text-xs"
+                className="h-8 text-xs"
               />
             </div>
           )}
@@ -528,10 +528,10 @@ function ImagePropertyEditor({ shape, onUpdate }: { shape: any, onUpdate: (u: an
             </div>
             <div className="flex gap-1.5">
               <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-              <Button variant="outline" size="sm" className="h-7 text-[10px] flex-1" onClick={() => fileInputRef.current?.click()}>
+              <Button variant="outline" size="sm" className="h-8 text-[10px] flex-1" onClick={() => fileInputRef.current?.click()}>
                 <Upload className="h-3 w-3 mr-1" /> Replace
               </Button>
-              <Button variant="outline" size="sm" className="h-7 text-[10px] text-red-500" onClick={() => onUpdate({ imageUrl: '' })}>
+              <Button variant="outline" size="sm" className="h-8 text-[10px] text-red-500" onClick={() => onUpdate({ imageUrl: '' })}>
                 Remove
               </Button>
             </div>
@@ -545,7 +545,7 @@ function ImagePropertyEditor({ shape, onUpdate }: { shape: any, onUpdate: (u: an
             <div className="flex gap-1.5">
               <Input
                 placeholder="or paste URL..."
-                className="h-7 text-xs flex-1"
+                className="h-8 text-xs flex-1"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     const url = e.currentTarget.value.trim()
@@ -553,7 +553,7 @@ function ImagePropertyEditor({ shape, onUpdate }: { shape: any, onUpdate: (u: an
                   }
                 }}
               />
-              <Button variant="outline" size="sm" className="h-7 text-xs px-2"
+              <Button variant="outline" size="sm" className="h-8 text-xs px-2"
                 onClick={() => {
                   const input = document.querySelector('input[placeholder="or paste URL..."]') as HTMLInputElement
                   const url = input?.value.trim()
@@ -569,7 +569,7 @@ function ImagePropertyEditor({ shape, onUpdate }: { shape: any, onUpdate: (u: an
         <div className="flex gap-1 mt-1.5">
           {(['fill', 'cover', 'contain'] as const).map(fit => (
             <Button key={fit} size="sm" variant={shape.imageFit === fit ? 'default' : 'outline'}
-              onClick={() => onUpdate({ imageFit: fit })} className="flex-1 text-[10px] h-7 capitalize">{fit}</Button>
+              onClick={() => onUpdate({ imageFit: fit })} className="flex-1 text-[10px] h-8 capitalize">{fit}</Button>
           ))}
         </div>
       </div>
@@ -592,8 +592,8 @@ function ImagePropertyEditor({ shape, onUpdate }: { shape: any, onUpdate: (u: an
       <div>
         <Label className="text-[10px] text-slate-500 block mb-1">Border Color</Label>
         <div className="relative flex items-center gap-2">
-          <Input type="color" value={shape.strokeColor?.startsWith('#') ? shape.strokeColor : '#cbd5e1'} onChange={e => onUpdate({ strokeColor: e.target.value })} className="h-7 w-7 p-0 border opacity-0 absolute z-10 cursor-pointer" />
-          <div className="h-7 w-7 rounded border border-slate-200 flex-shrink-0" style={{ backgroundColor: shape.strokeColor?.startsWith('#') ? shape.strokeColor : '#cbd5e1' }} />
+          <Input type="color" value={shape.strokeColor?.startsWith('#') ? shape.strokeColor : '#cbd5e1'} onChange={e => onUpdate({ strokeColor: e.target.value })} className="h-8 w-8 p-0 border opacity-0 absolute z-10 cursor-pointer" />
+          <div className="h-8 w-8 rounded border border-slate-200 flex-shrink-0" style={{ backgroundColor: shape.strokeColor?.startsWith('#') ? shape.strokeColor : '#cbd5e1' }} />
           <span className="text-[9px] text-slate-400 font-mono uppercase truncate">{shape.strokeColor || '#cbd5e1'}</span>
         </div>
       </div>
@@ -861,10 +861,10 @@ export function DecorationsPanel() {
                <div className="flex items-center justify-between">
                  <span className="text-xs font-semibold text-amber-700">{selectedShapeIds.length} objects selected</span>
                  <div className="flex gap-2">
-                   <Button variant="outline" size="sm" className="h-7 text-[10px] text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700" onClick={() => { selectedShapeIds.forEach(id => removeShape(id)); clearMultiSelect(); }}>
+                   <Button variant="outline" size="sm" className="h-8 text-[10px] text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700" onClick={() => { selectedShapeIds.forEach(id => removeShape(id)); clearMultiSelect(); }}>
                      <Trash2 className="w-3 h-3 mr-1" /> Delete
                    </Button>
-                   <Button variant="outline" size="sm" className="h-7 text-[10px]" onClick={clearMultiSelect}>
+                   <Button variant="outline" size="sm" className="h-8 text-[10px]" onClick={clearMultiSelect}>
                      Cancel
                    </Button>
                  </div>
@@ -903,8 +903,8 @@ export function DecorationsPanel() {
                         <Label className="text-[10px] text-slate-500 block mb-1">Fill Color</Label>
                         <div className="flex items-center gap-2">
                           <div className="relative flex items-center gap-2 flex-1">
-                            <Input type="color" value={globalShapeSettings.fillColor === 'transparent' ? '#ffffff' : globalShapeSettings.fillColor} onChange={e => setGlobalShapeSettings({ fillColor: e.target.value })} className="h-7 w-7 p-0 border opacity-0 absolute z-10 cursor-pointer" />
-                            <div className={`h-7 w-7 rounded border border-slate-200 flex-shrink-0 ${globalShapeSettings.fillColor === 'transparent' ? 'bg-[url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAAXNSR0IArs4c6QAAADhJREFUKFNjYMACzp8//z+UjxUwIqkxYFIETgBRD1YJ4uNRY2CRQDaQahw2kGwzVjWQ9JDoRRAAAGB7W9+j/TqBAAAAAElFTkSuQmCC)]' : ''}`} style={{ backgroundColor: globalShapeSettings.fillColor === 'transparent' ? undefined : globalShapeSettings.fillColor }} />
+                            <Input type="color" value={globalShapeSettings.fillColor === 'transparent' ? '#ffffff' : globalShapeSettings.fillColor} onChange={e => setGlobalShapeSettings({ fillColor: e.target.value })} className="h-8 w-8 p-0 border opacity-0 absolute z-10 cursor-pointer" />
+                            <div className={`h-8 w-8 rounded border border-slate-200 flex-shrink-0 ${globalShapeSettings.fillColor === 'transparent' ? 'bg-[url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAAXNSR0IArs4c6QAAADhJREFUKFNjYMACzp8//z+UjxUwIqkxYFIETgBRD1YJ4uNRY2CRQDaQahw2kGwzVjWQ9JDoRRAAAGB7W9+j/TqBAAAAAElFTkSuQmCC)]' : ''}`} style={{ backgroundColor: globalShapeSettings.fillColor === 'transparent' ? undefined : globalShapeSettings.fillColor }} />
                             <span className="text-[9px] text-slate-400 font-mono uppercase truncate">
                               {globalShapeSettings.fillColor === 'transparent' ? 'None' : globalShapeSettings.fillColor}
                             </span>
@@ -912,7 +912,7 @@ export function DecorationsPanel() {
                           <Button 
                             variant="outline" 
                             size="sm" 
-                            className={`h-7 px-3 text-[10px] ${globalShapeSettings.fillColor === 'transparent' ? 'bg-slate-100 text-slate-700' : 'text-slate-400 hover:text-slate-600'}`}
+                            className={`h-8 px-3 text-[10px] ${globalShapeSettings.fillColor === 'transparent' ? 'bg-slate-100 text-slate-700' : 'text-slate-400 hover:text-slate-600'}`}
                             onClick={() => setGlobalShapeSettings({ fillColor: globalShapeSettings.fillColor === 'transparent' ? '#ffffff' : 'transparent' })}
                           >
                             Toggle Clear
@@ -932,8 +932,8 @@ export function DecorationsPanel() {
                   <div>
                     <Label className="text-[10px] text-slate-500 block mb-1">Outline Color</Label>
                     <div className="relative flex items-center gap-2">
-                      <Input type="color" value={globalShapeSettings.strokeColor} onChange={e => setGlobalShapeSettings({ strokeColor: e.target.value })} className="h-7 w-7 p-0 border opacity-0 absolute z-10 cursor-pointer" />
-                      <div className="h-7 w-7 rounded border border-slate-200 flex-shrink-0" style={{ backgroundColor: globalShapeSettings.strokeColor }} />
+                      <Input type="color" value={globalShapeSettings.strokeColor} onChange={e => setGlobalShapeSettings({ strokeColor: e.target.value })} className="h-8 w-8 p-0 border opacity-0 absolute z-10 cursor-pointer" />
+                      <div className="h-8 w-8 rounded border border-slate-200 flex-shrink-0" style={{ backgroundColor: globalShapeSettings.strokeColor }} />
                     </div>
                   </div>
                   <div>
@@ -943,7 +943,7 @@ export function DecorationsPanel() {
                         <button
                           key={w}
                           onClick={() => setGlobalShapeSettings({ strokeWidth: w })}
-                          className={`w-7 h-7 rounded border flex items-center justify-center transition-colors ${globalShapeSettings.strokeWidth === w ? 'bg-blue-100 border-blue-400 text-blue-600 shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-400'}`}
+                          className={`w-8 h-8 rounded border flex items-center justify-center transition-colors ${globalShapeSettings.strokeWidth === w ? 'bg-blue-100 border-blue-400 text-blue-600 shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-400'}`}
                         >
                           <span className="text-[10px] font-medium">{w}</span>
                         </button>
@@ -1143,7 +1143,7 @@ export function DecorationsPanel() {
           {/* ── Add Image ────────────────────────────── */}
           <div className="border rounded-lg overflow-hidden">
             <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50/50 border-b border-slate-100">
-              <ImageIcon className="h-4 w-4 text-emerald-500" />
+              <ImageIcon className="h-4 w-4 text-blue-500" />
               <span className="text-xs font-bold text-slate-700">Add Image</span>
             </div>
             <div className="px-3 py-3 space-y-2.5">
@@ -1155,7 +1155,7 @@ export function DecorationsPanel() {
                 <Button
                   variant={drawingMode === 'deco-image' ? 'default' : 'outline'}
                   size="sm"
-                  className={`h-10 text-xs ${drawingMode === 'deco-image' ? 'bg-emerald-500 hover:bg-emerald-600' : ''}`}
+                  className={`h-10 text-xs ${drawingMode === 'deco-image' ? 'bg-blue-500 hover:bg-blue-600' : ''}`}
                   onClick={() => handleSelectTool('deco-image' as DrawingMode)}
                 >
                   <ImageIcon className="h-3.5 w-3.5 mr-1.5" /> Draw Area
@@ -1164,7 +1164,7 @@ export function DecorationsPanel() {
               <div className="flex gap-1.5">
                 <Input
                   placeholder="Image URL (https://...)"
-                  className="h-7 text-xs flex-1"
+                  className="h-8 text-xs flex-1"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       handleAddImageUrl(e.currentTarget.value)
@@ -1172,7 +1172,7 @@ export function DecorationsPanel() {
                     }
                   }}
                 />
-                <Button variant="outline" size="sm" className="h-7 text-xs px-2"
+                <Button variant="outline" size="sm" className="h-8 text-xs px-2"
                   onClick={() => {
                     const inp = document.querySelector('input[placeholder="Image URL (https://...)"]') as HTMLInputElement
                     if (inp?.value) { handleAddImageUrl(inp.value); inp.value = '' }
@@ -1180,7 +1180,7 @@ export function DecorationsPanel() {
                 >Add</Button>
               </div>
               {drawingMode === 'deco-image' && (
-                <p className="text-[10px] text-emerald-500 text-center animate-in fade-in">
+                <p className="text-[10px] text-blue-500 text-center animate-in fade-in">
                   Click and drag on canvas to draw the image area
                 </p>
               )}
@@ -1215,7 +1215,7 @@ export function DecorationsPanel() {
                 className="min-h-[60px] text-xs font-mono resize-none"
                 rows={3}
               />
-              <Button variant="outline" size="sm" className="w-full h-7 text-xs" onClick={handleAddSvgCode} disabled={!svgCode.trim()}>
+              <Button variant="outline" size="sm" className="w-full h-8 text-xs" onClick={handleAddSvgCode} disabled={!svgCode.trim()}>
                 Add SVG from Code
               </Button>
               {drawingMode === 'deco-svg' && (
