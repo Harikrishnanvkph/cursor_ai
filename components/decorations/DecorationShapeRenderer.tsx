@@ -718,7 +718,16 @@ const ShapeSVG = React.memo(function ShapeSVGComponent({ shape }: { shape: Decor
           <rect x={x} y={y} width={w} height={h} fill="transparent" stroke="none" />
           {shape.svgContent && (
             <foreignObject x={x} y={y} width={w} height={h}>
+              <style>{`
+                .deco-svg-container-${shape.id} svg {
+                  width: 100% !important;
+                  height: 100% !important;
+                  max-width: 100% !important;
+                  max-height: 100% !important;
+                }
+              `}</style>
               <div
+                className={`deco-svg-container-${shape.id}`}
                 style={{
                   width: '100%', height: '100%',
                   pointerEvents: 'none' as const,
@@ -1072,7 +1081,7 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
     let startY = pt.y
     let didNodeSnap = false
 
-    if (!e.altKey && ['line', 'arrow', 'double-arrow', 'connected-lines', 'bezier-line', 'bspline-curve', 'cloud-line', 'polygon'].includes(drawingMode)) {
+    if (!e.altKey && drawingMode !== 'freehand' && drawingMode !== 'marquee-select') {
       const snapNodes = getSnapNodes(shapes)
       let bestDist = 8
       for (const node of snapNodes) {
@@ -1136,8 +1145,8 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
       return
     }
 
-    const SNAPPABLE_MODES = ['line', 'arrow', 'double-arrow', 'connected-lines', 'bezier-line', 'bspline-curve', 'cloud-line', 'polygon']
-    const hasSnappableMode = drawingMode && SNAPPABLE_MODES.includes(drawingMode)
+    const isSnappableMode = (mode: string | null) => mode && mode !== 'freehand' && mode !== 'marquee-select'
+    const hasSnappableMode = isSnappableMode(drawingMode)
 
     if (!drawingInProgress && !dragState && !hasSnappableMode) return
     const pt = getSVGPoint(e as any)
@@ -1148,8 +1157,8 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
     // so the user sees snap indicators before their first click.
     let snappedNode = false
     if (!e.altKey && (
-      (drawingInProgress && SNAPPABLE_MODES.includes(drawingInProgress.mode)) ||
-      (dragState && dragState.type === 'endpoint') ||
+      (drawingInProgress && isSnappableMode(drawingInProgress.mode)) ||
+      (dragState && (dragState.type === 'endpoint' || dragState.type === 'resize')) ||
       (!drawingInProgress && hasSnappableMode)
     )) {
       const excludeId = dragState ? dragState.shapeId : undefined
@@ -1650,9 +1659,17 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
     setNodeSnapGuide(null)
   }, [drawingInProgress, dragState, getSVGPoint, addShape, shapes.length, setDrawingInProgress, setDrawingMode, setSelectedShapeId, setEditingShapeId])
 
-  // Double-click to finalize polygon / connected-lines
+  // Double-click to finalize polygon / connected-lines, or reset drawing mode
   const handleCanvasDoubleClick = useCallback((e: React.MouseEvent) => {
-    if (!drawingInProgress) return
+    if (!drawingInProgress) {
+      if (drawingMode) {
+        e.preventDefault();
+        e.stopPropagation();
+        setDrawingMode(null);
+      }
+      return
+    }
+
     const { mode, points: rawPoints } = drawingInProgress
 
     // Double-click fires TWO mousedown events before dblclick, adding
@@ -1695,8 +1712,14 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
       })
       setDrawingInProgress(null)
       setNodeSnapGuide(null)
+    } else if (drawingMode) {
+      // Exit drawing mode if double clicked while using a normal tool
+      e.preventDefault();
+      e.stopPropagation();
+      setDrawingMode(null);
+      setDrawingInProgress(null);
     }
-  }, [marqueeState, finalizeMarqueeSelection, shapes, setSelectedShapeIds, clearMultiSelect, drawingInProgress, dragState, addShape, updateShape, setDragState, setSnapGuides, setNodeSnapGuide, setDrawingInProgress, globalShapeSettings])
+  }, [marqueeState, finalizeMarqueeSelection, shapes, setSelectedShapeIds, clearMultiSelect, drawingInProgress, dragState, addShape, updateShape, setDragState, setSnapGuides, setNodeSnapGuide, setDrawingInProgress, globalShapeSettings, drawingMode, setDrawingMode])
 
   // ── Shape interaction handlers ─────────────────────
 

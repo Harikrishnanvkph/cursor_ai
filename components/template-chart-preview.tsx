@@ -16,6 +16,7 @@ import { FileDown, FileImage, FileCode } from "lucide-react"
 import html2canvas from 'html2canvas'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Slider } from "@/components/ui/slider"
 import { Sidebar } from "@/components/sidebar"
 import { ConfigPanel } from "@/components/config-panel"
 import { SidebarPortalProvider } from "@/components/sidebar-portal-context"
@@ -37,6 +38,18 @@ import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { getPatternCSS } from "@/lib/utils"
 import { renderFormat } from "@/lib/variant-engine"
 import { FormatRenderer } from "@/components/gallery/FormatRenderer"
+
+const ZOOM_VALUES: number[] = (() => {
+  let values: number[] = [];
+  for (let i = 10; i <= 50; i += 1) values.push(i);
+  for (let i = 52; i <= 100; i += 2) values.push(i);
+  for (let i = 103; i <= 160; i += 3) values.push(i);
+  for (let i = 165; i <= 210; i += 5) values.push(i);
+  for (let i = 216; i <= 300; i += 6) values.push(i);
+  for (let i = 310; i <= 380; i += 10) values.push(i);
+  for (let i = 392; i <= 500; i += 12) values.push(i);
+  return values;
+})();
 
 import ChartGenerator from "@/lib/chart_generator"
 import { useUIStore } from "@/lib/stores/ui-store"
@@ -913,6 +926,22 @@ export function TemplateChartPreview({
     )
   }
 
+  const currentZoomPct = Math.round(zoom * 100);
+  let closestIndex = 0;
+  let minDiff = Infinity;
+  for (let i = 0; i < ZOOM_VALUES.length; i++) {
+    const diff = Math.abs(ZOOM_VALUES[i] - currentZoomPct);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closestIndex = i;
+    }
+  }
+
+  const handleSliderChange = (value: number[]) => {
+    const newZoomPct = ZOOM_VALUES[value[0]];
+    setZoom(newZoomPct / 100);
+  };
+
   return (
     <div className="flex flex-col h-full" ref={fullscreenContainerRef}>
       {/* Fullscreen overlay */}
@@ -1035,13 +1064,43 @@ export function TemplateChartPreview({
           {/* Right: action buttons */}
           <div className="flex gap-1 flex-shrink-0 ml-4">
             <div className="flex items-center gap-0.5 border border-slate-200 rounded-md p-0.5 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-              <Button variant="ghost" size="sm" onClick={handleZoomOut} disabled={zoom <= 0.1} className="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600 disabled:opacity-30" title="Zoom Out">
-                <ZoomOut className="h-4 w-4" />
-              </Button>
-              <span className="text-xs text-slate-600 min-w-[45px] px-1 text-center font-medium select-none">{Math.round(zoom * 100)}%</span>
-              <Button variant="ghost" size="sm" onClick={handleZoomIn} disabled={zoom >= 3} className="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600 disabled:opacity-30" title="Zoom In">
-                <ZoomIn className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-2 px-2 w-[130px] lg:w-[160px]">
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="text-xs px-1.5 h-6 text-slate-700 font-semibold select-none w-12 text-center hover:bg-slate-100 flex-shrink-0 transition-colors">
+                            {currentZoomPct}%
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-40 p-1">
+                        <DropdownMenuItem onClick={handleResetZoom} className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100">
+                            <span className="flex-1">100% (Original)</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator className="my-1" />
+                        <DropdownMenuItem 
+                            onSelect={(e) => { e.preventDefault(); handleZoomIn(); }} 
+                            className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100"
+                        >
+                            <ZoomIn className="h-3.5 w-3.5 mr-2 text-slate-500" />
+                            <span className="flex-1">Zoom In</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                            onSelect={(e) => { e.preventDefault(); handleZoomOut(); }} 
+                            className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100"
+                        >
+                            <ZoomOut className="h-3.5 w-3.5 mr-2 text-slate-500" />
+                            <span className="flex-1">Zoom Out</span>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+                <Slider
+                    min={0}
+                    max={ZOOM_VALUES.length - 1}
+                    step={1}
+                    value={[closestIndex]}
+                    onValueChange={handleSliderChange}
+                    className="flex-1 cursor-pointer"
+                />
+              </div>
 
               <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
 
@@ -1189,29 +1248,43 @@ export function TemplateChartPreview({
           <div className="fixed top-4 right-4 z-50 bg-white rounded-lg shadow-lg p-2 flex gap-2 border border-gray-200 animate-in fade-in duration-200">
             {/* Zoom Controls */}
             <div className="flex items-center gap-1 border rounded-md p-0.5 bg-white mr-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleZoomOut}
-                disabled={zoom <= 0.1}
-                className="h-7 w-7 p-0"
-                title="Zoom Out"
-              >
-                <ZoomOut className="h-3.5 w-3.5" />
-              </Button>
-              <span className="text-xs text-gray-600 min-w-[45px] text-center px-1">
-                {Math.round(zoom * 100)}%
-              </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleZoomIn}
-                disabled={zoom >= 3}
-                className="h-7 w-7 p-0"
-                title="Zoom In"
-              >
-                <ZoomIn className="h-3.5 w-3.5" />
-              </Button>
+              <div className="flex items-center gap-2 px-2 w-[130px] lg:w-[160px]">
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="text-xs px-1.5 h-6 text-slate-700 font-semibold select-none w-12 text-center hover:bg-slate-100 flex-shrink-0 transition-colors">
+                            {currentZoomPct}%
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-40 p-1 z-[100]">
+                        <DropdownMenuItem onClick={handleResetZoom} className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100">
+                            <span className="flex-1">100% (Original)</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator className="my-1" />
+                        <DropdownMenuItem 
+                            onSelect={(e) => { e.preventDefault(); handleZoomIn(); }} 
+                            className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100"
+                        >
+                            <ZoomIn className="h-3.5 w-3.5 mr-2 text-slate-500" />
+                            <span className="flex-1">Zoom In</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                            onSelect={(e) => { e.preventDefault(); handleZoomOut(); }} 
+                            className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100"
+                        >
+                            <ZoomOut className="h-3.5 w-3.5 mr-2 text-slate-500" />
+                            <span className="flex-1">Zoom Out</span>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+                <Slider
+                    min={0}
+                    max={ZOOM_VALUES.length - 1}
+                    step={1}
+                    value={[closestIndex]}
+                    onValueChange={handleSliderChange}
+                    className="flex-1 cursor-pointer"
+                />
+              </div>
             </div>
             {/* Pan Mode Toggle */}
             <Button

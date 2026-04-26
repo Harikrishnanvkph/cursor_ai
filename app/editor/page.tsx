@@ -59,15 +59,20 @@ function EditorPageContent() {
   useEffect(() => setMounted(true), []);
 
   // ── Decoration store isolation ──
-  // When entering the editor, force rehydrate from localStorage to flush any
-  // format-builder shapes that may have leaked via client-side navigation.
+  // When entering the editor via client-side navigation, force rehydrate to flush
+  // any format-builder shapes. Skip on hard refresh to prevent hydration race conditions.
   useEffect(() => {
-    useDecorationStore.persist?.rehydrate?.()
+    if (useDecorationStore.persist?.hasHydrated()) {
+      useDecorationStore.persist?.rehydrate?.()
+    }
   }, [])
 
   // Keep decoration store isolated correctly based on active editor mode
   useEffect(() => {
-    useDecorationStore.getState().setActiveMode(useTemplateStore.getState().editorMode)
+    // Only sync if hydrated to avoid overwriting IDB with empty state during load
+    if (useDecorationStore.persist?.hasHydrated()) {
+      useDecorationStore.getState().setActiveMode(useTemplateStore.getState().editorMode)
+    }
   }, [useTemplateStore.getState().editorMode])
 
   const { user, signOut } = useAuth()
