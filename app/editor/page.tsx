@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo, useRef } from "react"
+import { readBootstrapCache, clearBootstrapCache } from "@/lib/storage-utils"
 import { Sidebar, CHART_TABS, TEMPLATE_TABS } from "@/components/sidebar"
 import { ChartPreview } from "@/components/chart-preview"
 import { ConfigPanel } from "@/components/config-panel"
@@ -58,6 +59,18 @@ function EditorPageContent() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
+  // ── Bootstrap cache: synchronous first-paint hints ──
+  // Read critical routing flags from localStorage (~0ms) instead of waiting
+  // for the async IDB hydration (50-200ms). This prevents the welcome screen
+  // from flashing before the chart store finishes loading.
+  // The bootstrap cache is automatically dual-written by createExpiringStorage
+  // whenever chart-store or template-store persists to IDB.
+  const [bootstrapHasJSON, setBootstrapHasJSON] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const cache = readBootstrapCache('chart-store');
+    return cache?.hasJSON ?? false;
+  });
+
   // ── Decoration store isolation ──
   // When entering the editor via client-side navigation, force rehydrate to flush
   // any format-builder shapes. Skip on hard refresh to prevent hydration race conditions.
@@ -86,6 +99,10 @@ function EditorPageContent() {
   const chartData = useChartData()
   const hasJSON = useHasJSON()
   const currentSnapshotId = useCurrentSnapshotId()
+
+  // Use bootstrap cache as instant fallback until IDB hydration completes.
+  // Once the real store value loads, hasJSON takes over (it can be true OR false).
+  const effectiveHasJSON = hasJSON || bootstrapHasJSON;
 
   // Actions (stable functions, safe to pick from store)
   const resetChart = useChartStore(s => s.resetChart)
@@ -541,6 +558,10 @@ function EditorPageContent() {
     setBackendConversationId(null)
     // Clear all template state to prevent data cascading to new charts
     useTemplateStore.getState().clearAllTemplateState()
+    // Clear bootstrap caches so next page load shows welcome screen correctly
+    clearBootstrapCache('chart-store')
+    clearBootstrapCache('template-store')
+    setBootstrapHasJSON(false)
     // Show new chart setup
     setShowSetupDialog(true)
   };
@@ -571,6 +592,7 @@ function EditorPageContent() {
     useChartStore.getState().clearAllOverlays()
     useDecorationStore.getState().clearShapes()
     setHasJSON(false) // Wait until they add data to set to true
+    setBootstrapHasJSON(false)
     
     // Go to datasets tab
     setActiveTab('datasets_slices')
@@ -612,7 +634,7 @@ function EditorPageContent() {
   // }, [user, chartType, chartData, chartConfig, hasJSON]);
 
   if (!mounted) {
-    return null; // Or a loading spinner if you prefer
+    return null; // Wait for SSR mount
   }
 
   // Mobile layout for <=576px
@@ -638,7 +660,7 @@ function EditorPageContent() {
         {/* Chart Preview */}
         <div className="flex-1 flex items-start justify-center p-2 pb-20 overflow-hidden">
           <div className="w-full max-w-full overflow-auto" style={{ maxHeight: 'calc(100vh - 120px)' }}>
-            {hasJSON ? (
+            {effectiveHasJSON ? (
               <ChartPreview
                 activeTab={mobilePanel || activeTab}
                 onTabChange={(tab) => {
@@ -776,7 +798,7 @@ function EditorPageContent() {
 
         {/* Chart Area (between left and right sidebars) */}
         <div className="flex-1 min-w-0 pr-4 pl-2 pt-2 pb-4">
-          {hasJSON ? (
+          {effectiveHasJSON ? (
             <ChartPreview
               onToggleLeftSidebar={() => setLeftSidebarCollapsed((v) => !v)}
               isLeftSidebarCollapsed={leftSidebarCollapsed}
@@ -1019,7 +1041,7 @@ function EditorPageContent() {
       )}
       {/* Center Area - Chart Preview */}
       <div className="flex-1 min-w-0 pr-4 pl-1 pt-2 pb-4 h-full overflow-hidden flex flex-col">
-        {hasJSON ? (
+        {effectiveHasJSON ? (
           <ChartPreview
             onToggleLeftSidebar={() => setLeftSidebarCollapsed((v) => !v)}
             isLeftSidebarCollapsed={leftSidebarCollapsed}
@@ -1137,6 +1159,11 @@ function EditorPageContent() {
       <ClearChartDialog
         open={showClearDialog}
         onOpenChange={setShowClearDialog}
+        onSuccess={() => {
+          clearBootstrapCache('chart-store')
+          clearBootstrapCache('template-store')
+          setBootstrapHasJSON(false)
+        }}
       />
 
       {/* Dimension Mismatch Dialog */}

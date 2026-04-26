@@ -37,6 +37,12 @@ export const ChartPreviewCanvas = React.memo(({
     // Track container dimensions for DecorationShapeRenderer
     const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
     const containerRef = React.useRef<HTMLDivElement>(null);
+    const [isInitializing, setIsInitializing] = useState(true);
+
+    useEffect(() => {
+        const timer = setTimeout(() => setIsInitializing(false), 300);
+        return () => clearTimeout(timer);
+    }, []);
 
     useEffect(() => {
         const el = containerRef.current || chartContainerRef.current;
@@ -82,7 +88,7 @@ export const ChartPreviewCanvas = React.memo(({
                         top: 0, left: 0, right: 0, bottom: 0,
                         transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
                         transformOrigin: 'center center',
-                        transition: isDragging ? 'none' : 'all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
+                        transition: isInitializing || isDragging ? 'none' : 'all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
                         zIndex: 10,
                         cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'default',
                         pointerEvents: 'auto'
@@ -165,7 +171,7 @@ export const ChartPreviewCanvas = React.memo(({
                     height: `${chartHeight}px`,
                     transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
                     transformOrigin: 'top left',
-                    transition: isDragging ? 'none' : 'all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
+                    transition: isInitializing || isDragging ? 'none' : 'all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
                     zIndex: 10,
                     cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'default',
                     pointerEvents: 'auto'
