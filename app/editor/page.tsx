@@ -65,6 +65,11 @@ function EditorPageContent() {
     useDecorationStore.persist?.rehydrate?.()
   }, [])
 
+  // Keep decoration store isolated correctly based on active editor mode
+  useEffect(() => {
+    useDecorationStore.getState().setActiveMode(useTemplateStore.getState().editorMode)
+  }, [useTemplateStore.getState().editorMode])
+
   const { user, signOut } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()

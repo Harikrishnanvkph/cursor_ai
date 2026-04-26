@@ -189,8 +189,8 @@ function ShapeListItem({ shape, isSelected, onSelect, onUpdate, onRemove, onDupl
   return (
     <Card
       className={`transition-all cursor-pointer ${isSelected
-          ? 'ring-2 ring-blue-500 border-blue-300 shadow-md'
-          : 'border-gray-100 hover:border-gray-200 hover:shadow-sm'
+        ? 'ring-2 ring-blue-500 border-blue-300 shadow-md'
+        : 'border-gray-100 hover:border-gray-200 hover:shadow-sm'
         }`}
       onClick={onSelect}
     >
@@ -422,10 +422,10 @@ function ShapeListItem({ shape, isSelected, onSelect, onUpdate, onRemove, onDupl
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="text-[10px] text-slate-500 block mb-1.5">{useBorderLabels ? 'Border Width' : 'Stroke Width'}</Label>
-                  <Input 
+                  <Input
                     type="number"
                     min="0" max="100"
-                    className="h-8 text-xs bg-white" 
+                    className="h-8 text-xs bg-white"
                     value={shape.strokeWidth}
                     onChange={(e) => onUpdate({ strokeWidth: Math.max(0, parseFloat(e.target.value) || 0) })}
                   />
@@ -455,10 +455,10 @@ function ShapeListItem({ shape, isSelected, onSelect, onUpdate, onRemove, onDupl
                     {!isDotted && (
                       <div className="flex-1 space-y-1.5">
                         <Label className="text-[10px] text-slate-500 whitespace-nowrap">Dash Length</Label>
-                        <Input 
+                        <Input
                           type="number"
                           min="1" max="100"
-                          className="h-6 text-[10px]" 
+                          className="h-6 text-[10px]"
                           value={dashLen}
                           onChange={(e) => onUpdate({ strokeDashPattern: `${e.target.value},${gapLen}` })}
                         />
@@ -466,10 +466,10 @@ function ShapeListItem({ shape, isSelected, onSelect, onUpdate, onRemove, onDupl
                     )}
                     <div className="flex-1 space-y-1.5">
                       <Label className="text-[10px] text-slate-500 whitespace-nowrap">Gap Length</Label>
-                      <Input 
+                      <Input
                         type="number"
                         min="1" max="100"
-                        className="h-6 text-[10px]" 
+                        className="h-6 text-[10px]"
                         value={gapLen}
                         onChange={(e) => onUpdate({ strokeDashPattern: `${isDotted ? '0' : dashLen},${e.target.value}` })}
                       />
@@ -818,21 +818,21 @@ export function DecorationsPanel() {
       <div className="flex w-full items-center justify-between mb-1">
         <span className="text-xs font-semibold text-slate-700">Drawing Tools</span>
         <div className="flex gap-1 items-center">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="h-6 w-6 p-0 hover:bg-slate-100 disabled:opacity-30" 
-            disabled={!canUndo()} 
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0 hover:bg-slate-100 disabled:opacity-30"
+            disabled={!canUndo()}
             onClick={() => undoShapeAction()}
             title="Undo (Ctrl+Z)"
           >
             <Undo2 className="h-3.5 w-3.5" />
           </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="h-6 w-6 p-0 hover:bg-slate-100 disabled:opacity-30" 
-            disabled={!canRedo()} 
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0 hover:bg-slate-100 disabled:opacity-30"
+            disabled={!canRedo()}
             onClick={() => redoShapeAction()}
             title="Redo (Ctrl+Shift+Z)"
           >
@@ -858,24 +858,24 @@ export function DecorationsPanel() {
           {/* Multiple Selection Actions */}
           {selectedShapeIds.length > 1 && (
             <div className="p-3 bg-amber-50/80 rounded-lg border border-amber-200">
-               <div className="flex items-center justify-between">
-                 <span className="text-xs font-semibold text-amber-700">{selectedShapeIds.length} objects selected</span>
-                 <div className="flex gap-2">
-                   <Button variant="outline" size="sm" className="h-8 text-[10px] text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700" onClick={() => { selectedShapeIds.forEach(id => removeShape(id)); clearMultiSelect(); }}>
-                     <Trash2 className="w-3 h-3 mr-1" /> Delete
-                   </Button>
-                   <Button variant="outline" size="sm" className="h-8 text-[10px]" onClick={clearMultiSelect}>
-                     Cancel
-                   </Button>
-                 </div>
-               </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-amber-700">{selectedShapeIds.length} objects selected</span>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="h-8 text-[10px] text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700" onClick={() => { selectedShapeIds.forEach(id => removeShape(id)); clearMultiSelect(); }}>
+                    <Trash2 className="w-3 h-3 mr-1" /> Delete
+                  </Button>
+                  <Button variant="outline" size="sm" className="h-8 text-[10px]" onClick={clearMultiSelect}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
 
           {/* Global Settings */}
           {drawingMode && ['freehand', 'line', 'arrow', 'double-arrow', 'connected-lines', 'bezier-line', 'bspline-curve', 'cloud-line', 'rectangle', 'circle', 'triangle', 'star', 'polygon', 'hexagon', 'pentagon', 'diamond-shape', 'heart', 'cloud', 'text-callout', 'checkmark', 'crossmark', 'dot', 'pushpin', 'bullseye'].some(mode => drawingMode === mode || drawingMode.startsWith('num-') || drawingMode.startsWith('emoji-')) && (() => {
             const isLineDrawing = ['freehand', 'line', 'arrow', 'double-arrow', 'connected-lines', 'bezier-line', 'bspline-curve'].includes(drawingMode)
-            
+
             return (
               <div className={`relative overflow-hidden transition-all duration-300 border rounded-lg ${isSettingsOpen ? 'bg-blue-50/40 border-blue-200 shadow-sm' : 'bg-white border-slate-100 hover:border-slate-200'}`}>
                 <button
@@ -896,108 +896,108 @@ export function DecorationsPanel() {
                 {isSettingsOpen && (
                   <div className="px-3 pb-3 pt-1 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300 ease-out border-t border-blue-100/50">
                     <div className="grid grid-cols-2 gap-3">
-                  {/* Fill settings (only for closed shapes) */}
-                  {!isLineDrawing && (
-                    <>
-                      <div className="col-span-2">
-                        <Label className="text-[10px] text-slate-500 block mb-1">Fill Color</Label>
-                        <div className="flex items-center gap-2">
-                          <div className="relative flex items-center gap-2 flex-1">
-                            <Input type="color" value={globalShapeSettings.fillColor === 'transparent' ? '#ffffff' : globalShapeSettings.fillColor} onChange={e => setGlobalShapeSettings({ fillColor: e.target.value })} className="h-8 w-8 p-0 border opacity-0 absolute z-10 cursor-pointer" />
-                            <div className={`h-8 w-8 rounded border border-slate-200 flex-shrink-0 ${globalShapeSettings.fillColor === 'transparent' ? 'bg-[url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAAXNSR0IArs4c6QAAADhJREFUKFNjYMACzp8//z+UjxUwIqkxYFIETgBRD1YJ4uNRY2CRQDaQahw2kGwzVjWQ9JDoRRAAAGB7W9+j/TqBAAAAAElFTkSuQmCC)]' : ''}`} style={{ backgroundColor: globalShapeSettings.fillColor === 'transparent' ? undefined : globalShapeSettings.fillColor }} />
-                            <span className="text-[9px] text-slate-400 font-mono uppercase truncate">
-                              {globalShapeSettings.fillColor === 'transparent' ? 'None' : globalShapeSettings.fillColor}
-                            </span>
-                          </div>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className={`h-8 px-3 text-[10px] ${globalShapeSettings.fillColor === 'transparent' ? 'bg-slate-100 text-slate-700' : 'text-slate-400 hover:text-slate-600'}`}
-                            onClick={() => setGlobalShapeSettings({ fillColor: globalShapeSettings.fillColor === 'transparent' ? '#ffffff' : 'transparent' })}
-                          >
-                            Toggle Clear
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="col-span-2 mb-1">
-                        <div className="flex justify-between mb-1.5">
-                          <Label className="text-[10px] text-slate-500">Fill Opacity</Label>
-                          <span className="text-[10px] text-slate-400">{globalShapeSettings.fillOpacity}%</span>
-                        </div>
-                        <Slider value={[globalShapeSettings.fillOpacity]} disabled={globalShapeSettings.fillColor === 'transparent'} onValueChange={([v]) => setGlobalShapeSettings({ fillOpacity: v })} min={0} max={100} />
-                      </div>
-                    </>
-                  )}
-                  {/* Stroke settings */}
-                  <div>
-                    <Label className="text-[10px] text-slate-500 block mb-1">Outline Color</Label>
-                    <div className="relative flex items-center gap-2">
-                      <Input type="color" value={globalShapeSettings.strokeColor} onChange={e => setGlobalShapeSettings({ strokeColor: e.target.value })} className="h-8 w-8 p-0 border opacity-0 absolute z-10 cursor-pointer" />
-                      <div className="h-8 w-8 rounded border border-slate-200 flex-shrink-0" style={{ backgroundColor: globalShapeSettings.strokeColor }} />
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-[10px] text-slate-500 block mb-1.5">Outline Width</Label>
-                    <div className="flex gap-1.5">
-                      {[1, 2, 4, 8].map(w => (
-                        <button
-                          key={w}
-                          onClick={() => setGlobalShapeSettings({ strokeWidth: w })}
-                          className={`w-8 h-8 rounded border flex items-center justify-center transition-colors ${globalShapeSettings.strokeWidth === w ? 'bg-blue-100 border-blue-400 text-blue-600 shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-400'}`}
-                        >
-                          <span className="text-[10px] font-medium">{w}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="col-span-2">
-                    <Label className="text-[10px] text-slate-500 block mb-1.5">Outline Style</Label>
-                    <div className="flex bg-white p-0.5 rounded-md border border-slate-200">
-                      {(['solid', 'dashed', 'dotted'] as const).map(style => (
-                        <button
-                          key={style}
-                          onClick={() => setGlobalShapeSettings({ strokeStyle: style, strokeDashPattern: undefined })}
-                          className={`flex-1 flex justify-center items-center h-6 rounded-sm transition-all text-[10px] font-medium ${globalShapeSettings.strokeStyle === style ? 'bg-slate-100 text-slate-800 shadow-sm border border-slate-300/50' : 'text-slate-500 hover:text-slate-700'}`}
-                        >
-                          <div className={`w-6 h-0 border-t-2 border-current ${style === 'dashed' ? 'border-dashed' : style === 'dotted' ? 'border-dotted' : ''}`} />
-                        </button>
-                      ))}
-                    </div>
-                    {globalShapeSettings.strokeStyle !== 'solid' && (() => {
-                      const isDotted = globalShapeSettings.strokeStyle === 'dotted';
-                      const currentPattern = globalShapeSettings.strokeDashPattern || (isDotted ? '0,8' : '8,6');
-                      const dashParts = currentPattern.split(',');
-                      const dashLen = dashParts[0] || (isDotted ? '0' : '8');
-                      const gapLen = dashParts[1] || (isDotted ? '8' : '6');
-
-                      return (
-                        <div className="mt-2.5 flex items-center gap-3 overflow-hidden animate-in slide-in-from-top-2 fade-in duration-300">
-                          {!isDotted && (
-                            <div className="flex-1 space-y-1.5 animate-in fade-in zoom-in-95 duration-200">
-                              <Label className="text-[10px] text-slate-500 whitespace-nowrap">Dash Length</Label>
-                              <Input 
-                                type="number"
-                                min="1" max="100"
-                                className="h-6 text-[10px] bg-white border-slate-200" 
-                                value={dashLen}
-                                onChange={(e) => setGlobalShapeSettings({ strokeDashPattern: `${e.target.value},${gapLen}` })}
-                              />
+                      {/* Fill settings (only for closed shapes) */}
+                      {!isLineDrawing && (
+                        <>
+                          <div className="col-span-2">
+                            <Label className="text-[10px] text-slate-500 block mb-1">Fill Color</Label>
+                            <div className="flex items-center gap-2">
+                              <div className="relative flex items-center gap-2 flex-1">
+                                <Input type="color" value={globalShapeSettings.fillColor === 'transparent' ? '#ffffff' : globalShapeSettings.fillColor} onChange={e => setGlobalShapeSettings({ fillColor: e.target.value })} className="h-8 w-8 p-0 border opacity-0 absolute z-10 cursor-pointer" />
+                                <div className={`h-8 w-8 rounded border border-slate-200 flex-shrink-0 ${globalShapeSettings.fillColor === 'transparent' ? 'bg-[url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAAXNSR0IArs4c6QAAADhJREFUKFNjYMACzp8//z+UjxUwIqkxYFIETgBRD1YJ4uNRY2CRQDaQahw2kGwzVjWQ9JDoRRAAAGB7W9+j/TqBAAAAAElFTkSuQmCC)]' : ''}`} style={{ backgroundColor: globalShapeSettings.fillColor === 'transparent' ? undefined : globalShapeSettings.fillColor }} />
+                                <span className="text-[9px] text-slate-400 font-mono uppercase truncate">
+                                  {globalShapeSettings.fillColor === 'transparent' ? 'None' : globalShapeSettings.fillColor}
+                                </span>
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className={`h-8 px-3 text-[10px] ${globalShapeSettings.fillColor === 'transparent' ? 'bg-slate-100 text-slate-700' : 'text-slate-400 hover:text-slate-600'}`}
+                                onClick={() => setGlobalShapeSettings({ fillColor: globalShapeSettings.fillColor === 'transparent' ? '#ffffff' : 'transparent' })}
+                              >
+                                Toggle Clear
+                              </Button>
                             </div>
-                          )}
-                          <div className="flex-1 space-y-1.5 animate-in fade-in zoom-in-95 duration-200">
-                            <Label className="text-[10px] text-slate-500 whitespace-nowrap">Gap Length</Label>
-                            <Input 
-                              type="number"
-                              min="1" max="100"
-                              className="h-6 text-[10px] bg-white border-slate-200" 
-                              value={gapLen}
-                              onChange={(e) => setGlobalShapeSettings({ strokeDashPattern: `${isDotted ? '0' : dashLen},${e.target.value}` })}
-                            />
                           </div>
+                          <div className="col-span-2 mb-1">
+                            <div className="flex justify-between mb-1.5">
+                              <Label className="text-[10px] text-slate-500">Fill Opacity</Label>
+                              <span className="text-[10px] text-slate-400">{globalShapeSettings.fillOpacity}%</span>
+                            </div>
+                            <Slider value={[globalShapeSettings.fillOpacity]} disabled={globalShapeSettings.fillColor === 'transparent'} onValueChange={([v]) => setGlobalShapeSettings({ fillOpacity: v })} min={0} max={100} />
+                          </div>
+                        </>
+                      )}
+                      {/* Stroke settings */}
+                      <div>
+                        <Label className="text-[10px] text-slate-500 block mb-1">Outline Color</Label>
+                        <div className="relative flex items-center gap-2">
+                          <Input type="color" value={globalShapeSettings.strokeColor} onChange={e => setGlobalShapeSettings({ strokeColor: e.target.value })} className="h-8 w-8 p-0 border opacity-0 absolute z-10 cursor-pointer" />
+                          <div className="h-8 w-8 rounded border border-slate-200 flex-shrink-0" style={{ backgroundColor: globalShapeSettings.strokeColor }} />
                         </div>
-                      )
-                    })()}
-                  </div>
+                      </div>
+                      <div>
+                        <Label className="text-[10px] text-slate-500 block mb-1.5">Outline Width</Label>
+                        <div className="flex gap-1.5">
+                          {[1, 2, 4, 8].map(w => (
+                            <button
+                              key={w}
+                              onClick={() => setGlobalShapeSettings({ strokeWidth: w })}
+                              className={`w-8 h-8 rounded border flex items-center justify-center transition-colors ${globalShapeSettings.strokeWidth === w ? 'bg-blue-100 border-blue-400 text-blue-600 shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-400'}`}
+                            >
+                              <span className="text-[10px] font-medium">{w}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="col-span-2">
+                        <Label className="text-[10px] text-slate-500 block mb-1.5">Outline Style</Label>
+                        <div className="flex bg-white p-0.5 rounded-md border border-slate-200">
+                          {(['solid', 'dashed', 'dotted'] as const).map(style => (
+                            <button
+                              key={style}
+                              onClick={() => setGlobalShapeSettings({ strokeStyle: style, strokeDashPattern: undefined })}
+                              className={`flex-1 flex justify-center items-center h-6 rounded-sm transition-all text-[10px] font-medium ${globalShapeSettings.strokeStyle === style ? 'bg-slate-100 text-slate-800 shadow-sm border border-slate-300/50' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                              <div className={`w-6 h-0 border-t-2 border-current ${style === 'dashed' ? 'border-dashed' : style === 'dotted' ? 'border-dotted' : ''}`} />
+                            </button>
+                          ))}
+                        </div>
+                        {globalShapeSettings.strokeStyle !== 'solid' && (() => {
+                          const isDotted = globalShapeSettings.strokeStyle === 'dotted';
+                          const currentPattern = globalShapeSettings.strokeDashPattern || (isDotted ? '0,8' : '8,6');
+                          const dashParts = currentPattern.split(',');
+                          const dashLen = dashParts[0] || (isDotted ? '0' : '8');
+                          const gapLen = dashParts[1] || (isDotted ? '8' : '6');
+
+                          return (
+                            <div className="mt-2.5 flex items-center gap-3 overflow-hidden animate-in slide-in-from-top-2 fade-in duration-300">
+                              {!isDotted && (
+                                <div className="flex-1 space-y-1.5 animate-in fade-in zoom-in-95 duration-200">
+                                  <Label className="text-[10px] text-slate-500 whitespace-nowrap">Dash Length</Label>
+                                  <Input
+                                    type="number"
+                                    min="1" max="100"
+                                    className="h-6 text-[10px] bg-white border-slate-200"
+                                    value={dashLen}
+                                    onChange={(e) => setGlobalShapeSettings({ strokeDashPattern: `${e.target.value},${gapLen}` })}
+                                  />
+                                </div>
+                              )}
+                              <div className="flex-1 space-y-1.5 animate-in fade-in zoom-in-95 duration-200">
+                                <Label className="text-[10px] text-slate-500 whitespace-nowrap">Gap Length</Label>
+                                <Input
+                                  type="number"
+                                  min="1" max="100"
+                                  className="h-6 text-[10px] bg-white border-slate-200"
+                                  value={gapLen}
+                                  onChange={(e) => setGlobalShapeSettings({ strokeDashPattern: `${isDotted ? '0' : dashLen},${e.target.value}` })}
+                                />
+                              </div>
+                            </div>
+                          )
+                        })()}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1045,8 +1045,8 @@ export function DecorationsPanel() {
                               variant={isActive ? "default" : "outline"}
                               title={s.label}
                               className={`${isLabeledTool ? 'h-8 px-3 flex items-center gap-1.5' : 'h-8 w-8 p-0 flex items-center justify-center'} transition-all duration-200 ${isActive
-                                  ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-500 shadow-md shadow-amber-200/50'
-                                  : 'hover:border-amber-400 hover:bg-amber-50/50 hover:text-amber-600 border-slate-100 bg-white/50'
+                                ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-500 shadow-md shadow-amber-200/50'
+                                : 'hover:border-amber-400 hover:bg-amber-50/50 hover:text-amber-600 border-slate-100 bg-white/50'
                                 }`}
                               onClick={() => handleSelectTool(s.type as any)}
                             >
@@ -1109,27 +1109,36 @@ export function DecorationsPanel() {
               <span className="text-xs font-bold text-slate-700">Add Textbox</span>
             </div>
             <div className="px-3 py-3 space-y-2">
-              <p className="text-[10px] text-slate-400">Draw a textbox on the canvas. Choose a type:</p>
               <div className="grid grid-cols-2 gap-2">
                 <Button
                   variant={drawingMode === 'textbox' ? 'default' : 'outline'}
                   size="sm"
-                  className={`h-14 flex flex-col items-center gap-1 text-[10px] ${drawingMode === 'textbox' ? 'bg-blue-500 hover:bg-blue-600' : 'hover:border-blue-400 hover:bg-blue-50/50'}`}
+                  className={`h-16 flex flex-col items-center justify-center gap-1.5 text-[10px] group transition-all ${drawingMode === 'textbox' ? 'bg-blue-500 hover:bg-blue-600 border-blue-500' : 'hover:border-blue-400 hover:bg-blue-50/50'}`}
                   onClick={() => handleSelectTool('textbox' as DrawingMode)}
                 >
-                  <Type className="h-4 w-4" />
-                  <span className="font-semibold">Normal</span>
-                  <span className="text-[8px] opacity-70">Fixed box</span>
+                  <div className={`relative w-7 h-6 flex items-center justify-center transition-opacity ${drawingMode === 'textbox' ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'}`}>
+                    <div className="absolute inset-0 border-[1.5px] border-dashed border-current rounded-[3px] opacity-50" />
+                    <Type className="h-3.5 w-3.5" strokeWidth={2.5} />
+                  </div>
+                  <div className="flex flex-col items-center leading-none">
+                    <span className="font-bold">Area Text</span>
+                    <span className="text-[8px] opacity-70 mt-0.5">Fixed bounding box</span>
+                  </div>
                 </Button>
                 <Button
                   variant={drawingMode === 'textbox-auto' ? 'default' : 'outline'}
                   size="sm"
-                  className={`h-14 flex flex-col items-center gap-1 text-[10px] ${drawingMode === 'textbox-auto' ? 'bg-blue-500 hover:bg-blue-600' : 'hover:border-blue-400 hover:bg-blue-50/50'}`}
+                  className={`h-16 flex flex-col items-center justify-center gap-1.5 text-[10px] group transition-all ${drawingMode === 'textbox-auto' ? 'bg-blue-500 hover:bg-blue-600 border-blue-500' : 'hover:border-blue-400 hover:bg-blue-50/50'}`}
                   onClick={() => handleSelectTool('textbox-auto' as DrawingMode)}
                 >
-                  <Type className="h-4 w-4" />
-                  <span className="font-semibold">Single</span>
-                  <span className="text-[8px] opacity-70">Auto-size</span>
+                  <div className={`relative w-7 h-6 flex items-center justify-center transition-opacity ${drawingMode === 'textbox-auto' ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'}`}>
+                    <Type className="h-4 w-4 -ml-1" strokeWidth={2.5} />
+                    <div className="absolute right-1 bottom-1 w-[1.5px] h-3.5 bg-current animate-pulse opacity-80" />
+                  </div>
+                  <div className="flex flex-col items-center leading-none">
+                    <span className="font-bold">Point Text</span>
+                    <span className="text-[8px] opacity-70 mt-0.5">Auto-sizing</span>
+                  </div>
                 </Button>
               </div>
               {(drawingMode === 'textbox' || drawingMode === 'textbox-auto') && (
@@ -1146,25 +1155,15 @@ export function DecorationsPanel() {
               <ImageIcon className="h-4 w-4 text-blue-500" />
               <span className="text-xs font-bold text-slate-700">Add Image</span>
             </div>
-            <div className="px-3 py-3 space-y-2.5">
+            <div className="p-2 space-y-2">
               <input ref={imgFileRef} type="file" accept="image/*" onChange={handleAddImageFile} className="hidden" />
-              <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" size="sm" className="h-10 text-xs" onClick={() => imgFileRef.current?.click()}>
-                  <Upload className="h-3.5 w-3.5 mr-1.5" /> Upload
-                </Button>
-                <Button
-                  variant={drawingMode === 'deco-image' ? 'default' : 'outline'}
-                  size="sm"
-                  className={`h-10 text-xs ${drawingMode === 'deco-image' ? 'bg-blue-500 hover:bg-blue-600' : ''}`}
-                  onClick={() => handleSelectTool('deco-image' as DrawingMode)}
-                >
-                  <ImageIcon className="h-3.5 w-3.5 mr-1.5" /> Draw Area
-                </Button>
-              </div>
+              <Button variant="outline" size="sm" className="w-full h-10 text-xs m-0" onClick={() => imgFileRef.current?.click()}>
+                <Upload className="h-3.5 w-3.5 mr-1.5" /> Upload
+              </Button>
               <div className="flex gap-1.5">
                 <Input
                   placeholder="Image URL (https://...)"
-                  className="h-8 text-xs flex-1"
+                  className="h-8 text-xs flex-1 placeholder:font-normal placeholder:text-slate-400"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       handleAddImageUrl(e.currentTarget.value)
@@ -1179,11 +1178,6 @@ export function DecorationsPanel() {
                   }}
                 >Add</Button>
               </div>
-              {drawingMode === 'deco-image' && (
-                <p className="text-[10px] text-blue-500 text-center animate-in fade-in">
-                  Click and drag on canvas to draw the image area
-                </p>
-              )}
             </div>
           </div>
 
@@ -1193,36 +1187,21 @@ export function DecorationsPanel() {
               <FileCode className="h-4 w-4 text-violet-500" />
               <span className="text-xs font-bold text-slate-700">Add SVG</span>
             </div>
-            <div className="px-3 py-3 space-y-2.5">
+            <div className="p-2 space-y-2">
               <input ref={svgFileRef} type="file" accept=".svg" onChange={handleAddSvgFile} className="hidden" />
-              <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" size="sm" className="h-10 text-xs" onClick={() => svgFileRef.current?.click()}>
-                  <Upload className="h-3.5 w-3.5 mr-1.5" /> Upload SVG
-                </Button>
-                <Button
-                  variant={drawingMode === 'deco-svg' ? 'default' : 'outline'}
-                  size="sm"
-                  className={`h-10 text-xs ${drawingMode === 'deco-svg' ? 'bg-violet-500 hover:bg-violet-600' : ''}`}
-                  onClick={() => handleSelectTool('deco-svg' as DrawingMode)}
-                >
-                  <FileCode className="h-3.5 w-3.5 mr-1.5" /> Draw Area
-                </Button>
-              </div>
+              <Button variant="outline" size="sm" className="w-full h-10 text-xs" onClick={() => svgFileRef.current?.click()}>
+                <Upload className="h-3.5 w-3.5 mr-1.5" /> Upload SVG
+              </Button>
               <Textarea
                 value={svgCode}
                 onChange={(e) => setSvgCode(e.target.value)}
                 placeholder="Paste SVG code here..."
-                className="min-h-[60px] text-xs font-mono resize-none"
+                className="min-h-[60px] text-xs font-mono resize-none placeholder:font-sans placeholder:font-normal placeholder:text-slate-400"
                 rows={3}
               />
               <Button variant="outline" size="sm" className="w-full h-8 text-xs" onClick={handleAddSvgCode} disabled={!svgCode.trim()}>
                 Add SVG from Code
               </Button>
-              {drawingMode === 'deco-svg' && (
-                <p className="text-[10px] text-violet-500 text-center animate-in fade-in">
-                  Click and drag on canvas to draw the SVG area
-                </p>
-              )}
             </div>
           </div>
 

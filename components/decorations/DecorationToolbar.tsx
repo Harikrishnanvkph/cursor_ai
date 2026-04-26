@@ -82,9 +82,9 @@ export function DecorationToolbar({ shapeId, x, y, editingShapeId, onStartEditin
     }
 
     return (
-      <foreignObject x={Math.max(0, x)} y={Math.max(0, toolbarY)} width="380" height="44" style={{ overflow: 'visible' }}>
+      <foreignObject data-export-ignore="true" x={Math.max(0, x)} y={Math.max(0, toolbarY)} width="800" height="80" style={{ overflow: 'visible' }}>
         <div
-          className="flex items-center gap-1"
+          className="flex flex-wrap items-center gap-1"
           onMouseDown={e => e.stopPropagation()}
           onTouchStart={e => e.stopPropagation()}
           onClick={e => e.stopPropagation()}
@@ -99,46 +99,46 @@ export function DecorationToolbar({ shapeId, x, y, editingShapeId, onStartEditin
           />
 
           {/* Management buttons (lock/dup/delete/more) */}
-          <div className="flex items-center gap-0.5 bg-white/95 opacity-100 rounded-lg shadow-xl border border-slate-200 p-1">
+          <div className="flex items-center gap-0.5 bg-white opacity-100 rounded-2xl shadow-xl border border-slate-200 p-1">
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 w-7 p-0 hover:bg-amber-50 hover:text-amber-600"
+              className="h-10 w-10 p-0 rounded-xl hover:bg-slate-100 text-slate-700"
               onClick={() => toggleLock(shapeId)}
               title={shape.locked ? "Unlock" : "Lock"}
             >
-              {shape.locked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+              {shape.locked ? <Lock className="!w-6 !h-6" /> : <Unlock className="!w-6 !h-6" />}
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 w-7 p-0 hover:bg-blue-50 hover:text-blue-600"
+              className="h-10 w-10 p-0 rounded-xl hover:bg-slate-100 text-slate-700"
               onClick={() => duplicateShape(shapeId)}
               title="Duplicate"
             >
-              <Copy className="h-3.5 w-3.5" />
+              <Copy className="!w-6 !h-6" />
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 w-7 p-0 hover:bg-red-50 hover:text-red-600"
+              className="h-10 w-10 p-0 rounded-xl hover:bg-slate-100 text-slate-700"
               onClick={() => removeShape(shapeId)}
               title="Delete"
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 className="!w-6 !h-6" />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="More">
-                  <MoreHorizontal className="h-3.5 w-3.5" />
+                <Button variant="ghost" size="sm" className="h-10 w-10 p-0 rounded-xl hover:bg-slate-100 text-slate-700" title="More">
+                  <MoreHorizontal className="!w-6 !h-6" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" side="bottom">
+              <DropdownMenuContent align="start" side="bottom" className="rounded-xl">
                 <DropdownMenuItem onClick={() => bringToFront(shapeId)}>
-                  <ArrowUpToLine className="h-3.5 w-3.5 mr-2" /> Bring to Front
+                  <ArrowUpToLine className="h-6 w-6 mr-2" /> Bring to Front
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => sendToBack(shapeId)}>
-                  <ArrowDownToLine className="h-3.5 w-3.5 mr-2" /> Send to Back
+                  <ArrowDownToLine className="h-6 w-6 mr-2" /> Send to Back
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -150,9 +150,9 @@ export function DecorationToolbar({ shapeId, x, y, editingShapeId, onStartEditin
 
   // ── Standard toolbar for non-textbox shapes ──
   return (
-    <foreignObject x={Math.max(0, x)} y={Math.max(0, toolbarY)} width="220" height="40" style={{ overflow: 'visible' }}>
+    <foreignObject data-export-ignore="true" x={Math.max(0, x)} y={Math.max(0, toolbarY)} width="350" height="80" style={{ overflow: 'visible' }}>
       <div
-        className="flex items-center gap-0.5 bg-white/95 opacity-100 rounded-lg shadow-xl border border-slate-200 p-1 w-fit"
+        className="flex flex-wrap items-center gap-0.5 bg-white opacity-100 rounded-2xl shadow-xl border border-slate-200 p-1 w-fit"
         onMouseDown={e => e.stopPropagation()}
         onTouchStart={e => e.stopPropagation()}
         onClick={e => e.stopPropagation()}
@@ -160,42 +160,42 @@ export function DecorationToolbar({ shapeId, x, y, editingShapeId, onStartEditin
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 w-7 p-0 hover:bg-amber-50 hover:text-amber-600"
+          className="h-10 w-10 p-0 rounded-xl hover:bg-slate-100 text-slate-700"
           onClick={() => toggleLock(shapeId)}
           title={shape.locked ? "Unlock" : "Lock"}
         >
-          {shape.locked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+          {shape.locked ? <Lock className="!w-6 !h-6" /> : <Unlock className="!w-6 !h-6" />}
         </Button>
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 w-7 p-0 hover:bg-blue-50 hover:text-blue-600"
+          className="h-10 w-10 p-0 rounded-xl hover:bg-slate-100 text-slate-700"
           onClick={() => duplicateShape(shapeId)}
           title="Duplicate"
         >
-          <Copy className="h-3.5 w-3.5" />
+          <Copy className="!w-6 !h-6" />
         </Button>
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 w-7 p-0 hover:bg-red-50 hover:text-red-600"
+          className="h-10 w-10 p-0 rounded-xl hover:bg-slate-100 text-slate-700"
           onClick={() => removeShape(shapeId)}
           title="Delete"
         >
-          <Trash2 className="h-3.5 w-3.5" />
+          <Trash2 className="!w-6 !h-6" />
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="More">
-              <MoreHorizontal className="h-3.5 w-3.5" />
+            <Button variant="ghost" size="sm" className="h-10 w-10 p-0 rounded-xl hover:bg-slate-100 text-slate-700" title="More">
+              <MoreHorizontal className="!w-6 !h-6" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" side="bottom">
+          <DropdownMenuContent align="start" side="bottom" className="rounded-xl">
             <DropdownMenuItem onClick={() => bringToFront(shapeId)}>
-              <ArrowUpToLine className="h-3.5 w-3.5 mr-2" /> Bring to Front
+              <ArrowUpToLine className="h-6 w-6 mr-2" /> Bring to Front
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => sendToBack(shapeId)}>
-              <ArrowDownToLine className="h-3.5 w-3.5 mr-2" /> Send to Back
+              <ArrowDownToLine className="h-6 w-6 mr-2" /> Send to Back
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

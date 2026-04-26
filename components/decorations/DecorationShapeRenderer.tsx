@@ -14,6 +14,8 @@ import {
 // SVG Path Generators
 // ═══════════════════════════════════════════════════════
 
+const ROTATE_CURSOR = `url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTIxLjUgMnY2aC02TTIxLjM0IDE1LjU3YTEwIDEwIDAgMSAxLS45Mi0xMC4yNGwzLjA4IDIuNjciLz48L3N2Zz4=') 10 10, crosshair`
+
 function cloudPath(x: number, y: number, w: number, h: number): string {
   // Generate a cloud shape with scalloped edges
   const cx = x + w / 2, cy = y + h / 2
@@ -642,7 +644,7 @@ const ShapeSVG = React.memo(function ShapeSVGComponent({ shape }: { shape: Decor
               y={y + 4}
               width={isAutoSized ? Math.max(2000, w) : Math.max(0, w - 8)}
               height={isAutoSized ? Math.max(2000, h) : Math.max(0, h - 8)}
-              style={{ overflow: 'visible' }}
+              style={{ overflow: isAutoSized ? 'visible' : 'hidden' }}
             >
               <style>{`
                 .deco-textbox-content p, .deco-textbox-content div { margin: 0; padding: 0; }
@@ -880,8 +882,24 @@ function DrawingPreview({ drawing, settings }: { drawing: DrawingState, settings
       return <rect x={x} y={y} width={w} height={h} {...previewProps} />
 
     case 'textbox':
-    case 'textbox-auto':
-      return <rect x={x} y={y} width={w} height={h} {...previewProps} rx={6} />
+      return (
+        <g pointerEvents="none">
+          <rect x={x} y={y} width={w} height={h} stroke="#3b82f6" strokeWidth={1.5} strokeDasharray="4,4" fill="rgba(59, 130, 246, 0.08)" rx={4} />
+          <rect x={currentX + 16} y={currentY - 12} width={74} height={24} fill="#1e293b" rx={4} />
+          <text x={currentX + 53} y={currentY + 4} fontSize={12} fontFamily="Arial" fill="white" textAnchor="middle" stroke="none">{Math.round(w)} x {Math.round(h)}</text>
+        </g>
+      )
+
+    case 'textbox-auto': {
+      const fontSize = Math.max(14, h)
+      return (
+        <g pointerEvents="none">
+          <text x={startX + 4} y={y + fontSize * 1.05 + 4} fontSize={fontSize} fontFamily="Arial" fill="#1e293b" opacity={0.5} stroke="none">A</text>
+          <rect x={currentX + 16} y={currentY - 12} width={54} height={24} fill="#1e293b" rx={4} />
+          <text x={currentX + 43} y={currentY + 4} fontSize={12} fontFamily="Arial" fill="white" textAnchor="middle" stroke="none">{Math.round(fontSize)}px</text>
+        </g>
+      )
+    }
 
     case 'deco-image':
     case 'deco-svg':
@@ -1099,38 +1117,6 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
     }
 
     // Single-gesture shapes
-    if (drawingMode === 'textbox-auto') {
-      // ── Click-to-place: auto-sized textbox at click point (NO DRAG CREATION) ──
-      const clickX = startX
-      const clickY = startY
-      const fontSize = 14
-      const shapeData: any = {
-        type: 'textbox-auto' as any,
-        x: clickX, y: clickY, width: 8, height: fontSize * 1.4 + 8,
-        rotation: 0,
-        fillColor: 'transparent',
-        fillOpacity: 100,
-        strokeColor: 'transparent',
-        strokeWidth: 0,
-        strokeStyle: 'solid' as const,
-        visible: true, locked: false, zIndex: shapes.length + 1,
-        text: '',
-        autoSize: true,
-        fontFamily: 'Arial',
-        fontSize,
-        fontWeight: 'normal',
-        fontStyle: 'normal',
-        textDecoration: 'none',
-        textAlign: 'left',
-        textColor: '#1e293b',
-        lineHeight: 1.4,
-      }
-      const newId = addShape(shapeData)
-      ignoreNextClickRef.current = true
-      requestAnimationFrame(() => setEditingShapeId(newId))
-      return
-    }
-
     setDrawingInProgress({
       mode: drawingMode,
       startX: startX, startY: startY,
@@ -1138,7 +1124,7 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
       points: [{ x: startX, y: startY }],
       shiftKey
     })
-  }, [drawingMode, panMode, getSVGPoint, drawingInProgress, setDrawingInProgress, addShape, shapes.length])
+  }, [drawingMode, panMode, getSVGPoint, drawingInProgress, setDrawingInProgress, addShape, shapes.length, setDrawingMode, setSelectedShapeId, setEditingShapeId])
 
   const handleCanvasPointerMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     // ── Marquee drag update ──
@@ -1597,35 +1583,41 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
           visible: true, locked: false, zIndex: shapes.length + 1
         })
       }
-    } else if (w > 5 || h > 5) {
+    } else if (w > 5 || h > 5 || mode === 'textbox-auto') {
       const isLine = mode === 'line' || mode === 'arrow' || mode === 'double-arrow'
       const isTextbox = mode === 'textbox'
+      const isAutoTextbox = mode === 'textbox-auto'
       const isDecoImage = mode === 'deco-image'
       const isDecoSvg = mode === 'deco-svg'
 
+      const dragFontSize = (w > 5 || h > 5) ? Math.max(6, h) : 14
+
       const shapeData: any = {
         type: mode as any,
-        x, y, width: w, height: h,
+        x, y,
+        width: isAutoTextbox ? 8 : w,
+        height: isAutoTextbox ? dragFontSize * 1.4 + 8 : h,
         rotation: 0,
         points: isLine ? [{ x: startX, y: startY }, { x: endX, y: endY }] : undefined,
         fillColor: isLine ? 'transparent'
-          : isTextbox ? 'rgba(255,255,255,0.9)'
+          : (isTextbox || isAutoTextbox) ? 'transparent'
             : isDecoImage ? 'transparent'
               : isDecoSvg ? 'transparent'
                 : (['checkmark', 'crossmark', 'dot'].includes(mode) ? 'none' : globalShapeSettings.fillColor),
-        fillOpacity: globalShapeSettings.fillOpacity,
-        strokeColor: isTextbox ? '#94a3b8' : isDecoImage ? '#cbd5e1' : isDecoSvg ? '#a5b4fc' : (['dot'].includes(mode) ? 'rgba(59, 130, 246, 0.3)' : globalShapeSettings.strokeColor),
-        strokeWidth: isTextbox || isDecoImage || isDecoSvg ? 1 : globalShapeSettings.strokeWidth,
-        strokeStyle: isTextbox || isDecoImage || isDecoSvg ? 'solid' : globalShapeSettings.strokeStyle,
-        strokeDashPattern: isTextbox || isDecoImage || isDecoSvg ? undefined : globalShapeSettings.strokeDashPattern,
+        fillOpacity: (isTextbox || isAutoTextbox) ? 100 : globalShapeSettings.fillOpacity,
+        strokeColor: (isTextbox || isAutoTextbox) ? 'transparent' : isDecoImage ? '#cbd5e1' : isDecoSvg ? '#a5b4fc' : (['dot'].includes(mode) ? 'rgba(59, 130, 246, 0.3)' : globalShapeSettings.strokeColor),
+        strokeWidth: (isTextbox || isAutoTextbox) ? 0 : isDecoImage || isDecoSvg ? 1 : globalShapeSettings.strokeWidth,
+        strokeStyle: (isTextbox || isAutoTextbox) ? 'solid' : isDecoImage || isDecoSvg ? 'solid' : globalShapeSettings.strokeStyle,
+        strokeDashPattern: (isTextbox || isAutoTextbox) || isDecoImage || isDecoSvg ? undefined : globalShapeSettings.strokeDashPattern,
         visible: true, locked: false, zIndex: shapes.length + 1,
-        text: mode === 'text-callout' ? 'Text' : isTextbox ? 'Type here...' : undefined,
+        text: mode === 'text-callout' ? 'Text' : isTextbox ? 'Type here...' : (isAutoTextbox ? '' : undefined),
+        autoSize: isAutoTextbox ? true : undefined,
       }
 
       // Textbox-specific defaults
-      if (isTextbox) {
+      if (isTextbox || isAutoTextbox) {
         shapeData.fontFamily = 'Arial'
-        shapeData.fontSize = 14
+        shapeData.fontSize = isAutoTextbox ? dragFontSize : 14
         shapeData.fontWeight = 'normal'
         shapeData.fontStyle = 'normal'
         shapeData.textDecoration = 'none'
@@ -1645,12 +1637,18 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
         shapeData.svgContent = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#e0e7ff" rx="8"/><text x="50" y="55" text-anchor="middle" font-size="12" fill="#4338ca">SVG</text></svg>'
       }
 
-      addShape(shapeData)
+      const newId = addShape(shapeData)
+
+      if (isTextbox || isAutoTextbox) {
+        setDrawingMode(null)
+        setSelectedShapeId(newId)
+        requestAnimationFrame(() => setEditingShapeId(newId))
+      }
     }
 
     setDrawingInProgress(null)
     setNodeSnapGuide(null)
-  }, [drawingInProgress, dragState, getSVGPoint, addShape, shapes.length, setDrawingInProgress])
+  }, [drawingInProgress, dragState, getSVGPoint, addShape, shapes.length, setDrawingInProgress, setDrawingMode, setSelectedShapeId, setEditingShapeId])
 
   // Double-click to finalize polygon / connected-lines
   const handleCanvasDoubleClick = useCallback((e: React.MouseEvent) => {
@@ -1972,7 +1970,7 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
     if (drawingMode === 'marquee-select') return 'crosshair'
     if (drawingMode) return 'crosshair'
     if (dragState?.type === 'move') return 'move'
-    if (dragState?.type === 'rotate') return 'grabbing'
+    if (dragState?.type === 'rotate') return ROTATE_CURSOR
     return 'default'
   }
 
@@ -2029,6 +2027,11 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
           If we have this rect, it blocks Format Zones! 
           Instead, we rely on the FormatRenderer's background click handler to clear BOTH format selection AND decoration selection.
       */}
+
+      {/* Anti-pixelation: Chrome bitmap-caches SVGs with only geometric shapes
+          under CSS transform:scale(), but must render <text> at display resolution.
+          This tiny invisible text forces Chrome to keep full-res rendering. */}
+      <text x="0" y="0" fontSize="1" fill="rgba(0,0,0,0.01)" style={{ pointerEvents: 'none' }} aria-hidden="true">.</text>
 
       {/* Shapes */}
       {sortedShapes.map(shape => (
@@ -2112,7 +2115,7 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
         const bottomObjectY = Math.max(globalMaxY, rotHandleRotated.y)
 
         const isTextbox = selectedShape.type === 'textbox' || selectedShape.type === 'textbox-auto'
-        const toolbarWidth = isTextbox ? 380 : 220
+        const toolbarWidth = isTextbox ? 660 : 200
         const gap = 20
         const toolbarHeight = 44
 
@@ -2171,14 +2174,15 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
                 <>
                   <line
                     x1={rotCx} y1={sb.y}
-                    x2={rotCx} y2={rotCy + 9}
-                    stroke="#3b82f6" strokeWidth={1} strokeDasharray="3,2"
+                    x2={rotCx} y2={rotCy + 5}
+                    stroke="#3b82f6" strokeWidth={1}
                     pointerEvents="none"
                   />
                   <circle
-                    cx={rotCx} cy={rotCy} r={9}
-                    fill="#3b82f6"
-                    style={{ cursor: 'grab' }}
+                    cx={rotCx} cy={rotCy} r={5}
+                    fill="white"
+                    stroke="#3b82f6" strokeWidth={1.5}
+                    style={{ cursor: ROTATE_CURSOR }}
                     onMouseDown={(e) => {
                       e.preventDefault()
                       e.stopPropagation()
@@ -2205,15 +2209,6 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
                     }}
                     onClick={(e) => e.stopPropagation()}
                   />
-                  {/* Rotation icon — counter-rotated to stay upright */}
-                  <g transform={`translate(${rotCx}, ${rotCy}) rotate(${- (selectedShape.rotation || 0)}) translate(-6, -6) scale(0.5)`} pointerEvents="none">
-                    <path d="M22 12l-3 3-3-3" fill="none" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M2 12l3-3 3 3" fill="none" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M19.016 14v-1.95A7.05 7.05 0 0 0 8 6.22" fill="none" stroke="white" strokeWidth={2} strokeLinecap="round" />
-                    <path d="M16.016 17.845A7.05 7.05 0 0 1 5 12.015V10" fill="none" stroke="white" strokeWidth={2} strokeLinecap="round" />
-                    <path d="M5 10V9" stroke="white" strokeWidth={2} strokeLinecap="round" />
-                    <path d="M19 15v-1" stroke="white" strokeWidth={2} strokeLinecap="round" />
-                  </g>
                 </>
               )}
 

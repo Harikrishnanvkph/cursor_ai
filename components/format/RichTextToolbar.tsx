@@ -90,7 +90,7 @@ export function RichTextToolbar({
   if (!isEditing) {
     return (
       <div
-        className="flex items-center gap-0.5 bg-white/95 opacity-100 rounded-lg shadow-xl border border-slate-200 p-1"
+        className="flex flex-wrap items-center gap-0.5 bg-white opacity-100 rounded-2xl shadow-xl border border-slate-200 p-1"
         onMouseDown={e => { e.stopPropagation(); e.preventDefault() }}
         onClick={e => e.stopPropagation()}
       >
@@ -100,12 +100,12 @@ export function RichTextToolbar({
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 w-auto min-w-[28px] p-0 px-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100"
+              className="h-10 w-auto min-w-[36px] p-0 px-1.5 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100"
               onClick={callbacks.onEdit}
               title="Edit Content"
             >
-              <Edit2 className="h-3.5 w-3.5" />
-              <span className="text-[10px] ml-0.5 font-medium">Edit</span>
+              <Edit2 className="!w-6 !h-6" />
+              <span className="text-base ml-1 font-medium">Edit</span>
             </Button>
             <div className="w-px h-5 bg-slate-200 mx-0.5" />
           </>
@@ -115,11 +115,11 @@ export function RichTextToolbar({
         <Button
           variant="ghost"
           size="sm"
-          className={`h-7 w-auto min-w-[28px] p-0 px-1 ${isBold ? 'bg-blue-100 text-blue-700' : 'hover:bg-slate-100'}`}
+          className={`h-10 w-auto min-w-[36px] p-0 px-1.5 rounded-xl text-slate-700 ${isBold ? 'bg-slate-200' : 'hover:bg-slate-100'}`}
           onClick={callbacks.onToggleBold}
           title="Bold"
         >
-          <Bold className="h-3.5 w-3.5" />
+          <Bold className="!w-6 !h-6" />
         </Button>
 
         {/* Divider */}
@@ -137,8 +137,8 @@ export function RichTextToolbar({
         {/* ⋯ More — contains Italic, Underline, Size, Alignment, Lists */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-slate-100" title="More formatting">
-              <MoreHorizontal className="h-3.5 w-3.5" />
+            <Button variant="ghost" size="sm" className="h-10 w-10 p-0 rounded-xl text-slate-700 hover:bg-slate-100" title="More formatting">
+              <MoreHorizontal className="!w-6 !h-6" />
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-2.5" side="bottom" align="start">
@@ -223,7 +223,7 @@ export function RichTextToolbar({
   // ─────────────────────────────────────────────
   return (
     <div
-      className="flex items-center gap-0.5 bg-white/95 opacity-100 rounded-lg shadow-xl border border-slate-200 p-1"
+      className="flex flex-wrap items-center gap-0.5 bg-white opacity-100 rounded-2xl shadow-xl border border-slate-200 p-1"
       onMouseDown={e => { e.stopPropagation(); e.preventDefault() }}
       onClick={e => e.stopPropagation()}
     >
@@ -231,36 +231,36 @@ export function RichTextToolbar({
       <Button
         variant="ghost"
         size="sm"
-        className={`h-7 w-auto min-w-[28px] p-0 px-1 ${isBold ? 'bg-blue-100 text-blue-700' : 'hover:bg-slate-100'}`}
+        className={`h-10 w-auto min-w-[36px] p-0 px-1.5 rounded-xl text-slate-700 ${isBold ? 'bg-slate-200' : 'hover:bg-slate-100'}`}
         onClick={callbacks.onToggleBold}
         title="Bold"
       >
-        <Bold className="h-3.5 w-3.5" />
+        <Bold className="!w-6 !h-6" />
       </Button>
 
       {/* Italic */}
       <Button
         variant="ghost"
         size="sm"
-        className={`h-7 w-auto min-w-[28px] p-0 px-1 ${isItalic ? 'bg-blue-100 text-blue-700' : 'hover:bg-slate-100'}`}
+        className={`h-10 w-auto min-w-[36px] p-0 px-1.5 rounded-xl text-slate-700 ${isItalic ? 'bg-slate-200' : 'hover:bg-slate-100'}`}
         onClick={callbacks.onToggleItalic}
         title="Italic"
       >
-        <Italic className="h-3.5 w-3.5" />
+        <Italic className="!w-6 !h-6" />
       </Button>
 
       {/* Divider */}
       <div className="w-px h-5 bg-slate-200 mx-0.5" />
 
       {/* Font Size: − size + */}
-      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-slate-100" onClick={callbacks.onSizeDown} title="Decrease Size">
-        <Minus className="h-3.5 w-3.5" />
+      <Button variant="ghost" size="sm" className="h-10 w-10 p-0 rounded-xl text-slate-700 hover:bg-slate-100" onClick={callbacks.onSizeDown} title="Decrease Size">
+        <Minus className="!w-6 !h-6" />
       </Button>
-      <span className="text-[11px] font-mono text-slate-600 w-6 text-center select-none">
+      <span className="text-base font-mono text-slate-700 w-9 text-center select-none">
         {Math.round(style.fontSize)}
       </span>
-      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-slate-100" onClick={callbacks.onSizeUp} title="Increase Size">
-        <Plus className="h-3.5 w-3.5" />
+      <Button variant="ghost" size="sm" className="h-10 w-10 p-0 rounded-xl text-slate-700 hover:bg-slate-100" onClick={callbacks.onSizeUp} title="Increase Size">
+        <Plus className="!w-6 !h-6" />
       </Button>
 
       {/* Divider */}
@@ -278,8 +278,8 @@ export function RichTextToolbar({
       {/* ⋯ More — contains Underline, Alignment, Lists */}
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-slate-100" title="More formatting">
-            <MoreHorizontal className="h-3.5 w-3.5" />
+          <Button variant="ghost" size="sm" className="h-10 w-10 p-0 rounded-xl text-slate-700 hover:bg-slate-100" title="More formatting">
+            <MoreHorizontal className="!w-6 !h-6" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-2.5" side="bottom" align="start">
@@ -345,9 +345,9 @@ function ColorPickerButton({ currentColor, onColorChange }: { currentColor: stri
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-slate-100" title="Text color">
+        <Button variant="ghost" size="sm" className="h-10 w-10 p-0 rounded-xl text-slate-700 hover:bg-slate-100" title="Text color">
           <div className="relative">
-            <Palette className="h-3.5 w-3.5" />
+            <Palette className="!w-6 !h-6" />
             <div className="absolute -bottom-0.5 left-0.5 right-0.5 h-0.5 rounded" style={{ backgroundColor: currentColor }} />
           </div>
         </Button>
@@ -382,8 +382,8 @@ function FontPickerButton({ currentFont, onFontChange }: { currentFont: string; 
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-7 px-1.5 hover:bg-slate-100 text-[10px] font-medium max-w-[70px] truncate" title="Font family">
-          <Type className="h-3 w-3 mr-0.5 flex-shrink-0" />
+        <Button variant="ghost" size="sm" className="h-10 px-2 rounded-xl text-slate-700 hover:bg-slate-100 text-base font-medium max-w-[110px] truncate" title="Font family">
+          <Type className="!w-5 !h-5 mr-1 flex-shrink-0" />
           <span className="truncate">{currentFont.split(',')[0]}</span>
         </Button>
       </PopoverTrigger>

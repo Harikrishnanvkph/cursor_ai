@@ -111,14 +111,31 @@ export function useChartExport(options?: {
     }, [chartConfig, chartType, showImages, showLabels, fillArea, showBorder]);
 
     const handleExportJPEG = useCallback(() => {
-        if (getGlobalChartRef()?.current) {
-            const url = getGlobalChartRef()?.current?.toBase64Image('image/jpeg', 1.0);
+        if (!getGlobalChartRef()?.current) return;
+        const chartInstance = getGlobalChartRef()?.current;
+        const bgConfig = getBackgroundConfig(chartConfig);
+
+        if (chartInstance.exportToImage) {
+            try {
+                chartInstance.exportToImage({
+                    background: bgConfig.type === 'transparent'
+                        ? { type: 'color', color: '#ffffff' }  // JPEG needs a solid background
+                        : bgConfig,
+                    fileNamePrefix: 'chart',
+                    quality: 0.95
+                });
+            } catch (error) {
+                console.error('Error during JPEG export:', error);
+            }
+        } else {
+            // Fallback: direct Chart.js export (no decorations)
+            const url = chartInstance?.toBase64Image('image/jpeg', 1.0);
             const link = document.createElement('a');
             link.href = url;
             link.download = 'chart.jpeg';
             link.click();
         }
-    }, []);
+    }, [chartConfig]);
 
     const handleExportCSV = useCallback(() => {
         alert('CSV export is not implemented yet.');

@@ -195,7 +195,7 @@ export const useHistoryStore = create<HistoryStore>()(
           // Restore decorations
           const decorationsToLoad = chartConfig?.decorationShapes || conv.snapshot.template_structure?.decorations || [];
           if (decorationsToLoad.length > 0) {
-            useDecorationStore.setState({ shapes: decorationsToLoad });
+            useDecorationStore.getState().setShapes(decorationsToLoad);
           } else {
             useDecorationStore.getState().clearShapes?.();
           }

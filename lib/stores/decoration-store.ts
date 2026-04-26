@@ -114,7 +114,14 @@ export interface GlobalShapeSettings {
   strokeDashPattern?: string
 }
 
+export type EditorMode = 'chart' | 'template' | 'custom-format'
+
 interface DecorationStore {
+  activeMode: EditorMode
+  chartShapes: DecorationShape[]
+  templateShapes: DecorationShape[]
+  formatShapes: DecorationShape[]
+  
   shapes: DecorationShape[]
   selectedShapeId: string | null
   /** Multiple selected shape IDs (marquee / shift-click) */
@@ -160,13 +167,26 @@ interface DecorationStore {
   clearShapeHistory: () => void
   canUndo: () => boolean
   canRedo: () => boolean
+
+  setActiveMode: (mode: EditorMode) => void
+  setShapes: (shapes: DecorationShape[], mode?: EditorMode) => void
 }
 
 const generateId = () => `deco-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
 
+const syncShapes = (state: any, newShapes: DecorationShape[]) => {
+  if (state.activeMode === 'template') return { shapes: newShapes, templateShapes: newShapes };
+  if (state.activeMode === 'custom-format') return { shapes: newShapes, formatShapes: newShapes };
+  return { shapes: newShapes, chartShapes: newShapes };
+};
+
 export const useDecorationStore = create<DecorationStore>()(
   persist(
     (set, get) => ({
+      activeMode: 'chart',
+      chartShapes: [],
+      templateShapes: [],
+      formatShapes: [],
       shapes: [],
       selectedShapeId: null,
       selectedShapeIds: [],
@@ -249,43 +269,61 @@ export const useDecorationStore = create<DecorationStore>()(
         get().commitHistory()
         const id = generateId()
         const isDrawing = get().drawingMode !== null
-        set((state) => ({
-          shapes: [...state.shapes, { ...shape, id }],
-          selectedShapeId: isDrawing ? null : id,
-          selectedShapeIds: isDrawing ? [] : [id],
-        }))
+        set((state) => {
+          const newShapes = [...state.shapes, { ...shape, id }];
+          return {
+            ...syncShapes(state, newShapes),
+            selectedShapeId: isDrawing ? null : id,
+            selectedShapeIds: isDrawing ? [] : [id],
+          }
+        })
         return id
       },
 
       updateShape: (id, updates, skipHistory = false) => {
         if (!skipHistory) get().commitHistory()
-        set((state) => ({
-          shapes: state.shapes.map(s => s.id === id ? { ...s, ...updates } : s)
-        }))
+        set((state) => {
+          const newShapes = state.shapes.map(s => s.id === id ? { ...s, ...updates } : s);
+          return syncShapes(state, newShapes);
+        })
       },
 
       updateShapes: (updatesList, skipHistory = false) => {
         if (!skipHistory) get().commitHistory()
         set((state) => {
           const updateMap = new Map(updatesList.map(u => [u.id, u.updates]))
-          return {
-            shapes: state.shapes.map(s => updateMap.has(s.id) ? { ...s, ...updateMap.get(s.id) } : s)
-          }
+          const newShapes = state.shapes.map(s => updateMap.has(s.id) ? { ...s, ...updateMap.get(s.id) } : s);
+          return syncShapes(state, newShapes);
         })
       },
 
       removeShape: (id) => {
         get().commitHistory()
-        set((state) => ({
-          shapes: state.shapes.filter(s => s.id !== id),
-          selectedShapeId: state.selectedShapeId === id ? null : state.selectedShapeId,
-          selectedShapeIds: state.selectedShapeIds.filter(sid => sid !== id)
-        }))
+        set((state) => {
+          const newShapes = state.shapes.filter(s => s.id !== id);
+          return {
+            ...syncShapes(state, newShapes),
+            selectedShapeId: state.selectedShapeId === id ? null : state.selectedShapeId,
+            selectedShapeIds: state.selectedShapeIds.filter(sid => sid !== id)
+          }
+        })
       },
 
       clearShapes: () => {
         get().commitHistory()
-        set({ shapes: [], selectedShapeId: null, selectedShapeIds: [] })
+        set((state) => ({ 
+          ...syncShapes(state, []), 
+          selectedShapeId: null, 
+          selectedShapeIds: [],
+          globalShapeSettings: {
+            fillColor: 'transparent',
+            fillOpacity: 100,
+            strokeColor: '#3b82f6',
+            strokeWidth: 2,
+            strokeStyle: 'solid',
+            strokeDashPattern: ''
+          }
+        }))
       },
 
       setSelectedShapeId: (id) => set((state) => ({
@@ -333,8 +371,9 @@ export const useDecorationStore = create<DecorationStore>()(
             points: shape.points?.map(p => ({ x: p.x + offset, y: p.y + offset }))
           }
 
+          const newShapes = [...state.shapes, newShape];
           return {
-            shapes: [...state.shapes, newShape],
+            ...syncShapes(state, newShapes),
             selectedShapeId: newId,
             selectedShapeIds: [newId]
           }
@@ -343,18 +382,18 @@ export const useDecorationStore = create<DecorationStore>()(
 
       toggleLock: (id) => {
         get().commitHistory()
-        set((state) => ({
-          shapes: state.shapes.map(s => s.id === id ? { ...s, locked: !s.locked } : s)
-        }))
+        set((state) => {
+          const newShapes = state.shapes.map(s => s.id === id ? { ...s, locked: !s.locked } : s);
+          return syncShapes(state, newShapes);
+        })
       },
 
       bringToFront: (id) => {
         get().commitHistory()
         set((state) => {
           const maxZ = Math.max(...state.shapes.map(s => s.zIndex), 0)
-          return {
-            shapes: state.shapes.map(s => s.id === id ? { ...s, zIndex: maxZ + 1 } : s)
-          }
+          const newShapes = state.shapes.map(s => s.id === id ? { ...s, zIndex: maxZ + 1 } : s);
+          return syncShapes(state, newShapes);
         })
       },
 
@@ -362,16 +401,51 @@ export const useDecorationStore = create<DecorationStore>()(
         get().commitHistory()
         set((state) => {
           const minZ = Math.min(...state.shapes.map(s => s.zIndex), 0)
-          return {
-            shapes: state.shapes.map(s => s.id === id ? { ...s, zIndex: minZ - 1 } : s)
-          }
+          const newShapes = state.shapes.map(s => s.id === id ? { ...s, zIndex: minZ - 1 } : s);
+          return syncShapes(state, newShapes);
         })
-      }
+      },
+      setActiveMode: (mode) => set((state) => {
+        if (state.activeMode === mode) return {};
+        
+        let targetShapes = state.chartShapes;
+        if (mode === 'template') targetShapes = state.templateShapes;
+        else if (mode === 'custom-format') targetShapes = state.formatShapes;
+        
+        return {
+          activeMode: mode,
+          shapes: targetShapes,
+          selectedShapeId: null,
+          selectedShapeIds: [],
+          pastShapes: [],
+          futureShapes: [],
+          isUndoing: false
+        };
+      }),
+
+      setShapes: (shapes, mode) => set((state) => {
+        const targetMode = mode || state.activeMode;
+        const modeUpdate: any = {};
+        
+        if (targetMode === 'template') modeUpdate.templateShapes = shapes;
+        else if (targetMode === 'custom-format') modeUpdate.formatShapes = shapes;
+        else modeUpdate.chartShapes = shapes;
+        
+        if (targetMode === state.activeMode) {
+           modeUpdate.shapes = shapes;
+        }
+        
+        return modeUpdate;
+      })
     }),
     {
       name: 'decoration-store',
       storage: createExpiringStorage('decoration-store'),
       partialize: (state) => ({ 
+        activeMode: state.activeMode,
+        chartShapes: state.chartShapes,
+        templateShapes: state.templateShapes,
+        formatShapes: state.formatShapes,
         shapes: state.shapes, 
         globalShapeSettings: state.globalShapeSettings 
       })

@@ -281,6 +281,88 @@ const exportPlugin = {
         // Draw the chart on top of the background
         tempCtx.drawImage(canvas, 0, 0);
 
+        // Composite decoration shapes (SVG overlay) on top of the chart
+        // The decoration layer is a separate SVG element rendered by DecorationShapeRenderer
+        try {
+          // Walk up the DOM tree from the canvas to find the nearest ancestor
+          // that contains a decoration SVG (identified by its viewBox attribute)
+          let decorationSvg: SVGSVGElement | null = null;
+          let ancestor: HTMLElement | null = canvas.parentElement;
+          for (let i = 0; i < 6 && ancestor && !decorationSvg; i++) {
+            decorationSvg = ancestor.querySelector('svg[viewBox]') as SVGSVGElement | null;
+            ancestor = ancestor.parentElement;
+          }
+
+          if (decorationSvg) {
+            // Clone the SVG to avoid modifying the live DOM
+            const svgClone = decorationSvg.cloneNode(true) as SVGSVGElement;
+
+            // Remove UI-only elements: selection handles, toolbars, drawing previews, 
+            // grid, cursor tracker, marquee, and the anti-pixelation text anchor
+            const uiSelectors = [
+              '[data-export-ignore="true"]', // Toolbars
+              '[data-selection]',        // Selection handles
+              '[data-drawing-preview]',  // Drawing preview
+              'line[stroke-dasharray]',  // Grid lines (dashed)
+              '[data-cursor]',           // Cursor tracker
+              '[data-marquee]',          // Marquee selection
+            ];
+            uiSelectors.forEach(selector => {
+              svgClone.querySelectorAll(selector).forEach(el => el.remove());
+            });
+
+            // Remove the anti-pixelation text anchor (fontSize="1")
+            svgClone.querySelectorAll('text[aria-hidden="true"]').forEach(el => el.remove());
+
+            // Set explicit dimensions on the SVG for rendering
+            svgClone.setAttribute('width', String(canvas.width));
+            svgClone.setAttribute('height', String(canvas.height));
+            svgClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+
+            // Inline any computed styles needed for rendering
+            // (SVG serialization doesn't carry CSS classes)
+            const allElements = svgClone.querySelectorAll('*');
+            allElements.forEach((el) => {
+              // Ensure fill/stroke attributes are present since CSS won't carry over
+              const htmlEl = el as HTMLElement;
+              if (htmlEl.style) {
+                const computed = getComputedStyle(el);
+                // Only set if not already explicitly set
+                if (!el.getAttribute('fill') && computed.fill) {
+                  el.setAttribute('fill', computed.fill);
+                }
+                if (!el.getAttribute('stroke') && computed.stroke && computed.stroke !== 'none') {
+                  el.setAttribute('stroke', computed.stroke);
+                }
+              }
+            });
+
+            // Serialize SVG to a data URL
+            const svgData = new XMLSerializer().serializeToString(svgClone);
+            const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+            const svgUrl = URL.createObjectURL(svgBlob);
+
+            // Render SVG to image and composite
+            await new Promise<void>((resolve) => {
+              const img = new Image();
+              img.onload = () => {
+                tempCtx.drawImage(img, 0, 0, tempCanvas.width, tempCanvas.height);
+                URL.revokeObjectURL(svgUrl);
+                resolve();
+              };
+              img.onerror = () => {
+                console.warn('Failed to render decoration SVG overlay for export');
+                URL.revokeObjectURL(svgUrl);
+                resolve(); // Don't block export if decoration rendering fails
+              };
+              img.src = svgUrl;
+            });
+          }
+        } catch (decorationError) {
+          console.warn('Could not composite decoration shapes:', decorationError);
+          // Non-fatal: export without decorations if compositing fails
+        }
+
         // Create download link
         const url = tempCanvas.toDataURL('image/png', exportOptions.quality);
         const link = document.createElement('a');

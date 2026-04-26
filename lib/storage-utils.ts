@@ -777,7 +777,7 @@ function getDB(): Promise<IDBDatabase> {
   return dbPromise;
 }
 
-const idbStorage = {
+export const idbStorage = {
   getItem: async (key: string): Promise<string | null> => {
     try {
       const db = await getDB();
