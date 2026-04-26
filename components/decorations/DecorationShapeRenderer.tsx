@@ -644,7 +644,7 @@ const ShapeSVG = React.memo(function ShapeSVGComponent({ shape }: { shape: Decor
               y={y + 4}
               width={isAutoSized ? Math.max(2000, w) : Math.max(0, w - 8)}
               height={isAutoSized ? Math.max(2000, h) : Math.max(0, h - 8)}
-              style={{ overflow: isAutoSized ? 'visible' : 'hidden' }}
+              style={{ overflow: isAutoSized ? 'visible' : 'hidden', pointerEvents: 'none' }}
             >
               <style>{`
                 .deco-textbox-content p, .deco-textbox-content div { margin: 0; padding: 0; }
@@ -2433,6 +2433,10 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
                 }
                 // Prevent deletion/backspace from removing the shape
                 e.stopPropagation()
+              }}
+              onBlur={() => {
+                handleEditingSave()
+                useDecorationStore.getState().setSelectedShapeId(null)
               }}
               onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
