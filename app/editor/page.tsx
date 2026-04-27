@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useMemo, useRef } from "react"
-import { readBootstrapCache, clearBootstrapCache } from "@/lib/storage-utils"
 import { Sidebar, CHART_TABS, TEMPLATE_TABS } from "@/components/sidebar"
 import { ChartPreview } from "@/components/chart-preview"
 import { ConfigPanel } from "@/components/config-panel"
@@ -16,7 +15,6 @@ import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
 import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Layers, Settings, Download, ChevronLeft, ChevronRight, FileText, Save, X, Loader2, Plus, Info, LayoutDashboard, MessageSquare, Edit3 } from "lucide-react"
 import Link from "next/link"
 import React from "react"
-import { ResizableChartArea } from "@/components/resizable-chart-area"
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import { useChatStore } from "@/lib/chat-store"
@@ -29,7 +27,6 @@ import { SaveChartDialog } from "@/components/ui/save-chart-dialog"
 import { ClearChartDialog } from "@/components/dialogs/clear-chart-dialog"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { useDecorationStore } from "@/lib/stores/decoration-store"
-import { FullSizeFormatView } from "@/components/gallery/FullSizeFormatView"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { EditorWelcomeScreen } from "@/components/editor-welcome-screen"
 import { DimensionMismatchDialog } from "@/components/dialogs/dimension-mismatch-dialog"
@@ -58,18 +55,6 @@ export default function EditorPage() {
 function EditorPageContent() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-
-  // ── Bootstrap cache: synchronous first-paint hints ──
-  // Read critical routing flags from localStorage (~0ms) instead of waiting
-  // for the async IDB hydration (50-200ms). This prevents the welcome screen
-  // from flashing before the chart store finishes loading.
-  // The bootstrap cache is automatically dual-written by createExpiringStorage
-  // whenever chart-store or template-store persists to IDB.
-  const [bootstrapHasJSON, setBootstrapHasJSON] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    const cache = readBootstrapCache('chart-store');
-    return cache?.hasJSON ?? false;
-  });
 
   // ── Decoration store isolation ──
   // When entering the editor via client-side navigation, force rehydrate to flush
@@ -100,9 +85,20 @@ function EditorPageContent() {
   const hasJSON = useHasJSON()
   const currentSnapshotId = useCurrentSnapshotId()
 
-  // Use bootstrap cache as instant fallback until IDB hydration completes.
-  // Once the real store value loads, hasJSON takes over (it can be true OR false).
-  const effectiveHasJSON = hasJSON || bootstrapHasJSON;
+  // Track whether the chart store has finished IDB hydration.
+  const [storeHydrated, setStoreHydrated] = useState(() => 
+    !!(useChartStore.persist as any)?.hasHydrated?.()
+  )
+  
+  useEffect(() => {
+    if (storeHydrated) return
+    const unsub = (useChartStore.persist as any)?.onFinishHydration?.(() => {
+      setStoreHydrated(true)
+    })
+    // Fallback just in case
+    const t = setTimeout(() => setStoreHydrated(true), 500)
+    return () => { clearTimeout(t); unsub?.() }
+  }, [storeHydrated])
 
   // Actions (stable functions, safe to pick from store)
   const resetChart = useChartStore(s => s.resetChart)
@@ -557,10 +553,6 @@ function EditorPageContent() {
     setBackendConversationId(null)
     // Clear all template state to prevent data cascading to new charts
     useTemplateStore.getState().clearAllTemplateState()
-    // Clear bootstrap caches so next page load shows welcome screen correctly
-    clearBootstrapCache('chart-store')
-    clearBootstrapCache('template-store')
-    setBootstrapHasJSON(false)
     // Show new chart setup
     setShowSetupDialog(true)
   };
@@ -590,7 +582,6 @@ function EditorPageContent() {
 
     useDecorationStore.getState().clearShapes()
     setHasJSON(false) // Wait until they add data to set to true
-    setBootstrapHasJSON(false)
     
     // Go to datasets tab
     setActiveTab('datasets_slices')
@@ -598,41 +589,21 @@ function EditorPageContent() {
     toast.success(`Chart created (${sizeLabel}). Navigate to Datasets to add your data.`)
   };
 
-  // ❌ BACKEND SYNC DISABLED - Editor changes should NOT auto-save
-  // Charts should ONLY save when user explicitly clicks Save button
-  // This was causing duplicate conversations to be created
-  // useEffect(() => {
-  //   if (!user || !hasJSON) return;
-  //   
-  //   // Debounce sync - save after 3 seconds of inactivity
-  //   const syncTimer = setTimeout(async () => {
-  //     try {
-  //       // Get or create conversation for editor session
-  //       const conversationTitle = `Chart edited on ${new Date().toLocaleDateString()}`;
-  //       const response = await dataService.createConversation(
-  //         conversationTitle,
-  //         'Chart edited in advanced editor'
-  //       );
-  //       
-  //       if (response.data) {
-  //         await dataService.saveChartSnapshot(
-  //           response.data.id,
-  //           chartType,
-  //           chartData,
-  //           chartConfig
-  //         );
-  //         console.log('✅ Editor changes synced to backend');
-  //       }
-  //     } catch (error) {
-  //       console.warn('Editor sync failed (changes saved locally):', error);
-  //     }
-  //   }, 3000);
-  //   
-  //   return () => clearTimeout(syncTimer);
-  // }, [user, chartType, chartData, chartConfig, hasJSON]);
-
-  if (!mounted) {
-    return null; // Wait for SSR mount
+  if (!mounted || !storeHydrated) {
+    return (
+      <div className="flex h-screen w-screen flex-col items-center justify-center bg-[#FAFAFA]">
+        <div className="flex flex-col items-center gap-6">
+          <div className="relative h-10 w-10">
+            <div className="absolute inset-0 rounded-full border-[3px] border-gray-100" />
+            <div className="absolute inset-0 rounded-full border-[3px] border-blue-600 border-r-transparent border-t-transparent animate-spin" />
+          </div>
+          <div className="flex flex-col items-center gap-1.5">
+            <h3 className="text-base font-semibold text-gray-900 tracking-tight">Preparing Workspace</h3>
+            <p className="text-sm font-medium text-gray-500 animate-pulse">Loading charts and data...</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // Mobile layout for <=576px
@@ -658,7 +629,7 @@ function EditorPageContent() {
         {/* Chart Preview */}
         <div className="flex-1 flex items-start justify-center p-2 pb-20 overflow-hidden">
           <div className="w-full max-w-full overflow-auto" style={{ maxHeight: 'calc(100vh - 120px)' }}>
-            {effectiveHasJSON ? (
+            {hasJSON ? (
               <ChartPreview
                 activeTab={mobilePanel || activeTab}
                 onTabChange={(tab) => {
@@ -796,7 +767,7 @@ function EditorPageContent() {
 
         {/* Chart Area (between left and right sidebars) */}
         <div className="flex-1 min-w-0 pr-4 pl-2 pt-2 pb-4">
-          {effectiveHasJSON ? (
+          {hasJSON ? (
             <ChartPreview
               onToggleLeftSidebar={() => setLeftSidebarCollapsed((v) => !v)}
               isLeftSidebarCollapsed={leftSidebarCollapsed}
@@ -1039,7 +1010,7 @@ function EditorPageContent() {
       )}
       {/* Center Area - Chart Preview */}
       <div className="flex-1 min-w-0 pr-4 pl-1 pt-2 pb-4 h-full overflow-hidden flex flex-col">
-        {effectiveHasJSON ? (
+        {hasJSON ? (
           <ChartPreview
             onToggleLeftSidebar={() => setLeftSidebarCollapsed((v) => !v)}
             isLeftSidebarCollapsed={leftSidebarCollapsed}
@@ -1158,9 +1129,7 @@ function EditorPageContent() {
         open={showClearDialog}
         onOpenChange={setShowClearDialog}
         onSuccess={() => {
-          clearBootstrapCache('chart-store')
-          clearBootstrapCache('template-store')
-          setBootstrapHasJSON(false)
+          // Additional success logic if needed
         }}
       />
 

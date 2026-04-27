@@ -40,6 +40,7 @@ import { useTemplateStore } from "@/lib/template-store"
 import exportPlugin from "@/lib/export-plugin"
 import { customLabelPlugin } from "@/lib/custom-label-plugin"
 import { enhancedTitlePlugin } from "@/lib/enhanced-title-plugin"
+import { watermarkPlugin } from "@/lib/plugins/watermark-plugin"
 import { pie3dPlugin } from "@/lib/plugins/3d-pie-plugin"
 import { bar3dPlugin } from "@/lib/plugins/3d-bar-plugin"
 import { slicePatternPlugin } from "@/lib/plugins/slice-pattern-plugin"
@@ -1375,6 +1376,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
                         ? { ...((chartConfig.plugins as any)?.bar3d || {}), enabled: true }
                         : (chartConfig.plugins as any)?.bar3d,
                       legendType: ((chartConfig.plugins as any)?.legendType) || 'dataset',
+                      watermark: (chartConfig as any)?.watermark,
                       customLabels: { shapeSize: 32, labels: customLabels },
                       legend: {
                         ...((chartConfig.plugins as any)?.legend),
@@ -1522,6 +1524,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
                       },
                     } as any),
                   }}
+                  plugins={[watermarkPlugin]}
                 />
               </ResizableChartArea>
             ) : (
@@ -1582,6 +1585,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
                         ? { ...((chartConfig.plugins as any)?.bar3d || {}), enabled: true }
                         : (chartConfig.plugins as any)?.bar3d,
                       legendType: ((chartConfig.plugins as any)?.legendType) || 'dataset',
+                      watermark: (chartConfig as any)?.watermark,
                       customLabels: { shapeSize: 32, labels: customLabels },
                       legend: {
                         ...((chartConfig.plugins as any)?.legend),
@@ -1726,6 +1730,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
                       },
                     } as any),
                   }}
+                  plugins={[watermarkPlugin]}
                 />
               </div>
             )}

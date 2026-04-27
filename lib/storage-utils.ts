@@ -427,9 +427,12 @@ export function clearCurrentChart(): void {
     } catch (error) {
       console.warn(`Failed to remove ${key}:`, error);
     }
+    // CRITICAL: Also clear from IndexedDB to prevent async hydration
+    // from overwriting the cleared in-memory state with old persisted data.
+    idbStorage.removeItem(key).catch(() => {});
   });
 
-  console.log('✅ Current chart cleared from localStorage');
+  console.log('✅ Current chart cleared from localStorage + IndexedDB');
 }
 // =============================================
 // ACTIVITY TRACKING
@@ -883,32 +886,7 @@ export function createExpiringStorage(baseName: string) {
         // Update timestamp when data is saved (also updates activity)
         updateStorageTimestamp(key);
 
-        // ── Bootstrap cache: dual-write critical routing flags to localStorage ──
-        // These values are tiny (~100 bytes) and are read synchronously on page
-        // load so the UI can make instant layout decisions (show chart vs welcome
-        // screen) without waiting for the async IDB read.
-        if (baseName === 'chart-store' || baseName === 'template-store') {
-          try {
-            const parsed = JSON.parse(value);
-            const state = parsed?.state;
-            if (state) {
-              const cacheKey = `_bootstrap_${key}`;
-              if (baseName === 'chart-store') {
-                localStorage.setItem(cacheKey, JSON.stringify({
-                  hasJSON: !!state.hasJSON,
-                  chartType: state.chartType || null,
-                }));
-              } else if (baseName === 'template-store') {
-                localStorage.setItem(cacheKey, JSON.stringify({
-                  editorMode: state.editorMode || 'chart',
-                  hasTemplate: !!(state.currentTemplate || state.templateInBackground),
-                }));
-              }
-            }
-          } catch {
-            // Bootstrap cache is best-effort; never block persistence on it
-          }
-        }
+        // No bootstrap cache needed anymore, we use an App Shell loading state
       } catch (error) {
         console.error(`QuotaExceededError: Failed to save to IndexedDB:`, error);
         toast.error('Storage limit reached! Please remove large images to continue saving.');
@@ -925,51 +903,10 @@ export function createExpiringStorage(baseName: string) {
       
       await idbStorage.removeItem(key);
       removeStorageTimestamp(key);
-
-      // Also clear bootstrap cache when store is removed
-      if (baseName === 'chart-store' || baseName === 'template-store') {
-        try { localStorage.removeItem(`_bootstrap_${key}`); } catch {}
-      }
     },
   };
 
   return createJSONStorage(() => storage);
-}
-
-// =============================================
-// BOOTSTRAP CACHE — synchronous first-paint hints
-// =============================================
-
-/**
- * Reads the bootstrap cache for a given store.
- * Returns the cached routing flags synchronously (from localStorage),
- * or null if no cache exists yet.
- *
- * This is used to make instant layout decisions on page load (e.g.
- * show chart editor vs welcome screen) without waiting for the
- * async IDB hydration of the full store.
- */
-export function readBootstrapCache(baseName: string): Record<string, any> | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const key = getUserStorageKey(baseName);
-    const raw = localStorage.getItem(`_bootstrap_${key}`);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Clears the bootstrap cache for a given store.
- * Call this when explicitly resetting/clearing chart data.
- */
-export function clearBootstrapCache(baseName: string): void {
-  if (typeof window === 'undefined') return;
-  try {
-    const key = getUserStorageKey(baseName);
-    localStorage.removeItem(`_bootstrap_${key}`);
-  } catch {}
 }
 
 /**

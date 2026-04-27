@@ -5,6 +5,7 @@ import { generateSubtitlePluginCode } from "./subtitle-plugin-code";
 import { generate3DPiePluginCode } from "./3d-pie-plugin-code";
 import { generate3DBarPluginCode } from "./3d-bar-plugin-code";
 import { generateSlicePatternPluginCode } from "./slice-pattern-plugin-code";
+import { generateWatermarkPluginCode } from "./watermark-plugin-code";
 
 
 // Re-export individual generators for direct use
@@ -12,10 +13,10 @@ export {
     generateCustomLabelPluginCode,
     generateUniversalImagePluginCode,
 
-    generateSubtitlePluginCode,
     generate3DPiePluginCode,
     generate3DBarPluginCode,
     generateSlicePatternPluginCode,
+    generateWatermarkPluginCode,
 };
 
 /**
@@ -32,6 +33,7 @@ export function generateCompletePluginSystem(chartConfig: any): string {
     const hasSubtitle = subtitleConfig && subtitleConfig.display && subtitleConfig.text;
     const has3DPie = (chartConfig.plugins as any)?.pie3d?.enabled;
     const has3DBar = (chartConfig.plugins as any)?.bar3d?.enabled;
+    const hasWatermark = !!(chartConfig.plugins as any)?.watermark || !!(chartConfig as any)?.watermark;
 
     let pluginCode = '';
 
@@ -64,6 +66,11 @@ export function generateCompletePluginSystem(chartConfig: any): string {
     );
     if (hasPatterns) {
         pluginCode += generateSlicePatternPluginCode();
+    }
+
+    // Add Watermark plugin if needed
+    if (hasWatermark) {
+        pluginCode += generateWatermarkPluginCode();
     }
 
     // Note: SubTitle plugin is built into Chart.js (chart.umd.js includes it)

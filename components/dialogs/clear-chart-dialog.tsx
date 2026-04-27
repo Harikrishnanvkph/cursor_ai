@@ -47,6 +47,8 @@ export function ClearChartDialog({
     const { clearMessages, startNewConversation, setBackendConversationId } = useChatStore()
 
     const handleConfirmClear = () => {
+        if (onSuccess) onSuccess()
+
         // Actions common to both options:
         // 1. Clear chat messages
         // 2. Start a new conversation (generate new IDs)
@@ -93,7 +95,6 @@ export function ClearChartDialog({
         }
 
         onOpenChange(false)
-        if (onSuccess) onSuccess()
     }
 
     return (

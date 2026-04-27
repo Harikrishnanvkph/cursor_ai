@@ -413,7 +413,10 @@ export function AdvancedPanel() {
                     size: 16,
                     color: "#999999",
                     imageUrl: "",
-                    style: "tiled"
+                    style: "tiled",
+                    spacingX: 50,
+                    spacingY: 50,
+                    angle: -30
                   } : false)}
                   className="data-[state=checked]:bg-blue-600"
                 />
@@ -464,6 +467,30 @@ export function AdvancedPanel() {
                       </Select>
                     </div>
                   )}
+                  {((chartConfig as any)?.watermark?.style === 'tiled' || !(chartConfig as any)?.watermark?.style) && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs font-medium">Tile Spacing X</Label>
+                        <Slider
+                          value={[((chartConfig as any)?.watermark?.spacingX as number) ?? 50]}
+                          onValueChange={([value]) => handleConfigUpdate("watermark.spacingX", value)}
+                          max={300}
+                          min={0}
+                          step={5}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium">Tile Spacing Y</Label>
+                        <Slider
+                          value={[((chartConfig as any)?.watermark?.spacingY as number) ?? 50]}
+                          onValueChange={([value]) => handleConfigUpdate("watermark.spacingY", value)}
+                          max={300}
+                          min={0}
+                          step={5}
+                        />
+                      </div>
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label className="text-xs font-medium">Opacity</Label>
@@ -485,6 +512,16 @@ export function AdvancedPanel() {
                         step={1}
                       />
                     </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium">Rotation Angle (Degrees)</Label>
+                    <Slider
+                      value={[((chartConfig as any)?.watermark?.angle as number) ?? -30]}
+                      onValueChange={([value]) => handleConfigUpdate("watermark.angle", value)}
+                      max={360}
+                      min={-360}
+                      step={1}
+                    />
                   </div>
                   <div>
                     <Label className="text-xs font-medium">Watermark Color</Label>

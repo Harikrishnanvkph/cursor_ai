@@ -190,7 +190,8 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
             bar3d: {
                 ...(processedChartConfig.plugins?.bar3d || {}),
                 enabled: chartType === 'bar3d' || chartType === 'horizontalBar3d'
-            }
+            },
+            watermark: (processedChartConfig as any)?.watermark
         }
     };
 

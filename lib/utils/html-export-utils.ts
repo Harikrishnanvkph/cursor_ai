@@ -84,6 +84,15 @@ export async function embedImagesAsBase64(
         }
     }
 
+    // 4. Process Watermark Image
+    if (newChartConfig?.watermark?.imageUrl) {
+        const url = newChartConfig.watermark.imageUrl;
+        if (url && typeof url === 'string' && !url.startsWith('data:image/')) {
+            updateStatusCallback?.(`Embedding watermark image...`);
+            newChartConfig.watermark.imageUrl = await fetchImageAsBase64(url);
+        }
+    }
+
     updateStatusCallback?.('Finished embedding images.');
     return { chartData: newChartData, chartConfig: newChartConfig };
 }

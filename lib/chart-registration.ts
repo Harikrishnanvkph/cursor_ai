@@ -34,6 +34,7 @@ import exportPlugin from "./export-plugin"
 import { enhancedTitlePlugin } from "./enhanced-title-plugin"
 import { pie3dPlugin } from "./plugins/3d-pie-plugin"
 import { bar3dPlugin } from "./plugins/3d-bar-plugin"
+import { watermarkPlugin } from "./plugins/watermark-plugin"
 
 // Date adapter for time scales - auto-registers with Chart.js
 import 'chartjs-adapter-date-fns'
@@ -69,7 +70,8 @@ ChartJS.register(
   exportPlugin,
   enhancedTitlePlugin,
   pie3dPlugin,
-  bar3dPlugin
+  bar3dPlugin,
+  watermarkPlugin
 )
 
 // Chart.js registration completed

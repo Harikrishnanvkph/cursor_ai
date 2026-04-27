@@ -81,6 +81,14 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
 
   // --- Local state ---
   const [isMobile, setIsMobile] = useState(false);
+  const [isInitialAutoFitPending, setIsInitialAutoFitPending] = useState(() => {
+    // Only pending if it's chart mode and not responsive and has fixed dimensions
+    return useTemplateStore.getState().editorMode === 'chart' && 
+           !useTemplateStore.getState().shouldShowTemplate() && 
+           !useChartStore.getState().chartConfig.responsive && 
+           !!useChartStore.getState().chartConfig.width && 
+           !!useChartStore.getState().chartConfig.height;
+  });
 
   // --- Responsive check ---
   useEffect(() => {
@@ -131,12 +139,16 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   // zoom effect) have settled. This guarantees auto-fit is the final zoom setter.
   useEffect(() => {
     if (editorMode !== 'chart' || !chartConfig.width || !chartConfig.height || chartConfig.responsive || shouldShowTemplate()) {
+      setIsInitialAutoFitPending(false);
       return;
     }
 
     const chartWidth = parseInt(chartConfig.width.toString());
     const chartHeight = parseInt(chartConfig.height.toString());
-    if (isNaN(chartWidth) || isNaN(chartHeight) || chartWidth <= 0 || chartHeight <= 0) return;
+    if (isNaN(chartWidth) || isNaN(chartHeight) || chartWidth <= 0 || chartHeight <= 0) {
+      setIsInitialAutoFitPending(false);
+      return;
+    }
 
     let cancelled = false;
     let observer: ResizeObserver | null = null;
@@ -178,6 +190,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
           }
         }, 10);
       }
+      setIsInitialAutoFitPending(false);
       return true;
     };
 
@@ -389,7 +402,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
         <CardContent className={`${isMobile ? 'p-0' : 'p-0'} h-full w-full`}>
           <div
             ref={chartContainerRef}
-            className="relative w-full h-full overflow-auto bg-gray-50"
+            className={`relative w-full h-full overflow-auto bg-gray-50 transition-opacity duration-300 ease-in-out ${isInitialAutoFitPending ? 'opacity-0' : 'opacity-100'}`}
             style={{
               scrollbarWidth: 'thin',
               scrollbarColor: '#cbd5e1 #f1f5f9',

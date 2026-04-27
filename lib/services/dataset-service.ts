@@ -297,7 +297,7 @@ export const DatasetService = {
         const newState = {
             chartData: newChartData,
             ...modeDataUpdate,
-            hasJSON: shouldSetHasJSON || currentState.hasJSON,
+            hasJSON: shouldSetHasJSON,
         };
 
         // Undo capture
@@ -457,7 +457,7 @@ export const DatasetService = {
         return {
             chartData: newChartData,
             ...modeDataUpdate,
-            hasJSON: shouldSetHasJSON || currentState.hasJSON,
+            hasJSON: shouldSetHasJSON,
         };
     }
 };
