@@ -45,7 +45,7 @@ export async function fetchImageAsBase64(url: string): Promise<string> {
 
 /**
  * Scans a chart dataset and configuration object to find all image URLs 
- * (pointImages, overlay images) and replaces them with Base64 Data URIs.
+ * (pointImages) and replaces them with Base64 Data URIs.
  * Returns cloned objects to avoid mutating the live chart state.
  */
 export async function embedImagesAsBase64(
@@ -73,17 +73,7 @@ export async function embedImagesAsBase64(
         }
     }
 
-    // 2. Process Overlay Images
-    if (newChartConfig?.plugins?.overlay?.images && Array.isArray(newChartConfig.plugins.overlay.images)) {
-        const images = newChartConfig.plugins.overlay.images;
-        for (let i = 0; i < images.length; i++) {
-            const url = images[i].url;
-            if (url && typeof url === 'string' && !url.startsWith('data:image/')) {
-                updateStatusCallback?.(`Embedding overlay image ${i + 1}/${images.length}...`);
-                images[i].url = await fetchImageAsBase64(url);
-            }
-        }
-    }
+
 
     // 3. Process Generic Background Image (if any standard chart plugin uses it)
     if (newChartConfig?.plugins?.customCanvasBackgroundColor?.image) {

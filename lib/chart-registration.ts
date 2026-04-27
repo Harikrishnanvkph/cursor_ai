@@ -31,7 +31,6 @@ import {
 import { universalImagePlugin } from "./plugins/universal-image-plugin"
 import { customLabelPlugin } from "./custom-label-plugin"
 import exportPlugin from "./export-plugin"
-import { overlayPlugin } from "./overlay-plugin"
 import { enhancedTitlePlugin } from "./enhanced-title-plugin"
 import { pie3dPlugin } from "./plugins/3d-pie-plugin"
 import { bar3dPlugin } from "./plugins/3d-bar-plugin"
@@ -68,7 +67,6 @@ ChartJS.register(
   universalImagePlugin,
   customLabelPlugin,
   exportPlugin,
-  overlayPlugin,
   enhancedTitlePlugin,
   pie3dPlugin,
   bar3dPlugin

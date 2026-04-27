@@ -39,13 +39,12 @@ import { universalImagePlugin } from "@/lib/plugins/universal-image-plugin"
 import { useTemplateStore } from "@/lib/template-store"
 import exportPlugin from "@/lib/export-plugin"
 import { customLabelPlugin } from "@/lib/custom-label-plugin"
-import { overlayPlugin } from "@/lib/overlay-plugin"
 import { enhancedTitlePlugin } from "@/lib/enhanced-title-plugin"
 import { pie3dPlugin } from "@/lib/plugins/3d-pie-plugin"
 import { bar3dPlugin } from "@/lib/plugins/3d-bar-plugin"
 import { slicePatternPlugin } from "@/lib/plugins/slice-pattern-plugin"
 import { ResizableChartArea } from "@/components/resizable-chart-area"
-import { OverlayContextMenu } from "@/components/overlay-context-menu"
+
 import { parseDimension } from "@/lib/utils/dimension-utils"
 import { darkenColor, getHexFromColor } from "@/lib/utils/color-utils"
 // Date adapter for time scales - auto-registers with Chart.js
@@ -78,7 +77,6 @@ ChartJS.register(
   universalImagePlugin,
   customLabelPlugin,
   exportPlugin,
-  overlayPlugin,
   enhancedTitlePlugin,
   pie3dPlugin,
   bar3dPlugin,
@@ -270,9 +268,6 @@ import {
   useUniformityMode,
   useActiveGroupId,
   useChartGroups,
-  useOverlayImages,
-  useOverlayTexts,
-  useOverlayShapes
 } from "@/lib/hooks/use-chart-state"
 
 export interface ChartGeneratorProps {
@@ -293,36 +288,24 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
   const uniformityMode = useUniformityMode();
   const activeGroupId = useActiveGroupId();
   const groups = useChartGroups();
-  const overlayImages = useOverlayImages();
-  const overlayTexts = useOverlayTexts();
-  const overlayShapes = useOverlayShapes();
+
 
   // When rendered inside a template or format, force responsive mode
   // so the chart always fills its container zone regardless of its own fixed dimensions.
   const editorMode = useTemplateStore(s => s.editorMode);
   const isInsideTemplateOrFormat = editorMode === 'template';
 
-  const selectedImageId = useUIStore(s => s.selectedImageId);
-  const selectedTextId = useUIStore(s => s.selectedTextId);
-  const selectedShapeId = useUIStore(s => s.selectedShapeId);
+
 
   // Actions are stable and don't cause re-renders, but good practice to select them or use getState if appropriate
   // However, using the hook ensures we get the bound functions
   const {
-    updateOverlayImage,
-    updateOverlayText,
-    updateOverlayShape,
-    removeOverlayImage,
-    removeOverlayText,
-    removeOverlayShape,
-    addOverlayShape,
+
     updateGroup,
     updateDataset
   } = useChartActions();
 
-  const setSelectedImageId = useUIStore(s => s.setSelectedImageId);
-  const setSelectedTextId = useUIStore(s => s.setSelectedTextId);
-  const setSelectedShapeId = useUIStore(s => s.setSelectedShapeId);
+
   const setGlobalChartRef = useChartStore(s => s.setGlobalChartRef);
 
   const chartRef = useRef<ChartJS>(null);
@@ -331,9 +314,9 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
 
   // Refs for stable event listener callbacks — prevents the event listener
   // useEffect from re-running on every render when action functions change
-  const actionsRef = useRef({ updateOverlayImage, updateOverlayText, updateOverlayShape, updateDataset, addOverlayShape });
-  const selectionsRef = useRef({ setSelectedImageId, setSelectedTextId, setSelectedShapeId });
-  const stateRef = useRef({ chartData, overlayTexts });
+  const actionsRef = useRef({ updateDataset });
+
+  const stateRef = useRef({ chartData });
 
   // Zustand hydration gate:
   // Prevents the chart from rendering until the chart store has finished hydrating
@@ -365,22 +348,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
     };
   }, []);
 
-  // Context menu state
-  const [contextMenu, setContextMenu] = useState<{
-    isOpen: boolean;
-    x: number;
-    y: number;
-    type: 'image' | 'text' | 'shape';
-    id: string;
-    data: any;
-  }>({
-    isOpen: false,
-    x: 0,
-    y: 0,
-    type: 'image',
-    id: '',
-    data: null
-  });
+
 
   // Slice specific context menu
   const [sliceContextMenu, setSliceContextMenu] = useState<{
@@ -417,9 +385,9 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
 
   // Keep refs in sync with latest values (runs every render but does no real work)
   useEffect(() => {
-    actionsRef.current = { updateOverlayImage, updateOverlayText, updateOverlayShape, updateDataset, addOverlayShape };
-    selectionsRef.current = { setSelectedImageId, setSelectedTextId, setSelectedShapeId };
-    stateRef.current = { chartData, overlayTexts };
+    actionsRef.current = { updateDataset } as any;
+
+    stateRef.current = { chartData } as any;
   });
 
   // Register chart ref globally
@@ -427,234 +395,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
     setGlobalChartRef(chartRef);
   }, [setGlobalChartRef]);
 
-  // Handle overlay position updates from drag and drop
-  // Uses refs for stable callbacks — effect runs only ONCE when canvas is available
-  useEffect(() => {
-    const canvas = chartRef.current?.canvas
-    if (!canvas) return
 
-    console.log('🔄 Setting up event listeners for chart canvas...')
-
-    const handleOverlayPositionUpdate = (event: CustomEvent) => {
-      const { type, id, x, y } = event.detail
-      const actions = actionsRef.current
-
-      if (type === 'image') {
-        actions.updateOverlayImage(id, { x, y })
-      } else if (type === 'text') {
-        actions.updateOverlayText(id, { x, y })
-      } else if (type === 'shape') {
-        actions.updateOverlayShape(id, { x, y })
-      }
-
-      // Update chart to reflect new position
-      chartRef.current?.update('none')
-    }
-
-    const handleCalloutPositionUpdate = (event: CustomEvent) => {
-      const { datasetIndex, pointIndex, calloutX, calloutY } = event.detail
-
-      const dataset = stateRef.current.chartData.datasets[datasetIndex]
-      if (!dataset) return
-
-      // Create a shallow copy of pointImageConfig array to modify the specific index
-      // IMPORTANT: We must clone the inner object too
-      const newPointImageConfig = [...(dataset.pointImageConfig || [])]
-
-      // Ensure the config object exists at this index
-      if (newPointImageConfig[pointIndex]) {
-        newPointImageConfig[pointIndex] = {
-          ...newPointImageConfig[pointIndex],
-          calloutX,
-          calloutY
-        }
-
-        // Update the dataset with the new config
-        actionsRef.current.updateDataset(datasetIndex, { pointImageConfig: newPointImageConfig })
-        console.log('✅ Updated callout position in store:', { datasetIndex, pointIndex, calloutX, calloutY })
-      }
-    }
-
-    const handleImageLoaded = (event: CustomEvent) => {
-      console.log('🔄 Image loaded event received, forcing chart update')
-      if (chartRef.current) {
-        chartRef.current.update('none')
-        console.log('✅ Chart updated from component level')
-      }
-    }
-
-    const handleDimensionsUpdate = (event: CustomEvent) => {
-      const { imageId, updateData } = event.detail
-      console.log('📏 Dimensions update event received:', { imageId, updateData })
-      actionsRef.current.updateOverlayImage(imageId, updateData)
-
-      // Update chart to reflect new dimensions
-      if (chartRef.current) {
-        chartRef.current.update('none')
-      }
-    }
-
-    const handleImageSelected = (event: CustomEvent) => {
-      const { imageId } = event.detail
-      console.log('🎯 Image selected/deselected:', imageId)
-      selectionsRef.current.setSelectedImageId(imageId)
-
-      // Update chart to show/hide selection handles
-      if (chartRef.current) {
-        chartRef.current.update('none')
-        console.log('✅ Chart updated after image selection change')
-      }
-    }
-
-    const handleTextSelected = (event: CustomEvent) => {
-      const { textId } = event.detail
-      console.log('🎯 Text selected/deselected:', textId)
-      selectionsRef.current.setSelectedTextId(textId)
-
-      // Update chart to show/hide selection handles
-      if (chartRef.current) {
-        chartRef.current.update('none')
-        console.log('✅ Chart updated after text selection change')
-      }
-    }
-
-    const handleImageResize = (event: CustomEvent) => {
-      const { id, x, y, width, height, useNaturalSize } = event.detail
-      console.log('🔄 Image resize:', { id, x, y, width, height, useNaturalSize })
-      actionsRef.current.updateOverlayImage(id, { x, y, width, height, useNaturalSize })
-
-      // Update chart to reflect new size
-      if (chartRef.current) {
-        chartRef.current.update('none')
-      }
-    }
-
-    const handleShapeSelected = (event: CustomEvent) => {
-      const { shapeId } = event.detail
-      console.log('🎯 Shape selected/deselected:', shapeId)
-      selectionsRef.current.setSelectedShapeId(shapeId)
-
-      // Update chart to show/hide selection handles
-      if (chartRef.current) {
-        chartRef.current.update('none')
-      }
-    }
-
-    const handleShapeResize = (event: CustomEvent) => {
-      const { id, x, y, width, height } = event.detail
-      console.log('🔄 Shape resize:', { id, x, y, width, height })
-      actionsRef.current.updateOverlayShape(id, { x, y, width, height })
-
-      // Update chart to reflect new size
-      if (chartRef.current) {
-        chartRef.current.update('none')
-      }
-    }
-
-    const handleTextResize = (event: CustomEvent) => {
-      const { id, x, y, width, height } = event.detail
-      console.log('🔄 Text resize:', { id, x, y, width, height })
-
-      const txt = stateRef.current.overlayTexts.find(t => t.id === id)
-      if (!txt) return
-
-      const paddingX = txt.paddingX || 8
-      const paddingY = txt.paddingY || 4
-
-      // maxWidth should be the width minus horizontal padding
-      const newMaxWidth = Math.max(20, width - (paddingX * 2))
-
-      // txt.x/y are relative to chartArea.left/top
-      // The event gives us the top-left of the bounding box (including padding)
-      actionsRef.current.updateOverlayText(id, {
-        x: x + paddingX,
-        y: y + paddingY,
-        maxWidth: newMaxWidth
-      })
-
-      if (chartRef.current) {
-        chartRef.current.update('none')
-      }
-    }
-
-    const handleShapeRotate = (event: CustomEvent) => {
-      const { id, rotation } = event.detail
-      actionsRef.current.updateOverlayShape(id, { rotation })
-
-      if (chartRef.current) {
-        chartRef.current.update('none')
-      }
-    }
-
-    const handleImageRotate = (event: CustomEvent) => {
-      const { id, rotation } = event.detail
-      actionsRef.current.updateOverlayImage(id, { rotation })
-
-      if (chartRef.current) {
-        chartRef.current.update('none')
-      }
-    }
-
-    const handleTextRotate = (event: CustomEvent) => {
-      const { id, rotation } = event.detail
-      actionsRef.current.updateOverlayText(id, { rotation })
-
-      if (chartRef.current) {
-        chartRef.current.update('none')
-      }
-    }
-
-
-
-    const handleContextMenu = (event: CustomEvent) => {
-      const { type, id, x, y, data } = event.detail
-      console.log('🎯 Context menu triggered:', { type, id, x, y })
-
-      setContextMenu({
-        isOpen: true,
-        x,
-        y,
-        type,
-        id,
-        data
-      })
-    }
-
-    canvas.addEventListener('overlayPositionUpdate', handleOverlayPositionUpdate as EventListener)
-    canvas.addEventListener('calloutPositionUpdate', handleCalloutPositionUpdate as EventListener)
-    canvas.addEventListener('overlayImageLoaded', handleImageLoaded as EventListener)
-    canvas.addEventListener('overlayImageDimensionsUpdate', handleDimensionsUpdate as EventListener)
-    canvas.addEventListener('overlayImageSelected', handleImageSelected as EventListener)
-    canvas.addEventListener('overlayTextSelected', handleTextSelected as EventListener)
-    canvas.addEventListener('overlayShapeSelected', handleShapeSelected as EventListener)
-    canvas.addEventListener('overlayImageResize', handleImageResize as EventListener)
-    canvas.addEventListener('overlayShapeResize', handleShapeResize as EventListener)
-    canvas.addEventListener('overlayTextResize', handleTextResize as EventListener)
-    canvas.addEventListener('overlayShapeRotate', handleShapeRotate as EventListener)
-    canvas.addEventListener('overlayImageRotate', handleImageRotate as EventListener)
-    canvas.addEventListener('overlayTextRotate', handleTextRotate as EventListener)
-    canvas.addEventListener('overlayContextMenu', handleContextMenu as EventListener)
-
-    console.log('✅ Event listeners attached to chart canvas')
-
-    return () => {
-      canvas.removeEventListener('overlayPositionUpdate', handleOverlayPositionUpdate as EventListener)
-      canvas.removeEventListener('calloutPositionUpdate', handleCalloutPositionUpdate as EventListener)
-      canvas.removeEventListener('overlayImageLoaded', handleImageLoaded as EventListener)
-      canvas.removeEventListener('overlayImageDimensionsUpdate', handleDimensionsUpdate as EventListener)
-      canvas.removeEventListener('overlayImageSelected', handleImageSelected as EventListener)
-      canvas.removeEventListener('overlayTextSelected', handleTextSelected as EventListener)
-      canvas.removeEventListener('overlayShapeSelected', handleShapeSelected as EventListener)
-      canvas.removeEventListener('overlayImageResize', handleImageResize as EventListener)
-      canvas.removeEventListener('overlayShapeResize', handleShapeResize as EventListener)
-      canvas.removeEventListener('overlayTextResize', handleTextResize as EventListener)
-      canvas.removeEventListener('overlayShapeRotate', handleShapeRotate as EventListener)
-      canvas.removeEventListener('overlayImageRotate', handleImageRotate as EventListener)
-      canvas.removeEventListener('overlayTextRotate', handleTextRotate as EventListener)
-      canvas.removeEventListener('overlayContextMenu', handleContextMenu as EventListener)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storeHydrated, chartConfig.type, chartConfig.responsive, chartConfig.manualDimensions, chartConfig.width, chartConfig.height]);
 
 
   // Get enabled datasets (respect single/grouped mode and legendFilter)
@@ -1331,8 +1072,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
 
   // Context menu handlers
   const handleNativeContextMenu = (event: MouseEvent) => {
-    // If we clicked on an overlay, overlayContextMenu should handle it via CustomEvent. 
-    // We can rely on Chart.js getElementsAtEventForMode to see if we truly hit a chart slice.
+
     if (!chartRef.current) return;
 
     let elements = chartRef.current.getElementsAtEventForMode(event, 'nearest', { intersect: true }, false);
@@ -1389,37 +1129,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
     }
   };
 
-  const handleContextMenuClose = () => {
-    setContextMenu(prev => ({ ...prev, isOpen: false }))
-  }
 
-  const handleContextMenuDelete = (id: string) => {
-    if (contextMenu.type === 'image') {
-      removeOverlayImage(id)
-    } else if (contextMenu.type === 'shape') {
-      removeOverlayShape(id)
-    } else {
-      removeOverlayText(id)
-    }
-    setSelectedImageId(null)
-    setSelectedShapeId(null)
-  }
-
-  const handleContextMenuHide = (id: string) => {
-    if (contextMenu.type === 'image') {
-      updateOverlayImage(id, { visible: !contextMenu.data.visible })
-    } else if (contextMenu.type === 'shape') {
-      updateOverlayShape(id, { visible: !contextMenu.data.visible })
-    } else {
-      updateOverlayText(id, { visible: !contextMenu.data.visible })
-    }
-  }
-
-  const handleContextMenuUnselect = () => {
-    setSelectedImageId(null)
-    setSelectedTextId(null)
-    setSelectedShapeId(null)
-  }
 
   // Function to load sample data based on current mode
   const loadSampleGroupedData = () => {
@@ -1630,9 +1340,6 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
                     ...chartConfig,
                     responsive: true,
                     maintainAspectRatio: false,
-                    overlayImages,
-                    overlayTexts,
-                    overlayShapes,
                     layout: {
                       padding: chartConfig.layout?.padding || 0
                     },
@@ -1669,13 +1376,6 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
                         : (chartConfig.plugins as any)?.bar3d,
                       legendType: ((chartConfig.plugins as any)?.legendType) || 'dataset',
                       customLabels: { shapeSize: 32, labels: customLabels },
-                      overlayPlugin: {
-                        overlayImages,
-                        overlayTexts,
-                        overlayShapes,
-                        selectedImageId,
-                        selectedShapeId
-                      },
                       legend: {
                         ...((chartConfig.plugins as any)?.legend),
                         display: ((chartConfig.plugins as any)?.legend?.display !== false),
@@ -1847,9 +1547,6 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
                     ...appliedOptions,
                     responsive: isInsideTemplateOrFormat || chartConfig.manualDimensions ? true : isResponsive,
                     maintainAspectRatio: false,
-                    overlayImages,
-                    overlayTexts,
-                    overlayShapes,
                     layout: {
                       padding: chartConfig.layout?.padding || 0
                     },
@@ -1886,14 +1583,6 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
                         : (chartConfig.plugins as any)?.bar3d,
                       legendType: ((chartConfig.plugins as any)?.legendType) || 'dataset',
                       customLabels: { shapeSize: 32, labels: customLabels },
-                      overlayPlugin: {
-                        overlayImages,
-                        overlayTexts,
-                        overlayShapes,
-                        selectedImageId,
-                        selectedTextId,
-                        selectedShapeId
-                      },
                       legend: {
                         ...((chartConfig.plugins as any)?.legend),
                         display: ((chartConfig.plugins as any)?.legend?.display !== false),
@@ -2117,19 +1806,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
         </div>
       )}
 
-      {/* Context Menu */}
-      <OverlayContextMenu
-        isOpen={contextMenu.isOpen}
-        x={contextMenu.x}
-        y={contextMenu.y}
-        type={contextMenu.type}
-        id={contextMenu.id}
-        data={contextMenu.data}
-        onClose={handleContextMenuClose}
-        onDelete={handleContextMenuDelete}
-        onHide={handleContextMenuHide}
-        onUnselect={handleContextMenuUnselect}
-      />
+
 
       {/* Slice Color Context Menu */}
       <SliceColorPickerPopover

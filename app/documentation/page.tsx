@@ -23,10 +23,7 @@ import {
   X,
   FileText,
   BarChart,
-  Settings,
-  Layers,
-  Image,
-  Type as TypeIcon
+  Settings
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 
@@ -78,7 +75,7 @@ const guideData = [
                 <ul className="list-disc pl-4 text-sm text-slate-700 space-y-2">
                   <li>You need pixel-perfect axis adjustments.</li>
                   <li>You are refining brand colors and typography.</li>
-                  <li>You need to add complex annotations or overlays.</li>
+                  <li>You need to add complex annotations or decorations.</li>
                 </ul>
               </CardContent>
             </Card>
@@ -175,7 +172,7 @@ const guideData = [
     id: "chart-builder",
     title: "Chart Builder",
     icon: Layout,
-    description: "A comprehensive visual environment for managing datasets, styling, and overlays.",
+    description: "A comprehensive visual environment for managing datasets, styling, and decorations.",
     headers: [
       { id: "core-components", text: "Core Components" },
       { id: "dataset-management", text: "Dataset Management" },
@@ -291,271 +288,6 @@ const guideData = [
             Critical for Cartesian charts (Bar, Line). Configure Grid lines (display, colors, dash styles),
             Tick marks (fonts, rotation, currency formatting), and Titles for X/Y axes.
           </p>
-        </section>
-      </div>
-    )
-  },
-  {
-    id: "overlay-image-text",
-    title: "Overlay Image & Text",
-    icon: Layers,
-    description: "Add custom images and text annotations on top of your charts for enhanced storytelling.",
-    headers: [
-      { id: "overlay-overview", text: "Overview" },
-      { id: "image-overlays", text: "Image Overlays" },
-      { id: "text-overlays", text: "Text Overlays" },
-      { id: "positioning-layers", text: "Positioning & Layers" }
-    ],
-    content: (
-      <div className="space-y-8">
-        <section id="overlay-overview" className="scroll-mt-24">
-          <h3 className="text-2xl font-semibold tracking-tight mb-4 text-slate-900">Overview</h3>
-          <p className="leading-7 text-slate-700 mb-4">
-            The Overlay panel allows you to add custom images and text annotations directly on top of your charts.
-            This is perfect for adding logos, watermarks, callouts, data annotations, or any visual elements
-            that enhance your chart's storytelling capabilities.
-          </p>
-          <div className="grid md:grid-cols-2 gap-4">
-            <Card className="bg-indigo-50 border-indigo-100 shadow-sm">
-              <CardContent className="p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="p-1.5 bg-indigo-200 rounded-md text-indigo-700"><Image className="w-4 h-4" /></div>
-                  <div className="font-semibold text-indigo-900">Image Overlays</div>
-                </div>
-                <ul className="list-disc pl-4 text-sm text-indigo-800 space-y-1">
-                  <li>Upload from local files or add via URL</li>
-                  <li>Multiple shape options (rectangle, circle, rounded)</li>
-                  <li>Configurable borders and sizing</li>
-                </ul>
-              </CardContent>
-            </Card>
-            <Card className="bg-slate-50 border-slate-200 shadow-sm">
-              <CardContent className="p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="p-1.5 bg-slate-200 rounded-md text-slate-700"><TypeIcon className="w-4 h-4" /></div>
-                  <div className="font-semibold text-slate-900">Text Overlays</div>
-                </div>
-                <ul className="list-disc pl-4 text-sm text-slate-700 space-y-1">
-                  <li>Multi-line text support with wrapping</li>
-                  <li>Full typography controls (font, size, color)</li>
-                  <li>Background, padding, and rotation options</li>
-                </ul>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
-
-        <section id="image-overlays" className="scroll-mt-24">
-          <h3 className="text-2xl font-semibold tracking-tight mb-4 text-slate-900">Image Overlays</h3>
-          <p className="leading-7 text-slate-700 mb-6">
-            Add images to your chart from local files or external URLs. Each image can be fully customized with
-            the following properties:
-          </p>
-
-          <div className="space-y-6">
-            <div>
-              <h4 className="text-lg font-semibold text-slate-900 mb-3">Adding Images</h4>
-              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-50 text-slate-900 border-b border-slate-100">
-                    <tr>
-                      <th className="p-4 font-semibold w-1/3">Method</th>
-                      <th className="p-4 font-semibold">Description</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    <tr className="hover:bg-slate-50/50">
-                      <td className="p-4 font-medium text-slate-900">Upload from File</td>
-                      <td className="p-4 text-slate-600">Click "Choose Images" to select one or multiple images from your device. Supports all common formats (PNG, JPG, GIF, SVG).</td>
-                    </tr>
-                    <tr className="hover:bg-slate-50/50">
-                      <td className="p-4 font-medium text-slate-900">Add from URL</td>
-                      <td className="p-4 text-slate-600">Paste an image URL and press Enter or click Add. Great for using images from the web.</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <img src="/docs-overlay-add-image.png" alt="Add Image Panel" className="rounded-lg border border-slate-200 shadow-sm mx-auto" style={{ maxWidth: '280px' }} />
-                <p className="text-center text-sm text-slate-600 mt-3">The Add Image panel with file upload and URL input options</p>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="text-lg font-semibold text-slate-900 mb-3">Image Properties</h4>
-              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-50 text-slate-900 border-b border-slate-100">
-                    <tr>
-                      <th className="p-4 font-semibold w-1/3">Property</th>
-                      <th className="p-4 font-semibold">Description</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    <tr className="hover:bg-slate-50/50">
-                      <td className="p-4 font-medium text-slate-900">Position (X, Y)</td>
-                      <td className="p-4 text-slate-600">Set the exact pixel position of the image on the chart canvas.</td>
-                    </tr>
-                    <tr className="hover:bg-slate-50/50">
-                      <td className="p-4 font-medium text-slate-900">Use Natural Size</td>
-                      <td className="p-4 text-slate-600">When enabled, the image displays at its original dimensions. Toggle off to set custom width and height.</td>
-                    </tr>
-                    <tr className="hover:bg-slate-50/50">
-                      <td className="p-4 font-medium text-slate-900">Shape</td>
-                      <td className="p-4 text-slate-600">Choose from <strong>Rectangle</strong>, <strong>Circle</strong>, or <strong>Rounded</strong> corners for the image container.</td>
-                    </tr>
-                    <tr className="hover:bg-slate-50/50">
-                      <td className="p-4 font-medium text-slate-900">Image Fit</td>
-                      <td className="p-4 text-slate-600">
-                        <strong>Fill:</strong> Stretch to fill container. <strong>Cover:</strong> Maintain aspect ratio, crop if needed. <strong>Contain:</strong> Fit entirely within container.
-                      </td>
-                    </tr>
-                    <tr className="hover:bg-slate-50/50">
-                      <td className="p-4 font-medium text-slate-900">Border</td>
-                      <td className="p-4 text-slate-600">Add a border with customizable width (0-10px) and color.</td>
-                    </tr>
-                    <tr className="hover:bg-slate-50/50">
-                      <td className="p-4 font-medium text-slate-900">Layer Order</td>
-                      <td className="p-4 text-slate-600">Control stacking order when multiple overlays exist. Higher values appear on top.</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="text-overlays" className="scroll-mt-24">
-          <h3 className="text-2xl font-semibold tracking-tight mb-4 text-slate-900">Text Overlays</h3>
-          <p className="leading-7 text-slate-700 mb-6">
-            Add custom text annotations anywhere on your chart. Perfect for callouts, labels, footnotes, or any textual information.
-          </p>
-
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-slate-900 border-b border-slate-100">
-                <tr>
-                  <th className="p-4 font-semibold w-1/3">Property</th>
-                  <th className="p-4 font-semibold">Description</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                <tr className="hover:bg-slate-50/50">
-                  <td className="p-4 font-medium text-slate-900">Text Content</td>
-                  <td className="p-4 text-slate-600">Multi-line text input. Use Enter for new lines within the text box.</td>
-                </tr>
-                <tr className="hover:bg-slate-50/50">
-                  <td className="p-4 font-medium text-slate-900">Position (X, Y)</td>
-                  <td className="p-4 text-slate-600">Precise pixel positioning on the chart canvas.</td>
-                </tr>
-                <tr className="hover:bg-slate-50/50">
-                  <td className="p-4 font-medium text-slate-900">Font Size & Family</td>
-                  <td className="p-4 text-slate-600">Set the font size in pixels and choose from Arial, Helvetica, Times New Roman, Courier New, or Georgia.</td>
-                </tr>
-                <tr className="hover:bg-slate-50/50">
-                  <td className="p-4 font-medium text-slate-900">Text Color</td>
-                  <td className="p-4 text-slate-600">Pick any color for the text using the color picker.</td>
-                </tr>
-                <tr className="hover:bg-slate-50/50">
-                  <td className="p-4 font-medium text-slate-900">Max Width</td>
-                  <td className="p-4 text-slate-600">Set a maximum width for automatic text wrapping. Leave empty for no wrapping.</td>
-                </tr>
-                <tr className="hover:bg-slate-50/50">
-                  <td className="p-4 font-medium text-slate-900">Background</td>
-                  <td className="p-4 text-slate-600">Toggle transparent background or choose a solid background color.</td>
-                </tr>
-                <tr className="hover:bg-slate-50/50">
-                  <td className="p-4 font-medium text-slate-900">Padding</td>
-                  <td className="p-4 text-slate-600">Set horizontal (X) and vertical (Y) padding around the text (0-20px each).</td>
-                </tr>
-                <tr className="hover:bg-slate-50/50">
-                  <td className="p-4 font-medium text-slate-900">Border</td>
-                  <td className="p-4 text-slate-600">Add a border with customizable width and color around the text box.</td>
-                </tr>
-                <tr className="hover:bg-slate-50/50">
-                  <td className="p-4 font-medium text-slate-900">Rotation</td>
-                  <td className="p-4 text-slate-600">Rotate the text from -180° to 180° for angled annotations.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <img src="/docs-overlay-add-text.png" alt="Add Text Panel" className="rounded-lg border border-slate-200 shadow-sm mx-auto" style={{ maxWidth: '280px' }} />
-            <p className="text-center text-sm text-slate-600 mt-3">The Add Text panel with multi-line text input</p>
-          </div>
-        </section>
-
-        <section id="positioning-layers" className="scroll-mt-24">
-          <h3 className="text-2xl font-semibold tracking-tight mb-4 text-slate-900">Positioning & Layers</h3>
-          <p className="leading-7 text-slate-700 mb-4">
-            All overlays support precise positioning and layer management for full control over your chart's composition.
-          </p>
-
-          {/* Visual Interaction Guide */}
-          <div className="mb-8">
-            <h4 className="text-lg font-semibold text-slate-900 mb-4">Interactive Canvas Controls</h4>
-            <div className="grid md:grid-cols-3 gap-4">
-              <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-                <img src="/docs-overlay-select.jpg" alt="Select overlay" className="w-full border-b border-slate-200" />
-                <div className="p-4">
-                  <strong className="text-slate-900 block mb-1">1. Select</strong>
-                  <p className="text-sm text-slate-600">Click on any overlay to select it. Blue handles appear around the selection boundary.</p>
-                </div>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-                <img src="/docs-overlay-drag.jpg" alt="Drag overlay" className="w-full border-b border-slate-200" />
-                <div className="p-4">
-                  <strong className="text-slate-900 block mb-1">2. Drag</strong>
-                  <p className="text-sm text-slate-600">Click and hold inside the overlay, then drag to move it anywhere on the chart canvas.</p>
-                </div>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-                <img src="/docs-overlay-resize.jpg" alt="Resize overlay" className="w-full border-b border-slate-200" />
-                <div className="p-4">
-                  <strong className="text-slate-900 block mb-1">3. Resize</strong>
-                  <p className="text-sm text-slate-600">Drag the corner handles to resize the overlay while maintaining full control over dimensions.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex gap-4 items-start">
-              <div className="mt-1 h-6 w-6 rounded-full bg-indigo-100 flex items-center justify-center shrink-0 text-indigo-600 font-mono text-xs font-bold">1</div>
-              <div>
-                <strong className="block text-slate-900">Drag & Drop</strong>
-                <p className="text-slate-600 text-sm">Select an overlay in the panel, then drag it directly on the chart canvas to reposition.</p>
-              </div>
-            </div>
-            <div className="flex gap-4 items-start">
-              <div className="mt-1 h-6 w-6 rounded-full bg-indigo-100 flex items-center justify-center shrink-0 text-indigo-600 font-mono text-xs font-bold">2</div>
-              <div>
-                <strong className="block text-slate-900">Precise Input</strong>
-                <p className="text-slate-600 text-sm">Enter exact X and Y coordinates in the panel for pixel-perfect placement.</p>
-              </div>
-            </div>
-            <div className="flex gap-4 items-start">
-              <div className="mt-1 h-6 w-6 rounded-full bg-indigo-100 flex items-center justify-center shrink-0 text-indigo-600 font-mono text-xs font-bold">3</div>
-              <div>
-                <strong className="block text-slate-900">Layer Order (Z-Index)</strong>
-                <p className="text-slate-600 text-sm">Control which overlays appear on top. Higher layer order values bring elements forward.</p>
-              </div>
-            </div>
-            <div className="flex gap-4 items-start">
-              <div className="mt-1 h-6 w-6 rounded-full bg-indigo-100 flex items-center justify-center shrink-0 text-indigo-600 font-mono text-xs font-bold">4</div>
-              <div>
-                <strong className="block text-slate-900">Visibility Toggle</strong>
-                <p className="text-slate-600 text-sm">Quickly show/hide individual overlays using the eye icon without deleting them.</p>
-              </div>
-            </div>
-            <div className="flex gap-4 items-start">
-              <div className="mt-1 h-6 w-6 rounded-full bg-indigo-100 flex items-center justify-center shrink-0 text-indigo-600 font-mono text-xs font-bold">5</div>
-              <div>
-                <strong className="block text-slate-900">Keyboard Shortcuts</strong>
-                <p className="text-slate-600 text-sm">Press <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-900 font-medium">ESC</code> to deselect the currently selected overlay.</p>
-              </div>
-            </div>
-          </div>
         </section>
       </div>
     )

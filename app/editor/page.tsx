@@ -550,8 +550,7 @@ function EditorPageContent() {
     clearMessages()
     startNewConversation()
     resetChart()
-    // Clear all overlay data (images, texts, shapes)
-    useChartStore.getState().clearAllOverlays()
+
     // Clear all decoration shapes
     useDecorationStore.getState().clearShapes()
     setHasJSON(false)
@@ -588,8 +587,7 @@ function EditorPageContent() {
       chartConfig: useChartStore.getState().chartConfig // this now has the dimensions applied
     })
     
-    // Clear all overlay data
-    useChartStore.getState().clearAllOverlays()
+
     useDecorationStore.getState().clearShapes()
     setHasJSON(false) // Wait until they add data to set to true
     setBootstrapHasJSON(false)

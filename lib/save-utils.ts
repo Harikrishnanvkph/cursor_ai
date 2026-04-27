@@ -187,17 +187,6 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
         // Normalize config
         const normalizedConfig = normalizeChartConfig(chartConfig);
 
-        // Inject overlay data into config so it's persisted in the snapshot
-        const { overlayImages, overlayTexts, overlayShapes } = useChartStore.getState();
-        if (overlayImages && overlayImages.length > 0) {
-            normalizedConfig.overlayImages = overlayImages;
-        }
-        if (overlayTexts && overlayTexts.length > 0) {
-            normalizedConfig.overlayTexts = overlayTexts;
-        }
-        if (overlayShapes && overlayShapes.length > 0) {
-            normalizedConfig.overlayShapes = overlayShapes;
-        }
 
         // Inject decorations into config so it's persisted in the snapshot
         const decorationShapes = useDecorationStore.getState().shapes;

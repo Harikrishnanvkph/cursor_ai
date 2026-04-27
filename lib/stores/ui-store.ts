@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { ShapeType } from '@/lib/types/overlay'
 
 interface UIStore {
     // Sidebar State
@@ -24,13 +23,7 @@ interface UIStore {
     settingsSliceIndex: number | null // null = "All Slices"
     setSettingsSliceIndex: (index: number | null) => void
 
-    // Selection State (Migrated from ChartStore)
-    selectedImageId: string | null
-    selectedTextId: string | null
-    selectedShapeId: string | null
-    setSelectedImageId: (id: string | null) => void
-    setSelectedTextId: (id: string | null) => void
-    setSelectedShapeId: (id: string | null) => void
+
 }
 
 export const useUIStore = create<UIStore>()(
@@ -55,13 +48,7 @@ export const useUIStore = create<UIStore>()(
             settingsSliceIndex: null,
             setSettingsSliceIndex: (index) => set({ settingsSliceIndex: index }),
 
-            // Selection
-            selectedImageId: null,
-            selectedTextId: null,
-            selectedShapeId: null,
-            setSelectedImageId: (id) => set({ selectedImageId: id }),
-            setSelectedTextId: (id) => set({ selectedTextId: id }),
-            setSelectedShapeId: (id) => set({ selectedShapeId: id }),
+
         }),
         {
             name: 'ui-store',

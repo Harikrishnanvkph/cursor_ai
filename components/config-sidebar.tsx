@@ -36,12 +36,10 @@ export function ConfigSidebar() {
     chartType,
     chartData,
     chartConfig,
-    overlayImages,
   } = useChartStore()
 
   const {
     updateChartConfig,
-    updateOverlayImage,
     setChartType,
     toggleFillArea,
     toggleShowBorder,
@@ -76,21 +74,7 @@ export function ConfigSidebar() {
     toast.success("Design Applied Successfully!")
   }
 
-  // Effect to sync overlay images visibility with showImages toggle
-  useEffect(() => {
-    // Only toggle if showImages is explicitly true or false
-    if (showImages === undefined) return
-    
-    // Also toggle overlay images visibility (only if different to prevent infinite loops)
-    let needsUpdate = false
-    overlayImages.forEach((image) => {
-      // visible is a boolean in type Definition
-      if (image.visible !== showImages) {
-        updateOverlayImage(image.id, { visible: showImages as any })
-        needsUpdate = true
-      }
-    })
-  }, [showImages, updateOverlayImage]) // Deliberately omitting overlayImages to prevent loops
+
 
   const handleToggleFillArea = useCallback((checked: boolean) => {
     toggleFillArea()
@@ -104,15 +88,9 @@ export function ConfigSidebar() {
     // Don't trigger individual dataset updates for simple toggles
   }, [toggleShowBorder])
 
-  // Enhanced image toggle that also affects overlay images
   const handleToggleShowImages = useCallback((checked: boolean) => {
     toggleShowImages()
-
-    // Also toggle overlay images visibility
-    overlayImages.forEach((image) => {
-      updateOverlayImage(image.id, { visible: checked })
-    })
-  }, [toggleShowImages, overlayImages, updateOverlayImage])
+  }, [toggleShowImages])
 
 
   return (

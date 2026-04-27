@@ -10,8 +10,7 @@ import {
     getDefaultConfigForType,
     CustomChartType
 } from "../chart-defaults"
-import { OverlayService } from "./overlay-service"
-import { OverlayImage, OverlayText } from "../types/overlay"
+
 
 // Define the shape of the store state needed by this service
 export interface ChartState {
@@ -173,10 +172,7 @@ export class ChartStateService {
             currentSnapshotId: null,
             originalCloudDimensions: null,
 
-            // Reset Overlays
-            overlayImages: [],
-            overlayTexts: [],
-            overlayShapes: [],
+
         } as any;
     }
 

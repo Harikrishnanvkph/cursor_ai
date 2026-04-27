@@ -139,7 +139,7 @@ export class ChartStyleService {
     }
 
     static toggleShowImages(
-        state: ChartState & { overlayImages: any[] },
+        state: ChartState,
         dependencies: StyleServiceDependencies
     ): { chartConfig: ExtendedChartOptions } {
         const currentSettings = state.chartConfig.visualSettings || { fillArea: true, showBorder: true, showImages: true, showLabels: true, uniformityMode: 'uniform' as const };
@@ -153,7 +153,7 @@ export class ChartStyleService {
             }
         };
 
-        if (state.hasJSON && state.overlayImages && state.overlayImages.length > 0) {
+        if (state.hasJSON) {
             try {
                 if (!dependencies.shouldDebounceUndoOperation('manual_design_change', 'style-toggles')) {
                     dependencies.captureUndoPoint({

@@ -87,8 +87,6 @@ export function ClearChartDialog({
             clearCurrentChart()
             // - Reset chart store state completely
             resetChart()
-            // - Clear all overlay data (images, texts, shapes)
-            useChartStore.getState().clearAllOverlays()
             // - Hide JSON to show welcome screen
             setHasJSON(false)
             toast.success("Application reset successfully")

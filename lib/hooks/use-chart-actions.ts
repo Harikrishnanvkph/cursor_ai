@@ -6,9 +6,7 @@ import { UndoBridge } from '../services/undo-bridge'
 import { ChartTransformService } from '../services/chart-transform-service'
 import { GroupService } from '../services/group-service'
 import { ChartStateService } from "@/lib/services/chart-state-service"
-import { OverlayService } from '../services/overlay-service'
 import type { ExtendedChartDataset, SupportedChartType } from "@/lib/chart-defaults"
-import type { OverlayImage, OverlayText, OverlayShape } from '@/lib/types/overlay'
 
 export const useChartActions = () => {
     // Get setters from the store
@@ -312,56 +310,7 @@ export const useChartActions = () => {
         useChartStore.setState(newState)
     }
 
-    // Overlays
-    const addOverlayImage = (image: Omit<OverlayImage, 'id'>) => {
-        const newState = OverlayService.addOverlayImage(image, { overlayImages: useChartStore.getState().overlayImages })
-        useChartStore.setState(newState)
-    }
 
-    const updateOverlayImage = (id: string, updates: Partial<OverlayImage>) => {
-        const newState = OverlayService.updateOverlayImage(id, updates, { overlayImages: useChartStore.getState().overlayImages })
-        useChartStore.setState(newState)
-    }
-
-    const removeOverlayImage = (id: string) => {
-        const newState = OverlayService.removeOverlayImage(id, { overlayImages: useChartStore.getState().overlayImages })
-        useChartStore.setState(newState)
-    }
-
-    const addOverlayText = (text: Omit<OverlayText, 'id'>) => {
-        const newState = OverlayService.addOverlayText(text, { overlayTexts: useChartStore.getState().overlayTexts })
-        useChartStore.setState(newState)
-    }
-
-    const updateOverlayText = (id: string, updates: Partial<OverlayText>) => {
-        const newState = OverlayService.updateOverlayText(id, updates, { overlayTexts: useChartStore.getState().overlayTexts })
-        useChartStore.setState(newState)
-    }
-
-    const removeOverlayText = (id: string) => {
-        const newState = OverlayService.removeOverlayText(id, { overlayTexts: useChartStore.getState().overlayTexts })
-        useChartStore.setState(newState)
-    }
-
-    const addOverlayShape = (shape: Omit<OverlayShape, 'id'>) => {
-        const newState = OverlayService.addOverlayShape(shape, { overlayShapes: useChartStore.getState().overlayShapes })
-        useChartStore.setState(newState)
-    }
-
-    const updateOverlayShape = (id: string, updates: Partial<OverlayShape>) => {
-        const newState = OverlayService.updateOverlayShape(id, updates, { overlayShapes: useChartStore.getState().overlayShapes })
-        useChartStore.setState(newState)
-    }
-
-    const removeOverlayShape = (id: string) => {
-        const newState = OverlayService.removeOverlayShape(id, { overlayShapes: useChartStore.getState().overlayShapes })
-        useChartStore.setState(newState)
-    }
-
-    const clearOverlayShapes = () => {
-        const newState = OverlayService.clearOverlayShapes()
-        useChartStore.setState(newState)
-    }
 
     return {
         addDataset,
@@ -398,16 +347,6 @@ export const useChartActions = () => {
         updateGroup,
         deleteGroup,
         setActiveGroup,
-        // Overlays
-        addOverlayImage,
-        updateOverlayImage,
-        removeOverlayImage,
-        addOverlayText,
-        updateOverlayText,
-        removeOverlayText,
-        addOverlayShape,
-        updateOverlayShape,
-        removeOverlayShape,
-        clearOverlayShapes
+
     }
 }

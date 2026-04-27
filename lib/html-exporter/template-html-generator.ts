@@ -141,16 +141,7 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
         });
     }
 
-    // Get overlay data from chart store
-    const { overlayImages, overlayTexts, overlayShapes } = useChartStore.getState();
 
-    // Process overlay images to convert URLs to base64
-    const processedOverlayImages = await Promise.all(
-        overlayImages.map(async (image) => ({
-            ...image,
-            url: await convertImageToBase64(image.url)
-        }))
-    );
 
     // Generate custom labels and enhance chart config
     const effectiveConfig = JSON.parse(JSON.stringify(resolvedConfig));
@@ -196,11 +187,7 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
                 shapeSize: 32,
                 labels: customLabels
             } : undefined),
-            overlayPlugin: (effectiveShowImages === false) ? undefined : {
-                overlayImages: processedOverlayImages,
-                overlayTexts: overlayTexts,
-                overlayShapes: overlayShapes
-            },
+
             // Explicitly enable 3D plugins based on chartType
             pie3d: {
                 ...(processedChartConfig.plugins?.pie3d || {}),

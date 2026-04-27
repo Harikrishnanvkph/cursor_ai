@@ -34,10 +34,7 @@ export const useUniformityMode = () => useChartStore(state => resolveActiveConfi
 // Dataset State
 export const useActiveDatasetIndex = () => useChartStore(state => state.activeDatasetIndex)
 
-// Overlays
-export const useOverlayImages = () => useChartStore(state => state.overlayImages)
-export const useOverlayTexts = () => useChartStore(state => state.overlayTexts)
-export const useOverlayShapes = () => useChartStore(state => state.overlayShapes)
+
 
 // Data Backups & Transitions
 export const usePendingChartTypeChange = () => useChartStore(state => state.pendingChartTypeChange)

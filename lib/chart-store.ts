@@ -24,14 +24,14 @@ import {
   CustomChartType // Need to import this even if only used locally
 } from "./chart-defaults"
 import { generateColorPalette, darkenColor } from "./utils/color-utils"
-import { OverlayImage, OverlayText, OverlayShape } from "./types/overlay"
+
 import "./types/datalabels" // Import for module augmentation
 import { attemptCaptureDatasetUndo } from "./services/undo-service"
 import { areDatasetChangesMeaningful, applyDatasetTransformation } from "./utils/dataset-utils"
 import { ChartTypeService } from "./services/chart-type-service"
 import { DatasetService } from "./services/dataset-service"
 import { GroupService } from "./services/group-service"
-import { OverlayService } from "./services/overlay-service"
+
 import { ChartStateService } from "./services/chart-state-service"
 import { ChartTransformService } from "./services/chart-transform-service"
 import { ChartStyleService } from "./services/chart-style-service"
@@ -48,10 +48,6 @@ export type {
   SupportedChartType,
   ChartMode,
   PointImageConfig,
-  CustomChartType,
-  OverlayImage,
-  OverlayText,
-  OverlayShape
 }
 
 export {
@@ -64,7 +60,7 @@ export {
   chartTypeMapping
 }
 // Define the types for chartjs-plugin-datalabels
-// Overlay types imported from ./types/overlay
+
 
 interface ChartStore {
   // Global chart reference for sharing between components
@@ -102,10 +98,7 @@ interface ChartStore {
   // Original cloud dimensions - preserves dimensions when loaded from cloud
   originalCloudDimensions: { width: string; height: string } | null;
   setOriginalCloudDimensions: (dimensions: { width: string; height: string } | null) => void;
-  // Overlay state
-  overlayImages: OverlayImage[];
-  overlayTexts: OverlayText[];
-  overlayShapes: OverlayShape[];
+
 
 
   // Per-chart config resolution
@@ -130,18 +123,7 @@ interface ChartStore {
   /** Initialize chart dimensions from the setup dialog. Sets consistent config flags. */
   initializeChartDimensions: (width: number, height: number, isResponsive: boolean) => void;
 
-  // Overlay Actions
-  addOverlayImage: (image: Omit<OverlayImage, 'id'>) => void;
-  updateOverlayImage: (id: string, updates: Partial<OverlayImage>) => void;
-  removeOverlayImage: (id: string) => void;
-  addOverlayText: (text: Omit<OverlayText, 'id'>) => void;
-  updateOverlayText: (id: string, updates: Partial<OverlayText>) => void;
-  removeOverlayText: (id: string) => void;
-  addOverlayShape: (shape: Omit<OverlayShape, 'id'>) => void;
-  updateOverlayShape: (id: string, updates: Partial<OverlayShape>) => void;
-  removeOverlayShape: (id: string) => void;
-  clearAllOverlays: () => void;
-  clearOverlayShapes: () => void;
+
   setActiveGroupId: (id: string) => void;
 
 
@@ -244,10 +226,7 @@ export const useChartStore = create<ChartStore>()(
       // Original cloud dimensions - null for new charts, set when loaded from cloud
       originalCloudDimensions: null,
       setOriginalCloudDimensions: (dimensions) => set({ originalCloudDimensions: dimensions }),
-      // Initialize overlay state
-      overlayImages: [],
-      overlayTexts: [],
-      overlayShapes: [],
+
 
 
       // Pending chart type change for transition handling (scatter/bubble <-> categorical)
@@ -416,42 +395,7 @@ export const useChartStore = create<ChartStore>()(
         };
       }),
 
-      // Overlay actions implementation
-      addOverlayImage: (image) => set((state) =>
-        OverlayService.addOverlayImage(image, { overlayImages: state.overlayImages })
-      ),
-      updateOverlayImage: (id, updates) => set((state) =>
-        OverlayService.updateOverlayImage(id, updates, { overlayImages: state.overlayImages })
-      ),
-      removeOverlayImage: (id) => set((state) =>
-        OverlayService.removeOverlayImage(id, { overlayImages: state.overlayImages })
-      ),
-      addOverlayText: (text) => set((state) =>
-        OverlayService.addOverlayText(text, { overlayTexts: state.overlayTexts })
-      ),
-      updateOverlayText: (id, updates) => set((state) =>
-        OverlayService.updateOverlayText(id, updates, { overlayTexts: state.overlayTexts })
-      ),
-      removeOverlayText: (id) => set((state) =>
-        OverlayService.removeOverlayText(id, { overlayTexts: state.overlayTexts })
-      ),
-      addOverlayShape: (shape) => set((state) =>
-        OverlayService.addOverlayShape(shape, { overlayShapes: state.overlayShapes })
-      ),
-      updateOverlayShape: (id, updates) => set((state) =>
-        OverlayService.updateOverlayShape(id, updates, { overlayShapes: state.overlayShapes })
-      ),
-      clearAllOverlays: () => set({
-        overlayImages: [],
-        overlayTexts: [],
-        overlayShapes: [],
-      }),
-      removeOverlayShape: (id) => set((state) =>
-        OverlayService.removeOverlayShape(id, { overlayShapes: state.overlayShapes })
-      ),
-      clearOverlayShapes: () => set((state) =>
-        OverlayService.clearOverlayShapes()
-      ),
+
     }),
     {
       name: (() => {
@@ -563,9 +507,7 @@ export const useChartStore = create<ChartStore>()(
         fillArea: state.fillArea,
         showBorder: state.showBorder,
         hasJSON: state.hasJSON,
-        overlayImages: state.overlayImages,
-        overlayTexts: state.overlayTexts,
-        overlayShapes: state.overlayShapes,
+
 
         originalCloudDimensions: state.originalCloudDimensions,
         // Group management state

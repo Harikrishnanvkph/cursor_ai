@@ -1,4 +1,4 @@
-﻿// Enhanced chart store with backend sync capabilities
+// Enhanced chart store with backend sync capabilities
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { dataService } from './data-service'
@@ -20,34 +20,7 @@ import {
 // Create a custom interface that extends ChartOptions with our additional properties
 
 
-// Overlay types
-export interface OverlayImage {
-  id: string;
-  url: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  rotation: number;
-  opacity: number;
-  zIndex: number;
-}
 
-export interface OverlayText {
-  id: string;
-  text: string;
-  x: number;
-  y: number;
-  fontSize: number;
-  fontFamily: string;
-  color: string;
-  fontWeight: string;
-  textAlign: 'left' | 'center' | 'right';
-  rotation: number;
-  opacity: number;
-  zIndex: number;
-  maxWidth?: number; // Maximum width for text wrapping
-}
 
 interface ChartStore {
   // Global chart reference for sharing between components
@@ -76,11 +49,7 @@ interface ChartStore {
   showLabels: boolean;
   hasJSON: boolean;
 
-  // Overlay state
-  overlayImages: OverlayImage[];
-  overlayTexts: OverlayText[];
-  selectedImageId: string | null;
-  selectedTextId: string | null;
+
 
   // Backend sync state
   isDirty: boolean;
@@ -142,11 +111,7 @@ export const useChartStoreWithSync = create<ChartStore>()(
       showLabels: true,
       hasJSON: false,
 
-      // Initialize overlay state
-      overlayImages: [],
-      overlayTexts: [],
-      selectedImageId: null,
-      selectedTextId: null,
+
 
       // Backend sync state
       isDirty: false,
@@ -253,10 +218,7 @@ export const useChartStoreWithSync = create<ChartStore>()(
         showImages: true,
         showLabels: true,
         hasJSON: false,
-        overlayImages: [],
-        overlayTexts: [],
-        selectedImageId: null,
-        selectedTextId: null,
+
         isDirty: false,
         lastSyncTime: 0
       }),
@@ -392,8 +354,7 @@ export const useChartStoreWithSync = create<ChartStore>()(
         showImages: state.showImages,
         showLabels: state.showLabels,
         hasJSON: state.hasJSON,
-        overlayImages: state.overlayImages,
-        overlayTexts: state.overlayTexts,
+
         // Don't persist sync-related fields
       }),
     }

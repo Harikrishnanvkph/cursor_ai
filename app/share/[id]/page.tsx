@@ -138,10 +138,7 @@ export default function SharedChartPage() {
           activeDatasetIndex: 0,
           activeGroupId: inferredGroupId,
 
-          // Hydrate overlays so ChartGenerator renders them
-          overlayImages: cfg.overlayImages || [],
-          overlayTexts: cfg.overlayTexts || [],
-          overlayShapes: cfg.overlayShapes || [],
+
         })
 
         // Hydrate TemplateStore so ChartGenerator enforces responsive container bounds
