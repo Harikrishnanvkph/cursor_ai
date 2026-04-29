@@ -92,6 +92,7 @@ export const useChartActions = () => {
         const changes = DatasetService.updateLabels(labels, {
             chartData: currentState.chartData,
             chartMode: currentState.chartMode,
+            activeDatasetIndex: currentState.activeDatasetIndex,
             singleModeData: currentState.singleModeData,
             groupedModeData: currentState.groupedModeData,
             hasJSON: currentState.hasJSON

@@ -365,7 +365,7 @@ export const useChartStore = create<ChartStore>()(
         return {
           chartData: newChartData,
           ...modeDataUpdate,
-          hasJSON: shouldSetHasJSON,
+          hasJSON: shouldSetHasJSON || state.hasJSON,
         };
       }),
       toggleFillArea: () => set((state) => applyStyleToggle(state, 'toggleFillArea')),

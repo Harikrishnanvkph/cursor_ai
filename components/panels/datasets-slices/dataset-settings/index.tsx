@@ -379,7 +379,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
             if (newMode === 'dataset') {
                 // Switching TO dataset mode:
                 let updates: any = {};
-                
+
                 // 1. Save current slice colors so we can restore them later
                 if (Array.isArray(dataset.backgroundColor) && dataset.backgroundColor.length > 0) {
                     const bg = dataset.backgroundColor as string[];
@@ -401,14 +401,14 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                 updates.backgroundColor = Array(dataset.data.length).fill(baseColor);
                 updates.borderColor = Array(dataset.data.length).fill(darkenColor(baseColor, 20));
                 updates.datasetColorMode = 'single';
-                
+
                 // Apply all updates in one call
                 handleUpdateDataset(datasetIndex, updates);
-                
+
             } else {
                 // Switching TO slice mode:
                 let updates: any = {};
-                
+
                 // 1. Save current dataset color so we can restore it when switching back
                 const currentUniformColor = Array.isArray(dataset.backgroundColor)
                     ? (dataset.backgroundColor[0] || DEFAULT_PALETTE[datasetIndex % DEFAULT_PALETTE.length])
@@ -428,9 +428,9 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                     updates.backgroundColor = sliceColors;
                     updates.borderColor = sliceColors.map((c: string) => darkenColor(c, 20));
                 }
-                
+
                 updates.datasetColorMode = 'slice';
-                
+
                 // Apply all updates in one call
                 handleUpdateDataset(datasetIndex, updates);
             }
@@ -569,7 +569,10 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                         {datasetToDelete !== null && (
                             <div className="p-3 bg-gray-50 rounded-lg">
                                 <p className="text-sm font-medium text-gray-900">
-                                    Dataset: {filteredDatasets[datasetToDelete]?.label || filteredDatasets[datasetToDelete]?.sourceTitle || `Dataset ${datasetToDelete + 1}`}
+                                    Dataset: {chartMode === 'single'
+                                        ? (filteredDatasets[datasetToDelete]?.sourceTitle || filteredDatasets[datasetToDelete]?.label || `Dataset ${datasetToDelete + 1}`)
+                                        : (filteredDatasets[datasetToDelete]?.label || filteredDatasets[datasetToDelete]?.sourceTitle || `Dataset ${datasetToDelete + 1}`)
+                                    }
                                 </p>
                                 <p className="text-xs text-gray-500">
                                     {filteredDatasets[datasetToDelete]?.data.length || 0} data points

@@ -457,12 +457,15 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                                 <Label className="text-[0.70rem] font-medium text-gray-500 mb-1 block">Dataset</Label>
                                 <Select value={String(selectedDatasetIndex)} onValueChange={(value) => handleDatasetChange(Number(value))}>
                                     <SelectTrigger className="h-8 w-full text-xs bg-blue-50 border-blue-200 hover:bg-blue-100">
-                                        <span className="text-xs truncate">{filteredDatasets[selectedDatasetIndex]?.label || `Dataset ${selectedDatasetIndex + 1}`}</span>
+                                        <span className="text-xs truncate">{chartMode === 'single' ? (filteredDatasets[selectedDatasetIndex]?.sourceTitle || filteredDatasets[selectedDatasetIndex]?.label || `Dataset ${selectedDatasetIndex + 1}`) : (filteredDatasets[selectedDatasetIndex]?.label || `Dataset ${selectedDatasetIndex + 1}`)}</span>
                                     </SelectTrigger>
                                     <SelectContent>
                                         {filteredDatasets.map((dataset: any, index: number) => (
                                             <SelectItem key={index} value={String(index)}>
-                                                {dataset.label || `Dataset ${index + 1}`} ({dataset.data.length} pts)
+                                                {chartMode === 'single'
+                                                    ? (dataset.sourceTitle || dataset.label || `Dataset ${index + 1}`)
+                                                    : (dataset.label || `Dataset ${index + 1}`)
+                                                } ({dataset.data.length} pts)
                                             </SelectItem>
                                         ))}
                                     </SelectContent>

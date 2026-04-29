@@ -143,14 +143,14 @@ export function DatasetPanel() {
     const dataset = chartData.datasets[datasetIndex]
     const currentImageUrl = dataset.pointImages?.[pointIndex] || ""
     const currentConfig = dataset.pointImageConfig?.[pointIndex] || {}
-    
+
     let newConfig;
     if (typeof keyOrUpdates === 'string') {
       newConfig = { ...currentConfig, [keyOrUpdates]: value }
     } else {
       newConfig = { ...currentConfig, ...keyOrUpdates }
     }
-    
+
     updatePointImage(datasetIndex, pointIndex, currentImageUrl, newConfig)
   }
 
@@ -172,9 +172,9 @@ export function DatasetPanel() {
                 {STANDARD_CHART_TYPES.map((type) => (
                   <SelectItem key={type.value} value={type.value} className="text-sm py-2">{type.label}</SelectItem>
                 ))}
-                
+
                 <SelectSeparator />
-                
+
                 {/* 3D Charts */}
                 {THREE_D_CHART_TYPES.map((type) => (
                   <SelectItem key={type.value} value={type.value} className="text-sm py-2 font-medium text-blue-600">{type.label}</SelectItem>
@@ -250,7 +250,7 @@ export function DatasetPanel() {
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  {dataset.label || `Dataset ${datasetIndex + 1}`}
+                  {dataset.sourceTitle || dataset.label || `Dataset ${datasetIndex + 1}`}
                 </CardTitle>
                 <div className="flex gap-2">
                   <Button variant="ghost" size="sm" onClick={() => generateRandomData(datasetIndex)}>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { BarChart3, Database, Sparkles, TrendingUp, PieChart, LineChart, Ruler, Zap, Info } from "lucide-react"
@@ -33,6 +33,14 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
   const [pendingAction, setPendingAction] = useState<'sample' | 'custom' | null>(null)
   const [datasetType, setDatasetType] = useState<'single' | 'grouped'>('single')
 
+  // Always reset Welcome Screen UI state when the component is shown
+  // This fulfills the "Golden Rule" that the welcome screen starts with defaults.
+  useEffect(() => {
+    setDatasetType('single')
+    setPendingAction(null)
+    setShowSetupDialog(false)
+  }, [])
+
   // ── Build sample data ──
   const buildSampleData = () => {
     if (datasetType === 'grouped') {
@@ -60,37 +68,37 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
     return {
       labels: ['January', 'February', 'March', 'April', 'May', 'June'],
       datasets: [{
-      label: 'Sample Dataset',
-      data: [12, 19, 3, 5, 2, 3],
-      backgroundColor: [
-        'rgba(54, 162, 235, 0.8)',
-        'rgba(255, 99, 132, 0.8)',
-        'rgba(75, 192, 192, 0.8)',
-        'rgba(255, 206, 86, 0.8)',
-        'rgba(153, 102, 255, 0.8)',
-        'rgba(255, 159, 64, 0.8)',
-      ],
-      borderColor: [
-        'rgba(54, 162, 235, 1)',
-        'rgba(255, 99, 132, 1)',
-        'rgba(75, 192, 192, 1)',
-        'rgba(255, 206, 86, 1)',
-        'rgba(153, 102, 255, 1)',
-        'rgba(255, 159, 64, 1)',
-      ],
-      borderWidth: 2,
-      pointImages: [null, null, null, null, null, null],
-      pointImageConfig: [
-        { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
-        { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
-        { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
-        { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
-        { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
-        { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
-      ],
-      mode: 'single' as const,
-      sliceLabels: ['January', 'February', 'March', 'April', 'May', 'June'],
-      chartType: 'bar' as const,
+        label: 'Sample Dataset',
+        data: [12, 19, 3, 5, 2, 3],
+        backgroundColor: [
+          'rgba(54, 162, 235, 0.8)',
+          'rgba(255, 99, 132, 0.8)',
+          'rgba(75, 192, 192, 0.8)',
+          'rgba(255, 206, 86, 0.8)',
+          'rgba(153, 102, 255, 0.8)',
+          'rgba(255, 159, 64, 0.8)',
+        ],
+        borderColor: [
+          'rgba(54, 162, 235, 1)',
+          'rgba(255, 99, 132, 1)',
+          'rgba(75, 192, 192, 1)',
+          'rgba(255, 206, 86, 1)',
+          'rgba(153, 102, 255, 1)',
+          'rgba(255, 159, 64, 1)',
+        ],
+        borderWidth: 2,
+        pointImages: [null, null, null, null, null, null],
+        pointImageConfig: [
+          { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
+          { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
+          { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
+          { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
+          { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
+          { type: "circle", size: 20, position: "center", arrow: false, borderWidth: 3, borderColor: "#ffffff" },
+        ],
+        mode: 'single' as const,
+        sliceLabels: ['January', 'February', 'March', 'April', 'May', 'June'],
+        chartType: 'bar' as const,
       }]
     }
   }
@@ -123,26 +131,41 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
     setEditorMode('chart')
 
     const sampleData = buildSampleData()
-    const { chartData } = useChartStore.getState()
+    const config = buildConfigWithDimensions({
+      width: DEFAULT_CHART_WIDTH,
+      height: DEFAULT_CHART_HEIGHT,
+      isResponsive: false,
+    })
 
-    if (chartData.datasets && chartData.datasets.length > 0) {
-      addDataset(sampleData.datasets[0])
-      setHasJSON(true)
-      toast.success("Sample dataset added to current chart")
+    // Switch to the selected mode first (this swaps chartData to the correct mode's data)
+    setChartMode(datasetType)
+
+    if (datasetType === 'single') {
+      // Single mode: append if data exists, fresh start if empty
+      const { chartData } = useChartStore.getState()
+      if (chartData.datasets && chartData.datasets.length > 0) {
+        addDataset(sampleData.datasets[0])
+        setHasJSON(true)
+        toast.success("Sample dataset added to chart")
+      } else {
+        setFullChart({
+          chartType: 'bar',
+          chartData: sampleData,
+          chartConfig: config,
+        })
+        setHasJSON(true)
+        toast.success(`Sample data loaded (${DEFAULT_CHART_WIDTH}×${DEFAULT_CHART_HEIGHT} px)`)
+      }
     } else {
-      setChartMode(datasetType)
-      const config = buildConfigWithDimensions({
-        width: DEFAULT_CHART_WIDTH,
-        height: DEFAULT_CHART_HEIGHT,
-        isResponsive: false,
-      })
+      // Grouped mode: setFullChart WITHOUT replaceMode creates a new group and appends
       setFullChart({
         chartType: 'bar',
         chartData: sampleData,
         chartConfig: config,
+        name: 'Sample Group',
       })
       setHasJSON(true)
-      toast.success(`Sample data loaded (${DEFAULT_CHART_WIDTH}×${DEFAULT_CHART_HEIGHT} px)`)
+      toast.success(`Sample grouped chart loaded (${DEFAULT_CHART_WIDTH}×${DEFAULT_CHART_HEIGHT} px)`)
     }
   }
 
@@ -174,22 +197,36 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
 
     if (pendingAction === 'sample') {
       const sampleData = buildSampleData()
-      const { chartData } = useChartStore.getState()
+      const sizeLabel = dims.isResponsive ? 'Responsive' : `${dims.width}×${dims.height} px`
 
-      if (chartData.datasets && chartData.datasets.length > 0) {
-        addDataset(sampleData.datasets[0])
-        setHasJSON(true)
-        toast.success("Sample dataset added to current chart")
+      // Switch to the selected mode first
+      setChartMode(datasetType)
+
+      if (datasetType === 'single') {
+        const { chartData } = useChartStore.getState()
+        if (chartData.datasets && chartData.datasets.length > 0) {
+          addDataset(sampleData.datasets[0])
+          setHasJSON(true)
+          toast.success("Sample dataset added to chart")
+        } else {
+          setFullChart({
+            chartType: 'bar',
+            chartData: sampleData,
+            chartConfig: config,
+          })
+          setHasJSON(true)
+          toast.success(`Sample data loaded (${sizeLabel})`)
+        }
       } else {
-        setChartMode(datasetType)
+        // Grouped mode: setFullChart WITHOUT replaceMode creates a new group and appends
         setFullChart({
           chartType: 'bar',
           chartData: sampleData,
           chartConfig: config,
+          name: 'Sample Group',
         })
         setHasJSON(true)
-        const sizeLabel = dims.isResponsive ? 'Responsive' : `${dims.width}×${dims.height} px`
-        toast.success(`Sample data loaded (${sizeLabel})`)
+        toast.success(`Sample grouped chart loaded (${sizeLabel})`)
       }
     } else if (pendingAction === 'custom') {
       // Initialize chart with the entered dimensions and dataset
@@ -264,10 +301,10 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
                   </Tooltip>
                 </TooltipProvider>
               </div>
-              
-              <RadioGroup 
-                defaultValue="single" 
-                value={datasetType} 
+
+              <RadioGroup
+                defaultValue="single"
+                value={datasetType}
                 onValueChange={(val) => setDatasetType(val as 'single' | 'grouped')}
                 className="flex gap-6"
               >

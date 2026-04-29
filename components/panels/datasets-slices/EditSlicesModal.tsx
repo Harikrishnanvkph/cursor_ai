@@ -365,8 +365,11 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
                 <div className="text-center">#</div>
                 <div>{isCurrentGroupCoordinateChart ? 'Point Name' : 'Slice Name'}</div>
                 {filteredDatasets.map((ds: any, i: number) => (
-                  <div key={i} className="truncate px-1" title={ds.label}>
-                    {ds.label || `Dataset ${ds.originalIndex + 1}`}
+                  <div key={i} className="truncate px-1" title={chartMode === 'single' ? (ds.sourceTitle || ds.label) : (ds.label || ds.sourceTitle)}>
+                    {chartMode === 'single'
+                      ? (ds.sourceTitle || ds.label || `Dataset ${ds.originalIndex + 1}`)
+                      : (ds.label || `Dataset ${ds.originalIndex + 1}`)
+                    }
                   </div>
                 ))}
                 <div></div>

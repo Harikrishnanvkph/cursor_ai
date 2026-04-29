@@ -49,9 +49,22 @@ export const DatasetService = {
             }
         }
 
+        let existingDatasets = [...currentState.chartData.datasets];
+        
+        // CRITICAL FIX: Before appending in single mode, save the CURRENT shared labels into the outgoing 
+        // active dataset's sliceLabels so that it doesn't lose its labels when we switch
+        if (currentState.chartMode === 'single' && currentState.activeDatasetIndex >= 0 && currentState.activeDatasetIndex < existingDatasets.length) {
+            if (currentState.chartData.labels && currentState.chartData.labels.length > 0) {
+                 existingDatasets[currentState.activeDatasetIndex] = {
+                     ...existingDatasets[currentState.activeDatasetIndex],
+                     sliceLabels: [...currentState.chartData.labels]
+                 };
+            }
+        }
+
         const newChartData = {
             ...currentState.chartData,
-            datasets: [...currentState.chartData.datasets, finalDataset],
+            datasets: [...existingDatasets, finalDataset],
         };
 
         // Update the appropriate mode-specific storage
@@ -250,7 +263,7 @@ export const DatasetService = {
             if (!('borderColor' in updates)) {
                 updatedDataset.borderColor = colors.map((c: string) => darkenColor(c, 20));
             }
-            
+
             // Only force lastSliceColors and datasetColorMode if the caller didn't explicitly request a specific color mode
             if (!updates.datasetColorMode) {
                 updatedDataset.lastSliceColors = colors;
@@ -429,6 +442,7 @@ export const DatasetService = {
         currentState: {
             chartData: ExtendedChartData;
             chartMode: ChartMode;
+            activeDatasetIndex: number;
             singleModeData: ExtendedChartData;
             groupedModeData: ExtendedChartData;
             hasJSON: boolean;
@@ -437,11 +451,17 @@ export const DatasetService = {
         const newChartData = {
             ...currentState.chartData,
             labels,
-            // Also update sliceLabels in all datasets to match the new labels
-            datasets: currentState.chartData.datasets.map(dataset => ({
-                ...dataset,
-                sliceLabels: labels // Update sliceLabels to match the new labels
-            }))
+            datasets: currentState.chartData.datasets.map((dataset, idx) => {
+                if (currentState.chartMode === 'single') {
+                    // In single mode, only update the active dataset's sliceLabels
+                    return idx === currentState.activeDatasetIndex 
+                        ? { ...dataset, sliceLabels: labels }
+                        : dataset;
+                } else {
+                    // In grouped mode, update all datasets
+                    return { ...dataset, sliceLabels: labels };
+                }
+            })
         };
 
         // Update the appropriate mode-specific storage

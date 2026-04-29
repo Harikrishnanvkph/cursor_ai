@@ -149,24 +149,24 @@ const getDefaultPoints = (category: ChartCategory, count: number = 3): DataPoint
 // ─── Icon Map ───────────────────────────────────────────────────────
 function PresetIcon({ icon, className = "h-4 w-4" }: { icon: string; className?: string }) {
   switch (icon) {
-    case 'chart':            return <BarChart3 className={className} />
-    case 'square':           return <Square className={className} />
-    case 'widescreen':       return <RectangleHorizontal className={className} />
-    case 'tall':             return <ArrowUpDown className={className} />
-    case 'grid':             return <Grid3X3 className={className} />
-    case 'play':             return <Play className={className} />
-    case 'presentation':     return <Layout className={className} />
-    case 'banner':           return <RectangleHorizontal className={className} />
-    case 'page':             return <FileText className={className} />
-    case 'page-landscape':   return <FileText className={`${className} rotate-90`} />
-    default:                 return <Square className={className} />
+    case 'chart': return <BarChart3 className={className} />
+    case 'square': return <Square className={className} />
+    case 'widescreen': return <RectangleHorizontal className={className} />
+    case 'tall': return <ArrowUpDown className={className} />
+    case 'grid': return <Grid3X3 className={className} />
+    case 'play': return <Play className={className} />
+    case 'presentation': return <Layout className={className} />
+    case 'banner': return <RectangleHorizontal className={className} />
+    case 'page': return <FileText className={className} />
+    case 'page-landscape': return <FileText className={`${className} rotate-90`} />
+    default: return <Square className={className} />
   }
 }
 
 function CategoryIcon({ label, className = "h-4 w-4" }: { label: string; className?: string }) {
-  if (label.includes('Chart'))  return <BarChart3 className={className} />
+  if (label.includes('Chart')) return <BarChart3 className={className} />
   if (label.includes('Screen')) return <Monitor className={className} />
-  if (label.includes('Print'))  return <Printer className={className} />
+  if (label.includes('Print')) return <Printer className={className} />
   return <Square className={className} />
 }
 
@@ -322,10 +322,10 @@ export function ChartSetupDialog({
 
   const handleInconsistencyUpdate = () => {
     if (!pendingDatasetChange) return;
-    
+
     // Remove all datasets except the first one
     const firstDataset = datasets[0];
-    
+
     if (pendingDatasetChange.type === 'category') {
       const category = pendingDatasetChange.value;
       const newFirstDataset = {
@@ -349,7 +349,7 @@ export function ChartSetupDialog({
       setDatasets([firstDataset]);
       setActiveDatasetId(firstDataset.id);
     }
-    
+
     setShowInconsistencyPrompt(false);
     setPendingDatasetChange(null);
   }
@@ -456,10 +456,10 @@ export function ChartSetupDialog({
     if (datasets.length <= 1) return;
     const index = datasets.findIndex(d => d.id === id);
     if (index === -1) return;
-    
+
     const newDatasets = datasets.filter(d => d.id !== id);
     setDatasets(newDatasets);
-    
+
     if (activeDatasetId === id) {
       setActiveDatasetId(newDatasets[Math.max(0, index - 1)].id);
     }
@@ -468,14 +468,14 @@ export function ChartSetupDialog({
   const availableChartTypes = useMemo(() => {
     const baseTypes = chartCategory === 'coordinate' ? coordinateChartTypes : categoricalChartTypes;
     if (datasetType !== 'grouped') return baseTypes;
-    
+
     if (uniformityMode === 'mixed' && datasets.length > 0) {
       const firstType = datasets[0].type;
 
       if (['bar', 'line', 'area'].includes(firstType)) {
         return baseTypes.filter(type => ['bar', 'line', 'area'].includes(type.value as string));
       }
-      
+
       if (firstType === 'horizontalBar') {
         return baseTypes.filter(type => ['horizontalBar', 'line', 'area'].includes(type.value as string));
       }
@@ -488,25 +488,25 @@ export function ChartSetupDialog({
         return baseTypes.filter(type => type.value === 'bar3d');
       }
 
-      return baseTypes.filter(type => 
+      return baseTypes.filter(type =>
         !['pie', 'doughnut', 'pie3d', 'doughnut3d', 'bar3d', 'horizontalBar3d', 'stackedBar'].includes(type.value as string)
       );
     }
-    
+
     return baseTypes;
   }, [chartCategory, datasetType, uniformityMode, datasets[0]?.type, datasets.length > 0]);
 
   const handleConfirm = () => {
     const dims = { width: widthPx, height: heightPx, isResponsive }
-    
+
     if (isCustom && step === 2) {
       const builtDatasets: ExtendedChartDataset[] = datasets.map(ds => {
         const colors = ds.dataPoints.map(p => p.color)
         let data: any[]
-        
+
         // If uniformity is 'uniform', force the first dataset's type onto all
-        const actualType = (uniformityMode === 'uniform' && datasetType === 'grouped') 
-          ? datasets[0].type 
+        const actualType = (uniformityMode === 'uniform' && datasetType === 'grouped')
+          ? datasets[0].type
           : ds.type
 
         if (actualType === 'scatter') {
@@ -549,7 +549,7 @@ export function ChartSetupDialog({
   return (
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose() }}>
       <DialogContent className={`max-h-[95vh] overflow-hidden p-0 gap-0 transition-all duration-300 ${step === 2 ? 'max-w-[850px]' : 'max-w-[720px]'}`}>
-        
+
         {/* ── Header ── */}
         <DialogHeader className={`px-5 pt-4 pb-2 ${step === 2 ? 'border-b border-gray-100 bg-gray-50/50' : ''}`}>
           <div className="flex items-center gap-3">
@@ -632,7 +632,7 @@ export function ChartSetupDialog({
                                 {preset.name}
                               </div>
                               <div className="text-[10px] text-gray-400">
-                                {unit === 'px' 
+                                {unit === 'px'
                                   ? `${preset.width}×${preset.height}`
                                   : `${convertFromPixels(preset.width, unit)}×${convertFromPixels(preset.height, unit)}`
                                 }
@@ -793,17 +793,17 @@ export function ChartSetupDialog({
               <div className="flex items-center gap-3">
                 <div className="flex-1">
                   <Label className="text-xs font-medium text-gray-600 mb-1.5 block">Dataset Name</Label>
-                  <Input 
-                    value={datasetName} 
-                    onChange={e => updateActiveDataset({ name: e.target.value })} 
+                  <Input
+                    value={datasetName}
+                    onChange={e => updateActiveDataset({ name: e.target.value })}
                     className="h-8 text-sm border-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-gray-50 bg-transparent transition-colors"
                     placeholder="e.g. Q1 Sales"
                   />
                 </div>
                 <div className="flex-1">
                   <Label className="text-xs font-medium text-gray-600 mb-1.5 block">Category</Label>
-                  <Select 
-                    value={chartCategory} 
+                  <Select
+                    value={chartCategory}
                     onValueChange={(v) => triggerCategoryChange(v as ChartCategory)}
                     disabled={datasetType === 'grouped' && datasets.length > 0 && activeDatasetId !== datasets[0].id}
                   >
@@ -818,8 +818,8 @@ export function ChartSetupDialog({
                 </div>
                 <div className="flex-1">
                   <Label className="text-xs font-medium text-gray-600 mb-1.5 block">Chart Type</Label>
-                  <Select 
-                    value={chartType} 
+                  <Select
+                    value={chartType}
                     onValueChange={triggerTypeChange}
                     disabled={uniformityMode === 'uniform' && datasetType === 'grouped' && datasets.length > 0 && activeDatasetId !== datasets[0].id}
                   >
@@ -833,7 +833,7 @@ export function ChartSetupDialog({
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 {/* Group Mode (if applicable) seamlessly fits into the same row */}
                 {datasetType === 'grouped' && (
                   <div className="flex-[0.8]">
@@ -841,17 +841,15 @@ export function ChartSetupDialog({
                     <div className="flex bg-gray-100 p-0.5 rounded-md h-8">
                       <button
                         onClick={() => triggerModeChange('uniform')}
-                        className={`flex-1 flex items-center justify-center gap-1.5 rounded-sm text-xs font-medium transition-all ${
-                          uniformityMode === 'uniform' ? 'bg-white shadow-sm text-blue-700' : 'text-gray-500 hover:text-gray-700'
-                        }`}
+                        className={`flex-1 flex items-center justify-center gap-1.5 rounded-sm text-xs font-medium transition-all ${uniformityMode === 'uniform' ? 'bg-white shadow-sm text-blue-700' : 'text-gray-500 hover:text-gray-700'
+                          }`}
                       >
                         <Settings2 className="h-3.5 w-3.5" /> Uniform
                       </button>
                       <button
                         onClick={() => triggerModeChange('mixed')}
-                        className={`flex-1 flex items-center justify-center gap-1.5 rounded-sm text-xs font-medium transition-all ${
-                          uniformityMode === 'mixed' ? 'bg-white shadow-sm text-purple-700' : 'text-gray-500 hover:text-gray-700'
-                        }`}
+                        className={`flex-1 flex items-center justify-center gap-1.5 rounded-sm text-xs font-medium transition-all ${uniformityMode === 'mixed' ? 'bg-white shadow-sm text-purple-700' : 'text-gray-500 hover:text-gray-700'
+                          }`}
                       >
                         <TableProperties className="h-3.5 w-3.5" /> Mixed
                       </button>
@@ -890,11 +888,10 @@ export function ChartSetupDialog({
                   <div key={ds.id} className="relative group flex items-center">
                     <button
                       onClick={() => setActiveDatasetId(ds.id)}
-                      className={`py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap pl-4 ${index > 0 ? 'pr-8' : 'pr-4'} ${
-                        activeDatasetId === ds.id
-                          ? 'border-blue-600 text-blue-700 bg-blue-50/50 rounded-t-sm'
-                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 hover:border-gray-200'
-                      }`}
+                      className={`py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap pl-4 ${index > 0 ? 'pr-8' : 'pr-4'} ${activeDatasetId === ds.id
+                        ? 'border-blue-600 text-blue-700 bg-blue-50/50 rounded-t-sm'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 hover:border-gray-200'
+                        }`}
                     >
                       {ds.name}
                     </button>
@@ -904,9 +901,8 @@ export function ChartSetupDialog({
                           e.stopPropagation()
                           removeDataset(ds.id)
                         }}
-                        className={`absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity ${
-                          activeDatasetId === ds.id ? 'opacity-100' : ''
-                        }`}
+                        className={`absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity ${activeDatasetId === ds.id ? 'opacity-100' : ''
+                          }`}
                       >
                         <X className="h-3 w-3" />
                       </button>

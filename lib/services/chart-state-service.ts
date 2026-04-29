@@ -205,7 +205,11 @@ export class ChartStateService {
                 // Assign source title if provided
                 sourceTitle: ds.sourceTitle || name,
                 // Assign source ID if provided
-                sourceId: ds.sourceId || conversationId || id
+                sourceId: ds.sourceId || conversationId || id,
+                // Ensure the dataset owns its labels so they aren't lost
+                sliceLabels: ds.sliceLabels && ds.sliceLabels.length > 0 
+                    ? ds.sliceLabels 
+                    : (chartData.labels ? [...chartData.labels] : [])
             };
         }) || [];
 
@@ -263,13 +267,32 @@ export class ChartStateService {
                 processedDatasets = [...existingDatasetsFromOtherGroups, ...processedDatasets];
             }
         } else if (datasetCount > 0 && !replaceMode) {
-            const existingDatasets = state.chartData.datasets;
+            let existingDatasets = [...state.chartData.datasets];
+            
+            // CRITICAL FIX: Before appending, save the CURRENT shared labels into the outgoing 
+            // active dataset's sliceLabels so that it doesn't lose its labels when we switch
+            if (state.chartMode === 'single' && state.activeDatasetIndex >= 0 && state.activeDatasetIndex < existingDatasets.length) {
+                if (state.chartData.labels && state.chartData.labels.length > 0) {
+                     existingDatasets[state.activeDatasetIndex] = {
+                         ...existingDatasets[state.activeDatasetIndex],
+                         sliceLabels: [...state.chartData.labels]
+                     };
+                }
+            }
             processedDatasets = [...existingDatasets, ...processedDatasets];
         }
 
+        const isAppending = !replaceMode && state.chartData.datasets.length > 0;
+        
+        // Since the new dataset becomes the active dataset, the shared labels 
+        // must match the incoming dataset's labels.
+        const finalLabels = chartData.labels && chartData.labels.length > 0 
+            ? chartData.labels 
+            : state.chartData.labels;
+
         const processedChartData = {
-            ...chartData,
-            labels: chartData.labels || state.chartData.labels,
+            ...(isAppending ? state.chartData : chartData),
+            labels: finalLabels,
             datasets: processedDatasets
         };
 
@@ -306,10 +329,14 @@ export class ChartStateService {
             }
         }
 
+        // Keep the new configuration and title for the active chart
+        const finalConfig = isAppending ? state.chartConfig : (chartConfig || state.chartConfig);
+        const finalTitle = isAppending ? state.chartTitle : (name || state.chartTitle);
+
         return {
             chartType,
             chartData: processedDatasets.length ? processedChartData : chartData,
-            chartConfig,
+            chartConfig: finalConfig,
             chartMode: newMode,
             singleModeData: newSingleModeData,
             groupedModeData: newGroupedModeData,
@@ -317,7 +344,7 @@ export class ChartStateService {
             activeGroupId: newActiveGroupId,
             activeDatasetIndex: Math.max(0, processedDatasets.length - datasetCount),
             currentSnapshotId: id !== undefined ? id || null : state.currentSnapshotId,
-            chartTitle: name || state.chartTitle,
+            chartTitle: finalTitle,
             // Also return other properties that might be needed
         };
     }

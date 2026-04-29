@@ -195,7 +195,12 @@ export function GeneralTab({
             {chartMode === 'grouped' && (
                 <div>
                     <div className="flex items-center justify-between mb-2">
-                        <div className="font-semibold text-xs">Groups</div>
+                        <div className="flex items-center gap-2">
+                            <div className="font-semibold text-xs text-gray-900">Groups</div>
+                            <span className="bg-blue-50 text-blue-600 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border border-blue-100 shadow-sm">
+                                {groups.length}
+                            </span>
+                        </div>
                         <Button
                             variant="ghost"
                             size="sm"
@@ -282,7 +287,10 @@ export function GeneralTab({
                                 const actualIndex = chartData.datasets.indexOf(dataset);
                                 return (
                                     <SelectItem key={index} value={String(actualIndex)}>
-                                        {dataset.label || dataset.sourceTitle || `Dataset ${actualIndex + 1}`}
+                                        {chartMode === 'single' 
+                                            ? (dataset.sourceTitle || dataset.label || `Dataset ${actualIndex + 1}`)
+                                            : (dataset.label || dataset.sourceTitle || `Dataset ${actualIndex + 1}`)
+                                        }
                                     </SelectItem>
                                 );
                             })}
@@ -370,7 +378,10 @@ export function GeneralTab({
                                             <div className="flex-1 flex flex-col gap-1 min-w-0">
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-sm font-medium text-gray-800 truncate max-w-[200px]">
-                                                        {dataset.label || dataset.sourceTitle || `Dataset ${datasetIndex + 1}`}
+                                                        {chartMode === 'single'
+                                                            ? (dataset.sourceTitle || dataset.label || `Dataset ${datasetIndex + 1}`)
+                                                            : (dataset.label || dataset.sourceTitle || `Dataset ${datasetIndex + 1}`)
+                                                        }
                                                     </span>
                                                 </div>
                                                 <div className="flex items-center gap-2 text-[10px] text-gray-400 pl-0.5">
