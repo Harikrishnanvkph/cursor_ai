@@ -10,7 +10,7 @@ export const watermarkPlugin: Plugin = {
 
     const { ctx, width, height, chartArea } = chart;
     const { position, opacity, size, color, imageUrl, style, spacingX, spacingY, angle } = options;
-    const text = options.text || (!imageUrl ? 'Watermark' : '');
+    const text = options.text || '';
     const spX = typeof spacingX === 'number' ? spacingX : 50;
     const spY = typeof spacingY === 'number' ? spacingY : 50;
     const rotAngle = typeof angle === 'number' ? angle : -30; // Default angle is -30 degrees
