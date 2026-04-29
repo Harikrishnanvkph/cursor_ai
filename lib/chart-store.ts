@@ -318,7 +318,18 @@ export const useChartStore = create<ChartStore>()(
       datasetBackups: new Map(),
 
       resetChart: () => set((state) => ChartStateService.resetChart()),
-      setChartMode: (mode) => set((state) => ChartStateService.setChartMode(mode, state)),
+      setChartMode: (mode) => {
+        // Clear backendConversationId when switching modes — the new mode
+        // starts with its own data which may not be cloud-saved yet.
+        try {
+          const { useChatStore } = require('./chat-store');
+          if (useChatStore?.getState) {
+            useChatStore.getState().setBackendConversationId(null);
+          }
+        } catch { /* chat store not available */ }
+
+        set((state) => ChartStateService.setChartMode(mode, state));
+      },
 
       setActiveDatasetIndex: (index) => set((state) => {
         const dataset = state.chartData.datasets[index];
@@ -342,31 +353,16 @@ export const useChartStore = create<ChartStore>()(
       setUniformityMode: (mode: 'uniform' | 'mixed') => set({ uniformityMode: mode }),
       setHasJSON: (value: boolean) => set({ hasJSON: value }),
       updateLabels: (labels: string[]) => set((state) => {
-        const newChartData = {
-          ...state.chartData,
-          labels,
-          // Also update sliceLabels in all datasets to match the new labels
-          datasets: state.chartData.datasets.map(dataset => ({
-            ...dataset,
-            sliceLabels: labels // Update sliceLabels to match the new labels
-          }))
-        };
-
-        // Update the appropriate mode-specific storage
-        const modeDataUpdate = state.chartMode === 'single'
-          ? { singleModeData: newChartData }
-          : { groupedModeData: newChartData };
-
-        // Set hasJSON to true if we have both labels and datasets with data
-        const shouldSetHasJSON = labels.length > 0 &&
-          newChartData.datasets.length > 0 &&
-          newChartData.datasets.some(d => d.data && d.data.length > 0);
-
-        return {
-          chartData: newChartData,
-          ...modeDataUpdate,
-          hasJSON: shouldSetHasJSON || state.hasJSON,
-        };
+        // Delegate to DatasetService which correctly handles single-mode isolation
+        // (only updates the active dataset's sliceLabels in single mode)
+        return DatasetService.updateLabels(labels, {
+          chartData: state.chartData,
+          chartMode: state.chartMode,
+          activeDatasetIndex: state.activeDatasetIndex,
+          singleModeData: state.singleModeData,
+          groupedModeData: state.groupedModeData,
+          hasJSON: state.hasJSON,
+        });
       }),
       toggleFillArea: () => set((state) => applyStyleToggle(state, 'toggleFillArea')),
       toggleShowBorder: () => set((state) => applyStyleToggle(state, 'toggleShowBorder')),

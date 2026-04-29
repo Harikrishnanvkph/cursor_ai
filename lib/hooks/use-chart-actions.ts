@@ -214,55 +214,61 @@ export const useChartActions = () => {
         useChartStore.getState().updateChartConfig(normalizedConfig)
     }
 
+    // Helper: ChartTransformService only returns { chartData }, but mode-specific
+    // storage (singleModeData / groupedModeData) must stay in sync. This wrapper
+    // augments the service result with the correct mode-specific update.
+    const applyTransformWithModeSync = (newState: Partial<any> | null) => {
+        if (!newState) return
+        const { chartMode } = useChartStore.getState()
+        if (newState.chartData) {
+            const modeDataUpdate = chartMode === 'single'
+                ? { singleModeData: newState.chartData }
+                : { groupedModeData: newState.chartData }
+            useChartStore.setState({ ...newState, ...modeDataUpdate })
+        } else {
+            useChartStore.setState(newState)
+        }
+    }
+
     // Transforms
     const sortDataset = (index: number, order: 'asc' | 'desc') => {
-        const newState = ChartTransformService.sortDataset(useChartStore.getState(), index, order)
-        if (newState) useChartStore.setState(newState)
+        applyTransformWithModeSync(ChartTransformService.sortDataset(useChartStore.getState(), index, order))
     }
 
     const reverseDataset = (index: number) => {
-        const newState = ChartTransformService.reverseDataset(useChartStore.getState(), index)
-        if (newState) useChartStore.setState(newState)
+        applyTransformWithModeSync(ChartTransformService.reverseDataset(useChartStore.getState(), index))
     }
 
     const filterTopN = (index: number, n: number) => {
-        const newState = ChartTransformService.filterTopN(useChartStore.getState(), index, n)
-        if (newState) useChartStore.setState(newState)
+        applyTransformWithModeSync(ChartTransformService.filterTopN(useChartStore.getState(), index, n))
     }
 
     const filterAboveThreshold = (index: number, threshold: number) => {
-        const newState = ChartTransformService.filterAboveThreshold(useChartStore.getState(), index, threshold)
-        if (newState) useChartStore.setState(newState)
+        applyTransformWithModeSync(ChartTransformService.filterAboveThreshold(useChartStore.getState(), index, threshold))
     }
 
     const filterBelowThreshold = (index: number, threshold: number) => {
-        const newState = ChartTransformService.filterBelowThreshold(useChartStore.getState(), index, threshold)
-        if (newState) useChartStore.setState(newState)
+        applyTransformWithModeSync(ChartTransformService.filterBelowThreshold(useChartStore.getState(), index, threshold))
     }
 
     const normalizeDataset = (index: number, range: [number, number]) => {
-        const newState = ChartTransformService.normalizeDataset(useChartStore.getState(), index, range)
-        if (newState) useChartStore.setState(newState)
+        applyTransformWithModeSync(ChartTransformService.normalizeDataset(useChartStore.getState(), index, range))
     }
 
     const convertToPercentage = (index: number) => {
-        const newState = ChartTransformService.convertToPercentage(useChartStore.getState(), index)
-        if (newState) useChartStore.setState(newState)
+        applyTransformWithModeSync(ChartTransformService.convertToPercentage(useChartStore.getState(), index))
     }
 
     const roundDataset = (index: number, decimals: number) => {
-        const newState = ChartTransformService.roundDataset(useChartStore.getState(), index, decimals)
-        if (newState) useChartStore.setState(newState)
+        applyTransformWithModeSync(ChartTransformService.roundDataset(useChartStore.getState(), index, decimals))
     }
 
     const scaleDataset = (index: number, factor: number) => {
-        const newState = ChartTransformService.scaleDataset(useChartStore.getState(), index, factor)
-        if (newState) useChartStore.setState(newState)
+        applyTransformWithModeSync(ChartTransformService.scaleDataset(useChartStore.getState(), index, factor))
     }
 
     const offsetDataset = (index: number, offset: number) => {
-        const newState = ChartTransformService.offsetDataset(useChartStore.getState(), index, offset)
-        if (newState) useChartStore.setState(newState)
+        applyTransformWithModeSync(ChartTransformService.offsetDataset(useChartStore.getState(), index, offset))
     }
 
     const backupDatasetState = (index: number) => {
@@ -271,8 +277,7 @@ export const useChartActions = () => {
     }
 
     const restoreDatasetState = (index: number) => {
-        const newState = ChartTransformService.restoreDatasetState(useChartStore.getState(), index)
-        if (newState) useChartStore.setState(newState)
+        applyTransformWithModeSync(ChartTransformService.restoreDatasetState(useChartStore.getState(), index))
     }
 
     const resetDatasetOperations = (index: number) => {

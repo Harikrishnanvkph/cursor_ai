@@ -304,23 +304,26 @@ export const defaultChartData = {
     ],
 }
 
+// Factory functions for default data — returns a fresh object each time to prevent
+// shared-reference mutations from polluting defaults across the session.
+
 // Separate default data for single mode - empty by default
 // User must explicitly load data via "Load Sample Data" or "Add Your Own Data"
-export const singleModeDefaultData = {
+export const singleModeDefaultData = (): ExtendedChartData => ({
     labels: [],
     datasets: [],
-}
+});
 
 // Separate default data for grouped mode - empty by default
 // User must explicitly load data via "Load Sample Data" or "Add Your Own Data"
-export const groupedModeDefaultData = {
+export const groupedModeDefaultData = (): ExtendedChartData => ({
     labels: [],
     datasets: [],
-}
+});
 
 // Function to get default data for a specific mode
 export const getDefaultDataForMode = (mode: ChartMode): ExtendedChartData => {
-    return mode === 'single' ? singleModeDefaultData : groupedModeDefaultData;
+    return mode === 'single' ? singleModeDefaultData() : groupedModeDefaultData();
 }
 
 // Export getDefaultConfigForType for use in chart-preview

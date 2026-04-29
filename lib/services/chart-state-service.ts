@@ -37,18 +37,8 @@ export class ChartStateService {
         mode: ChartMode,
         state: ChartState
     ): Partial<ChartState> {
-        // BUGFIX: Clear backendConversationId when switching modes
-        // The new mode starts with its own mode-specific data which may not be cloud-saved
-        // This ensures the save dialog shows "Save" instead of "Update" for new data
-        try {
-            const { useChatStore } = require('../chat-store');
-            // Verify getState exists to avoid crash
-            if (useChatStore && typeof useChatStore.getState === 'function') {
-                useChatStore.getState().setBackendConversationId(null);
-            }
-        } catch (error) {
-            console.warn('Failed to clear backendConversationId on mode switch:', error);
-        }
+        // NOTE: Clearing backendConversationId is handled by the store action
+        // that calls this service. This service stays purely functional.
 
         // Save current mode's data before switching
         const currentModeData = state.chartData;
@@ -152,12 +142,12 @@ export class ChartStateService {
 
         return {
             chartType: 'bar',
-            chartData: singleModeDefaultData, // Default to single mode data
+            chartData: singleModeDefaultData(), // Default to single mode data
             chartConfig: newConfig,
 
             // Full Reset of All Modes
-            singleModeData: singleModeDefaultData,
-            groupedModeData: groupedModeDefaultData,
+            singleModeData: singleModeDefaultData(),
+            groupedModeData: groupedModeDefaultData(),
 
             // Reset Grouping
             groups: [DEFAULT_GROUP],
