@@ -22,10 +22,21 @@ import {
     LifeBuoy,
     ChartArea,
     ChartColumnStacked,
+    Info,
+    ChevronRight,
 } from "lucide-react"
 import { ChartSetupDialog, type ChartDimensions } from "@/components/dialogs/chart-setup-dialog"
 import { useChatStore } from "@/lib/chat-store"
 import { toast } from "sonner"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import {
+    Carousel,
+    CarouselContent,
+    CarouselItem,
+    CarouselNext,
+    CarouselPrevious,
+} from "@/components/ui/carousel"
+import { useRef } from "react"
 
 interface GeneralTabProps {
     chartMode: string
@@ -87,6 +98,38 @@ export function GeneralTab({
     updateChartConfig,
 }: GeneralTabProps) {
     const [isCreatingNewGroup, setIsCreatingNewGroup] = useState(false);
+    const datasetsContainerRef = useRef<HTMLDivElement>(null);
+
+    const handleFocusActiveDataset = () => {
+        if (!datasetsDropdownOpen) {
+            setDatasetsDropdownOpen(true);
+            setTimeout(scrollToActive, 100);
+        } else {
+            scrollToActive();
+        }
+    };
+
+    const scrollToActive = () => {
+        const activeTile = datasetsContainerRef.current?.querySelector('[data-active="true"]');
+        if (activeTile) {
+            activeTile.scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest'
+            });
+        } else {
+            toast.info("Active dataset not found in the list");
+        }
+    };
+
+    const activeFilteredIndex = filteredDatasets.findIndex(ds =>
+        chartData.datasets.indexOf(ds) === activeDatasetIndex
+    );
+    const activeDs = filteredDatasets[activeFilteredIndex];
+    const activeDatasetName = activeDs
+        ? (chartMode === 'single'
+            ? (activeDs.sourceTitle || activeDs.label || `Dataset ${activeFilteredIndex + 1}`)
+            : (activeDs.label || activeDs.sourceTitle || `Dataset ${activeFilteredIndex + 1}`))
+        : 'None';
 
     return (
         <div className="space-y-4">
@@ -119,27 +162,84 @@ export function GeneralTab({
 
             {/* Convert to Grouped Chart - Only visible in Single Mode */}
             {chartMode === 'single' && filteredDatasets.length > 0 && (
-                <div
-                    className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-md px-3 py-2 cursor-pointer hover:bg-blue-100 hover:border-blue-300 transition-all group"
-                    onClick={() => handleConvertToGrouped()}
-                    title="By converting to a grouped chart, you can add more datasets to visualize and compare multiple data series on the same chart."
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500 flex-shrink-0">
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="12" y1="16" x2="12" y2="12" />
-                        <line x1="12" y1="8" x2="12.01" y2="8" />
-                    </svg>
-                    <span className="font-medium text-xs text-blue-700 flex-1">Convert to Grouped Chart</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all flex-shrink-0">
-                        <path d="M9 18l6-6-6-6" />
-                    </svg>
-                </div>
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div
+                                className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-md px-3 py-2 cursor-pointer hover:bg-blue-100 hover:border-blue-300 transition-all group"
+                                onClick={() => handleConvertToGrouped()}
+                            >
+                                <Info className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                                <span className="font-medium text-xs text-blue-700 flex-1">Convert to Grouped Chart</span>
+                                <ChevronRight className="h-4 w-4 text-blue-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="left" sideOffset={15} className="bg-slate-800 text-white border-slate-700 px-3 py-2 z-[150] max-w-[200px] shadow-xl">
+                            <p className="text-[11px] font-medium leading-relaxed">
+                                Convert to grouped mode to visualize and compare multiple data series on the same chart.
+                            </p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
             )}
 
             {/* Uniformity Mode Section - Only for Grouped Mode */}
             {chartMode === 'grouped' && (
                 <div>
-                    <div className="font-semibold text-xs mb-2">Uniformity</div>
+                    <div className="flex items-center gap-1.5 mb-2">
+                        <div className="font-semibold text-xs text-gray-700">Uniformity</div>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Info className="h-3 w-3 text-gray-400 hover:text-blue-500 cursor-help transition-colors" />
+                                </TooltipTrigger>
+                                <TooltipContent side="left" sideOffset={15} className="bg-slate-800 text-white border-slate-700 shadow-2xl p-0 overflow-hidden z-[150] w-[300px]">
+                                    <Carousel className="w-full">
+                                        <CarouselContent>
+                                            <CarouselItem>
+                                                <div className="flex flex-col">
+                                                    <div className="bg-white p-2">
+                                                        <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Example: Uniform Mode</div>
+                                                        <img
+                                                            src="/uniform-preview.png"
+                                                            alt="Uniform Mode"
+                                                            className="w-full h-auto rounded border border-gray-100 shadow-sm"
+                                                        />
+                                                    </div>
+                                                    <div className="p-3 border-t border-white/10 bg-slate-800/50">
+                                                        <p className="text-[11px] leading-relaxed text-gray-300">
+                                                            <span className="text-blue-400 font-bold">Uniform Mode</span>: All datasets share the same category and chart type. Best for direct comparisons.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </CarouselItem>
+                                            <CarouselItem>
+                                                <div className="flex flex-col h-full">
+                                                    <div className="bg-white p-2">
+                                                        <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Example: Mixed Mode</div>
+                                                        <img
+                                                            src="/mixed-preview.png"
+                                                            alt="Mixed Mode"
+                                                            className="w-full h-auto rounded border border-gray-100 shadow-sm"
+                                                        />
+                                                    </div>
+                                                    <div className="p-3 border-t border-white/10 bg-slate-800/50 h-full">
+                                                        <p className="text-[11px] leading-relaxed text-gray-300">
+                                                            <span className="text-pink-400 font-bold">Mixed Mode</span>: Each dataset has its own chart type and category. Ideal for combo charts.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </CarouselItem>
+                                        </CarouselContent>
+                                        <div className="absolute bottom-12 right-4 flex gap-1 z-20">
+                                            <CarouselPrevious className="static translate-y-0 h-6 w-6 bg-slate-700 border-slate-600 hover:bg-slate-600 text-white" />
+                                            <CarouselNext className="static translate-y-0 h-6 w-6 bg-slate-700 border-slate-600 hover:bg-slate-600 text-white" />
+                                        </div>
+                                    </Carousel>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    </div>
                     <div className="flex items-center gap-4 bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 shadow-sm">
                         <label className={`flex items-center gap-2 cursor-pointer transition-colors text-xs ${uniformityMode === 'uniform' ? 'text-blue-700 font-bold' : 'text-gray-500'}`}>
                             <input
@@ -276,30 +376,6 @@ export function GeneralTab({
                 </div>
             )}
 
-            {/* Active Dataset Selector - Single Mode */}
-            {chartMode === 'single' && filteredDatasets.length > 0 && (
-                <div className="space-y-2">
-                    <Label className="text-xs font-medium">Active Dataset</Label>
-                    <Select value={String(activeDatasetIndex)} onValueChange={(value) => handleActiveDatasetChange(Number(value))}>
-                        <SelectTrigger className="h-9">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {filteredDatasets.map((dataset, index) => {
-                                const actualIndex = chartData.datasets.indexOf(dataset);
-                                return (
-                                    <SelectItem key={index} value={String(actualIndex)}>
-                                        {chartMode === 'single' 
-                                            ? (dataset.sourceTitle || dataset.label || `Dataset ${actualIndex + 1}`)
-                                            : (dataset.label || dataset.sourceTitle || `Dataset ${actualIndex + 1}`)
-                                        }
-                                    </SelectItem>
-                                );
-                            })}
-                        </SelectContent>
-                    </Select>
-                </div>
-            )}
 
             <div className="space-y-0">
                 {/* Datasets Header with Count and Actions */}
@@ -356,7 +432,21 @@ export function GeneralTab({
 
                 {datasetsDropdownOpen && (
                     <div className="bg-blue-50/50 rounded-b-lg p-3 space-y-2 border-x border-b border-blue-100">
-                        <div className="max-h-96 overflow-y-auto space-y-2 pr-1">
+                        {filteredDatasets.length > 0 && (
+                            <div className="flex items-center gap-1.5 px-1 pb-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                                <span className="text-[10px] text-gray-500 font-medium">Selected :</span>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleFocusActiveDataset();
+                                    }}
+                                    className="text-[10px] text-blue-600 font-bold hover:underline cursor-pointer transition-all active:scale-95"
+                                >
+                                    {activeDatasetName}
+                                </button>
+                            </div>
+                        )}
+                        <div ref={datasetsContainerRef} className="max-h-96 overflow-y-auto space-y-2 pr-1 scroll-smooth">
                             {filteredDatasets.length === 0 ? (
                                 <div className="text-center py-4 px-2">
                                     <p className="text-xs text-gray-500 italic">No datasets to display.</p>
@@ -366,13 +456,15 @@ export function GeneralTab({
                                 filteredDatasets.map((dataset, datasetIndex) => (
                                     <div
                                         key={datasetIndex}
+                                        ref={datasetIndex === activeDatasetIndex ? null : null}
+                                        data-active={chartData.datasets.indexOf(dataset) === activeDatasetIndex}
                                         onClick={() => {
                                             const actualIndex = chartData.datasets.indexOf(dataset);
                                             if (actualIndex !== -1) {
                                                 handleActiveDatasetChange(actualIndex);
                                             }
                                         }}
-                                        className={`group relative p-3 rounded-lg transition-all cursor-pointer border ${chartMode === 'single' && chartData.datasets.indexOf(dataset) === activeDatasetIndex
+                                        className={`group relative p-3 rounded-lg transition-all cursor-pointer border ${chartData.datasets.indexOf(dataset) === activeDatasetIndex
                                             ? 'bg-blue-50/50 border-blue-200 shadow-sm'
                                             : 'bg-white border-transparent hover:border-gray-200 hover:shadow-sm hover:bg-gray-50/50'
                                             }`}
@@ -473,8 +565,8 @@ export function GeneralTab({
                 )}
             </div>
             {/* Enhanced Chart Setup Modal for adding datasets */}
-            <ChartSetupDialog 
-                open={showAddDatasetModal} 
+            <ChartSetupDialog
+                open={showAddDatasetModal}
                 onClose={() => {
                     setShowAddDatasetModal(false)
                     setIsCreatingNewGroup(false)
@@ -505,7 +597,7 @@ export function GeneralTab({
                             uniformityMode: newUniformityMode
                         }
                     }
-                    
+
                     if (isCreatingNewGroup) {
                         const newGroupId = addGroup({
                             name: groupName || `Group ${groups.length + 1}`,
@@ -514,7 +606,7 @@ export function GeneralTab({
                             baseChartType: newChartType,
                             chartConfig: updatedConfig
                         });
-                        
+
                         if (datasets && datasets.length > 0) {
                             const store = useChartStore.getState();
                             const currentData = store.chartData;
@@ -537,7 +629,7 @@ export function GeneralTab({
 
                         // Immediately update global chart config so the UI re-renders with new dimensions
                         updateChartConfig(updatedConfig);
-                        
+
                         useChatStore.getState().setBackendConversationId(null);
                         toast.success(`Created group "${groupName || `Group ${groups.length + 1}`}"`);
                     } else {
@@ -548,7 +640,7 @@ export function GeneralTab({
                                 updates.name = groupName;
                             }
                             updateGroup(activeGroupId, updates);
-                            
+
                             // Immediately update global chart config so the UI re-renders with new dimensions
                             updateChartConfig(updatedConfig);
                         } else if (chartMode === 'single' && groupName) {
@@ -592,7 +684,7 @@ export function GeneralTab({
                             toast.success(`Dataset updated successfully.`)
                         }
                     }
-                    
+
                     setShowAddDatasetModal(false)
                     setIsCreatingNewGroup(false)
                 }}

@@ -29,6 +29,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel"
 import { Switch } from "@/components/ui/switch"
 import {
   DIMENSION_PRESETS,
@@ -61,7 +68,8 @@ import {
   Settings2,
   TableProperties,
   Link,
-  Unlink
+  Unlink,
+  Info,
 } from "lucide-react"
 import { type SupportedChartType, type ExtendedChartDataset } from "@/lib/chart-store"
 
@@ -251,7 +259,7 @@ export function ChartSetupDialog({
   const toggleColorLinked = () => {
     const nextMode = !isColorLinked;
     setIsColorLinked(nextMode);
-    
+
     if (nextMode && activeDataset?.dataPoints.length > 0) {
       const firstColor = activeDataset.dataPoints[0].color;
       updateActiveDataset({
@@ -292,7 +300,7 @@ export function ChartSetupDialog({
           const type = ds.chartType || 'bar'
           const isCoord = type === 'scatter' || type === 'bubble'
           const category = isCoord ? 'coordinate' : 'categorical'
-          
+
           const points = (ds.data || []).map((val: any, i: number) => {
             return {
               name: ds.sliceLabels?.[i] || `${isCoord ? 'Point' : 'Slice'} ${i + 1}`,
@@ -553,7 +561,7 @@ export function ChartSetupDialog({
       r: 10,
       color: ['#1E90FF', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4'][newIndex % 5],
     }
-    
+
     if (datasetType === 'grouped') {
       setDatasets(prev => prev.map(d => ({
         ...d,
@@ -693,7 +701,7 @@ export function ChartSetupDialog({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose() }}>
-      <DialogContent 
+      <DialogContent
         onOpenAutoFocus={(e) => e.preventDefault()}
         className={`max-h-[95vh] overflow-hidden p-0 gap-0 transition-all duration-300 ${step === 2 ? 'max-w-[850px]' : 'max-w-[720px]'}`}
       >
@@ -995,9 +1003,9 @@ export function ChartSetupDialog({
                         </SelectContent>
                       </Select>
                     );
-                    
+
                     if (!isCategoryDisabled) return selectEl;
-                    
+
                     return (
                       <TooltipProvider>
                         <Tooltip>
@@ -1038,7 +1046,7 @@ export function ChartSetupDialog({
                     );
 
                     if (!isTypeDisabled) return selectEl;
-                    
+
                     return (
                       <TooltipProvider>
                         <Tooltip>
@@ -1061,7 +1069,60 @@ export function ChartSetupDialog({
                 {/* Group Mode (if applicable) seamlessly fits into the same row */}
                 {datasetType === 'grouped' && (
                   <div className="flex-[0.8]">
-                    <Label className="text-xs font-medium text-gray-600 mb-1.5 block">Group Mode</Label>
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <Label className="text-xs font-medium text-gray-600 block">Group Mode</Label>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-3 w-3 text-gray-400 hover:text-blue-500 cursor-help transition-colors" />
+                          </TooltipTrigger>
+                          <TooltipContent side="top" sideOffset={10} className="bg-slate-800 text-white border-slate-700 shadow-2xl p-0 overflow-hidden z-[200] w-[300px]">
+                            <Carousel className="w-full">
+                              <CarouselContent>
+                                <CarouselItem>
+                                  <div className="flex flex-col">
+                                    <div className="bg-white p-2">
+                                      <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Example: Uniform Mode</div>
+                                      <img
+                                        src="/uniform-preview.png"
+                                        alt="Uniform Mode"
+                                        className="w-full h-auto rounded border border-gray-100 shadow-sm"
+                                      />
+                                    </div>
+                                    <div className="p-3 border-t border-white/10 bg-slate-800/50">
+                                      <p className="text-[11px] leading-relaxed text-gray-300">
+                                        <span className="text-blue-400 font-bold">Uniform Mode</span>: All datasets share the same category and chart type. Best for direct comparisons.
+                                      </p>
+                                    </div>
+                                  </div>
+                                </CarouselItem>
+                                <CarouselItem>
+                                  <div className="flex flex-col h-full">
+                                    <div className="bg-white p-2">
+                                      <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Example: Mixed Mode</div>
+                                      <img
+                                        src="/mixed-preview.png"
+                                        alt="Mixed Mode"
+                                        className="w-full h-auto rounded border border-gray-100 shadow-sm"
+                                      />
+                                    </div>
+                                    <div className="p-3 border-t border-white/10 bg-slate-800/50 h-full">
+                                      <p className="text-[11px] leading-relaxed text-gray-300">
+                                        <span className="text-pink-400 font-bold">Mixed Mode</span>: Each dataset has its own chart type and category. Ideal for combo charts.
+                                      </p>
+                                    </div>
+                                  </div>
+                                </CarouselItem>
+                              </CarouselContent>
+                              <div className="absolute bottom-12 right-4 flex gap-1 z-20">
+                                <CarouselPrevious className="static translate-y-0 h-6 w-6 bg-slate-700 border-slate-600 hover:bg-slate-600 text-white" />
+                                <CarouselNext className="static translate-y-0 h-6 w-6 bg-slate-700 border-slate-600 hover:bg-slate-600 text-white" />
+                              </div>
+                            </Carousel>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
                     <div className="flex bg-gray-100 p-0.5 rounded-md h-8">
                       <button
                         onClick={() => triggerModeChange('uniform')}

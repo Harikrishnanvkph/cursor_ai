@@ -83,11 +83,11 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   const [isMobile, setIsMobile] = useState(false);
   const [isInitialAutoFitPending, setIsInitialAutoFitPending] = useState(() => {
     // Only pending if it's chart mode and not responsive and has fixed dimensions
-    return useTemplateStore.getState().editorMode === 'chart' && 
-           !useTemplateStore.getState().shouldShowTemplate() && 
-           !useChartStore.getState().chartConfig.responsive && 
-           !!useChartStore.getState().chartConfig.width && 
-           !!useChartStore.getState().chartConfig.height;
+    return useTemplateStore.getState().editorMode === 'chart' &&
+      !useTemplateStore.getState().shouldShowTemplate() &&
+      !useChartStore.getState().chartConfig.responsive &&
+      !!useChartStore.getState().chartConfig.width &&
+      !!useChartStore.getState().chartConfig.height;
   });
 
   // --- Responsive check ---
