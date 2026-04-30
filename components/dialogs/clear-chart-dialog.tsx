@@ -10,39 +10,24 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useChartStore } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
 import { useTemplateStore } from "@/lib/template-store"
 import { useDecorationStore } from "@/lib/stores/decoration-store"
 import { clearCurrentChart } from "@/lib/storage-utils"
 import { toast } from "sonner"
-import { useState } from "react"
-import { Eraser, RotateCcw } from "lucide-react"
-
-import { ReactNode } from "react"
 
 interface ClearChartDialogProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     onSuccess?: () => void
-    welcomeLabel?: string
-    welcomeDescription?: ReactNode
 }
 
 export function ClearChartDialog({
     open,
     onOpenChange,
     onSuccess,
-    welcomeLabel = "Go to Welcome Preview",
-    welcomeDescription = (
-        <>
-            Returns to the welcome screen but <strong>keeps your data</strong>. You can resume editing by selecting a dataset or using the AI chat.
-        </>
-    )
 }: ClearChartDialogProps) {
-    const [clearOption, setClearOption] = useState<'welcome' | 'reset'>('welcome')
     const { setHasJSON, resetChart } = useChartStore()
     const { clearMessages, startNewConversation, setBackendConversationId } = useChatStore()
 
@@ -77,22 +62,14 @@ export function ClearChartDialog({
             console.warn("Could not clear format store", e)
         }
 
-        if (clearOption === 'welcome') {
-            // "Go to Welcome Preview" - Soft Reset
-            // - Hide the chart preview (hasJSON = false)
-            // - PRESERVE all chart data, groups, and settings
-            setHasJSON(false)
-            toast.success("Welcome screen shown")
-        } else {
-            // "Reset Application" - Hard Reset
-            // - Clear local storage persistence
-            clearCurrentChart()
-            // - Reset chart store state completely
-            resetChart()
-            // - Hide JSON to show welcome screen
-            setHasJSON(false)
-            toast.success("Application reset successfully")
-        }
+        // "Reset Application" - Hard Reset
+        // - Clear local storage persistence
+        clearCurrentChart()
+        // - Reset chart store state completely
+        resetChart()
+        // - Hide JSON to show welcome screen
+        setHasJSON(false)
+        toast.success("Application reset successfully")
 
         onOpenChange(false)
     }
@@ -101,49 +78,19 @@ export function ClearChartDialog({
         <AlertDialog open={open} onOpenChange={onOpenChange}>
             <AlertDialogContent className="sm:max-w-[500px]">
                 <AlertDialogHeader>
-                    <AlertDialogTitle>Clear Chart</AlertDialogTitle>
+                    <AlertDialogTitle>Reset Application</AlertDialogTitle>
                     <AlertDialogDescription>
-                        Choose how you want to clear the current session.
+                        Are you sure you want to delete everything and start fresh? This will remove all datasets, template settings, and chat history. This action cannot be undone.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
-
-                <div className="py-4">
-                    <RadioGroup value={clearOption} onValueChange={(v) => setClearOption(v as 'welcome' | 'reset')} className="gap-4">
-                        <div className={`flex items-start space-x-3 space-y-0 rounded-md border p-4 hover:bg-accent cursor-pointer ${clearOption === 'welcome' ? 'border-primary bg-accent/50' : 'border-muted'}`} onClick={() => setClearOption('welcome')}>
-                            <RadioGroupItem value="welcome" id="welcome" className="mt-1" />
-                            <div className="grid gap-1.5">
-                                <Label htmlFor="welcome" className="font-medium cursor-pointer flex items-center gap-2">
-                                    <RotateCcw className="h-4 w-4" />
-                                    {welcomeLabel}
-                                </Label>
-                                <div className="text-sm text-muted-foreground">
-                                    {welcomeDescription}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className={`flex items-start space-x-3 space-y-0 rounded-md border p-4 hover:bg-red-50 cursor-pointer ${clearOption === 'reset' ? 'border-red-500 bg-red-50' : 'border-muted'}`} onClick={() => setClearOption('reset')}>
-                            <RadioGroupItem value="reset" id="reset" className="mt-1 text-red-500 border-red-500" />
-                            <div className="grid gap-1.5">
-                                <Label htmlFor="reset" className="font-medium cursor-pointer text-red-600 flex items-center gap-2">
-                                    <Eraser className="h-4 w-4" />
-                                    Reset Application
-                                </Label>
-                                <div className="text-sm text-red-600/80">
-                                    <strong>Delete everything</strong> and start fresh. This will remove all datasets, template settings, and chat history.
-                                </div>
-                            </div>
-                        </div>
-                    </RadioGroup>
-                </div>
 
                 <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction
                         onClick={handleConfirmClear}
-                        className={clearOption === 'reset' ? "bg-red-600 hover:bg-red-700" : ""}
+                        className="bg-red-600 hover:bg-red-700"
                     >
-                        {clearOption === 'welcome' ? "Go to Welcome" : "Reset Everything"}
+                        Reset Everything
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>

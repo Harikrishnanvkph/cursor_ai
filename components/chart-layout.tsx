@@ -479,8 +479,6 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
       <ClearChartDialog
         open={showClearDialog}
         onOpenChange={setShowClearDialog}
-        welcomeLabel="Close and Open New Chat"
-        welcomeDescription="Closes the chart view and starts a new conversation."
         onSuccess={() => {
           router.push('/landing')
         }}
