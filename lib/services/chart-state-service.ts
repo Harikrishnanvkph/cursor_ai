@@ -239,6 +239,11 @@ export class ChartStateService {
             const groupExists = state.groups.some(g => g.id === tempGroupId);
             if (!groupExists) {
                 updatedGroups = [...state.groups, tempGroup];
+            } else {
+                // If replacing an existing group (like 'default'), update it with the new configuration
+                updatedGroups = state.groups.map(g => 
+                    g.id === tempGroupId ? { ...g, ...tempGroup } : g
+                );
             }
 
             processedDatasets = processedDatasets.map((ds: any) => {

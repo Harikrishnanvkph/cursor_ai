@@ -19,6 +19,18 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { Switch } from "@/components/ui/switch"
+import {
   DIMENSION_PRESETS,
   DEFAULT_CHART_WIDTH,
   DEFAULT_CHART_HEIGHT,
@@ -47,7 +59,9 @@ import {
   Shuffle,
   ChevronLeft,
   Settings2,
-  TableProperties
+  TableProperties,
+  Link,
+  Unlink
 } from "lucide-react"
 import { type SupportedChartType, type ExtendedChartDataset } from "@/lib/chart-store"
 
@@ -66,11 +80,20 @@ interface ChartSetupDialogProps {
     dimensions: ChartDimensions,
     initialDatasets?: any[],
     chartType?: SupportedChartType,
-    uniformityMode?: 'uniform' | 'mixed'
+    uniformityMode?: 'uniform' | 'mixed',
+    groupName?: string
   ) => void
   title?: string
   datasetType?: 'single' | 'grouped'
   isCustom?: boolean
+  initialDimensions?: ChartDimensions
+  initialGroupName?: string
+  startAtStep?: 1 | 2
+  step2Title?: string
+  hideBackButton?: boolean
+  initialExistingDatasets?: ExtendedChartDataset[]
+  initialUniformityMode?: 'uniform' | 'mixed'
+  confirmButtonText?: string
 }
 
 type ChartCategory = 'categorical' | 'coordinate'
@@ -178,7 +201,15 @@ export function ChartSetupDialog({
   onConfirm,
   title = "Set Up Chart Dimensions",
   datasetType = 'single',
-  isCustom = false
+  isCustom = false,
+  initialDimensions,
+  initialGroupName,
+  startAtStep = 1,
+  step2Title,
+  hideBackButton = false,
+  initialExistingDatasets,
+  initialUniformityMode,
+  confirmButtonText,
 }: ChartSetupDialogProps) {
   // ── Step State ──
   const [step, setStep] = useState<1 | 2>(1)
@@ -190,6 +221,7 @@ export function ChartSetupDialog({
   const [isResponsive, setIsResponsive] = useState(false)
   const [selectedPreset, setSelectedPreset] = useState<string | null>('Standard')
   const [expandedCategory, setExpandedCategory] = useState<string>('Chart Defaults')
+  const [groupName, setGroupName] = useState(initialGroupName || (datasetType === 'grouped' ? "Group 1" : "Chart 1"))
 
   const [widthInput, setWidthInput] = useState(DEFAULT_CHART_WIDTH.toString())
   const [heightInput, setHeightInput] = useState(DEFAULT_CHART_HEIGHT.toString())
@@ -198,6 +230,7 @@ export function ChartSetupDialog({
   const [datasets, setDatasets] = useState<DatasetConfig[]>([])
   const [activeDatasetId, setActiveDatasetId] = useState<string>('')
   const [uniformityMode, setUniformityMode] = useState<'uniform' | 'mixed'>('uniform')
+  const [isColorLinked, setIsColorLinked] = useState(datasetType === 'grouped')
 
   const activeDataset = datasets.find(d => d.id === activeDatasetId) || datasets[0]
   const datasetName = activeDataset?.name || ''
@@ -206,26 +239,98 @@ export function ChartSetupDialog({
   const dataPoints = activeDataset?.dataPoints || []
 
   const isBubbleChart = chartType === 'bubble'
+  const isFirstDatasetActive = datasets.length > 0 && activeDatasetId === datasets[0].id
+  const isSingle = !datasetType || datasetType === 'single'
+  const canEditSlices = isSingle || isFirstDatasetActive
+  const canEditLabels = isSingle || isFirstDatasetActive
 
   const updateActiveDataset = (updates: Partial<DatasetConfig>) => {
     setDatasets(prev => prev.map(d => d.id === activeDatasetId ? { ...d, ...updates } : d))
   }
 
+  const toggleColorLinked = () => {
+    const nextMode = !isColorLinked;
+    setIsColorLinked(nextMode);
+    
+    if (nextMode && activeDataset?.dataPoints.length > 0) {
+      const firstColor = activeDataset.dataPoints[0].color;
+      updateActiveDataset({
+        dataPoints: activeDataset.dataPoints.map(p => ({ ...p, color: firstColor }))
+      });
+    }
+  }
+
   useEffect(() => {
     if (open) {
-      setStep(1)
-      const initialId = crypto.randomUUID()
-      setDatasets([{
-        id: initialId,
-        name: "Dataset 1",
-        category: 'categorical',
-        type: 'bar',
-        dataPoints: getDefaultPoints('categorical', 4)
-      }])
-      setActiveDatasetId(initialId)
-      setUniformityMode('uniform')
+      setStep(startAtStep)
+      if (initialDimensions) {
+        setWidthPx(initialDimensions.width)
+        setHeightPx(initialDimensions.height)
+        setWidthInput(initialDimensions.width.toString())
+        setHeightInput(initialDimensions.height.toString())
+        setIsResponsive(initialDimensions.isResponsive)
+        setUnit('px')
+        const matchingPreset = DIMENSION_PRESETS.flatMap(c => c.presets).find(p => p.width === initialDimensions.width && p.height === initialDimensions.height)
+        setSelectedPreset(matchingPreset ? matchingPreset.name : null)
+      } else {
+        setWidthPx(DEFAULT_CHART_WIDTH)
+        setHeightPx(DEFAULT_CHART_HEIGHT)
+        setWidthInput(DEFAULT_CHART_WIDTH.toString())
+        setHeightInput(DEFAULT_CHART_HEIGHT.toString())
+        setIsResponsive(false)
+        setSelectedPreset('Standard')
+      }
+
+      if (initialGroupName) {
+        setGroupName(initialGroupName)
+      } else {
+        setGroupName(datasetType === 'grouped' ? "Group 1" : "Chart 1")
+      }
+
+      if (initialExistingDatasets && initialExistingDatasets.length > 0) {
+        const loadedDatasets = initialExistingDatasets.map((ds: any, index: number) => {
+          const type = ds.chartType || 'bar'
+          const isCoord = type === 'scatter' || type === 'bubble'
+          const category = isCoord ? 'coordinate' : 'categorical'
+          
+          const points = (ds.data || []).map((val: any, i: number) => {
+            return {
+              name: ds.sliceLabels?.[i] || `${isCoord ? 'Point' : 'Slice'} ${i + 1}`,
+              value: isCoord ? 0 : (typeof val === 'number' ? val : (Array.isArray(val) ? val[1] : val.y || 0)),
+              x: isCoord ? (val.x || 0) : 0,
+              y: isCoord ? (val.y || 0) : 0,
+              r: type === 'bubble' ? (val.r || 10) : 10,
+              color: Array.isArray(ds.backgroundColor) ? (ds.backgroundColor[i] || '#1E90FF') : (ds.backgroundColor || '#1E90FF'),
+            }
+          })
+
+          return {
+            id: crypto.randomUUID(),
+            name: ds.label || ds.sourceTitle || `Dataset ${index + 1}`,
+            category,
+            type,
+            dataPoints: points.length > 0 ? points : getDefaultPoints(category, 4)
+          }
+        })
+        setDatasets(loadedDatasets)
+        setActiveDatasetId(loadedDatasets[0].id)
+        if (initialUniformityMode) {
+          setUniformityMode(initialUniformityMode)
+        }
+      } else {
+        const initialId = crypto.randomUUID()
+        setDatasets([{
+          id: initialId,
+          name: "Dataset 1",
+          category: 'categorical',
+          type: 'bar',
+          dataPoints: getDefaultPoints('categorical', 4)
+        }])
+        setActiveDatasetId(initialId)
+        setUniformityMode('uniform')
+      }
     }
-  }, [open])
+  }, [open, initialDimensions, initialExistingDatasets, initialUniformityMode, initialGroupName, startAtStep])
 
   // ── Handlers (Step 1) ──
   const handlePresetClick = (preset: DimensionPreset) => {
@@ -290,6 +395,11 @@ export function ChartSetupDialog({
   // ── Prompt State for Dataset 1 Changes ──
   const [showInconsistencyPrompt, setShowInconsistencyPrompt] = useState(false);
   const [pendingDatasetChange, setPendingDatasetChange] = useState<{ type: 'category', value: ChartCategory } | { type: 'chartType', value: SupportedChartType } | { type: 'mode', value: 'uniform' | 'mixed' } | null>(null);
+
+  // ── Randomizer State ──
+  const [isAutoRandom, setIsAutoRandom] = useState(true);
+  const [randomMin, setRandomMin] = useState(10);
+  const [randomMax, setRandomMax] = useState(100);
 
   // ── Handlers (Step 2) ──
   const triggerCategoryChange = (category: ChartCategory) => {
@@ -411,16 +521,22 @@ export function ChartSetupDialog({
   const handleRandomize = () => {
     const randomizedPoints = dataPoints.map(point => {
       if (chartCategory === 'coordinate') {
+        const minX = isAutoRandom ? 0 : randomMin;
+        const maxX = isAutoRandom ? 100 : randomMax;
+        const minY = isAutoRandom ? 0 : randomMin;
+        const maxY = isAutoRandom ? 100 : randomMax;
         return {
           ...point,
-          x: Math.floor(Math.random() * 100),
-          y: Math.floor(Math.random() * 100),
+          x: Math.floor(Math.random() * (maxX - minX + 1)) + minX,
+          y: Math.floor(Math.random() * (maxY - minY + 1)) + minY,
           r: Math.floor(Math.random() * 20) + 5,
         }
       } else {
+        const min = isAutoRandom ? 10 : randomMin;
+        const max = isAutoRandom ? 110 : randomMax;
         return {
           ...point,
-          value: Math.floor(Math.random() * 100) + 10,
+          value: Math.floor(Math.random() * (max - min + 1)) + min,
         }
       }
     })
@@ -437,19 +553,48 @@ export function ChartSetupDialog({
       r: 10,
       color: ['#1E90FF', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4'][newIndex % 5],
     }
-    updateActiveDataset({ dataPoints: [...dataPoints, newPoint] })
+    
+    if (datasetType === 'grouped') {
+      setDatasets(prev => prev.map(d => ({
+        ...d,
+        dataPoints: [...d.dataPoints, { ...newPoint }]
+      })))
+    } else {
+      updateActiveDataset({ dataPoints: [...dataPoints, newPoint] })
+    }
   }
 
   const handleRemovePoint = (index: number) => {
     if (dataPoints.length > 1) {
-      updateActiveDataset({ dataPoints: dataPoints.filter((_, i) => i !== index) })
+      if (datasetType === 'grouped') {
+        setDatasets(prev => prev.map(d => ({
+          ...d,
+          dataPoints: d.dataPoints.filter((_, i) => i !== index)
+        })))
+      } else {
+        updateActiveDataset({ dataPoints: dataPoints.filter((_, i) => i !== index) })
+      }
     }
   }
 
   const handleUpdatePoint = (index: number, field: keyof DataPoint, value: string | number) => {
-    const updated = [...dataPoints]
-    updated[index] = { ...updated[index], [field]: value }
-    updateActiveDataset({ dataPoints: updated })
+    if (datasetType === 'grouped' && field === 'name') {
+      setDatasets(prev => prev.map(d => {
+        const updated = [...d.dataPoints]
+        if (updated[index]) {
+          updated[index] = { ...updated[index], name: value as string }
+        }
+        return { ...d, dataPoints: updated }
+      }))
+    } else {
+      let updated = [...dataPoints]
+      if (field === 'color' && isColorLinked) {
+        updated = updated.map(p => ({ ...p, color: value as string }))
+      } else {
+        updated[index] = { ...updated[index], [field]: value }
+      }
+      updateActiveDataset({ dataPoints: updated })
+    }
   }
 
   const removeDataset = (id: string) => {
@@ -534,9 +679,9 @@ export function ChartSetupDialog({
       })
 
       // The chartType parameter passed out will be the first dataset's type
-      onConfirm(dims, builtDatasets, datasets[0].type, uniformityMode)
+      onConfirm(dims, builtDatasets, datasets[0].type, uniformityMode, groupName)
     } else if (!isCustom) {
-      onConfirm(dims)
+      onConfirm(dims, undefined, undefined, undefined, groupName)
     }
   }
 
@@ -548,20 +693,50 @@ export function ChartSetupDialog({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose() }}>
-      <DialogContent className={`max-h-[95vh] overflow-hidden p-0 gap-0 transition-all duration-300 ${step === 2 ? 'max-w-[850px]' : 'max-w-[720px]'}`}>
+      <DialogContent 
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        className={`max-h-[95vh] overflow-hidden p-0 gap-0 transition-all duration-300 ${step === 2 ? 'max-w-[850px]' : 'max-w-[720px]'}`}
+      >
 
         {/* ── Header ── */}
-        <DialogHeader className={`px-5 pt-4 pb-2 ${step === 2 ? 'border-b border-gray-100 bg-gray-50/50' : ''}`}>
-          <div className="flex items-center gap-3">
-            {step === 2 && (
-              <Button variant="ghost" size="icon" onClick={() => setStep(1)} className="h-8 w-8 -ml-2 text-gray-500 hover:text-gray-900">
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-            )}
-            <div>
-              <DialogTitle className="text-lg font-semibold">
-                {step === 1 ? title : "Initialize Dataset"}
-              </DialogTitle>
+        <DialogHeader className={`px-6 pt-5 pb-4 ${step === 2 ? 'border-b border-gray-100 bg-white' : ''}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
+                {step === 2 && !hideBackButton && (
+                  <Button variant="ghost" size="icon" onClick={() => setStep(1)} className="h-8 w-8 -ml-2 text-gray-500 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-full transition-colors">
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                )}
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg shadow-sm border border-blue-100/50">
+                    <TableProperties className="w-5 h-5" />
+                  </div>
+                  <DialogTitle className="text-xl font-bold text-gray-900 tracking-tight">
+                    {step === 1 ? title : (step2Title || "Initialize")}
+                  </DialogTitle>
+                </div>
+              </div>
+
+              {step === 2 && (
+                <>
+                  <div className="h-6 w-px bg-gray-200 mx-1" />
+                  <div className="flex items-center h-8 border border-gray-200 rounded-lg shadow-sm overflow-hidden focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100/50 transition-all bg-white ml-1">
+                    <div className="flex items-center justify-center h-full px-2.5 bg-gray-100 border-r border-gray-200">
+                      <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap m-0 cursor-default">
+                        {datasetType === 'grouped' ? 'Group' : 'Chart'}
+                      </Label>
+                    </div>
+                    <Input
+                      type="text"
+                      value={groupName}
+                      onChange={(e) => setGroupName(e.target.value)}
+                      className="h-full w-[320px] border-none focus-visible:ring-0 focus-visible:ring-offset-0 px-2.5 text-sm font-semibold text-gray-800 shadow-none bg-white rounded-none"
+                      placeholder={datasetType === 'grouped' ? 'Enter group name' : 'Enter chart title'}
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </DialogHeader>
@@ -649,6 +824,7 @@ export function ChartSetupDialog({
 
             {/* ── Right: Custom + Preview ── */}
             <div className="md:w-[45%] px-5 pb-5 pt-2 flex flex-col gap-4">
+
               <div>
                 <Label className="text-xs font-medium text-gray-600 mb-1.5 block">Unit</Label>
                 <Select value={unit} onValueChange={(v) => handleUnitChange(v as DimensionUnit)}>
@@ -796,42 +972,90 @@ export function ChartSetupDialog({
                   <Input
                     value={datasetName}
                     onChange={e => updateActiveDataset({ name: e.target.value })}
-                    className="h-8 text-sm border-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-gray-50 bg-transparent transition-colors"
+                    className="h-8 text-sm border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700"
                     placeholder="e.g. Q1 Sales"
                   />
                 </div>
                 <div className="flex-1">
                   <Label className="text-xs font-medium text-gray-600 mb-1.5 block">Category</Label>
-                  <Select
-                    value={chartCategory}
-                    onValueChange={(v) => triggerCategoryChange(v as ChartCategory)}
-                    disabled={datasetType === 'grouped' && datasets.length > 0 && activeDatasetId !== datasets[0].id}
-                  >
-                    <SelectTrigger className="h-8 text-sm border-transparent shadow-none focus:ring-0 focus:ring-offset-0 hover:bg-gray-50 bg-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="categorical">Categorical Chart</SelectItem>
-                      <SelectItem value="coordinate">Coordinate Chart</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {(() => {
+                    const isCategoryDisabled = datasetType === 'grouped' && datasets.length > 0 && activeDatasetId !== datasets[0].id;
+                    const selectEl = (
+                      <Select
+                        value={chartCategory}
+                        onValueChange={(v) => triggerCategoryChange(v as ChartCategory)}
+                        disabled={isCategoryDisabled}
+                      >
+                        <SelectTrigger className="h-8 text-sm border-gray-200 bg-white shadow-sm hover:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all font-medium text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="categorical">Categorical Chart</SelectItem>
+                          <SelectItem value="coordinate">Coordinate Chart</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    );
+                    
+                    if (!isCategoryDisabled) return selectEl;
+                    
+                    return (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="cursor-not-allowed">
+                              <div className="pointer-events-none">
+                                {selectEl}
+                              </div>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" sideOffset={5} className="bg-slate-800 text-white border-slate-700 shadow-xl px-3 py-2 z-[150]">
+                            <p className="text-xs font-medium text-center">To change category, please use the first dataset tab.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    );
+                  })()}
                 </div>
                 <div className="flex-1">
                   <Label className="text-xs font-medium text-gray-600 mb-1.5 block">Chart Type</Label>
-                  <Select
-                    value={chartType}
-                    onValueChange={triggerTypeChange}
-                    disabled={uniformityMode === 'uniform' && datasetType === 'grouped' && datasets.length > 0 && activeDatasetId !== datasets[0].id}
-                  >
-                    <SelectTrigger className="h-8 text-sm border-transparent shadow-none focus:ring-0 focus:ring-offset-0 hover:bg-gray-50 bg-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableChartTypes.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {(() => {
+                    const isTypeDisabled = uniformityMode === 'uniform' && datasetType === 'grouped' && datasets.length > 0 && activeDatasetId !== datasets[0].id;
+                    const selectEl = (
+                      <Select
+                        value={chartType}
+                        onValueChange={triggerTypeChange}
+                        disabled={isTypeDisabled}
+                      >
+                        <SelectTrigger className="h-8 text-sm border-gray-200 bg-white shadow-sm hover:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all font-medium text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableChartTypes.map((type) => (
+                            <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    );
+
+                    if (!isTypeDisabled) return selectEl;
+                    
+                    return (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="cursor-not-allowed">
+                              <div className="pointer-events-none">
+                                {selectEl}
+                              </div>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" sideOffset={5} className="bg-slate-800 text-white border-slate-700 shadow-xl px-3 py-2 z-[150] max-w-[200px]">
+                            <p className="text-xs font-medium text-center">To change chart type, please use the first dataset tab or switch Group Mode to Mixed.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    );
+                  })()}
                 </div>
 
                 {/* Group Mode (if applicable) seamlessly fits into the same row */}
@@ -941,85 +1165,189 @@ export function ChartSetupDialog({
                   <div className="col-span-2">Y</div>
                   {isBubbleChart ? (
                     <>
-                      <div className="col-span-2">Radius</div>
-                      <div className="col-span-2">Color</div>
+                      <div className="col-span-2 text-center">Radius</div>
+                      <div className="col-span-2 flex items-center justify-center gap-1">
+                        Color
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button onClick={toggleColorLinked} className={`p-0.5 rounded-sm transition-colors ${isColorLinked ? 'bg-blue-100 text-blue-600 shadow-sm' : 'hover:bg-gray-200 text-gray-400'}`}>
+                                {isColorLinked ? <Link className="h-3 w-3" /> : <Unlink className="h-3 w-3" />}
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-[10px] font-medium z-[200]">
+                              {isColorLinked ? 'Unlink Colors (Individual Mode)' : 'Link Colors (Dataset Mode)'}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
                     </>
                   ) : (
                     <>
                       <div className="col-span-2"></div>
-                      <div className="col-span-2">Color</div>
+                      <div className="col-span-2 flex items-center justify-center gap-1">
+                        Color
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button onClick={toggleColorLinked} className={`p-0.5 rounded-sm transition-colors ${isColorLinked ? 'bg-blue-100 text-blue-600 shadow-sm' : 'hover:bg-gray-200 text-gray-400'}`}>
+                                {isColorLinked ? <Link className="h-3 w-3" /> : <Unlink className="h-3 w-3" />}
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-[10px] font-medium z-[200]">
+                              {isColorLinked ? 'Unlink Colors (Individual Mode)' : 'Link Colors (Dataset Mode)'}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
                     </>
                   )}
                   <div className="col-span-1"></div>
                 </>
               ) : (
                 <>
-                  <div className="col-span-4">Label</div>
+                  <div className="col-span-5">Label</div>
                   <div className="col-span-4">Value</div>
-                  <div className="col-span-3">Color</div>
+                  <div className="col-span-2 flex items-center justify-center gap-1">
+                    Color
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button onClick={toggleColorLinked} className={`p-0.5 rounded-sm transition-colors ${isColorLinked ? 'bg-blue-100 text-blue-600 shadow-sm' : 'hover:bg-gray-200 text-gray-400'}`}>
+                            {isColorLinked ? <Link className="h-3 w-3" /> : <Unlink className="h-3 w-3" />}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-[10px] font-medium z-[200]">
+                          {isColorLinked ? 'Unlink Colors (Individual Mode)' : 'Link Colors (Dataset Mode)'}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                   <div className="col-span-1"></div>
                 </>
               )}
             </div>
 
             {/* Data Grid Body */}
-            <div className="flex-1 overflow-y-auto px-2 py-2 space-y-1.5 bg-gray-50/30">
+            <div className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5 bg-white">
               {dataPoints.map((point, index) => (
-                <div key={index} className="grid grid-cols-12 gap-2 items-center p-1.5 px-3 bg-white border border-gray-100 rounded-md shadow-sm hover:border-blue-200 transition-colors group mx-1">
+                <div key={index} className="grid grid-cols-12 gap-2 items-center py-1.5 px-2 hover:bg-gray-50/80 rounded-lg transition-colors group mx-1">
                   {chartCategory === 'coordinate' ? (
                     <>
                       <div className="col-span-3">
-                        <Input value={point.name} onChange={e => handleUpdatePoint(index, 'name', e.target.value)} className="h-7 text-xs border-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent hover:bg-gray-50/50 transition-colors" />
+                        {canEditLabels ? (
+                          <Input value={point.name} onChange={e => handleUpdatePoint(index, 'name', e.target.value)} className="h-8 text-xs border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700" />
+                        ) : (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="block">
+                                  <Input value={point.name} disabled className="h-8 text-xs border-gray-200 bg-gray-50 shadow-sm transition-all font-medium text-gray-400 cursor-not-allowed" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" sideOffset={5} className="bg-slate-800 text-white border-slate-700 shadow-xl px-3 py-2 z-[150]">
+                                <p className="text-xs font-medium">To edit labels, please use the first dataset tab.</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
                       </div>
                       <div className="col-span-2">
-                        <Input type="number" value={point.x} onChange={e => handleUpdatePoint(index, 'x', Number(e.target.value))} className="h-7 text-xs border-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent hover:bg-gray-50/50 transition-colors" />
+                        <Input type="number" value={point.x} onChange={e => handleUpdatePoint(index, 'x', Number(e.target.value))} className="h-8 text-xs border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700" />
                       </div>
                       <div className="col-span-2">
-                        <Input type="number" value={point.y} onChange={e => handleUpdatePoint(index, 'y', Number(e.target.value))} className="h-7 text-xs border-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent hover:bg-gray-50/50 transition-colors" />
+                        <Input type="number" value={point.y} onChange={e => handleUpdatePoint(index, 'y', Number(e.target.value))} className="h-8 text-xs border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700" />
                       </div>
                       {isBubbleChart ? (
                         <div className="col-span-2">
-                          <Input type="number" value={point.r} onChange={e => handleUpdatePoint(index, 'r', Number(e.target.value))} className="h-7 text-xs border-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent hover:bg-gray-50/50 transition-colors" min="1" />
+                          <Input type="number" value={point.r} onChange={e => handleUpdatePoint(index, 'r', Number(e.target.value))} className="h-8 text-xs border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700" min="1" />
                         </div>
                       ) : (
                         <div className="col-span-2"></div>
                       )}
-                      <div className="col-span-2">
-                        <div className="flex items-center gap-1.5">
-                          <label className="relative flex-shrink-0 cursor-pointer overflow-hidden rounded-sm shadow-none focus-within:ring-0">
+                      <div className="col-span-2 flex justify-center">
+                        <div className="flex items-center">
+                          <label className="relative flex-shrink-0 cursor-pointer overflow-hidden rounded-md shadow-sm focus-within:ring-0 border border-gray-200">
                             <input type="color" value={point.color} onChange={e => handleUpdatePoint(index, 'color', e.target.value)} className="w-8 h-8 opacity-0 absolute inset-[-10px] cursor-pointer" />
                             <div className="w-6 h-6 rounded-sm" style={{ backgroundColor: point.color }} />
                           </label>
-                          <Input value={point.color} onChange={e => handleUpdatePoint(index, 'color', e.target.value)} className="h-7 text-[10px] font-mono uppercase w-full px-1.5 border-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent hover:bg-gray-50/50 transition-colors" />
                         </div>
                       </div>
                       <div className="col-span-1 flex justify-end">
-                        <Button variant="ghost" size="icon" onClick={() => handleRemovePoint(index)} disabled={dataPoints.length <= 1} className="h-6 w-6 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-500 hover:bg-red-50">
-                          <X className="h-3.5 w-3.5" />
-                        </Button>
+                        {canEditSlices ? (
+                          <Button variant="ghost" size="icon" onClick={() => handleRemovePoint(index)} disabled={dataPoints.length <= 1} className="h-6 w-6 text-gray-400 transition-opacity hover:text-red-500 hover:bg-red-50">
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        ) : (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-not-allowed">
+                                  <Button variant="ghost" size="icon" disabled className="h-6 w-6 text-gray-300 transition-opacity">
+                                    <X className="h-3.5 w-3.5" />
+                                  </Button>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" sideOffset={5} className="bg-slate-800 text-white border-slate-700 shadow-xl px-3 py-2 z-[150]">
+                                <p className="text-xs font-medium">To remove slices, please use the first dataset tab.</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
                       </div>
                     </>
                   ) : (
                     <>
-                      <div className="col-span-4">
-                        <Input value={point.name} onChange={e => handleUpdatePoint(index, 'name', e.target.value)} className="h-7 text-xs border-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent hover:bg-gray-50/50 transition-colors" />
+                      <div className="col-span-5">
+                        {canEditLabels ? (
+                          <Input value={point.name} onChange={e => handleUpdatePoint(index, 'name', e.target.value)} className="h-8 text-xs border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700" />
+                        ) : (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="block">
+                                  <Input value={point.name} disabled className="h-8 text-xs border-gray-200 bg-gray-50 shadow-sm transition-all font-medium text-gray-400 cursor-not-allowed" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" sideOffset={5} className="bg-slate-800 text-white border-slate-700 shadow-xl px-3 py-2 z-[150]">
+                                <p className="text-xs font-medium">To edit labels, please use the first dataset tab.</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
                       </div>
                       <div className="col-span-4">
-                        <Input type="number" value={point.value} onChange={e => handleUpdatePoint(index, 'value', Number(e.target.value))} className="h-7 text-xs border-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent hover:bg-gray-50/50 transition-colors" />
+                        <Input type="number" value={point.value} onChange={e => handleUpdatePoint(index, 'value', Number(e.target.value))} className="h-8 text-xs border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700" />
                       </div>
-                      <div className="col-span-3">
-                        <div className="flex items-center gap-1.5">
-                          <label className="relative flex-shrink-0 cursor-pointer overflow-hidden rounded-sm shadow-none focus-within:ring-0">
+                      <div className="col-span-2 flex justify-center">
+                        <div className="flex items-center">
+                          <label className="relative flex-shrink-0 cursor-pointer overflow-hidden rounded-md shadow-sm focus-within:ring-0 border border-gray-200">
                             <input type="color" value={point.color} onChange={e => handleUpdatePoint(index, 'color', e.target.value)} className="w-8 h-8 opacity-0 absolute inset-[-10px] cursor-pointer" />
                             <div className="w-6 h-6 rounded-sm" style={{ backgroundColor: point.color }} />
                           </label>
-                          <Input value={point.color} onChange={e => handleUpdatePoint(index, 'color', e.target.value)} className="h-7 text-[10px] font-mono uppercase w-full px-1.5 border-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent hover:bg-gray-50/50 transition-colors" />
                         </div>
                       </div>
                       <div className="col-span-1 flex justify-end">
-                        <Button variant="ghost" size="icon" onClick={() => handleRemovePoint(index)} disabled={dataPoints.length <= 1} className="h-6 w-6 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-500 hover:bg-red-50">
-                          <X className="h-3.5 w-3.5" />
-                        </Button>
+                        {canEditSlices ? (
+                          <Button variant="ghost" size="icon" onClick={() => handleRemovePoint(index)} disabled={dataPoints.length <= 1} className="h-6 w-6 text-gray-400 transition-opacity hover:text-red-500 hover:bg-red-50">
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        ) : (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-not-allowed">
+                                  <Button variant="ghost" size="icon" disabled className="h-6 w-6 text-gray-300 transition-opacity">
+                                    <X className="h-3.5 w-3.5" />
+                                  </Button>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" sideOffset={5} className="bg-slate-800 text-white border-slate-700 shadow-xl px-3 py-2 z-[150]">
+                                <p className="text-xs font-medium">To remove slices, please use the first dataset tab.</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
                       </div>
                     </>
                   )}
@@ -1030,26 +1358,78 @@ export function ChartSetupDialog({
             {/* Footer */}
             <div className="p-4 bg-white border-t border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAddPoint}
-                  className="h-9 px-4 border-dashed border-gray-300 text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add {chartCategory === 'coordinate' ? 'Point' : 'Slice'}
-                </Button>
-                <Button variant="ghost" size="sm" onClick={handleRandomize} className="h-9 px-4 text-gray-500 hover:text-blue-600 gap-2">
-                  <Shuffle className="h-4 w-4" />
-                  Randomize Data
-                </Button>
+                {canEditSlices ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddPoint}
+                    className="h-9 px-4 border-dashed border-gray-300 text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add {chartCategory === 'coordinate' ? 'Point' : 'Slice'}
+                  </Button>
+                ) : (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="cursor-not-allowed">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled
+                            className="h-9 px-4 border-dashed border-gray-200 text-gray-400 cursor-not-allowed"
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add {chartCategory === 'coordinate' ? 'Point' : 'Slice'}
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" align="start" sideOffset={5} className="bg-slate-800 text-white border-slate-700 shadow-xl px-3 py-2 z-[150]">
+                        <p className="text-xs font-medium text-center">To add slices, please use the first dataset tab.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+                <div className="flex items-center gap-1 bg-white rounded-md border border-gray-200 shadow-sm">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-9 w-9 rounded-r-none border-r border-gray-200 hover:bg-gray-50 hover:text-blue-600">
+                        <Settings2 className="h-4 w-4 text-gray-500" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-3" align="start" side="top" sideOffset={8}>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs font-medium text-gray-700">Auto Bounds</Label>
+                          <Switch checked={isAutoRandom} onCheckedChange={setIsAutoRandom} />
+                        </div>
+                        {!isAutoRandom && (
+                          <div className="grid grid-cols-2 gap-2 pt-1">
+                            <div className="space-y-1.5">
+                              <Label className="text-[10px] text-gray-500 uppercase">Min</Label>
+                              <Input type="number" value={randomMin} onChange={(e) => setRandomMin(Number(e.target.value))} className="h-7 text-xs" />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-[10px] text-gray-500 uppercase">Max</Label>
+                              <Input type="number" value={randomMax} onChange={(e) => setRandomMax(Number(e.target.value))} className="h-7 text-xs" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  <Button variant="ghost" size="sm" onClick={handleRandomize} className="h-9 px-3 rounded-l-none hover:bg-gray-50 hover:text-blue-600 text-gray-600 font-medium">
+                    <Shuffle className="h-4 w-4 mr-1.5" />
+                    Randomize
+                  </Button>
+                </div>
               </div>
               <Button
                 onClick={handleConfirm}
                 disabled={!datasetName.trim()}
                 className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200"
               >
-                Create Chart
+                {confirmButtonText || "Create Chart"}
               </Button>
             </div>
           </div>

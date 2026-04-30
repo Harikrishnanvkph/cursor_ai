@@ -340,7 +340,7 @@ export const useChartStore = create<ChartStore>()(
         // Use the dataset's own chartConfig if it has one, otherwise generate default for the type
         const typeChanged = state.chartType !== newType;
         const newConfig = dataset.chartConfig
-          ? dataset.chartConfig
+          ? JSON.parse(JSON.stringify(dataset.chartConfig))
           : (typeChanged ? JSON.parse(JSON.stringify(getDefaultConfigForType(newType))) : state.chartConfig);
 
         return {

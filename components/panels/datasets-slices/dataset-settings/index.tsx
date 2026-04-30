@@ -502,6 +502,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                         activeGroupId={activeGroupId}
                         activeDatasetIndex={activeDatasetIndex}
                         chartData={chartData}
+                        chartConfig={chartConfig}
                         filteredDatasets={filteredDatasets}
                         datasetsDropdownOpen={datasetsDropdownOpen}
                         showAddDatasetModal={showAddDatasetModal}
@@ -516,9 +517,11 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                         handleDatasetTileClick={handleDatasetTileClick}
                         handleDeleteClick={handleDeleteClick}
                         addGroup={addGroup}
+                        updateGroup={updateGroup}
                         setGroupToDelete={setGroupToDelete}
                         setShowGroupDeleteDialog={setShowGroupDeleteDialog}
                         addDataset={addDataset}
+                        updateChartConfig={updateChartConfig}
                     />
                 )}
                 {activeTab === 'colors' && (

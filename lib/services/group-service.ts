@@ -91,7 +91,7 @@ export const GroupService = {
             chartType: newChartType
         };
         if (group?.chartConfig) {
-            result.chartConfig = group.chartConfig;
+            result.chartConfig = JSON.parse(JSON.stringify(group.chartConfig));
         }
 
         return result;

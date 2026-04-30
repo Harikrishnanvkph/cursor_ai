@@ -152,6 +152,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
           chartType: 'bar',
           chartData: sampleData,
           chartConfig: config,
+          replaceMode: true
         })
         setHasJSON(true)
         toast.success(`Sample data loaded (${DEFAULT_CHART_WIDTH}×${DEFAULT_CHART_HEIGHT} px)`)
@@ -163,6 +164,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
         chartData: sampleData,
         chartConfig: config,
         name: 'Sample Group',
+        replaceMode: true
       })
       setHasJSON(true)
       toast.success(`Sample grouped chart loaded (${DEFAULT_CHART_WIDTH}×${DEFAULT_CHART_HEIGHT} px)`)
@@ -186,7 +188,8 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
     dims: ChartDimensions,
     initialDatasets?: any[],
     chartType?: any,
-    uniformityMode?: 'uniform' | 'mixed'
+    uniformityMode?: 'uniform' | 'mixed',
+    groupName?: string
   ) => {
     setShowSetupDialog(false)
     clearMessages()
@@ -213,6 +216,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
             chartType: 'bar',
             chartData: sampleData,
             chartConfig: config,
+            replaceMode: true
           })
           setHasJSON(true)
           toast.success(`Sample data loaded (${sizeLabel})`)
@@ -223,7 +227,8 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
           chartType: 'bar',
           chartData: sampleData,
           chartConfig: config,
-          name: 'Sample Group',
+          name: groupName || 'Sample Group',
+          replaceMode: true
         })
         setHasJSON(true)
         toast.success(`Sample grouped chart loaded (${sizeLabel})`)
@@ -243,12 +248,21 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
           ...newConfig.visualSettings,
           uniformityMode
         }
+      } else if (datasetType === 'single' && groupName) {
+        newConfig.plugins = newConfig.plugins || {};
+        newConfig.plugins.title = {
+          ...newConfig.plugins.title,
+          display: true,
+          text: groupName
+        };
       }
 
       setFullChart({
         chartType: chartType || 'bar',
         chartData: newChartData,
         chartConfig: newConfig,
+        name: groupName,
+        replaceMode: true
       })
       setHasJSON(true)
       // Navigate to datasets tab

@@ -1,9 +1,10 @@
 "use client"
+import { useState } from "react"
 
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { type ExtendedChartDataset } from "@/lib/chart-store"
+import { useChartStore, type ExtendedChartDataset } from "@/lib/chart-store"
 import {
     Plus,
     Trash2,
@@ -22,7 +23,7 @@ import {
     ChartArea,
     ChartColumnStacked,
 } from "lucide-react"
-import { AddDatasetModal } from "../add-dataset-modal"
+import { ChartSetupDialog, type ChartDimensions } from "@/components/dialogs/chart-setup-dialog"
 import { useChatStore } from "@/lib/chat-store"
 import { toast } from "sonner"
 
@@ -34,6 +35,7 @@ interface GeneralTabProps {
     activeGroupId: string
     activeDatasetIndex: number
     chartData: any
+    chartConfig: any
     filteredDatasets: ExtendedChartDataset[]
     datasetsDropdownOpen: boolean
     showAddDatasetModal: boolean
@@ -48,9 +50,11 @@ interface GeneralTabProps {
     handleDatasetTileClick: (index: number) => void
     handleDeleteClick: (index: number) => void
     addGroup: (opts: any) => void
+    updateGroup: (id: string, updates: any) => void
     setGroupToDelete: (id: string | null) => void
     setShowGroupDeleteDialog: (show: boolean) => void
     addDataset: (dataset: ExtendedChartDataset) => void
+    updateChartConfig: (config: any) => void
 }
 
 export function GeneralTab({
@@ -61,6 +65,7 @@ export function GeneralTab({
     activeGroupId,
     activeDatasetIndex,
     chartData,
+    chartConfig,
     filteredDatasets,
     datasetsDropdownOpen,
     showAddDatasetModal,
@@ -75,10 +80,13 @@ export function GeneralTab({
     handleDatasetTileClick,
     handleDeleteClick,
     addGroup,
+    updateGroup,
     setGroupToDelete,
     setShowGroupDeleteDialog,
     addDataset,
+    updateChartConfig,
 }: GeneralTabProps) {
+    const [isCreatingNewGroup, setIsCreatingNewGroup] = useState(false);
 
     return (
         <div className="space-y-4">
@@ -206,14 +214,8 @@ export function GeneralTab({
                             size="sm"
                             className="h-6 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                             onClick={() => {
-                                const newName = `Group ${groups.length}`;
-                                addGroup({
-                                    name: newName,
-                                    category: null,
-                                    uniformityMode: 'uniform'
-                                });
-                                useChatStore.getState().setBackendConversationId(null);
-                                toast.success(`Created group "${newName}"`);
+                                setIsCreatingNewGroup(true);
+                                setShowAddDatasetModal(true);
                             }}
                         >
                             <Plus className="h-3 w-3 mr-1" />
@@ -321,12 +323,13 @@ export function GeneralTab({
                             variant="outline"
                             onClick={(e) => {
                                 e.stopPropagation()
+                                setIsCreatingNewGroup(false)
                                 handleOpenAddDatasetModal()
                             }}
                             className="h-6 px-2 text-xs bg-white border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800 hover:border-blue-300 shadow-sm transition-all"
                         >
-                            <Plus className="h-3 w-3 mr-1" />
-                            Add
+                            {chartMode === 'grouped' ? <Pencil className="h-3 w-3 mr-1" /> : <Plus className="h-3 w-3 mr-1" />}
+                            {chartMode === 'grouped' ? 'Edit' : 'Add'}
                         </Button>
 
                         <div
@@ -357,7 +360,7 @@ export function GeneralTab({
                             {filteredDatasets.length === 0 ? (
                                 <div className="text-center py-4 px-2">
                                     <p className="text-xs text-gray-500 italic">No datasets to display.</p>
-                                    <p className="text-[10px] text-gray-400 mt-1">Click &quot;+ Add&quot; to create a new dataset.</p>
+                                    <p className="text-[10px] text-gray-400 mt-1">Click &quot;{chartMode === 'grouped' ? 'Edit' : '+ Add'}&quot; to create a new dataset.</p>
                                 </div>
                             ) : (
                                 filteredDatasets.map((dataset, datasetIndex) => (
@@ -469,8 +472,140 @@ export function GeneralTab({
                     </div>
                 )}
             </div>
-            {/* Enhanced Add Dataset Modal */}
-            <AddDatasetModal open={showAddDatasetModal} onOpenChange={setShowAddDatasetModal} onDatasetAdd={addDataset} />
+            {/* Enhanced Chart Setup Modal for adding datasets */}
+            <ChartSetupDialog 
+                open={showAddDatasetModal} 
+                onClose={() => {
+                    setShowAddDatasetModal(false)
+                    setIsCreatingNewGroup(false)
+                }}
+                initialDimensions={{
+                    width: parseFloat(chartConfig?.width || '800'),
+                    height: parseFloat(chartConfig?.height || '600'),
+                    isResponsive: !!chartConfig?.responsive
+                }}
+                initialGroupName={isCreatingNewGroup ? `Group ${groups.length + 1}` : (chartMode === 'grouped' ? groups.find(g => g.id === activeGroupId)?.name : (chartConfig?.plugins?.title?.text || `Chart 1`))}
+                onConfirm={(dims, datasets, newChartType, newUniformityMode, groupName) => {
+                    const updatedConfig = chartConfig ? JSON.parse(JSON.stringify(chartConfig)) : {}
+                    if (dims.isResponsive) {
+                        updatedConfig.responsive = true
+                        updatedConfig.manualDimensions = false
+                        updatedConfig.dynamicDimension = false
+                    } else {
+                        updatedConfig.responsive = false
+                        updatedConfig.manualDimensions = true
+                        updatedConfig.dynamicDimension = false
+                        updatedConfig.width = `${dims.width}px`
+                        updatedConfig.height = `${dims.height}px`
+                    }
+
+                    if (newUniformityMode && chartMode === 'grouped') {
+                        updatedConfig.visualSettings = {
+                            ...updatedConfig.visualSettings,
+                            uniformityMode: newUniformityMode
+                        }
+                    }
+                    
+                    if (isCreatingNewGroup) {
+                        const newGroupId = addGroup({
+                            name: groupName || `Group ${groups.length + 1}`,
+                            category: null,
+                            uniformityMode: newUniformityMode || 'uniform',
+                            baseChartType: newChartType,
+                            chartConfig: updatedConfig
+                        });
+                        
+                        if (datasets && datasets.length > 0) {
+                            const store = useChartStore.getState();
+                            const currentData = store.chartData;
+                            const newGroupDatasets = datasets.map(dataset => ({
+                                ...dataset,
+                                groupId: newGroupId,
+                                mode: 'grouped',
+                                chartConfig: updatedConfig
+                            }));
+                            const newChartData = {
+                                ...currentData,
+                                datasets: [...currentData.datasets, ...newGroupDatasets]
+                            };
+                            useChartStore.setState({
+                                chartData: newChartData,
+                                groupedModeData: newChartData,
+                                chartType: newChartType as any
+                            });
+                        }
+
+                        // Immediately update global chart config so the UI re-renders with new dimensions
+                        updateChartConfig(updatedConfig);
+                        
+                        useChatStore.getState().setBackendConversationId(null);
+                        toast.success(`Created group "${groupName || `Group ${groups.length + 1}`}"`);
+                    } else {
+                        if (chartMode === 'grouped' && activeGroupId) {
+                            const currentGroup = groups.find(g => g.id === activeGroupId);
+                            const updates: any = { chartConfig: updatedConfig };
+                            if (currentGroup && groupName && currentGroup.name !== groupName) {
+                                updates.name = groupName;
+                            }
+                            updateGroup(activeGroupId, updates);
+                            
+                            // Immediately update global chart config so the UI re-renders with new dimensions
+                            updateChartConfig(updatedConfig);
+                        } else if (chartMode === 'single' && groupName) {
+                            updatedConfig.plugins = updatedConfig.plugins || {};
+                            updatedConfig.plugins.title = {
+                                ...updatedConfig.plugins.title,
+                                display: true,
+                                text: groupName
+                            };
+                            useChartStore.getState().setChartTitle(groupName);
+                        } else if (chartMode === 'single') {
+                            // Update global config for single mode as well
+                            updateChartConfig(updatedConfig);
+                        }
+
+                        if (datasets && datasets.length > 0) {
+                            if (chartMode === 'grouped' && activeGroupId) {
+                                const store = useChartStore.getState();
+                                const currentData = store.chartData;
+                                const otherDatasets = currentData.datasets.filter((d: any) => d.groupId !== activeGroupId);
+                                const updatedGroupDatasets = datasets.map(dataset => ({
+                                    ...dataset,
+                                    groupId: activeGroupId,
+                                    mode: 'grouped',
+                                    chartConfig: updatedConfig
+                                }));
+                                const newChartData = {
+                                    ...currentData,
+                                    datasets: [...otherDatasets, ...updatedGroupDatasets]
+                                };
+                                useChartStore.setState({
+                                    chartData: newChartData,
+                                    groupedModeData: newChartData,
+                                    chartType: newChartType as any
+                                });
+                            } else {
+                                datasets.forEach(dataset => {
+                                    addDataset({ ...dataset, chartConfig: updatedConfig })
+                                })
+                            }
+                            toast.success(`Dataset updated successfully.`)
+                        }
+                    }
+                    
+                    setShowAddDatasetModal(false)
+                    setIsCreatingNewGroup(false)
+                }}
+                title={isCreatingNewGroup ? "Create New Group" : (chartMode === 'grouped' ? "Edit Group Datasets" : "Set Dimensions & Add Data")}
+                datasetType={chartMode as 'single' | 'grouped'}
+                isCustom={true}
+                startAtStep={isCreatingNewGroup || chartMode === 'single' ? 1 : 2}
+                step2Title={isCreatingNewGroup ? "Add Data" : (chartMode === 'grouped' ? "Edit" : "Add Data")}
+                hideBackButton={!isCreatingNewGroup && chartMode === 'grouped'}
+                initialExistingDatasets={!isCreatingNewGroup && chartMode === 'grouped' ? filteredDatasets : undefined}
+                initialUniformityMode={!isCreatingNewGroup && chartMode === 'grouped' ? (uniformityMode as any) : undefined}
+                confirmButtonText={isCreatingNewGroup ? "Create Group" : (chartMode === 'grouped' ? "Update Chart" : undefined)}
+            />
         </div>
     )
 }

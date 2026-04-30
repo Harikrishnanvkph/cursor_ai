@@ -74,14 +74,19 @@ export const DatasetService = {
 
         // Single Mode Logic: Set new dataset as active and update chart type
         let newActiveDatasetIndex = currentState.activeDatasetIndex;
+        let finalChartConfig;
+        
         if (currentState.chartMode === 'single') {
             newActiveDatasetIndex = newChartData.datasets.length - 1;
             if (finalDataset.chartType) {
                 newChartType = finalDataset.chartType;
             }
+            if (finalDataset.chartConfig) {
+                finalChartConfig = finalDataset.chartConfig;
+            }
         }
 
-        return {
+        const stateUpdate: any = {
             chartType: newChartType,
             chartData: newChartData,
             groups: updatedGroups,
@@ -89,6 +94,12 @@ export const DatasetService = {
             ...modeDataUpdate,
             hasJSON: true,
         };
+
+        if (finalChartConfig) {
+            stateUpdate.chartConfig = finalChartConfig;
+        }
+
+        return stateUpdate;
     },
 
     removeDataset: (
