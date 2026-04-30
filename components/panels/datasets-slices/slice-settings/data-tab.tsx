@@ -41,8 +41,7 @@ export function DataTab({
                         <Button
                             size="sm"
                             onClick={() => setShowAddPointModal(true)}
-                            disabled={chartMode === 'grouped' && filteredDatasets.length > 1}
-                            className="h-7 text-xs bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500"
+                            className="h-7 text-xs bg-blue-600 hover:bg-blue-700"
                         >
                             <Plus className="h-3 w-3 mr-1" />
                             Add Point
@@ -50,20 +49,13 @@ export function DataTab({
                     </div>
 
                     {chartMode === 'grouped' && (
-                        <div className="p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-                            <p className="text-xs text-yellow-800">
-                                <strong>Grouped Mode:</strong> Editing Slice names, Adding/removing points is disabled to maintain dataset consistency.
+                        <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p className="text-xs text-blue-800">
+                                <strong>Grouped Mode:</strong> Adding or removing points will apply uniformly across all datasets in this group.
                             </p>
                         </div>
                     )}
 
-                    {chartMode === 'grouped' && filteredDatasets.length === 1 && (
-                        <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg">
-                            <p className="text-xs text-blue-800">
-                                <strong>Grouped Mode:</strong> This is the first dataset. You can customize points and structure.
-                            </p>
-                        </div>
-                    )}
 
                     <div className="space-y-1.5 pt-2 border-t border-blue-200 max-h-96 overflow-y-auto">
                         {currentDataset.data.map((dataPoint: any, pointIndex: number) => {
@@ -89,8 +81,8 @@ export function DataTab({
                                             <button
                                                 className="p-1 rounded hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                                                 onClick={() => removeSlice(pointIndex)}
-                                                disabled={chartMode === 'grouped' && filteredDatasets.length > 1}
-                                                title={chartMode === 'grouped' && filteredDatasets.length > 1 ? 'Cannot remove points in Grouped Mode' : 'Remove point'}
+                                                disabled={currentDataset.data.length <= 1}
+                                                title={currentDataset.data.length <= 1 ? 'Cannot remove last point' : 'Remove point (applies to all datasets)'}
                                             >
                                                 <Trash2 className="h-3 w-3 text-red-500" />
                                             </button>
@@ -166,8 +158,8 @@ export function DataTab({
                                             <button
                                                 className="p-1 rounded hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                                                 onClick={() => removeSlice(pointIndex)}
-                                                disabled={chartMode === 'grouped' && filteredDatasets.length > 1}
-                                                title={chartMode === 'grouped' && filteredDatasets.length > 1 ? 'Cannot remove points in Grouped Mode' : 'Remove point'}
+                                                disabled={currentDataset.data.length <= 1}
+                                                title={currentDataset.data.length <= 1 ? 'Cannot remove last point' : 'Remove point (applies to all datasets)'}
                                             >
                                                 <Trash2 className="h-3 w-3 text-red-500" />
                                             </button>

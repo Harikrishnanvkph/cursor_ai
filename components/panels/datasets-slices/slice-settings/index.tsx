@@ -204,10 +204,37 @@ export function SliceSettings({ className }: SliceSettingsProps) {
 
     const addSlice = () => {
         if (!currentDataset) return
+
         if (chartMode === 'grouped' && filteredDatasets.length > 1) {
-            console.warn('Adding slices is not allowed in Grouped Mode to maintain dataset consistency')
+            // Propagate the new slice uniformly across all datasets in the group
+            const newSliceLabel = `Slice ${currentDataset.data.length + 1}`
+            filteredDatasets.forEach((ds: any) => {
+                const dsIndex = chartData.datasets.findIndex((d: any) => d === ds)
+                if (dsIndex === -1) return
+                const newData = [...ds.data, 0]
+                const newLabels = [...(ds.sliceLabels || []), newSliceLabel]
+                const newBg = Array.isArray(ds.backgroundColor)
+                    ? [...ds.backgroundColor, '#1E90FF']
+                    : Array(newData.length).fill(ds.backgroundColor || '#1E90FF')
+                updateDataset(dsIndex, {
+                    data: newData,
+                    sliceLabels: newLabels,
+                    backgroundColor: newBg,
+                    pointImages: [...(ds.pointImages || []), null],
+                    pointImageConfig: [...(ds.pointImageConfig || []), {
+                        type: getDefaultImageType(chartType),
+                        size: getDefaultImageSize(chartType),
+                        position: "center",
+                        arrow: false,
+                    }]
+                })
+            })
+            const firstDs = filteredDatasets[0]
+            const updatedLabels = [...(firstDs.sliceLabels || []), newSliceLabel]
+            updateLabels(updatedLabels as string[])
             return
         }
+
         const datasetIndex = chartData.datasets.findIndex((ds: any) => ds === currentDataset)
         if (datasetIndex === -1) return
 
@@ -229,10 +256,28 @@ export function SliceSettings({ className }: SliceSettingsProps) {
 
     const removeSlice = (sliceIndex: number) => {
         if (!currentDataset) return
+
         if (chartMode === 'grouped' && filteredDatasets.length > 1) {
-            console.warn('Removing slices is not allowed in Grouped Mode to maintain dataset consistency')
+            // Propagate the removal uniformly across all datasets in the group
+            filteredDatasets.forEach((ds: any) => {
+                const dsIndex = chartData.datasets.findIndex((d: any) => d === ds)
+                if (dsIndex === -1) return
+                updateDataset(dsIndex, {
+                    data: ds.data.filter((_: any, i: number) => i !== sliceIndex),
+                    sliceLabels: (ds.sliceLabels || []).filter((_: any, i: number) => i !== sliceIndex),
+                    backgroundColor: Array.isArray(ds.backgroundColor)
+                        ? ds.backgroundColor.filter((_: any, i: number) => i !== sliceIndex)
+                        : ds.backgroundColor,
+                    pointImages: (ds.pointImages || []).filter((_: any, i: number) => i !== sliceIndex),
+                    pointImageConfig: (ds.pointImageConfig || []).filter((_: any, i: number) => i !== sliceIndex)
+                })
+            })
+            const firstDs = filteredDatasets[0]
+            const updatedLabels = (firstDs.sliceLabels || []).filter((_: any, i: number) => i !== sliceIndex)
+            updateLabels(updatedLabels as string[])
             return
         }
+
         const datasetIndex = chartData.datasets.findIndex((ds: any) => ds === currentDataset)
         if (datasetIndex === -1) return
 
@@ -249,14 +294,57 @@ export function SliceSettings({ className }: SliceSettingsProps) {
 
     const handleAddPoint = () => {
         if (!currentDataset) return
+
+        const isCoordinateChart = chartType === 'scatter' || chartType === 'bubble'
+
         if (chartMode === 'grouped' && filteredDatasets.length > 1) {
-            console.warn('Adding points is not allowed in Grouped Mode to maintain dataset consistency')
+            // Propagate the new point uniformly across all datasets in the group
+            filteredDatasets.forEach((ds: any) => {
+                const dsIndex = chartData.datasets.findIndex((d: any) => d === ds)
+                if (dsIndex === -1) return
+
+                let newData: any[]
+                if (isCoordinateChart) {
+                    const point: { x: number; y: number; r?: number } = {
+                        x: Number(newPointX) || 0,
+                        y: Number(newPointY) || 0,
+                    }
+                    if (chartType === 'bubble') point.r = Number(newPointR) || 10
+                    newData = [...ds.data, point]
+                } else {
+                    // Only the active dataset gets the user-entered value; others get 0
+                    newData = [...ds.data, ds === currentDataset ? Number(newPointValue) : 0]
+                }
+
+                const newLabels = [...(ds.sliceLabels || []), newPointName]
+                const newColors = Array.isArray(ds.backgroundColor)
+                    ? [...ds.backgroundColor, ds === currentDataset ? newPointColor : '#1E90FF']
+                    : Array(newData.length).fill(ds === currentDataset ? newPointColor : '#1E90FF')
+
+                updateDataset(dsIndex, {
+                    data: newData,
+                    sliceLabels: newLabels,
+                    backgroundColor: newColors,
+                    pointImages: [...(ds.pointImages || []), null],
+                    pointImageConfig: [...(ds.pointImageConfig || []), getDefaultImageConfig(chartType)]
+                })
+            })
+            const firstDs = filteredDatasets[0]
+            const updatedLabels = [...(firstDs.sliceLabels || []), newPointName]
+            updateLabels(updatedLabels as string[])
+            setShowAddPointModal(false)
+            setNewPointName("")
+            setNewPointValue("")
+            setNewPointX("")
+            setNewPointY("")
+            setNewPointR("10")
+            setNewPointColor("#1E90FF")
             return
         }
+
         const datasetIndex = chartData.datasets.findIndex((ds: any) => ds === currentDataset)
         if (datasetIndex === -1) return
 
-        const isCoordinateChart = chartType === 'scatter' || chartType === 'bubble'
         let newData: any[]
         if (isCoordinateChart) {
             const point: { x: number; y: number; r?: number } = {

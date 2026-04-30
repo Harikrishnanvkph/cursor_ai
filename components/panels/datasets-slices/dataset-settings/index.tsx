@@ -497,7 +497,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                     <GeneralTab
                         chartMode={chartMode}
                         chartType={chartType}
-                        uniformityMode={uniformityMode}
+
                         groups={groups}
                         activeGroupId={activeGroupId}
                         activeDatasetIndex={activeDatasetIndex}
@@ -510,7 +510,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                         setShowAddDatasetModal={setShowAddDatasetModal}
                         handleChartModeChange={handleChartModeChange}
                         handleConvertToGrouped={handleConvertToGrouped}
-                        setUniformityMode={setUniformityMode}
+
                         handleActiveGroupChange={handleActiveGroupChange}
                         handleActiveDatasetChange={handleActiveDatasetChange}
                         handleOpenAddDatasetModal={handleOpenAddDatasetModal}

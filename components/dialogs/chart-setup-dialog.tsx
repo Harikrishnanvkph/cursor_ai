@@ -1200,12 +1200,22 @@ export function ChartSetupDialog({
                     const first = datasets[0]
                     const category = uniformityMode === 'uniform' ? first.category : 'categorical'
                     const type = uniformityMode === 'uniform' ? first.type : 'bar'
+                    
+                    const synchronizedPoints = first.dataPoints.map((point, index) => ({
+                      name: point.name, // Inherit same labels for consistency
+                      value: [10, 20, 15, 25, 30][index % 5] || 10,
+                      x: index * 10,
+                      y: (index + 1) * 10,
+                      r: 10,
+                      color: ['#1E90FF', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4'][index % 5] || '#1E90FF',
+                    }))
+
                     setDatasets(prev => [...prev, {
                       id: newId,
                       name: `Dataset ${prev.length + 1}`,
                       category,
                       type,
-                      dataPoints: getDefaultPoints(category, 4)
+                      dataPoints: synchronizedPoints
                     }])
                     setActiveDatasetId(newId)
                   }}

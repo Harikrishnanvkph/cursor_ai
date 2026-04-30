@@ -41,7 +41,7 @@ import { useRef } from "react"
 interface GeneralTabProps {
     chartMode: string
     chartType: string
-    uniformityMode: string
+
     groups: any[]
     activeGroupId: string
     activeDatasetIndex: number
@@ -53,8 +53,8 @@ interface GeneralTabProps {
     setDatasetsDropdownOpen: (open: boolean) => void
     setShowAddDatasetModal: (open: boolean) => void
     handleChartModeChange: (mode: 'single' | 'grouped') => void
+
     handleConvertToGrouped: () => void
-    setUniformityMode: (mode: 'uniform' | 'mixed') => void
     handleActiveGroupChange: (groupId: string) => void
     handleActiveDatasetChange: (index: number) => void
     handleOpenAddDatasetModal: () => void
@@ -71,7 +71,7 @@ interface GeneralTabProps {
 export function GeneralTab({
     chartMode,
     chartType,
-    uniformityMode,
+
     groups,
     activeGroupId,
     activeDatasetIndex,
@@ -84,7 +84,7 @@ export function GeneralTab({
     setShowAddDatasetModal,
     handleChartModeChange,
     handleConvertToGrouped,
-    setUniformityMode,
+
     handleActiveGroupChange,
     handleActiveDatasetChange,
     handleOpenAddDatasetModal,
@@ -181,122 +181,6 @@ export function GeneralTab({
                         </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
-            )}
-
-            {/* Uniformity Mode Section - Only for Grouped Mode */}
-            {chartMode === 'grouped' && (
-                <div>
-                    <div className="flex items-center gap-1.5 mb-2">
-                        <div className="font-semibold text-xs text-gray-700">Uniformity</div>
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Info className="h-3 w-3 text-gray-400 hover:text-blue-500 cursor-help transition-colors" />
-                                </TooltipTrigger>
-                                <TooltipContent side="left" sideOffset={15} className="bg-slate-800 text-white border-slate-700 shadow-2xl p-0 overflow-hidden z-[150] w-[300px]">
-                                    <Carousel className="w-full">
-                                        <CarouselContent>
-                                            <CarouselItem>
-                                                <div className="flex flex-col">
-                                                    <div className="bg-white p-2">
-                                                        <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Example: Uniform Mode</div>
-                                                        <img
-                                                            src="/uniform-preview.png"
-                                                            alt="Uniform Mode"
-                                                            className="w-full h-auto rounded border border-gray-100 shadow-sm"
-                                                        />
-                                                    </div>
-                                                    <div className="p-3 border-t border-white/10 bg-slate-800/50">
-                                                        <p className="text-[11px] leading-relaxed text-gray-300">
-                                                            <span className="text-blue-400 font-bold">Uniform Mode</span>: All datasets share the same category and chart type. Best for direct comparisons.
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </CarouselItem>
-                                            <CarouselItem>
-                                                <div className="flex flex-col h-full">
-                                                    <div className="bg-white p-2">
-                                                        <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Example: Mixed Mode</div>
-                                                        <img
-                                                            src="/mixed-preview.png"
-                                                            alt="Mixed Mode"
-                                                            className="w-full h-auto rounded border border-gray-100 shadow-sm"
-                                                        />
-                                                    </div>
-                                                    <div className="p-3 border-t border-white/10 bg-slate-800/50 h-full">
-                                                        <p className="text-[11px] leading-relaxed text-gray-300">
-                                                            <span className="text-pink-400 font-bold">Mixed Mode</span>: Each dataset has its own chart type and category. Ideal for combo charts.
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </CarouselItem>
-                                        </CarouselContent>
-                                        <div className="absolute bottom-12 right-4 flex gap-1 z-20">
-                                            <CarouselPrevious className="static translate-y-0 h-6 w-6 bg-slate-700 border-slate-600 hover:bg-slate-600 text-white" />
-                                            <CarouselNext className="static translate-y-0 h-6 w-6 bg-slate-700 border-slate-600 hover:bg-slate-600 text-white" />
-                                        </div>
-                                    </Carousel>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    </div>
-                    <div className="flex items-center gap-4 bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 shadow-sm">
-                        <label className={`flex items-center gap-2 cursor-pointer transition-colors text-xs ${uniformityMode === 'uniform' ? 'text-blue-700 font-bold' : 'text-gray-500'}`}>
-                            <input
-                                type="radio"
-                                className="accent-blue-600"
-                                checked={uniformityMode === 'uniform'}
-                                onChange={() => setUniformityMode('uniform')}
-                            />
-                            <BarChart2 className="h-4 w-4" />
-                            Uniform
-                        </label>
-                        {(() => {
-                            const firstDatasetType = filteredDatasets[0]?.chartType;
-                            const isMixedDisabled = firstDatasetType && ['pie', 'doughnut', 'radar', 'polarArea', 'scatter', 'bubble'].includes(firstDatasetType);
-
-                            return (
-                                <label className={`flex items-center gap-2 cursor-pointer transition-colors text-xs ${uniformityMode === 'mixed' ? 'text-blue-700 font-bold' : 'text-gray-500'} ${isMixedDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                                    <input
-                                        type="radio"
-                                        className="accent-blue-600"
-                                        checked={uniformityMode === 'mixed'}
-                                        onChange={() => setUniformityMode('mixed')}
-                                        disabled={!!isMixedDisabled}
-                                    />
-                                    <Layers className="h-4 w-4" />
-                                    Mixed
-                                </label>
-                            );
-                        })()}
-                    </div>
-                    <p className="text-xs text-gray-600 mt-2">
-                        {(() => {
-                            const firstDatasetType = filteredDatasets[0]?.chartType;
-                            const isMixedDisabled = firstDatasetType && ['pie', 'doughnut', 'radar', 'polarArea', 'scatter', 'bubble'].includes(firstDatasetType);
-
-                            if (isMixedDisabled) {
-                                return (
-                                    <span className="text-blue-600 font-medium">
-                                        Mixed mode is not available when the first dataset is {(() => {
-                                            const labels: Record<string, string> = {
-                                                pie3d: '3D Pie',
-                                                doughnut3d: '3D Doughnut',
-                                                bar3d: '3D Bar',
-                                                horizontalBar3d: '3D Horizontal Bar'
-                                            };
-                                            return labels[firstDatasetType] || firstDatasetType;
-                                        })()}. Only uniform mode is supported.
-                                    </span>
-                                );
-                            }
-
-                            return uniformityMode === 'uniform'
-                                ? 'All datasets will use the same chart type selected in Types & Toggles panel.'
-                                : 'Each dataset can have its own chart type selected during creation.';
-                        })()}
-                    </p>
-                </div>
             )}
 
             {/* Groups Section - Only for Grouped Mode */}
@@ -695,7 +579,7 @@ export function GeneralTab({
                 step2Title={isCreatingNewGroup ? "Add Data" : (chartMode === 'grouped' ? "Edit" : "Add Data")}
                 hideBackButton={!isCreatingNewGroup && chartMode === 'grouped'}
                 initialExistingDatasets={!isCreatingNewGroup && chartMode === 'grouped' ? filteredDatasets : undefined}
-                initialUniformityMode={!isCreatingNewGroup && chartMode === 'grouped' ? (uniformityMode as any) : undefined}
+                initialUniformityMode={!isCreatingNewGroup && chartMode === 'grouped' ? (chartConfig?.visualSettings?.uniformityMode || 'uniform') : undefined}
                 confirmButtonText={isCreatingNewGroup ? "Create Group" : (chartMode === 'grouped' ? "Update Chart" : undefined)}
             />
         </div>
