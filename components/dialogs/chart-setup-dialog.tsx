@@ -156,7 +156,7 @@ const darkenColor = (color: string, percent: number) => {
   return color
 }
 
-const getDefaultPoints = (category: ChartCategory, count: number = 3): DataPoint[] => {
+const getDefaultPoints = (category: ChartCategory, count: number = 3, linkedColor?: string): DataPoint[] => {
   if (category === 'coordinate') {
     return Array.from({ length: count }, (_, i) => ({
       name: `Point ${i + 1}`,
@@ -164,7 +164,7 @@ const getDefaultPoints = (category: ChartCategory, count: number = 3): DataPoint
       x: i * 10,
       y: (i + 1) * 10,
       r: 10,
-      color: ['#1E90FF', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4'][i % 5],
+      color: linkedColor || ['#1E90FF', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4'][i % 5],
     }))
   }
   return Array.from({ length: count }, (_, i) => ({
@@ -173,7 +173,7 @@ const getDefaultPoints = (category: ChartCategory, count: number = 3): DataPoint
     x: 0,
     y: 0,
     r: 10,
-    color: ['#1E90FF', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4'][i % 5],
+    color: linkedColor || ['#1E90FF', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4'][i % 5],
   }))
 }
 
@@ -271,6 +271,7 @@ export function ChartSetupDialog({
   useEffect(() => {
     if (open) {
       setStep(startAtStep)
+      setIsColorLinked(datasetType === 'grouped')
       if (initialDimensions) {
         setWidthPx(initialDimensions.width)
         setHeightPx(initialDimensions.height)
@@ -317,7 +318,7 @@ export function ChartSetupDialog({
             name: ds.label || ds.sourceTitle || `Dataset ${index + 1}`,
             category,
             type,
-            dataPoints: points.length > 0 ? points : getDefaultPoints(category, 4)
+            dataPoints: points.length > 0 ? points : getDefaultPoints(category, 4, datasetType === 'grouped' ? '#1E90FF' : undefined)
           }
         })
         setDatasets(loadedDatasets)
@@ -332,7 +333,7 @@ export function ChartSetupDialog({
           name: "Dataset 1",
           category: 'categorical',
           type: 'bar',
-          dataPoints: getDefaultPoints('categorical', 4)
+          dataPoints: getDefaultPoints('categorical', 4, datasetType === 'grouped' ? '#1E90FF' : undefined)
         }])
         setActiveDatasetId(initialId)
         setUniformityMode('uniform')
@@ -563,12 +564,16 @@ export function ChartSetupDialog({
     }
 
     if (datasetType === 'grouped') {
-      setDatasets(prev => prev.map(d => ({
-        ...d,
-        dataPoints: [...d.dataPoints, { ...newPoint }]
-      })))
+      setDatasets(prev => prev.map(d => {
+        const linkedColor = isColorLinked && d.dataPoints.length > 0 ? d.dataPoints[0].color : newPoint.color;
+        return {
+          ...d,
+          dataPoints: [...d.dataPoints, { ...newPoint, color: linkedColor }]
+        }
+      }))
     } else {
-      updateActiveDataset({ dataPoints: [...dataPoints, newPoint] })
+      const linkedColor = isColorLinked && dataPoints.length > 0 ? dataPoints[0].color : newPoint.color;
+      updateActiveDataset({ dataPoints: [...dataPoints, { ...newPoint, color: linkedColor }] })
     }
   }
 
@@ -1201,22 +1206,27 @@ export function ChartSetupDialog({
                     const category = uniformityMode === 'uniform' ? first.category : 'categorical'
                     const type = uniformityMode === 'uniform' ? first.type : 'bar'
                     
-                    const synchronizedPoints = first.dataPoints.map((point, index) => ({
-                      name: point.name, // Inherit same labels for consistency
-                      value: [10, 20, 15, 25, 30][index % 5] || 10,
-                      x: index * 10,
-                      y: (index + 1) * 10,
-                      r: 10,
-                      color: ['#1E90FF', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4'][index % 5] || '#1E90FF',
-                    }))
-
-                    setDatasets(prev => [...prev, {
-                      id: newId,
-                      name: `Dataset ${prev.length + 1}`,
-                      category,
-                      type,
-                      dataPoints: synchronizedPoints
-                    }])
+                    setDatasets(prev => {
+                      const baseColor = ['#1E90FF', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4'][prev.length % 5] || '#1E90FF';
+                      const synchronizedPoints = first.dataPoints.map((point, index) => ({
+                        name: point.name, // Inherit same labels for consistency
+                        value: [10, 20, 15, 25, 30][index % 5] || 10,
+                        x: index * 10,
+                        y: (index + 1) * 10,
+                        r: 10,
+                        color: isColorLinked 
+                           ? baseColor 
+                           : ['#1E90FF', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4'][index % 5] || '#1E90FF',
+                      }));
+                      
+                      return [...prev, {
+                        id: newId,
+                        name: `Dataset ${prev.length + 1}`,
+                        category,
+                        type,
+                        dataPoints: synchronizedPoints
+                      }];
+                    });
                     setActiveDatasetId(newId)
                   }}
                   className="px-3 py-2 text-xs font-medium text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors border-b-2 border-transparent flex items-center gap-1 whitespace-nowrap rounded-t-sm"
