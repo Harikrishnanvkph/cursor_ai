@@ -517,20 +517,9 @@ export const useChatStore = create<ChatStore>()(
               // Also clear the current snapshot ID since this is a brand new chart
               useChartStore.getState().setCurrentSnapshotId(null);
 
-              // Auto-open Format Gallery for new chart creations (not template mode)
+              // Format mode handling for new chart creations
               const templateStore = useTemplateStore.getState();
-              if (templateStore.generateMode === 'chart') {
-                // Chart mode: only open gallery if no format is already selected
-                try {
-                  const { useFormatGalleryStore } = require('./stores/format-gallery-store');
-                  const formatStore = useFormatGalleryStore.getState();
-                  if (!formatStore.selectedFormatId) {
-                    formatStore.openGallery();
-                  }
-                } catch (e) {
-                  console.warn('Could not auto-open format gallery:', e);
-                }
-              } else if (templateStore.generateMode === 'format') {
+              if (templateStore.generateMode === 'format') {
                 // Format mode: apply content to the selected format (or open gallery to browse)
                 try {
                   const { useFormatGalleryStore } = require('./stores/format-gallery-store');

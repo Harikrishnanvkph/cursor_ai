@@ -37,7 +37,7 @@ export function ResponsiveAnimationsPanel() {
   } = useChartActions();
   const { editorMode, setEditorMode } = useTemplateStore();
   const [responsiveDropdownOpen, setResponsiveDropdownOpen] = useState(true);
-  const [sliceVisibilityOpen, setSliceVisibilityOpen] = useState(false);
+  const [sliceVisibilityOpen, setSliceVisibilityOpen] = useState(true);
   const [quickToolsOpen, setQuickToolsOpen] = useState(false);
   const [thresholdValue, setThresholdValue] = useState(50);
   const [unit, setUnit] = useState<DimensionUnit>('px');

@@ -77,7 +77,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     const [activeTab, setActiveTab] = useState<DatasetTab>('general')
 
     // ─── General tab state ───
-    const [datasetsDropdownOpen, setDatasetsDropdownOpen] = useState(false)
+    const [datasetsDropdownOpen, setDatasetsDropdownOpen] = useState(true)
     const [showAddDatasetModal, setShowAddDatasetModal] = useState(false)
 
     // ─── Colors tab state ───
