@@ -35,6 +35,7 @@ import { ChartPreviewToolbar } from "@/components/chart-preview/chart-preview-to
 import { ChartPreviewCanvas } from "@/components/chart-preview/chart-preview-canvas"
 import { FullscreenOverlay } from "@/components/chart-preview/fullscreen-overlay"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
+import { useUIStore } from "@/lib/stores/ui-store"
 
 export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeftSidebar, isLeftSidebarCollapsed, isTablet = false, activeTab, onTabChange, onNewChart }: {
   onToggleSidebar?: () => void,
@@ -61,6 +62,8 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   const { shouldShowTemplate, editorMode, setEditorMode } = useTemplateStore();
   const { clearMessages } = useChatStore();
   const { setChartType, updateChartConfig } = useChartActions();
+  const canvasBgType = useUIStore(s => s.canvasBgType);
+  const canvasBgColor = useUIStore(s => s.canvasBgColor);
 
   // --- Refs ---
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
@@ -304,12 +307,16 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
         <CardContent className={`${isMobile ? 'p-0' : 'p-0'} h-full w-full`}>
           <div
             ref={chartContainerRef}
-            className={`relative w-full h-full overflow-auto bg-gray-50 flex items-center justify-center`}
+            className={`relative w-full h-full overflow-auto flex items-center justify-center`}
             style={{
               scrollbarWidth: 'thin',
               scrollbarColor: '#cbd5e1 #f1f5f9',
               minHeight: '100%',
-              height: '100%'
+              height: '100%',
+              backgroundColor: canvasBgType === 'transparent' ? 'transparent' : canvasBgColor,
+              backgroundImage: canvasBgType === 'transparent' ? `linear-gradient(45deg, #f1f5f9 25%, transparent 25%), linear-gradient(-45deg, #f1f5f9 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f1f5f9 75%), linear-gradient(-45deg, transparent 75%, #f1f5f9 75%)` : undefined,
+              backgroundSize: canvasBgType === 'transparent' ? '20px 20px' : undefined,
+              backgroundPosition: canvasBgType === 'transparent' ? '0 0, 0 10px, 10px -10px, -10px 0px' : undefined,
             }}
           >
             {transitions.scatterBubbleSetup.active && transitions.scatterBubbleSetup.targetType && transitions.scatterBubbleSetup.direction && editorMode === 'chart' ? (

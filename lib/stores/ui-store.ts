@@ -23,6 +23,10 @@ interface UIStore {
     settingsSliceIndex: number | null // null = "All Slices"
     setSettingsSliceIndex: (index: number | null) => void
 
+    // Canvas pan-area background (NOT chart background — purely a preview area preference)
+    canvasBgType: 'color' | 'transparent'
+    canvasBgColor: string
+    setCanvasBg: (type: 'color' | 'transparent', color?: string) => void
 
 }
 
@@ -48,6 +52,14 @@ export const useUIStore = create<UIStore>()(
             settingsSliceIndex: null,
             setSettingsSliceIndex: (index) => set({ settingsSliceIndex: index }),
 
+            // Canvas pan-area background
+            canvasBgType: 'color',
+            canvasBgColor: '#ffffff', // default white
+            setCanvasBg: (type, color) => set((state) => ({
+                canvasBgType: type,
+                canvasBgColor: type === 'color' ? (color ?? state.canvasBgColor) : state.canvasBgColor,
+            })),
+
 
         }),
         {
@@ -56,6 +68,8 @@ export const useUIStore = create<UIStore>()(
             partialize: (state) => ({
                 isSidebarCollapsed: state.isSidebarCollapsed,
                 activeSidebarTab: state.activeSidebarTab,
+                canvasBgType: state.canvasBgType,
+                canvasBgColor: state.canvasBgColor,
             }),
         }
     )

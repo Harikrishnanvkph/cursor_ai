@@ -10,9 +10,10 @@ import { useHistoryStore } from "@/lib/history-store"
 import { Button } from "@/components/ui/button"
 import { UndoRedoButtons } from "@/components/ui/undo-redo-buttons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ZoomIn, ZoomOut, RotateCcw, Eye, EyeOff, Ellipsis, Maximize2, Minimize2, Settings, Menu, X, ChevronLeft, Download, Hand, Pencil, Check, Loader2, ChartColumn, RulerDimensionLine } from "lucide-react"
+import { ZoomIn, ZoomOut, RotateCcw, Eye, EyeOff, Ellipsis, Maximize2, Minimize2, Settings, Menu, X, ChevronLeft, Download, Hand, Pencil, Check, Loader2, ChartColumn, RulerDimensionLine, Search } from "lucide-react"
 import { downloadTemplateExport, downloadFormatExport } from "@/lib/template-export"
-import { FileDown, FileImage, FileCode } from "lucide-react"
+import { FileDown, FileImage, FileCode, Ban } from "lucide-react"
+import { ChartBgColorPicker } from "./chart-preview/chart-bg-color-picker"
 import html2canvas from 'html2canvas'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -75,6 +76,8 @@ export function TemplateChartPreview({
   onTabChange,
   onNewChart
 }: TemplateChartPreviewProps) {
+  const canvasBgType = useUIStore(s => s.canvasBgType);
+  const canvasBgColor = useUIStore(s => s.canvasBgColor);
   const { currentTemplate, templateInBackground, selectedTextAreaId, setSelectedTextAreaId, editorMode, setEditorMode, contentTypePreferences } = useTemplateStore()
   const { selectedFormatId, contentPackage, formats, userFormats, contextualImageUrl } = useFormatGalleryStore()
 
@@ -1058,48 +1061,60 @@ export function TemplateChartPreview({
                   </Tooltip>
                 </TooltipProvider>
               ) : null}
+              <div className="w-[1px] h-3.5 bg-gray-200 mx-1 lg:mx-1.5" />
+              <ChartBgColorPicker />
             </div>
           </div>
 
           {/* Right: action buttons */}
           <div className="flex gap-1 flex-shrink-0 ml-4">
             <div className="flex items-center gap-0.5 border border-slate-200 rounded-md p-0.5 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-              <div className="flex items-center gap-2 px-2 w-[130px] lg:w-[160px]">
+              <div className="flex items-center">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="text-xs px-1.5 h-6 text-slate-700 font-semibold select-none w-12 text-center hover:bg-slate-100 flex-shrink-0 transition-colors">
-                      {currentZoomPct}%
+                    <Button variant="ghost" size="sm" className="text-xs px-1.5 h-6 text-slate-700 font-semibold select-none w-[68px] justify-start gap-2 hover:bg-slate-100 flex-shrink-0 transition-colors">
+                      <Search className="h-3 w-3 text-slate-500 shrink-0" />
+                      <span className="tabular-nums">{currentZoomPct}%</span>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-40 p-1">
+                  <DropdownMenuContent align="start" className="w-52 p-2">
                     <DropdownMenuItem onClick={handleResetZoom} className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100">
                       <span className="flex-1">100% (Fit to View)</span>
                     </DropdownMenuItem>
+
                     <DropdownMenuSeparator className="my-1" />
-                    <DropdownMenuItem
-                      onSelect={(e) => { e.preventDefault(); handleZoomIn(); }}
-                      className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100"
-                    >
-                      <ZoomIn className="h-3.5 w-3.5 mr-2 text-slate-500" />
-                      <span className="flex-1">Zoom In</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onSelect={(e) => { e.preventDefault(); handleZoomOut(); }}
-                      className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100"
-                    >
-                      <ZoomOut className="h-3.5 w-3.5 mr-2 text-slate-500" />
-                      <span className="flex-1">Zoom Out</span>
-                    </DropdownMenuItem>
+
+                    <div className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                      <Slider
+                        min={0}
+                        max={ZOOM_VALUES.length - 1}
+                        step={1}
+                        value={[closestIndex]}
+                        onValueChange={handleSliderChange}
+                        className="cursor-pointer"
+                      />
+                    </div>
+
+                    <DropdownMenuSeparator className="my-1" />
+                    <div className="flex items-center justify-between gap-1 px-1">
+                      <DropdownMenuItem
+                        onSelect={(e) => { e.preventDefault(); handleZoomOut(); }}
+                        className="flex-1 flex items-center justify-center py-2 cursor-pointer focus:bg-slate-100"
+                        title="Zoom Out"
+                      >
+                        <ZoomOut className="h-4 w-4 text-slate-500" />
+                      </DropdownMenuItem>
+                      <div className="w-[1px] h-4 bg-slate-200" />
+                      <DropdownMenuItem
+                        onSelect={(e) => { e.preventDefault(); handleZoomIn(); }}
+                        className="flex-1 flex items-center justify-center py-2 cursor-pointer focus:bg-slate-100"
+                        title="Zoom In"
+                      >
+                        <ZoomIn className="h-4 w-4 text-slate-500" />
+                      </DropdownMenuItem>
+                    </div>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Slider
-                  min={0}
-                  max={ZOOM_VALUES.length - 1}
-                  step={1}
-                  value={[closestIndex]}
-                  onValueChange={handleSliderChange}
-                  className="flex-1 cursor-pointer"
-                />
               </div>
 
               <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
@@ -1159,13 +1174,17 @@ export function TemplateChartPreview({
       <div className="flex-1 overflow-hidden">
         <div
           ref={containerRef}
-          className={`relative w-full h-full overflow-auto border rounded-lg shadow-sm flex items-center justify-center${isFullscreen ? ' fixed inset-4 z-50 m-0' : ''}`}
+          className={`relative w-full h-full overflow-auto border rounded-lg shadow-sm flex items-center justify-center transition-colors${isFullscreen ? ' fixed inset-4 z-50 m-0' : ''}`}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
           style={{
-            cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'default'
+            cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'default',
+            backgroundColor: canvasBgType === 'transparent' ? 'transparent' : canvasBgColor,
+            backgroundImage: canvasBgType === 'transparent' ? `linear-gradient(45deg, #f1f5f9 25%, transparent 25%), linear-gradient(-45deg, #f1f5f9 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f1f5f9 75%), linear-gradient(-45deg, transparent 75%, #f1f5f9 75%)` : undefined,
+            backgroundSize: canvasBgType === 'transparent' ? '20px 20px' : undefined,
+            backgroundPosition: canvasBgType === 'transparent' ? '0 0, 0 10px, 10px -10px, -10px 0px' : undefined,
           }}
         >
           {/* Layout wrapper — sized to the scaled template so the scrollable
@@ -1247,44 +1266,52 @@ export function TemplateChartPreview({
           {/* Top Right Toolbar */}
           <div className="fixed top-4 right-4 z-50 bg-white rounded-lg shadow-lg p-2 flex gap-2 border border-gray-200 animate-in fade-in duration-200">
             {/* Zoom Controls */}
-            <div className="flex items-center gap-1 border rounded-md p-0.5 bg-white mr-1">
-              <div className="flex items-center gap-2 px-2 w-[130px] lg:w-[160px]">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="text-xs px-1.5 h-6 text-slate-700 font-semibold select-none w-12 text-center hover:bg-slate-100 flex-shrink-0 transition-colors">
-                      {currentZoomPct}%
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-40 p-1 z-[100]">
-                    <DropdownMenuItem onClick={handleResetZoom} className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100">
-                      <span className="flex-1">100% (Fit to View)</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator className="my-1" />
-                    <DropdownMenuItem
-                      onSelect={(e) => { e.preventDefault(); handleZoomIn(); }}
-                      className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100"
-                    >
-                      <ZoomIn className="h-3.5 w-3.5 mr-2 text-slate-500" />
-                      <span className="flex-1">Zoom In</span>
-                    </DropdownMenuItem>
+            <div className="flex items-center px-1">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="text-xs px-1.5 h-6 text-slate-700 font-semibold select-none w-[68px] justify-start gap-2 hover:bg-slate-100 flex-shrink-0 transition-colors">
+                    <Search className="h-3 w-3 text-slate-500 shrink-0" />
+                    <span className="tabular-nums">{currentZoomPct}%</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-52 p-2 z-[100]">
+                  <DropdownMenuItem onClick={handleResetZoom} className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100">
+                    <span className="flex-1">100% (Fit to View)</span>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuSeparator className="my-1" />
+
+                  <div className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                    <Slider
+                      min={0}
+                      max={ZOOM_VALUES.length - 1}
+                      step={1}
+                      value={[closestIndex]}
+                      onValueChange={handleSliderChange}
+                      className="cursor-pointer"
+                    />
+                  </div>
+
+                  <DropdownMenuSeparator className="my-1" />
+                  <div className="flex items-center justify-between gap-1 px-1">
                     <DropdownMenuItem
                       onSelect={(e) => { e.preventDefault(); handleZoomOut(); }}
-                      className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100"
+                      className="flex-1 flex items-center justify-center py-2 cursor-pointer focus:bg-slate-100"
+                      title="Zoom Out"
                     >
-                      <ZoomOut className="h-3.5 w-3.5 mr-2 text-slate-500" />
-                      <span className="flex-1">Zoom Out</span>
+                      <ZoomOut className="h-4 w-4 text-slate-500" />
                     </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <Slider
-                  min={0}
-                  max={ZOOM_VALUES.length - 1}
-                  step={1}
-                  value={[closestIndex]}
-                  onValueChange={handleSliderChange}
-                  className="flex-1 cursor-pointer"
-                />
-              </div>
+                    <div className="w-[1px] h-4 bg-slate-200" />
+                    <DropdownMenuItem
+                      onSelect={(e) => { e.preventDefault(); handleZoomIn(); }}
+                      className="flex-1 flex items-center justify-center py-2 cursor-pointer focus:bg-slate-100"
+                      title="Zoom In"
+                    >
+                      <ZoomIn className="h-4 w-4 text-slate-500" />
+                    </DropdownMenuItem>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
             {/* Pan Mode Toggle */}
             <Button

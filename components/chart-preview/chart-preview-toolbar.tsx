@@ -7,15 +7,18 @@ import { STANDARD_CHART_TYPES, THREE_D_CHART_TYPES } from "@/lib/chart-types"
 import {
     Download, RefreshCw, Maximize2, RotateCcw,
     Ellipsis, ZoomIn, ZoomOut, Hand, Pencil, Check, Loader2,
-    ChartColumn, RulerDimensionLine
+    ChartColumn, RulerDimensionLine, Ban, Search
 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Slider } from "@/components/ui/slider"
 import { FileCode, FileImage, FileText, ImageIcon, Settings } from "lucide-react"
 import { UndoRedoButtons } from "@/components/ui/undo-redo-buttons"
 import { useTemplateStore } from "@/lib/template-store"
 import { useUIStore } from "@/lib/stores/ui-store"
+import { useChartStore } from "@/lib/chart-store"
+import { ChartBgColorPicker } from "./chart-bg-color-picker"
 
 const ZOOM_VALUES: number[] = (() => {
     let values: number[] = [];
@@ -31,12 +34,12 @@ const ZOOM_VALUES: number[] = (() => {
 
 // --- 1. Mode & Type Section (Independent) ---
 
-const ModeAndTypeSection = memo(({ 
-    editorMode, setEditorMode, 
-    chartType, onChartTypeChange, 
-    isResponsive, chartContainerRef, 
+const ModeAndTypeSection = memo(({
+    editorMode, setEditorMode,
+    chartType, onChartTypeChange,
+    isResponsive, chartContainerRef,
     chartWidth, chartHeight,
-    isMobile 
+    isMobile
 }: {
     editorMode: string;
     setEditorMode: (mode: string) => void;
@@ -49,7 +52,7 @@ const ModeAndTypeSection = memo(({
     isMobile: boolean;
 }) => {
     const btnClassName = isMobile ? "px-2 py-0.5 text-[11px] min-w-[50px]" : "px-2 py-0.5 text-[10px] min-w-[50px]";
-    const triggerClassName = isMobile 
+    const triggerClassName = isMobile
         ? "h-7 w-12 text-[10px] px-1.5 py-0 border-gray-200 bg-white rounded-lg flex-shrink-0"
         : "h-6 w-9 lg:w-[90px] text-[10px] px-1 lg:px-2 py-0 border-gray-200 bg-white";
 
@@ -89,12 +92,17 @@ const ModeAndTypeSection = memo(({
                 </SelectContent>
             </Select>
 
-            <DimensionDisplay 
-                isResponsive={isResponsive} 
-                chartContainerRef={chartContainerRef} 
-                chartWidth={chartWidth} 
-                chartHeight={chartHeight} 
+            <DimensionDisplay
+                isResponsive={isResponsive}
+                chartContainerRef={chartContainerRef}
+                chartWidth={chartWidth}
+                chartHeight={chartHeight}
             />
+
+            {/* Divider */}
+            <div className="w-px h-4 bg-gray-200 mx-1" />
+
+            <ChartBgColorPicker />
         </div>
     );
 });
@@ -102,7 +110,7 @@ ModeAndTypeSection.displayName = "ModeAndTypeSection";
 
 // --- 2. Title Section (Independent) ---
 
-const TitleSection = memo(({ rename }: { 
+const TitleSection = memo(({ rename }: {
     rename: {
         chartTitle: string;
         isRenaming: boolean;
@@ -186,7 +194,7 @@ const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, onResetChart
     chartHeight?: number;
 }) => {
     const currentZoomPct = Math.round(zoomPan.zoom * 100);
-    
+
     let closestIndex = 0;
     let minDiff = Infinity;
     for (let i = 0; i < ZOOM_VALUES.length; i++) {
@@ -206,43 +214,52 @@ const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, onResetChart
 
     return (
         <div className="flex items-center gap-0.5 border border-slate-200 rounded-md p-0.5 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-            <div className="flex items-center gap-2 px-2 w-[130px] lg:w-[160px]">
+            <div className="flex items-center">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className={`${isMobile ? 'text-[10px] px-1' : 'text-xs px-1.5'} h-6 text-slate-700 font-semibold select-none w-12 text-center hover:bg-slate-100 flex-shrink-0 transition-colors`}>
-                            {currentZoomPct}%
+                        <Button variant="ghost" size="sm" className={`${isMobile ? 'text-[10px] px-1' : 'text-xs px-1.5'} h-6 text-slate-700 font-semibold select-none w-[68px] justify-start gap-2 hover:bg-slate-100 flex-shrink-0 transition-colors`}>
+                            <Search className="h-3 w-3 text-slate-500 shrink-0" />
+                            <span className="tabular-nums">{currentZoomPct}%</span>
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-40 p-1">
+                    <DropdownMenuContent align="start" className="w-52 p-2">
                         <DropdownMenuItem onClick={() => { zoomPan.setZoom(1); zoomPan.setPanOffset({ x: 0, y: 0 }); }} className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100">
                             <span className="flex-1">100% (Fit to View)</span>
                         </DropdownMenuItem>
 
                         <DropdownMenuSeparator className="my-1" />
-                        <DropdownMenuItem 
-                            onSelect={(e) => { e.preventDefault(); zoomPan.handleZoomIn(); }} 
-                            className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100"
-                        >
-                            <ZoomIn className="h-3.5 w-3.5 mr-2 text-slate-500" />
-                            <span className="flex-1">Zoom In</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                            onSelect={(e) => { e.preventDefault(); zoomPan.handleZoomOut(); }} 
-                            className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100"
-                        >
-                            <ZoomOut className="h-3.5 w-3.5 mr-2 text-slate-500" />
-                            <span className="flex-1">Zoom Out</span>
-                        </DropdownMenuItem>
+
+                        <div className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                            <Slider
+                                min={0}
+                                max={ZOOM_VALUES.length - 1}
+                                step={1}
+                                value={[closestIndex]}
+                                onValueChange={handleSliderChange}
+                                className="cursor-pointer"
+                            />
+                        </div>
+
+                        <DropdownMenuSeparator className="my-1" />
+                        <div className="flex items-center justify-between gap-1 px-1">
+                            <DropdownMenuItem
+                                onSelect={(e) => { e.preventDefault(); zoomPan.handleZoomOut(); }}
+                                className="flex-1 flex items-center justify-center py-2 cursor-pointer focus:bg-slate-100"
+                                title="Zoom Out"
+                            >
+                                <ZoomOut className="h-4 w-4 text-slate-500" />
+                            </DropdownMenuItem>
+                            <div className="w-[1px] h-4 bg-slate-200" />
+                            <DropdownMenuItem
+                                onSelect={(e) => { e.preventDefault(); zoomPan.handleZoomIn(); }}
+                                className="flex-1 flex items-center justify-center py-2 cursor-pointer focus:bg-slate-100"
+                                title="Zoom In"
+                            >
+                                <ZoomIn className="h-4 w-4 text-slate-500" />
+                            </DropdownMenuItem>
+                        </div>
                     </DropdownMenuContent>
                 </DropdownMenu>
-                <Slider
-                    min={0}
-                    max={ZOOM_VALUES.length - 1}
-                    step={1}
-                    value={[closestIndex]}
-                    onValueChange={handleSliderChange}
-                    className="flex-1 cursor-pointer"
-                />
             </div>
 
             <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
@@ -289,13 +306,13 @@ const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, onResetChart
 });
 ControlsSection.displayName = "ControlsSection";
 
-const DimensionDisplay = memo(({ 
-    isResponsive, 
-    chartContainerRef, 
-    chartWidth, 
-    chartHeight 
-}: { 
-    isResponsive: boolean; 
+const DimensionDisplay = memo(({
+    isResponsive,
+    chartContainerRef,
+    chartWidth,
+    chartHeight
+}: {
+    isResponsive: boolean;
     chartContainerRef: React.RefObject<HTMLDivElement | null>;
     chartWidth?: number;
     chartHeight?: number;
@@ -323,7 +340,7 @@ const DimensionDisplay = memo(({
         <TooltipProvider delayDuration={0}>
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <div 
+                    <div
                         className="flex items-center justify-center p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded cursor-help transition-colors relative"
                         onMouseEnter={handleMeasureDimensions}
                         onClick={handleMeasureDimensions}
@@ -339,6 +356,7 @@ const DimensionDisplay = memo(({
     );
 });
 DimensionDisplay.displayName = "DimensionDisplay";
+
 
 // --- Main Toolbar ---
 
@@ -379,10 +397,10 @@ export const ChartPreviewToolbar = memo(({
     return (
         <div className={`${isMobile ? '' : 'mb-1'} flex-shrink-0`}>
             <div className={`flex${isMobile ? ' mb-1 flex-col' : ' items-center justify-between flex-wrap'} gap-1 px-1`}>
-                
+
                 {isMobile ? (
                     <div className="min-w-0 flex flex-nowrap items-center gap-x-2 overflow-x-auto pb-1.5 scrollbar-hide select-none px-1">
-                        <ModeAndTypeSection 
+                        <ModeAndTypeSection
                             editorMode={editorMode} setEditorMode={setEditorMode}
                             chartType={chartType} onChartTypeChange={onChartTypeChange}
                             isResponsive={isResponsive} chartContainerRef={chartContainerRef}
@@ -390,10 +408,10 @@ export const ChartPreviewToolbar = memo(({
                             isMobile={true}
                         />
                         <div className="h-4 w-px bg-gray-200 flex-shrink-0 mx-0.5" />
-                        <ControlsSection 
-                            zoomPan={zoomPan} exports={exports} 
-                            handleFullscreen={handleFullscreen} onResetChart={onResetChart} 
-                            isMobile={true} 
+                        <ControlsSection
+                            zoomPan={zoomPan} exports={exports}
+                            handleFullscreen={handleFullscreen} onResetChart={onResetChart}
+                            isMobile={true}
                             chartContainerRef={chartContainerRef}
                             chartWidth={chartWidth}
                             chartHeight={chartHeight}
@@ -404,7 +422,7 @@ export const ChartPreviewToolbar = memo(({
                         <div className="min-w-0 flex-1">
                             <TitleSection rename={rename} />
                             <div className="flex items-center gap-2 mt-0.5">
-                                <ModeAndTypeSection 
+                                <ModeAndTypeSection
                                     editorMode={editorMode} setEditorMode={setEditorMode}
                                     chartType={chartType} onChartTypeChange={onChartTypeChange}
                                     isResponsive={isResponsive} chartContainerRef={chartContainerRef}
@@ -414,10 +432,10 @@ export const ChartPreviewToolbar = memo(({
                             </div>
                         </div>
                         <div className="flex gap-1 flex-shrink-0 ml-4">
-                            <ControlsSection 
-                                zoomPan={zoomPan} exports={exports} 
-                                handleFullscreen={handleFullscreen} onResetChart={onResetChart} 
-                                isMobile={false} 
+                            <ControlsSection
+                                zoomPan={zoomPan} exports={exports}
+                                handleFullscreen={handleFullscreen} onResetChart={onResetChart}
+                                isMobile={false}
                                 chartContainerRef={chartContainerRef}
                                 chartWidth={chartWidth}
                                 chartHeight={chartHeight}
