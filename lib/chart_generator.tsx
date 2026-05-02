@@ -1096,23 +1096,40 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
       event.stopPropagation();
 
       const element = elements[0];
-      const dataset = stateRef.current.chartData.datasets[element.datasetIndex];
+      
+      // Resolve global dataset index
+      let globalDatasetIndex = element.datasetIndex;
+      if (modeFilteredDatasets && modeFilteredDatasets[element.datasetIndex]) {
+        const originalDataset = modeFilteredDatasets[element.datasetIndex];
+        const foundIndex = stateRef.current.chartData.datasets.indexOf(originalDataset);
+        if (foundIndex !== -1) {
+          globalDatasetIndex = foundIndex;
+        }
+      }
+
+      // Resolve global slice index
+      let globalSliceIndex = element.index;
+      if (enabledSliceIndices && enabledSliceIndices[element.index] !== undefined) {
+        globalSliceIndex = enabledSliceIndices[element.index];
+      }
+
+      const dataset = stateRef.current.chartData.datasets[globalDatasetIndex];
 
       let currentColor = '#3b82f6';
-      if (dataset && Array.isArray(dataset.backgroundColor) && dataset.backgroundColor[element.index]) {
-        currentColor = dataset.backgroundColor[element.index];
+      if (dataset && Array.isArray(dataset.backgroundColor) && dataset.backgroundColor[globalSliceIndex]) {
+        currentColor = dataset.backgroundColor[globalSliceIndex];
       } else if (dataset && dataset.backgroundColor && typeof dataset.backgroundColor === 'string') {
         currentColor = dataset.backgroundColor;
       }
 
       let currentBorderColor = '#1d4ed8';
-      if (dataset && Array.isArray(dataset.borderColor) && dataset.borderColor[element.index]) {
-        currentBorderColor = dataset.borderColor[element.index];
+      if (dataset && Array.isArray(dataset.borderColor) && dataset.borderColor[globalSliceIndex]) {
+        currentBorderColor = dataset.borderColor[globalSliceIndex];
       } else if (dataset && dataset.borderColor && typeof dataset.borderColor === 'string') {
         currentBorderColor = dataset.borderColor;
       }
 
-      let sliceValue = dataset.data ? dataset.data[element.index] : 0;
+      let sliceValue = dataset.data ? dataset.data[globalSliceIndex] : 0;
       if (sliceValue !== null && typeof sliceValue === 'object' && 'y' in sliceValue) {
         sliceValue = sliceValue.y;
       }
@@ -1121,8 +1138,8 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
         isOpen: true,
         x: event.clientX,
         y: event.clientY,
-        datasetIndex: element.datasetIndex,
-        sliceIndex: element.index,
+        datasetIndex: globalDatasetIndex,
+        sliceIndex: globalSliceIndex,
         currentColor,
         currentBorderColor,
         currentValue: sliceValue ?? 0

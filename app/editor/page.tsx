@@ -86,10 +86,10 @@ function EditorPageContent() {
   const currentSnapshotId = useCurrentSnapshotId()
 
   // Track whether the chart store has finished IDB hydration.
-  const [storeHydrated, setStoreHydrated] = useState(() => 
+  const [storeHydrated, setStoreHydrated] = useState(() =>
     !!(useChartStore.persist as any)?.hasHydrated?.()
   )
-  
+
   useEffect(() => {
     if (storeHydrated) return
     const unsub = (useChartStore.persist as any)?.onFinishHydration?.(() => {
@@ -560,29 +560,29 @@ function EditorPageContent() {
   // Handle dimensions confirmed from the setup dialog
   const handleDimensionsConfirmed = (dims: ChartDimensions) => {
     setShowSetupDialog(false)
-    
+
     // Set editor mode to chart
     setEditorMode('chart')
-    
+
     // Push the chosen dimensions into the store config
     useChartStore.getState().initializeChartDimensions(dims.width, dims.height, dims.isResponsive)
-    
+
     // Clear everything just in case
     clearCurrentChart()
     clearMessages()
     startNewConversation()
-    
+
     // Initialize empty chart
     useChartStore.getState().setFullChart({
       chartType: 'bar', // default type
       chartData: { labels: [], datasets: [] },
       chartConfig: useChartStore.getState().chartConfig // this now has the dimensions applied
     })
-    
+
 
     useDecorationStore.getState().clearShapes()
     setHasJSON(false) // Wait until they add data to set to true
-    
+
     // Go to datasets tab
     setActiveTab('datasets_slices')
     const sizeLabel = dims.isResponsive ? 'Responsive' : `${dims.width}×${dims.height} px`
@@ -852,24 +852,24 @@ function EditorPageContent() {
             <div className="p-4">
               {/* Navigation Section */}
               <div className="mb-3">
-                <div className="flex justify-center mb-2.5">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.15em]">
+                <div className="flex justify-center px-1 mb-2">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                     Advanced Editor
                   </span>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5 px-1">
                   <button
                     onClick={() => router.push('/board')}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium text-gray-600 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"
+                    className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-medium text-slate-600 bg-white hover:bg-slate-50 rounded-md border border-slate-200 shadow-sm transition-colors"
                   >
-                    <LayoutDashboard className="w-3.5 h-3.5" />
+                    <LayoutDashboard className="w-3.5 h-3.5 text-slate-500" />
                     <span>Board</span>
                   </button>
                   <button
                     onClick={() => router.push('/landing')}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium text-gray-600 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"
+                    className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-medium text-slate-600 bg-white hover:bg-slate-50 rounded-md border border-slate-200 shadow-sm transition-colors"
                   >
-                    <MessageSquare className="w-3.5 h-3.5" />
+                    <MessageSquare className="w-3.5 h-3.5 text-slate-500" />
                     <span>AI Chat</span>
                   </button>
                 </div>
@@ -975,25 +975,25 @@ function EditorPageContent() {
         <div className="w-64 flex-shrink-0 flex flex-col h-full">
           <div className="p-2">
             {/* Navigation Section */}
-            <div className="mb-2">
-              <div className="flex justify-center mb-2.5">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.15em]">
+            <div className="mb-3">
+              <div className="flex justify-center px-1 mb-2">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                   Advanced Editor
                 </span>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5 px-1">
                 <button
                   onClick={() => router.push('/board')}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium text-gray-600 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-medium text-slate-600 bg-white hover:bg-slate-50 rounded-md border border-slate-200 shadow-sm transition-colors"
                 >
-                  <LayoutDashboard className="w-3.5 h-3.5" />
+                  <LayoutDashboard className="w-3.5 h-3.5 text-slate-500" />
                   <span>Board</span>
                 </button>
                 <button
                   onClick={() => router.push('/landing')}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium text-gray-600 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-medium text-slate-600 bg-white hover:bg-slate-50 rounded-md border border-slate-200 shadow-sm transition-colors"
                 >
-                  <MessageSquare className="w-3.5 h-3.5" />
+                  <MessageSquare className="w-3.5 h-3.5 text-slate-500" />
                   <span>AI Chat</span>
                 </button>
               </div>

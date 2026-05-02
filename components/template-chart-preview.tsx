@@ -1073,7 +1073,7 @@ export function TemplateChartPreview({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="w-40 p-1">
                     <DropdownMenuItem onClick={handleResetZoom} className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100">
-                      <span className="flex-1">100% (Original)</span>
+                      <span className="flex-1">100% (Fit to View)</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="my-1" />
                     <DropdownMenuItem
@@ -1257,7 +1257,7 @@ export function TemplateChartPreview({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="w-40 p-1 z-[100]">
                     <DropdownMenuItem onClick={handleResetZoom} className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100">
-                      <span className="flex-1">100% (Original)</span>
+                      <span className="flex-1">100% (Fit to View)</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="my-1" />
                     <DropdownMenuItem

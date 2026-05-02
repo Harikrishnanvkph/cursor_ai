@@ -202,31 +202,7 @@ const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, onResetChart
         zoomPan.setZoom(newZoomPct / 100);
     };
 
-    const handleFitZoom = () => {
-        if (chartContainerRef?.current && chartWidth && chartHeight) {
-            const container = chartContainerRef.current;
-            const containerWidth = container.clientWidth - 100;
-            const containerHeight = container.clientHeight - 100;
-            if (containerWidth > 0 && containerHeight > 0) {
-                const widthRatio = containerWidth / chartWidth;
-                const heightRatio = containerHeight / chartHeight;
-                const fitZoom = Math.min(widthRatio, heightRatio, 1.0);
-                const roundedZoom = Math.floor(fitZoom * 20) / 20;
-                const finalZoom = Math.max(0.1, roundedZoom);
-                zoomPan.setZoom(finalZoom);
-                zoomPan.setPanOffset({ x: 0, y: 0 });
-                setTimeout(() => {
-                    if (container) {
-                        container.scrollLeft = (container.scrollWidth - container.clientWidth) / 2;
-                        container.scrollTop = (container.scrollHeight - container.clientHeight) / 2;
-                    }
-                }, 10);
-            }
-        } else {
-            zoomPan.setZoom(1);
-            zoomPan.setPanOffset({ x: 0, y: 0 });
-        }
-    };
+
 
     return (
         <div className="flex items-center gap-0.5 border border-slate-200 rounded-md p-0.5 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
@@ -239,12 +215,9 @@ const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, onResetChart
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="w-40 p-1">
                         <DropdownMenuItem onClick={() => { zoomPan.setZoom(1); zoomPan.setPanOffset({ x: 0, y: 0 }); }} className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100">
-                            <span className="flex-1">100% (Original)</span>
+                            <span className="flex-1">100% (Fit to View)</span>
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleFitZoom} className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100">
-                            <Maximize2 className="h-3.5 w-3.5 mr-2 text-slate-500" />
-                            <span className="flex-1">Fit to view</span>
-                        </DropdownMenuItem>
+
                         <DropdownMenuSeparator className="my-1" />
                         <DropdownMenuItem 
                             onSelect={(e) => { e.preventDefault(); zoomPan.handleZoomIn(); }} 

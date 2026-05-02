@@ -44,9 +44,13 @@ export const ChartPreviewCanvas = React.memo(({
         return () => clearTimeout(timer);
     }, []);
 
-    useEffect(() => {
-        const el = containerRef.current || chartContainerRef.current;
+    React.useLayoutEffect(() => {
+        const el = chartContainerRef.current;
         if (!el) return;
+        
+        // Synchronously set the initial size before the browser paints to prevent 1-frame jumping
+        setContainerSize({ width: el.clientWidth, height: el.clientHeight });
+
         const observer = new ResizeObserver(entries => {
             for (const entry of entries) {
                 setContainerSize({ width: entry.contentRect.width, height: entry.contentRect.height });
@@ -88,7 +92,6 @@ export const ChartPreviewCanvas = React.memo(({
                         top: 0, left: 0, right: 0, bottom: 0,
                         transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
                         transformOrigin: 'center center',
-                        transition: isInitializing || isDragging ? 'none' : 'all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
                         zIndex: 10,
                         cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'default',
                         pointerEvents: 'auto'
@@ -133,22 +136,25 @@ export const ChartPreviewCanvas = React.memo(({
         );
     }
 
-    // Non-responsive mode: fixed dimensions with canvas padding
-    const canvasPadding = 80;
-    const scaledChartWidth = chartWidth * zoom;
-    const scaledChartHeight = chartHeight * zoom;
-    const effectiveCanvasWidth = scaledChartWidth + canvasPadding;
-    const effectiveCanvasHeight = scaledChartHeight + canvasPadding;
-    const initialLeft = effectiveCanvasWidth / 2 - scaledChartWidth / 2;
-    const initialTop = effectiveCanvasHeight / 2 - scaledChartHeight / 2;
+    // Non-responsive mode: fixed dimensions with CSS scale wrapper
+    const cWidth = containerSize.width || chartContainerRef.current?.clientWidth || 800;
+    const cHeight = containerSize.height || chartContainerRef.current?.clientHeight || 600;
+    const padding = 100;
+    const availableWidth = Math.max(10, cWidth - padding);
+    const availableHeight = Math.max(10, cHeight - padding);
+    
+    const scaleX = availableWidth / chartWidth;
+    const scaleY = availableHeight / chartHeight;
+    const baseScale = Math.min(scaleX, scaleY, 1.0); // Never scale UP above 100%
+    const finalScale = baseScale * zoom;
 
     return (
         <div
-            className="relative"
+            className="relative flex-shrink-0"
             style={{
-                width: `${effectiveCanvasWidth}px`,
-                height: `${effectiveCanvasHeight}px`,
-                margin: '0 auto',
+                width: chartWidth * finalScale,
+                height: chartHeight * finalScale,
+                margin: 'auto', // This centers it if the parent has flex
                 backgroundColor: 'transparent'
             }}
         >
@@ -163,15 +169,12 @@ export const ChartPreviewCanvas = React.memo(({
 
             {/* Chart Area */}
             <div
-                className="absolute"
+                className="absolute top-0 left-0"
                 style={{
-                    left: `${initialLeft}px`,
-                    top: `${initialTop}px`,
                     width: `${chartWidth}px`,
                     height: `${chartHeight}px`,
-                    transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
+                    transform: `scale(${finalScale}) translate(${panOffset.x / finalScale}px, ${panOffset.y / finalScale}px)`,
                     transformOrigin: 'top left',
-                    transition: isInitializing || isDragging ? 'none' : 'all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
                     zIndex: 10,
                     cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'default',
                     pointerEvents: 'auto'
