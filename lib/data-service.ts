@@ -373,6 +373,64 @@ class DataService {
       body: JSON.stringify({ formats }),
     }, false);
   }
+  // =============================================
+  // CHART STYLE PRESET OPERATIONS
+  // =============================================
+
+  async getChartStylePresets(): Promise<ApiResponse<any[]>> {
+    return this.request('/api/data/chart-style-presets');
+  }
+
+  async getOfficialChartStylePresets(): Promise<ApiResponse<any[]>> {
+    return this.request('/api/data/chart-style-presets/official');
+  }
+
+  async getUserChartStylePresets(): Promise<ApiResponse<any[]>> {
+    return this.request('/api/data/chart-style-presets/mine');
+  }
+
+  async getChartStylePreset(id: string): Promise<ApiResponse<any>> {
+    return this.request(`/api/data/chart-style-presets/${id}`);
+  }
+
+  async createChartStylePreset(presetData: any): Promise<ApiResponse<any>> {
+    this.clearCache();
+    return this.request('/api/data/chart-style-presets', {
+      method: 'POST',
+      body: JSON.stringify(presetData),
+    }, false);
+  }
+
+  async updateChartStylePreset(id: string, updates: any): Promise<ApiResponse<any>> {
+    this.clearCache();
+    return this.request(`/api/data/chart-style-presets/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    }, false);
+  }
+
+  async deleteChartStylePreset(id: string): Promise<ApiResponse<void>> {
+    try {
+      this.clearCache();
+      return await this.request(`/api/data/chart-style-presets/${id}`, {
+        method: 'DELETE',
+      }, false);
+    } catch (error: any) {
+      console.error('Error in deleteChartStylePreset:', error);
+      return {
+        error: error.message || 'Failed to delete chart style preset',
+        data: undefined
+      };
+    }
+  }
+
+  async setChartStylePresetOfficial(id: string, isOfficial: boolean): Promise<ApiResponse<any>> {
+    this.clearCache();
+    return this.request(`/api/data/chart-style-presets/${id}/official`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isOfficial }),
+    }, false);
+  }
 
   // =============================================
   // CACHE MANAGEMENT

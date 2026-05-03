@@ -1,13 +1,13 @@
 "use client"
 
-import React, { memo } from "react"
+import React, { memo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { STANDARD_CHART_TYPES, THREE_D_CHART_TYPES } from "@/lib/chart-types"
 import {
     Download, RefreshCw, Maximize2, RotateCcw,
     Ellipsis, ZoomIn, ZoomOut, Hand, Pencil, Check, Loader2,
-    ChartColumn, RulerDimensionLine, Ban, Search
+    ChartColumn, RulerDimensionLine, Ban, Search, Palette, Upload
 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -18,7 +18,10 @@ import { UndoRedoButtons } from "@/components/ui/undo-redo-buttons"
 import { useTemplateStore } from "@/lib/template-store"
 import { useUIStore } from "@/lib/stores/ui-store"
 import { useChartStore } from "@/lib/chart-store"
+import { useChartStyleStore } from "@/lib/stores/chart-style-store"
 import { ChartBgColorPicker } from "./chart-bg-color-picker"
+import { useAuth } from "@/components/auth/AuthProvider"
+import { PublishStyleDialog } from "@/components/chart-style-gallery/publish-dialog"
 
 const ZOOM_VALUES: number[] = (() => {
     let values: number[] = [];
@@ -103,10 +106,80 @@ const ModeAndTypeSection = memo(({
             <div className="w-px h-4 bg-gray-200 mx-1" />
 
             <ChartBgColorPicker />
+
+            {/* Styles Button */}
+            <StylesButton />
+
+            {/* Publish as Style Button (Admin only) */}
+            <PublishStyleButton />
         </div>
     );
 });
 ModeAndTypeSection.displayName = "ModeAndTypeSection";
+
+// --- Styles Button (toggles Chart Style Gallery) ---
+const StylesButton = memo(() => {
+    const { isGalleryOpen, toggleGallery } = useChartStyleStore();
+    const hasJSON = useChartStore(s => s.hasJSON);
+
+    return (
+        <TooltipProvider delayDuration={0}>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <button
+                        onClick={toggleGallery}
+                        data-styles-toggle
+                        className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold transition-all border ${
+                            isGalleryOpen
+                                ? 'bg-violet-100 text-violet-700 border-violet-300 shadow-sm'
+                                : 'bg-white text-gray-500 border-gray-200 hover:border-violet-300 hover:text-violet-600 hover:bg-violet-50'
+                        }`}
+                    >
+                        <Palette className="w-3.5 h-3.5" />
+                        <span className="hidden lg:inline">Styles</span>
+                    </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" sideOffset={5} className="z-[100] text-xs">
+                    {isGalleryOpen ? 'Close Style Gallery' : 'Browse Chart Styles'}
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
+    );
+});
+StylesButton.displayName = "StylesButton";
+
+// --- Publish Style Button (admin-only) ---
+const PublishStyleButton = memo(() => {
+    const { user } = useAuth();
+    const hasJSON = useChartStore(s => s.hasJSON);
+    const [dialogOpen, setDialogOpen] = useState(false);
+
+    // Only render for admins who have a chart loaded
+    if (!user?.is_admin || !hasJSON) return null;
+
+    return (
+        <>
+            <TooltipProvider delayDuration={0}>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <button
+                            onClick={() => setDialogOpen(true)}
+                            className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold transition-all border bg-white text-emerald-600 border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50"
+                        >
+                            <Upload className="w-3.5 h-3.5" />
+                            <span className="hidden xl:inline">Publish</span>
+                        </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" sideOffset={5} className="z-[100] text-xs">
+                        Publish current chart as a reusable style preset
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+            <PublishStyleDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+        </>
+    );
+});
+PublishStyleButton.displayName = "PublishStyleButton";
 
 // --- 2. Title Section (Independent) ---
 

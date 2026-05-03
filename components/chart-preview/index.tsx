@@ -34,6 +34,7 @@ import { useZoomPan } from "@/lib/hooks/use-zoom-pan"
 import { ChartPreviewToolbar } from "@/components/chart-preview/chart-preview-toolbar"
 import { ChartPreviewCanvas } from "@/components/chart-preview/chart-preview-canvas"
 import { FullscreenOverlay } from "@/components/chart-preview/fullscreen-overlay"
+import { ChartStyleGallery } from "@/components/chart-style-gallery"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { useUIStore } from "@/lib/stores/ui-store"
 
@@ -304,7 +305,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
 
       {/* Chart Container */}
       <Card className={`w-full flex-1 min-h-[300px] rounded-lg border bg-card text-card-foreground shadow-lg overflow-hidden transition-all duration-200${fullscreen.isFullscreen ? ' fixed inset-4 z-50 m-0 rounded-lg' : ''}`}>
-        <CardContent className={`${isMobile ? 'p-0' : 'p-0'} h-full w-full`}>
+        <CardContent className={`${isMobile ? 'p-0' : 'p-0'} h-full w-full relative`}>
           <div
             ref={chartContainerRef}
             className={`relative w-full h-full overflow-auto flex items-center justify-center`}
@@ -340,6 +341,9 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
               />
             )}
           </div>
+
+          {/* Chart Style Gallery Panel — slides in over the chart area */}
+          <ChartStyleGallery />
         </CardContent>
       </Card>
 
