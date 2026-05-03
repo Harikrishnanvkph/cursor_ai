@@ -51,9 +51,23 @@ export function extractPresetFromCurrentChart(
 ): ChartStylePreset {
   const dataset = chartData.datasets[0] // Use first dataset as the style template
 
-  // Extract base colors (up to 8 unique)
-  const baseColors = extractBaseColors(dataset)
-  const baseBorderColors = extractBaseBorderColors(dataset)
+  // Extract base colors from ALL datasets (grouped mode may have different colors per dataset)
+  // Collect unique colors across all datasets, up to 8
+  let baseColors: string[] = []
+  let baseBorderColors: string[] = []
+  for (const ds of chartData.datasets) {
+    const dsColors = extractBaseColors(ds)
+    const dsBorderColors = extractBaseBorderColors(ds)
+    for (const c of dsColors) {
+      if (!baseColors.includes(c) && baseColors.length < 8) baseColors.push(c)
+    }
+    for (const c of dsBorderColors) {
+      if (!baseBorderColors.includes(c) && baseBorderColors.length < 8) baseBorderColors.push(c)
+    }
+  }
+  // Fallback to first dataset if nothing was collected
+  if (baseColors.length === 0) baseColors = extractBaseColors(dataset)
+  if (baseBorderColors.length === 0) baseBorderColors = extractBaseBorderColors(dataset)
 
   // Build color strategy based on admin's choice
   const colorStrategy: ColorStrategy = {
@@ -142,21 +156,46 @@ export function applyPresetToChart(
 } {
   const newChartType = preset.chartType
   const dataLength = currentData.labels?.length || 0
+  const datasetCount = currentData.datasets.length
+  const isGrouped = datasetCount > 1
+
+  // Detect if any dataset has a different chartType (mixed mode)
+  const isMixedMode = isGrouped && currentData.datasets.some(
+    (ds, i) => i > 0 && ds.chartType && ds.chartType !== currentData.datasets[0]?.chartType
+  )
+
+  // Determine if this is an arc chart type (pie/doughnut/polar — per-slice coloring)
+  const ARC_TYPES = ['pie', 'doughnut', 'polarArea', 'pie3d', 'doughnut3d']
 
   // ── 1. Style each dataset's colors ──────────────────────
   const styledDatasets = currentData.datasets.map((ds, dsIndex) => {
-    const styled = { ...ds, chartType: newChartType } as ExtendedChartDataset
+    // PRESERVE per-dataset chartType in mixed mode; apply preset type in uniform/single mode
+    const dsChartType = isMixedMode ? (ds.chartType || newChartType) : newChartType
+    const styled = { ...ds, chartType: dsChartType } as ExtendedChartDataset
 
-    // Apply color strategy
+    // PRESERVE structural metadata that must NEVER be touched by style presets
+    // (groupId, mode, sourceTitle, sourceId, label, sliceLabels, data)
+    styled.groupId = ds.groupId
+    styled.mode = ds.mode
+    styled.sourceTitle = ds.sourceTitle
+    styled.sourceId = ds.sourceId
+    styled.sliceLabels = ds.sliceLabels
+
+    // ── Color strategy for grouped mode ──
+    // In grouped mode with multiple datasets:
+    //   - Uniform mode: Each dataset gets a DIFFERENT base color from the palette
+    //     (dataset 0 = baseColors[0], dataset 1 = baseColors[1], etc.)
+    //   - Mixed mode: Same logic — each dataset gets its own color
+    // In single mode or arc charts: full palette applied per-slice as before
+
+    const needsPerSliceArray = ARC_TYPES.includes(dsChartType as string)
+
     if (preset.colorStrategy.mode === 'single') {
       const singleColor = preset.colorStrategy.singleColor || '#3b82f6'
       styled.datasetColorMode = 'single'
       styled.color = singleColor
 
-      // For pie/doughnut/polarArea in single mode, each slice still
-      // needs an array — but all entries are the same color
-      const needsArray = ['pie', 'doughnut', 'polarArea', 'pie3d', 'doughnut3d'].includes(newChartType)
-      if (needsArray) {
+      if (needsPerSliceArray) {
         styled.backgroundColor = Array(dataLength).fill(singleColor) as any
       } else {
         styled.backgroundColor = singleColor as any
@@ -164,23 +203,43 @@ export function applyPresetToChart(
 
       const borderColor = preset.colorStrategy.baseBorderColors?.[0]
         || darkenColor(singleColor, 15)
-      if (needsArray) {
+      if (needsPerSliceArray) {
         styled.borderColor = Array(dataLength).fill(borderColor) as any
       } else {
         styled.borderColor = borderColor as any
       }
     } else {
-      // Per-slice coloring — scale base colors to data length
+      // Per-slice coloring
       styled.datasetColorMode = 'slice'
       styled.color = undefined
 
-      const bgColors = scaleColors(preset.colorStrategy.baseColors, dataLength)
-      styled.backgroundColor = bgColors as any
+      if (isGrouped && !needsPerSliceArray) {
+        // ── GROUPED MODE (bar, line, radar, etc.) ──
+        // Each dataset gets ONE distinct color from the palette.
+        // This way, Dataset 0 = color[0], Dataset 1 = color[1], etc.
+        const dsColor = preset.colorStrategy.baseColors[
+          dsIndex % preset.colorStrategy.baseColors.length
+        ] || '#3b82f6'
+        styled.backgroundColor = dsColor as any
 
-      const borderSeed = preset.colorStrategy.baseBorderColors.length > 0
-        ? preset.colorStrategy.baseBorderColors
-        : preset.colorStrategy.baseColors.map(c => darkenColor(c, 15))
-      styled.borderColor = scaleColors(borderSeed, dataLength) as any
+        const borderSeed = preset.colorStrategy.baseBorderColors.length > 0
+          ? preset.colorStrategy.baseBorderColors
+          : preset.colorStrategy.baseColors.map(c => darkenColor(c, 15))
+        const dsBorderColor = borderSeed[
+          dsIndex % borderSeed.length
+        ] || darkenColor(dsColor, 15)
+        styled.borderColor = dsBorderColor as any
+      } else {
+        // ── SINGLE MODE or ARC CHARTS ──
+        // Full palette spread across all slices/data points
+        const bgColors = scaleColors(preset.colorStrategy.baseColors, dataLength)
+        styled.backgroundColor = bgColors as any
+
+        const borderSeed = preset.colorStrategy.baseBorderColors.length > 0
+          ? preset.colorStrategy.baseBorderColors
+          : preset.colorStrategy.baseColors.map(c => darkenColor(c, 15))
+        styled.borderColor = scaleColors(borderSeed, dataLength) as any
+      }
     }
 
     // Apply dataset style template
@@ -197,9 +256,6 @@ export function applyPresetToChart(
     if (preset.datasetStyle.datasetPattern !== undefined) {
       styled.datasetPattern = preset.datasetStyle.datasetPattern
     }
-
-    // Backfill per-dataset chartConfig — will be set to the merged config later
-    // (handled after config merge below)
 
     return styled
   })

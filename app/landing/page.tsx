@@ -27,6 +27,8 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 import { toast } from "sonner"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { FormatGallery } from "@/components/gallery/FormatGallery"
+import { useChartStyleStore } from "@/lib/stores/chart-style-store"
+import { ChartStyleGalleryPage } from "@/components/chart-style-gallery/ChartStyleGalleryPage"
 
 export default function LandingPage() {
   return (
@@ -54,6 +56,7 @@ function LandingPageContent() {
   const { addConversation, loadConversationsFromBackend, restoreConversation } = useHistoryStore()
   const { generateMode, currentTemplate, syncTemplatesFromCloud } = useTemplateStore()
   const { isGalleryOpen, openGallery, selectedFormatId } = useFormatGalleryStore()
+  const { isGalleryOpen: isStyleGalleryOpen } = useChartStyleStore()
   const [input, setInput] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -1204,6 +1207,8 @@ function LandingPageContent() {
             leftSidebarOpen={leftSidebarOpen}
             setLeftSidebarOpen={setLeftSidebarOpen}
           />
+        ) : isStyleGalleryOpen ? (
+          <ChartStyleGalleryPage />
         ) : chartData?.datasets?.length > 0 && hasJSON ? (
           <ChartLayout
             leftSidebarOpen={leftSidebarOpen}

@@ -23,7 +23,7 @@ export function ChartStyleGallery() {
     applyPreset,
   } = useChartStyleStore()
 
-  const { chartData, hasJSON } = useChartStore()
+  const { chartData, chartConfig, chartType, hasJSON } = useChartStore()
   const hasChartData = hasJSON && chartData?.datasets?.length > 0
   const panelRef = useRef<HTMLDivElement>(null)
 
@@ -170,6 +170,9 @@ export function ChartStyleGallery() {
                 isSelected={selectedPresetId === preset.id}
                 hasChartData={hasChartData}
                 onApply={() => handleApplyPreset(preset)}
+                chartData={hasChartData ? chartData : undefined}
+                chartConfig={hasChartData ? chartConfig : undefined}
+                chartType={chartType}
               />
             ))}
           </div>

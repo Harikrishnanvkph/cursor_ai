@@ -25,7 +25,7 @@ interface ChartStyleFilters {
 interface ChartStyleStore {
   // ── Gallery State ─────────────────────
   isGalleryOpen: boolean
-  openGallery: () => void
+  openGallery: (chartType?: string) => void
   closeGallery: () => void
   toggleGallery: () => void
 
@@ -80,13 +80,21 @@ const defaultFilters: ChartStyleFilters = {
 export const useChartStyleStore = create<ChartStyleStore>((set, get) => ({
   // ── Gallery State ─────────────────────
   isGalleryOpen: false,
-  openGallery: () => {
+  openGallery: (chartType?: string) => {
     // Ensure presets are loaded when gallery opens
     const state = get()
     if (state.officialPresets.length === 0) {
       state.loadPresets()
     }
-    set({ isGalleryOpen: true })
+    // Auto-filter by the current chart type if provided
+    if (chartType) {
+      set({
+        isGalleryOpen: true,
+        filters: { ...state.filters, chartType: chartType as any },
+      })
+    } else {
+      set({ isGalleryOpen: true })
+    }
   },
   closeGallery: () => set({ isGalleryOpen: false, selectedPresetId: null }),
   toggleGallery: () => {

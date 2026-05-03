@@ -551,8 +551,20 @@ export const useChatStore = create<ChatStore>()(
                 } catch (e) {
                   console.warn('Could not auto-apply pre-selected format:', e);
                 }
+              } else if (templateStore.generateMode === 'chart') {
+                // Chart mode (not format/template): auto-open Chart Style Gallery
+                // so user can immediately browse and apply styles to their new chart
+                try {
+                  const { useChartStyleStore } = require('./stores/chart-style-store');
+                  const styleStore = useChartStyleStore.getState();
+                  // Small delay to let the chart render first
+                  setTimeout(() => {
+                    styleStore.openGallery(result.chartType);
+                  }, 300);
+                } catch (e) {
+                  console.warn('Could not auto-open style gallery:', e);
+                }
               }
-              // Template mode: skip gallery entirely (template handles its own rendering)
             }
 
             // Capture undo point for AI-generated changes, but only if there are actual changes

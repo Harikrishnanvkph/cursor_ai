@@ -13,8 +13,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ResponsiveAnimationsPanel } from "@/components/panels/responsive-animations-panel"
 import { DatasetsSlicesPanel } from "@/components/panels/datasets-slices-panel"
 import { TemplateListTab } from "@/components/panels/template-settings/template-list-tab"
-import { FileText, Layout, BarChart3, Edit3, Cloud, Sparkles, LayoutGrid } from "lucide-react"
+import { FileText, Layout, BarChart3, Edit3, Cloud, Sparkles, LayoutGrid, Palette } from "lucide-react"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
+import { useChartStyleStore } from "@/lib/stores/chart-style-store"
 
 import { useState, useCallback, useEffect } from "react"
 import { useUIStore } from "@/lib/stores/ui-store"
@@ -64,6 +65,7 @@ export function ConfigSidebar() {
   const { activeSidebarTab, setActiveSidebarTab } = useUIStore()
   const contentPackage = useFormatGalleryStore(s => s.contentPackage)
   const openGallery = useFormatGalleryStore(s => s.openGallery)
+  const openStyleGallery = useChartStyleStore(s => s.openGallery)
 
   // Determine if we have a "Current Cloud Template" available from snapshot
   const currentCloudTemplate = originalCloudTemplateContent?.id === "current-cloud-template"
@@ -108,6 +110,19 @@ export function ConfigSidebar() {
               >
                 <LayoutGrid className="w-3.5 h-3.5" />
                 Browse Formats
+              </button>
+            </div>
+          )}
+
+          {/* Browse Styles button - shows when chart data is available */}
+          {chartData?.datasets?.length > 0 && (
+            <div className="mb-3 px-1">
+              <button
+                onClick={() => openStyleGallery(chartType)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-violet-600 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-lg transition-all w-full justify-center shadow-sm"
+              >
+                <Palette className="w-3.5 h-3.5" />
+                Browse Styles
               </button>
             </div>
           )}

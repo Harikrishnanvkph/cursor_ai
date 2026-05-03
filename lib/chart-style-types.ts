@@ -63,7 +63,7 @@ export interface DatasetStyleTemplate {
   tension: number           // Line curve smoothness (0 = sharp, 1 = very smooth)
   fill: boolean             // Area fill under lines
   pointRadius: number       // Point size on line/scatter charts
-  borderRadius: number      // Rounded corners on bars
+  borderRadius: number | Record<string, number> // Rounded corners on bars (can be object for specific corners)
   hoverOffset?: number      // Expansion on hover (pie/doughnut)
   datasetPattern?: PatternConfig | null  // Pattern overlay
 }
