@@ -3,7 +3,7 @@
 import React, { useState, useRef, useCallback, useEffect } from "react"
 
 import { useRouter } from "next/navigation"
-import { Send, BarChart2, Plus, SquarePen, PencilRuler, RotateCcw, Edit3, MessageSquare, Sparkles, ArrowRight, X, ChevronLeft, ChevronRight, PanelLeft, PanelRight, Settings, Brain, Info, LayoutDashboard, Layers } from "lucide-react"
+import { Send, ArrowUp, BarChart2, Plus, SquarePen, PencilRuler, RotateCcw, Edit3, MessageSquare, Sparkles, ArrowRight, X, ChevronLeft, ChevronRight, PanelLeft, PanelRight, Settings, Brain, Info, LayoutDashboard, Layers } from "lucide-react"
 import { useChartStore } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
 import { dataService } from "@/lib/data-service"
@@ -634,11 +634,11 @@ function LandingPageContent() {
                     {/* Chat Input - Tablet */}
                     <form
                       onSubmit={handleSend}
-                      className="p-2 border-b border-gray-200 bg-white flex gap-2 flex-shrink-0"
+                      className="p-3 border-b border-gray-200 bg-white flex items-end gap-2 flex-shrink-0"
                     >
                       <textarea
                         ref={textareaRef}
-                        className="flex-1 rounded-lg border border-slate-200/100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white resize-none max-h-24 min-h-[36px] leading-relaxed transition-colors font-sans shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex-1 rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-300 bg-white resize-none max-h-[150px] min-h-[44px] leading-relaxed transition-all font-sans disabled:opacity-50 disabled:cursor-not-allowed"
                         placeholder={isChatDisabled ? "Attach a template to start..." : (hasActiveChart ? "Modify the chart..." : "Ask AI to Generate Chart...")}
                         value={input}
                         onChange={handleInputChange}
@@ -656,11 +656,10 @@ function LandingPageContent() {
                       />
                       <button
                         type="submit"
-                        className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-3 py-2 rounded-lg shadow-lg disabled:opacity-50 transition-all duration-200"
+                        className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white w-[38px] h-[38px] flex items-center justify-center rounded-full flex-shrink-0 disabled:opacity-50 transition-all duration-200 shadow-sm mb-[3px]"
                         disabled={isProcessing || !input.trim() || isChatDisabled}
-                        style={{ alignSelf: "flex-end", height: 36 }}
                       >
-                        <Send className="inline-block w-4 h-4" />
+                        <ArrowUp className="w-5 h-5" strokeWidth={2.5} />
                       </button>
                     </form>
                     <ChatWindow
@@ -878,11 +877,11 @@ function LandingPageContent() {
                     {/* Chat Input - Mobile */}
                     <form
                       onSubmit={handleSend}
-                      className="p-2 border-b border-gray-200 bg-white flex gap-2 flex-shrink-0"
+                      className="p-3 border-b border-gray-200 bg-white flex items-end gap-2 flex-shrink-0"
                     >
                       <textarea
                         ref={textareaRef}
-                        className="flex-1 rounded-lg border border-slate-200/100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white resize-none max-h-20 min-h-[36px] leading-relaxed transition-colors font-sans shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex-1 rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-300 bg-white resize-none max-h-[150px] min-h-[44px] leading-relaxed transition-all font-sans disabled:opacity-50 disabled:cursor-not-allowed"
                         placeholder={isChatDisabled ? "Attach a template to start..." : (hasActiveChart ? "Modify the chart..." : "Ask AI to Generate Chart...")}
                         value={input}
                         onChange={handleInputChange}
@@ -900,11 +899,10 @@ function LandingPageContent() {
                       />
                       <button
                         type="submit"
-                        className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-3 py-2 rounded-lg shadow-lg disabled:opacity-50 transition-all duration-200"
+                        className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white w-[38px] h-[38px] flex items-center justify-center rounded-full flex-shrink-0 disabled:opacity-50 transition-all duration-200 shadow-sm mb-[3px]"
                         disabled={isProcessing || !input.trim() || isChatDisabled}
-                        style={{ alignSelf: "flex-end", height: 36 }}
                       >
-                        <Send className="inline-block w-4 h-4" />
+                        <ArrowUp className="w-5 h-5" strokeWidth={2.5} />
                       </button>
                     </form>
                     <ChatWindow
@@ -1012,11 +1010,11 @@ function LandingPageContent() {
             {/* Input */}
             <form
               onSubmit={handleSend}
-              className="p-2 border-t border-gray-200 bg-white flex gap-2 flex-shrink-0"
+              className="p-3 border-t border-gray-200 bg-white flex items-end gap-2 flex-shrink-0"
             >
               <textarea
                 ref={textareaRef}
-                className="flex-1 rounded-lg border border-slate-200/100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-white resize-none max-h-24 min-h-[40px] leading-relaxed transition-colors font-sans shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-300 bg-white resize-none max-h-[150px] min-h-[44px] leading-relaxed transition-all font-sans disabled:opacity-50 disabled:cursor-not-allowed"
                 placeholder={isChatDisabled ? "Attach a template to start..." : (hasActiveChart ? "Modify the chart..." : "Ask AI to Generate Chart...")}
                 value={input}
                 onChange={handleInputChange}
@@ -1034,11 +1032,10 @@ function LandingPageContent() {
               />
               <button
                 type="submit"
-                className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-3 py-2 rounded-lg shadow-lg disabled:opacity-50 transition-all duration-200 transform hover:scale-105 focus:scale-105 disabled:hover:scale-100"
+                className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white w-[38px] h-[38px] flex items-center justify-center rounded-full flex-shrink-0 disabled:opacity-50 transition-all duration-200 shadow-sm mb-[3px]"
                 disabled={isProcessing || !input.trim() || isChatDisabled}
-                style={{ alignSelf: "flex-end", height: 40 }}
               >
-                <Send className="inline-block w-4 h-4" />
+                <ArrowUp className="w-5 h-5" strokeWidth={2.5} />
               </button>
             </form>
 
@@ -1057,7 +1054,7 @@ function LandingPageContent() {
                     {msg.role === 'assistant' && (
                       <div className="flex flex-col items-center gap-1 flex-shrink-0">
                         <div className="p-1.5 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-lg">
-                          <Brain className="w-4 h-4 text-blue-600" />
+                          <Sparkles className="w-4 h-4 text-blue-600" />
                         </div>
                         {msg.chartSnapshot && (
                           <div className="relative group">
@@ -1101,38 +1098,6 @@ function LandingPageContent() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Conversation Status Banner - Now at bottom */}
-            {hasActiveChart && showActiveBanner && (
-              <div className="relative px-6 py-4 bg-gradient-to-r from-emerald-50 to-teal-50 border-t border-emerald-200/50 flex-shrink-0">
-                <button
-                  className="absolute top-2 right-2 p-1 rounded hover:bg-emerald-100 transition-colors"
-                  onClick={() => {
-                    setShowActiveBanner(false)
-                    // Mark this banner as shown for the current chart session
-                    if (hasActiveChart && currentChartState) {
-                      const chartDataHash = JSON.stringify(currentChartState.chartData?.datasets?.[0]?.data || [])
-                      const bannerShownKey = `chartBannerShown_${currentChartState.chartType}_${chartDataHash}`
-                      sessionStorage.setItem(bannerShownKey, 'true')
-                      sessionStorage.setItem(bannerShownKey + '_timestamp', Date.now().toString())
-                    }
-                  }}
-                  aria-label="Close banner"
-                >
-                  <X className="w-4 h-4 text-emerald-700" />
-                </button>
-                <div className="flex items-center gap-3 text-sm text-emerald-800">
-                  <div className="p-1.5 bg-emerald-100 rounded-lg">
-                    <Sparkles className="w-4 h-4 text-emerald-600" />
-                  </div>
-                  <div>
-                    <span className="font-semibold">Active Chart Conversation</span>
-                    <p className="text-xs text-emerald-600 mt-0.5">
-                      Ask me to modify your chart!
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
           </>
         ) : (
           // Collapsed Sidebar - Icon Only

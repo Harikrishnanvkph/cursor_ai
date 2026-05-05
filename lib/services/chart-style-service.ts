@@ -69,6 +69,54 @@ export class ChartStyleService {
                     });
                 }
             } catch (error) {
+                console.warn('Failed to capture undo point:', error);
+            }
+        }
+
+        return newState;
+    }
+
+    static toggleFillPoints(
+        state: ChartState,
+        dependencies: StyleServiceDependencies
+    ): { chartData: ExtendedChartData; chartConfig: ExtendedChartOptions } {
+        const currentSettings = state.chartConfig.visualSettings || { fillArea: true, fillPoints: true, showBorder: true, showImages: true, showLabels: true, uniformityMode: 'uniform' as const };
+        const newFillPoints = currentSettings.fillPoints !== false ? false : true;
+
+        const newChartConfig = {
+            ...state.chartConfig,
+            visualSettings: {
+                ...currentSettings,
+                fillPoints: newFillPoints
+            }
+        };
+
+        const newState = {
+            chartData: state.chartData,
+            chartConfig: newChartConfig
+        };
+
+        if (state.hasJSON) {
+            try {
+                if (!dependencies.shouldDebounceUndoOperation('manual_design_change', 'style-toggles')) {
+                    dependencies.captureUndoPoint({
+                        type: 'manual_design_change',
+                        previousState: {
+                            chartType: state.chartType,
+                            chartData: state.chartData,
+                            chartConfig: state.chartConfig
+
+                        },
+                        currentState: {
+                            chartType: state.chartType,
+                            chartData: newState.chartData,
+                            chartConfig: newState.chartConfig
+                        },
+                        toolSource: 'style-toggles',
+                        changeDescription: `Point fill ${newFillPoints ? 'enabled' : 'disabled'}`
+                    });
+                }
+            } catch (error) {
                 console.warn('Failed to capture undo point for fill toggle:', error);
             }
         }

@@ -111,6 +111,9 @@ export function GeneralTab({ axis, config, updateConfig, updateNestedConfig }: G
                                         checked={!!config?.title?.display}
                                         onCheckedChange={(checked) => {
                                             updateConfig('title.display', checked)
+                                            if (checked && !config?.title?.text) {
+                                                updateConfig('title.text', `${axis.toUpperCase()}-Axis`)
+                                            }
                                             if (checked) {
                                                 setTimeout(() => {
                                                     titleInputRef.current?.focus()

@@ -60,6 +60,7 @@ export const useChartStyleOptions = () => useChartStore(state => {
 })
 
 export const useFillArea = () => useChartStore(state => resolveActiveConfig(state)?.visualSettings?.fillArea ?? true)
+export const useFillPoints = () => useChartStore(state => resolveActiveConfig(state)?.visualSettings?.fillPoints !== false)
 export const useShowBorder = () => useChartStore(state => resolveActiveConfig(state)?.visualSettings?.showBorder ?? true)
 export const useShowImages = () => useChartStore(state => resolveActiveConfig(state)?.visualSettings?.showImages ?? true)
 export const useShowLabels = () => useChartStore(state => resolveActiveConfig(state)?.visualSettings?.showLabels ?? true)

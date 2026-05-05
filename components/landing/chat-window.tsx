@@ -71,13 +71,13 @@ export function ChatWindow({
       const updateHeight = () => {
         if (textareaRef.current) {
           if (e.target.value === "") {
-            textareaRef.current.style.height = "36px"
+            textareaRef.current.style.height = "44px"
             textareaRef.current.style.overflowY = "hidden"
           } else {
-            textareaRef.current.style.height = "36px"
-            const maxHeight = 80
-            textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`
-            textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > maxHeight ? "auto" : "hidden"
+            textareaRef.current.style.height = "44px"
+            const maxHeight = 150
+            textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight + 2, maxHeight)}px`
+            textareaRef.current.style.overflowY = textareaRef.current.scrollHeight + 2 > maxHeight ? "auto" : "hidden"
           }
         }
       }
@@ -95,10 +95,10 @@ export function ChatWindow({
     // Single timeout for paste operations to reduce performance impact
     setTimeout(() => {
       if (textareaRef.current) {
-        textareaRef.current.style.height = "36px"
-        const maxHeight = 80
-        textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`
-        textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > maxHeight ? "auto" : "hidden"
+        textareaRef.current.style.height = "44px"
+        const maxHeight = 150
+        textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight + 2, maxHeight)}px`
+        textareaRef.current.style.overflowY = textareaRef.current.scrollHeight + 2 > maxHeight ? "auto" : "hidden"
       }
     }, 10)
   }, [handlePaste, textareaRef])
@@ -108,10 +108,10 @@ export function ChatWindow({
     if (textareaRef.current && input) {
       const updateHeight = () => {
         if (textareaRef.current) {
-          textareaRef.current.style.height = "36px"
-          const maxHeight = 80
-          textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`
-          textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > maxHeight ? "auto" : "hidden"
+          textareaRef.current.style.height = "44px"
+          const maxHeight = 150
+          textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight + 2, maxHeight)}px`
+          textareaRef.current.style.overflowY = textareaRef.current.scrollHeight + 2 > maxHeight ? "auto" : "hidden"
         }
       }
       requestAnimationFrame(updateHeight)
@@ -142,15 +142,15 @@ export function ChatWindow({
           <div
             key={idx}
             className={`rounded-2xl px-4 py-3 max-w-[90%] whitespace-pre-wrap break-words shadow-lg font-medium text-sm ${msg.role === "user"
-                ? "bg-gradient-to-br from-indigo-500 to-purple-600 text-white self-end ml-auto border border-indigo-400/30 shadow-indigo-500/25"
-                : "bg-gradient-to-br from-white to-slate-50 text-slate-800 self-start mr-auto border border-slate-200/50 shadow-slate-500/10"
+              ? "bg-gradient-to-br from-indigo-500 to-purple-600 text-white self-end ml-auto border border-indigo-400/30 shadow-indigo-500/25"
+              : "bg-gradient-to-br from-white to-slate-50 text-slate-800 self-start mr-auto border border-slate-200/50 shadow-slate-500/10"
               }`}
             style={{ wordBreak: 'break-word' }}
           >
             <div className="flex items-start gap-3">
               {msg.role === 'assistant' && (
                 <div className="p-1.5 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-lg flex-shrink-0">
-                  <Brain className="w-4 h-4 text-blue-600" />
+                  <Sparkles className="w-4 h-4 text-blue-600" />
                 </div>
               )}
               <div className="flex-1">
@@ -181,38 +181,6 @@ export function ChatWindow({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Conversation Status Banner - Now at bottom */}
-      {hasActiveChart && showActiveBanner && (
-        <div className="relative px-4 py-3 bg-gradient-to-r from-emerald-50 to-teal-50 border-t border-emerald-200/50 flex-shrink-0">
-          <button
-            className="absolute top-2 right-2 p-1 rounded hover:bg-emerald-100 transition-colors"
-            onClick={() => {
-              setShowActiveBanner(false)
-              // Mark this banner as shown for the current chart session
-              if (hasActiveChart && currentChartState) {
-                const chartDataHash = JSON.stringify(currentChartState.chartData?.datasets?.[0]?.data || [])
-                const bannerShownKey = `chartBannerShown_${currentChartState.chartType}_${chartDataHash}`
-                sessionStorage.setItem(bannerShownKey, 'true')
-                sessionStorage.setItem(bannerShownKey + '_timestamp', Date.now().toString())
-              }
-            }}
-            aria-label="Close banner"
-          >
-            <X className="w-4 h-4 text-emerald-700" />
-          </button>
-          <div className="flex items-center gap-3 text-sm text-emerald-800">
-            <div className="p-1.5 bg-emerald-100 rounded-lg">
-              <Sparkles className="w-4 h-4 text-emerald-600" />
-            </div>
-            <div>
-              <span className="font-semibold">Active Chart Conversation</span>
-              <p className="text-xs text-emerald-600 mt-0.5">
-                Ask me to modify your chart!
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 } 

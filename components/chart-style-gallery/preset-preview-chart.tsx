@@ -223,8 +223,48 @@ export const PresetPreviewChart = memo(function PresetPreviewChart({
         }
 
         // Clean datasets for preview — strip metadata Chart.js doesn't understand
+        const visualSettings = (result.chartConfig as any)?.visualSettings || {}
+        const fillArea = visualSettings.fillArea !== false
+        const fillPoints = visualSettings.fillPoints !== false
+        const showBorder = visualSettings.showBorder !== false
+        const showImages = visualSettings.showImages !== false
+
         const cleanDatasets = result.chartData.datasets.map((ds: any) => {
-          const { groupId, mode, sourceTitle, sourceId, sliceLabels, chartType, datasetColorMode, uniformityMode, ...chartjsProps } = ds
+          const { groupId, mode, sourceTitle, sourceId, sliceLabels, chartType: dsChartType, datasetColorMode, uniformityMode, ...chartjsProps } = ds
+          
+          if (resolvedType === 'line' || resolvedType === 'radar' || resolvedType === 'area') {
+            if (!fillPoints) {
+              chartjsProps.pointBackgroundColor = 'transparent';
+            } else if (!chartjsProps.pointBackgroundColor) {
+              chartjsProps.pointBackgroundColor = chartjsProps.backgroundColor;
+            }
+          }
+
+          if (!fillArea) {
+             if (Array.isArray(chartjsProps.backgroundColor)) {
+               chartjsProps.backgroundColor = chartjsProps.backgroundColor.map(() => 'transparent')
+             } else {
+               chartjsProps.backgroundColor = 'transparent'
+             }
+             if (resolvedType === 'line' || resolvedType === 'radar') {
+               chartjsProps.fill = false
+             }
+          }
+
+          if (!showBorder) {
+             if (Array.isArray(chartjsProps.borderColor)) {
+               chartjsProps.borderColor = chartjsProps.borderColor.map(() => 'transparent')
+             } else {
+               chartjsProps.borderColor = 'transparent'
+             }
+             chartjsProps.borderWidth = 0
+          }
+
+          if (!showImages) {
+             chartjsProps.pointImages = []
+             chartjsProps.pointImageConfig = []
+          }
+
           return chartjsProps
         })
 
@@ -364,6 +404,9 @@ function buildSyntheticPreview(preset: ChartStylePreset) {
     dataset.tension = preset.datasetStyle?.tension ?? 0.3
     dataset.fill = preset.datasetStyle?.fill ?? (preset.chartType === 'area')
     dataset.pointRadius = Math.min(preset.datasetStyle?.pointRadius ?? 2, 3)
+    if (preset.datasetStyle?.pointStyle !== undefined) dataset.pointStyle = preset.datasetStyle.pointStyle
+    if (preset.datasetStyle?.pointBorderWidth !== undefined) dataset.pointBorderWidth = preset.datasetStyle.pointBorderWidth
+    
     dataset.pointBackgroundColor = colors[0]
     if (preset.colorStrategy.mode === 'single') {
       dataset.borderColor = preset.colorStrategy.singleColor || '#3b82f6'
@@ -377,6 +420,39 @@ function buildSyntheticPreview(preset: ChartStylePreset) {
   if (resolvedType === 'bar') {
     const radius = preset.datasetStyle?.borderRadius ?? 0
     dataset.borderRadius = typeof radius === 'number' ? Math.min(radius, 4) : radius
+  }
+
+  const visualSettings = preset.configSnapshot?.visualSettings || {}
+  const fillArea = visualSettings.fillArea !== false
+  const fillPoints = visualSettings.fillPoints !== false
+  const showBorder = visualSettings.showBorder !== false
+
+  if (resolvedType === 'line' || resolvedType === 'radar' || resolvedType === 'area') {
+    if (!fillPoints) {
+      dataset.pointBackgroundColor = 'transparent';
+    } else if (!dataset.pointBackgroundColor) {
+      dataset.pointBackgroundColor = dataset.backgroundColor;
+    }
+  }
+
+  if (!fillArea) {
+    if (Array.isArray(dataset.backgroundColor)) {
+      dataset.backgroundColor = dataset.backgroundColor.map(() => 'transparent')
+    } else {
+      dataset.backgroundColor = 'transparent'
+    }
+    if (resolvedType === 'line' || resolvedType === 'radar') {
+      dataset.fill = false
+    }
+  }
+
+  if (!showBorder) {
+    if (Array.isArray(dataset.borderColor)) {
+      dataset.borderColor = dataset.borderColor.map(() => 'transparent')
+    } else {
+      dataset.borderColor = 'transparent'
+    }
+    dataset.borderWidth = 0
   }
 
   const isHorizontal = preset.chartType === 'horizontalBar' || preset.chartType === 'horizontalBar3d'

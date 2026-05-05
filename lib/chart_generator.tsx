@@ -262,6 +262,7 @@ import {
   useChartType,
   useLegendFilter,
   useFillArea,
+  useFillPoints,
   useShowBorder,
   useShowImages,
   useChartMode,
@@ -282,6 +283,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
   const chartType = useChartType();
   const legendFilter = useLegendFilter();
   const fillArea = useFillArea();
+  const fillPoints = useFillPoints();
   const showBorder = useShowBorder();
   const showImages = useShowImages();
   const chartMode = useChartMode();
@@ -487,7 +489,17 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
       pointImageConfig: newPointImageConfig.length ? newPointImageConfig : ds.pointImageConfig,
     };
 
+    // Handle Points Fill
+    if (chartType === 'line' || chartType === 'area' || chartType === 'radar') {
+      if (!fillPoints) {
+        processedDs.pointBackgroundColor = 'transparent';
+      } else if (!processedDs.pointBackgroundColor) {
+        processedDs.pointBackgroundColor = processedDs.backgroundColor;
+      }
+    }
+
     if (!fillArea) {
+
       if (Array.isArray(processedDs.backgroundColor)) {
         processedDs.backgroundColor = processedDs.backgroundColor.map(() => 'transparent');
       } else {

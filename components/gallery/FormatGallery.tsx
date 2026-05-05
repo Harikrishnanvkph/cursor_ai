@@ -254,7 +254,6 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
             </div>
             <div className="flex items-center gap-2">
               <h2 className="text-base font-bold text-gray-900 leading-tight">Choose a Format</h2>
-              {hasChartData && <span className="text-green-600 text-[11px] font-medium inline-flex items-center gap-0.5 ml-2 bg-green-50 px-1.5 py-0.5 rounded-md border border-green-100"><BarChart3 className="w-3 h-3" /> Chart ready</span>}
             </div>
           </div>
         </div>

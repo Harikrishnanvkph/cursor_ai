@@ -162,6 +162,7 @@ export interface ExtendedChartData extends Omit<ChartData, "datasets"> {
 
 export interface VisualSettings {
     fillArea: boolean;
+    fillPoints?: boolean;
     showBorder: boolean;
     showImages: boolean;
     showLabels: boolean;
@@ -351,6 +352,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
         height: '600px',
         visualSettings: {
             fillArea: (type !== 'line'), // Line charts should default to no fill
+            fillPoints: true,
             showBorder: true,
             showImages: true,
             showLabels: true,

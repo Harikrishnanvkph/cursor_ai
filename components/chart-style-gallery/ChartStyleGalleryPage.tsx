@@ -3,12 +3,11 @@
 import React, { useEffect, useMemo, useCallback, useState } from "react"
 import { useChartStyleStore } from "@/lib/stores/chart-style-store"
 import { useChartStore } from "@/lib/chart-store"
-import { X, Palette, SlidersHorizontal, ChevronLeft, BarChart3, Search, TrendingUp, PieChart, CircleDot, Radar, Target, BarChartHorizontal, Box, Layers } from "lucide-react"
+import { X, Palette, SlidersHorizontal, BarChart3, Search, TrendingUp, PieChart, CircleDot, Radar, Target, BarChartHorizontal, Box, Layers, RefreshCw, Check } from "lucide-react"
 import { toast } from "sonner"
 import { PresetCard } from "./preset-card"
 import type { ChartStylePreset, PresetCategory } from "@/lib/chart-style-types"
 import { checkPresetCompatibility } from "@/lib/chart-style-engine"
-import { HistoryDropdown } from "@/components/history-dropdown"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
 import type { SupportedChartType } from "@/lib/chart-defaults"
 
@@ -66,6 +65,15 @@ export function ChartStyleGalleryPage() {
   }, [chartConfig])
   const [showFilters, setShowFilters] = useState(false)
   const [searchInput, setSearchInput] = useState('')
+  const [syncCooldown, setSyncCooldown] = useState(0)
+
+  // Countdown timer for sync cooldown
+  useEffect(() => {
+    if (syncCooldown > 0) {
+      const timer = setTimeout(() => setSyncCooldown(syncCooldown - 1), 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [syncCooldown])
 
   // Load presets on mount
   useEffect(() => {
@@ -111,7 +119,6 @@ export function ChartStyleGalleryPage() {
       const success = applyPreset(preset.id, !!preset.dimensions)
 
       if (success) {
-        toast.success(`Style "${preset.name}" applied!`)
         closeGallery()
         if (warnings.length > 0) {
           warnings.forEach(w => toast.info(w, { duration: 5000 }))
@@ -133,25 +140,31 @@ export function ChartStyleGalleryPage() {
       {/* Header — mirrors FormatGallery header */}
       <div className="flex flex-shrink-0 items-center justify-between px-5 py-3 border-b border-gray-200 bg-white z-10">
         <div className="flex items-center gap-4">
-          <button
-            onClick={closeGallery}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors border border-transparent hover:border-gray-200"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Back
-          </button>
-          <div className="h-5 w-px bg-gray-300" />
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shadow-inner">
               <Palette className="w-4 h-4 text-white" />
             </div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold text-gray-900 leading-tight">Choose a Style</h2>
-              {hasChartData && (
-                <span className="text-green-600 text-[11px] font-medium inline-flex items-center gap-0.5 ml-2 bg-green-50 px-1.5 py-0.5 rounded-md border border-green-100">
-                  <BarChart3 className="w-3 h-3" /> Chart ready
-                </span>
-              )}
+              <h2 className="text-base font-bold text-gray-900 leading-tight">Chart Gallery</h2>
+              {/* Sync Button */}
+              <button
+                onClick={async () => {
+                  if (isLoading || syncCooldown > 0) return;
+                  await loadPresets(true)
+                  setSyncCooldown(10)
+                }}
+                disabled={isLoading || syncCooldown > 0}
+                title={syncCooldown > 0 ? `Synced` : "Sync latest presets"}
+                className="ml-2 p-1.5 rounded-md text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-violet-500" />
+                ) : syncCooldown > 0 ? (
+                  <Check className="w-3.5 h-3.5 text-green-500" />
+                ) : (
+                  <RefreshCw className="w-3.5 h-3.5" />
+                )}
+              </button>
             </div>
           </div>
         </div>
@@ -189,7 +202,6 @@ export function ChartStyleGalleryPage() {
 
           <div className="h-5 w-px bg-gray-200 mx-1" />
 
-          <HistoryDropdown variant="icon-badge" />
           <SimpleProfileDropdown size="sm" />
 
           <div className="h-5 w-px bg-gray-200 mx-1" />

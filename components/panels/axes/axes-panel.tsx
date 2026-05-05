@@ -14,7 +14,9 @@ export function AxesPanel() {
   const { updateChartConfig } = useChartActions()
 
   const handleConfigUpdate = (path: string, value: any) => {
-    const newConfig = setNestedProperty(chartConfig, path, value)
+    // Fetch latest config directly from store to prevent closure staleness on rapid sequential updates
+    const currentConfig = useChartStore.getState().getActiveChartConfig();
+    const newConfig = setNestedProperty(currentConfig, path, value)
     updateChartConfig(newConfig)
   }
 

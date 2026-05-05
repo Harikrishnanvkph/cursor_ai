@@ -38,8 +38,8 @@ export function TypesTogglesPanel() {
     setChartType(type as SupportedChartType);
   }
 
-  // Derive label checked state from chartConfig to stay in sync with labels-panel
-  const labelChecked = (chartConfig.plugins as any)?.customLabelsConfig?.display !== false;
+  // Derive label checked state from visualSettings
+  const labelChecked = visualSettings.showLabels !== false;
 
   // Derive legend checked state from chartConfig
   const legendChecked = (chartConfig.plugins as any)?.legend?.display !== false;

@@ -416,6 +416,7 @@ export function clearCurrentChart(): void {
     'enhanced-chat-store',
     'template-store', // Also clear template data to prevent cascading to new charts
     'decoration-store',
+    'chartography-style-presets', // Clear the newly added presets cache
   ];
 
   chartKeys.forEach(name => {

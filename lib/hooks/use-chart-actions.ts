@@ -17,6 +17,7 @@ export const useChartActions = () => {
 
     // Store toggles that just proxy directly
     const toggleFillArea = useChartStore(s => s.toggleFillArea)
+    const toggleFillPoints = useChartStore(s => s.toggleFillPoints)
     const toggleShowBorder = useChartStore(s => s.toggleShowBorder)
     const toggleShowImages = useChartStore(s => s.toggleShowImages)
     const toggleShowLabels = useChartStore(s => s.toggleShowLabels)
@@ -330,6 +331,7 @@ export const useChartActions = () => {
         setChartType,
         updateChartConfig,
         toggleFillArea,
+        toggleFillPoints,
         toggleShowBorder,
         toggleShowImages,
         toggleShowLabels,

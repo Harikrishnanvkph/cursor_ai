@@ -2,11 +2,15 @@
  * Chart Style Store
  *
  * Zustand store for managing chart style presets.
+ * Uses persist middleware to cache presets in localStorage,
+ * avoiding unnecessary network/compute on every gallery open.
+ *
  * Phase 1: Reads from hardcoded defaults (chart-style-defaults.ts)
  * Phase 2: Will fetch from Supabase (chart_style_presets table)
  */
 
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import type { ChartStylePreset, PresetCategory } from '../chart-style-types'
 import { getOfficialPresets } from '../chart-style-defaults'
 import { applyPresetToChart, checkPresetCompatibility } from '../chart-style-engine'
@@ -34,6 +38,10 @@ interface ChartStyleStore {
   userPresets: ChartStylePreset[]       // Phase 2
   isLoading: boolean
 
+  // ── Cache metadata ────────────────────
+  /** Timestamp of last successful preset load (ISO string) */
+  lastLoadedAt: string | null
+
   // ── Filters ───────────────────────────
   filters: ChartStyleFilters
   setFilters: (updates: Partial<ChartStyleFilters>) => void
@@ -49,7 +57,7 @@ interface ChartStyleStore {
 
   // ── Actions ───────────────────────────
   /** Load presets (Phase 1: hardcoded, Phase 2: from API) */
-  loadPresets: () => Promise<void>
+  loadPresets: (force?: boolean) => Promise<void>
 
   /**
    * Apply a preset to the current chart.
@@ -77,7 +85,12 @@ const defaultFilters: ChartStyleFilters = {
 // STORE
 // ========================================
 
-export const useChartStyleStore = create<ChartStyleStore>((set, get) => ({
+// Cache duration: presets are considered fresh for 1 hour (down from 24h to allow new DB presets to appear sooner)
+const CACHE_MAX_AGE_MS = 1 * 60 * 60 * 1000
+
+export const useChartStyleStore = create<ChartStyleStore>()(
+  persist(
+    (set, get) => ({
   // ── Gallery State ─────────────────────
   isGalleryOpen: false,
   openGallery: (chartType?: string) => {
@@ -110,6 +123,7 @@ export const useChartStyleStore = create<ChartStyleStore>((set, get) => ({
   officialPresets: [],
   userPresets: [],
   isLoading: false,
+  lastLoadedAt: null,
 
   // ── Filters ───────────────────────────
   filters: { ...defaultFilters },
@@ -155,7 +169,22 @@ export const useChartStyleStore = create<ChartStyleStore>((set, get) => ({
   setSelectedPresetId: (id) => set({ selectedPresetId: id }),
 
   // ── Actions ───────────────────────────
-  loadPresets: async () => {
+  loadPresets: async (force?: boolean) => {
+    const state = get()
+
+    // ── Stale-While-Revalidate: serve cached presets instantly ──
+    // If we have cached presets and they're less than 24h old, skip refetch
+    const isCacheFresh = state.lastLoadedAt &&
+      (Date.now() - new Date(state.lastLoadedAt).getTime()) < CACHE_MAX_AGE_MS &&
+      state.officialPresets.length > 0
+
+    if (!force && isCacheFresh) {
+      console.info('[ChartStyleStore] Serving presets from cache (fresh for',
+        Math.round((CACHE_MAX_AGE_MS - (Date.now() - new Date(state.lastLoadedAt!).getTime())) / 60000),
+        'more minutes)')
+      return
+    }
+
     set({ isLoading: true })
 
     // Phase 1: Always load hardcoded defaults (instant, no network needed)
@@ -197,7 +226,7 @@ export const useChartStyleStore = create<ChartStyleStore>((set, get) => ({
       console.info('[ChartStyleStore] API presets unavailable, using hardcoded defaults only')
     }
 
-    set({ isLoading: false })
+    set({ isLoading: false, lastLoadedAt: new Date().toISOString() })
   },
 
   applyPreset: (presetId: string, applyDimensions = false) => {
@@ -271,4 +300,30 @@ export const useChartStyleStore = create<ChartStyleStore>((set, get) => ({
       return false
     }
   },
-}))
+}),
+    // ── Persist Configuration ──────────────────────────
+    {
+      name: 'chartography-style-presets', // localStorage key
+      version: 2, // Bump this to invalidate cache when preset schema changes
+      migrate: (persistedState: any, version: number) => {
+        // v1 → v2: preset count grew significantly, wipe cache to force fresh load
+        if (version < 2) {
+          return {
+            ...persistedState,
+            officialPresets: [],
+            userPresets: [],
+            lastLoadedAt: null,
+          }
+        }
+        return persistedState as any
+      },
+      partialize: (state) => ({
+        // Only persist preset data + cache timestamp
+        // Ephemeral UI state (gallery open, filters, selection) is NOT persisted
+        officialPresets: state.officialPresets,
+        userPresets: state.userPresets,
+        lastLoadedAt: state.lastLoadedAt,
+      }),
+    }
+  )
+)

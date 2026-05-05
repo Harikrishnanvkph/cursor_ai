@@ -114,6 +114,7 @@ interface ChartStore {
   updateLabels: (labels: string[]) => void;
   setChartTitle: (title: string | null) => void;
   toggleFillArea: () => void;
+  toggleFillPoints: () => void;
   toggleShowBorder: () => void;
   toggleShowImages: () => void;
   toggleShowLabels: () => void;
@@ -365,6 +366,7 @@ export const useChartStore = create<ChartStore>()(
         });
       }),
       toggleFillArea: () => set((state) => applyStyleToggle(state, 'toggleFillArea')),
+      toggleFillPoints: () => set((state) => applyStyleToggle(state, 'toggleFillPoints')),
       toggleShowBorder: () => set((state) => applyStyleToggle(state, 'toggleShowBorder')),
       toggleShowImages: () => set((state) => applyStyleToggle(state, 'toggleShowImages')),
       toggleShowLabels: () => set((state) => applyStyleToggle(state, 'toggleShowLabels')),

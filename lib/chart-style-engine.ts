@@ -85,6 +85,10 @@ export function extractPresetFromCurrentChart(
     tension: dataset?.tension ?? 0,
     fill: dataset?.fill === true,
     pointRadius: dataset?.pointRadius ?? 3,
+    pointHoverRadius: (dataset as any)?.pointHoverRadius,
+    pointBorderWidth: (dataset as any)?.pointBorderWidth,
+    pointHoverBorderWidth: (dataset as any)?.pointHoverBorderWidth,
+    pointStyle: (dataset as any)?.pointStyle,
     borderRadius: (dataset as any)?.borderRadius ?? 0,
     hoverOffset: (dataset as any)?.hoverOffset ?? undefined,
     datasetPattern: dataset?.datasetPattern ?? null,
@@ -173,6 +177,14 @@ export function applyPresetToChart(
     const dsChartType = isMixedMode ? (ds.chartType || newChartType) : newChartType
     const styled = { ...ds, chartType: dsChartType } as ExtendedChartDataset
 
+    // If not mixed mode, delete dataset.type so Chart.js uses the main chart type from the preset.
+    // If mixed mode, set dataset.type so Chart.js renders the specific type.
+    if (!isMixedMode) {
+      delete styled.type
+    } else {
+      styled.type = dsChartType as any
+    }
+
     // PRESERVE structural metadata that must NEVER be touched by style presets
     // (groupId, mode, sourceTitle, sourceId, label, sliceLabels, data)
     styled.groupId = ds.groupId
@@ -247,6 +259,18 @@ export function applyPresetToChart(
     styled.tension = preset.datasetStyle.tension
     styled.fill = preset.datasetStyle.fill
     styled.pointRadius = preset.datasetStyle.pointRadius
+    if (preset.datasetStyle.pointHoverRadius !== undefined) {
+      ;(styled as any).pointHoverRadius = preset.datasetStyle.pointHoverRadius
+    }
+    if (preset.datasetStyle.pointBorderWidth !== undefined) {
+      ;(styled as any).pointBorderWidth = preset.datasetStyle.pointBorderWidth
+    }
+    if (preset.datasetStyle.pointHoverBorderWidth !== undefined) {
+      ;(styled as any).pointHoverBorderWidth = preset.datasetStyle.pointHoverBorderWidth
+    }
+    if (preset.datasetStyle.pointStyle !== undefined) {
+      ;(styled as any).pointStyle = preset.datasetStyle.pointStyle
+    }
     if (preset.datasetStyle.borderRadius != null) {
       ;(styled as any).borderRadius = preset.datasetStyle.borderRadius
     }

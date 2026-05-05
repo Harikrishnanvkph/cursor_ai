@@ -11,6 +11,29 @@ import { useGroupedSettingsTarget } from "@/components/panels/grouped-settings-f
 import { useChartStore } from "@/lib/chart-store"
 import { useUIStore } from "@/lib/stores/ui-store"
 import { PATTERN_TYPES, type PatternConfig } from "@/lib/plugins/slice-pattern-plugin"
+import { useChartActions } from "@/lib/hooks/use-chart-actions"
+import { Switch } from "@/components/ui/switch"
+
+/** Small inline toggle for Point Fill setting — lives inside the Point Settings section */
+function PointFillToggle() {
+    const chartConfig = useChartStore(s => s.chartConfig)
+    const { toggleFillPoints } = useChartActions()
+    const fillPoints = chartConfig?.visualSettings?.fillPoints !== false
+    return (
+        <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-2">
+                <CircleDot className="h-3.5 w-3.5 text-gray-500" />
+                <Label className="text-xs font-medium text-gray-700">Filled Points</Label>
+            </div>
+            <Switch
+                id="filled-points-toggle"
+                checked={fillPoints}
+                onCheckedChange={toggleFillPoints}
+                className="scale-75 data-[state=unchecked]:bg-input/50"
+            />
+        </div>
+    )
+}
 
 interface ConfigPathUpdate {
     path: string
@@ -218,6 +241,9 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                             Point Settings
                         </h3>
                     </div>
+
+                    {/* Filled Points Toggle */}
+                    <PointFillToggle />
 
                     {/* Row 1: Point Radius, Hover Radius, Border Width */}
                     <div className={`grid gap-3 ${chartType === 'bubble' ? 'grid-cols-2' : 'grid-cols-3'}`}>
