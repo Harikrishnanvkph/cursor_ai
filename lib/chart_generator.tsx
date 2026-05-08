@@ -577,6 +577,20 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
   const globalCustomLabelsConfig = ((chartConfig.plugins as any)?.customLabelsConfig) || {};
 
   // Helper function to format numbers based on customLabelsConfig
+  // Smart auto-detect decimal places based on value magnitude and precision
+  // When user hasn't explicitly set decimals, intelligently preserve precision
+  const getSmartDecimals = (value: number, explicitDecimals?: number): number => {
+    if (explicitDecimals !== undefined && explicitDecimals !== null) return explicitDecimals;
+    const absVal = Math.abs(value);
+    // Detect the value's own decimal precision (e.g. 2.78 has 2 decimals)
+    const valueStr = String(value);
+    const dotIndex = valueStr.indexOf('.');
+    const valuePrecision = dotIndex >= 0 ? valueStr.length - dotIndex - 1 : 0;
+    if (absVal < 10) return Math.min(valuePrecision, 2);       // 2.78 → "2.78"
+    if (absVal < 1000) return Math.min(valuePrecision, 1);     // 156.3 → "156.3"
+    return 0;                                                   // 10000.8 → "10001"
+  };
+
   const formatLabelValue = (rawValue: any, config: any): string => {
     let numValue: number | null = null;
 
@@ -589,8 +603,12 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
       return String(rawValue);
     }
 
+    // Smart auto-detect decimal places based on value magnitude and precision
+    // When user hasn't explicitly set decimals, intelligently preserve precision
+
+
     // Apply decimal places
-    const decimals = config.decimals ?? 0;
+    const decimals = getSmartDecimals(numValue, config.decimals);
     let formatted = numValue.toFixed(decimals);
 
     // Apply thousands separator
@@ -1015,21 +1033,83 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
     };
   }
 
+  // ── Custom Grace Calculation ──
+  // Chart.js's native `grace` percentage behaves inconsistently (its range computation
+  // doesn't always match user expectations). We replace it with a manual `suggestedMax`
+  // calculation so that e.g. grace=100% on max=20 reliably produces axis max=40.
+  const computeGraceSuggestedMax = (yConfig: any): number | undefined => {
+    const graceRaw = yConfig?.grace;
+    if (graceRaw === undefined || graceRaw === null || graceRaw === 0 || graceRaw === '0%') return undefined;
+
+    // Compute actual data max from all visible datasets
+    let dataMax = -Infinity;
+    let dataMin = Infinity;
+    for (const ds of filteredDatasetsPatched) {
+      if (!ds.data) continue;
+      for (const v of ds.data) {
+        const num = typeof v === 'number' ? v : (v as any)?.y;
+        if (typeof num === 'number' && isFinite(num)) {
+          if (num > dataMax) dataMax = num;
+          if (num < dataMin) dataMin = num;
+        }
+      }
+    }
+    if (!isFinite(dataMax)) return undefined;
+
+    const isPercent = typeof graceRaw === 'string' && graceRaw.endsWith('%');
+    if (isPercent) {
+      const pct = parseFloat(graceRaw) || 0;
+      // User expectation: if max=20, 100% grace → axis max = 20 + 20 = 40
+      return dataMax + (dataMax * pct / 100);
+    } else if (typeof graceRaw === 'number') {
+      return dataMax + graceRaw;
+    }
+    return undefined;
+  };
+
   if (chartType === 'stackedBar') {
+    const yBase = { ...(optionsScales?.y || {}) };
+    const sugMax = computeGraceSuggestedMax(yBase);
+    // Strip native grace to prevent double-application
+    delete yBase.grace;
     appliedOptions = {
       ...baseOptions,
       scales: {
         x: { ...(optionsScales?.x || {}), stacked: true },
-        y: { ...(optionsScales?.y || {}), stacked: true },
+        y: {
+          ...yBase,
+          stacked: true,
+          ...(sugMax !== undefined ? { suggestedMax: sugMax } : {}),
+        },
       },
     };
   } else if (!isCircularType && !isRadialType) {
+    const yBase = { ...(optionsScales?.y || {}) };
+    const sugMax = computeGraceSuggestedMax(yBase);
+    // Strip native grace to prevent double-application
+    delete yBase.grace;
     // For other Cartesian charts, explicit stacked: false
     appliedOptions = {
       ...baseOptions,
       scales: {
         x: { ...(optionsScales?.x || {}), stacked: false },
-        y: { ...(optionsScales?.y || {}), stacked: false },
+        y: {
+          ...yBase,
+          stacked: false,
+          ...(sugMax !== undefined ? { suggestedMax: sugMax } : {}),
+          ticks: {
+            ...(yBase.ticks || {}),
+            // Inject smart decimals for Y-axis ticks to prevent "identical" labels on small scales
+            callback: function (value: any) {
+              if (typeof value !== 'number') return value;
+              // If user has a custom callback string from AI, parseCallbacks already handled it
+              // We only inject our smart logic if no custom callback is explicitly provided
+              if (optionsScales?.y?.ticks?.callback) return value;
+              const decimals = getSmartDecimals(value);
+              return value.toFixed(decimals);
+            }
+          }
+        },
       },
     };
   }

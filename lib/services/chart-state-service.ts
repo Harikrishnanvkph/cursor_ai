@@ -210,13 +210,23 @@ export class ChartStateService {
         const hasGroupedDatasets = processedDatasets.some((ds: any) => ds.mode === 'grouped');
 
         if (hasGroupedDatasets && datasetCount > 0) {
-            // Generate temp group ID
-            const cleanName = (name || chartType || 'load')
-                .replace(/[^a-zA-Z0-9]/g, '')
-                .slice(0, 4)
-                .toLowerCase();
-            const random = Math.random().toString(36).substr(2, 6);
-            const tempGroupId = `${cleanName}${random}`.slice(0, 10);
+            // When replacing an existing grouped chart (AI modification), reuse the current group ID
+            // to update in-place instead of creating a duplicate group
+            let tempGroupId: string;
+            const hasExistingActiveGroup = replaceMode && state.activeGroupId && 
+                state.groups.some(g => g.id === state.activeGroupId);
+
+            if (hasExistingActiveGroup) {
+                tempGroupId = state.activeGroupId!;
+            } else {
+                // Generate a new group ID only when there's no existing group to replace
+                const cleanName = (name || chartType || 'load')
+                    .replace(/[^a-zA-Z0-9]/g, '')
+                    .slice(0, 4)
+                    .toLowerCase();
+                const random = Math.random().toString(36).substr(2, 6);
+                tempGroupId = `${cleanName}${random}`.slice(0, 10);
+            }
 
             const coordinateTypes = ['scatter', 'bubble'];
             const firstDatasetChartType = processedDatasets[0]?.chartType || chartType;
@@ -240,7 +250,7 @@ export class ChartStateService {
             if (!groupExists) {
                 updatedGroups = [...state.groups, tempGroup];
             } else {
-                // If replacing an existing group (like 'default'), update it with the new configuration
+                // Update the existing group with new configuration
                 updatedGroups = state.groups.map(g => 
                     g.id === tempGroupId ? { ...g, ...tempGroup } : g
                 );

@@ -557,7 +557,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
             scales: {
                 x: {
                     display: true,
-                    grace: 5, // Add default grace for x-axis
+                    grace: '5%', // Percentage-based grace scales proportionally with data
                     grid: {
                         display: true,
                         color: "#e5e7eb",
@@ -593,7 +593,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
                 y: {
                     display: true,
                     beginAtZero: true,
-                    grace: 5, // Add default grace for y-axis
+                    grace: '5%', // Percentage-based grace scales proportionally with data
                     grid: {
                         display: true,
                         color: "#e5e7eb",
@@ -772,7 +772,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
             scales: {
                 x: {
                     display: true,
-                    grace: 5,
+                    grace: '5%',
                     grid: {
                         display: true,
                         color: "#e5e7eb",
@@ -804,7 +804,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
                 y: {
                     display: true,
                     beginAtZero: true,
-                    grace: 5,
+                    grace: '5%',
                     grid: {
                         display: true,
                         color: "#e5e7eb",
@@ -842,7 +842,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
         scales: {
             x: {
                 display: true,
-                grace: 5, // Add default grace for x-axis
+                grace: '5%', // Percentage-based grace scales proportionally with data
                 grid: {
                     display: true,
                     color: "#e5e7eb",
@@ -878,7 +878,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
             y: {
                 display: true,
                 beginAtZero: true,
-                grace: 5, // Add default grace for y-axis
+                grace: '5%', // Percentage-based grace scales proportionally with data
                 grid: {
                     display: true,
                     color: "#e5e7eb",

@@ -2,7 +2,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 interface MoreTabProps {
     axis: 'x' | 'y'
@@ -14,6 +14,36 @@ interface MoreTabProps {
 export function MoreTab({ axis, config, onUpdate, updateConfig }: MoreTabProps) {
     const [axisLineDropdownOpen, setAxisLineDropdownOpen] = useState(false)
     const [scaleConfigDropdownOpen, setScaleConfigDropdownOpen] = useState(false)
+
+    // Track grace mode independently so clearing the input doesn't break percent mode
+    const [graceIsPercent, setGraceIsPercent] = useState(() => {
+        const g = config?.grace;
+        if (typeof g === 'string' && g.endsWith('%')) return true;
+        if (g === undefined || g === null) return true; // default to percent
+        return false;
+    });
+
+    // Sync mode if config.grace changes externally (e.g. preset applied)
+    useEffect(() => {
+        const g = config?.grace;
+        if (typeof g === 'string' && g.endsWith('%')) {
+            setGraceIsPercent(true);
+        } else if (g !== undefined && g !== null && typeof g === 'number') {
+            setGraceIsPercent(false);
+        }
+    }, [config?.grace]);
+
+    // Extract the numeric part of grace for the input
+    // IMPORTANT: 0 is a valid grace value — don't use || which treats 0 as falsy
+    const graceNumericValue = (() => {
+        const g = config?.grace;
+        if (typeof g === 'string' && g.endsWith('%')) {
+            const parsed = parseFloat(g);
+            return isNaN(parsed) ? 5 : parsed;
+        }
+        if (typeof g === 'number') return g;
+        return 5;
+    })();
 
     return (
         <div className="space-y-2 overflow-y-auto overflow-x-hidden h-full">
@@ -134,9 +164,9 @@ export function MoreTab({ axis, config, onUpdate, updateConfig }: MoreTabProps) 
                     </svg>
                 </div>
 
-                {/* Dropdown Content */}
+                {/* Dropdown Content — NO overflow-hidden so the tooltip can escape */}
                 {scaleConfigDropdownOpen && (
-                    <div className="bg-blue-50 rounded-b-lg p-3 space-y-3 relative overflow-hidden border-x border-b border-blue-100">
+                    <div className="bg-blue-50 rounded-b-lg p-3 space-y-3 relative border-x border-b border-blue-100">
                         {/* Scale Bounds */}
                         <div className="space-y-1">
                             <Label className="text-xs font-medium">Scale Bounds</Label>
@@ -167,16 +197,39 @@ export function MoreTab({ axis, config, onUpdate, updateConfig }: MoreTabProps) 
                         {/* Grace */}
                         <div className="space-y-1">
                             <Label className="text-xs font-medium">Grace</Label>
-                            <Input
-                                type="number"
-                                value={config?.grace ?? 5}
-                                onChange={(e) => updateConfig('grace', e.target.value ? Number(e.target.value) : 5)}
-                                placeholder="5"
-                                className="h-8 text-xs"
-                                min={0}
-                                step={0.1}
-                                disabled={config?.bounds === 'data'}
-                            />
+                            <div className="flex items-center gap-1">
+                                <Input
+                                    type="number"
+                                    value={graceNumericValue}
+                                    onChange={(e) => {
+                                        const num = e.target.value === '' ? 0 : Number(e.target.value);
+                                        updateConfig('grace', graceIsPercent ? `${num}%` : num);
+                                    }}
+                                    placeholder="5"
+                                    className="h-8 text-xs flex-1"
+                                    min={0}
+                                    step={1}
+                                    disabled={config?.bounds === 'data'}
+                                />
+                                <button
+                                    type="button"
+                                    className={`h-8 px-2.5 text-xs font-semibold rounded-md border transition-all flex-shrink-0 ${
+                                        graceIsPercent
+                                            ? 'bg-blue-600 text-white border-blue-600'
+                                            : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                                    }`}
+                                    disabled={config?.bounds === 'data'}
+                                    onClick={() => {
+                                        const newIsPercent = !graceIsPercent;
+                                        setGraceIsPercent(newIsPercent);
+                                        const num = graceNumericValue;
+                                        updateConfig('grace', newIsPercent ? `${num}%` : num);
+                                    }}
+                                    title={graceIsPercent ? 'Percentage mode (click for absolute)' : 'Absolute mode (click for percentage)'}
+                                >
+                                    {graceIsPercent ? '%' : '#'}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}

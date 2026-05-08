@@ -208,8 +208,23 @@ export function generateCustomLabelsFromConfig(chartConfig: any, chartData: any,
             return String(rawValue);
         }
 
-        const decimals = config.decimals ?? 0;
-        let formatted = numValue.toFixed(decimals);
+        // At this point numValue is guaranteed non-null (null case returns above)
+        const val = numValue as number;
+
+        // Smart auto-detect decimal places based on value magnitude and precision
+        const getSmartDecimals = (value: number, explicitDecimals?: number): number => {
+            if (explicitDecimals !== undefined && explicitDecimals !== null) return explicitDecimals;
+            const absVal = Math.abs(value);
+            const valueStr = String(value);
+            const dotIndex = valueStr.indexOf('.');
+            const valuePrecision = dotIndex >= 0 ? valueStr.length - dotIndex - 1 : 0;
+            if (absVal < 10) return Math.min(valuePrecision, 2);
+            if (absVal < 1000) return Math.min(valuePrecision, 1);
+            return 0;
+        };
+
+        const decimals = getSmartDecimals(val, config.decimals);
+        let formatted = val.toFixed(decimals);
 
         const thousandsSep = config.thousandsSeparator ?? ',';
         const decimalSep = config.decimalSeparator ?? '.';
@@ -222,8 +237,8 @@ export function generateCustomLabelsFromConfig(chartConfig: any, chartData: any,
             formatted = formatted.replace('.', decimalSep);
         }
 
-        if (config.abbreviateLargeNumbers && Math.abs(numValue) >= 1000) {
-            const absVal = Math.abs(numValue);
+        if (config.abbreviateLargeNumbers && Math.abs(val) >= 1000) {
+            const absVal = Math.abs(val);
             let abbrev = '';
             let divisor = 1;
 
@@ -232,7 +247,7 @@ export function generateCustomLabelsFromConfig(chartConfig: any, chartData: any,
             else if (absVal >= 1e6) { abbrev = 'M'; divisor = 1e6; }
             else if (absVal >= 1e3) { abbrev = 'K'; divisor = 1e3; }
 
-            formatted = (numValue / divisor).toFixed(decimals > 0 ? Math.min(decimals, 2) : 1) + abbrev;
+            formatted = (val / divisor).toFixed(decimals > 0 ? Math.min(decimals, 2) : 1) + abbrev;
         }
 
         const numberFormat = config.numberFormat || 'default';
@@ -244,19 +259,19 @@ export function generateCustomLabelsFromConfig(chartConfig: any, chartData: any,
                 formatted = formatted + '%';
                 break;
             case 'scientific':
-                formatted = numValue.toExponential(decimals);
+                formatted = val.toExponential(decimals);
                 break;
             case 'compact':
                 if (!config.abbreviateLargeNumbers) {
-                    const absVal = Math.abs(numValue);
-                    if (absVal >= 1e9) formatted = (numValue / 1e9).toFixed(1) + 'B';
-                    else if (absVal >= 1e6) formatted = (numValue / 1e6).toFixed(1) + 'M';
-                    else if (absVal >= 1e3) formatted = (numValue / 1e3).toFixed(1) + 'K';
+                    const absVal = Math.abs(val);
+                    if (absVal >= 1e9) formatted = (val / 1e9).toFixed(1) + 'B';
+                    else if (absVal >= 1e6) formatted = (val / 1e6).toFixed(1) + 'M';
+                    else if (absVal >= 1e3) formatted = (val / 1e3).toFixed(1) + 'K';
                 }
                 break;
         }
 
-        if (numValue > 0 && config.showPlusSign) {
+        if (val > 0 && config.showPlusSign) {
             formatted = '+' + formatted;
         }
 

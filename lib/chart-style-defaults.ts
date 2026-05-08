@@ -69,6 +69,7 @@ function buildConfig(overrides: Record<string, any>): Record<string, any> {
 function axisScales(opts: {
   gridColor?: string; gridDisplay?: boolean; tickColor?: string;
   axisColor?: string; beginAtZero?: boolean; xDisplay?: boolean; yDisplay?: boolean;
+  xTitle?: string; yTitle?: string; titleColor?: string;
 } = {}): Record<string, any> {
   return {
     x: {
@@ -76,6 +77,7 @@ function axisScales(opts: {
       grid: { display: opts.gridDisplay ?? true, color: opts.gridColor || '#e5e7eb' },
       ticks: { color: opts.tickColor || '#6b7280', font: { size: 11 } },
       border: { display: true, color: opts.axisColor || '#d1d5db' },
+      ...(opts.xTitle ? { title: { display: true, text: opts.xTitle, color: opts.titleColor || opts.tickColor || '#6b7280', font: { size: 12, weight: '600' } } } : {}),
     },
     y: {
       display: opts.yDisplay ?? true,
@@ -83,6 +85,7 @@ function axisScales(opts: {
       grid: { display: opts.gridDisplay ?? true, color: opts.gridColor || '#e5e7eb' },
       ticks: { color: opts.tickColor || '#6b7280', font: { size: 11 } },
       border: { display: true, color: opts.axisColor || '#d1d5db' },
+      ...(opts.yTitle ? { title: { display: true, text: opts.yTitle, color: opts.titleColor || opts.tickColor || '#6b7280', font: { size: 12, weight: '600' } } } : {}),
     },
   }
 }
@@ -105,7 +108,7 @@ export const CHART_STYLE_PRESETS: ChartStylePreset[] = [
       baseBorderColors: [],
     },
     configSnapshot: buildConfig({
-      scales: axisScales({ gridColor: '#e0f2fe', tickColor: '#0369a1', axisColor: '#bae6fd' }),
+      scales: axisScales({ gridColor: '#e0f2fe', tickColor: '#0369a1', axisColor: '#bae6fd', xTitle: 'Category', yTitle: 'Value', titleColor: '#0369a1' }),
       titleColor: '#0c4a6e',
       subtitleColor: '#0369a1',
       legendColor: '#0369a1',
@@ -134,8 +137,8 @@ export const CHART_STYLE_PRESETS: ChartStylePreset[] = [
     configSnapshot: buildConfig({
       background: { type: 'color', color: '#fffbeb', opacity: 100 },
       scales: {
-        x: { grid: { display: false }, ticks: { color: '#92400e' }, border: { color: '#fde68a' } },
-        y: { grid: { color: '#fef3c7' }, ticks: { color: '#92400e' }, border: { display: false } }
+        x: { grid: { display: false }, ticks: { color: '#92400e' }, border: { color: '#fde68a' }, title: { display: true, text: 'Items', color: '#92400e', font: { size: 12, weight: '600' } } },
+        y: { grid: { color: '#fef3c7' }, ticks: { color: '#92400e' }, border: { display: false }, title: { display: true, text: 'Count', color: '#92400e', font: { size: 12, weight: '600' } } }
       },
       titleColor: '#78350f',
       titleFont: { size: 20, weight: '800' },
@@ -169,8 +172,8 @@ export const CHART_STYLE_PRESETS: ChartStylePreset[] = [
     configSnapshot: buildConfig({
       background: { type: 'gradient', gradientType: 'linear', gradientDirection: '135deg', gradientColor1: '#0f0f23', gradientColor2: '#1a1a3e', opacity: 100 },
       scales: {
-        x: { grid: { display: false }, ticks: { color: 'rgba(255,255,255,0.6)' }, border: { color: 'rgba(255,255,255,0.3)', width: 2 } },
-        y: { grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false }, ticks: { color: 'rgba(255,255,255,0.6)' }, border: { display: false } }
+        x: { grid: { display: false }, ticks: { color: 'rgba(255,255,255,0.6)' }, border: { color: 'rgba(255,255,255,0.3)', width: 2 }, title: { display: true, text: 'Category', color: 'rgba(255,255,255,0.5)', font: { size: 12, weight: '600' } } },
+        y: { grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false }, ticks: { color: 'rgba(255,255,255,0.6)' }, border: { display: false }, title: { display: true, text: 'Value', color: 'rgba(255,255,255,0.5)', font: { size: 12, weight: '600' } } }
       },
       titleColor: '#ffffff',
       subtitleColor: 'rgba(255,255,255,0.6)',
@@ -202,8 +205,8 @@ export const CHART_STYLE_PRESETS: ChartStylePreset[] = [
     },
     configSnapshot: buildConfig({
       scales: {
-        x: { grid: { display: false }, ticks: { color: '#64748b' }, border: { color: '#e2e8f0' } },
-        y: { grid: { color: '#f1f5f9' }, ticks: { color: '#64748b' }, border: { display: false } }
+        x: { grid: { display: false }, ticks: { color: '#64748b' }, border: { color: '#e2e8f0' }, title: { display: true, text: 'Segment', color: '#64748b', font: { size: 12, weight: '500' } } },
+        y: { grid: { color: '#f1f5f9' }, ticks: { color: '#64748b' }, border: { display: false }, title: { display: true, text: 'Metric', color: '#64748b', font: { size: 12, weight: '500' } } }
       },
       titleColor: '#0f172a',
       subtitleDisplay: false,
@@ -268,7 +271,7 @@ export const CHART_STYLE_PRESETS: ChartStylePreset[] = [
     },
     configSnapshot: buildConfig({
       fillArea: true,
-      scales: axisScales({ gridColor: '#f0f9ff', tickColor: '#0369a1', axisColor: '#bae6fd' }),
+      scales: axisScales({ gridColor: '#f0f9ff', tickColor: '#0369a1', axisColor: '#bae6fd', xTitle: 'Period', yTitle: 'Value', titleColor: '#0369a1' }),
       titleColor: '#0c4a6e',
       subtitleColor: '#0369a1',
       legendColor: '#0369a1',
@@ -298,7 +301,7 @@ export const CHART_STYLE_PRESETS: ChartStylePreset[] = [
       fillArea: false,
       showBorder: true,
       background: { type: 'gradient', gradientType: 'linear', gradientDirection: 'to bottom', gradientColor1: '#0f0f23', gradientColor2: '#1e1b4b', opacity: 100 },
-      scales: axisScales({ gridColor: 'rgba(255,255,255,0.06)', tickColor: 'rgba(255,255,255,0.5)', axisColor: 'rgba(255,255,255,0.1)' }),
+      scales: axisScales({ gridColor: 'rgba(255,255,255,0.06)', tickColor: 'rgba(255,255,255,0.5)', axisColor: 'rgba(255,255,255,0.1)', xTitle: 'Time', yTitle: 'Amplitude', titleColor: 'rgba(255,255,255,0.4)' }),
       titleColor: '#ffffff',
       subtitleColor: 'rgba(255,255,255,0.5)',
       legendColor: 'rgba(255,255,255,0.7)',
@@ -608,7 +611,7 @@ export const CHART_STYLE_PRESETS: ChartStylePreset[] = [
     },
     configSnapshot: buildConfig({
       background: { type: 'color', color: '#fafafa', opacity: 100 },
-      scales: { x: { grid: { display: false }, ticks: { color: '#a1a1aa', font: { size: 10 } }, border: { display: false } }, y: { display: false } },
+      scales: axisScales({ xDisplay: true, yDisplay: true, gridDisplay: false, tickColor: '#a1a1aa', axisColor: '#e5e7eb', xTitle: 'Group', yTitle: 'Amount' }),
       titleColor: '#18181b',
       titleFont: { size: 16, weight: '600' },
       subtitleDisplay: false,
@@ -637,8 +640,8 @@ export const CHART_STYLE_PRESETS: ChartStylePreset[] = [
     },
     configSnapshot: buildConfig({
       scales: {
-        x: { grid: { display: true, color: '#e5e7eb' }, ticks: { color: '#374151', font: { size: 11, weight: 'bold' } }, border: { color: '#9ca3af' } },
-        y: { grid: { display: true, color: '#e5e7eb' }, ticks: { color: '#374151', font: { size: 11 } }, border: { color: '#9ca3af' } },
+        x: { grid: { display: true, color: '#e5e7eb' }, ticks: { color: '#374151', font: { size: 11, weight: 'bold' } }, border: { color: '#9ca3af' }, title: { display: true, text: 'Items', color: '#374151', font: { size: 12, weight: '700' } } },
+        y: { grid: { display: true, color: '#e5e7eb' }, ticks: { color: '#374151', font: { size: 11 } }, border: { color: '#9ca3af' }, title: { display: true, text: 'Quantity', color: '#374151', font: { size: 12, weight: '700' } } },
       },
       titleColor: '#111827',
       titleFont: { size: 16, weight: '700' },
@@ -703,7 +706,7 @@ export const CHART_STYLE_PRESETS: ChartStylePreset[] = [
     },
     configSnapshot: buildConfig({
       background: { type: 'gradient', gradientType: 'linear', gradientDirection: '180deg', gradientColor1: '#0c0a09', gradientColor2: '#1c1917', opacity: 100 },
-      scales: { x: { grid: { display: false }, ticks: { color: 'rgba(255,255,255,0.5)' }, border: { color: 'rgba(255,255,255,0.1)' } }, y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.5)' }, border: { display: false } } },
+      scales: axisScales({ gridColor: 'rgba(255,255,255,0.05)', tickColor: 'rgba(255,255,255,0.5)', axisColor: 'rgba(255,255,255,0.1)', xTitle: 'Segments', yTitle: 'Density' }),
       titleColor: '#fafaf9',
       subtitleColor: 'rgba(255,255,255,0.5)',
       legendPosition: 'bottom',
@@ -733,8 +736,8 @@ export const CHART_STYLE_PRESETS: ChartStylePreset[] = [
     configSnapshot: buildConfig({
       background: { type: 'color', color: '#ffffff', opacity: 100 },
       scales: {
-        x: { grid: { display: false }, ticks: { color: '#374151', font: { size: 11 } }, border: { color: '#d1d5db' } },
-        y: { grid: { color: '#f3f4f6' }, ticks: { color: '#6b7280', font: { size: 11 } }, border: { display: false } },
+        x: { grid: { display: false }, ticks: { color: '#374151', font: { size: 11 } }, border: { color: '#d1d5db' }, title: { display: true, text: 'Category', color: '#374151', font: { size: 12, weight: '600' } } },
+        y: { grid: { color: '#f3f4f6' }, ticks: { color: '#6b7280', font: { size: 11 } }, border: { display: false }, title: { display: true, text: 'Amount', color: '#6b7280', font: { size: 12, weight: '600' } } },
       },
       titleColor: '#111827',
       titleFont: { size: 18, weight: '700' },
@@ -770,7 +773,7 @@ export const CHART_STYLE_PRESETS: ChartStylePreset[] = [
     },
     configSnapshot: buildConfig({
       fillArea: true,
-      scales: { x: { grid: { display: false }, ticks: { color: '#a78bfa' }, border: { display: false } }, y: { grid: { color: '#f5f3ff' }, ticks: { color: '#8b5cf6' }, border: { display: false } } },
+      scales: axisScales({ gridColor: '#f5f3ff', tickColor: '#8b5cf6', axisColor: '#ede9fe', xTitle: 'Timeline', yTitle: 'Growth' }),
       titleColor: '#4c1d95',
       subtitleColor: '#7c3aed',
       legendDisplay: false,
@@ -1115,6 +1118,15 @@ export const CHART_STYLE_PRESETS: ChartStylePreset[] = [
     configSnapshot: buildConfig({ fillArea: true, titleColor: '#111827', titleFont: { size: 18, weight: '700' }, subtitleColor: '#4b5563', legendColor: '#374151', legendPosition: 'top', datalabelsDisplay: false,
       scales: { r: { display: true, grid: { color: '#e5e7eb' }, angleLines: { color: '#d1d5db' }, pointLabels: { color: '#374151', font: { size: 12, weight: 'bold' } }, ticks: { display: false } } } }),
     datasetStyle: { borderWidth: 2, tension: 0, fill: true, pointRadius: 4, borderRadius: 0 }, dimensions: { width: '700px', height: '650px' }, category: 'professional', tags: ['radar','corporate','business','blue'], isOfficial: true, sortOrder: 50 },
+
+  { id: 'preset-astra-glow', name: 'Astra Glow', description: 'Modern AI-inspired dark theme with glowing accents', chartType: 'bar',
+    colorStrategy: { mode: 'slice', singleColor: null, baseColors: ['#8b5cf6','#06b6d4','#d946ef','#2dd4bf','#a855f7','#22d3ee','#ec4899','#10b981'], baseBorderColors: [] },
+    configSnapshot: buildConfig({
+      background: { type: 'gradient', gradientType: 'linear', gradientDirection: 'to bottom right', gradientColor1: '#0f172a', gradientColor2: '#1e1b4b', opacity: 100 },
+      scales: axisScales({ gridColor: 'rgba(255,255,255,0.05)', tickColor: 'rgba(255,255,255,0.6)', axisColor: 'rgba(255,255,255,0.1)', xTitle: 'Dimension', yTitle: 'Intensity', titleColor: '#8b5cf6' }),
+      titleColor: '#ffffff', titleFont: { size: 22, weight: '800' }, subtitleColor: '#94a3b8', legendColor: '#cbd5e1', datalabelsColor: '#ffffff',
+    }),
+    datasetStyle: { borderWidth: 0, tension: 0, fill: false, pointRadius: 0, borderRadius: 8 }, dimensions: { width: '800px', height: '600px' }, category: 'dark', tags: ['sparkle','ai','glow','modern'], isOfficial: true, sortOrder: 50.5 },
 
   { id: 'preset-earth-radar', name: 'Earth Radar', description: 'Warm earthy tones on a creamy background', chartType: 'radar',
     colorStrategy: { mode: 'single', singleColor: '#92400e', baseColors: ['#92400e','#b45309','#d97706'], baseBorderColors: ['#78350f'] },

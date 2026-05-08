@@ -168,6 +168,32 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
         processedChartConfig.indexAxis = 'y';
     }
 
+    // ── Custom Grace → suggestedMax (mirror of chart_generator.tsx logic) ──
+    // Chart.js native grace % is unreliable, so we compute suggestedMax ourselves.
+    if (processedChartConfig.scales?.y) {
+        const graceRaw = processedChartConfig.scales.y.grace;
+        if (graceRaw !== undefined && graceRaw !== null && graceRaw !== 0 && graceRaw !== '0%') {
+            let dataMax = -Infinity;
+            for (const ds of processedChartData.datasets) {
+                if (!ds.data) continue;
+                for (const v of ds.data) {
+                    const num = typeof v === 'number' ? v : (v as any)?.y;
+                    if (typeof num === 'number' && isFinite(num) && num > dataMax) dataMax = num;
+                }
+            }
+            if (isFinite(dataMax)) {
+                const isPercent = typeof graceRaw === 'string' && graceRaw.endsWith('%');
+                if (isPercent) {
+                    const pct = parseFloat(graceRaw) || 0;
+                    processedChartConfig.scales.y.suggestedMax = dataMax + (dataMax * pct / 100);
+                } else if (typeof graceRaw === 'number') {
+                    processedChartConfig.scales.y.suggestedMax = dataMax + graceRaw;
+                }
+            }
+            delete processedChartConfig.scales.y.grace;
+        }
+    }
+
     if (processedChartConfig.background?.type === 'image' && processedChartConfig.background?.imageUrl) {
         processedChartConfig.background.imageUrl = await convertImageToBase64(processedChartConfig.background.imageUrl);
     }

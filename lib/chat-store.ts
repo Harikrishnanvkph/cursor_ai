@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { useChartStore, type SupportedChartType, type ExtendedChartData } from './chart-store';
+import { getDefaultConfigForType, type ExtendedChartOptions } from './chart-defaults';
 import { useTemplateStore } from './template-store';
 import { extractTemplateStructure, type TemplateStructureMetadata } from './template-utils';
 import { createExpiringStorage } from './storage-utils';
@@ -48,6 +49,60 @@ const getBaseUrl = () => {
   return process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000';
 }
 const globalServerAPILink = `${getBaseUrl()}/api/process-chart-enhanced`
+
+/**
+ * Dimension-system properties the AI has no concept of — never override these.
+ * Everything else (background, visualSettings, etc.) is user-modifiable via AI chat.
+ */
+const AI_PROTECTED_CONFIG_KEYS = new Set([
+  'responsive',
+  'manualDimensions',
+  'dynamicDimension',
+  'templateDimensions',
+  'originalDimensions',
+  'width',
+  'height',
+]);
+
+/**
+ * Deep-merge AI config overrides into the current chart config.
+ * - Frontend-owned properties (dimensions, background, visual settings) are never overridden
+ * - Objects are recursively merged (preserves properties AI didn't return)
+ * - Arrays and primitives from the override replace the base value
+ * - Properties only in the base are preserved
+ */
+function deepMergeChartConfig(
+  base: Record<string, any>,
+  override: Record<string, any>
+): Record<string, any> {
+  const result = { ...base };
+
+  for (const key of Object.keys(override)) {
+    // Skip frontend-owned properties — AI must never override these
+    if (AI_PROTECTED_CONFIG_KEYS.has(key)) continue;
+
+    const baseVal = base[key];
+    const overrideVal = override[key];
+
+    if (
+      overrideVal !== null &&
+      overrideVal !== undefined &&
+      typeof overrideVal === 'object' &&
+      !Array.isArray(overrideVal) &&
+      typeof baseVal === 'object' &&
+      !Array.isArray(baseVal) &&
+      baseVal !== null
+    ) {
+      // Both are plain objects: recurse to preserve nested properties
+      result[key] = deepMergeChartConfig(baseVal, overrideVal);
+    } else {
+      // Override wins for primitives, arrays, null, and type mismatches
+      result[key] = overrideVal;
+    }
+  }
+
+  return result;
+}
 
 // In-flight request control
 let currentRequestController: AbortController | null = null;
@@ -452,6 +507,44 @@ export const useChatStore = create<ChatStore>()(
             throw new Error("Invalid response: missing chart data");
           }
 
+          // Build chartConfig: for creation, frontend builds from defaults + AI metadata
+          // For modification, deep-merge AI's changes into current config to preserve preset styling
+          let finalChartConfig: ExtendedChartOptions;
+          if (result.chartConfig) {
+            // Modification flow: deep-merge AI's config INTO current config
+            // This preserves preset styling (background, dimensions, fonts, visual settings, etc.)
+            // while applying AI's specific changes (title text, legend position, scale tweaks, etc.)
+            const currentConfig = useChartStore.getState().chartConfig;
+            finalChartConfig = deepMergeChartConfig(
+              JSON.parse(JSON.stringify(currentConfig)),
+              result.chartConfig
+            ) as ExtendedChartOptions;
+          } else {
+            // Creation flow: build config from frontend defaults
+            finalChartConfig = JSON.parse(JSON.stringify(getDefaultConfigForType(result.chartType)));
+
+            // Populate with AI-provided text metadata
+            if (result.title && finalChartConfig.plugins?.title) {
+              (finalChartConfig.plugins.title as any).text = result.title;
+              (finalChartConfig.plugins.title as any).display = true;
+            }
+            if (result.subtitle && finalChartConfig.plugins?.subtitle) {
+              (finalChartConfig.plugins.subtitle as any).text = result.subtitle;
+              (finalChartConfig.plugins.subtitle as any).display = true;
+            }
+            // Set axis titles for chart types that have scales
+            if (finalChartConfig.scales) {
+              if (result.xAxisTitle && (finalChartConfig.scales as any).x?.title) {
+                (finalChartConfig.scales as any).x.title.text = result.xAxisTitle;
+                (finalChartConfig.scales as any).x.title.display = true;
+              }
+              if (result.yAxisTitle && (finalChartConfig.scales as any).y?.title) {
+                (finalChartConfig.scales as any).y.title.text = result.yAxisTitle;
+                (finalChartConfig.scales as any).y.title.display = true;
+              }
+            }
+          }
+
           // Ensure user_message exists with fallback
           const userMessage = result.user_message ||
             `Chart ${result.action === 'modify' ? 'modified' : 'created'} successfully`;
@@ -463,7 +556,7 @@ export const useChatStore = create<ChatStore>()(
             chartSnapshot: {
               chartType: result.chartType,
               chartData: result.chartData,
-              chartConfig: result.chartConfig
+              chartConfig: finalChartConfig
             },
             action: result.action || 'create',
             changes: result.changes || []
