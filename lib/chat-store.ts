@@ -444,13 +444,22 @@ export const useChatStore = create<ChatStore>()(
           }
         }
 
+        // Build currentChartState from the LIVE chart store, not the stale chat store snapshot.
+        // This ensures manual editor changes (e.g., user switched chart type from bar to line)
+        // are reflected in what gets sent to the AI.
+        const liveChartState = currentChartState ? {
+          chartType: useChartStore.getState().chartType,
+          chartData: useChartStore.getState().chartData,
+          chartConfig: useChartStore.getState().chartConfig,
+        } : null;
+
         const requestBody: any = {
           input: finalInput,
           conversationId: currentConversationId,
           messageHistory: compactHistory
         };
-        if (currentChartState) {
-          requestBody.currentChartState = currentChartState;
+        if (liveChartState) {
+          requestBody.currentChartState = liveChartState;
         }
 
         // Include template structure if a template is selected
@@ -497,14 +506,27 @@ export const useChatStore = create<ChatStore>()(
             keys: Object.keys(result)
           });
 
-          // Validate response has required fields
-          if (!result.chartType || !result.chartData) {
-            console.error('Frontend - Validation failed:', {
-              chartType: result.chartType,
-              hasChartData: !!result.chartData,
-              result: result
+          // Handle clarification / no-change responses — do NOT update the chart
+          // Detection: AI returned no chartData, OR the changes array is empty (no actual modifications).
+          // This prevents reverting manual editor changes (e.g., user switched bar→line)
+          // when the AI just asks for clarification or returns unchanged data.
+          const hasNoChanges = !result.changes || result.changes.length === 0;
+          const hasNoChartData = !result.chartType || !result.chartData;
+
+          if (hasNoChartData || (hasNoChanges && result.action === 'modify')) {
+            const clarificationMsg: ChatMessage = {
+              role: 'assistant',
+              content: result.user_message || 'Could you provide more details?',
+              timestamp: Date.now(),
+              action: 'modify',
+              changes: []
+            };
+            const updatedMsgs = [...messages, userMsg, clarificationMsg];
+            set({
+              messages: updatedMsgs,
+              isProcessing: false
             });
-            throw new Error("Invalid response: missing chart data");
+            return;
           }
 
           // Build chartConfig: for creation, frontend builds from defaults + AI metadata
@@ -519,6 +541,22 @@ export const useChatStore = create<ChatStore>()(
               JSON.parse(JSON.stringify(currentConfig)),
               result.chartConfig
             ) as ExtendedChartOptions;
+
+            // Sync visualSettings with AI-driven plugin modifications
+            if (result.chartConfig.plugins) {
+              if (result.chartConfig.plugins.datalabels !== undefined) {
+                if (!finalChartConfig.visualSettings) finalChartConfig.visualSettings = {} as any;
+                finalChartConfig.visualSettings.showLabels = result.chartConfig.plugins.datalabels.display !== false;
+                
+                // Sync customLabelsConfig to match datalabels
+                if (!finalChartConfig.plugins.customLabelsConfig) finalChartConfig.plugins.customLabelsConfig = {};
+                (finalChartConfig.plugins.customLabelsConfig as any).display = result.chartConfig.plugins.datalabels.display;
+              }
+              if (result.chartConfig.plugins.legend !== undefined) {
+                if (!finalChartConfig.visualSettings) finalChartConfig.visualSettings = {} as any;
+                finalChartConfig.visualSettings.showLegend = result.chartConfig.plugins.legend.display !== false;
+              }
+            }
           } else {
             // Creation flow: build config from frontend defaults
             finalChartConfig = JSON.parse(JSON.stringify(getDefaultConfigForType(result.chartType)));
@@ -549,12 +587,24 @@ export const useChatStore = create<ChatStore>()(
           const userMessage = result.user_message ||
             `Chart ${result.action === 'modify' ? 'modified' : 'created'} successfully`;
 
+          // Safety net: for modifications, preserve the current chart type from the live store.
+          // The user may have manually switched chart types (e.g., bar→line) via the editor.
+          // The AI might return the old type from conversation history — override it.
+          let finalChartType = result.chartType;
+          if (result.action === 'modify') {
+            const liveType = useChartStore.getState().chartType;
+            if (liveType && liveType !== result.chartType) {
+              console.log(`Frontend - Chart type override: AI returned "${result.chartType}", using live store "${liveType}"`);
+              finalChartType = liveType;
+            }
+          }
+
           const assistantMsg: ChatMessage = {
             role: 'assistant',
             content: userMessage,
             timestamp: Date.now(),
             chartSnapshot: {
-              chartType: result.chartType,
+              chartType: finalChartType,
               chartData: result.chartData,
               chartConfig: finalChartConfig
             },
