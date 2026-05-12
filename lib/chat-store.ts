@@ -6,6 +6,7 @@ import { useTemplateStore } from './template-store';
 import { extractTemplateStructure, type TemplateStructureMetadata } from './template-utils';
 import { createExpiringStorage } from './storage-utils';
 import { useFormatGalleryStore } from './stores/format-gallery-store';
+import { extractFormatStructure, formatStructureForPrompt } from './format-utils';
 import type { ChartOptions } from 'chart.js';
 
 // Helper function to get the appropriate initial message based on template/format mode
@@ -134,25 +135,7 @@ export type ConversationContext = {
   topic: string;
 };
 
-// Undo mechanism types
-export type UndoableOperation = {
-  id: string;
-  timestamp: number;
-  type: 'ai_chart_creation' | 'ai_chart_modification' | 'ai_chart_update' | 'manual_config_change' | 'manual_dataset_change' | 'manual_design_change' | 'manual_chart_type_change';
-  previousState: ChartSnapshot | null;
-  currentState: ChartSnapshot;
-  userMessage: string;
-  assistantMessage: string;
-  conversationId: string;
-  toolSource?: string;
-  changeDescription?: string;
-};
-
-export type UndoStack = {
-  operations: UndoableOperation[];
-  maxOperations: number;
-  currentIndex: number;
-};
+// Removed UndoableOperation and UndoStack types since we use zundo
 
 // Generate unique ID for conversations (UUID v4 format)
 const generateId = () => {
@@ -210,30 +193,7 @@ interface ChatStore {
   historyConversationId: string | null;
   backendConversationId: string | null; // NEW: Track if chart is already saved to backend
 
-  // Undo mechanism
-  undoStack: UndoStack;
-  canUndo: boolean;
-  canRedo: boolean;
-
-  // Enhanced methods
-  addMessage: (msg: ChatMessage) => void;
-  setMessages: (msgs: ChatMessage[]) => void;
-  clearMessages: () => void;
-  startNewConversation: (keepChartData?: boolean) => void;
-  continueConversation: (input: string) => Promise<void>;
-  modifyCurrentChart: (modification: string) => Promise<void>;
-  resetConversation: () => void;
-  setProcessing: (processing: boolean) => void;
-  updateChartState: (snapshot: ChartSnapshot) => void;
   setBackendConversationId: (id: string | null) => void; // NEW: Setter for backend conversation ID
-
-  // Undo methods
-  addToUndoStack: (operation: Omit<UndoableOperation, 'id' | 'timestamp'>) => void;
-  undo: () => Promise<boolean>;
-  redo: () => Promise<boolean>;
-  clearUndoStack: () => void;
-  getUndoHistory: () => UndoableOperation[];
-  captureUndoPoint: (operation: Omit<UndoableOperation, 'id' | 'timestamp' | 'conversationId' | 'userMessage' | 'assistantMessage'>) => void;
 }
 
 // Default initial message (fallback)
@@ -241,68 +201,6 @@ const defaultInitialMessage: ChatMessage = {
   role: 'assistant',
   content: 'Hi! Describe the chart you want to create, or ask me to modify an existing chart.',
   timestamp: Date.now()
-};
-
-// Helper function to capture undo points
-const captureUndoPoint = (operation: Omit<UndoableOperation, 'id' | 'timestamp' | 'conversationId' | 'userMessage' | 'assistantMessage'>) => {
-  const { useChatStore } = require('./chat-store');
-  const chatStore = useChatStore.getState();
-
-  // Get current state from chart-store if chat-store doesn't have it
-  let currentState = chatStore.currentChartState;
-  if (!currentState) {
-    try {
-      const { useChartStore } = require('./chart-store');
-      const chartStore = useChartStore.getState();
-      if (chartStore.hasJSON && chartStore.chartType && chartStore.chartData && chartStore.chartConfig) {
-        currentState = {
-          chartType: chartStore.chartType,
-          chartData: chartStore.chartData,
-          chartConfig: chartStore.chartConfig
-        };
-        // Update chat-store's currentChartState
-        chatStore.updateChartState(currentState);
-      }
-    } catch (error) {
-      console.warn('Could not get chart state from chart-store:', error);
-    }
-  }
-
-  // Use the currentState from operation if we still don't have one
-  if (!currentState && operation.currentState) {
-    currentState = operation.currentState;
-    chatStore.updateChartState(currentState);
-  }
-
-  // Only proceed if we have a current state
-  if (currentState) {
-    // Check if there are actual changes by comparing the states
-    const hasChanges = !operation.previousState ||
-      JSON.stringify(operation.previousState?.chartData) !== JSON.stringify(operation.currentState.chartData) ||
-      JSON.stringify(operation.previousState?.chartConfig) !== JSON.stringify(operation.currentState.chartConfig) ||
-      operation.previousState?.chartType !== operation.currentState.chartType;
-
-    if (hasChanges) {
-      // Ensure previousState is set from currentState if not provided
-      const previousState = operation.previousState || currentState;
-
-      chatStore.addToUndoStack({
-        ...operation,
-        previousState: previousState,
-        currentState: operation.currentState,
-        conversationId: chatStore.currentConversationId,
-        userMessage: operation.changeDescription || 'Manual chart change',
-        assistantMessage: 'Chart updated via UI tools'
-      });
-
-      // Update currentChartState to the new state
-      chatStore.updateChartState(operation.currentState);
-    } else {
-      console.log('Skipping undo point - no actual changes detected');
-    }
-  } else {
-    console.warn('Cannot capture undo point - no current chart state available');
-  }
 };
 
 export const useChatStore = create<ChatStore>()(
@@ -315,15 +213,6 @@ export const useChatStore = create<ChatStore>()(
       isProcessing: false,
       historyConversationId: null,
       backendConversationId: null, // NEW: Track backend conversation ID for updates
-
-      // Initialize undo stack
-      undoStack: {
-        operations: [],
-        maxOperations: 10,
-        currentIndex: -1
-      },
-      canUndo: false,
-      canRedo: false,
 
       addMessage: (msg) => set({ messages: [...get().messages, msg] }),
 
@@ -338,15 +227,7 @@ export const useChatStore = create<ChatStore>()(
           currentChartState: null,
           conversationContext: null,
           historyConversationId: null,
-          backendConversationId: null, // Clear backend ID for new conversation
-          // Reset undo stack for new conversation
-          undoStack: {
-            operations: [],
-            maxOperations: 10,
-            currentIndex: -1
-          },
-          canUndo: false,
-          canRedo: false
+          backendConversationId: null // Clear backend ID for new conversation
         });
 
         // Only reset chart if not explicitly told to keep data
@@ -370,6 +251,13 @@ export const useChatStore = create<ChatStore>()(
 
         // Always hide JSON (welcome screen shown)
         useChartStore.getState().setHasJSON(false);
+
+        // Clear undo history for fresh start
+        try {
+          useChartStore.temporal.getState().clear();
+        } catch (e) {
+          console.warn('Could not clear temporal history:', e);
+        }
       },
 
       setBackendConversationId: (id) => set({ backendConversationId: id }),
@@ -406,8 +294,9 @@ export const useChatStore = create<ChatStore>()(
           try { controller.abort(); } catch { }
         }, REQUEST_TIMEOUT_MS);
 
-        // Build final input string by appending format notes if in format mode
+        // Build final input string by appending format structure if in format mode
         let finalInput = input;
+        let formatStructureData: any = null; // Will be added to request body
         const templateStore = useTemplateStore.getState();
         if (templateStore.generateMode === 'format') {
           try {
@@ -416,19 +305,19 @@ export const useChatStore = create<ChatStore>()(
             if (galleryStore.selectedFormatId) {
               const format = galleryStore.formats.find((f: any) => f.id === galleryStore.selectedFormatId) || 
                              galleryStore.userFormats.find((f: any) => f.id === galleryStore.selectedFormatId);
-              if (format && galleryStore.formatZoneNotes[format.id]) {
-                const notes = galleryStore.formatZoneNotes[format.id];
-                if (Object.keys(notes).length > 0) {
-                  finalInput += `\n\nAdditionally, please follow these instructions for the chart generation:\n`;
-                  Object.entries(notes).forEach(([zoneId, note]) => {
-                    const zoneName = format.skeleton?.zones?.find((z: any) => z.id === zoneId)?.type || zoneId;
-                    finalInput += `- For the ${zoneName} area: ${note}\n`;
-                  });
-                }
+              if (format) {
+                // Extract full format skeleton structure for the AI
+                const zoneNotes = galleryStore.formatZoneNotes[format.id] || {};
+                const formatStructure = extractFormatStructure(format, zoneNotes);
+                formatStructureData = formatStructure;
+
+                // Append human-readable format structure to the prompt so the AI
+                // understands the zone layout, character limits, and theme
+                finalInput += `\n\n${formatStructureForPrompt(formatStructure)}`;
               }
             }
           } catch (e) {
-            console.warn('Could not inject format notes:', e);
+            console.warn('Could not inject format structure:', e);
           }
         } else {
           // If we are generating a standard chart or template (NOT format mode), 
@@ -460,6 +349,11 @@ export const useChatStore = create<ChatStore>()(
         };
         if (liveChartState) {
           requestBody.currentChartState = liveChartState;
+        }
+
+        // Include format structure if in format mode (structured data for AI)
+        if (formatStructureData) {
+          requestBody.formatStructure = formatStructureData;
         }
 
         // Include template structure if a template is selected
@@ -669,10 +563,23 @@ export const useChatStore = create<ChatStore>()(
                   const formatStore = useFormatGalleryStore.getState();
                   const { extractContentFromChartData } = require('./variant-engine');
 
-                  // Always extract content package from AI result
-                  const contentPackage = result.chartData
-                    ? extractContentFromChartData(result.chartType, result.chartData, result.chartConfig)
-                    : null;
+                  // Build content package: prefer AI-generated formatContent, fall back to local extraction
+                  let contentPackage = null;
+                  if (result.formatContent && result.chartData) {
+                    // AI was format-aware and returned zone-specific content
+                    const { suggestChartTypes } = require('./variant-engine');
+                    contentPackage = {
+                      ...result.formatContent,
+                      chartData: { labels: result.chartData.labels, datasets: result.chartData.datasets },
+                      chartConfig: result.chartConfig || {},
+                      suggestedChartTypes: suggestChartTypes?.(result.chartType) || [result.chartType],
+                    };
+                    console.log('Format mode: Using AI-generated formatContent for zone text');
+                  } else if (result.chartData) {
+                    // Fallback: AI didn't return formatContent, extract locally from chart data
+                    contentPackage = extractContentFromChartData(result.chartType, result.chartData, result.chartConfig);
+                    console.log('Format mode: Falling back to local content extraction');
+                  }
 
                   if (formatStore.selectedFormatId && formatStore.formats.length > 0) {
                     // Format is pre-selected → auto-apply and close gallery
@@ -710,28 +617,14 @@ export const useChatStore = create<ChatStore>()(
               }
             }
 
-            // Capture undo point for AI-generated changes, but only if there are actual changes
-            if (result.action === 'create' || result.action === 'modify' || result.action === 'update') {
-              // Check if there are actual changes by comparing the states
-              const hasChanges = !currentChartState ||
-                JSON.stringify(currentChartState.chartData) !== JSON.stringify(assistantMsg.chartSnapshot.chartData) ||
-                JSON.stringify(currentChartState.chartConfig) !== JSON.stringify(assistantMsg.chartSnapshot.chartConfig) ||
-                currentChartState.chartType !== assistantMsg.chartSnapshot.chartType;
-
-              if (hasChanges) {
-                const operationType = result.action === 'create' ? 'ai_chart_creation' :
-                  result.action === 'modify' ? 'ai_chart_modification' : 'ai_chart_update';
-
-                get().addToUndoStack({
-                  type: operationType,
-                  previousState: currentChartState,
-                  currentState: assistantMsg.chartSnapshot,
-                  userMessage: input,
-                  assistantMessage: result.user_message,
-                  conversationId: currentConversationId,
-                  toolSource: 'ai-chat',
-                  changeDescription: `AI ${result.action}: ${input.slice(0, 50)}${input.length > 50 ? '...' : ''}`
-                });
+            // Undo is now handled by zundo in chart-store
+            // For brand-new chart creations, clear undo history so the user
+            // cannot undo back to the empty/default state.
+            if (result.action === 'create') {
+              try {
+                useChartStore.temporal.getState().clear();
+              } catch (e) {
+                console.warn('Could not clear temporal history:', e);
               }
             }
           }
@@ -802,153 +695,7 @@ export const useChatStore = create<ChatStore>()(
 
       setProcessing: (processing: boolean) => set({ isProcessing: processing }),
 
-      updateChartState: (snapshot: ChartSnapshot) => set({ currentChartState: snapshot }),
-
-      // Undo mechanism implementation
-      addToUndoStack: (operation: Omit<UndoableOperation, 'id' | 'timestamp'>) => {
-        // Check if we should debounce this operation
-        if (shouldDebounceUndoOperation(operation.type, operation.toolSource || '')) {
-          console.log('Debouncing undo operation:', operation.type, operation.toolSource);
-          return;
-        }
-
-        const { undoStack } = get();
-        const newOperation = {
-          ...operation,
-          id: generateId(),
-          timestamp: Date.now()
-        };
-
-        // Remove any operations after current index (when undoing then making new changes)
-        const operations = undoStack.operations.slice(0, undoStack.currentIndex + 1);
-
-        // Add new operation
-        const updatedOperations = [...operations, newOperation];
-
-        // Maintain max 10 operations
-        if (updatedOperations.length > undoStack.maxOperations) {
-          updatedOperations.shift(); // Remove oldest
-        }
-
-        const newCurrentIndex = updatedOperations.length - 1;
-
-        set({
-          undoStack: {
-            ...undoStack,
-            operations: updatedOperations,
-            currentIndex: newCurrentIndex
-          },
-          canUndo: newCurrentIndex >= 0,
-          canRedo: false // Can't redo after new operation
-        });
-      },
-
-      undo: async () => {
-        const { undoStack, currentChartState } = get();
-
-        if (undoStack.currentIndex < 0) return false;
-
-        const operation = undoStack.operations[undoStack.currentIndex];
-
-        // Restore previous state
-        if (operation.previousState) {
-          // Update chart store
-          useChartStore.getState().setFullChart({ ...operation.previousState, replaceMode: true });
-          useChartStore.getState().setHasJSON(true);
-
-          // Update chat store
-          set({ currentChartState: operation.previousState });
-
-          // Update history if this was a tracked conversation
-          if (operation.conversationId) {
-            const { useHistoryStore } = await import('./history-store');
-            const historyStore = useHistoryStore.getState();
-            const historyId = get().historyConversationId;
-
-            if (historyId) {
-              historyStore.updateConversation(historyId, {
-                snapshot: operation.previousState
-              });
-            }
-          }
-        }
-
-        // Update undo stack index
-        const newCurrentIndex = undoStack.currentIndex - 1;
-        set({
-          undoStack: {
-            ...undoStack,
-            currentIndex: newCurrentIndex
-          },
-          canUndo: newCurrentIndex >= 0,
-          canRedo: newCurrentIndex < undoStack.operations.length - 1
-        });
-
-        return true;
-      },
-
-      redo: async () => {
-        const { undoStack } = get();
-
-        if (undoStack.currentIndex >= undoStack.operations.length - 1) return false;
-
-        const nextIndex = undoStack.currentIndex + 1;
-        const operation = undoStack.operations[nextIndex];
-
-        // Restore the state that was undone
-        useChartStore.getState().setFullChart({ ...operation.currentState, replaceMode: true });
-        useChartStore.getState().setHasJSON(true);
-
-        set({
-          currentChartState: operation.currentState,
-          undoStack: {
-            ...undoStack,
-            currentIndex: nextIndex
-          },
-          canUndo: nextIndex >= 0,
-          canRedo: nextIndex < undoStack.operations.length - 1
-        });
-
-        // Update history
-        if (operation.conversationId) {
-          const { useHistoryStore } = await import('./history-store');
-          const historyStore = useHistoryStore.getState();
-          const historyId = get().historyConversationId;
-
-          if (historyId) {
-            historyStore.updateConversation(historyId, {
-              snapshot: operation.currentState
-            });
-          }
-        }
-
-        return true;
-      },
-
-      clearUndoStack: () => set({
-        undoStack: {
-          operations: [],
-          maxOperations: 10,
-          currentIndex: -1
-        },
-        canUndo: false,
-        canRedo: false
-      }),
-
-      getUndoHistory: () => get().undoStack.operations,
-
-      captureUndoPoint: (operation: Omit<UndoableOperation, 'id' | 'timestamp' | 'conversationId' | 'userMessage' | 'assistantMessage'>) => {
-        const { currentChartState, currentConversationId } = get();
-
-        if (currentChartState) {
-          get().addToUndoStack({
-            ...operation,
-            conversationId: currentConversationId,
-            userMessage: operation.changeDescription || 'Manual chart change',
-            assistantMessage: 'Chart updated via UI tools'
-          });
-        }
-      }
+      updateChartState: (snapshot: ChartSnapshot) => set({ currentChartState: snapshot })
     }),
     {
       name: (() => {
@@ -962,18 +709,6 @@ export const useChatStore = create<ChatStore>()(
       storage: typeof window !== 'undefined' ? createExpiringStorage('chat-store') : undefined,
       version: 2, // Increment version for undo functionality
       migrate: (persistedState: any, version: number) => {
-        if (version === 1) {
-          return {
-            ...persistedState,
-            undoStack: {
-              operations: [],
-              maxOperations: 10,
-              currentIndex: -1
-            },
-            canUndo: false,
-            canRedo: false
-          };
-        }
         return persistedState;
       },
       partialize: (state) => ({
@@ -983,20 +718,9 @@ export const useChatStore = create<ChatStore>()(
         conversationContext: state.conversationContext,
         isProcessing: state.isProcessing,
         historyConversationId: state.historyConversationId,
-        backendConversationId: state.backendConversationId,
-        undoStack: state.undoStack,
-        canUndo: state.canUndo,
-        canRedo: state.canRedo
+        backendConversationId: state.backendConversationId
       }),
     }
   )
 );
 
-// Export the captureUndoPoint function for use in other stores
-export { captureUndoPoint };
-
-// Register with bridge to break circular dependencies
-import { UndoBridge } from './services/undo-bridge';
-if (typeof window !== 'undefined') {
-  UndoBridge.register(captureUndoPoint);
-}

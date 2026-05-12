@@ -15,9 +15,13 @@ export function TypesTogglesPanel() {
     chartType,
     chartData,
     chartConfig,
+    getActiveChartConfig,
   } = useChartStore()
 
-  const visualSettings = chartConfig?.visualSettings || { fillArea: true, showBorder: true, showImages: true, showLabels: true, uniformityMode: 'uniform' as const };
+  // Read from the RESOLVED active config (per-dataset in single mode, per-group in grouped mode)
+  // This ensures toggles always reflect what the chart actually renders, even after undo/redo.
+  const activeConfig = getActiveChartConfig();
+  const visualSettings = activeConfig?.visualSettings || { fillArea: true, showBorder: true, showImages: true, showLabels: true, uniformityMode: 'uniform' as const };
   const fillArea = visualSettings.fillArea;
   const showBorder = visualSettings.showBorder;
   const showImages = visualSettings.showImages;
@@ -38,11 +42,11 @@ export function TypesTogglesPanel() {
     setChartType(type as SupportedChartType);
   }
 
-  // Derive label checked state from visualSettings
+  // Derive label checked state from the active config (not the global mirror)
   const labelChecked = visualSettings.showLabels !== false;
 
-  // Derive legend checked state from chartConfig
-  const legendChecked = (chartConfig.plugins as any)?.legend?.display !== false;
+  // Derive legend checked state from the active config
+  const legendChecked = (activeConfig.plugins as any)?.legend?.display !== false;
 
   return (
     <div className="space-y-3">

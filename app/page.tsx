@@ -41,6 +41,15 @@ export default function HomePage() {
   const { user, loading } = useAuth()
   const searchParams = useSearchParams()
   const [showWelcome, setShowWelcome] = useState<boolean>(false)
+  const [mounted, setMounted] = useState(false)
+
+  // Defer auth-dependent rendering to avoid hydration mismatch:
+  // `loading` / `user` differ between server and client.
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const isAuthenticated = mounted && !!user
 
   // Only show welcome banner once per session
   useEffect(() => {
@@ -150,21 +159,10 @@ export default function HomePage() {
 
 {/* Animations moved to globals.css */}
 
-      {/* Loading State */}
-      {loading && !user && (
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center space-y-4">
-            <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto"></div>
-            <p className="text-gray-600 font-medium">Loading AIChartor...</p>
-          </div>
-        </div>
-      )}
+      {/* Main Content — always rendered to prevent hydration mismatch */}
 
-      {/* Main Content */}
-      {(!loading || !!user) && (
-        <>
-          {/* Floating Welcome Popup for Authenticated Users */}
-          {user && showWelcome && (
+      {/* Floating Welcome Popup for Authenticated Users */}
+          {isAuthenticated && showWelcome && (
             <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] animate-pop-in pointer-events-auto">
               <div className="bg-white dark:bg-slate-900 border border-indigo-500/20 rounded-2xl p-1 shadow-2xl shadow-indigo-500/20 max-w-sm w-full mx-auto ring-1 ring-black/5 dark:ring-white/10">
                 <div className="flex items-center justify-between gap-4 pl-3 pr-2 py-1.5">
@@ -266,7 +264,7 @@ export default function HomePage() {
                     </Link>
                   </Button>
 
-                  {user ? (
+                  {isAuthenticated ? (
                     <Button asChild size="lg" variant="outline" className="px-8 py-6 text-base font-semibold bg-white border-slate-200 dark:border-slate-700 dark:bg-slate-800 text-slate-700 dark:text-white hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-700 transition-all duration-300 rounded-xl">
                       <Link href="/board">
                         <LayoutDashboard className="w-5 h-5 mr-2" />
@@ -572,8 +570,6 @@ export default function HomePage() {
               </div>
             </div>
           </footer>
-        </>
-      )}
     </div>
   )
 }

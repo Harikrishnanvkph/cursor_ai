@@ -79,18 +79,35 @@ export function TemplateChartPreview({
   const canvasBgType = useUIStore(s => s.canvasBgType);
   const canvasBgColor = useUIStore(s => s.canvasBgColor);
   const { currentTemplate, templateInBackground, selectedTextAreaId, setSelectedTextAreaId, editorMode, setEditorMode, contentTypePreferences } = useTemplateStore()
-  const { selectedFormatId, contentPackage, formats, userFormats, contextualImageUrl } = useFormatGalleryStore()
+  const { selectedFormatId, contentPackage, formats, userFormats, contextualImageUrl,
+    selectedFormatSnapshot, setFormats, setUserFormats } = useFormatGalleryStore()
+
+  // Hydrate format blueprints after page refresh:
+  // The persisted snapshot is the primary source, but we also need the full format
+  // list for the gallery. Load from database if not yet available.
+  React.useEffect(() => {
+    if (selectedFormatId && formats.length === 0) {
+      Promise.all([
+        dataService.getOfficialFormats(),
+        dataService.getUserFormats()
+      ]).then(([officialRes, userRes]) => {
+        if (!officialRes.error && officialRes.data) setFormats(officialRes.data)
+        if (!userRes.error && userRes.data) setUserFormats(userRes.data)
+      }).catch(err => console.warn('Failed to hydrate formats after refresh:', err))
+    }
+  }, [selectedFormatId])
 
   const renderedFormat = React.useMemo(() => {
     if (!selectedFormatId || !contentPackage) return null
 
-    // Search both official formats and user's custom formats
-    const allFormats = [...formats, ...userFormats]
-    const format = allFormats.find(f => f.id === selectedFormatId)
+    // Priority: use the persisted snapshot (contains user modifications),
+    // then fall back to looking up the original from the database list
+    const format = selectedFormatSnapshot
+      || [...formats, ...userFormats].find(f => f.id === selectedFormatId)
 
     if (!format) return null
     return renderFormat(format, contentPackage, undefined, contextualImageUrl || undefined)
-  }, [selectedFormatId, contentPackage, formats, userFormats, contextualImageUrl])
+  }, [selectedFormatId, contentPackage, selectedFormatSnapshot, formats, userFormats, contextualImageUrl])
 
   // Granular hooks
   const chartData = useChartData()

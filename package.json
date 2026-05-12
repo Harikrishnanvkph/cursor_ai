@@ -79,6 +79,7 @@
     "use-sync-external-store": "latest",
     "vaul": "^0.9.6",
     "zod": "^3.24.1",
+    "zundo": "latest",
     "zustand": "latest"
   },
   "devDependencies": {

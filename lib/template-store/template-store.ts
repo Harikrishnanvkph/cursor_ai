@@ -688,6 +688,7 @@ export const useTemplateStore = create<TemplateStore>()(
         templateSavedToCloud: state.templateSavedToCloud,
         templateInBackground: state.templateInBackground,
         editorMode: state.editorMode,
+        generateMode: state.generateMode,
         currentTemplate: state.currentTemplate,
         originalCloudTemplateContent: state.originalCloudTemplateContent,
         modifiedCloudTemplateContent: state.modifiedCloudTemplateContent

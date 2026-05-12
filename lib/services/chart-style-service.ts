@@ -6,12 +6,10 @@ import {
 } from "../chart-defaults"
 import { ChartState } from "./chart-state-service"
 
-// Define a type for the store actions needed for undo
-type CaptureUndoFn = (data: any) => void;
+// Simplified dependencies — undo is handled automatically by zundo middleware
 type ShouldDebounceFn = (type: string, source: string) => boolean;
 
 interface StyleServiceDependencies {
-    captureUndoPoint: CaptureUndoFn;
     shouldDebounceUndoOperation: ShouldDebounceFn;
 }
 
@@ -40,40 +38,13 @@ export class ChartStyleService {
             }
         };
 
-        const newState = {
+        return {
             chartData: {
                 ...state.chartData,
                 datasets: newDatasets
             },
             chartConfig: newChartConfig
         };
-
-        // Undo
-        if (state.hasJSON && newDatasets.some(dataset => dataset.fill !== currentSettings.fillArea)) {
-            try {
-                if (!dependencies.shouldDebounceUndoOperation('manual_design_change', 'style-toggles')) {
-                    dependencies.captureUndoPoint({
-                        type: 'manual_design_change',
-                        previousState: {
-                            chartType: state.chartType,
-                            chartData: state.chartData,
-                            chartConfig: state.chartConfig
-                        },
-                        currentState: {
-                            chartType: state.chartType,
-                            chartData: newState.chartData,
-                            chartConfig: newState.chartConfig
-                        },
-                        toolSource: 'style-toggles',
-                        changeDescription: `Fill area ${newFillArea ? 'enabled' : 'disabled'}`
-                    });
-                }
-            } catch (error) {
-                console.warn('Failed to capture undo point:', error);
-            }
-        }
-
-        return newState;
     }
 
     static toggleFillPoints(
@@ -91,37 +62,10 @@ export class ChartStyleService {
             }
         };
 
-        const newState = {
+        return {
             chartData: state.chartData,
             chartConfig: newChartConfig
         };
-
-        if (state.hasJSON) {
-            try {
-                if (!dependencies.shouldDebounceUndoOperation('manual_design_change', 'style-toggles')) {
-                    dependencies.captureUndoPoint({
-                        type: 'manual_design_change',
-                        previousState: {
-                            chartType: state.chartType,
-                            chartData: state.chartData,
-                            chartConfig: state.chartConfig
-
-                        },
-                        currentState: {
-                            chartType: state.chartType,
-                            chartData: newState.chartData,
-                            chartConfig: newState.chartConfig
-                        },
-                        toolSource: 'style-toggles',
-                        changeDescription: `Point fill ${newFillPoints ? 'enabled' : 'disabled'}`
-                    });
-                }
-            } catch (error) {
-                console.warn('Failed to capture undo point for fill toggle:', error);
-            }
-        }
-
-        return newState;
     }
 
     static toggleShowBorder(
@@ -150,40 +94,13 @@ export class ChartStyleService {
             }
         };
 
-        const newState = {
+        return {
             chartData: {
                 ...state.chartData,
                 datasets: newDatasets
             },
             chartConfig: newChartConfig
         };
-
-        // Undo
-        if (state.hasJSON && newShowBorder !== currentSettings.showBorder) {
-            try {
-                if (!dependencies.shouldDebounceUndoOperation('manual_design_change', 'style-toggles')) {
-                    dependencies.captureUndoPoint({
-                        type: 'manual_design_change',
-                        previousState: {
-                            chartType: state.chartType,
-                            chartData: state.chartData,
-                            chartConfig: state.chartConfig
-                        },
-                        currentState: {
-                            chartType: state.chartType,
-                            chartData: newState.chartData,
-                            chartConfig: newState.chartConfig
-                        },
-                        toolSource: 'style-toggles',
-                        changeDescription: `Border ${newShowBorder ? 'enabled' : 'disabled'}`
-                    });
-                }
-            } catch (error) {
-                console.warn('Failed to capture undo point for border toggle:', error);
-            }
-        }
-
-        return newState;
     }
 
     static toggleShowImages(
@@ -201,30 +118,6 @@ export class ChartStyleService {
             }
         };
 
-        if (state.hasJSON) {
-            try {
-                if (!dependencies.shouldDebounceUndoOperation('manual_design_change', 'style-toggles')) {
-                    dependencies.captureUndoPoint({
-                        type: 'manual_design_change',
-                        previousState: {
-                            chartType: state.chartType,
-                            chartData: state.chartData,
-                            chartConfig: state.chartConfig
-                        },
-                        currentState: {
-                            chartType: state.chartType,
-                            chartData: state.chartData,
-                            chartConfig: newChartConfig
-                        },
-                        toolSource: 'style-toggles',
-                        changeDescription: `Images ${newShowImages ? 'shown' : 'hidden'}`
-                    });
-                }
-            } catch (error) {
-                console.warn('Failed to capture undo point for image toggle:', error);
-            }
-        }
-
         return { chartConfig: newChartConfig };
     }
 
@@ -241,10 +134,11 @@ export class ChartStyleService {
             visualSettings: {
                 ...currentSettings,
                 showLabels: newShowLabels
+            },
+            plugins: {
+                ...(state.chartConfig.plugins || {})
             }
         };
-
-        if (!newChartConfig.plugins) newChartConfig.plugins = {};
 
         newChartConfig.plugins.datalabels = {
             ...(newChartConfig.plugins.datalabels || {}),
@@ -255,30 +149,6 @@ export class ChartStyleService {
             ...(newChartConfig.plugins.customLabelsConfig || {}),
             display: newShowLabels
         };
-
-        if (state.hasJSON) {
-            try {
-                if (!dependencies.shouldDebounceUndoOperation('manual_design_change', 'style-toggles')) {
-                    dependencies.captureUndoPoint({
-                        type: 'manual_design_change',
-                        previousState: {
-                            chartType: state.chartType,
-                            chartData: state.chartData,
-                            chartConfig: state.chartConfig
-                        },
-                        currentState: {
-                            chartType: state.chartType,
-                            chartData: state.chartData,
-                            chartConfig: newChartConfig
-                        },
-                        toolSource: 'style-toggles',
-                        changeDescription: `Labels ${newShowLabels ? 'shown' : 'hidden'}`
-                    });
-                }
-            } catch (error) {
-                console.warn('Failed to capture undo point for label toggle:', error);
-            }
-        }
 
         return {
             chartConfig: newChartConfig
@@ -292,37 +162,17 @@ export class ChartStyleService {
         const currentDisplay = (state.chartConfig.plugins as any)?.legend?.display !== false;
         const newShowLegend = !currentDisplay;
 
-        const newChartConfig = { ...state.chartConfig };
-        if (!newChartConfig.plugins) newChartConfig.plugins = {};
+        const newChartConfig = { 
+            ...state.chartConfig,
+            plugins: {
+                ...(state.chartConfig.plugins || {})
+            }
+        };
 
         newChartConfig.plugins.legend = {
             ...(newChartConfig.plugins.legend || {}),
             display: newShowLegend
         };
-
-        if (state.hasJSON) {
-            try {
-                if (!dependencies.shouldDebounceUndoOperation('manual_design_change', 'style-toggles')) {
-                    dependencies.captureUndoPoint({
-                        type: 'manual_design_change',
-                        previousState: {
-                            chartType: state.chartType,
-                            chartData: state.chartData,
-                            chartConfig: state.chartConfig
-                        },
-                        currentState: {
-                            chartType: state.chartType,
-                            chartData: state.chartData,
-                            chartConfig: newChartConfig
-                        },
-                        toolSource: 'style-toggles',
-                        changeDescription: `Legend ${newShowLegend ? 'shown' : 'hidden'}`
-                    });
-                }
-            } catch (error) {
-                console.warn('Failed to capture undo point for legend toggle:', error);
-            }
-        }
 
         return { chartConfig: newChartConfig };
     }

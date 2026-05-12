@@ -24,7 +24,17 @@ export function SiteHeader() {
   const { user } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const pathname = usePathname()
+
+  // Defer auth-dependent rendering to avoid hydration mismatch:
+  // `user` is null during SSR but may be truthy on the client.
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Only use the auth state after mount so SSR and first client render match.
+  const isAuthenticated = mounted && !!user
   
   // Determine if we are on the homepage to apply specific transparent-to-solid styling
   const isHomepage = pathname === "/"
@@ -87,7 +97,7 @@ export function SiteHeader() {
             </Button>
 
             {/* User-specific navigation - Only show when user is signed in */}
-            {user && (
+            {isAuthenticated && (
               <>
                 <div className="w-px h-6 mx-3 transition-colors bg-slate-200 dark:bg-slate-800"></div>
 
@@ -131,7 +141,7 @@ export function SiteHeader() {
 
           {/* Right side - Auth buttons or User profile */}
           <div className="flex items-center space-x-3 sm:space-x-4">
-            {user ? (
+            {isAuthenticated ? (
               <div className="flex items-center space-x-3">
                 {/* Status Badge */}
                 <span className="hidden sm:flex items-center text-xs font-medium px-2 py-1 rounded-full border transition-colors bg-emerald-50 text-emerald-700 border-emerald-200/50 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20">
@@ -214,7 +224,7 @@ export function SiteHeader() {
                 Documentation
               </Link>
 
-              {user ? (
+              {isAuthenticated ? (
                 <>
                   <div className="h-px bg-slate-100 my-4 mx-2"></div>
                   <Link

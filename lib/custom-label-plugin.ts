@@ -45,6 +45,7 @@ export interface CustomLabel {
 export interface CustomLabelPluginOptions {
   labels: CustomLabel[][]; // [dataset][point]
   shapeSize?: number; // px, default 32
+  display?: boolean; // When false, the entire plugin is disabled (no labels rendered)
 }
 
 // Drag state (per chart instance)
@@ -65,6 +66,8 @@ export const customLabelPlugin: Plugin = {
   afterDraw(chart) {
     const opts: CustomLabelPluginOptions | undefined = (chart.options.plugins as any)?.customLabels;
     if (!opts || !opts.labels) return;
+    // Top-level display guard: when labels are toggled off, skip all rendering
+    if (opts.display === false) return;
     const ctx = chart.ctx;
     const shapeSize = opts.shapeSize ?? 32;
 

@@ -1486,7 +1486,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
                         : (chartConfig.plugins as any)?.bar3d,
                       legendType: ((chartConfig.plugins as any)?.legendType) || 'dataset',
                       watermark: (chartConfig as any)?.watermark,
-                      customLabels: { shapeSize: 32, labels: customLabels },
+                      customLabels: { shapeSize: 32, labels: customLabels, display: globalCustomLabelsConfig.display !== false },
                       legend: {
                         ...((chartConfig.plugins as any)?.legend),
                         display: ((chartConfig.plugins as any)?.legend?.display !== false),
@@ -1695,7 +1695,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
                         : (chartConfig.plugins as any)?.bar3d,
                       legendType: ((chartConfig.plugins as any)?.legendType) || 'dataset',
                       watermark: (chartConfig as any)?.watermark,
-                      customLabels: { shapeSize: 32, labels: customLabels },
+                      customLabels: { shapeSize: 32, labels: customLabels, display: globalCustomLabelsConfig.display !== false },
                       legend: {
                         ...((chartConfig.plugins as any)?.legend),
                         display: ((chartConfig.plugins as any)?.legend?.display !== false),

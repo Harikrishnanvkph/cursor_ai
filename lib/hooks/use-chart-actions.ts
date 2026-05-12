@@ -2,7 +2,6 @@ import { useChartStore } from "@/lib/chart-store"
 import { DatasetService } from '../services/dataset-service'
 import { ChartTypeService } from '../services/chart-type-service'
 import { ChartConfigService } from '../services/chart-config-service'
-import { UndoBridge } from '../services/undo-bridge'
 import { ChartTransformService } from '../services/chart-transform-service'
 import { GroupService } from '../services/group-service'
 import { ChartStateService } from "@/lib/services/chart-state-service"
@@ -132,30 +131,7 @@ export const useChartActions = () => {
 
         if (!newState) return
 
-        // Capture undo point
-        if (currentState.hasJSON) {
-            try {
-                const previousState = {
-                    chartType: currentState.chartType,
-                    chartData: JSON.parse(JSON.stringify(currentState.chartData)),
-                    chartConfig: JSON.parse(JSON.stringify(currentState.chartConfig))
-                }
-
-                UndoBridge.capture({
-                    type: 'manual_chart_type_change',
-                    previousState: previousState,
-                    currentState: {
-                        chartType: newState.chartType,
-                        chartData: newState.chartData,
-                        chartConfig: newState.chartConfig
-                    },
-                    toolSource: 'chart-type-selector',
-                    changeDescription: `Chart type changed from ${currentState.chartType} to ${type}`
-                })
-            } catch (error) {
-                console.warn('Failed to capture undo point for chart type change:', error)
-            }
-        }
+        // Undo capture is handled by zundo middleware automatically
 
         // Build final state: mirror chartData AND chartConfig into mode-specific storage
         // In grouped mode, the chart reads config from group.chartConfig (via resolveActiveConfig),
@@ -188,27 +164,7 @@ export const useChartActions = () => {
         // Resolve the current active config for accurate undo state
         const activeConfig = currentState.getActiveChartConfig()
 
-        if (currentState.hasJSON) {
-            try {
-                UndoBridge.capture({
-                    type: 'manual_config_change',
-                    previousState: {
-                        chartType: currentState.chartType,
-                        chartData: currentState.chartData,
-                        chartConfig: activeConfig
-                    },
-                    currentState: {
-                        chartType: currentState.chartType,
-                        chartData: currentState.chartData,
-                        chartConfig: config
-                    },
-                    toolSource: 'config-sidebar',
-                    changeDescription: 'Chart configuration updated'
-                })
-            } catch (error) {
-                console.warn('Failed to capture undo point for config change:', error)
-            }
-        }
+        // Undo capture is handled by zundo middleware automatically
 
         const normalizedConfig = ChartConfigService.normalizeConfig(config, currentState.chartType)
         // Use the store's updateChartConfig action which routes to the correct dataset/group

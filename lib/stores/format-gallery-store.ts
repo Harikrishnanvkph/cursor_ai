@@ -3,9 +3,18 @@
  * 
  * Manages the gallery state: whether gallery mode is active, which formats
  * are available, which variant was selected, and filter state.
+ * 
+ * Persistence strategy:
+ *   - selectedFormatId, contentPackage, contextualImageUrl → persisted for refresh
+ *   - selectedFormatSnapshot → persisted copy of the MODIFIED format skeleton
+ *     so that user edits (zone style changes, background updates) survive refresh
+ *   - formats[], userFormats[] → NOT persisted (loaded from database on demand)
+ *   - UI state (gallery open, filters, hover) → NOT persisted (resets on refresh)
  */
 
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+import { createExpiringStorage } from '@/lib/storage-utils'
 import type { FormatCategory, FormatBlueprintRow, GalleryFilters } from '@/lib/format-types'
 
 interface FormatGalleryStore {
@@ -37,7 +46,11 @@ interface FormatGalleryStore {
   // Selected variant
   selectedFormatId: string | null
   selectedChartType: string | null
-  setSelectedFormat: (formatId: string, chartType: string) => void
+  /** Snapshot of the selected format with user modifications applied.
+   *  This is the version that gets persisted and used for rendering,
+   *  ensuring edits survive page refresh. */
+  selectedFormatSnapshot: FormatBlueprintRow | null
+  setSelectedFormat: (formatId: string | null, chartType: string) => void
   clearSelection: () => void
 
   // Filters
@@ -46,7 +59,6 @@ interface FormatGalleryStore {
   clearFilters: () => void
 
   // ── Interactive Zone State ──────────────────────────
-  // Interactive Zone State
   /** Currently hovered zone (highlight on hover) */
   hoveredZoneId: string | null
   setHoveredZoneId: (id: string | null) => void
@@ -56,7 +68,8 @@ interface FormatGalleryStore {
   /** Zone being inline-edited (double-click to edit) */
   editingZoneId: string | null
   setEditingZoneId: (id: string | null) => void
-  /** Update a specific zone's style in the selected format skeleton */
+  /** Update a specific zone's style in the selected format skeleton.
+   *  Updates BOTH the in-memory formats[] AND the persisted snapshot. */
   updateZoneStyle: (zoneId: string, styleUpdates: Record<string, any>) => void
 
   // AI Generation Notes
@@ -69,7 +82,22 @@ interface FormatGalleryStore {
   resetGallery: () => void
 }
 
+/** Apply zone style updates to a format blueprint, returning a new copy */
+function applyZoneStyleToFormat(
+  format: FormatBlueprintRow,
+  zoneId: string,
+  styleUpdates: Record<string, any>
+): FormatBlueprintRow {
+  const skeleton = { ...(format.skeleton as any) }
+  const zones = (skeleton.zones || []).map((z: any) => {
+    if (z.id !== zoneId) return z
+    return { ...z, style: { ...z.style, ...styleUpdates } }
+  })
+  return { ...format, skeleton: { ...skeleton, zones } }
+}
+
 export const useFormatGalleryStore = create<FormatGalleryStore>()(
+  persist(
   (set) => ({
     // Gallery Mode
     isGalleryOpen: false,
@@ -99,14 +127,24 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
     // Selection
     selectedFormatId: null,
     selectedChartType: null,
-    setSelectedFormat: (formatId, chartType) => set({
-      selectedFormatId: formatId,
-      selectedChartType: chartType,
-      isGalleryOpen: false  // Close gallery when format is selected
+    selectedFormatSnapshot: null,
+    setSelectedFormat: (formatId, chartType) => set((state) => {
+      // When selecting a format, take a snapshot of the original blueprint
+      let snapshot: FormatBlueprintRow | null = null
+      if (formatId) {
+        snapshot = [...state.formats, ...state.userFormats].find(f => f.id === formatId) || null
+      }
+      return {
+        selectedFormatId: formatId,
+        selectedChartType: chartType,
+        selectedFormatSnapshot: snapshot,
+        isGalleryOpen: false  // Close gallery when format is selected
+      }
     }),
     clearSelection: () => set({
       selectedFormatId: null,
-      selectedChartType: null
+      selectedChartType: null,
+      selectedFormatSnapshot: null
     }),
 
     // Filters
@@ -125,16 +163,25 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
     setEditingZoneId: (id) => set({ editingZoneId: id }),
     updateZoneStyle: (zoneId, styleUpdates) => set((state) => {
       if (!state.selectedFormatId) return state
+
+      // Update the in-memory formats[] for immediate rendering
       const formats = state.formats.map(f => {
         if (f.id !== state.selectedFormatId) return f
-        const skeleton = { ...(f.skeleton as any) }
-        const zones = (skeleton.zones || []).map((z: any) => {
-          if (z.id !== zoneId) return z
-          return { ...z, style: { ...z.style, ...styleUpdates } }
-        })
-        return { ...f, skeleton: { ...skeleton, zones } }
+        return applyZoneStyleToFormat(f, zoneId, styleUpdates)
       })
-      return { formats }
+
+      // Also update userFormats if the selected format is a user format
+      const userFormats = state.userFormats.map(f => {
+        if (f.id !== state.selectedFormatId) return f
+        return applyZoneStyleToFormat(f, zoneId, styleUpdates)
+      })
+
+      // Update the persisted snapshot so edits survive refresh
+      const updatedSnapshot = state.selectedFormatSnapshot
+        ? applyZoneStyleToFormat(state.selectedFormatSnapshot, zoneId, styleUpdates)
+        : null
+
+      return { formats, userFormats, selectedFormatSnapshot: updatedSnapshot }
     }),
 
     // AI Generation Notes
@@ -164,6 +211,7 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
       contentPackage: null,
       selectedFormatId: null,
       selectedChartType: null,
+      selectedFormatSnapshot: null,
       filters: {},
       isLoadingFormats: false,
       isLoadingUserFormats: false,
@@ -173,5 +221,18 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
       editingZoneId: null,
       formatZoneNotes: {}
     })
-  })
+  }),
+  {
+    name: 'format-gallery-store',
+    storage: createExpiringStorage(24 * 60 * 60 * 1000), // 24 hour expiry
+    // Persist format selection AND the modified snapshot so edits survive refresh.
+    partialize: (state) => ({
+      selectedFormatId: state.selectedFormatId,
+      selectedChartType: state.selectedChartType,
+      contentPackage: state.contentPackage,
+      contextualImageUrl: state.contextualImageUrl,
+      selectedFormatSnapshot: state.selectedFormatSnapshot,
+    }),
+  }
+  )
 )

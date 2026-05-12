@@ -2,6 +2,7 @@
 
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
+import { temporal } from 'zundo'
 import type { Chart, ChartConfiguration, ChartData, ChartType, ChartDataset, ChartOptions, ChartTypeRegistry } from "chart.js"
 import { getDefaultImageConfig, getImageOptionsForChartType, getDefaultImageType, getDefaultImageSize } from "./plugins/universal-image-plugin"
 import {
@@ -26,7 +27,7 @@ import {
 import { generateColorPalette, darkenColor } from "./utils/color-utils"
 
 import "./types/datalabels" // Import for module augmentation
-import { attemptCaptureDatasetUndo } from "./services/undo-service"
+// undo import removed
 import { areDatasetChangesMeaningful, applyDatasetTransformation } from "./utils/dataset-utils"
 import { ChartTypeService } from "./services/chart-type-service"
 import { DatasetService } from "./services/dataset-service"
@@ -35,7 +36,6 @@ import { GroupService } from "./services/group-service"
 import { ChartStateService } from "./services/chart-state-service"
 import { ChartTransformService } from "./services/chart-transform-service"
 import { ChartStyleService } from "./services/chart-style-service"
-import { UndoBridge } from "./services/undo-bridge"
 import { ChartConfigService } from "./services/chart-config-service"
 import { createExpiringStorage } from "./storage-utils"
 
@@ -99,8 +99,6 @@ interface ChartStore {
   originalCloudDimensions: { width: string; height: string } | null;
   setOriginalCloudDimensions: (dimensions: { width: string; height: string } | null) => void;
 
-
-
   // Per-chart config resolution
   getActiveChartConfig: () => ExtendedChartOptions;
   setChartData: (data: ExtendedChartData) => void;
@@ -149,7 +147,6 @@ const emptyChartData = {
 // Helper to apply style toggles to per-chart configuration
 function applyStyleToggle(state: any, toggleFn: keyof typeof ChartStyleService) {
   const dependencies = {
-    captureUndoPoint: UndoBridge.capture,
     shouldDebounceUndoOperation: () => false
   };
 
@@ -194,9 +191,10 @@ function applyStyleToggle(state: any, toggleFn: keyof typeof ChartStyleService) 
 }
 
 export const useChartStore = create<ChartStore>()(
-  persist(
-    (set, get) => ({
-      // Global chart reference
+  temporal(
+    persist(
+      (set, get) => ({
+        // Global chart reference
       globalChartRef: null,
       setGlobalChartRef: (ref) => set({ globalChartRef: ref }),
 
@@ -227,7 +225,6 @@ export const useChartStore = create<ChartStore>()(
       // Original cloud dimensions - null for new charts, set when loaded from cloud
       originalCloudDimensions: null,
       setOriginalCloudDimensions: (dimensions) => set({ originalCloudDimensions: dimensions }),
-
 
 
       // Pending chart type change for transition handling (scatter/bubble <-> categorical)
@@ -509,9 +506,29 @@ export const useChartStore = create<ChartStore>()(
 
         originalCloudDimensions: state.originalCloudDimensions,
         // Group management state
-        groups: state.groups,
         activeGroupId: state.activeGroupId,
       }),
     }
-  )
+  ),
+  {
+    partialize: (state) => ({
+      chartType: state.chartType,
+      chartData: state.chartData,
+      chartConfig: state.chartConfig,
+      // Mode-specific data must be tracked so undo restores the correct mode state
+      singleModeData: state.singleModeData,
+      groupedModeData: state.groupedModeData,
+      groups: state.groups,
+      // UI toggle flags must be tracked so undo restores toggle states
+      fillArea: state.fillArea,
+      showBorder: state.showBorder,
+      showLabels: state.showLabels,
+      showImages: state.showImages,
+    }),
+    limit: 50,
+    // Prevent duplicate snapshots when state hasn't actually changed
+    equality: (pastState, currentState) =>
+      JSON.stringify(pastState) === JSON.stringify(currentState),
+  }
+)
 );

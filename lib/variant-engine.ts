@@ -60,12 +60,21 @@ export function extractContentFromChartData(
   // Suggest chart types for variant generation
   const suggestedChartTypes = suggestChartTypes(chartType)
 
+  // Generate meaningful body text from the actual data
+  const body = generateBodyText(title, subtitle, labels, datasets, stats, dataStory, chartType)
+
+  // Generate a source line from subtitle or data context
+  const source = generateSourceText(subtitle, title)
+
+  // Generate a meaningful callout
+  const callout = generateCalloutText(stats, labels, datasets, dataStory)
+
   return {
     title,
     subtitle: subtitle || undefined,
-    body: `Data visualization showing ${labels.length} data points across ${datasets.length} dataset${datasets.length > 1 ? 's' : ''}.`,
-    source: undefined,
-    callout: stats.length > 0 ? `${stats[0].label}: ${stats[0].value}` : undefined,
+    body,
+    source,
+    callout,
     stats,
     keywords,
     dataStory,
@@ -132,6 +141,185 @@ function formatNumber(n: number): string {
 }
 
 /**
+ * Generate a meaningful body paragraph from the actual chart data.
+ * Produces a contextual narrative instead of a generic placeholder.
+ */
+function generateBodyText(
+  title: string,
+  subtitle: string,
+  labels: string[],
+  datasets: any[],
+  stats: ContentStat[],
+  dataStory: string,
+  chartType: string
+): string {
+  if (!datasets.length || !labels.length) {
+    return title !== 'Chart Data' ? title : ''
+  }
+
+  const firstDataset = datasets[0]
+  const data: number[] = (firstDataset?.data || []).filter((v: any) => typeof v === 'number')
+  if (!data.length) return subtitle || title
+
+  // Build ranked entries (label + value) sorted descending
+  const ranked = labels
+    .map((label, i) => ({ label, value: data[i] }))
+    .filter(e => typeof e.value === 'number')
+    .sort((a, b) => b.value - a.value)
+
+  const topEntries = ranked.slice(0, 3)
+  const datasetLabel = firstDataset?.label || ''
+
+  // Build narrative based on data story type
+  const parts: string[] = []
+
+  if (dataStory === 'ranking' || dataStory === 'comparison') {
+    // "China leads with 980M, followed by India (780M) and the United States (250M)."
+    if (topEntries.length >= 2) {
+      parts.push(
+        `${topEntries[0].label} leads with ${formatNumber(topEntries[0].value)}`
+      )
+      const followers = topEntries.slice(1).map(
+        e => `${e.label} (${formatNumber(e.value)})`
+      )
+      parts[0] += `, followed by ${followers.join(' and ')}.`
+    } else if (topEntries.length === 1) {
+      parts.push(`${topEntries[0].label} leads at ${formatNumber(topEntries[0].value)}.`)
+    }
+
+    // Add range/spread context
+    if (ranked.length >= 2) {
+      const gap = ranked[0].value - ranked[ranked.length - 1].value
+      if (gap > 0) {
+        parts.push(
+          `The data spans ${ranked.length} ${labels.length > 1 ? 'categories' : 'entries'} with a range of ${formatNumber(gap)}.`
+        )
+      }
+    }
+  } else if (dataStory === 'trend') {
+    // Describe the trend direction
+    const first = data[0]
+    const last = data[data.length - 1]
+    const change = last - first
+    const pctChange = first !== 0 ? ((change / Math.abs(first)) * 100) : 0
+
+    if (change > 0) {
+      parts.push(
+        `The trend shows growth from ${formatNumber(first)} to ${formatNumber(last)}${Math.abs(pctChange) >= 1 ? `, a ${Math.abs(pctChange).toFixed(0)}% increase` : ''} over the period.`
+      )
+    } else if (change < 0) {
+      parts.push(
+        `The trend shows a decline from ${formatNumber(first)} to ${formatNumber(last)}${Math.abs(pctChange) >= 1 ? `, a ${Math.abs(pctChange).toFixed(0)}% decrease` : ''} over the period.`
+      )
+    } else {
+      parts.push(`Values remained stable at ${formatNumber(first)} across the period.`)
+    }
+
+    // Mention peak
+    if (stats.length > 0) {
+      parts.push(`Peak value: ${stats[0].value} (${stats[0].label}).`)
+    }
+  } else if (dataStory === 'composition') {
+    // Describe share/composition
+    const total = data.reduce((s, v) => s + v, 0)
+    if (total > 0 && topEntries.length >= 1) {
+      const topPct = ((topEntries[0].value / total) * 100).toFixed(0)
+      parts.push(
+        `${topEntries[0].label} accounts for ${topPct}% of the total (${formatNumber(total)}).`
+      )
+      if (topEntries.length >= 2) {
+        const secondPct = ((topEntries[1].value / total) * 100).toFixed(0)
+        parts.push(
+          `${topEntries[1].label} follows at ${secondPct}%.`
+        )
+      }
+    }
+  } else if (dataStory === 'distribution') {
+    // Describe spread
+    const avg = data.reduce((s, v) => s + v, 0) / data.length
+    parts.push(
+      `The data averages ${formatNumber(avg)} across ${data.length} observations, ranging from ${formatNumber(Math.min(...data))} to ${formatNumber(Math.max(...data))}.`
+    )
+  }
+
+  // Fallback if nothing was generated
+  if (parts.length === 0) {
+    if (subtitle) {
+      parts.push(subtitle)
+    } else if (title !== 'Chart Data') {
+      parts.push(`${title} — covering ${labels.length} data points.`)
+    }
+  }
+
+  return parts.join(' ')
+}
+
+/**
+ * Generate a source/attribution text from chart metadata.
+ */
+function generateSourceText(subtitle: string, title: string): string | undefined {
+  // If subtitle looks like a source attribution, use it directly
+  if (subtitle) {
+    const lowerSub = subtitle.toLowerCase()
+    if (
+      lowerSub.includes('source') ||
+      lowerSub.includes('data from') ||
+      lowerSub.includes('based on') ||
+      lowerSub.includes('according to') ||
+      lowerSub.includes('report') ||
+      lowerSub.includes('survey') ||
+      lowerSub.includes('as of') ||
+      lowerSub.includes('estimated')
+    ) {
+      return subtitle
+    }
+    // Use subtitle as supplementary context
+    return subtitle
+  }
+  return undefined
+}
+
+/**
+ * Generate a punchy callout text from the most notable data insight.
+ */
+function generateCalloutText(
+  stats: ContentStat[],
+  labels: string[],
+  datasets: any[],
+  dataStory: string
+): string | undefined {
+  if (!stats.length) return undefined
+
+  const topStat = stats[0]
+
+  // For composition charts, express as percentage callout
+  if (dataStory === 'composition' && datasets.length > 0) {
+    const data = datasets[0]?.data || []
+    const total = data.reduce((s: number, v: any) => s + (typeof v === 'number' ? v : 0), 0)
+    if (total > 0 && typeof data[0] === 'number') {
+      // Find the max value's percentage
+      const maxVal = Math.max(...data.filter((v: any) => typeof v === 'number'))
+      const pct = ((maxVal / total) * 100).toFixed(0)
+      return `${pct}% — ${topStat.label}`
+    }
+  }
+
+  // For trends, show the change
+  if (dataStory === 'trend' && datasets.length > 0) {
+    const data = datasets[0]?.data || []
+    const numData = data.filter((v: any) => typeof v === 'number')
+    if (numData.length >= 2) {
+      const change = numData[numData.length - 1] - numData[0]
+      const direction = change >= 0 ? '↑' : '↓'
+      return `${direction} ${formatNumber(Math.abs(change))} change`
+    }
+  }
+
+  // Default: show the top stat prominently
+  return `${topStat.value} — ${topStat.label}`
+}
+
+/**
  * Generate keywords from chart context
  */
 function generateKeywords(title: string, subtitle: string, labels: string[]): string[] {
@@ -161,7 +349,7 @@ function inferDataStory(
 /**
  * Suggest alternative chart types for variant diversification
  */
-function suggestChartTypes(currentType: string): string[] {
+export function suggestChartTypes(currentType: string): string[] {
   const suggestions: Record<string, string[]> = {
     bar: ['bar', 'horizontalBar', 'pie', 'doughnut', 'line'],
     bar3d: ['bar3d', 'bar', 'pie3d', 'doughnut3d'],
@@ -262,9 +450,23 @@ function renderTextZone(zone: TextZone, content: LLMContentPackage): RenderedZon
       break
   }
 
-  // Truncate if maxLength is set
-  if (zone.maxLength && text.length > zone.maxLength) {
-    text = text.substring(0, zone.maxLength - 1) + '…'
+  // Enforce character limits to prevent overflow/clipping:
+  // 1. Use explicit maxLength if set by the format admin
+  // 2. Otherwise, calculate from zone dimensions and font size
+  let effectiveMaxLength = zone.maxLength || 0
+  if (!effectiveMaxLength && zone.position && zone.style) {
+    const { width, height } = zone.position
+    const fontSize = zone.style.fontSize || 16
+    const lineHeight = zone.style.lineHeight || 1.5
+    const padding = 16
+    const avgCharWidth = fontSize * 0.55
+    const charsPerLine = Math.floor((width - padding) / avgCharWidth)
+    const maxLines = Math.max(1, Math.floor((height - padding) / (fontSize * lineHeight)))
+    effectiveMaxLength = charsPerLine * maxLines
+  }
+
+  if (effectiveMaxLength > 0 && text.length > effectiveMaxLength) {
+    text = text.substring(0, effectiveMaxLength - 1) + '…'
   }
 
   return {

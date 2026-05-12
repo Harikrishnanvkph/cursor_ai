@@ -58,13 +58,13 @@ type BackgroundMode = 'document' | 'section'
  */
 export function BackgroundPanel() {
   const { currentTemplate, selectedTextAreaId, updateTextArea } = useTemplateStore()
-  const { selectedFormatId, selectedZoneId, formats } = useFormatGalleryStore()
+  const { selectedFormatId, selectedZoneId, formats, selectedFormatSnapshot, updateZoneStyle: storeUpdateZoneStyle } = useFormatGalleryStore()
 
   const [bgMode, setBgMode] = useState<BackgroundMode>('document')
 
-  // Find the selected format if any
+  // Find the selected format — prefer the persisted snapshot (contains user modifications)
   const selectedFormat = selectedFormatId
-    ? formats.find((f) => f.id === selectedFormatId)
+    ? (selectedFormatSnapshot || formats.find((f) => f.id === selectedFormatId))
     : null
 
   // Find the selected text area in templates
@@ -420,7 +420,7 @@ function SectionBackgroundEditor({ background, sectionLabel, sectionDimensions, 
 // ────────────────────────────────────────────────
 
 function FormatBackgroundEditor({ format }: { format: FormatBlueprintRow }) {
-  const { formats, selectedFormatId } = useFormatGalleryStore()
+  const { updateZoneStyle } = useFormatGalleryStore()
 
   const skeleton = format.skeleton as any
   const zones = skeleton?.zones || []
@@ -428,30 +428,10 @@ function FormatBackgroundEditor({ format }: { format: FormatBlueprintRow }) {
   const bgStyle = bgZone?.style || {}
 
   const updateBgStyle = (updates: Record<string, any>) => {
-    const updatedFormats = formats.map(f => {
-      if (f.id !== selectedFormatId) return f
-      const skel = { ...(f.skeleton as any) }
-      const existingZones = skel.zones || []
-      
-      const bgIdx = existingZones.findIndex((z: any) => z.type === 'background')
-      if (bgIdx >= 0) {
-        const updatedZones = [...existingZones]
-        updatedZones[bgIdx] = {
-          ...updatedZones[bgIdx],
-          style: { ...updatedZones[bgIdx].style, ...updates }
-        }
-        skel.zones = updatedZones
-      } else {
-        skel.zones = [...existingZones, {
-          id: 'bg-zone',
-          type: 'background',
-          style: { type: 'solid', color: '#ffffff', ...updates }
-        }]
-      }
-      return { ...f, skeleton: skel }
-    })
-    
-    useFormatGalleryStore.setState({ formats: updatedFormats })
+    if (bgZone?.id) {
+      // Use the store's updateZoneStyle to update both formats[] AND selectedFormatSnapshot
+      updateZoneStyle(bgZone.id, updates)
+    }
   }
 
   const currentType = bgStyle.type || 'solid'
@@ -677,7 +657,7 @@ function FormatBackgroundEditor({ format }: { format: FormatBlueprintRow }) {
 // ────────────────────────────────────────────────
 
 function FormatZoneBackgroundEditor({ format, zone }: { format: FormatBlueprintRow; zone: any }) {
-  const { formats, selectedFormatId } = useFormatGalleryStore()
+  const { updateZoneStyle } = useFormatGalleryStore()
 
   // Get zone's current background style (stored as bgColor, bgGradient etc. on zone.style or zone itself)
   const zoneStyle = zone.style || {}
@@ -694,21 +674,9 @@ function FormatZoneBackgroundEditor({ format, zone }: { format: FormatBlueprintR
     ? { width: zone.position.width, height: zone.position.height }
     : { width: 0, height: 0 }
 
-  const updateZoneStyle = (updates: Record<string, any>) => {
-    const updatedFormats = formats.map(f => {
-      if (f.id !== selectedFormatId) return f
-      const skel = { ...(f.skeleton as any) }
-      const existingZones = (skel.zones || []).map((z: any) => {
-        if (z.id !== zone.id) return z
-        return {
-          ...z,
-          style: { ...z.style, ...updates }
-        }
-      })
-      skel.zones = existingZones
-      return { ...f, skeleton: skel }
-    })
-    useFormatGalleryStore.setState({ formats: updatedFormats })
+  const handleUpdateZoneStyle = (updates: Record<string, any>) => {
+    // Use the store's updateZoneStyle to update both formats[] AND selectedFormatSnapshot
+    updateZoneStyle(zone.id, updates)
   }
 
   return (
@@ -731,7 +699,7 @@ function FormatZoneBackgroundEditor({ format, zone }: { format: FormatBlueprintR
           <Label className="text-xs font-medium">Background Type</Label>
           <Select
             value={zoneBgType}
-            onValueChange={(value) => updateZoneStyle({ bgType: value })}
+            onValueChange={(value) => handleUpdateZoneStyle({ bgType: value })}
           >
             <SelectTrigger className="h-7 text-xs mt-1"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -751,13 +719,13 @@ function FormatZoneBackgroundEditor({ format, zone }: { format: FormatBlueprintR
               <Input
                 type="color"
                 value={zoneStyle.backgroundColor || '#ffffff'}
-                onChange={(e) => updateZoneStyle({ backgroundColor: e.target.value })}
+                onChange={(e) => handleUpdateZoneStyle({ backgroundColor: e.target.value })}
                 className="w-10 h-7 p-1"
               />
               <Input
                 type="text"
                 value={zoneStyle.backgroundColor || '#ffffff'}
-                onChange={(e) => updateZoneStyle({ backgroundColor: e.target.value })}
+                onChange={(e) => handleUpdateZoneStyle({ backgroundColor: e.target.value })}
                 className="flex-1 h-7 text-xs"
                 placeholder="#ffffff"
               />
@@ -772,7 +740,7 @@ function FormatZoneBackgroundEditor({ format, zone }: { format: FormatBlueprintR
               <Label className="text-xs">Gradient Type</Label>
               <Select
                 value={zoneStyle.bgGradientType || 'linear'}
-                onValueChange={(value) => updateZoneStyle({ bgGradientType: value })}
+                onValueChange={(value) => handleUpdateZoneStyle({ bgGradientType: value })}
               >
                 <SelectTrigger className="h-7 text-xs mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -785,7 +753,7 @@ function FormatZoneBackgroundEditor({ format, zone }: { format: FormatBlueprintR
               <Label className="text-xs">Direction</Label>
               <Select
                 value={zoneStyle.bgGradientDirection || 'to right'}
-                onValueChange={(value) => updateZoneStyle({ bgGradientDirection: value })}
+                onValueChange={(value) => handleUpdateZoneStyle({ bgGradientDirection: value })}
                 disabled={zoneStyle.bgGradientType === 'radial'}
               >
                 <SelectTrigger className="h-7 text-xs mt-1"><SelectValue /></SelectTrigger>
@@ -801,8 +769,8 @@ function FormatZoneBackgroundEditor({ format, zone }: { format: FormatBlueprintR
             <div>
               <Label className="text-xs">Gradient Colors</Label>
               <div className="flex gap-2 mt-1">
-                <Input type="color" value={zoneStyle.bgGradientColor1 || '#ffffff'} onChange={(e) => updateZoneStyle({ bgGradientColor1: e.target.value })} className="w-10 h-7 p-1" />
-                <Input type="color" value={zoneStyle.bgGradientColor2 || '#000000'} onChange={(e) => updateZoneStyle({ bgGradientColor2: e.target.value })} className="w-10 h-7 p-1" />
+                <Input type="color" value={zoneStyle.bgGradientColor1 || '#ffffff'} onChange={(e) => handleUpdateZoneStyle({ bgGradientColor1: e.target.value })} className="w-10 h-7 p-1" />
+                <Input type="color" value={zoneStyle.bgGradientColor2 || '#000000'} onChange={(e) => handleUpdateZoneStyle({ bgGradientColor2: e.target.value })} className="w-10 h-7 p-1" />
               </div>
             </div>
           </>
@@ -816,7 +784,7 @@ function FormatZoneBackgroundEditor({ format, zone }: { format: FormatBlueprintR
               <Input
                 type="text"
                 value={zoneStyle.bgImageUrl || ''}
-                onChange={(e) => updateZoneStyle({ bgImageUrl: e.target.value })}
+                onChange={(e) => handleUpdateZoneStyle({ bgImageUrl: e.target.value })}
                 placeholder="https://example.com/image.jpg"
                 className="h-7 text-xs mt-1"
               />
@@ -832,7 +800,7 @@ function FormatZoneBackgroundEditor({ format, zone }: { format: FormatBlueprintR
                     try {
                       toast.info('Compressing image...', { duration: 1000 })
                       const compressed = await compressImage(file, 800, 0.85)
-                      updateZoneStyle({ bgImageUrl: compressed })
+                      handleUpdateZoneStyle({ bgImageUrl: compressed })
                       toast.success('Image uploaded!')
                     } catch (err: any) {
                       toast.error(err.message || 'Failed to process image')
@@ -847,7 +815,7 @@ function FormatZoneBackgroundEditor({ format, zone }: { format: FormatBlueprintR
               <Label className="text-xs">Image Fit</Label>
               <Select
                 value={zoneStyle.bgImageFit || 'cover'}
-                onValueChange={(value) => updateZoneStyle({ bgImageFit: value })}
+                onValueChange={(value) => handleUpdateZoneStyle({ bgImageFit: value })}
               >
                 <SelectTrigger className="h-7 text-xs mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -870,7 +838,7 @@ function FormatZoneBackgroundEditor({ format, zone }: { format: FormatBlueprintR
                 min="0"
                 max="100"
                 value={zoneStyle.bgOpacity ?? 100}
-                onChange={(e) => updateZoneStyle({ bgOpacity: parseInt(e.target.value) })}
+                onChange={(e) => handleUpdateZoneStyle({ bgOpacity: parseInt(e.target.value) })}
                 className="flex-1"
               />
               <span className="text-xs w-12 text-right">{zoneStyle.bgOpacity ?? 100}%</span>

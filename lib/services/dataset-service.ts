@@ -1,7 +1,6 @@
 import { ExtendedChartDataset, ExtendedChartData, ChartGroup, SupportedChartType, getDefaultConfigForType, ChartMode } from '../chart-defaults';
 import { generateColorPalette, darkenColor } from '../utils/color-utils';
 import { getDefaultImageType, getDefaultImageSize, getDefaultImageConfig } from '../plugins/universal-image-plugin';
-import { attemptCaptureDatasetUndo } from './undo-service';
 import { areDatasetChangesMeaningful } from '../utils/dataset-utils';
 
 export const DatasetService = {
@@ -324,17 +323,7 @@ export const DatasetService = {
             hasJSON: shouldSetHasJSON,
         };
 
-        // Undo capture
-        if (currentState.hasJSON || shouldSetHasJSON) {
-            const hasMeaningfulChanges = newDatasets.some((newDataset, idx) => {
-                const previousDataset = currentState.chartData.datasets[idx];
-                return areDatasetChangesMeaningful(previousDataset, newDataset);
-            });
-
-            if (hasMeaningfulChanges) {
-                attemptCaptureDatasetUndo(currentState.hasJSON, previousState, { ...currentState, ...newState }, changeDescription);
-            }
-        }
+        // Undo capture is now handled automatically by zundo middleware on the chart store
 
         return newState;
     },

@@ -1,10 +1,10 @@
 "use client"
 
-import React, { useEffect } from 'react'
+import React, { useEffect, useCallback } from 'react'
+import { useStore } from 'zustand'
 import { Undo, Redo } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { useChatStore } from '@/lib/chat-store'
 import { useChartStore } from '@/lib/chart-store'
 
 interface UndoRedoButtonsProps {
@@ -15,6 +15,8 @@ interface UndoRedoButtonsProps {
   buttonClassName?: string
 }
 
+
+
 export function UndoRedoButtons({
   variant = 'default',
   size = 'sm',
@@ -22,21 +24,17 @@ export function UndoRedoButtons({
   className = '',
   buttonClassName = ''
 }: UndoRedoButtonsProps) {
-  const { canUndo, canRedo, undo, redo, currentChartState, updateChartState } = useChatStore()
-  const { chartType, chartData, chartConfig, hasJSON } = useChartStore()
+  const { undo: temporalUndo, redo: temporalRedo, pastStates, futureStates } = useStore(useChartStore.temporal)
+  const canUndo = pastStates.length > 0;
+  const canRedo = futureStates.length > 0;
 
-  // Sync currentChartState from chart-store when chart is loaded but currentChartState is null
-  useEffect(() => {
-    if (hasJSON && chartType && chartData && chartConfig && !currentChartState) {
-      // Only sync if currentChartState is null (initial load)
-      updateChartState({
-        chartType,
-        chartData,
-        chartConfig
-      })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasJSON])
+  const handleUndo = useCallback(() => {
+    temporalUndo()
+  }, [temporalUndo])
+
+  const handleRedo = useCallback(() => {
+    temporalRedo()
+  }, [temporalRedo])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -46,14 +44,14 @@ export function UndoRedoButtons({
           case 'z':
             e.preventDefault()
             if (e.shiftKey) {
-              redo() // Ctrl+Shift+Z (alternative redo)
+              handleRedo()
             } else {
-              undo() // Ctrl+Z
+              handleUndo()
             }
             break
           case 'y':
             e.preventDefault()
-            redo() // Ctrl+Y
+            handleRedo()
             break
         }
       }
@@ -61,7 +59,7 @@ export function UndoRedoButtons({
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [undo, redo])
+  }, [handleUndo, handleRedo])
 
   const getButtonVariant = () => {
     switch (variant) {
@@ -102,7 +100,7 @@ export function UndoRedoButtons({
       <Button
         variant={getButtonVariant()}
         size={getButtonSize()}
-        onClick={() => undo()}
+        onClick={handleUndo}
         disabled={!canUndo}
         title="Undo (Ctrl+Z)"
         className={cn(
@@ -119,7 +117,7 @@ export function UndoRedoButtons({
       <Button
         variant={getButtonVariant()}
         size={getButtonSize()}
-        onClick={() => redo()}
+        onClick={handleRedo}
         disabled={!canRedo}
         title="Redo (Ctrl+Y)"
         className={cn(

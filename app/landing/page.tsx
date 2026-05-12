@@ -145,6 +145,37 @@ function LandingPageContent() {
   const [isMobile, setIsMobile] = useState(false)
   const [isClient, setIsClient] = useState(false)
 
+  // Wait for chart store IDB hydration to prevent flashing welcome screen
+  const [storeHydrated, setStoreHydrated] = useState(() =>
+    !!(useChartStore.persist as any)?.hasHydrated?.()
+  )
+
+  useEffect(() => {
+    if (storeHydrated) return
+    if ((useChartStore.persist as any)?.hasHydrated?.()) {
+      setStoreHydrated(true)
+      return
+    }
+    const unsub = (useChartStore.persist as any)?.onFinishHydration?.(() => {
+      setStoreHydrated(true)
+    })
+    const t = setTimeout(() => setStoreHydrated(true), 150)
+    return () => { clearTimeout(t); unsub?.() }
+  }, [storeHydrated])
+
+  // Content readiness: skeleton stays until the real content has had time to paint
+  const [contentReady, setContentReady] = useState(false)
+
+  useEffect(() => {
+    if (!storeHydrated) return
+    let timer: ReturnType<typeof setTimeout>
+    // Wait for the next paint frame + a small buffer so the chart/format actually renders
+    const raf = requestAnimationFrame(() => {
+      timer = setTimeout(() => setContentReady(true), 150)
+    })
+    return () => { cancelAnimationFrame(raf); clearTimeout(timer) }
+  }, [storeHydrated])
+
   useEffect(() => {
     // Immediate synchronous detection before any render
     const width = window.innerWidth
@@ -449,7 +480,8 @@ function LandingPageContent() {
     return () => window.removeEventListener('error', handleError)
   }, [])
 
-  // Show loading until client-side hydration
+  // Show loading only for the SSR→client transition (prevents hydration mismatch)
+  // storeHydrated is NOT blocking here — data areas will show skeletons instead
   if (!isClient) {
     return (
       <div className="flex h-screen w-screen bg-gradient-to-b from-indigo-50/50 via-white to-slate-50 items-center justify-center relative overflow-hidden">
@@ -551,7 +583,12 @@ function LandingPageContent() {
         {/* Main Content Area */}
         <main className="flex-1 ml-16 mt-16 relative flex flex-col">
           {/* Main Chart Area */}
-          <div className="flex-1 p-4 flex flex-col">
+          <div className="flex-1 p-4 flex flex-col relative">
+            {!contentReady && (
+              <div className="absolute inset-0 z-20 p-4">
+                <ChartAreaSkeleton />
+              </div>
+            )}
             {chartData?.datasets?.length > 0 && hasJSON ? (
               <div className="flex-1 h-full">
                 <ChartPreview
@@ -561,7 +598,7 @@ function LandingPageContent() {
                   isLeftSidebarCollapsed={true}
                 />
               </div>
-            ) : (
+            ) : storeHydrated ? (
               <PromptTemplate
                 size="default"
                 onSampleClick={(template) => {
@@ -572,7 +609,7 @@ function LandingPageContent() {
                 isTemplateModalOpen={isTemplateModalOpen}
                 setIsTemplateModalOpen={setIsTemplateModalOpen}
               />
-            )}
+            ) : null}
           </div>
         </main>
 
@@ -734,7 +771,12 @@ function LandingPageContent() {
         {/* Main Content Area */}
         <main className="flex-1 mt-14 mb-16 relative flex flex-col overflow-hidden">
           {/* Chart/Template Area */}
-          <div className="flex-1 p-3 flex flex-col">
+          <div className="flex-1 p-3 flex flex-col relative">
+            {!contentReady && (
+              <div className="absolute inset-0 z-20 p-3">
+                <ChartAreaSkeleton />
+              </div>
+            )}
             {chartData?.datasets?.length > 0 && hasJSON ? (
               <div className="flex-1 h-full">
                 <ChartPreview
@@ -744,7 +786,7 @@ function LandingPageContent() {
                   isLeftSidebarCollapsed={true}
                 />
               </div>
-            ) : (
+            ) : storeHydrated ? (
               <PromptTemplate
                 size="compact"
                 onSampleClick={(template) => {
@@ -755,7 +797,7 @@ function LandingPageContent() {
                 isTemplateModalOpen={isTemplateModalOpen}
                 setIsTemplateModalOpen={setIsTemplateModalOpen}
               />
-            )}
+            ) : null}
           </div>
         </main>
 
@@ -1167,6 +1209,14 @@ function LandingPageContent() {
         )}
       </aside>
       <div className="flex-1 relative z-10">
+        {/* Skeleton overlay: covers the content area until chart/format is fully painted */}
+        {!contentReady && (
+          <div className="absolute inset-0 z-20">
+            <ChartAreaSkeleton />
+          </div>
+        )}
+
+        {/* Real content: renders behind the skeleton, becomes visible when contentReady=true */}
         {isGalleryOpen ? (
           <FormatGallery
             leftSidebarOpen={leftSidebarOpen}
@@ -1188,6 +1238,83 @@ function LandingPageContent() {
             setIsTemplateModalOpen={setIsTemplateModalOpen}
           />
         )}
+      </div>
+    </div>
+  )
+}
+
+/** Skeleton placeholder for the chart + right sidebar area while store hydrates */
+function ChartAreaSkeleton() {
+  return (
+    <div className="flex flex-1 h-full overflow-hidden animate-in fade-in duration-200">
+      {/* Chart area skeleton */}
+      <div className="flex-1 p-4 flex flex-col">
+        {/* Toolbar skeleton */}
+        <div className="flex items-center gap-2 mb-4">
+          <div className="h-8 w-20 bg-gray-200/70 rounded-lg animate-pulse" />
+          <div className="h-8 w-24 bg-gray-200/70 rounded-lg animate-pulse" />
+          <div className="h-8 w-16 bg-gray-200/50 rounded-lg animate-pulse" />
+          <div className="flex-1" />
+          <div className="h-8 w-8 bg-gray-200/50 rounded-lg animate-pulse" />
+          <div className="h-8 w-8 bg-gray-200/50 rounded-lg animate-pulse" />
+        </div>
+        {/* Chart canvas skeleton */}
+        <div className="flex-1 bg-white rounded-xl border border-gray-200/80 shadow-sm p-6 flex flex-col">
+          {/* Title */}
+          <div className="h-5 w-40 bg-gray-200/60 rounded mx-auto mb-6 animate-pulse" />
+          {/* Chart bars area */}
+          <div className="flex-1 flex items-end justify-center gap-4 px-8 pb-8">
+            {[65, 85, 45, 70, 55, 90, 40].map((h, i) => (
+              <div
+                key={i}
+                className="bg-gradient-to-t from-gray-200/80 to-gray-100/60 rounded-t-md animate-pulse"
+                style={{
+                  width: '10%',
+                  height: `${h}%`,
+                  animationDelay: `${i * 80}ms`,
+                }}
+              />
+            ))}
+          </div>
+          {/* X-axis labels */}
+          <div className="flex justify-center gap-4 px-8 mt-2">
+            {[1,2,3,4,5,6,7].map(i => (
+              <div key={i} className="h-3 w-10 bg-gray-200/50 rounded animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Right sidebar skeleton */}
+      <div className="w-[280px] border-l bg-white shadow-sm flex flex-col flex-shrink-0">
+        {/* Sidebar header */}
+        <div className="flex items-center p-2.5 border-b bg-gray-50/50 gap-2">
+          <div className="h-8 w-8 bg-gray-200/60 rounded-md animate-pulse" />
+          <div className="h-8 w-10 bg-blue-200/50 rounded-md animate-pulse" />
+          <div className="h-8 w-10 bg-gray-200/50 rounded-md animate-pulse" />
+          <div className="flex-1" />
+          <div className="h-8 w-8 bg-gray-200/50 rounded-full animate-pulse" />
+        </div>
+        {/* Sidebar content */}
+        <div className="p-3 space-y-3 overflow-hidden">
+          {/* Buttons */}
+          <div className="h-9 w-full bg-blue-100/60 rounded-lg animate-pulse" />
+          <div className="h-9 w-full bg-purple-100/50 rounded-lg animate-pulse" />
+          {/* Tabs */}
+          <div className="flex gap-1 mt-2">
+            <div className="h-8 flex-1 bg-gray-200/60 rounded-md animate-pulse" />
+            <div className="h-8 flex-1 bg-gray-200/40 rounded-md animate-pulse" />
+            <div className="h-8 flex-1 bg-gray-200/40 rounded-md animate-pulse" />
+          </div>
+          {/* Sub tabs */}
+          <div className="flex gap-1">
+            <div className="h-7 flex-1 bg-gray-200/50 rounded-md animate-pulse" />
+            <div className="h-7 flex-1 bg-gray-200/40 rounded-md animate-pulse" />
+          </div>
+          {/* Template card skeleton */}
+          <div className="h-36 w-full bg-gray-100/80 rounded-lg border border-gray-200/60 animate-pulse" />
+          <div className="h-36 w-full bg-gray-100/60 rounded-lg border border-gray-200/40 animate-pulse" />
+        </div>
       </div>
     </div>
   )

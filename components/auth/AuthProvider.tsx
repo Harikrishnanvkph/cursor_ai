@@ -32,29 +32,51 @@ const setAuthCookie = (isAuthenticated: boolean) => {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
-  const [user, setUser] = useState<AuthUser | null>(null)
-  const [loading, setLoading] = useState(true)
+
+  // Optimistic initialization: if we have a cached user in localStorage + auth cookie,
+  // skip the loading screen and verify in the background
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    if (typeof window === 'undefined') return null
+    try {
+      const hasCookie = document.cookie.includes('is_authenticated=true')
+      const cachedUser = localStorage.getItem('cached_auth_user')
+      if (hasCookie && cachedUser) {
+        return JSON.parse(cachedUser) as AuthUser
+      }
+    } catch {}
+    return null
+  })
+  const [loading, setLoading] = useState(() => {
+    if (typeof window === 'undefined') return true
+    // If we have a cached user, start with loading=false (optimistic)
+    try {
+      const hasCookie = document.cookie.includes('is_authenticated=true')
+      const cachedUser = localStorage.getItem('cached_auth_user')
+      if (hasCookie && cachedUser) return false
+    } catch {}
+    return true
+  })
 
   const refresh = useCallback(async () => {
-    console.log('hellow from refresh')
-
     try {
       const res = await authApi.me()
       setUser(res.user)
 
-      // Store user ID for user-specific localStorage keys
-      if (typeof window !== 'undefined' && res.user?.id) {
-        localStorage.setItem('user-id', res.user.id)
+      // Cache the user for optimistic loading on next page load
+      if (typeof window !== 'undefined') {
+        if (res.user?.id) {
+          localStorage.setItem('user-id', res.user.id)
+          localStorage.setItem('cached_auth_user', JSON.stringify(res.user))
+        } else {
+          localStorage.removeItem('cached_auth_user')
+        }
       }
-      setAuthCookie(true)
-
-      // Don't handle redirects in refresh - let the signIn method handle it
-      // This prevents loops when the user is already authenticated
+      setAuthCookie(!!res.user)
     } catch (error: any) {
-      // This shouldn't happen now since authApi.me() handles network errors
       console.warn('Unexpected error during refresh:', error)
       setUser(null)
       setAuthCookie(false)
+      localStorage.removeItem('cached_auth_user')
     } finally {
       setLoading(false)
     }
@@ -206,6 +228,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Always clear the user locally regardless of server response
       setUser(null)
       setAuthCookie(false)
+      localStorage.removeItem('cached_auth_user')
 
       // Clean up old localStorage data (only clears data older than 12 hours)
       if (typeof window !== 'undefined') {
@@ -243,6 +266,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Still clear the user locally even if server call fails
       setUser(null)
       setAuthCookie(false)
+      localStorage.removeItem('cached_auth_user')
 
       // Clear user-specific localStorage even on error
       if (typeof window !== 'undefined') {

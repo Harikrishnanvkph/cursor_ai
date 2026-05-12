@@ -253,37 +253,12 @@ export const useChartStyleStore = create<ChartStyleStore>()(
       // Get the active config
       const activeConfig = chartState.chartConfig
 
-      // Capture previous state for undo
-      const previousState = {
-        chartType: chartState.chartType,
-        chartData: JSON.parse(JSON.stringify(chartState.chartData)),
-        chartConfig: JSON.parse(JSON.stringify(chartState.chartConfig)),
-      }
-
       // Apply the preset
       const result = applyPresetToChart(preset, chartState.chartData, activeConfig, {
         applyDimensions,
       })
 
-      // Capture undo point using the same pattern as undo-service.ts
-      if (chartState.hasJSON) {
-        try {
-          const { captureUndoPoint } = require('../chat-store')
-          captureUndoPoint({
-            type: 'manual_design_change',
-            previousState,
-            currentState: {
-              chartType: result.chartType,
-              chartData: result.chartData,
-              chartConfig: result.chartConfig,
-            },
-            toolSource: 'style-preset',
-            changeDescription: `Applied style: ${preset.name}`,
-          })
-        } catch (e) {
-          console.warn('[ChartStyleStore] Failed to capture undo point:', e)
-        }
-      }
+      // Undo is handled automatically by zundo when setFullChart updates the store
 
       // Apply via setFullChart
       chartState.setFullChart({
@@ -294,6 +269,16 @@ export const useChartStyleStore = create<ChartStyleStore>()(
       })
 
       set({ selectedPresetId: presetId })
+
+      // Clear undo history so the selected style becomes the new baseline.
+      // Users should not be able to undo back past a style gallery selection.
+      try {
+        const { useChartStore: chartStoreRef } = require('../chart-store')
+        chartStoreRef.temporal.getState().clear()
+      } catch (e) {
+        console.warn('[ChartStyleStore] Could not clear temporal history:', e)
+      }
+
       return true
     } catch (error) {
       console.error('[ChartStyleStore] Failed to apply preset:', error)
