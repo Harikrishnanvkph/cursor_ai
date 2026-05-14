@@ -12,12 +12,13 @@ import { useAuth } from "@/components/auth/AuthProvider"
 import { dataService } from "@/lib/data-service"
 import { Button } from "@/components/ui/button"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
-import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Layers, Settings, Download, ChevronLeft, ChevronRight, FileText, Save, X, Loader2, Plus, Info, LayoutDashboard, MessageSquare, Edit3 } from "lucide-react"
+import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Layers, Settings, Download, ChevronLeft, ChevronRight, FileText, Save, X, Loader2, Plus, Info, LayoutDashboard, MessageSquare, Edit3, BarChart2, SlidersHorizontal } from "lucide-react"
 import Link from "next/link"
 import React from "react"
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import { useChatStore } from "@/lib/chat-store"
+import { useEditorSidebarContext } from "@/components/editor/editor-sidebar-context"
 import { useHistoryStore } from "@/lib/history-store"
 import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
@@ -53,9 +54,6 @@ export default function EditorPage() {
 }
 
 function EditorPageContent() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-
   // ── Decoration store isolation ──
   // When entering the editor via client-side navigation, force rehydrate to flush
   // any format-builder shapes. Skip on hard refresh to prevent hydration race conditions.
@@ -76,9 +74,8 @@ function EditorPageContent() {
   const { user, signOut } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [activeTab, setActiveTab] = useState("types_toggles")
-
-  // Granular hooks
+  const { activeTab, setActiveTab, leftSidebarCollapsed, setLeftSidebarCollapsed } = useEditorSidebarContext()
+  const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false)
   const chartConfig = useChartConfig()
   const chartType = useChartType()
   const chartData = useChartData()
@@ -100,9 +97,7 @@ function EditorPageContent() {
     const unsub = (useChartStore.persist as any)?.onFinishHydration?.(() => {
       setStoreHydrated(true)
     })
-    // Reduced fallback: IDB reads are typically < 50ms
-    const t = setTimeout(() => setStoreHydrated(true), 150)
-    return () => { clearTimeout(t); unsub?.() }
+    return () => { unsub?.() }
   }, [storeHydrated])
 
   // Actions (stable functions, safe to pick from store)
@@ -114,8 +109,7 @@ function EditorPageContent() {
   const { setEditorMode, currentTemplate, editorMode, syncTemplatesFromCloud } = useTemplateStore()
   const { selectedFormatId } = useFormatGalleryStore()
   const { messages, clearMessages, startNewConversation, setBackendConversationId } = useChatStore()
-  const [leftSidebarCollapsed, setLeftSidebarCollapsed] = useState(false)
-  const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false)
+  // We no longer have local leftSidebarCollapsed here since it's in context
   const [mobilePanel, setMobilePanel] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false)
@@ -180,43 +174,7 @@ function EditorPageContent() {
     }
   }, [user, syncTemplatesFromCloud, loadConversationsFromBackend]);
 
-  // Auto-apply mobile dimensions when Manual Dimensions is enabled on mobile
-  // Read state directly from store to avoid stale closures and infinite dependency loops
-  useEffect(() => {
-    if (isMobile && screenWidth > 0) {
-      const mobileWidth = `${screenWidth}px`;
-      const mobileHeight = `${screenWidth}px`;
 
-      // Always get the *latest* config from the store, not from the React closure
-      // otherwise, we might accidentally overwrite user changes with a stale config
-      const latestConfig = useChartStore.getState().chartConfig;
-
-      // Prevent infinite loops by only updating if the dimensions actually differ
-      if (
-        latestConfig.width !== mobileWidth ||
-        latestConfig.height !== mobileHeight ||
-        latestConfig.manualDimensions !== true ||
-        latestConfig.responsive !== false
-      ) {
-        console.log("updateChartConfig TRIGGERED from isMobile check!", {
-          isMobile, screenWidth,
-          lw: latestConfig.width, mw: mobileWidth,
-          lh: latestConfig.height, mh: mobileHeight,
-          lmd: latestConfig.manualDimensions,
-          lresp: latestConfig.responsive
-        });
-        // We can safely call the store's action here
-        useChartStore.getState().updateChartConfig({
-          ...latestConfig,
-          manualDimensions: true,
-          responsive: false,
-          maintainAspectRatio: false,
-          width: mobileWidth,
-          height: mobileHeight
-        });
-      }
-    }
-  }, [isMobile, screenWidth]);
 
   // Listen for custom events to change active tab
   useEffect(() => {
@@ -224,58 +182,22 @@ function EditorPageContent() {
       const { tab } = event.detail;
       setActiveTab(tab);
       setMobilePanel(tab);
+      
+      // Explicitly sync editor mode if a specific tab is targeted
+      if (tab.startsWith('tpl_')) {
+        setEditorMode('template');
+      } else if (CHART_TABS.some(t => t.id === tab && tab !== 'export' && tab !== 'templates')) {
+        setEditorMode('chart');
+      }
     };
 
     window.addEventListener('changeActiveTab', handleTabChange as EventListener);
     return () => {
       window.removeEventListener('changeActiveTab', handleTabChange as EventListener);
     };
-  }, []);
+  }, [setActiveTab, setEditorMode]);
 
-  // Unified loop-prevention state syncing
-  const prevEditorMode = useRef(editorMode);
-  const prevActiveTab = useRef(activeTab);
 
-  useEffect(() => {
-    const isTemplateTabOnly = activeTab.startsWith('tpl_');
-    const isChartTabOnly = CHART_TABS.some(t => t.id === activeTab && !['templates', 'export'].includes(t.id));
-
-    // Neutral tabs: stay in current mode
-    const isNeutralTab = activeTab === 'export' || activeTab === 'templates';
-
-    const modeChanged = prevEditorMode.current !== editorMode;
-    const tabChanged = prevActiveTab.current !== activeTab;
-
-    prevEditorMode.current = editorMode;
-    prevActiveTab.current = activeTab;
-
-    if (modeChanged && !tabChanged) {
-      // Mode was toggled by the top toggle
-      if (editorMode === 'template' && isChartTabOnly) {
-        setActiveTab('tpl_templates');
-      } else if (editorMode === 'chart' && isTemplateTabOnly) {
-        setActiveTab('types_toggles');
-      }
-    } else if (tabChanged && !modeChanged) {
-      // Tab was clicked in the sidebar
-      if (isNeutralTab) {
-        // Do nothing, preserve current editorMode
-      } else if (isTemplateTabOnly && editorMode !== 'template') {
-        if (!currentTemplate) setEditorMode('template');
-      } else if (isChartTabOnly && editorMode !== 'chart') {
-        if (!currentTemplate) setEditorMode('chart');
-      }
-    } else if (!modeChanged && !tabChanged) {
-      // On mount correction if state is fundamentally incoherent
-      if (isTemplateTabOnly && editorMode === 'chart' && !currentTemplate) {
-        setEditorMode('template');
-        prevEditorMode.current = 'template';
-      } else if (isChartTabOnly && editorMode === 'template') {
-        setActiveTab('tpl_templates');
-        prevActiveTab.current = 'tpl_templates';
-      }
-    }
-  }, [activeTab, editorMode, currentTemplate, setActiveTab, setEditorMode]);
 
   // Check if there's a dimension mismatch between chart and template
   const checkDimensionMismatch = (): boolean => {
@@ -320,6 +242,7 @@ function EditorPageContent() {
     setShowDimensionDialog(false)
     setDimensionMismatchInfo(null)
     setEditorMode('template')
+    setActiveTab('tpl_templates')
     toast.info("Switched to Template Mode. You can now save with correct dimensions.")
   }
 
@@ -594,76 +517,22 @@ function EditorPageContent() {
     toast.success(`Chart created (${sizeLabel}). Navigate to Datasets to add your data.`)
   };
 
-  if (!mounted || !storeHydrated) {
-    return (
-      <div className="flex h-screen bg-gray-50 overflow-hidden">
-        {/* Left sidebar skeleton */}
-        <div className="w-[280px] bg-white border-r border-gray-200 flex flex-col flex-shrink-0">
-          {/* Nav header */}
-          <div className="p-3 border-b flex items-center gap-2">
-            <div className="h-8 w-24 bg-blue-100/60 rounded-lg animate-pulse" />
-            <div className="flex-1" />
-            <div className="h-8 w-8 bg-gray-200/60 rounded-full animate-pulse" />
-          </div>
-          {/* Sidebar tabs skeleton */}
-          <div className="p-2 space-y-1">
-            {[1,2,3,4,5,6].map(i => (
-              <div key={i} className="h-9 w-full bg-gray-100/70 rounded-md animate-pulse" style={{ animationDelay: `${i * 60}ms` }} />
-            ))}
-          </div>
-          <div className="flex-1" />
+  const renderCenterAreaLoader = () => (
+    <div className="flex flex-1 items-center justify-center h-full relative">
+      <div className="flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-500">
+        <div className="relative">
+          <div className="w-16 h-16 rounded-full border-4 border-indigo-100 border-t-indigo-600 animate-spin shadow-lg"></div>
+          <div className="absolute inset-0 m-auto w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 animate-pulse"></div>
         </div>
-
-        {/* Center chart area skeleton */}
-        <div className="flex-1 p-4 flex flex-col min-w-0">
-          {/* Chart toolbar */}
-          <div className="flex items-center gap-2 mb-3">
-            <div className="h-8 w-28 bg-gray-200/60 rounded-lg animate-pulse" />
-            <div className="h-8 w-20 bg-gray-200/50 rounded-lg animate-pulse" />
-            <div className="flex-1" />
-            <div className="h-8 w-8 bg-gray-200/50 rounded animate-pulse" />
-            <div className="h-8 w-8 bg-gray-200/50 rounded animate-pulse" />
-            <div className="h-8 w-8 bg-gray-200/50 rounded animate-pulse" />
-          </div>
-          {/* Chart canvas */}
-          <div className="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm p-6 flex flex-col">
-            <div className="h-5 w-36 bg-gray-200/50 rounded mx-auto mb-6 animate-pulse" />
-            <div className="flex-1 flex items-end justify-center gap-3 px-6 pb-6">
-              {[60, 80, 40, 65, 50, 85, 35].map((h, i) => (
-                <div
-                  key={i}
-                  className="bg-gradient-to-t from-gray-200/70 to-gray-100/50 rounded-t-md animate-pulse"
-                  style={{ width: '10%', height: `${h}%`, animationDelay: `${i * 80}ms` }}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Right config panel skeleton */}
-        <div className="w-[280px] bg-white border-l border-gray-200 flex flex-col flex-shrink-0">
-          <div className="p-2.5 border-b bg-gray-50/50 flex items-center gap-2">
-            <div className="h-8 w-8 bg-gray-200/60 rounded animate-pulse" />
-            <div className="h-8 w-10 bg-blue-200/50 rounded animate-pulse" />
-            <div className="h-8 w-10 bg-gray-200/50 rounded animate-pulse" />
-            <div className="flex-1" />
-            <div className="h-8 w-8 bg-gray-200/50 rounded-full animate-pulse" />
-          </div>
-          <div className="p-3 space-y-3">
-            <div className="h-9 w-full bg-blue-100/50 rounded-lg animate-pulse" />
-            <div className="h-9 w-full bg-purple-100/40 rounded-lg animate-pulse" />
-            <div className="flex gap-1">
-              <div className="h-8 flex-1 bg-gray-200/60 rounded-md animate-pulse" />
-              <div className="h-8 flex-1 bg-gray-200/40 rounded-md animate-pulse" />
-              <div className="h-8 flex-1 bg-gray-200/40 rounded-md animate-pulse" />
-            </div>
-            <div className="h-32 w-full bg-gray-100/60 rounded-lg border border-gray-200/50 animate-pulse" />
-            <div className="h-32 w-full bg-gray-100/40 rounded-lg border border-gray-200/40 animate-pulse" />
-          </div>
+        <div className="flex flex-col items-center">
+          <span className="text-sm font-semibold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 animate-pulse">
+            Preparing Editor
+          </span>
+          <span className="text-xs text-gray-400 mt-1">Loading workspace...</span>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
 
   // Mobile layout for <=576px
   if (isMobile) {
@@ -688,7 +557,9 @@ function EditorPageContent() {
         {/* Chart Preview */}
         <div className="flex-1 flex items-start justify-center p-2 pb-20 overflow-hidden">
           <div className="w-full max-w-full overflow-auto" style={{ maxHeight: 'calc(100vh - 120px)' }}>
-            {hasJSON ? (
+            {!storeHydrated ? (
+              renderCenterAreaLoader()
+            ) : hasJSON ? (
               <ChartPreview
                 activeTab={mobilePanel || activeTab}
                 onTabChange={(tab) => {
@@ -714,7 +585,19 @@ function EditorPageContent() {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setMobilePanel(tab.id)}
+                  onClick={() => {
+                    if (tab.id === 'templates') {
+                      const templateStore = useTemplateStore.getState()
+                      if (!templateStore.currentTemplate) {
+                        templateStore.applyTemplate('template-1')
+                      }
+                      setEditorMode('template')
+                      setMobilePanel('tpl_templates')
+                      setActiveTab('tpl_templates')
+                    } else {
+                      setMobilePanel(tab.id)
+                    }
+                  }}
                   className={`flex flex-col items-center justify-center px-2 py-2 min-w-[64px] flex-shrink-0 flex-grow text-center ${mobilePanel === tab.id ? "text-blue-700" : "text-gray-500"}`}
                   style={{ maxWidth: 96 }}
                 >
@@ -813,7 +696,18 @@ function EditorPageContent() {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  if (tab.id === 'templates') {
+                    const templateStore = useTemplateStore.getState()
+                    if (!templateStore.currentTemplate) {
+                      templateStore.applyTemplate('template-1')
+                    }
+                    setEditorMode('template')
+                    setActiveTab('tpl_templates')
+                  } else {
+                    setActiveTab(tab.id)
+                  }
+                }}
                 className={`mb-1 p-1.5 rounded flex flex-col items-center justify-center gap-0.5 w-full hover:bg-gray-100 transition-all duration-200 ${activeTab === tab.id ? "bg-blue-50 text-blue-700 shadow-sm" : "text-gray-500"}`}
                 title={tab.label}
               >
@@ -826,7 +720,9 @@ function EditorPageContent() {
 
         {/* Chart Area (between left and right sidebars) */}
         <div className="flex-1 min-w-0 pr-4 pl-2 pt-2 pb-4">
-          {hasJSON ? (
+          {!storeHydrated ? (
+            renderCenterAreaLoader()
+          ) : hasJSON ? (
             <ChartPreview
               onToggleLeftSidebar={() => setLeftSidebarCollapsed((v) => !v)}
               isLeftSidebarCollapsed={leftSidebarCollapsed}
@@ -991,85 +887,15 @@ function EditorPageContent() {
     );
   }
 
-  // Desktop layout for >1024px (original, unchanged)
+  // Desktop layout for >1024px
+  // The layout wrapper and left sidebar are handled by layout.tsx (App Shell Architecture)
   return (
-    <div className="fixed inset-0 flex bg-gray-50 overflow-hidden">
-      {/* Left Sidebar - Navigation */}
-      {leftSidebarCollapsed ? (
-        <div className="w-16 flex-shrink-0 flex flex-col h-full items-center bg-white border-r border-gray-200 p-2">
-          <Link href="/landing" className="mb-4 mt-4">
-            <Button variant="outline" size="icon" className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 flex flex-row items-center justify-center gap-1">
-              <ArrowLeft className="h-5 w-5" />
-              <Sparkles className="h-4 w-4" />
-            </Button>
-          </Link>
-
-          {/* Collapse Left Sidebar Button - Above active tab */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setLeftSidebarCollapsed((v) => !v)}
-            className="h-10 w-10 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg mb-4"
-            title={leftSidebarCollapsed ? "Expand Left Sidebar" : "Collapse Left Sidebar"}
-          >
-            <ChevronRight className={`h-4 w-4 ${leftSidebarCollapsed ? '' : 'rotate-180'}`} />
-          </Button>
-
-          {TABS.map((tab) => {
-            const Icon = tab.icon
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`mb-1 p-1.5 rounded flex flex-col items-center justify-center gap-0.5 w-full hover:bg-gray-100 transition-all duration-200 ${activeTab === tab.id ? "bg-blue-50 text-blue-700 shadow-sm" : "text-gray-500"}`}
-                title={tab.label}
-              >
-                <Icon className="h-4 w-4" />
-                <span className="text-[9px] font-medium leading-tight truncate w-full text-center">{tab.label}</span>
-              </button>
-            )
-          })}
-        </div>
-      ) : (
-        <div className="w-64 flex-shrink-0 flex flex-col h-full">
-          <div className="p-2">
-            {/* Navigation Section */}
-            <div className="mb-3">
-              <div className="flex justify-center px-1 mb-2">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                  Advanced Editor
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 px-1">
-                <button
-                  onClick={() => router.push('/board')}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-medium text-slate-600 bg-white hover:bg-slate-50 rounded-md border border-slate-200 shadow-sm transition-colors"
-                >
-                  <LayoutDashboard className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Board</span>
-                </button>
-                <button
-                  onClick={() => router.push('/landing')}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-medium text-slate-600 bg-white hover:bg-slate-50 rounded-md border border-slate-200 shadow-sm transition-colors"
-                >
-                  <MessageSquare className="w-3.5 h-3.5 text-slate-500" />
-                  <span>AI Chat</span>
-                </button>
-              </div>
-            </div>
-
-            <Sidebar
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              onToggleLeftSidebar={() => setLeftSidebarCollapsed((v) => !v)}
-              isLeftSidebarCollapsed={leftSidebarCollapsed}
-            />
-          </div>
-        </div>
-      )}
+    <>
       {/* Center Area - Chart Preview */}
       <div className="flex-1 min-w-0 pr-4 pl-1 pt-2 pb-4 h-full overflow-hidden flex flex-col">
-        {hasJSON ? (
+        {!storeHydrated ? (
+          renderCenterAreaLoader()
+        ) : hasJSON ? (
           <ChartPreview
             onToggleLeftSidebar={() => setLeftSidebarCollapsed((v) => !v)}
             isLeftSidebarCollapsed={leftSidebarCollapsed}
@@ -1223,7 +1049,7 @@ function EditorPageContent() {
         onClose={() => setShowSetupDialog(false)}
         onConfirm={handleDimensionsConfirmed}
       />
-    </div>
+    </>
   )
 }
 

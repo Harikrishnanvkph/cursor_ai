@@ -1076,57 +1076,57 @@ export function ChartSetupDialog({
                   <div className="flex-[0.8]">
                     <div className="flex items-center gap-1.5 mb-1.5">
                       <Label className="text-xs font-medium text-gray-600 block">Group Mode</Label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Info className="h-3 w-3 text-gray-400 hover:text-blue-500 cursor-help transition-colors" />
-                          </TooltipTrigger>
-                          <TooltipContent side="top" sideOffset={10} className="bg-slate-800 text-white border-slate-700 shadow-2xl p-0 overflow-hidden z-[200] w-[300px]">
-                            <Carousel className="w-full">
-                              <CarouselContent>
-                                <CarouselItem>
-                                  <div className="flex flex-col">
-                                    <div className="bg-white p-2">
-                                      <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Example: Uniform Mode</div>
-                                      <img
-                                        src="/uniform-preview.png"
-                                        alt="Uniform Mode"
-                                        className="w-full h-auto rounded border border-gray-100 shadow-sm"
-                                      />
-                                    </div>
-                                    <div className="p-3 border-t border-white/10 bg-slate-800/50">
-                                      <p className="text-[11px] leading-relaxed text-gray-300">
-                                        <span className="text-blue-400 font-bold">Uniform Mode</span>: All datasets share the same category and chart type. Best for direct comparisons.
-                                      </p>
-                                    </div>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button type="button" className="inline-flex items-center justify-center p-1 hover:bg-gray-100 rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-100">
+                            <Info className="h-4 w-4 text-blue-500 hover:text-blue-600 cursor-pointer" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent side="top" sideOffset={10} className="bg-slate-800 text-white border-slate-700 shadow-2xl p-0 overflow-hidden z-[200] w-[300px]">
+                          <Carousel className="w-full">
+                            <CarouselContent>
+                              <CarouselItem>
+                                <div className="flex flex-col">
+                                  <div className="bg-white p-2">
+                                    <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Example: Uniform Mode</div>
+                                    <img
+                                      src="/uniform-preview.png"
+                                      alt="Uniform Mode"
+                                      className="w-full h-auto rounded border border-gray-100 shadow-sm"
+                                    />
                                   </div>
-                                </CarouselItem>
-                                <CarouselItem>
-                                  <div className="flex flex-col h-full">
-                                    <div className="bg-white p-2">
-                                      <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Example: Mixed Mode</div>
-                                      <img
-                                        src="/mixed-preview.png"
-                                        alt="Mixed Mode"
-                                        className="w-full h-auto rounded border border-gray-100 shadow-sm"
-                                      />
-                                    </div>
-                                    <div className="p-3 border-t border-white/10 bg-slate-800/50 h-full">
-                                      <p className="text-[11px] leading-relaxed text-gray-300">
-                                        <span className="text-pink-400 font-bold">Mixed Mode</span>: Each dataset has its own chart type and category. Ideal for combo charts.
-                                      </p>
-                                    </div>
+                                  <div className="p-3 border-t border-white/10 bg-slate-800/50">
+                                    <p className="text-[11px] leading-relaxed text-gray-300">
+                                      <span className="text-blue-400 font-bold">Uniform Mode</span>: All datasets share the same category and chart type. Best for direct comparisons.
+                                    </p>
                                   </div>
-                                </CarouselItem>
-                              </CarouselContent>
-                              <div className="absolute bottom-12 right-4 flex gap-1 z-20">
-                                <CarouselPrevious className="static translate-y-0 h-6 w-6 bg-slate-700 border-slate-600 hover:bg-slate-600 text-white" />
-                                <CarouselNext className="static translate-y-0 h-6 w-6 bg-slate-700 border-slate-600 hover:bg-slate-600 text-white" />
-                              </div>
-                            </Carousel>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                                </div>
+                              </CarouselItem>
+                              <CarouselItem>
+                                <div className="flex flex-col h-full">
+                                  <div className="bg-white p-2">
+                                    <div className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Example: Mixed Mode</div>
+                                    <img
+                                      src="/mixed-preview.png"
+                                      alt="Mixed Mode"
+                                      className="w-full h-auto rounded border border-gray-100 shadow-sm"
+                                    />
+                                  </div>
+                                  <div className="p-3 border-t border-white/10 bg-slate-800/50 h-full">
+                                    <p className="text-[11px] leading-relaxed text-gray-300">
+                                      <span className="text-pink-400 font-bold">Mixed Mode</span>: Each dataset has its own chart type and category. Ideal for combo charts.
+                                    </p>
+                                  </div>
+                                </div>
+                              </CarouselItem>
+                            </CarouselContent>
+                            <div className="absolute bottom-12 right-4 flex gap-1 z-20">
+                              <CarouselPrevious className="static translate-y-0 h-6 w-6 bg-slate-700 border-slate-600 hover:bg-slate-600 text-white" />
+                              <CarouselNext className="static translate-y-0 h-6 w-6 bg-slate-700 border-slate-600 hover:bg-slate-600 text-white" />
+                            </div>
+                          </Carousel>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                     <div className="flex bg-gray-100 p-0.5 rounded-md h-8">
                       <button

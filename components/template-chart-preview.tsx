@@ -1,5 +1,7 @@
 "use client"
 
+import { sanitizeHTML } from "@/lib/utils/sanitize"
+
 import React, { useRef, useState, useEffect } from "react"
 import { useTemplateStore } from "@/lib/template-store"
 import { useChartStore } from "@/lib/chart-store"
@@ -710,7 +712,7 @@ export function TemplateChartPreview({
             {/* Render HTML or plain text based on contentType */}
             {isHTML ? (
               <div
-                dangerouslySetInnerHTML={{ __html: textArea.content || 'Click to edit HTML' }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHTML(textArea.content || 'Click to edit HTML') }}
                 style={{
                   width: '100%',
                   height: '100%',
@@ -1097,6 +1099,44 @@ export function TemplateChartPreview({
                   <DropdownMenuContent align="start" className="w-52 p-2">
                     <DropdownMenuItem onClick={handleResetZoom} className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100">
                       <span className="flex-1">100% (Fit to View)</span>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem onClick={() => {
+                        const applyFullDimension = () => {
+                          let baseScale = 1.0;
+                          if (renderedFormat) {
+                            const formatW = renderedFormat.skeleton.dimensions.width;
+                            const formatH = renderedFormat.skeleton.dimensions.height;
+                            const containerWidth = containerRef.current?.clientWidth || 800;
+                            const containerHeight = containerRef.current?.clientHeight || 600;
+                            const padding = 40;
+                            const availableWidth = containerWidth - padding;
+                            const availableHeight = containerHeight - padding;
+                            const scaleX = availableWidth / formatW;
+                            const scaleY = availableHeight / formatH;
+                            baseScale = Math.min(scaleX, scaleY, 1);
+                          } else {
+                            const template = currentTemplate || templateInBackground;
+                            if (template) {
+                              const containerWidth = containerRef.current?.clientWidth || 800;
+                              const containerHeight = containerRef.current?.clientHeight || 600;
+                              const padding = 40;
+                              const availableWidth = containerWidth - padding;
+                              const availableHeight = containerHeight - padding;
+                              const scaleX = availableWidth / template.width;
+                              const scaleY = availableHeight / template.height;
+                              baseScale = Math.min(scaleX, scaleY, 1);
+                            }
+                          }
+                          setZoom(1.0 / baseScale);
+                          setPanOffset({ x: 0, y: 0 });
+                        };
+                        
+                        applyFullDimension();
+                        // Recalculate after the browser adds scrollbars to get the exact 1:1 scale
+                        setTimeout(applyFullDimension, 50);
+                    }} className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100">
+                      <span className="flex-1">Full Dimension</span>
                     </DropdownMenuItem>
 
                     <DropdownMenuSeparator className="my-1" />

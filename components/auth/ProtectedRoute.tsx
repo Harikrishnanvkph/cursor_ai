@@ -14,18 +14,17 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading } = useAuth()
 
-  // Minimal neutral loading — doesn't assume any specific page layout
+  // While auth is loading, we MUST NOT render children to prevent data leaks.
+  // Display a secure loading state instead.
   if (loading) {
     return (
-      <div className="flex h-screen w-screen bg-[#FAFAFA] items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="relative h-8 w-8">
-            <div className="absolute inset-0 rounded-full border-[2.5px] border-gray-100" />
-            <div className="absolute inset-0 rounded-full border-[2.5px] border-blue-500/50 border-r-transparent border-t-transparent animate-spin" />
-          </div>
+      <div className="flex h-full min-h-screen flex-1 w-full bg-gray-50 items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+          <p className="text-sm font-medium text-gray-500">Verifying access...</p>
         </div>
       </div>
-    );
+    )
   }
 
   // If user is authenticated, render the protected content

@@ -1,5 +1,7 @@
 "use client"
 
+import { sanitizeHTML } from "@/lib/utils/sanitize"
+
 import React, { useState, useRef, useEffect, useCallback } from "react"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { Label } from "@/components/ui/label"
@@ -548,7 +550,7 @@ export function FormatZonesPanel() {
                             transform: `scale(${richPreviewScale})`,
                             transformOrigin: 'top left'
                           }}
-                          dangerouslySetInnerHTML={{ __html: richEditorContent || '<p style="color:#999">Preview will appear here...</p>' }}
+                          dangerouslySetInnerHTML={{ __html: sanitizeHTML(richEditorContent || '<p style="color:#999">Preview will appear here...</p>') }}
                         />
                       </div>
                     )
@@ -565,7 +567,7 @@ export function FormatZonesPanel() {
                         flexShrink: 0,
                         margin: '0 auto'
                       }}
-                      dangerouslySetInnerHTML={{ __html: richEditorContent || '<p style="color:#999">Preview will appear here...</p>' }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeHTML(richEditorContent || '<p style="color:#999">Preview will appear here...</p>') }}
                     />
                   )
                 })()}

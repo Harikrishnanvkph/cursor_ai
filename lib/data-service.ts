@@ -11,6 +11,7 @@ class DataService {
   private baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000';
   private cache = new Map<string, { data: any; timestamp: number; ttl: number }>();
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+  private readonly MAX_CACHE_SIZE = 50; // Prevent unbounded memory growth
 
   // =============================================
   // REQUEST WRAPPER WITH CACHING
@@ -58,6 +59,11 @@ class DataService {
 
       // Cache successful GET requests
       if (useCache && options.method === 'GET') {
+        // Evict oldest entry if cache is full
+        if (this.cache.size >= this.MAX_CACHE_SIZE) {
+          const oldestKey = this.cache.keys().next().value;
+          if (oldestKey) this.cache.delete(oldestKey);
+        }
         this.cache.set(cacheKey, {
           data,
           timestamp: Date.now(),

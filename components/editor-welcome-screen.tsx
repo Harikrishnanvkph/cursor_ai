@@ -146,7 +146,6 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
       if (chartData.datasets && chartData.datasets.length > 0) {
         addDataset(sampleData.datasets[0])
         setHasJSON(true)
-        toast.success("Sample dataset added to chart")
       } else {
         setFullChart({
           chartType: 'bar',
@@ -155,7 +154,6 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
           replaceMode: true
         })
         setHasJSON(true)
-        toast.success(`Sample data loaded (${DEFAULT_CHART_WIDTH}×${DEFAULT_CHART_HEIGHT} px)`)
       }
     } else {
       // Grouped mode: setFullChart WITHOUT replaceMode creates a new group and appends
@@ -167,7 +165,6 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
         replaceMode: true
       })
       setHasJSON(true)
-      toast.success(`Sample grouped chart loaded (${DEFAULT_CHART_WIDTH}×${DEFAULT_CHART_HEIGHT} px)`)
     }
   }
 
@@ -210,7 +207,6 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
         if (chartData.datasets && chartData.datasets.length > 0) {
           addDataset(sampleData.datasets[0])
           setHasJSON(true)
-          toast.success("Sample dataset added to chart")
         } else {
           setFullChart({
             chartType: 'bar',
@@ -219,7 +215,6 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
             replaceMode: true
           })
           setHasJSON(true)
-          toast.success(`Sample data loaded (${sizeLabel})`)
         }
       } else {
         // Grouped mode: setFullChart WITHOUT replaceMode creates a new group and appends
@@ -231,7 +226,6 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
           replaceMode: true
         })
         setHasJSON(true)
-        toast.success(`Sample grouped chart loaded (${sizeLabel})`)
       }
     } else if (pendingAction === 'custom') {
       // Initialize chart with the entered dimensions and dataset

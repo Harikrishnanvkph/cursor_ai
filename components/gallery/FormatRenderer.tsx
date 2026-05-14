@@ -1,5 +1,7 @@
 "use client"
 
+import { sanitizeHTML, sanitizeSVG } from "@/lib/utils/sanitize"
+
 /**
  * FormatRenderer
  * 
@@ -497,7 +499,7 @@ function TextZoneContent({ renderedZone, scale, interactive }: {
             saveAndExit()
           }
         } : undefined}
-        {...(!isEditing && hasHtml ? { dangerouslySetInnerHTML: { __html: text } } : {})}
+        {...(!isEditing && hasHtml ? { dangerouslySetInnerHTML: { __html: sanitizeHTML(text) } } : {})}
       >
         {isEditing ? undefined : (!hasHtml ? text : undefined)}
       </div>
@@ -929,7 +931,7 @@ function DecorationZoneView({ renderedZone, scale, style }: {
           opacity: zone.style.svgOpacity || 0.6,
           color: zone.style.svgColor || '#6b7280',
         }}
-        dangerouslySetInnerHTML={{ __html: renderedZone.resolvedSvg }}
+        dangerouslySetInnerHTML={{ __html: sanitizeSVG(renderedZone.resolvedSvg) }}
       />
     )
   }

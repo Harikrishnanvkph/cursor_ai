@@ -69,18 +69,13 @@ function BoardPageContent() {
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "name">("newest")
   const [filterType, setFilterType] = useState<string>("all")
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   // Load conversations from backend on mount
   useEffect(() => {
-    if (user && mounted) {
+    if (user) {
       loadConversationsFromBackend()
     }
-  }, [user, mounted, loadConversationsFromBackend])
+  }, [user, loadConversationsFromBackend])
 
   // Get unique chart types for filtering
   const chartTypes = useMemo(() => {
@@ -160,9 +155,7 @@ function BoardPageContent() {
     return { total, thisWeek }
   }, [conversations])
 
-  if (!mounted) {
-    return null
-  }
+
 
   if (loading && conversations.length === 0) {
     return (

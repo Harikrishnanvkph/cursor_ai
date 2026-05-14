@@ -7,12 +7,8 @@ const protectedRoutes = ['/landing', '/editor', '/admin']
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Debug logging (remove in production)
-  console.log(`🔍 Middleware: ${pathname}`)
-
   // Skip middleware entirely for auth pages to prevent any interference
   if (pathname === '/signin' || pathname === '/signup') {
-    console.log(`✅ Auth page detected, skipping middleware entirely: ${pathname}`)
     return NextResponse.next()
   }
 
@@ -20,20 +16,16 @@ export function middleware(request: NextRequest) {
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route))
 
   if (isProtectedRoute) {
-    console.log(`🔒 Protected route detected: ${pathname}`)
 
-    // Check for authentication cookie set by the frontend (AuthProvider)
-    // We cannot read backend cookies (access_token) directly when deployed on different domains (Netlify vs Render)
+    // SECURITY WARNING: This 'is_authenticated' cookie is set by the client and is trivially spoofable.
+    // It serves ONLY as an optimistic UI redirect mechanism, NOT as a true security barrier.
+    // Real security relies on the client-side <ProtectedRoute> waiting for authApi.me() verification
+    // and the backend API strictly enforcing access tokens on data requests.
+    // We cannot read backend cookies (access_token) directly when deployed on different domains.
     const authCookie = request.cookies.get('is_authenticated')
 
     if (!authCookie) {
-      console.log(`❌ No auth cookie found, redirecting to signin`)
-
-      // Just redirect to signin page without redirect parameter to prevent loops
-      console.log(`🔄 Redirecting to: /signin`)
       return NextResponse.redirect(new URL('/signin', request.url))
-    } else {
-      console.log(`✅ Auth cookie found, allowing access`)
     }
   }
 

@@ -1,13 +1,10 @@
-"use client"
-
-import React, { useEffect, useState } from "react"
+import React, { Suspense } from "react"
 import Link from "next/link"
-import { useAuth } from "@/components/auth/AuthProvider"
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { useSearchParams } from "next/navigation"
-import { toast } from "sonner"
+import { HeroAuthCta } from "@/components/home/hero-auth-cta"
+import { WelcomeBanner } from "@/components/home/welcome-banner"
 import {
   ArrowRight,
   BarChart3,
@@ -32,55 +29,10 @@ import {
   Rocket,
   Target,
   Zap,
-  MousePointerClick,
-  X
+  MousePointerClick
 } from "lucide-react"
-import Image from "next/image"
 
 export default function HomePage() {
-  const { user, loading } = useAuth()
-  const searchParams = useSearchParams()
-  const [showWelcome, setShowWelcome] = useState<boolean>(false)
-  const [mounted, setMounted] = useState(false)
-
-  // Defer auth-dependent rendering to avoid hydration mismatch:
-  // `loading` / `user` differ between server and client.
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  const isAuthenticated = mounted && !!user
-
-  // Only show welcome banner once per session
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const shown = sessionStorage.getItem('welcomeShown')
-    if (!shown) {
-      setShowWelcome(true)
-      sessionStorage.setItem('welcomeShown', '1')
-    }
-  }, [])
-
-  // Handle OAuth success redirect
-  useEffect(() => {
-    const oauthSuccess = searchParams.get('oauth')
-    if (oauthSuccess === 'success') {
-      const url = new URL(window.location.href)
-      url.searchParams.delete('oauth')
-      window.history.replaceState({}, '', url.toString())
-      toast.success('Successfully signed in with Google!')
-      const timer = setTimeout(() => setShowWelcome(false), 5000)
-      return () => clearTimeout(timer)
-    }
-  }, [searchParams])
-
-  // Auto-hide welcome banner after 5 seconds for existing users
-  useEffect(() => {
-    if (user && showWelcome) {
-      const timer = setTimeout(() => setShowWelcome(false), 5000)
-      return () => clearTimeout(timer)
-    }
-  }, [user, showWelcome])
 
   const capabilities = [
     {
@@ -157,55 +109,10 @@ export default function HomePage() {
     <div className="min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300">
       <SiteHeader />
 
-{/* Animations moved to globals.css */}
-
-      {/* Main Content — always rendered to prevent hydration mismatch */}
-
-      {/* Floating Welcome Popup for Authenticated Users */}
-          {isAuthenticated && showWelcome && (
-            <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] animate-pop-in pointer-events-auto">
-              <div className="bg-white dark:bg-slate-900 border border-indigo-500/20 rounded-2xl p-1 shadow-2xl shadow-indigo-500/20 max-w-sm w-full mx-auto ring-1 ring-black/5 dark:ring-white/10">
-                <div className="flex items-center justify-between gap-4 pl-3 pr-2 py-1.5">
-                  <div className="flex items-center gap-3">
-                    {user.avatar_url ? (
-                      <div className="relative">
-                        <Image
-                          src={user.avatar_url}
-                          alt="Profile"
-                          width={36}
-                          height={36}
-                          className="rounded-xl ring-2 ring-indigo-500/20 object-cover"
-                          referrerPolicy="no-referrer"
-                          priority
-                        />
-                        <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-slate-900 rounded-full"></div>
-                      </div>
-                    ) : (
-                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
-                        {user.full_name?.[0] || user.email?.[0] || 'U'}
-                      </div>
-                    )}
-                    <div className="flex flex-col">
-                      <span className="text-sm font-semibold text-slate-900 dark:text-white leading-tight">
-                        Welcome back, {user.full_name?.split(' ')[0] || user.email?.split('@')[0]}!
-                      </span>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <Badge className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20 text-[10px] px-1.5 py-0 h-4 font-medium">
-                          Ready to create
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setShowWelcome(false)}
-                    className="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+{/* Welcome popup — client island (handles auth + OAuth redirect) */}
+      <Suspense>
+        <WelcomeBanner />
+      </Suspense>
 
           {/* ─── HERO SECTION ─── */}
           <section className="relative overflow-hidden bg-gradient-to-b from-indigo-50/50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-colors duration-300">
@@ -264,21 +171,7 @@ export default function HomePage() {
                     </Link>
                   </Button>
 
-                  {isAuthenticated ? (
-                    <Button asChild size="lg" variant="outline" className="px-8 py-6 text-base font-semibold bg-white border-slate-200 dark:border-slate-700 dark:bg-slate-800 text-slate-700 dark:text-white hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-700 transition-all duration-300 rounded-xl">
-                      <Link href="/board">
-                        <LayoutDashboard className="w-5 h-5 mr-2" />
-                        View Dashboard
-                      </Link>
-                    </Button>
-                  ) : (
-                    <Button asChild size="lg" variant="outline" className="px-8 py-6 text-base font-semibold bg-white border-slate-200 dark:border-slate-700 dark:bg-slate-800 text-slate-700 dark:text-white hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-700 transition-all duration-300 rounded-xl">
-                      <Link href="/editor">
-                        <Edit3 className="w-5 h-5 mr-2" />
-                        Try Advanced Editor
-                      </Link>
-                    </Button>
-                  )}
+                  <HeroAuthCta />
                 </div>
 
                 {/* Trust indicators */}

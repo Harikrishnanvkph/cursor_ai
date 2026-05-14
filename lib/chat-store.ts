@@ -716,7 +716,8 @@ export const useChatStore = create<ChatStore>()(
         currentConversationId: state.currentConversationId,
         currentChartState: state.currentChartState,
         conversationContext: state.conversationContext,
-        isProcessing: state.isProcessing,
+        // NOTE: isProcessing is intentionally EXCLUDED — it's transient UI state.
+        // Persisting it would permanently lock the chat input if the browser crashes mid-request.
         historyConversationId: state.historyConversationId,
         backendConversationId: state.backendConversationId
       }),

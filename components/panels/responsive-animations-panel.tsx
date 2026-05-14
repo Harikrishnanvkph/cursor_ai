@@ -37,7 +37,7 @@ export function ResponsiveAnimationsPanel() {
   } = useChartActions();
   const { editorMode, setEditorMode } = useTemplateStore();
   const [responsiveDropdownOpen, setResponsiveDropdownOpen] = useState(true);
-  const [sliceVisibilityOpen, setSliceVisibilityOpen] = useState(true);
+  const [sliceVisibilityOpen, setSliceVisibilityOpen] = useState(false);
   const [quickToolsOpen, setQuickToolsOpen] = useState(false);
   const [thresholdValue, setThresholdValue] = useState(50);
   const [unit, setUnit] = useState<DimensionUnit>('px');
@@ -262,7 +262,7 @@ export function ResponsiveAnimationsPanel() {
           {sliceVisibilityOpen && (
             <div className="bg-blue-50 rounded-b-lg p-3 space-y-2 border-x border-b border-blue-100">
               <p className="text-xs text-gray-600 mb-2">Click to hide/show slices from the chart</p>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5">
                 {sliceLabels.map((label: any, index: number) => {
                   // Check if slice is hidden using legendFilter
                   const isHidden = legendFilter.slices[index] === false;
@@ -273,13 +273,13 @@ export function ResponsiveAnimationsPanel() {
                       variant={isHidden ? "outline" : "default"}
                       size="sm"
                       onClick={() => handleToggleSliceVisibility(index)}
-                      className={`h-8 text-xs ${isHidden
+                      className={`h-6 text-[10px] px-2 max-w-[140px] ${isHidden
                         ? 'bg-gray-100 text-gray-500 hover:bg-gray-200 border-gray-300'
                         : 'bg-blue-600 hover:bg-blue-700 text-white'
                         }`}
                     >
-                      {isHidden ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
-                      {String(label)}
+                      {isHidden ? <EyeOff className="h-2.5 w-2.5 mr-0.5 shrink-0" /> : <Eye className="h-2.5 w-2.5 mr-0.5 shrink-0" />}
+                      <span className="truncate">{String(label)}</span>
                     </Button>
                   );
                 })}
@@ -536,7 +536,7 @@ export function ResponsiveAnimationsPanel() {
           </div>
         </div>
         {responsiveDropdownOpen && (
-          <div className="bg-blue-50 rounded-b-lg p-2 space-y-2 border-x border-b border-blue-100">
+          <div className="bg-blue-50 rounded-b-lg p-2 space-y-2 border-x border-b border-blue-100 overflow-hidden min-w-0">
             {/* Template Mode Notice */}
             {isTemplateMode && (
               <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200 mb-2">
@@ -598,7 +598,7 @@ export function ResponsiveAnimationsPanel() {
                   }}
                   className="mt-1 text-blue-600 focus:ring-blue-500"
                 />
-                <div className="flex flex-col flex-1">
+                <div className="flex flex-col flex-1 min-w-0">
                   <Label htmlFor="manual-mode-anim" className="text-sm font-medium cursor-pointer mb-1">
                     Fixed Dimensions {(chartConfig.manualDimensions === true || chartConfig.dynamicDimension === true) && !(chartConfig as any).templateDimensions && !(chartConfig as any).originalDimensions ? '(Active)' : ''}
                   </Label>
@@ -674,7 +674,7 @@ export function ResponsiveAnimationsPanel() {
                       )}
 
                       {/* Drag to resize option as a sub-setting */}
-                      <div className="flex items-center space-x-2 pt-2 border-t mt-2">
+                      <div className="flex items-start space-x-2 pt-2 border-t mt-2">
                         <input
                           type="checkbox"
                           id="enable-drag-resize"
@@ -685,9 +685,9 @@ export function ResponsiveAnimationsPanel() {
                               dynamicDimension: e.target.checked
                             });
                           }}
-                          className="rounded text-blue-600 focus:ring-blue-500 border-gray-300"
+                          className="rounded text-blue-600 focus:ring-blue-500 border-gray-300 mt-0.5"
                         />
-                        <Label htmlFor="enable-drag-resize" className="text-xs text-gray-600 cursor-pointer">
+                        <Label htmlFor="enable-drag-resize" className="text-xs text-gray-600 cursor-pointer whitespace-normal leading-tight break-words pr-1">
                           Enable drag-to-resize handles on chart
                         </Label>
                       </div>

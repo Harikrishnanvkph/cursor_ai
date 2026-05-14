@@ -1,5 +1,7 @@
 "use client"
 
+import { sanitizeHTML, sanitizeSVG } from "@/lib/utils/sanitize"
+
 import React, { useRef, useCallback, useEffect, useState } from "react"
 import { useDecorationStore, type DecorationShape, type DrawingState, type GlobalShapeSettings } from "@/lib/stores/decoration-store"
 import { DecorationToolbar } from "./DecorationToolbar"
@@ -672,7 +674,7 @@ const ShapeSVG = React.memo(function ShapeSVGComponent({ shape }: { shape: Decor
                   userSelect: 'none' as const,
                   pointerEvents: 'none' as const,
                 }}
-                {...(hasHtml ? { dangerouslySetInnerHTML: { __html: shape.text } } : {})}
+                {...(hasHtml ? { dangerouslySetInnerHTML: { __html: sanitizeHTML(shape.text) } } : {})}
               >
                 {hasHtml ? undefined : shape.text}
               </div>
@@ -733,7 +735,7 @@ const ShapeSVG = React.memo(function ShapeSVGComponent({ shape }: { shape: Decor
                   pointerEvents: 'none' as const,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}
-                dangerouslySetInnerHTML={{ __html: shape.svgContent }}
+                dangerouslySetInnerHTML={{ __html: sanitizeSVG(shape.svgContent) }}
               />
             </foreignObject>
           )}

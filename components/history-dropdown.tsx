@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useAuth } from "@/components/auth/AuthProvider"
 import { useHistoryStore, type Conversation } from "@/lib/history-store"
 import { useChatStore } from "@/lib/chat-store"
+import { useChartStore } from "@/lib/chart-store"
 import { History, ChevronDown, ChevronUp, Trash2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -24,7 +25,7 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
   const [filterType, setFilterType] = useState<'All' | 'Single Chart' | 'Group Chart' | 'Template Chart'>('All')
 
   const { conversations, restoreConversation, clearAllConversations, deleteConversation, loadConversationsFromBackend, loading } = useHistoryStore()
-  const { startNewConversation, historyConversationId, clearUndoStack } = useChatStore()
+  const { startNewConversation, historyConversationId } = useChatStore()
   const { user } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
@@ -59,7 +60,7 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
     restoreConversation(conversationId)
     // Clear undo/redo stack when switching to a different conversation
     // since the undo operations from the previous conversation are no longer relevant
-    clearUndoStack()
+    try { useChartStore.temporal.getState().clear() } catch (e) { /* temporal not available */ }
     setOpen(false)
 
     // Only route to landing if we're not already on a valid chart page

@@ -22,6 +22,7 @@ import { useChartStore } from "@/lib/chart-store"
 import { useTemplateStore } from "@/lib/template-store"
 import { getPatternCSS } from "@/lib/utils"
 import { ChartGenerator } from "@/lib/chart_generator"
+import { sanitizeHTML } from "@/lib/utils/sanitize"
 
 interface SharedChart {
   chart_type: string
@@ -652,7 +653,7 @@ export default function SharedChartPage() {
         return (
           <div key={textArea.id} style={style} className="overflow-hidden">
             {isHTML ? (
-              <div dangerouslySetInnerHTML={{ __html: content || '' }} style={{ width: '100%', height: '100%' }} />
+              <div dangerouslySetInnerHTML={{ __html: sanitizeHTML(content || '') }} style={{ width: '100%', height: '100%' }} />
             ) : (
               content
             )}

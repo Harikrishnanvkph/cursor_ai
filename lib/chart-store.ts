@@ -524,6 +524,7 @@ export const useChartStore = create<ChartStore>()(
       showBorder: state.showBorder,
       showLabels: state.showLabels,
       showImages: state.showImages,
+      hasJSON: state.hasJSON,
     }),
     limit: 50,
     // Prevent duplicate snapshots when state hasn't actually changed

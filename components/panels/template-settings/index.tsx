@@ -1,5 +1,7 @@
 "use client"
 
+import { sanitizeHTML } from "@/lib/utils/sanitize"
+
 import React, { useState, useRef, useEffect, useCallback } from "react"
 import { useTemplateStore } from "@/lib/template-store"
 import { useChatStore } from "@/lib/chat-store"
@@ -300,7 +302,7 @@ export function TemplateContentPanel() {
                                                             transform: `scale(${previewScale})`,
                                                             transformOrigin: 'top left'
                                                         }}
-                                                        dangerouslySetInnerHTML={{ __html: richEditorContent || 'Preview will appear here...' }}
+                                                        dangerouslySetInnerHTML={{ __html: sanitizeHTML(richEditorContent || 'Preview will appear here...') }}
                                                     />
                                                 </div>
                                             )
@@ -324,7 +326,7 @@ export function TemplateContentPanel() {
                                                     flexShrink: 0,
                                                     margin: '0 auto'
                                                 }}
-                                                dangerouslySetInnerHTML={{ __html: richEditorContent || 'Preview will appear here...' }}
+                                                dangerouslySetInnerHTML={{ __html: sanitizeHTML(richEditorContent || 'Preview will appear here...') }}
                                             />
                                         )
                                     })()}

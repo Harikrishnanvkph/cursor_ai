@@ -179,7 +179,18 @@ export function Sidebar({ activeTab, onTabChange, onToggleLeftSidebar, isLeftSid
           return (
             <button
               key={tab.id}
-              onClick={() => onTabChange(tab.id)}
+              onClick={() => {
+                if (tab.id === 'templates') {
+                  const templateStore = useTemplateStore.getState()
+                  if (!templateStore.currentTemplate) {
+                    templateStore.applyTemplate('template-1')
+                  }
+                  setEditorMode('template')
+                  onTabChange('tpl_templates')
+                } else {
+                  onTabChange(tab.id)
+                }
+              }}
               className={cn(
                 "w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-left transition-all duration-200 text-sm border",
                 activeTab === tab.id

@@ -129,11 +129,10 @@ const StylesButton = memo(() => {
                     <button
                         onClick={toggleGallery}
                         data-styles-toggle
-                        className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold transition-all border ${
-                            isGalleryOpen
+                        className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold transition-all border ${isGalleryOpen
                                 ? 'bg-violet-100 text-violet-700 border-violet-300 shadow-sm'
                                 : 'bg-white text-gray-500 border-gray-200 hover:border-violet-300 hover:text-violet-600 hover:bg-violet-50'
-                        }`}
+                            }`}
                     >
                         <Palette className="w-3.5 h-3.5" />
                         <span className="hidden lg:inline">Styles</span>
@@ -299,6 +298,32 @@ const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, onResetChart
                         <DropdownMenuItem onClick={() => { zoomPan.setZoom(1); zoomPan.setPanOffset({ x: 0, y: 0 }); }} className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100">
                             <span className="flex-1">100% (Fit to View)</span>
                         </DropdownMenuItem>
+
+                        {chartWidth && chartHeight && (
+                            <DropdownMenuItem onClick={() => {
+                                const applyFullDimension = () => {
+                                    let baseScale = 1.0;
+                                    if (chartContainerRef?.current) {
+                                        const cWidth = chartContainerRef.current.clientWidth || 800;
+                                        const cHeight = chartContainerRef.current.clientHeight || 600;
+                                        const padding = 100;
+                                        const availableWidth = Math.max(10, cWidth - padding);
+                                        const availableHeight = Math.max(10, cHeight - padding);
+                                        const scaleX = availableWidth / chartWidth;
+                                        const scaleY = availableHeight / chartHeight;
+                                        baseScale = Math.min(scaleX, scaleY, 1.0);
+                                    }
+                                    zoomPan.setZoom(1.0 / baseScale);
+                                    zoomPan.setPanOffset({ x: 0, y: 0 });
+                                };
+                                
+                                applyFullDimension();
+                                // Recalculate after the browser adds scrollbars to get the exact 1:1 scale
+                                setTimeout(applyFullDimension, 50);
+                            }} className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100">
+                                <span className="flex-1">Full Dimension</span>
+                            </DropdownMenuItem>
+                        )}
 
                         <DropdownMenuSeparator className="my-1" />
 
