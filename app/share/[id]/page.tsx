@@ -821,6 +821,7 @@ export default function SharedChartPage() {
                   interactive={false}
                   panMode={true}
                   forceRealChart={true}
+                  zoomLevel={zoom}
                 />
               </div>
             ) : isTemplate ? (
@@ -863,7 +864,7 @@ export default function SharedChartPage() {
                       backgroundColor: 'transparent',
                       borderRadius: '4px'
                   }}>
-                    <ChartGenerator />
+                    <ChartGenerator devicePixelRatioMultiplier={Math.max(1, zoom)} />
                   </div>
                 )}
                 
@@ -896,7 +897,7 @@ export default function SharedChartPage() {
                 }}
               >
                 <div style={{ position: 'absolute', inset: 0, padding: 0 }}>
-                  <ChartGenerator />
+                  <ChartGenerator devicePixelRatioMultiplier={Math.max(1, zoom)} />
                 </div>
               </div>
             )}
