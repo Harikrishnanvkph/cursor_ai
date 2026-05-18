@@ -773,7 +773,7 @@ export function TemplateChartPreview({
         )}
 
         <div style={{ pointerEvents: (panMode || drawingMode === 'marquee-select') ? 'none' : 'auto', width: '100%', height: '100%' }}>
-          <ChartGenerator key={`template-${template.id}-${template.chartArea.width}-${template.chartArea.height}`} />
+          <ChartGenerator key={`template-${template.id}-${template.chartArea.width}-${template.chartArea.height}`} devicePixelRatioMultiplier={Math.max(1, scale)} />
         </div>
       </div>
     )
@@ -1051,6 +1051,8 @@ export function TemplateChartPreview({
                   <SelectItem value="polarArea" className="text-xs">Polar</SelectItem>
                   <SelectItem value="scatter" className="text-xs">Scatter</SelectItem>
                   <SelectItem value="bubble" className="text-xs">Bubble</SelectItem>
+                  <SelectItem value="funnel" className="text-xs">Funnel</SelectItem>
+                  <SelectItem value="gauge" className="text-xs">Gauge</SelectItem>
                 </SelectContent>
               </Select>
               {renderedFormat ? (
@@ -1259,7 +1261,8 @@ export function TemplateChartPreview({
               style={{
                 width: width,
                 height: height,
-                transform: `scale(${scale}) translate(${panOffset.x / scale}px, ${panOffset.y / scale}px)`,
+                zoom: scale,
+                transform: `translate(${panOffset.x / scale}px, ${panOffset.y / scale}px)`,
                 transformOrigin: 'top left'
               }}
             >
@@ -1270,6 +1273,7 @@ export function TemplateChartPreview({
                   <FormatRenderer
                     rendered={renderedFormat}
                     scale={1}
+                    zoomLevel={scale}
                     interactive={true}
                     panMode={panMode}
                   />

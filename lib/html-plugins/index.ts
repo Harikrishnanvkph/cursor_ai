@@ -6,7 +6,8 @@ import { generate3DPiePluginCode } from "./3d-pie-plugin-code";
 import { generate3DBarPluginCode } from "./3d-bar-plugin-code";
 import { generateSlicePatternPluginCode } from "./slice-pattern-plugin-code";
 import { generateWatermarkPluginCode } from "./watermark-plugin-code";
-
+import { generateFunnelPluginCode } from "./funnel-plugin-code";
+import { generateGaugePluginCode } from "./gauge-plugin-code";
 
 // Re-export individual generators for direct use
 export {
@@ -17,6 +18,8 @@ export {
     generate3DBarPluginCode,
     generateSlicePatternPluginCode,
     generateWatermarkPluginCode,
+    generateFunnelPluginCode,
+    generateGaugePluginCode,
 };
 
 /**
@@ -33,7 +36,9 @@ export function generateCompletePluginSystem(chartConfig: any): string {
     const hasSubtitle = subtitleConfig && subtitleConfig.display && subtitleConfig.text;
     const has3DPie = (chartConfig.plugins as any)?.pie3d?.enabled;
     const has3DBar = (chartConfig.plugins as any)?.bar3d?.enabled;
+    const hasFunnel = (chartConfig.plugins as any)?.funnel?.enabled;
     const hasWatermark = !!(chartConfig.plugins as any)?.watermark || !!(chartConfig as any)?.watermark;
+    const hasGauge = (chartConfig.plugins as any)?.gauge?.enabled;
 
     let pluginCode = '';
 
@@ -57,6 +62,16 @@ export function generateCompletePluginSystem(chartConfig: any): string {
     // Add 3D Bar plugin if needed
     if (has3DBar) {
         pluginCode += generate3DBarPluginCode();
+    }
+
+    // Add Funnel plugin if needed
+    if (hasFunnel) {
+        pluginCode += generateFunnelPluginCode();
+    }
+
+    // Add Gauge plugin if needed
+    if (hasGauge) {
+        pluginCode += generateGaugePluginCode();
     }
 
     // Add Slice Pattern plugin if any dataset has patterns

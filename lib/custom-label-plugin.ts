@@ -61,6 +61,48 @@ export function setDragState(chart: any, state: any) {
   dragStateMap.set(chart, state);
 }
 
+// Reusable boundary clamping for callout labels
+function clampToCanvas(chart: any, x: number, y: number, label: any): { x: number; y: number } {
+  const ctx = chart.ctx;
+  ctx.save();
+  ctx.font = label.font || 'bold 14px Arial';
+  const textWidth = ctx.measureText(label.text || '').width;
+  const textHeight = parseInt(label.font || '14', 10) || 14;
+  ctx.restore();
+  const padding = label.padding ?? 6;
+  const halfW = (textWidth / 2) + padding;
+  const halfH = (textHeight / 2) + padding;
+  const canvasW = chart.width || chart.canvas.width;
+  const canvasH = chart.height || chart.canvas.height;
+  const margin = 4;
+  let cx = x, cy = y;
+  if (cx + halfW > canvasW - margin) cx = canvasW - margin - halfW;
+  if (cx - halfW < margin) cx = margin + halfW;
+  if (cy - halfH < margin) cy = margin + halfH;
+  if (cy + halfH > canvasH - margin) cy = canvasH - margin - halfH;
+  return { x: cx, y: cy };
+}
+
+function getMidAngle(chart: any, datasetIdx: number, pointIdx: number, element: any): number {
+  const isGauge = (chart.options.plugins as any)?.gauge?.enabled;
+  if (isGauge) {
+    const dataset = chart.data.datasets[datasetIdx];
+    const totalValue = dataset.data.reduce((sum: number, val: any) => sum + Math.abs(Number(val) || 0), 0);
+    let cumulativeAngle = Math.PI;
+    for (let i = 0; i < pointIdx; i++) {
+      const sliceValue = Math.abs(Number(dataset.data[i]) || 0);
+      const sliceRatio = totalValue > 0 ? sliceValue / totalValue : 0;
+      cumulativeAngle += sliceRatio * Math.PI;
+    }
+    const sliceValue = Math.abs(Number(dataset.data[pointIdx]) || 0);
+    const sliceRatio = totalValue > 0 ? sliceValue / totalValue : 0;
+    return cumulativeAngle + (sliceRatio * Math.PI) / 2;
+  }
+  const startAngle = element.startAngle ?? 0;
+  const endAngle = element.endAngle ?? 0;
+  return (startAngle + endAngle) / 2;
+}
+
 export const customLabelPlugin: Plugin = {
   id: 'customLabels',
   afterDraw(chart) {
@@ -98,6 +140,10 @@ export const customLabelPlugin: Plugin = {
           typeof (chart as any).getDataVisibility === 'function') {
           if ((chart as any).getDataVisibility(pointIdx) === false) return;
         }
+
+        // Gauge plugin natively handles non-callout labels using curved text
+        const isGauge = (chart.options.plugins as any)?.gauge?.enabled;
+        if (isGauge && datasetIdx === 0 && label.anchor !== 'callout') return;
         // --- Position logic ---
         let x = label.x;
         let y = label.y;
@@ -108,6 +154,7 @@ export const customLabelPlugin: Plugin = {
         }
 
         let anchor = label.anchor || 'center';
+        let isDraggedPosition = false;
         // If callout and draggable, use stored position
         if (anchor === 'callout' && label.draggable) {
           const dragState = dragStateMap.get(chart) || {};
@@ -115,17 +162,16 @@ export const customLabelPlugin: Plugin = {
           if (dragState[dragKey]) {
             x = dragState[dragKey].x;
             y = dragState[dragKey].y;
+            isDraggedPosition = true;
           } else if (x == null || y == null) {
             // Default callout position per chart type
             const ct = (chart.config as any).type as string;
             const offset = label.calloutOffset || shapeSize * 1.5;
             if (ct === 'pie' || ct === 'doughnut' || ct === 'polarArea') {
               const chartArea = chart.chartArea;
-              const centerX = chartArea.left + chartArea.width / 2;
-              const centerY = chartArea.top + chartArea.height / 2;
-              const startAngle = element.startAngle ?? 0;
-              const endAngle = element.endAngle ?? 0;
-              const midAngle = (startAngle + endAngle) / 2;
+              const centerX = element.x ?? (chartArea.left + chartArea.width / 2);
+              const centerY = element.y ?? (chartArea.top + chartArea.height / 2);
+              const midAngle = getMidAngle(chart, datasetIdx, pointIdx, element);
               const outerRadius = element.outerRadius ?? Math.min(chartArea.width, chartArea.height) / 2;
               const r = outerRadius + offset;
               x = centerX + Math.cos(midAngle) * r;
@@ -145,11 +191,9 @@ export const customLabelPlugin: Plugin = {
           if (chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea') {
             // Pie/doughnut
             const chartArea = chart.chartArea;
-            const centerX = chartArea.left + chartArea.width / 2;
-            const centerY = chartArea.top + chartArea.height / 2;
-            const startAngle = element.startAngle ?? 0;
-            const endAngle = element.endAngle ?? 0;
-            const midAngle = (startAngle + endAngle) / 2;
+            const centerX = element.x ?? (chartArea.left + chartArea.width / 2);
+            const centerY = element.y ?? (chartArea.top + chartArea.height / 2);
+            const midAngle = getMidAngle(chart, datasetIdx, pointIdx, element);
             const innerRadius = element.innerRadius ?? 0;
             const outerRadius = element.outerRadius ?? Math.min(chartArea.width, chartArea.height) / 2;
             if (anchor === 'center') {
@@ -166,30 +210,48 @@ export const customLabelPlugin: Plugin = {
               y = transformY(centerY + Math.sin(midAngle) * r);
             } else if (anchor === 'callout') {
               const offset = label.calloutOffset || shapeSize * 1.5;
-              x = (element.x ?? 0) + offset;
-              y = (element.y ?? 0) - offset;
+              const r = outerRadius + offset;
+              x = centerX + Math.cos(midAngle) * r;
+              y = transformY(centerY + Math.sin(midAngle) * r);
             }
           } else if (chartType === 'bar' || chartType === 'horizontalBar') {
-            // Robust horizontal bar detection: indexAxis === 'y' means horizontal
             const isHorizontal = (chart.options.indexAxis === 'y');
             if (isHorizontal) {
+              const isFunnel = !!(chart.options.plugins as any)?.funnel?.enabled;
+              const leftEdge = Math.min(element.x ?? 0, element.base ?? 0);
+              const rightEdge = Math.max(element.x ?? 0, element.base ?? 0);
+              
               if (anchor === 'center') {
-                // Center of the bar: halfway between left (element.base) and right (element.x)
-                x = ((element.x ?? 0) + (element.base ?? 0)) / 2;
+                // Center of the bar
+                x = (leftEdge + rightEdge) / 2;
                 y = element.y ?? 0;
               } else if (anchor === 'top') {
-                // Right end of the bar
-                x = (element.x ?? 0) + 8;
+                if (isFunnel) {
+                  // Funnel: Top is the left end inside the area. We align 'left' later.
+                  x = leftEdge + 8;
+                } else {
+                  // Normal: Right end of the bar (outside)
+                  x = rightEdge + 8;
+                }
                 y = element.y ?? 0;
               } else if (anchor === 'bottom') {
-                // Just inside the left end of the bar
-                const barStart = Math.min(element.x ?? 0, element.base ?? 0);
-                x = barStart + 8; // 8px inside the bar
+                if (isFunnel) {
+                  // Funnel: Bottom is the right end inside the area. We align 'right' later.
+                  x = rightEdge - 8;
+                } else {
+                  // Normal: Inside the left end of the bar
+                  x = leftEdge + 8;
+                }
                 y = element.y ?? 0;
               } else if (anchor === 'callout') {
                 const offset = label.calloutOffset || shapeSize * 1.5;
-                x = (element.x ?? 0) + offset;
-                y = (element.y ?? 0) - offset;
+                if (isFunnel) {
+                  x = rightEdge + offset;
+                  y = element.y ?? 0;
+                } else {
+                  x = rightEdge + offset;
+                  y = (element.y ?? 0) - offset;
+                }
               }
             } else {
               if (anchor === 'center') {
@@ -245,6 +307,14 @@ export const customLabelPlugin: Plugin = {
           }
         }
 
+        // --- Boundary clamping for callout labels (all chart types) ---
+        // Only clamp auto-calculated positions; skip when user has dragged the label
+        if (anchor === 'callout' && !isDraggedPosition && x != null && y != null) {
+          const clamped = clampToCanvas(chart, x, y, label);
+          x = clamped.x;
+          y = clamped.y;
+        }
+
         // --- Draw enhanced callout arrow if needed ---
         if (anchor === 'callout' && label.callout && (label.arrowLine || label.arrowHead)) {
           ctx.save();
@@ -263,11 +333,9 @@ export const customLabelPlugin: Plugin = {
           if (chartType === "pie" || chartType === "doughnut" || chartType === "polarArea") {
             // Use the slice's mid-angle and outer radius so each slice gets its own start point
             const chartArea = chart.chartArea;
-            const centerX = chartArea.left + chartArea.width / 2;
-            const centerY = chartArea.top + chartArea.height / 2;
-            const startAngle = element.startAngle ?? 0;
-            const endAngle = element.endAngle ?? 0;
-            const midAngle = (startAngle + endAngle) / 2;
+            const centerX = element.x ?? (chartArea.left + chartArea.width / 2);
+            const centerY = element.y ?? (chartArea.top + chartArea.height / 2);
+            const midAngle = getMidAngle(chart, datasetIdx, pointIdx, element);
             const outerRadius = element.outerRadius ?? Math.min(chartArea.width, chartArea.height) / 2;
             startX = centerX + Math.cos(midAngle) * outerRadius;
             startY = transformY(centerY + Math.sin(midAngle) * outerRadius);
@@ -284,7 +352,7 @@ export const customLabelPlugin: Plugin = {
           // Calculate the end point (label center) and apply arrowEndGap
           let endX = x ?? 0;
           let endY = y ?? 0;
-          const gap = label.arrowEndGap || 0;
+          const gap = label.arrowEndGap ?? 8;
           if (gap > 0) {
             const angle = Math.atan2(endY - startY, endX - startX);
             endX = endX - gap * Math.cos(angle);
@@ -309,11 +377,11 @@ export const customLabelPlugin: Plugin = {
                 // Default elbow: short radial segment outward from slice edge, then to label
                 if ((chart.config as any).type === 'pie' || (chart.config as any).type === 'doughnut' || (chart.config as any).type === 'polarArea') {
                   const chartArea = chart.chartArea;
-                  const centerX = chartArea.left + chartArea.width / 2;
-                  const centerY = chartArea.top + chartArea.height / 2;
-                  const startAngle = element.startAngle ?? 0;
-                  const endAngle = element.endAngle ?? 0;
-                  const midAngle = (startAngle + endAngle) / 2;
+                  const centerX = element.x ?? (chartArea.left + chartArea.width / 2);
+                  const centerY = element.y ?? (chartArea.top + chartArea.height / 2);
+                  const midAngle = getMidAngle(chart, datasetIdx, pointIdx, element);
+                  const outerRadius = element.outerRadius ?? Math.min(chartArea.width, chartArea.height) / 2;
+                  const elbow = 15; // default elbow length
                   bendX = startX + Math.cos(midAngle) * elbow;
                   bendY = transformY(centerY + Math.sin(midAngle) * (outerRadius + elbow));
                 } else {
@@ -445,7 +513,15 @@ export const customLabelPlugin: Plugin = {
         ctx.save();
         ctx.font = label.font || 'bold 14px Arial';
         ctx.fillStyle = label.color || '#222';
-        ctx.textAlign = 'center';
+        
+        let align: CanvasTextAlign = 'center';
+        const isFunnelCheck = !!(chart.options.plugins as any)?.funnel?.enabled;
+        const isHoriz = (chart.options.indexAxis === 'y');
+        if (isFunnelCheck && isHoriz && !label.x) { // Only if not absolutely dragged
+          if (label.anchor === 'top') align = 'left';
+          if (label.anchor === 'bottom') align = 'right';
+        }
+        ctx.textAlign = align;
         ctx.textBaseline = 'middle';
         ctx.fillText(label.text, x ?? 0, y ?? 0);
         ctx.restore();
@@ -493,11 +569,9 @@ export const customLabelPlugin: Plugin = {
             const chartType = (chart.config as any).type as string;
             if (chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea') {
               const chartArea = chart.chartArea;
-              const centerX = chartArea.left + chartArea.width / 2;
-              const centerY = chartArea.top + chartArea.height / 2;
-              const startAngle = element.startAngle ?? 0;
-              const endAngle = element.endAngle ?? 0;
-              const midAngle = (startAngle + endAngle) / 2;
+              const centerX = element.x ?? (chartArea.left + chartArea.width / 2);
+              const centerY = element.y ?? (chartArea.top + chartArea.height / 2);
+              const midAngle = getMidAngle(chart, datasetIdx, pointIdx, element);
               const outerRadius = element.outerRadius ?? Math.min(chartArea.width, chartArea.height) / 2;
               const r = outerRadius + offset;
               lx = centerX + Math.cos(midAngle) * r;
@@ -506,6 +580,10 @@ export const customLabelPlugin: Plugin = {
               lx = (element.x ?? 0) + offset;
               ly = (element.y ?? 0) - offset;
             }
+            // Apply the same boundary clamping as rendering so hit-test matches visual position
+            const clamped = clampToCanvas(chart, lx, ly, label);
+            lx = clamped.x;
+            ly = clamped.y;
           }
           // Hit test (circle)
           if (Math.hypot(x - lx, y - ly) < shapeSize / 1.5) {

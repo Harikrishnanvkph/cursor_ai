@@ -163,14 +163,15 @@ export async function processChartDataForExport(chartData: ExtendedChartData): P
     return processedData;
 }
 
-export function buildLegendConfigForExport(chartConfig: any, includeLegend: boolean) {
+export function buildLegendConfigForExport(chartConfig: any, includeLegend: boolean, chartType?: string) {
     const legendConfig = chartConfig?.plugins?.legend ?? {};
     const labelsConfig = legendConfig.labels ?? {};
     const fontConfig = labelsConfig.font ?? {};
     const usePointStyle = labelsConfig.usePointStyle ?? true;
-    const legendType = (chartConfig?.plugins as any)?.legendType || 'dataset';
+    const defaultLegendType = chartType && ['pie', 'doughnut', 'polarArea', 'gauge', 'funnel', 'pie3d', 'doughnut3d'].includes(chartType) ? 'slice' : 'dataset';
+    const legendType = (chartConfig?.plugins as any)?.legendType || defaultLegendType;
 
-    if (!includeLegend) {
+    if (!includeLegend || chartType === 'gauge') {
         return { display: false, legendType };
     }
 
@@ -433,7 +434,7 @@ export function generateCustomLabelsFromConfig(chartConfig: any, chartData: any,
                 arrowHead: customLabelsConfig.arrowHead !== false,
                 arrowColor: customLabelsConfig.arrowColor || customLabelsConfig.calloutColor || '#333',
                 calloutOffset: customLabelsConfig.calloutOffset || 48,
-                arrowEndGap: customLabelsConfig.arrowEndGap || 0,
+                arrowEndGap: customLabelsConfig.arrowEndGap ?? 8,
                 // Include stored position if available
                 x: storedPosition?.x,
                 y: storedPosition?.y,

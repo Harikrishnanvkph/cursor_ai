@@ -93,7 +93,7 @@ declare module 'chart.js' {
 }
 
 // Define our custom chart types that extend Chart.js types
-export type CustomChartType = 'stackedBar' | 'area' | 'pie3d' | 'doughnut3d' | 'bar3d' | 'horizontalBar3d';
+export type CustomChartType = 'stackedBar' | 'area' | 'pie3d' | 'doughnut3d' | 'bar3d' | 'horizontalBar3d' | 'gauge' | 'funnel';
 
 // Define supported chart types as a union of Chart.js types and our custom types
 type SupportedChartTypeLocal =
@@ -222,7 +222,9 @@ export const chartTypeMapping: Record<SupportedChartType, keyof ChartTypeRegistr
     pie3d: 'pie',
     doughnut3d: 'doughnut',
     bar3d: 'bar',
-    horizontalBar3d: 'bar'
+    horizontalBar3d: 'bar',
+    gauge: 'doughnut',
+    funnel: 'bar'
 };
 
 // Create a utility function to check if a chart should be displayed as an area chart
@@ -332,14 +334,16 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
     // Track if this is a 3D variant for plugin enabling
     const is3DPie = type === ('pie3d' as CustomChartType) || type === ('doughnut3d' as CustomChartType);
     const is3DBar = type === ('bar3d' as CustomChartType) || type === ('horizontalBar3d' as CustomChartType);
+    const isGauge = type === ('gauge' as CustomChartType);
+    const isFunnel = type === ('funnel' as CustomChartType);
 
     // For area chart, use line chart config
     let processedType: keyof ChartTypeRegistry;
     if (type === ('area' as CustomChartType)) {
         processedType = 'line';
-    } else if (is3DPie) {
-        processedType = type === 'pie3d' ? 'pie' : 'doughnut';
-    } else if (is3DBar || type === 'horizontalBar' || type === 'stackedBar') {
+    } else if (is3DPie || isGauge) {
+        processedType = isGauge ? 'doughnut' : (type === 'pie3d' ? 'pie' : 'doughnut');
+    } else if (is3DBar || type === 'horizontalBar' || type === 'stackedBar' || isFunnel) {
         processedType = 'bar';
     } else {
         processedType = type as keyof ChartTypeRegistry;
@@ -367,7 +371,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
                 text: "My Chart",
             },
             subtitle: {
-                display: true,
+                display: false,
                 text: "Custom Chart Subtitle",
             },
             legend: {
@@ -514,6 +518,70 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
                     color: '#fff', // White color for better contrast on colored slices
                     formatter: (value: any) => value, // Show the actual value
                     // Add other polarArea specific datalabel defaults if needed
+                },
+            },
+        } as ExtendedChartOptions;
+    }
+
+    // Special configuration for Gauge chart
+    if (isGauge) {
+        return {
+            ...baseConfig,
+            startAngle: 0,
+            circumference: 180,
+            rotation: -90,
+            cutout: '75%',
+            plugins: {
+                ...baseConfig.plugins,
+                // @ts-ignore - legendType is a custom property
+                legendType: 'slice',
+                // @ts-ignore
+                gauge: { enabled: true, needleType: 'triangle', needleColor: '#374151', needleWidth: 3, needleBaseRadius: 8, valuePosition: 'bottom', valueFontSize: 28, valueColor: '#111827', showMinMax: true, minLabel: '0', maxLabel: '100', showSliceLabels: true, sliceLabelColor: '#ffffff' },
+                legend: {
+                    ...((baseConfig.plugins as any)?.legend || {}),
+                    display: true, // Legend is useful for multi-slice gauges
+                },
+                datalabels: {
+                    display: false, // Hide standard datalabels to avoid clash with custom curved labels
+                },
+            },
+        } as ExtendedChartOptions;
+    }
+
+    // Special configuration for Funnel chart
+    if (isFunnel) {
+        return {
+            ...baseConfig,
+            indexAxis: 'y' as const,
+            plugins: {
+                ...baseConfig.plugins,
+                // @ts-ignore - legendType is a custom property
+                legendType: 'slice',
+                // @ts-ignore
+                funnel: { enabled: true, showConnectors: true, connectorColor: 'rgba(0,0,0,0.08)', centered: true, coneShape: 'box' },
+                legend: {
+                    ...((baseConfig.plugins as any)?.legend || {}),
+                    display: false, // Hide legend for funnel
+                },
+                datalabels: {
+                    display: true,
+                    color: '#ffffff',
+                    font: { weight: 'bold', size: 14 },
+                    anchor: 'center',
+                    align: 'center',
+                },
+            },
+            scales: {
+                x: { display: false },
+                y: {
+                    display: true,
+                    grid: { display: false },
+                    ticks: {
+                        display: true,
+                        font: { size: 13, weight: '500' },
+                        color: '#374151',
+                    },
+                    border: { display: false },
                 },
             },
         } as ExtendedChartOptions;

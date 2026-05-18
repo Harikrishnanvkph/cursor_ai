@@ -44,6 +44,8 @@ import { watermarkPlugin } from "@/lib/plugins/watermark-plugin"
 import { pie3dPlugin } from "@/lib/plugins/3d-pie-plugin"
 import { bar3dPlugin } from "@/lib/plugins/3d-bar-plugin"
 import { slicePatternPlugin } from "@/lib/plugins/slice-pattern-plugin"
+import { gaugePlugin } from "@/lib/plugins/gauge-plugin"
+import { funnelPlugin } from "@/lib/plugins/funnel-plugin"
 import { ResizableChartArea } from "@/components/resizable-chart-area"
 
 import { parseDimension } from "@/lib/utils/dimension-utils"
@@ -81,7 +83,9 @@ ChartJS.register(
   enhancedTitlePlugin,
   pie3dPlugin,
   bar3dPlugin,
-  slicePatternPlugin
+  slicePatternPlugin,
+  gaugePlugin,
+  funnelPlugin
 );
 
 // Plugin registration verified
@@ -274,9 +278,10 @@ import {
 
 export interface ChartGeneratorProps {
   className?: string;
+  devicePixelRatioMultiplier?: number;
 }
 
-export const ChartGenerator = memo(function ChartGenerator({ className = "" }: ChartGeneratorProps) {
+export const ChartGenerator = memo(function ChartGenerator({ className = "", devicePixelRatioMultiplier = 1 }: ChartGeneratorProps) {
   // Granular hooks to prevent unnecessary re-renders
   const chartConfig = useChartConfig();
   const chartData = useChartData();
@@ -544,9 +549,18 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
       (datasetType === 'area' ? 'line' :
         (datasetType === 'pie3d' ? 'pie' :
           (datasetType === 'doughnut3d' ? 'doughnut' :
-            (datasetType === 'bar3d' ? 'bar' : datasetType))));
+            (datasetType === 'bar3d' ? 'bar' :
+              (datasetType === 'gauge' ? 'doughnut' :
+                (datasetType === 'funnel' ? 'bar' : datasetType))))));
 
     let patched = { ...ds, type: validType };
+    if (chartType === 'funnel') {
+      const coneShape = (chartConfig.plugins as any)?.funnel?.coneShape || 'box';
+      const defaultSpacing = coneShape === 'sharp' ? 1.0 : 0.8;
+      patched.categoryPercentage = (chartConfig.plugins as any)?.funnel?.spacing ?? defaultSpacing;
+      patched.barPercentage = 1.0;
+    }
+
     if (
       chartConfig.hoverFadeEffect !== false &&
       chartMode === 'grouped' && hoveredDatasetIndex !== null
@@ -815,11 +829,14 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
         borderColor = 'rgba(0,0,0,0.04)';
       }
 
+      let finalAnchor = customLabelsConfig.anchor || 'center';
+      let finalAlign = customLabelsConfig.align || 'center';
+
       return {
         text,
-        anchor: customLabelsConfig.anchor || 'center',
+        anchor: finalAnchor,
         shape: customLabelsConfig.shape || 'none',
-        align: customLabelsConfig.align || 'center',
+        align: finalAlign,
         color,
         backgroundColor,
         borderColor,
@@ -846,7 +863,9 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
         (chartType === 'pie3d' ? 'pie' :
           (chartType === 'doughnut3d' ? 'doughnut' :
             (chartType === 'bar3d' ? 'bar' :
-              (chartType === 'horizontalBar3d' ? 'bar' : chartType))))));
+              (chartType === 'horizontalBar3d' ? 'bar' :
+                (chartType === 'gauge' ? 'doughnut' :
+                  (chartType === 'funnel' ? 'bar' : chartType))))))));
 
   // In single mode, ALWAYS use the global chart type (user expects to change the whole chart)
   // In grouped mode with uniform, also use global chart type
@@ -863,7 +882,9 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
             (chartType === 'pie3d' ? 'pie' :
               (chartType === 'doughnut3d' ? 'doughnut' :
                 (chartType === 'bar3d' ? 'bar' :
-                  (chartType === 'horizontalBar3d' ? 'bar' : chartType))))));
+                  (chartType === 'horizontalBar3d' ? 'bar' :
+                    (chartType === 'gauge' ? 'doughnut' :
+                      (chartType === 'funnel' ? 'bar' : chartType))))))));
     } else {
       // Mixed mode: the chart type is 'bar' as base, but each dataset has its own type
       chartTypeForChart = 'bar';
@@ -887,6 +908,10 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
   } else if (chartTypeForChart === 'doughnut3d') {
     chartTypeForChart = 'doughnut';
   } else if (chartTypeForChart === 'bar3d' || chartTypeForChart === 'horizontalBar3d') {
+    chartTypeForChart = 'bar';
+  } else if (chartTypeForChart === 'gauge') {
+    chartTypeForChart = 'doughnut';
+  } else if (chartTypeForChart === 'funnel') {
     chartTypeForChart = 'bar';
   }
 
@@ -991,20 +1016,21 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
   const safeScales = isPlainObject(safeScalesSrc) ? safeScalesSrc : {};
   // Do NOT attach Cartesian scales for circular charts like pie/doughnut
   // But radar and polarArea DO need radial scales (r scale)
-  const isCircularType = (chartTypeForChart === 'pie' || chartTypeForChart === 'doughnut' || chartTypeForChart === 'radar' || chartTypeForChart === 'polarArea');
+  const isCircularType = (chartTypeForChart === 'pie' || chartTypeForChart === 'doughnut' || chartTypeForChart === 'radar' || chartTypeForChart === 'polarArea') || chartType === 'gauge';
   const isRadialType = (chartTypeForChart === 'radar' || chartTypeForChart === 'polarArea');
   const optionsScales = isCircularType ? undefined : ({
     x: { ...(safeScales?.x || {}) },
-    y: { ...(safeScales?.y || {}) },
+    y: chartType === 'funnel' ? { ...(safeScales?.y || {}), type: 'category' } : { ...(safeScales?.y || {}) },
   } as any);
   // For radial chart types (radar, polarArea), extract ONLY the 'r' scale
   // This prevents leftover x/y scales from Cartesian charts from appearing
   const radialOnlyScales = isRadialType && safeScales?.r ? { r: safeScales.r } : {};
   // Determine if any dataset (or the chart) requests horizontal orientation
-  const needsHorizontal = chartType === 'horizontalBar' || chartType === 'horizontalBar3d' ||
+  const needsHorizontal = chartType === 'horizontalBar' || chartType === 'horizontalBar3d' || chartType === 'funnel' ||
     filteredDatasetsPatched.some((ds: any) =>
       (ds?.chartType || chartType) === 'horizontalBar' ||
-      (ds?.chartType || chartType) === 'horizontalBar3d'
+      (ds?.chartType || chartType) === 'horizontalBar3d' ||
+      (ds?.chartType || chartType) === 'funnel'
     );
   const baseOptions = {
     ...(chartConfig as any),
@@ -1100,7 +1126,10 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
           ticks: {
             ...(yBase.ticks || {}),
             // Inject smart decimals for Y-axis ticks to prevent "identical" labels on small scales
-            callback: function (value: any) {
+            callback: function (this: any, value: any, index: number, ticks: any[]) {
+              if (this && this.type === 'category') {
+                return this.getLabelForValue ? this.getLabelForValue(value) : value;
+              }
               if (typeof value !== 'number') return value;
               // If user has a custom callback string from AI, parseCallbacks already handled it
               // We only inject our smart logic if no custom callback is explicitly provided
@@ -1438,7 +1467,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
             {chartConfig.dynamicDimension ? (
               <ResizableChartArea>
                 <Chart
-                  key={`${chartTypeForChart}-${isResponsive ? 'responsive' : 'fixed'}-${chartConfig.manualDimensions ? 'manual' : 'auto'}`}
+                  key={`${chartTypeForChart}-${isResponsive ? 'responsive' : 'fixed'}-${chartConfig.manualDimensions ? 'manual' : 'auto'}-dpr${devicePixelRatioMultiplier}`}
                   ref={chartRef}
                   type={chartTypeForChart as any}
                   data={chartDataForChart}
@@ -1448,10 +1477,13 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
                   })}
                   options={{
                     ...chartConfig,
+                    devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio * devicePixelRatioMultiplier : 1,
+                    circumference: chartType === 'gauge' ? (chartConfig.circumference ?? 180) : chartConfig.circumference,
+                    rotation: chartType === 'gauge' ? (chartConfig.rotation ?? 270) : chartConfig.rotation,
                     responsive: true,
                     maintainAspectRatio: false,
                     layout: {
-                      padding: chartConfig.layout?.padding || 0
+                      padding: (globalCustomLabelsConfig.anchor === 'callout') ? 60 : (chartConfig.layout?.padding || 0)
                     },
                     hover: {
                       intersect: chartConfig.hover?.intersect ?? false,
@@ -1484,19 +1516,24 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
                       bar3d: (chartType === 'bar3d' || chartType === 'horizontalBar3d')
                         ? { ...((chartConfig.plugins as any)?.bar3d || {}), enabled: true }
                         : (chartConfig.plugins as any)?.bar3d,
+                      gauge: chartType === 'gauge'
+                        ? { ...((chartConfig.plugins as any)?.gauge || {}), enabled: true, customLabelsConfig: globalCustomLabelsConfig }
+                        : { enabled: false },
+                      funnel: chartType === 'funnel'
+                        ? { ...((chartConfig.plugins as any)?.funnel || {}), enabled: true }
+                        : { enabled: false },
                       legendType: ((chartConfig.plugins as any)?.legendType) || 'dataset',
                       watermark: (chartConfig as any)?.watermark,
                       customLabels: { shapeSize: 32, labels: customLabels, display: globalCustomLabelsConfig.display !== false },
                       legend: {
                         ...((chartConfig.plugins as any)?.legend),
-                        display: ((chartConfig.plugins as any)?.legend?.display !== false),
+                        display: chartType === 'gauge' ? false : ((chartConfig.plugins as any)?.legend?.display !== false),
                         labels: {
                           ...(((chartConfig.plugins as any)?.legend)?.labels || {}),
                           generateLabels: (chart: any) => {
-                            // Read legendType from the chart's config at runtime
                             const legendType = (chart.config?.options?.plugins?.legendType) ||
                               ((chartConfig.plugins as any)?.legendType) ||
-                              'dataset';
+                              (['pie', 'doughnut', 'polarArea', 'gauge', 'funnel', 'pie3d', 'doughnut3d'].includes(chartType) ? 'slice' : 'dataset');
                             const usePointStyle = (chartConfig.plugins?.legend as any)?.labels?.usePointStyle || false;
                             const pointStyle = (chartConfig.plugins?.legend as any)?.labels?.pointStyle || 'rect';
                             const fontColor = (chartConfig.plugins?.legend?.labels as any)?.color || '#000000';
@@ -1647,7 +1684,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
                 }}
               >
                 <Chart
-                  key={`${chartTypeForChart}-${isResponsive ? 'responsive' : 'fixed'}-${chartConfig.manualDimensions ? `manual-${chartWidth}-${chartHeight}` : 'auto'}`}
+                  key={`${chartTypeForChart}-${isResponsive ? 'responsive' : 'fixed'}-${chartConfig.manualDimensions ? `manual-${chartWidth}-${chartHeight}` : 'auto'}-dpr${devicePixelRatioMultiplier}`}
                   ref={chartRef}
                   type={chartTypeForChart as any}
                   data={chartDataForChart}
@@ -1657,10 +1694,13 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
                   })}
                   options={{
                     ...appliedOptions,
+                    devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio * devicePixelRatioMultiplier : 1,
+                    circumference: chartType === 'gauge' ? (appliedOptions.circumference ?? 180) : appliedOptions.circumference,
+                    rotation: chartType === 'gauge' ? (appliedOptions.rotation ?? 270) : appliedOptions.rotation,
                     responsive: isInsideTemplateOrFormat || chartConfig.manualDimensions ? true : isResponsive,
                     maintainAspectRatio: false,
                     layout: {
-                      padding: chartConfig.layout?.padding || 0
+                      padding: (globalCustomLabelsConfig.anchor === 'callout') ? 60 : (chartConfig.layout?.padding || 0)
                     },
                     hover: {
                       intersect: chartConfig.hover?.intersect ?? false,
@@ -1693,19 +1733,24 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "" }: C
                       bar3d: (chartType === 'bar3d' || chartType === 'horizontalBar3d')
                         ? { ...((chartConfig.plugins as any)?.bar3d || {}), enabled: true }
                         : (chartConfig.plugins as any)?.bar3d,
+                      gauge: chartType === 'gauge'
+                        ? { ...((chartConfig.plugins as any)?.gauge || {}), enabled: true }
+                        : { enabled: false },
+                      funnel: chartType === 'funnel'
+                        ? { ...((chartConfig.plugins as any)?.funnel || {}), enabled: true }
+                        : { enabled: false },
                       legendType: ((chartConfig.plugins as any)?.legendType) || 'dataset',
                       watermark: (chartConfig as any)?.watermark,
                       customLabels: { shapeSize: 32, labels: customLabels, display: globalCustomLabelsConfig.display !== false },
                       legend: {
                         ...((chartConfig.plugins as any)?.legend),
-                        display: ((chartConfig.plugins as any)?.legend?.display !== false),
+                        display: chartType === 'gauge' ? false : ((chartConfig.plugins as any)?.legend?.display !== false),
                         labels: {
                           ...(((chartConfig.plugins as any)?.legend)?.labels || {}),
                           generateLabels: (chart: any) => {
-                            // Read legendType from the chart's config at runtime
                             const legendType = (chart.config?.options?.plugins?.legendType) ||
                               ((chartConfig.plugins as any)?.legendType) ||
-                              'dataset';
+                              (['pie', 'doughnut', 'polarArea', 'gauge', 'funnel', 'pie3d', 'doughnut3d'].includes(chartType) ? 'slice' : 'dataset');
                             const usePointStyle = (chartConfig.plugins?.legend as any)?.labels?.usePointStyle || false;
                             const pointStyle = (chartConfig.plugins?.legend as any)?.labels?.pointStyle || 'rect';
                             const fontColor = (chartConfig.plugins?.legend?.labels as any)?.color || '#000000';

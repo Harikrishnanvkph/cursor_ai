@@ -134,6 +134,18 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
         });
     }
 
+    // Apply funnel slice spacing (categoryPercentage) to datasets
+    if (chartType === 'funnel' && Array.isArray(processedChartData.datasets)) {
+        const coneShape = (chartConfig.plugins as any)?.funnel?.coneShape || 'box';
+        const defaultSpacing = coneShape === 'sharp' ? 1.0 : 0.8;
+        const spacing = (chartConfig.plugins as any)?.funnel?.spacing ?? defaultSpacing;
+        
+        processedChartData.datasets = processedChartData.datasets.map((ds: any) => ({
+            ...ds,
+            categoryPercentage: spacing,
+            barPercentage: 1.0
+        }));
+    }
 
 
     // Generate custom labels and enhance chart config
@@ -149,9 +161,19 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
     // Process background image URL to base64 if needed
     const processedChartConfig = JSON.parse(JSON.stringify(chartConfig));
     
-    // Remove scales for pie and doughnut charts to prevent background lines
-    if (chartType === 'pie' || chartType === 'doughnut') {
+    // Remove Cartesian scales for non-Cartesian charts to prevent background lines
+    if (['pie', 'doughnut', 'pie3d', 'doughnut3d', 'gauge'].includes(chartType)) {
         delete processedChartConfig.scales;
+    } else if (chartType === 'funnel') {
+        // Funnel uses 'bar' as its Chart.js base type. We must force X-axis off,
+        // but preserve the Y-axis config since it displays the slice labels.
+        processedChartConfig.scales = processedChartConfig.scales || {};
+        processedChartConfig.scales.x = { display: false, grid: { display: false } };
+    } else if (['radar', 'polarArea'].includes(chartType)) {
+        if (processedChartConfig.scales) {
+            delete processedChartConfig.scales.x;
+            delete processedChartConfig.scales.y;
+        }
     }
     
     // Add stacked scales for stackedBar chart type
@@ -166,6 +188,12 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
     // Add horizontal indexAxis for horizontalBar chart type
     if (chartType === 'horizontalBar' || chartType === 'horizontalBar3d') {
         processedChartConfig.indexAxis = 'y';
+    }
+
+    // Force half-circle layout for Gauge charts
+    if (chartType === 'gauge') {
+        processedChartConfig.circumference = processedChartConfig.circumference ?? 180;
+        processedChartConfig.rotation = processedChartConfig.rotation ?? 270;
     }
 
     // ── Custom Grace → suggestedMax (mirror of chart_generator.tsx logic) ──
@@ -217,6 +245,14 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
                 ...(processedChartConfig.plugins?.bar3d || {}),
                 enabled: chartType === 'bar3d' || chartType === 'horizontalBar3d'
             },
+            funnel: {
+                ...(processedChartConfig.plugins?.funnel || {}),
+                enabled: chartType === 'funnel'
+            },
+            gauge: {
+                ...(processedChartConfig.plugins?.gauge || {}),
+                enabled: chartType === 'gauge'
+            },
             watermark: (processedChartConfig as any)?.watermark
         }
     };
@@ -239,7 +275,7 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
         template = "plain"
     } = options;
 
-    const legendForExport = buildLegendConfigForExport(enhancedChartConfig, includeLegend);
+    const legendForExport = buildLegendConfigForExport(enhancedChartConfig, includeLegend, chartType);
 
     const optionsWithLegend = {
         ...options,

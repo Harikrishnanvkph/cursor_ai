@@ -196,6 +196,10 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
             bar3d: {
                 ...(processedChartConfig.plugins?.bar3d || {}),
                 enabled: chartType === 'bar3d' || chartType === 'horizontalBar3d'
+            },
+            funnel: {
+                ...(processedChartConfig.plugins?.funnel || {}),
+                enabled: chartType === 'funnel'
             }
         }
     };
@@ -214,7 +218,7 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
     const width = options.width ?? dimensionOverride?.width ?? 800;
     const height = options.height ?? dimensionOverride?.height ?? 600;
 
-    const legendForExport = buildLegendConfigForExport(enhancedChartConfig, includeLegend);
+    const legendForExport = buildLegendConfigForExport(enhancedChartConfig, includeLegend, chartType);
 
     // Generate the chart script
     const chartScript = `

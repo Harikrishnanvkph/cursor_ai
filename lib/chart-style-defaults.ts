@@ -26,7 +26,7 @@ function buildConfig(overrides: Record<string, any>): Record<string, any> {
         color: overrides.titleColor || '#1a1a1a',
       },
       subtitle: {
-        display: overrides.subtitleDisplay ?? true,
+        display: overrides.subtitleDisplay ?? false,
         font: overrides.subtitleFont || { size: 13, weight: '400' },
         color: overrides.subtitleColor || '#6b7280',
       },

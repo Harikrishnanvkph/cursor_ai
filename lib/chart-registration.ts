@@ -35,6 +35,8 @@ import { enhancedTitlePlugin } from "./enhanced-title-plugin"
 import { pie3dPlugin } from "./plugins/3d-pie-plugin"
 import { bar3dPlugin } from "./plugins/3d-bar-plugin"
 import { watermarkPlugin } from "./plugins/watermark-plugin"
+import { gaugePlugin } from "./plugins/gauge-plugin"
+import { funnelPlugin } from "./plugins/funnel-plugin"
 
 // Date adapter for time scales - auto-registers with Chart.js
 import 'chartjs-adapter-date-fns'
@@ -71,7 +73,9 @@ ChartJS.register(
   enhancedTitlePlugin,
   pie3dPlugin,
   bar3dPlugin,
-  watermarkPlugin
+  watermarkPlugin,
+  gaugePlugin,
+  funnelPlugin
 )
 
 // Chart.js registration completed

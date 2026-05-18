@@ -41,6 +41,8 @@ export function LabelsPanel() {
 
     // Helper to update customLabelsConfig in chartConfig
     const handleCustomLabelConfigUpdate = (path: string, value: any) => {
+        const isAnchorUpdate = path === 'anchor';
+        
         if (isSliceMode) {
             // Per-slice override: store only the changed property in sliceLabelOverrides
             const dsIndex = targetIndices[0] ?? activeDatasetIndex
@@ -49,19 +51,31 @@ export function LabelsPanel() {
             const overrides = { ...((ds as any).sliceLabelOverrides || {}) }
             const sliceOverride = { ...(overrides[settingsSliceIndex] || {}) }
             sliceOverride[path] = value
+            if (isAnchorUpdate) {
+                delete sliceOverride.x;
+                delete sliceOverride.y;
+            }
             overrides[settingsSliceIndex] = sliceOverride
             updateDataset(dsIndex, { sliceLabelOverrides: overrides })
         } else if (!applyToAll) {
             targetIndices.forEach((index: number) => {
                 const ds = chartData.datasets[index];
                 if (!ds) return;
-                const currentConfig = (ds as any).customLabelsConfig || {};
-                const newConfig = setNestedProperty({ ...currentConfig }, path, value);
+                let currentConfig = { ...((ds as any).customLabelsConfig || {}) };
+                if (isAnchorUpdate) {
+                    delete currentConfig.x;
+                    delete currentConfig.y;
+                }
+                const newConfig = setNestedProperty(currentConfig, path, value);
                 updateDataset(index, { customLabelsConfig: newConfig });
             });
         } else {
             const fullPath = `plugins.customLabelsConfig.${path}`;
-            const newConfig = setNestedProperty(chartConfig, fullPath, value);
+            let newConfig = setNestedProperty(chartConfig, fullPath, value);
+            if (isAnchorUpdate && newConfig.plugins?.customLabelsConfig) {
+                newConfig.plugins.customLabelsConfig.x = undefined;
+                newConfig.plugins.customLabelsConfig.y = undefined;
+            }
             updateChartConfig(newConfig);
             
             // Clear individual dataset overrides for this property when updating globally
@@ -191,7 +205,8 @@ export function LabelsPanel() {
                                         } else {
                                             applyConfigUpdates([
                                                 { path: "plugins.datalabels.display", value: checked },
-                                                { path: "plugins.customLabelsConfig.display", value: checked }
+                                                { path: "plugins.customLabelsConfig.display", value: checked },
+                                                { path: "visualSettings.showLabels", value: checked }
                                             ]);
                                         }
                                     }}
@@ -211,9 +226,14 @@ export function LabelsPanel() {
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="top">Top</SelectItem>
+                                            {/* Hide Top/Bottom for sharp cone funnel since trapezoids don't suit edge labels */}
+                                            {!(chartType === 'funnel' && (chartConfig.plugins as any)?.funnel?.coneShape === 'sharp') && (
+                                                <SelectItem value="top">Top</SelectItem>
+                                            )}
                                             <SelectItem value="center">Center</SelectItem>
-                                            <SelectItem value="bottom">Bottom</SelectItem>
+                                            {!(chartType === 'funnel' && (chartConfig.plugins as any)?.funnel?.coneShape === 'sharp') && (
+                                                <SelectItem value="bottom">Bottom</SelectItem>
+                                            )}
                                             <SelectItem value="callout">Callout</SelectItem>
                                         </SelectContent>
                                     </Select>
@@ -390,18 +410,15 @@ export function LabelsPanel() {
                                 <div className="flex items-center justify-between">
                                     <Label className="text-xs font-medium">Color</Label>
                                     <div className="flex items-center gap-2">
-                                        <div
-                                            className="w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform"
-                                            style={{ backgroundColor: customLabelsConfig.color || '#000000' }}
-                                            onClick={() => document.getElementById('label-color')?.click()}
-                                        />
-                                        <input
-                                            id="label-color"
-                                            type="color"
-                                            value={customLabelsConfig.color || '#000000'}
-                                            onChange={(e) => handleCustomLabelConfigUpdate("color", e.target.value)}
-                                            className="sr-only"
-                                        />
+                                        <div className="relative w-6 h-6 rounded-md border-2 border-white shadow-md hover:scale-110 transition-transform overflow-hidden flex-shrink-0" style={{ backgroundColor: customLabelsConfig.color || '#000000' }}>
+                                            <input
+                                                id="label-color"
+                                                type="color"
+                                                value={customLabelsConfig.color || '#000000'}
+                                                onChange={(e) => handleCustomLabelConfigUpdate("color", e.target.value)}
+                                                className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
+                                            />
+                                        </div>
                                         <Input
                                             value={customLabelsConfig.color || '#000000'}
                                             onChange={(e) => handleCustomLabelConfigUpdate("color", e.target.value)}
@@ -419,18 +436,15 @@ export function LabelsPanel() {
                                         <div className="space-y-1">
                                             <Label className="text-xs font-medium">Background</Label>
                                             <div className="flex items-center gap-2">
-                                                <div
-                                                    className="w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform"
-                                                    style={{ backgroundColor: customLabelsConfig.backgroundColor || '#ffffff' }}
-                                                    onClick={() => document.getElementById('label-bg-color')?.click()}
-                                                />
-                                                <input
-                                                    id="label-bg-color"
-                                                    type="color"
-                                                    value={customLabelsConfig.backgroundColor || '#ffffff'}
-                                                    onChange={(e) => handleCustomLabelConfigUpdate("backgroundColor", e.target.value)}
-                                                    className="sr-only"
-                                                />
+                                                <div className="relative w-6 h-6 rounded-md border-2 border-white shadow-md hover:scale-110 transition-transform overflow-hidden flex-shrink-0" style={{ backgroundColor: customLabelsConfig.backgroundColor || '#ffffff' }}>
+                                                    <input
+                                                        id="label-bg-color"
+                                                        type="color"
+                                                        value={customLabelsConfig.backgroundColor || '#ffffff'}
+                                                        onChange={(e) => handleCustomLabelConfigUpdate("backgroundColor", e.target.value)}
+                                                        className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
+                                                    />
+                                                </div>
                                                 <Input
                                                     value={customLabelsConfig.backgroundColor || '#ffffff'}
                                                     onChange={(e) => handleCustomLabelConfigUpdate("backgroundColor", e.target.value)}
@@ -442,18 +456,15 @@ export function LabelsPanel() {
                                         <div className="space-y-1">
                                             <Label className="text-xs font-medium">Border</Label>
                                             <div className="flex items-center gap-2">
-                                                <div
-                                                    className="w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform"
-                                                    style={{ backgroundColor: customLabelsConfig.borderColor || '#000000' }}
-                                                    onClick={() => document.getElementById('label-border-color')?.click()}
-                                                />
-                                                <input
-                                                    id="label-border-color"
-                                                    type="color"
-                                                    value={customLabelsConfig.borderColor || '#000000'}
-                                                    onChange={(e) => handleCustomLabelConfigUpdate("borderColor", e.target.value)}
-                                                    className="sr-only"
-                                                />
+                                                <div className="relative w-6 h-6 rounded-md border-2 border-white shadow-md hover:scale-110 transition-transform overflow-hidden flex-shrink-0" style={{ backgroundColor: customLabelsConfig.borderColor || '#000000' }}>
+                                                    <input
+                                                        id="label-border-color"
+                                                        type="color"
+                                                        value={customLabelsConfig.borderColor || '#000000'}
+                                                        onChange={(e) => handleCustomLabelConfigUpdate("borderColor", e.target.value)}
+                                                        className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
+                                                    />
+                                                </div>
                                                 <Input
                                                     value={customLabelsConfig.borderColor || '#000000'}
                                                     onChange={(e) => handleCustomLabelConfigUpdate("borderColor", e.target.value)}

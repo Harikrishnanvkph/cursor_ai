@@ -90,7 +90,8 @@ export const ChartPreviewCanvas = React.memo(({
                     style={{
                         width: '100%', height: '100%',
                         top: 0, left: 0, right: 0, bottom: 0,
-                        transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
+                        zoom: zoom,
+                        transform: `translate(${panOffset.x / zoom}px, ${panOffset.y / zoom}px)`,
                         transformOrigin: 'center center',
                         zIndex: 10,
                         cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'default',
@@ -118,7 +119,7 @@ export const ChartPreviewCanvas = React.memo(({
                             className="absolute inset-0"
                             style={{ width: '100%', height: '100%', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: panMode ? 'none' : 'auto' }}
                         >
-                            <ChartGenerator />
+                            <ChartGenerator devicePixelRatioMultiplier={Math.max(1, zoom)} />
                         </div>
                         {/* Decoration Shapes Layer (chart mode) */}
                         {(hasDecorations || drawingMode) && containerSize.width > 0 && (
@@ -173,7 +174,8 @@ export const ChartPreviewCanvas = React.memo(({
                 style={{
                     width: `${chartWidth}px`,
                     height: `${chartHeight}px`,
-                    transform: `scale(${finalScale}) translate(${panOffset.x / finalScale}px, ${panOffset.y / finalScale}px)`,
+                    zoom: finalScale,
+                    transform: `translate(${panOffset.x / finalScale}px, ${panOffset.y / finalScale}px)`,
                     transformOrigin: 'top left',
                     zIndex: 10,
                     cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'default',
@@ -195,7 +197,7 @@ export const ChartPreviewCanvas = React.memo(({
                     onDragStart={(e) => { if (panMode) e.preventDefault(); }}
                 >
                     <div ref={containerRef} style={{ pointerEvents: panMode ? 'none' : 'auto', position: 'relative' }}>
-                        <ChartGenerator />
+                        <ChartGenerator devicePixelRatioMultiplier={Math.max(1, finalScale)} />
                         {/* Decoration Shapes Layer (chart mode, fixed dimensions) */}
                         {(hasDecorations || drawingMode) && (
                             <div className="absolute inset-0" style={{ zIndex: 20, pointerEvents: drawingMode ? 'auto' : 'none' }}>

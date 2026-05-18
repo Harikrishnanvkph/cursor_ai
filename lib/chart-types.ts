@@ -21,6 +21,8 @@ export const STANDARD_CHART_TYPES: ChartTypeOption[] = [
   { value: 'polarArea', label: 'Polar Area' },
   { value: 'scatter', label: 'Scatter' },
   { value: 'bubble', label: 'Bubble' },
+  { value: 'gauge', label: 'Gauge' },
+  { value: 'funnel', label: 'Funnel' },
 ]
 
 /** 3D chart types */

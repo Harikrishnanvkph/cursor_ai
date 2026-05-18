@@ -51,6 +51,7 @@ interface StylingTabProps {
 export function StylingTab({ chartData, chartConfig, chartType, handleUpdateDataset, handleConfigUpdate }: StylingTabProps) {
     const [borderColorMode, setBorderColorMode] = useState<'auto' | 'manual'>('auto')
     const [manualBorderColor, setManualBorderColor] = useState('#000000')
+    const { updateChartConfig } = useChartActions()
 
     // Use the shared grouped settings target hook for per-dataset filtering
     const { targetIndices: getTargetDatasetIndicesArray, primaryIndex } = useGroupedSettingsTarget()
@@ -878,6 +879,555 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                                 />
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Funnel Chart Settings - Only for funnel charts */}
+            {(chartType === 'funnel' as any) && (
+                <div className="space-y-3 mt-4">
+                    <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                        <svg className="h-4 w-4 text-blue-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                        </svg>
+                        <h3 className="text-sm font-semibold text-blue-900">
+                            Funnel Styling
+                        </h3>
+                    </div>
+
+                    {/* Cone Shape */}
+                    <div className="space-y-1">
+                        <Label className="text-xs font-medium">Cone Shape</Label>
+                        <Select
+                            value={(chartConfig.plugins as any)?.funnel?.coneShape || 'box'}
+                            onValueChange={(value) => handleConfigUpdate('plugins.funnel.coneShape', value)}
+                        >
+                            <SelectTrigger className="h-8 text-xs">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="box">Box (Rectangular)</SelectItem>
+                                <SelectItem value="sharp">Sharp (Trapezoid)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Show Connectors Toggle - Only if not sharp cone */}
+                    {(chartConfig.plugins as any)?.funnel?.coneShape !== 'sharp' && (
+                        <>
+                            <div className="flex items-center justify-between p-2 mt-2 bg-gray-50 rounded-md border border-gray-100">
+                                <Label className="text-xs font-medium text-gray-700">Show Connectors</Label>
+                                <Switch
+                                    checked={(chartConfig.plugins as any)?.funnel?.showConnectors !== false}
+                                    onCheckedChange={(checked) => handleConfigUpdate('plugins.funnel.showConnectors', checked)}
+                                    className="scale-75"
+                                />
+                            </div>
+
+                            {/* Connector Color and Opacity (if connectors are shown) */}
+                            {(chartConfig.plugins as any)?.funnel?.showConnectors !== false && (
+                                <div className="grid grid-cols-2 gap-3 mt-3">
+                                    {/* Connector Color */}
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-medium">Connector Color</Label>
+                                        <div className="flex items-center gap-2 h-8">
+                                            <div
+                                                className="w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform"
+                                                style={{ backgroundColor: (chartConfig.plugins as any)?.funnel?.connectorColor || 'rgba(0,0,0,0.08)' }}
+                                                onClick={() => document.getElementById('funnel-connector-color')?.click()}
+                                            />
+                                            <input
+                                                id="funnel-connector-color"
+                                                type="color"
+                                                value="#000000"
+                                                onChange={(e) => {
+                                                    const hex = e.target.value;
+                                                    const r = parseInt(hex.slice(1, 3), 16);
+                                                    const g = parseInt(hex.slice(3, 5), 16);
+                                                    const b = parseInt(hex.slice(5, 7), 16);
+                                                    handleConfigUpdate('plugins.funnel.connectorColor', `rgba(${r},${g},${b},1)`);
+                                                }}
+                                                className="absolute opacity-0 w-0 h-0"
+                                            />
+                                            <Input
+                                                value={(chartConfig.plugins as any)?.funnel?.connectorColor || 'rgba(0,0,0,0.08)'}
+                                                onChange={(e) => handleConfigUpdate('plugins.funnel.connectorColor', e.target.value)}
+                                                className="h-8 text-xs flex-1"
+                                                placeholder="rgba(0,0,0,0.08)"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Connector Opacity */}
+                                    <div className="space-y-1">
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-xs font-medium">Opacity</Label>
+                                            <span className="text-xs text-gray-500">
+                                                {Math.round(Number((chartConfig.plugins as any)?.funnel?.connectorOpacity ?? 0.15) * 100)}%
+                                            </span>
+                                        </div>
+                                        <Slider
+                                            value={[Number((chartConfig.plugins as any)?.funnel?.connectorOpacity ?? 0.15)]}
+                                            onValueChange={([value]) => handleConfigUpdate('plugins.funnel.connectorOpacity', value)}
+                                            min={0}
+                                            max={1}
+                                            step={0.05}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    )}
+
+                    {/* Slice Spacing */}
+                    <div className="space-y-1 mt-3">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-xs font-medium">Slice Spacing</Label>
+                            <span className="text-xs text-gray-500">
+                                {Math.round((1 - ((chartConfig.plugins as any)?.funnel?.spacing ?? ((chartConfig.plugins as any)?.funnel?.coneShape === 'sharp' ? 1 : 0.8))) * 100)}%
+                            </span>
+                        </div>
+                        <Slider
+                            value={[(chartConfig.plugins as any)?.funnel?.spacing ?? ((chartConfig.plugins as any)?.funnel?.coneShape === 'sharp' ? 1 : 0.8)]}
+                            onValueChange={([value]) => handleConfigUpdate('plugins.funnel.spacing', value)}
+                            min={0.1}
+                            max={1}
+                            step={0.05}
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* Gauge Chart Settings - Only for gauge charts */}
+            {(chartType === 'gauge' as any) && (
+                <div className="mt-4 space-y-4">
+                    {/* ── Section Header ── */}
+                    <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                        <Activity className="h-4 w-4 text-blue-900" />
+                        <h3 className="text-sm font-semibold text-blue-900">Gauge Styling</h3>
+                    </div>
+
+                    {/* ── Needle Settings ── */}
+                    <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-4">
+                        <p className="text-xs font-semibold text-gray-700 tracking-wide uppercase">Needle</p>
+
+                        {/* Needle Type */}
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-medium text-gray-600">Type</Label>
+                            <Select
+                                value={(chartConfig.plugins as any)?.gauge?.needleType || 'triangle'}
+                                onValueChange={(value) => handleConfigUpdate('plugins.gauge.needleType', value)}
+                            >
+                                <SelectTrigger className="h-9 text-xs">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="triangle">Triangle (Speedometer)</SelectItem>
+                                    <SelectItem value="line">Line (Thin Pointer)</SelectItem>
+                                    <SelectItem value="arrow">Arrow (Pointer Head)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Needle Color */}
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-medium text-gray-600">Color</Label>
+                            <div className="flex items-center gap-2">
+                                <div
+                                    className="w-8 h-8 rounded-md border border-gray-300 cursor-pointer hover:scale-105 transition-transform flex-shrink-0"
+                                    style={{ backgroundColor: (chartConfig.plugins as any)?.gauge?.needleColor || '#374151' }}
+                                    onClick={() => document.getElementById('gauge-needle-color')?.click()}
+                                />
+                                <input
+                                    id="gauge-needle-color"
+                                    type="color"
+                                    value={(chartConfig.plugins as any)?.gauge?.needleColor || '#374151'}
+                                    onChange={(e) => handleConfigUpdate('plugins.gauge.needleColor', e.target.value)}
+                                    className="absolute opacity-0 w-0 h-0"
+                                />
+                                <Input
+                                    value={(chartConfig.plugins as any)?.gauge?.needleColor || '#374151'}
+                                    onChange={(e) => handleConfigUpdate('plugins.gauge.needleColor', e.target.value)}
+                                    className="h-9 text-xs font-mono flex-1"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Needle Width & Base Size */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-xs font-medium text-gray-600">Width</Label>
+                                    <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                                        {(chartConfig.plugins as any)?.gauge?.needleWidth ?? 3}px
+                                    </span>
+                                </div>
+                                <Slider
+                                    value={[Number((chartConfig.plugins as any)?.gauge?.needleWidth ?? 3)]}
+                                    onValueChange={([value]) => handleConfigUpdate('plugins.gauge.needleWidth', value)}
+                                    min={1}
+                                    max={20}
+                                    step={1}
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-xs font-medium text-gray-600">Base Size</Label>
+                                    <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                                        {(chartConfig.plugins as any)?.gauge?.needleBaseRadius ?? 8}px
+                                    </span>
+                                </div>
+                                <Slider
+                                    value={[Number((chartConfig.plugins as any)?.gauge?.needleBaseRadius ?? 8)]}
+                                    onValueChange={([value]) => handleConfigUpdate('plugins.gauge.needleBaseRadius', value)}
+                                    min={2}
+                                    max={30}
+                                    step={1}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ── Arc Settings ── */}
+                    <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-4">
+                        <p className="text-xs font-semibold text-gray-700 tracking-wide uppercase">Arc</p>
+                        <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-xs font-medium text-gray-600">Thickness</Label>
+                                <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                                    {100 - parseInt(String(chartConfig.cutout || '75%'))}%
+                                </span>
+                            </div>
+                            <Slider
+                                value={[100 - parseInt(String(chartConfig.cutout || '75%'))]}
+                                onValueChange={([value]) => handleConfigUpdate('cutout', (100 - value) + '%')}
+                                min={5}
+                                max={60}
+                                step={1}
+                            />
+                        </div>
+                    </div>
+
+                    {/* ── Value Display ── */}
+                    <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <p className="text-xs font-semibold text-gray-700 tracking-wide uppercase">Value Display</p>
+                            <Switch
+                                checked={(chartConfig.plugins as any)?.gauge?.showValue !== false}
+                                onCheckedChange={(checked) => handleConfigUpdate('plugins.gauge.showValue', checked)}
+                            />
+                        </div>
+
+                        {(chartConfig.plugins as any)?.gauge?.showValue !== false && (<>
+                        {/* Display Content & Needle Value row */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-medium text-gray-600">Display</Label>
+                                <Select
+                                    value={(chartConfig.plugins as any)?.gauge?.valueDisplayContent || 'number'}
+                                    onValueChange={(value) => handleConfigUpdate('plugins.gauge.valueDisplayContent', value)}
+                                >
+                                    <SelectTrigger className="h-9 text-xs">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="number">Number</SelectItem>
+                                        <SelectItem value="label">Label</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-medium text-gray-600">Needle Value</Label>
+                                <Input
+                                    type="number"
+                                    value={(chartConfig.plugins as any)?.gauge?.needleValue ?? ''}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (val === '') {
+                                            handleConfigUpdate('plugins.gauge.needleValue', undefined);
+                                            return;
+                                        }
+                                        const numVal = Number(val);
+                                        const parsedMin = Number((chartConfig.plugins as any)?.gauge?.minLabel);
+                                        const parsedMax = Number((chartConfig.plugins as any)?.gauge?.maxLabel);
+                                        const minVal = isNaN(parsedMin) ? 0 : parsedMin;
+                                        const maxVal = isNaN(parsedMax) ? 100 : parsedMax;
+                                        const clamped = Math.min(Math.max(numVal, minVal), maxVal);
+                                        handleConfigUpdate('plugins.gauge.needleValue', clamped);
+                                    }}
+                                    className="h-9 text-xs"
+                                    placeholder="Auto"
+                                    min={isNaN(Number((chartConfig.plugins as any)?.gauge?.minLabel)) ? 0 : Number((chartConfig.plugins as any)?.gauge?.minLabel)}
+                                    max={isNaN(Number((chartConfig.plugins as any)?.gauge?.maxLabel)) ? 100 : Number((chartConfig.plugins as any)?.gauge?.maxLabel)}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Position & Font Size row */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="flex flex-col justify-end space-y-1.5 h-[60px]">
+                                <Label className="text-xs font-medium text-gray-600">Position</Label>
+                                <Select
+                                    value={(chartConfig.plugins as any)?.gauge?.valuePosition || 'bottom'}
+                                    onValueChange={(value) => handleConfigUpdate('plugins.gauge.valuePosition', value)}
+                                >
+                                    <SelectTrigger className="h-9 text-xs">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="bottom">Bottom</SelectItem>
+                                        <SelectItem value="center">Center</SelectItem>
+                                        <SelectItem value="top">Top</SelectItem>
+                                        <SelectItem value="left">Left</SelectItem>
+                                        <SelectItem value="right">Right</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="flex flex-col justify-end space-y-1.5 h-[60px]">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-xs font-medium text-gray-600">Font Size</Label>
+                                    <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                                        {(chartConfig.plugins as any)?.gauge?.valueFontSize ?? 28}px
+                                    </span>
+                                </div>
+                                <div className="flex h-9 items-center">
+                                    <Slider
+                                        value={[Number((chartConfig.plugins as any)?.gauge?.valueFontSize ?? 28)]}
+                                        onValueChange={([value]) => handleConfigUpdate('plugins.gauge.valueFontSize', value)}
+                                        min={10}
+                                        max={60}
+                                        step={1}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Value Color */}
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-medium text-gray-600">Color</Label>
+                            <div className="flex items-center gap-2">
+                                <div className="relative w-8 h-8 rounded-md border border-gray-300 hover:scale-105 transition-transform overflow-hidden flex-shrink-0" style={{ backgroundColor: (chartConfig.plugins as any)?.gauge?.valueColor || '#111827' }}>
+                                    <input
+                                        id="gauge-value-color"
+                                        type="color"
+                                        value={(chartConfig.plugins as any)?.gauge?.valueColor || '#111827'}
+                                        onChange={(e) => handleConfigUpdate('plugins.gauge.valueColor', e.target.value)}
+                                        className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
+                                    />
+                                </div>
+                                <Input
+                                    value={(chartConfig.plugins as any)?.gauge?.valueColor || '#111827'}
+                                    onChange={(e) => handleConfigUpdate('plugins.gauge.valueColor', e.target.value)}
+                                    className="h-9 text-xs font-mono flex-1"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Prefix & Suffix */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-medium text-gray-600">Prefix</Label>
+                                <Input
+                                    value={(chartConfig.plugins as any)?.gauge?.valuePrefix || ''}
+                                    onChange={(e) => handleConfigUpdate('plugins.gauge.valuePrefix', e.target.value)}
+                                    className="h-9 text-xs"
+                                    placeholder="e.g. $"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-medium text-gray-600">Suffix</Label>
+                                <Input
+                                    value={(chartConfig.plugins as any)?.gauge?.valueSuffix || ''}
+                                    onChange={(e) => handleConfigUpdate('plugins.gauge.valueSuffix', e.target.value)}
+                                    className="h-9 text-xs"
+                                    placeholder="e.g. %"
+                                />
+                            </div>
+                        </div>
+                        </>)}
+                    </div>
+
+                    {/* ── Min / Max Labels ── */}
+                    <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <p className="text-xs font-semibold text-gray-700 tracking-wide uppercase">Min / Max Labels</p>
+                            <Switch
+                                checked={(chartConfig.plugins as any)?.gauge?.showMinMax !== false}
+                                onCheckedChange={(checked) => handleConfigUpdate('plugins.gauge.showMinMax', checked)}
+                            />
+                        </div>
+
+                        {(chartConfig.plugins as any)?.gauge?.showMinMax !== false && (
+                            <div className="space-y-4">
+                                {/* Format Select */}
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-medium text-gray-600">Format</Label>
+                                    <Select
+                                        value={(chartConfig.plugins as any)?.gauge?.minMaxFormat || 'percentage'}
+                                        onValueChange={(value) => {
+                                            const gaugeData = chartData.datasets?.[0]?.data || [];
+                                            const totalValue = gaugeData.reduce((sum: number, val: any) => sum + Math.abs(Number(val) || 0), 0);
+                                            
+                                            const newConfig = JSON.parse(JSON.stringify(chartConfig));
+                                            if (!newConfig.plugins) newConfig.plugins = {};
+                                            if (!newConfig.plugins.gauge) newConfig.plugins.gauge = {};
+                                            
+                                            newConfig.plugins.gauge.minMaxFormat = value;
+                                            if (value === 'total') {
+                                                const currentMin = Number(newConfig.plugins.gauge.minLabel) || 0;
+                                                newConfig.plugins.gauge.minLabel = String(currentMin);
+                                                newConfig.plugins.gauge.maxLabel = String(currentMin + totalValue);
+                                            } else {
+                                                newConfig.plugins.gauge.minLabel = '0';
+                                                newConfig.plugins.gauge.maxLabel = '100';
+                                            }
+                                            updateChartConfig(newConfig);
+                                        }}
+                                    >
+                                        <SelectTrigger className="h-9 text-xs">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="percentage">Percentage (0-100)</SelectItem>
+                                            <SelectItem value="total">Total Number</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Min / Max text inputs */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-medium text-gray-600">Min Label</Label>
+                                        <Input
+                                            value={(chartConfig.plugins as any)?.gauge?.minLabel ?? '0'}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                const isTotalFormat = (chartConfig.plugins as any)?.gauge?.minMaxFormat === 'total';
+                                                if (isTotalFormat) {
+                                                    const gaugeData = chartData.datasets?.[0]?.data || [];
+                                                    const totalValue = gaugeData.reduce((sum: number, v: any) => sum + Math.abs(Number(v) || 0), 0);
+                                                    
+                                                    const newConfig = JSON.parse(JSON.stringify(chartConfig));
+                                                    if (!newConfig.plugins) newConfig.plugins = {};
+                                                    if (!newConfig.plugins.gauge) newConfig.plugins.gauge = {};
+                                                    newConfig.plugins.gauge.minLabel = val;
+                                                    // Auto-adjust max
+                                                    const numericVal = Number(val);
+                                                    if (!isNaN(numericVal)) {
+                                                        newConfig.plugins.gauge.maxLabel = String(numericVal + totalValue);
+                                                    }
+                                                    updateChartConfig(newConfig);
+                                                } else {
+                                                    handleConfigUpdate('plugins.gauge.minLabel', val);
+                                                }
+                                            }}
+                                            className="h-9 text-xs"
+                                            placeholder="0"
+                                            disabled={(chartConfig.plugins as any)?.gauge?.minMaxFormat !== 'total'}
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-medium text-gray-600">Max Label</Label>
+                                        <Input
+                                            value={(chartConfig.plugins as any)?.gauge?.maxLabel ?? '100'}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                const isTotalFormat = (chartConfig.plugins as any)?.gauge?.minMaxFormat === 'total';
+                                                if (isTotalFormat) {
+                                                    const gaugeData = chartData.datasets?.[0]?.data || [];
+                                                    const totalValue = gaugeData.reduce((sum: number, v: any) => sum + Math.abs(Number(v) || 0), 0);
+                                                    
+                                                    const newConfig = JSON.parse(JSON.stringify(chartConfig));
+                                                    if (!newConfig.plugins) newConfig.plugins = {};
+                                                    if (!newConfig.plugins.gauge) newConfig.plugins.gauge = {};
+                                                    newConfig.plugins.gauge.maxLabel = val;
+                                                    // Auto-adjust min
+                                                    const numericVal = Number(val);
+                                                    if (!isNaN(numericVal)) {
+                                                        newConfig.plugins.gauge.minLabel = String(numericVal - totalValue);
+                                                    }
+                                                    updateChartConfig(newConfig);
+                                                } else {
+                                                    handleConfigUpdate('plugins.gauge.maxLabel', val);
+                                                }
+                                            }}
+                                            className="h-9 text-xs"
+                                            placeholder="100"
+                                            disabled={(chartConfig.plugins as any)?.gauge?.minMaxFormat !== 'total'}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Label Color & Font Size */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-medium text-gray-600">Label Color</Label>
+                                        <div className="flex items-center gap-2">
+                                            <div className="relative w-8 h-8 rounded-md border border-gray-300 hover:scale-105 transition-transform overflow-hidden flex-shrink-0" style={{ backgroundColor: (chartConfig.plugins as any)?.gauge?.minMaxColor || '#6b7280' }}>
+                                                <input
+                                                    id="gauge-minmax-color"
+                                                    type="color"
+                                                    value={(chartConfig.plugins as any)?.gauge?.minMaxColor || '#6b7280'}
+                                                    onChange={(e) => handleConfigUpdate('plugins.gauge.minMaxColor', e.target.value)}
+                                                    className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
+                                                />
+                                            </div>
+                                            <Input
+                                                value={(chartConfig.plugins as any)?.gauge?.minMaxColor || '#6b7280'}
+                                                onChange={(e) => handleConfigUpdate('plugins.gauge.minMaxColor', e.target.value)}
+                                                className="h-9 text-xs font-mono flex-1"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-xs font-medium text-gray-600">Font Size</Label>
+                                            <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                                                {(chartConfig.plugins as any)?.gauge?.minMaxFontSize ?? 12}px
+                                            </span>
+                                        </div>
+                                        <div className="h-9 flex items-center">
+                                            <Slider
+                                                value={[Number((chartConfig.plugins as any)?.gauge?.minMaxFontSize ?? 12)]}
+                                                onValueChange={([value]) => handleConfigUpdate('plugins.gauge.minMaxFontSize', value)}
+                                                min={8}
+                                                max={24}
+                                                step={1}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Zero Reference Marker Options */}
+                                <div className="space-y-3 pt-3 border-t border-gray-200 mt-2">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-[11px] font-semibold text-gray-600 uppercase tracking-wider">Zero Marker</p>
+                                        <Switch
+                                            checked={(chartConfig.plugins as any)?.gauge?.showZeroMarker !== false}
+                                            onCheckedChange={(checked) => handleConfigUpdate('plugins.gauge.showZeroMarker', checked)}
+                                        />
+                                    </div>
+                                    
+                                    {(chartConfig.plugins as any)?.gauge?.showZeroMarker !== false && (
+                                        <div className="space-y-1.5">
+                                            <Label className="text-xs font-medium text-gray-600">Position</Label>
+                                            <Select
+                                                value={(chartConfig.plugins as any)?.gauge?.zeroMarkerPosition || 'inner'}
+                                                onValueChange={(value) => handleConfigUpdate('plugins.gauge.zeroMarkerPosition', value)}
+                                            >
+                                                <SelectTrigger className="h-9 text-xs">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="inner">Inner Edge</SelectItem>
+                                                    <SelectItem value="outer">Outer Edge</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

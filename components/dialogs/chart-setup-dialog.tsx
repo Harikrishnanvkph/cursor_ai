@@ -137,6 +137,8 @@ const categoricalChartTypes: { value: SupportedChartType; label: string }[] = [
   { value: 'doughnut3d' as any, label: '3D Doughnut' },
   { value: 'bar3d' as any, label: '3D Bar' },
   { value: 'horizontalBar3d' as any, label: '3D Horizontal Bar' },
+  { value: 'funnel' as any, label: 'Funnel' },
+  { value: 'gauge' as any, label: 'Gauge' },
 ]
 
 const coordinateChartTypes: { value: SupportedChartType; label: string }[] = [

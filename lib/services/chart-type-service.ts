@@ -31,7 +31,7 @@ export const ChartTypeService = {
         targetType: SupportedChartType,
         datasets: ExtendedChartDataset[]
     ): { needed: boolean; direction?: 'toScatter' | 'toCategorical' } => {
-        const categoricalTypes = ['bar', 'horizontalBar', 'stackedBar', 'line', 'area', 'pie', 'doughnut', 'polarArea', 'radar', 'pie3d', 'doughnut3d'];
+        const categoricalTypes = ['bar', 'horizontalBar', 'stackedBar', 'line', 'area', 'pie', 'doughnut', 'polarArea', 'radar', 'pie3d', 'doughnut3d', 'gauge', 'funnel'];
         const scatterBubbleTypes = ['scatter', 'bubble'];
         const isCurrentCategorical = categoricalTypes.includes(currentType);
         const isCurrentScatterBubble = scatterBubbleTypes.includes(currentType);
@@ -85,7 +85,7 @@ export const ChartTypeService = {
      * Helper to determine Legend Type based on Chart Type
      */
     getLegendType: (chartType: SupportedChartType): 'slice' | 'dataset' => {
-        return (chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea' || chartType === 'pie3d' || chartType === 'doughnut3d')
+        return (chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea' || chartType === 'pie3d' || chartType === 'doughnut3d' || chartType === 'gauge' || chartType === 'funnel')
             ? 'slice'
             : 'dataset';
     },
@@ -111,10 +111,12 @@ export const ChartTypeService = {
         const chartJsType = targetType === ('area' as CustomChartType) ? 'line' as const
             : targetType === ('pie3d' as CustomChartType) ? 'pie' as const
             : targetType === ('doughnut3d' as CustomChartType) ? 'doughnut' as const
+            : targetType === ('gauge' as CustomChartType) ? 'doughnut' as const
+            : targetType === ('funnel' as CustomChartType) ? 'bar' as const
             : targetType;
 
         // Auto-switch to uniform mode check
-        const nonMixedModeCharts = ['pie', 'doughnut', 'radar', 'polarArea', 'scatter', 'bubble', 'pie3d', 'doughnut3d'];
+        const nonMixedModeCharts = ['pie', 'doughnut', 'radar', 'polarArea', 'scatter', 'bubble', 'pie3d', 'doughnut3d', 'gauge', 'funnel'];
         const shouldSwitchToUniform = currentState.chartMode === 'grouped' &&
             (currentState.uniformityMode === 'mixed' || currentState.chartConfig?.visualSettings?.uniformityMode === 'mixed') &&
             nonMixedModeCharts.includes(targetType);
@@ -143,6 +145,10 @@ export const ChartTypeService = {
                 newDataset.type = 'pie';
             } else if (targetType === ('doughnut3d' as CustomChartType)) {
                 newDataset.type = 'doughnut';
+            } else if (targetType === ('gauge' as CustomChartType)) {
+                newDataset.type = 'doughnut';
+            } else if (targetType === ('funnel' as CustomChartType)) {
+                newDataset.type = 'bar';
             } else {
                 newDataset.type = targetType as keyof ChartTypeRegistry;
             }
@@ -166,6 +172,29 @@ export const ChartTypeService = {
                 newDataset.fill = 'origin';
             } else if (targetType !== 'radar') {
                 newDataset.fill = false; // Explicitly turn off for non-area, non-radar
+            }
+
+            // Data transformation for gauge: allow multiple slices!
+            if (targetType === ('gauge' as CustomChartType)) {
+                const numericValues = dataset.data
+                    .filter((v: any) => typeof v === 'number')
+                    .map((v: any) => Math.abs(v as number));
+                
+                // If only 1 value is provided, auto-fill the "remaining" part to 100
+                if (numericValues.length <= 1) {
+                    const gaugeValue = numericValues.length > 0 ? numericValues[0] : 73;
+                    const maxValue = 100;
+                    const remaining = Math.max(0, maxValue - gaugeValue);
+                    newDataset.data = [gaugeValue, remaining];
+                    newDataset.backgroundColor = ['#3b82f6', '#e5e7eb'] as any;
+                    newDataset.borderColor = ['transparent', 'transparent'] as any;
+                    newDataset.borderWidth = 0;
+                } else {
+                    // For multiple slices, use them directly
+                    newDataset.data = numericValues;
+                    // Keep existing colors if they have them, else default palette will kick in
+                    newDataset.borderWidth = 0;
+                }
             }
 
             // Data transformation for scatter/bubble (random seed if needed)
@@ -222,7 +251,7 @@ export const ChartTypeService = {
         });
 
         // Set legendType
-        if (targetType === 'pie' || targetType === 'doughnut' || targetType === 'polarArea' || targetType === ('pie3d' as CustomChartType) || targetType === ('doughnut3d' as CustomChartType)) {
+        if (targetType === 'pie' || targetType === 'doughnut' || targetType === 'polarArea' || targetType === ('pie3d' as CustomChartType) || targetType === ('doughnut3d' as CustomChartType) || targetType === ('gauge' as CustomChartType) || targetType === ('funnel' as CustomChartType)) {
             (newConfig.plugins as any).legendType = 'slice';
         } else {
             (newConfig.plugins as any).legendType = 'dataset';
@@ -239,8 +268,8 @@ export const ChartTypeService = {
             });
         }
 
-        // Restore datalabels
-        if ((newConfig.plugins as any)?.datalabels) {
+        // Restore datalabels (skip for gauge — it uses its own value display)
+        if ((newConfig.plugins as any)?.datalabels && targetType !== ('gauge' as CustomChartType)) {
             (newConfig.plugins as any).datalabels = {
                 ...(newConfig.plugins as any).datalabels,
                 ...prevDatalabels,
@@ -316,10 +345,23 @@ export const ChartTypeService = {
             };
         }
 
+
+
+        // Override labels for gauge type
+        let finalLabels = currentState.chartData.labels;
+        if (targetType === ('gauge' as CustomChartType)) {
+            const ds = newDatasets[0];
+            // Only force 'Value', 'Remaining' if the dataset data was clamped/padded to 2 values
+            if (ds && ds.data.length === 2 && currentState.chartData.datasets[0]?.data.length <= 1) {
+                finalLabels = ['Value', 'Remaining'];
+            }
+        }
+
         return {
             chartType: targetType,
             chartData: {
                 ...currentState.chartData,
+                labels: finalLabels,
                 datasets: newDatasets,
             },
             chartConfig: newConfig,
