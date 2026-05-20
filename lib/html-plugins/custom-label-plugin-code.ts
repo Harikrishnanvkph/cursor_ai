@@ -92,7 +92,7 @@ const customLabelPlugin = {
 
         if (anchor === 'callout' && label.draggable) {
           // Unified callout positioning: check drag state first, then stored position, then compute default
-          const key = \`\${datasetIdx}_\${pointIdx}\`;
+          const key = datasetIdx + "_" + pointIdx;
           if (window.labelDragState && window.labelDragState[key]) {
             x = window.labelDragState[key].x;
             y = window.labelDragState[key].y;
@@ -476,7 +476,7 @@ customLabelPlugin.afterInit = function(chart) {
         if (!label || label.anchor !== 'callout' || !label.draggable) continue;
         
         let lx, ly;
-        const key = \`\${datasetIdx}_\${pointIdx}\`;
+        const key = datasetIdx + "_" + pointIdx;
         if (window.labelDragState[key]) {
           lx = window.labelDragState[key].x;
           ly = window.labelDragState[key].y;
