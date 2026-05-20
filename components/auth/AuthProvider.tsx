@@ -35,27 +35,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Optimistic initialization: if we have a cached user in localStorage + auth cookie,
   // skip the loading screen and verify in the background
-  const [user, setUser] = useState<AuthUser | null>(() => {
-    if (typeof window === 'undefined') return null
-    try {
-      const hasCookie = document.cookie.includes('is_authenticated=true')
-      const cachedUser = localStorage.getItem('cached_auth_user')
-      if (hasCookie && cachedUser) {
-        return JSON.parse(cachedUser) as AuthUser
-      }
-    } catch {}
-    return null
-  })
-  const [loading, setLoading] = useState(() => {
-    if (typeof window === 'undefined') return true
-    // If we have a cached user, start with loading=false (optimistic)
-    try {
-      const hasCookie = document.cookie.includes('is_authenticated=true')
-      const cachedUser = localStorage.getItem('cached_auth_user')
-      if (hasCookie && cachedUser) return false
-    } catch {}
-    return true
-  })
+  const [user, setUser] = useState<AuthUser | null>(null)
+  const [loading, setLoading] = useState(true)
 
   const refresh = useCallback(async () => {
     try {
@@ -83,8 +64,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => {
+    try {
+      const hasCookie = document.cookie.includes('is_authenticated=true')
+      const cachedUser = localStorage.getItem('cached_auth_user')
+      if (hasCookie && cachedUser) {
+        setUser(JSON.parse(cachedUser) as AuthUser)
+        setLoading(false)
+      }
+    } catch {}
     refresh()
-  }, [])
+  }, [refresh])
 
   const signIn = useCallback(async (email: string, password: string): Promise<boolean> => {
     setLoading(true)

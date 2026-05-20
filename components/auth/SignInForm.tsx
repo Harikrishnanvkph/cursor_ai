@@ -8,11 +8,12 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 
 export function SignInForm() {
-  const { signIn, signInWithGoogle, signInAsGuest, loading } = useAuth()
+  const { signIn, signInWithGoogle, signInAsGuest } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [isPending, setIsPending] = useState(false)
 
   useEffect(() => {
     const redirect = searchParams.get('redirect')
@@ -23,10 +24,33 @@ export function SignInForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    setIsPending(true)
     try {
       await signIn(email, password)
     } catch (error) {
       console.error('Unexpected error in sign in form:', error)
+    } finally {
+      setIsPending(false)
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    setIsPending(true)
+    try {
+      await signInWithGoogle()
+    } catch (error) {
+      console.error('Unexpected error in Google sign in:', error)
+      setIsPending(false)
+    }
+  }
+
+  async function handleGuestSignIn() {
+    setIsPending(true)
+    try {
+      await signInAsGuest()
+    } catch (error) {
+      console.error('Unexpected error in Guest sign in:', error)
+      setIsPending(false)
     }
   }
 
@@ -56,8 +80,8 @@ export function SignInForm() {
             required
             className="h-11"
           />
-          <Button type="submit" className="w-full h-11 font-semibold" disabled={loading}>
-            {loading ? 'Signing in…' : 'Sign in'}
+          <Button type="submit" className="w-full h-11 font-semibold" disabled={isPending}>
+            {isPending ? 'Signing in…' : 'Sign in'}
           </Button>
         </form>
 
@@ -79,8 +103,8 @@ export function SignInForm() {
         <Button
           variant="outline"
           className="w-full h-11 font-medium"
-          onClick={signInWithGoogle}
-          disabled={loading}
+          onClick={handleGoogleSignIn}
+          disabled={isPending}
           type="button"
         >
           <svg className="w-5 h-5 mr-2 shrink-0" viewBox="0 0 24 24">
@@ -104,8 +128,8 @@ export function SignInForm() {
         <Button
           variant="ghost"
           className="w-full h-11 font-medium text-muted-foreground"
-          onClick={signInAsGuest}
-          disabled={loading}
+          onClick={handleGuestSignIn}
+          disabled={isPending}
           type="button"
         >
           <svg className="w-5 h-5 mr-2 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

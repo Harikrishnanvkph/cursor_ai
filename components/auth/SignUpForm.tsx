@@ -9,7 +9,7 @@ import { authApi } from '@/lib/auth-client'
 import { toast } from 'sonner'
 
 export function SignUpForm() {
-  const { signUp, signInWithGoogle, signInAsGuest, loading } = useAuth()
+  const { signUp, signInWithGoogle, signInAsGuest } = useAuth()
   const searchParams = useSearchParams()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -17,6 +17,7 @@ export function SignUpForm() {
   const [resending, setResending] = useState(false)
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [fullNameError, setFullNameError] = useState<string | null>(null)
+  const [isPending, setIsPending] = useState(false)
 
   useEffect(() => {
     const redirect = searchParams.get('redirect')
@@ -35,11 +36,34 @@ export function SignUpForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!password || passwordError) return
+    setIsPending(true)
     try {
       const result = await signUp(email.trim(), password, fullName.trim() || undefined)
       if (!result.wasNewUser) return
     } catch {
       // error toast handled inside AuthProvider.signUp
+    } finally {
+      setIsPending(false)
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    setIsPending(true)
+    try {
+      await signInWithGoogle()
+    } catch (error) {
+      console.error('Unexpected error in Google sign in:', error)
+      setIsPending(false)
+    }
+  }
+
+  async function handleGuestSignIn() {
+    setIsPending(true)
+    try {
+      await signInAsGuest()
+    } catch (error) {
+      console.error('Unexpected error in Guest sign in:', error)
+      setIsPending(false)
     }
   }
 
@@ -103,14 +127,14 @@ export function SignUpForm() {
           <Button
             type="submit"
             className="w-full h-11 font-semibold"
-            disabled={loading || Boolean(passwordError) || !password || Boolean(fullNameError) || !fullName.trim()}
+            disabled={isPending || Boolean(passwordError) || !password || Boolean(fullNameError) || !fullName.trim()}
           >
-            {loading ? 'Creating account…' : 'Sign up'}
+            {isPending ? 'Creating account…' : 'Sign up'}
           </Button>
         </form>
 
         <p className="text-xs text-muted-foreground">
-          Didn't receive a verification email? Check spam/promotions or{' '}
+          Didn\'t receive a verification email? Check spam/promotions or{' '}
           <button
             type="button"
             className="underline hover:text-foreground transition-colors"
@@ -144,8 +168,8 @@ export function SignUpForm() {
         <Button
           variant="outline"
           className="w-full h-11 font-medium"
-          onClick={signInWithGoogle}
-          disabled={loading}
+          onClick={handleGoogleSignIn}
+          disabled={isPending}
           type="button"
         >
           <svg className="w-5 h-5 mr-2 shrink-0" viewBox="0 0 24 24">
@@ -169,8 +193,8 @@ export function SignUpForm() {
         <Button
           variant="ghost"
           className="w-full h-11 font-medium text-muted-foreground"
-          onClick={signInAsGuest}
-          disabled={loading}
+          onClick={handleGuestSignIn}
+          disabled={isPending}
           type="button"
         >
           <svg className="w-5 h-5 mr-2 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
