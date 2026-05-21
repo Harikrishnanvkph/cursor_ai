@@ -17,6 +17,7 @@ import { DataTab } from "./data-tab"
 import { ColorsTab } from "./colors-tab"
 import { ImagesTab } from "./images-tab"
 import { rgbaToHex } from "@/lib/utils/color-utils" // Replacing inline rgbaToHex
+import { useEditorSidebarContext } from "@/components/editor/editor-sidebar-context"
 
 interface SliceSettingsProps {
     className?: string
@@ -25,6 +26,7 @@ interface SliceSettingsProps {
 type SliceTab = 'data' | 'colors' | 'images'
 
 export function SliceSettings({ className }: SliceSettingsProps) {
+    const { setActiveTab: setSidebarActiveTab } = useEditorSidebarContext()
     const {
         chartData,
         chartType,
@@ -396,16 +398,39 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                     setShowAddPointModal={setShowAddPointModal}
                 />
             case 'colors':
-                return <ColorsTab
-                    chartMode={chartMode}
-                    currentDataset={currentDataset}
-                    chartData={chartData}
-                    globalColor={globalColor}
-                    setGlobalColor={setGlobalColor}
-                    updateDataset={updateDataset}
-                    currentSliceLabels={currentSliceLabels}
-                    handleColorChange={handleColorChange}
-                />
+                return chartType === 'waterfall' ? (
+                    <div className="flex flex-col items-center justify-center text-center p-6 bg-slate-50/50 dark:bg-slate-900/30 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 my-2">
+                        <div className="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-full mb-3 text-blue-600 dark:text-blue-400 border border-blue-100/50 dark:border-blue-900/30">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 animate-pulse">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9.53 16.122l9.37-9.37m0 0l-1.06-1.06a1.5 1.5 0 00-2.12 0L6.75 15.686a.75.75 0 00-.22.53v2.25c0 .414.336.75.75.75h2.25c.199 0 .39-.079.53-.22l9.37-9.37z" />
+                            </svg>
+                        </div>
+                        <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm mb-1.5 font-sans">Waterfall Chart Colors</h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-[240px] leading-relaxed mb-4 font-sans">
+                            Color schemes for Increase, Decrease, and Total steps are customized together in the <span className="font-semibold text-slate-700 dark:text-slate-300">Styling tab</span> to keep them consistent.
+                        </p>
+                        <button
+                            onClick={() => setSidebarActiveTab('labels')}
+                            className="group relative px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 rounded-lg shadow-sm hover:shadow active:scale-98 transition-all duration-200 flex items-center gap-1.5"
+                        >
+                            <span>Go to Styling & Labels</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-0.5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                            </svg>
+                        </button>
+                    </div>
+                ) : (
+                    <ColorsTab
+                        chartMode={chartMode}
+                        currentDataset={currentDataset}
+                        chartData={chartData}
+                        globalColor={globalColor}
+                        setGlobalColor={setGlobalColor}
+                        updateDataset={updateDataset}
+                        currentSliceLabels={currentSliceLabels}
+                        handleColorChange={handleColorChange}
+                    />
+                )
             case 'images':
                 return <ImagesTab
                     chartMode={chartMode}
@@ -585,7 +610,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                                         } else {
                                             return {
                                                 label: String(currentSliceLabels[i] || `Slice ${i + 1}`),
-                                                value: typeof val === 'number' ? val : (Array.isArray(val) ? (val[1] as number) : (val as any)?.y ?? 0),
+                                                value: typeof val === 'number' ? val : (Array.isArray(val) ? ((val[1] - val[0]) as number) : (val as any)?.y ?? 0),
                                                 color: rgbaToHex(rawColor),
                                                 imageUrl: currentDataset.pointImages?.[i] || null,
                                             }

@@ -597,6 +597,46 @@ export default function SharedChartPage() {
                       }));
                     }
                   }
+                  if (legendType === 'waterfall' && chart.chart_type === 'waterfall') {
+                    const wfConfig = c.config?.options?.plugins?.waterfall || processedConfig.plugins?.waterfall || {};
+                    const positiveColor = wfConfig.positiveColor || '#10b981';
+                    const negativeColor = wfConfig.negativeColor || '#ef4444';
+                    const totalColor = wfConfig.totalColor || '#3b82f6';
+                    const legendLabels = wfConfig.legendLabels || {};
+                    const increaseLabel = legendLabels.increase || 'Increase';
+                    const decreaseLabel = legendLabels.decrease || 'Decrease';
+                    const totalLabelVal = legendLabels.total || 'Total';
+                    const hasTotal = wfConfig.showTotal !== false || wfConfig.treatLastAsTotal === true || (wfConfig.totalIndices && wfConfig.totalIndices.trim() !== '');
+
+                    items.push(createItem({
+                      text: increaseLabel,
+                      fillStyle: positiveColor,
+                      strokeStyle: positiveColor,
+                      datasetIndex: 0,
+                      index: 0,
+                      type: 'waterfall_increase'
+                    }));
+
+                    items.push(createItem({
+                      text: decreaseLabel,
+                      fillStyle: negativeColor,
+                      strokeStyle: negativeColor,
+                      datasetIndex: 0,
+                      index: 1,
+                      type: 'waterfall_decrease'
+                    }));
+
+                    if (hasTotal) {
+                      items.push(createItem({
+                        text: totalLabelVal,
+                        fillStyle: totalColor,
+                        strokeStyle: totalColor,
+                        datasetIndex: 0,
+                        index: 2,
+                        type: 'waterfall_total'
+                      }));
+                    }
+                  }
                   return items;
                 }
               }

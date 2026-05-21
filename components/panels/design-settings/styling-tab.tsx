@@ -113,13 +113,13 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
 
     return (
         <div className="space-y-3 mt-4">
-            {/* Slice Border Styling - Only for slice-based and bar charts */}
-            {(chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea' || chartType === 'bar' || chartType === 'horizontalBar' || chartType === 'stackedBar' as any || chartType === 'pie3d' as any || chartType === 'doughnut3d' as any || chartType === 'bar3d' as any || chartType === 'horizontalBar3d' as any) && (
+            {/* Slice Border Styling - Only for slice-based, bar, and waterfall charts */}
+            {(chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea' || chartType === 'bar' || chartType === 'horizontalBar' || chartType === 'stackedBar' as any || chartType === 'waterfall' as any || chartType === 'pie3d' as any || chartType === 'doughnut3d' as any || chartType === 'bar3d' as any || chartType === 'horizontalBar3d' as any || chartType === 'gauge' as any || chartType === 'funnel' as any) && (
                 <div className="space-y-3">
                     <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
                         <Palette className="h-4 w-4 text-blue-900" />
                         <h3 className="text-sm font-semibold text-blue-900">
-                            {(chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea' || chartType === 'pie3d' || chartType === 'doughnut3d') ? 'Slice Border Styling' : 'Bar Border Styling'}
+                            Border Styling
                         </h3>
                     </div>
 
@@ -167,6 +167,31 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                             </div>
                         </div>
                     </div>
+ 
+                    {/* Border Rounding - Only for bar-based charts */}
+                    {((chartType as any) === 'bar' || chartType === 'horizontalBar' || chartType === 'stackedBar' || chartType === 'waterfall' as any || chartType === 'bar3d' as any || chartType === 'horizontalBar3d' as any || chartType === 'funnel' as any) && (
+                        <div className="space-y-1">
+                            <Label className="text-xs font-medium">Border Rounding</Label>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    variant={readSliceAwareValue('borderSkipped', 'start') === 'start' ? "default" : "outline"}
+                                    size="sm"
+                                    className={`h-8 text-xs flex-1 ${readSliceAwareValue('borderSkipped', 'start') === 'start' ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}`}
+                                    onClick={() => handleSliceAwareUpdate('borderSkipped', 'start', 'start')}
+                                >
+                                    One Side
+                                </Button>
+                                <Button
+                                    variant={readSliceAwareValue('borderSkipped', 'start') === false ? "default" : "outline"}
+                                    size="sm"
+                                    className={`h-8 text-xs flex-1 ${readSliceAwareValue('borderSkipped', 'start') === false ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}`}
+                                    onClick={() => handleSliceAwareUpdate('borderSkipped', false, 'start')}
+                                >
+                                    Both Sides
+                                </Button>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Border Color */}
                     <div className="space-y-2">
@@ -204,21 +229,17 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
 
                         {borderColorMode === 'manual' && (
                             <div className="flex items-center gap-2 h-8">
-                                <div
-                                    className="w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform"
-                                    style={{ backgroundColor: manualBorderColor }}
-                                    onClick={() => document.getElementById('manual-border-color-picker')?.click()}
-                                />
-                                <input
-                                    id="manual-border-color-picker"
-                                    type="color"
-                                    value={manualBorderColor}
-                                    onChange={(e) => {
-                                        setManualBorderColor(e.target.value)
-                                        handleSliceAwareUpdate('borderColor', e.target.value, '#000000')
-                                    }}
-                                    className="absolute opacity-0 w-0 h-0"
-                                />
+                                <div className="relative w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform overflow-hidden flex-shrink-0" style={{ backgroundColor: manualBorderColor }}>
+                                    <input
+                                        type="color"
+                                        value={manualBorderColor}
+                                        onChange={(e) => {
+                                            setManualBorderColor(e.target.value)
+                                            handleSliceAwareUpdate('borderColor', e.target.value, '#000000')
+                                        }}
+                                        className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
+                                    />
+                                </div>
                                 <Input
                                     value={manualBorderColor}
                                     onChange={(e) => {
@@ -699,25 +720,21 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                         <div className="space-y-1">
                             <Label className="text-xs font-medium">Shadow Color</Label>
                             <div className="flex items-center gap-2 h-8">
-                                <div
-                                    className="w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform"
-                                    style={{ backgroundColor: (chartConfig.plugins as any)?.pie3d?.shadowColor || 'rgba(0,0,0,0.3)' }}
-                                    onClick={() => document.getElementById('pie3d-shadow-color-picker')?.click()}
-                                />
-                                <input
-                                    id="pie3d-shadow-color-picker"
-                                    type="color"
-                                    value="#000000"
-                                    onChange={(e) => {
-                                        // Convert hex to rgba with 0.3 alpha
-                                        const hex = e.target.value;
-                                        const r = parseInt(hex.slice(1, 3), 16);
-                                        const g = parseInt(hex.slice(3, 5), 16);
-                                        const b = parseInt(hex.slice(5, 7), 16);
-                                        handleConfigUpdate('plugins.pie3d.shadowColor', `rgba(${r},${g},${b},0.3)`);
-                                    }}
-                                    className="absolute opacity-0 w-0 h-0"
-                                />
+                                <div className="relative w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform overflow-hidden flex-shrink-0" style={{ backgroundColor: (chartConfig.plugins as any)?.pie3d?.shadowColor || 'rgba(0,0,0,0.3)' }}>
+                                    <input
+                                        type="color"
+                                        value="#000000"
+                                        onChange={(e) => {
+                                            // Convert hex to rgba with 0.3 alpha
+                                            const hex = e.target.value;
+                                            const r = parseInt(hex.slice(1, 3), 16);
+                                            const g = parseInt(hex.slice(3, 5), 16);
+                                            const b = parseInt(hex.slice(5, 7), 16);
+                                            handleConfigUpdate('plugins.pie3d.shadowColor', `rgba(${r},${g},${b},0.3)`);
+                                        }}
+                                        className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
+                                    />
+                                </div>
                                 <Input
                                     value={(chartConfig.plugins as any)?.pie3d?.shadowColor || 'rgba(0,0,0,0.3)'}
                                     onChange={(e) => handleConfigUpdate('plugins.pie3d.shadowColor', e.target.value)}
@@ -853,24 +870,20 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                         <div className="space-y-1">
                             <Label className="text-xs font-medium">Shadow Color</Label>
                             <div className="flex items-center gap-2 h-8">
-                                <div
-                                    className="w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform"
-                                    style={{ backgroundColor: (chartConfig.plugins as any)?.bar3d?.shadowColor || 'rgba(0,0,0,0.3)' }}
-                                    onClick={() => document.getElementById('bar3d-shadow-color-picker')?.click()}
-                                />
-                                <input
-                                    id="bar3d-shadow-color-picker"
-                                    type="color"
-                                    value="#000000"
-                                    onChange={(e) => {
-                                        const hex = e.target.value;
-                                        const r = parseInt(hex.slice(1, 3), 16);
-                                        const g = parseInt(hex.slice(3, 5), 16);
-                                        const b = parseInt(hex.slice(5, 7), 16);
-                                        handleConfigUpdate('plugins.bar3d.shadowColor', `rgba(${r},${g},${b},0.3)`);
-                                    }}
-                                    className="absolute opacity-0 w-0 h-0"
-                                />
+                                <div className="relative w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform overflow-hidden flex-shrink-0" style={{ backgroundColor: (chartConfig.plugins as any)?.bar3d?.shadowColor || 'rgba(0,0,0,0.3)' }}>
+                                    <input
+                                        type="color"
+                                        value="#000000"
+                                        onChange={(e) => {
+                                            const hex = e.target.value;
+                                            const r = parseInt(hex.slice(1, 3), 16);
+                                            const g = parseInt(hex.slice(3, 5), 16);
+                                            const b = parseInt(hex.slice(5, 7), 16);
+                                            handleConfigUpdate('plugins.bar3d.shadowColor', `rgba(${r},${g},${b},0.3)`);
+                                        }}
+                                        className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
+                                    />
+                                </div>
                                 <Input
                                     value={(chartConfig.plugins as any)?.bar3d?.shadowColor || 'rgba(0,0,0,0.3)'}
                                     onChange={(e) => handleConfigUpdate('plugins.bar3d.shadowColor', e.target.value)}
@@ -926,53 +939,48 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
 
                             {/* Connector Color and Opacity (if connectors are shown) */}
                             {(chartConfig.plugins as any)?.funnel?.showConnectors !== false && (
-                                <div className="grid grid-cols-2 gap-3 mt-3">
+                                <div className="grid grid-cols-2 gap-4 mt-3">
                                     {/* Connector Color */}
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-medium">Connector Color</Label>
-                                        <div className="flex items-center gap-2 h-8">
-                                            <div
-                                                className="w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform"
-                                                style={{ backgroundColor: (chartConfig.plugins as any)?.funnel?.connectorColor || 'rgba(0,0,0,0.08)' }}
-                                                onClick={() => document.getElementById('funnel-connector-color')?.click()}
-                                            />
-                                            <input
-                                                id="funnel-connector-color"
-                                                type="color"
-                                                value="#000000"
-                                                onChange={(e) => {
-                                                    const hex = e.target.value;
-                                                    const r = parseInt(hex.slice(1, 3), 16);
-                                                    const g = parseInt(hex.slice(3, 5), 16);
-                                                    const b = parseInt(hex.slice(5, 7), 16);
-                                                    handleConfigUpdate('plugins.funnel.connectorColor', `rgba(${r},${g},${b},1)`);
-                                                }}
-                                                className="absolute opacity-0 w-0 h-0"
-                                            />
-                                            <Input
-                                                value={(chartConfig.plugins as any)?.funnel?.connectorColor || 'rgba(0,0,0,0.08)'}
-                                                onChange={(e) => handleConfigUpdate('plugins.funnel.connectorColor', e.target.value)}
-                                                className="h-8 text-xs flex-1"
-                                                placeholder="rgba(0,0,0,0.08)"
-                                            />
+                                        <div className="flex items-center h-5">
+                                            <Label className="text-xs font-medium text-gray-700">Connector Color</Label>
+                                        </div>
+                                        <div className="flex items-center h-8">
+                                            <div className="relative w-8 h-8 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform overflow-hidden flex-shrink-0" style={{ backgroundColor: (chartConfig.plugins as any)?.funnel?.connectorColor || 'rgba(0,0,0,0.08)' }}>
+                                                <input
+                                                    type="color"
+                                                    value={(chartConfig.plugins as any)?.funnel?.connectorColor?.startsWith('rgba') ? '#000000' : ((chartConfig.plugins as any)?.funnel?.connectorColor || '#000000')}
+                                                    onChange={(e) => {
+                                                        const hex = e.target.value;
+                                                        const r = parseInt(hex.slice(1, 3), 16);
+                                                        const g = parseInt(hex.slice(3, 5), 16);
+                                                        const b = parseInt(hex.slice(5, 7), 16);
+                                                        handleConfigUpdate('plugins.funnel.connectorColor', `rgba(${r},${g},${b},1)`);
+                                                    }}
+                                                    className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
 
                                     {/* Connector Opacity */}
-                                    <div className="space-y-1">
-                                        <div className="flex items-center justify-between">
-                                            <Label className="text-xs font-medium">Opacity</Label>
-                                            <span className="text-xs text-gray-500">
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between h-5">
+                                            <Label className="text-xs font-medium text-gray-700">Opacity</Label>
+                                            <span className="text-xs font-medium text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded text-[10px] font-mono">
                                                 {Math.round(Number((chartConfig.plugins as any)?.funnel?.connectorOpacity ?? 0.15) * 100)}%
                                             </span>
                                         </div>
-                                        <Slider
-                                            value={[Number((chartConfig.plugins as any)?.funnel?.connectorOpacity ?? 0.15)]}
-                                            onValueChange={([value]) => handleConfigUpdate('plugins.funnel.connectorOpacity', value)}
-                                            min={0}
-                                            max={1}
-                                            step={0.05}
-                                        />
+                                        <div className="flex items-center h-8">
+                                            <Slider
+                                                value={[Number((chartConfig.plugins as any)?.funnel?.connectorOpacity ?? 0.15)]}
+                                                onValueChange={([value]) => handleConfigUpdate('plugins.funnel.connectorOpacity', value)}
+                                                min={0}
+                                                max={1}
+                                                step={0.05}
+                                                className="w-full"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -1033,18 +1041,14 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                         <div className="space-y-1.5">
                             <Label className="text-xs font-medium text-gray-600">Color</Label>
                             <div className="flex items-center gap-2">
-                                <div
-                                    className="w-8 h-8 rounded-md border border-gray-300 cursor-pointer hover:scale-105 transition-transform flex-shrink-0"
-                                    style={{ backgroundColor: (chartConfig.plugins as any)?.gauge?.needleColor || '#374151' }}
-                                    onClick={() => document.getElementById('gauge-needle-color')?.click()}
-                                />
-                                <input
-                                    id="gauge-needle-color"
-                                    type="color"
-                                    value={(chartConfig.plugins as any)?.gauge?.needleColor || '#374151'}
-                                    onChange={(e) => handleConfigUpdate('plugins.gauge.needleColor', e.target.value)}
-                                    className="absolute opacity-0 w-0 h-0"
-                                />
+                                <div className="relative w-8 h-8 rounded-md border border-gray-300 cursor-pointer hover:scale-105 transition-transform overflow-hidden flex-shrink-0" style={{ backgroundColor: (chartConfig.plugins as any)?.gauge?.needleColor || '#374151' }}>
+                                    <input
+                                        type="color"
+                                        value={(chartConfig.plugins as any)?.gauge?.needleColor || '#374151'}
+                                        onChange={(e) => handleConfigUpdate('plugins.gauge.needleColor', e.target.value)}
+                                        className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
+                                    />
+                                </div>
                                 <Input
                                     value={(chartConfig.plugins as any)?.gauge?.needleColor || '#374151'}
                                     onChange={(e) => handleConfigUpdate('plugins.gauge.needleColor', e.target.value)}
@@ -1432,6 +1436,213 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                 </div>
             )}
 
+            {/* Waterfall Chart Settings - Only for waterfall charts */}
+            {(chartType === 'waterfall' as any) && (
+                <div className="space-y-4 mt-4">
+                    {/* Section Header */}
+                    <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                        <svg className="h-4 w-4 text-blue-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 17V7a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v10" />
+                            <path d="M9 19v-4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4" />
+                            <path d="M15 21v-8a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v8" />
+                        </svg>
+                        <h3 className="text-sm font-semibold text-blue-900">
+                            Waterfall Styling
+                        </h3>
+                    </div>
+
+                    {/* Colors Segment */}
+                    <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-4">
+                        <p className="text-xs font-semibold text-gray-700 tracking-wide uppercase">Series Colors</p>
+
+                        {/* Positive Color */}
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-medium text-gray-600">Increase Color (Positive)</Label>
+                            <div className="flex items-center gap-2">
+                                <div className="relative w-8 h-8 rounded-md border border-gray-300 cursor-pointer hover:scale-105 transition-transform overflow-hidden flex-shrink-0" style={{ backgroundColor: (chartConfig.plugins as any)?.waterfall?.positiveColor || '#10b981' }}>
+                                    <input
+                                        type="color"
+                                        value={(chartConfig.plugins as any)?.waterfall?.positiveColor || '#10b981'}
+                                        onChange={(e) => handleConfigUpdate('plugins.waterfall.positiveColor', e.target.value)}
+                                        className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
+                                    />
+                                </div>
+                                <Input
+                                    value={(chartConfig.plugins as any)?.waterfall?.positiveColor || '#10b981'}
+                                    onChange={(e) => handleConfigUpdate('plugins.waterfall.positiveColor', e.target.value)}
+                                    className="h-9 text-xs font-mono flex-1"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Negative Color */}
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-medium text-gray-600">Decrease Color (Negative)</Label>
+                            <div className="flex items-center gap-2">
+                                <div className="relative w-8 h-8 rounded-md border border-gray-300 cursor-pointer hover:scale-105 transition-transform overflow-hidden flex-shrink-0" style={{ backgroundColor: (chartConfig.plugins as any)?.waterfall?.negativeColor || '#ef4444' }}>
+                                    <input
+                                        type="color"
+                                        value={(chartConfig.plugins as any)?.waterfall?.negativeColor || '#ef4444'}
+                                        onChange={(e) => handleConfigUpdate('plugins.waterfall.negativeColor', e.target.value)}
+                                        className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
+                                    />
+                                </div>
+                                <Input
+                                    value={(chartConfig.plugins as any)?.waterfall?.negativeColor || '#ef4444'}
+                                    onChange={(e) => handleConfigUpdate('plugins.waterfall.negativeColor', e.target.value)}
+                                    className="h-9 text-xs font-mono flex-1"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Total Color */}
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-medium text-gray-600">Total / Subtotal Color</Label>
+                            <div className="flex items-center gap-2">
+                                <div className="relative w-8 h-8 rounded-md border border-gray-300 cursor-pointer hover:scale-105 transition-transform overflow-hidden flex-shrink-0" style={{ backgroundColor: (chartConfig.plugins as any)?.waterfall?.totalColor || '#3b82f6' }}>
+                                    <input
+                                        type="color"
+                                        value={(chartConfig.plugins as any)?.waterfall?.totalColor || '#3b82f6'}
+                                        onChange={(e) => handleConfigUpdate('plugins.waterfall.totalColor', e.target.value)}
+                                        className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
+                                    />
+                                </div>
+                                <Input
+                                    value={(chartConfig.plugins as any)?.waterfall?.totalColor || '#3b82f6'}
+                                    onChange={(e) => handleConfigUpdate('plugins.waterfall.totalColor', e.target.value)}
+                                    className="h-9 text-xs font-mono flex-1"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Total Rules Segment */}
+                    <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-4">
+                        <p className="text-xs font-semibold text-gray-700 tracking-wide uppercase">Total & Subtotal Rules</p>
+
+                        {/* Show Automatic Total Slice */}
+                        <div className="flex items-center justify-between">
+                            <Label className="text-xs font-medium text-gray-700">Show Automatic Total Slice</Label>
+                            <Switch
+                                checked={(chartConfig.plugins as any)?.waterfall?.showTotal !== false}
+                                onCheckedChange={(checked) => handleConfigUpdate('plugins.waterfall.showTotal', checked)}
+                            />
+                        </div>
+
+                        {/* Total Slice Name */}
+                        {((chartConfig.plugins as any)?.waterfall?.showTotal !== false) && (
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-medium text-gray-600">Total Slice Name</Label>
+                                <Input
+                                    value={(chartConfig.plugins as any)?.waterfall?.totalLabel || 'Total'}
+                                    onChange={(e) => handleConfigUpdate('plugins.waterfall.totalLabel', e.target.value)}
+                                    className="h-9 text-xs"
+                                    placeholder="e.g. Total"
+                                />
+                            </div>
+                        )}
+
+                        {/* Treat Last Bar as Total */}
+                        {!((chartConfig.plugins as any)?.waterfall?.showTotal !== false) && (
+                            <div className="flex items-center justify-between">
+                                <Label className="text-xs font-medium text-gray-700">Treat Last Bar as Total</Label>
+                                <Switch
+                                    checked={(chartConfig.plugins as any)?.waterfall?.treatLastAsTotal !== false}
+                                    onCheckedChange={(checked) => handleConfigUpdate('plugins.waterfall.treatLastAsTotal', checked)}
+                                />
+                            </div>
+                        )}
+
+                        {/* Custom Total Indices */}
+                        <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-xs font-medium text-gray-600">Subtotal Indices (0-indexed)</Label>
+                                <span className="text-[10px] text-gray-400">e.g. 2, 5</span>
+                            </div>
+                            <Input
+                                value={(chartConfig.plugins as any)?.waterfall?.totalIndices || ''}
+                                onChange={(e) => handleConfigUpdate('plugins.waterfall.totalIndices', e.target.value)}
+                                className="h-9 text-xs"
+                                placeholder="Comma-separated, e.g. 2, 5"
+                            />
+                            <p className="text-[10px] text-gray-500 leading-normal">
+                                Indexes specified here will display as standard, ground-spanning subtotal columns instead of delta steps.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Connectors Segment */}
+                    <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <p className="text-xs font-semibold text-gray-700 tracking-wide uppercase">Connectors</p>
+                            <Switch
+                                checked={(chartConfig.plugins as any)?.waterfall?.showConnectors !== false}
+                                onCheckedChange={(checked) => handleConfigUpdate('plugins.waterfall.showConnectors', checked)}
+                            />
+                        </div>
+
+                        {(chartConfig.plugins as any)?.waterfall?.showConnectors !== false && (
+                            <div className="space-y-4 pt-2 border-t border-gray-100">
+                                {/* Connector Color */}
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-medium text-gray-600">Connector Color</Label>
+                                    <div className="flex items-center gap-2">
+                                        <div className="relative w-8 h-8 rounded-md border border-gray-300 cursor-pointer hover:scale-105 transition-transform overflow-hidden flex-shrink-0" style={{ backgroundColor: (chartConfig.plugins as any)?.waterfall?.connectorColor || 'rgba(0,0,0,0.35)' }}>
+                                            <input
+                                                type="color"
+                                                value={(chartConfig.plugins as any)?.waterfall?.connectorColor?.startsWith('rgba') ? '#000000' : ((chartConfig.plugins as any)?.waterfall?.connectorColor || '#000000')}
+                                                onChange={(e) => handleConfigUpdate('plugins.waterfall.connectorColor', e.target.value)}
+                                                className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
+                                            />
+                                        </div>
+                                        <Input
+                                            value={(chartConfig.plugins as any)?.waterfall?.connectorColor || 'rgba(0,0,0,0.35)'}
+                                            onChange={(e) => handleConfigUpdate('plugins.waterfall.connectorColor', e.target.value)}
+                                            className="h-9 text-xs font-mono flex-1"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Connector Width */}
+                                <div className="space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-xs font-medium text-gray-600">Width</Label>
+                                        <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                                            {(chartConfig.plugins as any)?.waterfall?.connectorWidth ?? 1.5}px
+                                        </span>
+                                    </div>
+                                    <Slider
+                                        value={[Number((chartConfig.plugins as any)?.waterfall?.connectorWidth ?? 1.5)]}
+                                        onValueChange={([value]) => handleConfigUpdate('plugins.waterfall.connectorWidth', value)}
+                                        min={0.5}
+                                        max={5}
+                                        step={0.5}
+                                    />
+                                </div>
+
+                                {/* Connector Line Style */}
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-medium text-gray-600">Line Style</Label>
+                                    <Select
+                                        value={(chartConfig.plugins as any)?.waterfall?.connectorStyle || 'dashed'}
+                                        onValueChange={(val) => handleConfigUpdate('plugins.waterfall.connectorStyle', val)}
+                                    >
+                                        <SelectTrigger className="h-9 text-xs bg-white">
+                                            <SelectValue placeholder="Select line style" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="solid">Solid</SelectItem>
+                                            <SelectItem value="dashed">Dashed</SelectItem>
+                                            <SelectItem value="dotted">Dotted</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* ═══════ Draw Designs on Slices ═══════ */}
             <DrawDesignsSection
                 chartData={chartData}
@@ -1467,7 +1678,7 @@ interface DrawDesignsSectionProps {
 
 function DrawDesignsSection({ chartData, chartType, handleUpdateDataset }: DrawDesignsSectionProps) {
     const [isOpen, setIsOpen] = useState(false);
-    const [selectedSliceIndex, setSelectedSliceIndex] = useState(0);
+    const [selectedSliceIndex, setSelectedSliceIndex] = useState<number | 'all'>('all');
 
     const chartMode = useChartStore(s => s.chartMode);
     const { targetIndices: getTargetDatasetIndicesArray, primaryIndex } = useGroupedSettingsTarget();
@@ -1492,6 +1703,13 @@ function DrawDesignsSection({ chartData, chartType, handleUpdateDataset }: DrawD
         }
         // Per-slice in single mode
         const patterns = primaryDataset.slicePatterns;
+        if (selectedSliceIndex === 'all') {
+            if (patterns && Array.isArray(patterns)) {
+                const found = patterns.find(p => p && p.type);
+                if (found) return found;
+            }
+            return null;
+        }
         if (patterns && patterns[selectedSliceIndex]) {
             return patterns[selectedSliceIndex];
         }
@@ -1529,13 +1747,24 @@ function DrawDesignsSection({ chartData, chartType, handleUpdateDataset }: DrawD
                 // Ensure array is long enough
                 while (patterns.length < sliceCount) patterns.push(null);
 
-                const current: PatternConfig = patterns[selectedSliceIndex] || { ...DEFAULT_PATTERN };
-                const newPattern: PatternConfig = { ...current, ...updates };
-
-                if (!newPattern.type) {
-                    patterns[selectedSliceIndex] = null;
+                if (selectedSliceIndex === 'all') {
+                    for (let i = 0; i < sliceCount; i++) {
+                        const current: PatternConfig = patterns[i] || { ...DEFAULT_PATTERN };
+                        const newPattern: PatternConfig = { ...current, ...updates };
+                        if (!newPattern.type) {
+                            patterns[i] = null;
+                        } else {
+                            patterns[i] = newPattern;
+                        }
+                    }
                 } else {
-                    patterns[selectedSliceIndex] = newPattern;
+                    const current: PatternConfig = patterns[selectedSliceIndex] || { ...DEFAULT_PATTERN };
+                    const newPattern: PatternConfig = { ...current, ...updates };
+                    if (!newPattern.type) {
+                        patterns[selectedSliceIndex] = null;
+                    } else {
+                        patterns[selectedSliceIndex] = newPattern;
+                    }
                 }
                 handleUpdateDataset(idx, 'slicePatterns', patterns);
             });
@@ -1586,12 +1815,13 @@ function DrawDesignsSection({ chartData, chartType, handleUpdateDataset }: DrawD
                             <Label className="text-xs font-medium">Slice</Label>
                             <Select
                                 value={String(selectedSliceIndex)}
-                                onValueChange={(val) => setSelectedSliceIndex(Number(val))}
+                                onValueChange={(val) => setSelectedSliceIndex(val === 'all' ? 'all' : Number(val))}
                             >
                                 <SelectTrigger className="h-8 text-xs">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
+                                    <SelectItem value="all">All Slices</SelectItem>
                                     {sliceLabels.map((label: string, idx: number) => (
                                         <SelectItem key={idx} value={String(idx)}>{label || `Slice ${idx + 1}`}</SelectItem>
                                     ))}
@@ -1633,18 +1863,14 @@ function DrawDesignsSection({ chartData, chartType, handleUpdateDataset }: DrawD
                             <div className="space-y-1">
                                 <Label className="text-xs font-medium">Pattern Color</Label>
                                 <div className="flex items-center gap-2 h-8 relative">
-                                    <div
-                                        className="w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform flex-shrink-0"
-                                        style={{ backgroundColor: currentColor }}
-                                        onClick={() => document.getElementById('pattern-color-picker')?.click()}
-                                    />
-                                    <input
-                                        id="pattern-color-picker"
-                                        type="color"
-                                        value={currentColor.startsWith('#') ? currentColor : '#000000'}
-                                        onChange={(e) => applyPattern({ color: e.target.value })}
-                                        className="sr-only"
-                                    />
+                                    <div className="relative w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform overflow-hidden flex-shrink-0" style={{ backgroundColor: currentColor }}>
+                                        <input
+                                            type="color"
+                                            value={currentColor.startsWith('#') ? currentColor : '#000000'}
+                                            onChange={(e) => applyPattern({ color: e.target.value })}
+                                            className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
+                                        />
+                                    </div>
                                     <Input
                                         value={currentColor}
                                         onChange={(e) => applyPattern({ color: e.target.value })}

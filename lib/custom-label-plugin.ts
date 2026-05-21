@@ -178,7 +178,7 @@ export const customLabelPlugin: Plugin = {
               y = transformY(centerY + Math.sin(midAngle) * r);
             } else {
               x = (element.x ?? 0) + offset;
-              y = (element.y ?? 0) - offset;
+              y = Math.min(element.y ?? 0, element.base ?? 0) - offset;
             }
           }
         }
@@ -260,16 +260,18 @@ export const customLabelPlugin: Plugin = {
                 y = ((element.y ?? 0) + (element.base ?? 0)) / 2;
               } else if (anchor === 'top') {
                 x = element.x ?? 0;
-                // Just above the bar
-                y = (element.y ?? 0) - 8;
+                // Visually top of the vertical bar
+                const barTop = Math.min(element.y ?? 0, element.base ?? 0);
+                y = barTop - 8;
               } else if (anchor === 'bottom') {
                 x = element.x ?? 0;
-                // Just inside the bottom of the bar
-                y = (element.base ?? 0) - 8;
+                // Visually bottom of the vertical bar
+                const barBottom = Math.max(element.y ?? 0, element.base ?? 0);
+                y = barBottom - 8;
               } else if (anchor === 'callout') {
                 const offset = label.calloutOffset || shapeSize * 1.5;
                 x = (element.x ?? 0) + offset;
-                y = (element.y ?? 0) - offset;
+                y = Math.min(element.y ?? 0, element.base ?? 0) - offset;
               }
             }
           } else if (chartType === 'line' || chartType === 'area' || chartType === 'scatter' || chartType === 'bubble') {

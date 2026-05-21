@@ -257,6 +257,16 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
             } : { enabled: false },
             legend: {
                 ...${JSON.stringify(legendForExport, null, 8)},
+                onClick: function(e, legendItem, legend) {
+                    const currentLegendType = legend.options?.plugins?.legendType || (chartConfig.plugins && chartConfig.plugins.legendType);
+                    if (currentLegendType === 'waterfall') {
+                        return;
+                    }
+                    const defaultClick = Chart.defaults.plugins.legend.onClick;
+                    if (defaultClick) {
+                        defaultClick.call(legend, e, legendItem, legend);
+                    }
+                },
                 labels: {
                     ...legendLabelsConfig,
                     generateLabels: function(chart) {
@@ -316,12 +326,100 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
                                 }));
                             }
                         }
+                        if (legendType === 'waterfall' && "${chartType}" === 'waterfall') {
+                            const wfConfig = (chartConfig.plugins && chartConfig.plugins.waterfall) || {};
+                            const positiveColor = wfConfig.positiveColor || '#10b981';
+                            const negativeColor = wfConfig.negativeColor || '#ef4444';
+                            const totalColor = wfConfig.totalColor || '#3b82f6';
+                            const legendLabels = wfConfig.legendLabels || {};
+                            const increaseLabel = legendLabels.increase || 'Increase';
+                            const decreaseLabel = legendLabels.decrease || 'Decrease';
+                            const totalLabelVal = legendLabels.total || 'Total';
+                            const hasTotal = wfConfig.showTotal !== false || wfConfig.treatLastAsTotal === true || (wfConfig.totalIndices && wfConfig.totalIndices.trim() !== '');
+
+                            items.push(createItem({
+                                text: increaseLabel,
+                                fillStyle: positiveColor,
+                                strokeStyle: positiveColor,
+                                hidden: false,
+                                datasetIndex: 0,
+                                index: 0,
+                                type: 'waterfall_increase'
+                            }));
+
+                            items.push(createItem({
+                                text: decreaseLabel,
+                                fillStyle: negativeColor,
+                                strokeStyle: negativeColor,
+                                hidden: false,
+                                datasetIndex: 0,
+                                index: 1,
+                                type: 'waterfall_decrease'
+                            }));
+
+                            if (hasTotal) {
+                                items.push(createItem({
+                                    text: totalLabelVal,
+                                    fillStyle: totalColor,
+                                    strokeStyle: totalColor,
+                                    hidden: false,
+                                    datasetIndex: 0,
+                                    index: 2,
+                                    type: 'waterfall_total'
+                                }));
+                            }
+                        }
                         return items;
                     }
                 }
             }
         }
     };
+    
+    // Dynamic Zero Baseline Highlight post-processing
+    if (enhancedConfig.scales) {
+        const needsHorizontal = enhancedConfig.indexAxis === 'y';
+        const valueAxisKey = needsHorizontal ? 'x' : 'y';
+        const valueAxis = enhancedConfig.scales[valueAxisKey];
+        if (valueAxis) {
+            const baseColor = valueAxis.grid.color || 'rgba(0, 0, 0, 0.06)';
+            const baseWidth = valueAxis.grid.lineWidth !== undefined ? valueAxis.grid.lineWidth : 1;
+            const baseDraw = valueAxis.grid.drawOnChartArea !== false;
+            const hasNegativeValues = chartData && Array.isArray(chartData.datasets) && chartData.datasets.some(ds => 
+                Array.isArray(ds.data) && ds.data.some(val => {
+                    if (typeof val === 'number') return val < 0;
+                    if (Array.isArray(val)) return val[0] < 0 || val[1] < 0;
+                    if (val && typeof val === 'object') {
+                        return (typeof val.y === 'number' && val.y < 0) || (typeof val.x === 'number' && val.x < 0);
+                    }
+                    return false;
+                })
+            );
+            const highlightZeroLine = valueAxis.highlightZeroLine === true || 
+                (valueAxis.highlightZeroLine === undefined && hasNegativeValues);
+
+            if (highlightZeroLine) {
+                valueAxis.grid.color = function(context) {
+                    if (context.tick && context.tick.value === 0) {
+                        return '#475569'; // charcoal graphite zero line
+                    }
+                    if (!baseDraw) {
+                        return 'transparent'; // mask out non-zero grid lines
+                    }
+                    return typeof baseColor === 'function' ? baseColor(context) : baseColor;
+                };
+
+                valueAxis.grid.lineWidth = function(context) {
+                    if (context.tick && context.tick.value === 0) {
+                        return 2; // thicker zero line
+                    }
+                    return typeof baseWidth === 'function' ? baseWidth(context) : baseWidth;
+                };
+
+                valueAxis.grid.drawOnChartArea = true; // statically enable drawOnChartArea to allow tick evaluation
+            }
+        }
+    }
     
     const ctx = document.getElementById('chartCanvas').getContext('2d');
     new Chart(ctx, {

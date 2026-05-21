@@ -23,6 +23,7 @@ export const STANDARD_CHART_TYPES: ChartTypeOption[] = [
   { value: 'bubble', label: 'Bubble' },
   { value: 'gauge', label: 'Gauge' },
   { value: 'funnel', label: 'Funnel' },
+  { value: 'waterfall', label: 'Waterfall' },
 ]
 
 /** 3D chart types */

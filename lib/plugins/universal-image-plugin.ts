@@ -137,7 +137,7 @@ export const universalImagePlugin = {
                                 ctx.restore()
                                 return
                             }
-                        } else if (chartType === "bar" || chartType === "bar3d" || chartType === "horizontalBar3d" || chartType === "horizontalBar" || chartType === "stackedBar") {
+                        } else if (chartType === "bar" || chartType === "bar3d" || chartType === "horizontalBar3d" || chartType === "horizontalBar" || chartType === "stackedBar" || chartType === "waterfall") {
                             if (isFillEnabled) {
                                 // Fill bar mode - ignore position setting
                                 if (chart.config.options?.indexAxis === "y" || chartType === "horizontalBar" || chartType === "horizontalBar3d") {
@@ -159,7 +159,7 @@ export const universalImagePlugin = {
 
                         if (chartType === "pie" || chartType === "doughnut" || chartType === "polarArea") {
                             renderSliceImage(ctx, element, img, imageConfig)
-                        } else if (chartType === "bar") {
+                        } else if (chartType === "bar" || chartType === "waterfall") {
                             if (chart.config.options?.indexAxis === "y") {
                                 renderBarImageHorizontal(ctx, element, img, imageConfig)
                             } else {
@@ -1154,6 +1154,7 @@ export const getImageOptionsForChartType = (chartType: SupportedChartType): Imag
         case 'stackedBar':
         case 'bar3d':
         case 'horizontalBar3d':
+        case 'waterfall':
             return {
                 types: [
                     { value: 'square', label: 'Square' },
@@ -1269,6 +1270,7 @@ export const getDefaultImageSize = (chartType: SupportedChartType): number => {
         case 'horizontalBar':
         case 'bar3d':
         case 'horizontalBar3d':
+        case 'waterfall':
             return 20
         case 'line':
         case 'scatter':

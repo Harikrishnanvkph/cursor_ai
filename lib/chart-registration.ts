@@ -37,6 +37,7 @@ import { bar3dPlugin } from "./plugins/3d-bar-plugin"
 import { watermarkPlugin } from "./plugins/watermark-plugin"
 import { gaugePlugin } from "./plugins/gauge-plugin"
 import { funnelPlugin } from "./plugins/funnel-plugin"
+import { waterfallPlugin } from "./plugins/waterfall-plugin"
 
 // Date adapter for time scales - auto-registers with Chart.js
 import 'chartjs-adapter-date-fns'
@@ -75,7 +76,8 @@ ChartJS.register(
   bar3dPlugin,
   watermarkPlugin,
   gaugePlugin,
-  funnelPlugin
+  funnelPlugin,
+  waterfallPlugin
 )
 
 // Chart.js registration completed

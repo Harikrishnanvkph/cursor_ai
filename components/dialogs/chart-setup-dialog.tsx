@@ -139,6 +139,7 @@ const categoricalChartTypes: { value: SupportedChartType; label: string }[] = [
   { value: 'horizontalBar3d' as any, label: '3D Horizontal Bar' },
   { value: 'funnel' as any, label: 'Funnel' },
   { value: 'gauge' as any, label: 'Gauge' },
+  { value: 'waterfall' as any, label: 'Waterfall' },
 ]
 
 const coordinateChartTypes: { value: SupportedChartType; label: string }[] = [
@@ -307,7 +308,7 @@ export function ChartSetupDialog({
           const points = (ds.data || []).map((val: any, i: number) => {
             return {
               name: ds.sliceLabels?.[i] || `${isCoord ? 'Point' : 'Slice'} ${i + 1}`,
-              value: isCoord ? 0 : (typeof val === 'number' ? val : (Array.isArray(val) ? val[1] : val.y || 0)),
+              value: isCoord ? 0 : (typeof val === 'number' ? val : (Array.isArray(val) ? val[1] - val[0] : val.y || 0)),
               x: isCoord ? (val.x || 0) : 0,
               y: isCoord ? (val.y || 0) : 0,
               r: type === 'bubble' ? (val.r || 10) : 10,
@@ -1289,24 +1290,35 @@ export function ChartSetupDialog({
                 </>
               ) : (
                 <>
-                  <div className="col-span-5">Label</div>
-                  <div className="col-span-4">Value</div>
-                  <div className="col-span-2 flex items-center justify-center gap-1">
-                    Color
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button onClick={toggleColorLinked} className={`p-0.5 rounded-sm transition-colors ${isColorLinked ? 'bg-blue-100 text-blue-600 shadow-sm' : 'hover:bg-gray-200 text-gray-400'}`}>
-                            {isColorLinked ? <Link className="h-3 w-3" /> : <Unlink className="h-3 w-3" />}
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="text-[10px] font-medium z-[200]">
-                          {isColorLinked ? 'Unlink Colors (Individual Mode)' : 'Link Colors (Dataset Mode)'}
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                  <div className="col-span-1"></div>
+                  {chartType === 'waterfall' ? (
+                    <>
+                      <div className="col-span-4">Label</div>
+                      <div className="col-span-4 text-center">Direction</div>
+                      <div className="col-span-3">Value</div>
+                      <div className="col-span-1"></div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="col-span-5">Label</div>
+                      <div className="col-span-4">Value</div>
+                      <div className="col-span-2 flex items-center justify-center gap-1">
+                        Color
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button onClick={toggleColorLinked} className={`p-0.5 rounded-sm transition-colors ${isColorLinked ? 'bg-blue-100 text-blue-600 shadow-sm' : 'hover:bg-gray-200 text-gray-400'}`}>
+                                {isColorLinked ? <Link className="h-3 w-3" /> : <Unlink className="h-3 w-3" />}
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-[10px] font-medium z-[200]">
+                              {isColorLinked ? 'Unlink Colors (Individual Mode)' : 'Link Colors (Dataset Mode)'}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                      <div className="col-span-1"></div>
+                    </>
+                  )}
                 </>
               )}
             </div>
@@ -1381,57 +1393,147 @@ export function ChartSetupDialog({
                     </>
                   ) : (
                     <>
-                      <div className="col-span-5">
-                        {canEditLabels ? (
-                          <Input value={point.name} onChange={e => handleUpdatePoint(index, 'name', e.target.value)} className="h-8 text-xs border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700" />
-                        ) : (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="block">
-                                  <Input value={point.name} disabled className="h-8 text-xs border-gray-200 bg-gray-50 shadow-sm transition-all font-medium text-gray-400 cursor-not-allowed" />
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" sideOffset={5} className="bg-slate-800 text-white border-slate-700 shadow-xl px-3 py-2 z-[150]">
-                                <p className="text-xs font-medium">To edit labels, please use the first dataset tab.</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                      </div>
-                      <div className="col-span-4">
-                        <Input type="number" value={point.value} onChange={e => handleUpdatePoint(index, 'value', Number(e.target.value))} className="h-8 text-xs border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700" />
-                      </div>
-                      <div className="col-span-2 flex justify-center">
-                        <div className="flex items-center">
-                          <label className="relative flex-shrink-0 cursor-pointer overflow-hidden rounded-md shadow-sm focus-within:ring-0 border border-gray-200">
-                            <input type="color" value={point.color} onChange={e => handleUpdatePoint(index, 'color', e.target.value)} className="w-8 h-8 opacity-0 absolute inset-[-10px] cursor-pointer" />
-                            <div className="w-6 h-6 rounded-sm" style={{ backgroundColor: point.color }} />
-                          </label>
-                        </div>
-                      </div>
-                      <div className="col-span-1 flex justify-end">
-                        {canEditSlices ? (
-                          <Button variant="ghost" size="icon" onClick={() => handleRemovePoint(index)} disabled={dataPoints.length <= 1} className="h-6 w-6 text-gray-400 transition-opacity hover:text-red-500 hover:bg-red-50">
-                            <X className="h-3.5 w-3.5" />
-                          </Button>
-                        ) : (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="cursor-not-allowed">
-                                  <Button variant="ghost" size="icon" disabled className="h-6 w-6 text-gray-300 transition-opacity">
-                                    <X className="h-3.5 w-3.5" />
-                                  </Button>
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" sideOffset={5} className="bg-slate-800 text-white border-slate-700 shadow-xl px-3 py-2 z-[150]">
-                                <p className="text-xs font-medium">To remove slices, please use the first dataset tab.</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                      </div>
+                      {chartType === 'waterfall' ? (
+                        <>
+                          <div className="col-span-4">
+                            {canEditLabels ? (
+                              <Input value={point.name} onChange={e => handleUpdatePoint(index, 'name', e.target.value)} className="h-8 text-xs border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700" />
+                            ) : (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="block">
+                                      <Input value={point.name} disabled className="h-8 text-xs border-gray-200 bg-gray-50 shadow-sm transition-all font-medium text-gray-400 cursor-not-allowed" />
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" sideOffset={5} className="bg-slate-800 text-white border-slate-700 shadow-xl px-3 py-2 z-[150]">
+                                    <p className="text-xs font-medium">To edit labels, please use the first dataset tab.</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </div>
+                          <div className="col-span-4 flex items-center justify-center">
+                            {(() => {
+                              const isDecrease = point.value < 0;
+                              return (
+                                <div className="flex bg-gray-100/80 p-0.5 rounded-lg border border-gray-200/60 w-full shadow-inner">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdatePoint(index, 'value', Math.abs(point.value))}
+                                    className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-all ${
+                                      !isDecrease
+                                        ? 'bg-emerald-500 text-white shadow-sm font-semibold'
+                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+                                    }`}
+                                  >
+                                    Increase
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdatePoint(index, 'value', -Math.abs(point.value))}
+                                    className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-all ${
+                                      isDecrease
+                                        ? 'bg-rose-500 text-white shadow-sm font-semibold'
+                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+                                    }`}
+                                  >
+                                    Decrease
+                                  </button>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                          <div className="col-span-3">
+                            <Input
+                              type="number"
+                              value={Math.abs(point.value)}
+                              onChange={e => {
+                                const val = Number(e.target.value);
+                                const isDecrease = point.value < 0;
+                                handleUpdatePoint(index, 'value', isDecrease ? -Math.abs(val) : Math.abs(val));
+                              }}
+                              className="h-8 text-xs border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700"
+                            />
+                          </div>
+                          <div className="col-span-1 flex justify-end">
+                            {canEditSlices ? (
+                              <Button variant="ghost" size="icon" onClick={() => handleRemovePoint(index)} disabled={dataPoints.length <= 1} className="h-6 w-6 text-gray-400 transition-opacity hover:text-red-500 hover:bg-red-50">
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            ) : (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="cursor-not-allowed">
+                                      <Button variant="ghost" size="icon" disabled className="h-6 w-6 text-gray-300 transition-opacity">
+                                        <X className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" sideOffset={5} className="bg-slate-800 text-white border-slate-700 shadow-xl px-3 py-2 z-[150]">
+                                    <p className="text-xs font-medium">To remove slices, please use the first dataset tab.</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="col-span-5">
+                            {canEditLabels ? (
+                              <Input value={point.name} onChange={e => handleUpdatePoint(index, 'name', e.target.value)} className="h-8 text-xs border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700" />
+                            ) : (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="block">
+                                      <Input value={point.name} disabled className="h-8 text-xs border-gray-200 bg-gray-50 shadow-sm transition-all font-medium text-gray-400 cursor-not-allowed" />
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" sideOffset={5} className="bg-slate-800 text-white border-slate-700 shadow-xl px-3 py-2 z-[150]">
+                                    <p className="text-xs font-medium">To edit labels, please use the first dataset tab.</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </div>
+                          <div className="col-span-4">
+                            <Input type="number" value={point.value} onChange={e => handleUpdatePoint(index, 'value', Number(e.target.value))} className="h-8 text-xs border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700" />
+                          </div>
+                          <div className="col-span-2 flex justify-center">
+                            <div className="flex items-center">
+                              <label className="relative flex-shrink-0 cursor-pointer overflow-hidden rounded-md shadow-sm focus-within:ring-0 border border-gray-200">
+                                <input type="color" value={point.color} onChange={e => handleUpdatePoint(index, 'color', e.target.value)} className="w-8 h-8 opacity-0 absolute inset-[-10px] cursor-pointer" />
+                                <div className="w-6 h-6 rounded-sm" style={{ backgroundColor: point.color }} />
+                              </label>
+                            </div>
+                          </div>
+                          <div className="col-span-1 flex justify-end">
+                            {canEditSlices ? (
+                              <Button variant="ghost" size="icon" onClick={() => handleRemovePoint(index)} disabled={dataPoints.length <= 1} className="h-6 w-6 text-gray-400 transition-opacity hover:text-red-500 hover:bg-red-50">
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            ) : (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="cursor-not-allowed">
+                                      <Button variant="ghost" size="icon" disabled className="h-6 w-6 text-gray-300 transition-opacity">
+                                        <X className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" sideOffset={5} className="bg-slate-800 text-white border-slate-700 shadow-xl px-3 py-2 z-[150]">
+                                    <p className="text-xs font-medium">To remove slices, please use the first dataset tab.</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </div>
+                        </>
+                      )}
                     </>
                   )}
                 </div>

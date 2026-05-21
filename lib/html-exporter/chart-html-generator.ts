@@ -15,6 +15,7 @@ import {
 } from "./export-utils";
 import { useDecorationStore } from "../stores/decoration-store";
 import { generateDecorationsSVG, generateDecorationsCSS } from "../template-export/decoration-html-export";
+import { darkenColor } from "../utils/color-utils";
 
 /**
  * Generate a complete standalone HTML file with the chart
@@ -147,6 +148,85 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
         }));
     }
 
+    // Apply waterfall data transformation
+    if (chartType === 'waterfall' && Array.isArray(processedChartData.datasets)) {
+        const wfConfig = (chartConfig.plugins as any)?.waterfall || {};
+        const positiveColor = wfConfig.positiveColor || '#10b981';
+        const negativeColor = wfConfig.negativeColor || '#ef4444';
+        const totalColor = wfConfig.totalColor || '#3b82f6';
+        const showTotal = wfConfig.showTotal !== false;
+        const totalLabel = wfConfig.totalLabel || 'Total';
+        const treatLastAsTotal = showTotal ? false : (wfConfig.treatLastAsTotal !== false);
+        const totalIndicesSet = new Set<number>();
+        if (wfConfig.totalIndices && typeof wfConfig.totalIndices === 'string') {
+            wfConfig.totalIndices.split(',').forEach((s: string) => {
+                const idx = parseInt(s.trim(), 10);
+                if (!isNaN(idx)) totalIndicesSet.add(idx);
+            });
+        }
+        processedChartData.datasets = processedChartData.datasets.map((ds: any, datasetIdx: number) => {
+            let cumulative = 0;
+            const originalData = Array.isArray(ds.data) ? ds.data : [];
+            const transformedData: [number, number][] = [];
+            const bgColors: string[] = [];
+            const borderColors: string[] = [];
+            originalData.forEach((val: any, idx: number) => {
+                const numVal = typeof val === 'number' ? val : 0;
+                let isTotal = false;
+                if (treatLastAsTotal && idx === originalData.length - 1) isTotal = true;
+                else if (totalIndicesSet.has(idx)) isTotal = true;
+                let start = 0, end = 0, color = positiveColor;
+                if (isTotal) {
+                    start = 0;
+                    end = cumulative;
+                    color = totalColor;
+                } else {
+                    start = cumulative;
+                    end = cumulative + numVal;
+                    cumulative = end;
+                    color = numVal >= 0 ? positiveColor : negativeColor;
+                }
+                transformedData.push([start, end]);
+                bgColors.push(color);
+
+                const borderColor = (typeof ds.borderColor === 'string')
+                    ? ds.borderColor
+                    : (ds.borderColor === 'auto' || !ds.borderColor)
+                        ? darkenColor(color, 20)
+                        : (Array.isArray(ds.borderColor) && ds.borderColor[idx] ? ds.borderColor[idx] : color);
+                borderColors.push(borderColor);
+            });
+
+            if (showTotal) {
+                transformedData.push([0, cumulative]);
+                bgColors.push(totalColor);
+                const totalBorderColor = (typeof ds.borderColor === 'string')
+                    ? ds.borderColor
+                    : (ds.borderColor === 'auto' || !ds.borderColor)
+                        ? darkenColor(totalColor, 20)
+                        : (Array.isArray(ds.borderColor) && ds.borderColor[originalData.length] ? ds.borderColor[originalData.length] : totalColor);
+                borderColors.push(totalBorderColor);
+                if (datasetIdx === 0) {
+                    if (Array.isArray(processedChartData.labels)) {
+                        processedChartData.labels.push(totalLabel);
+                    }
+                }
+                if (Array.isArray(ds.sliceLabels)) {
+                    ds.sliceLabels.push(totalLabel);
+                }
+            }
+
+            return {
+                ...ds,
+                data: transformedData,
+                backgroundColor: bgColors,
+                borderColor: borderColors,
+                borderWidth: ds.borderWidth ?? 1,
+                borderSkipped: ds.borderSkipped !== undefined ? ds.borderSkipped : false,
+            };
+        });
+    }
+
 
     // Generate custom labels and enhance chart config
     // Apply runtime toggles: hide labels/images if disabled
@@ -253,6 +333,10 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
                 ...(processedChartConfig.plugins?.gauge || {}),
                 enabled: chartType === 'gauge'
             },
+            waterfall: {
+                ...(processedChartConfig.plugins?.waterfall || {}),
+                enabled: chartType === 'waterfall'
+            },
             watermark: (processedChartConfig as any)?.watermark
         }
     };
@@ -279,7 +363,8 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
 
     const optionsWithLegend = {
         ...options,
-        legendConfigOverride: legendForExport
+        legendConfigOverride: legendForExport,
+        originalChartType: chartType
     };
 
     const decorationShapes = useDecorationStore.getState().shapes || [];
@@ -473,6 +558,16 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
                 } : { enabled: false },
                 legend: {
                     ...${JSON.stringify(legendForExport, null, 8)},
+                    onClick: function(e, legendItem, legend) {
+                        const currentLegendType = legend.options?.plugins?.legendType || (chartConfig.plugins && chartConfig.plugins.legendType);
+                        if (currentLegendType === 'waterfall') {
+                            return;
+                        }
+                        const defaultClick = Chart.defaults.plugins.legend.onClick;
+                        if (defaultClick) {
+                            defaultClick.call(legend, e, legendItem, legend);
+                        }
+                    },
                     labels: {
                         ...legendLabelsConfig,
                         generateLabels: function(chart) {
@@ -550,12 +645,98 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
                                     }, isHidden));
                                 }
                             }
+                            if (legendType === 'waterfall' && "${chartType}" === 'waterfall') {
+                                const wfConfig = (chartConfig.plugins && chartConfig.plugins.waterfall) || {};
+                                const positiveColor = wfConfig.positiveColor || '#10b981';
+                                const negativeColor = wfConfig.negativeColor || '#ef4444';
+                                const totalColor = wfConfig.totalColor || '#3b82f6';
+                                const legendLabels = wfConfig.legendLabels || {};
+                                const increaseLabel = legendLabels.increase || 'Increase';
+                                const decreaseLabel = legendLabels.decrease || 'Decrease';
+                                const totalLabelVal = legendLabels.total || 'Total';
+                                const hasTotal = wfConfig.showTotal !== false || wfConfig.treatLastAsTotal === true || (wfConfig.totalIndices && wfConfig.totalIndices.trim() !== '');
+
+                                items.push(createItem({
+                                    text: increaseLabel,
+                                    fillStyle: positiveColor,
+                                    strokeStyle: positiveColor,
+                                    datasetIndex: 0,
+                                    index: 0,
+                                    type: 'waterfall_increase'
+                                }, false));
+
+                                items.push(createItem({
+                                    text: decreaseLabel,
+                                    fillStyle: negativeColor,
+                                    strokeStyle: negativeColor,
+                                    datasetIndex: 0,
+                                    index: 1,
+                                    type: 'waterfall_decrease'
+                                }, false));
+
+                                if (hasTotal) {
+                                    items.push(createItem({
+                                        text: totalLabelVal,
+                                        fillStyle: totalColor,
+                                        strokeStyle: totalColor,
+                                        datasetIndex: 0,
+                                        index: 2,
+                                        type: 'waterfall_total'
+                                    }, false));
+                                }
+                            }
                             return items;
                         }
                     }
                 }
             }
         };
+
+        // Dynamic Zero Baseline Highlight post-processing
+        if (enhancedConfig.scales) {
+            const needsHorizontal = enhancedConfig.indexAxis === 'y';
+            const valueAxisKey = needsHorizontal ? 'x' : 'y';
+            const valueAxis = enhancedConfig.scales[valueAxisKey];
+            if (valueAxis) {
+                valueAxis.grid = valueAxis.grid || {};
+                const baseColor = valueAxis.grid.color || 'rgba(0, 0, 0, 0.06)';
+                const baseWidth = valueAxis.grid.lineWidth !== undefined ? valueAxis.grid.lineWidth : 1;
+                const baseDraw = valueAxis.grid.drawOnChartArea !== false;
+                const hasNegativeValues = chartData && Array.isArray(chartData.datasets) && chartData.datasets.some(ds => 
+                    Array.isArray(ds.data) && ds.data.some(val => {
+                        if (typeof val === 'number') return val < 0;
+                        if (Array.isArray(val)) return val[0] < 0 || val[1] < 0;
+                        if (val && typeof val === 'object') {
+                            return (typeof val.y === 'number' && val.y < 0) || (typeof val.x === 'number' && val.x < 0);
+                        }
+                        return false;
+                    })
+                );
+                const highlightZeroLine = valueAxis.highlightZeroLine === true || 
+                    (valueAxis.highlightZeroLine === undefined && hasNegativeValues);
+
+                if (highlightZeroLine) {
+                    valueAxis.grid.color = function(context) {
+                        if (context.tick && context.tick.value === 0) {
+                            return '#475569'; // charcoal graphite zero line
+                        }
+                        if (!baseDraw) {
+                            return 'transparent'; // mask out non-zero grid lines
+                        }
+                        return typeof baseColor === 'function' ? baseColor(context) : baseColor;
+                    };
+
+                    valueAxis.grid.lineWidth = function(context) {
+                        if (context.tick && context.tick.value === 0) {
+                            return 2; // thicker zero line
+                        }
+                        return typeof baseWidth === 'function' ? baseWidth(context) : baseWidth;
+                    };
+
+                    valueAxis.grid.drawOnChartArea = true; // statically enable drawOnChartArea to allow tick evaluation
+                }
+            }
+        }
         
         // Initialize chart when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {

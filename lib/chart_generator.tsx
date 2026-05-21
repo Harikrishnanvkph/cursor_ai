@@ -46,6 +46,7 @@ import { bar3dPlugin } from "@/lib/plugins/3d-bar-plugin"
 import { slicePatternPlugin } from "@/lib/plugins/slice-pattern-plugin"
 import { gaugePlugin } from "@/lib/plugins/gauge-plugin"
 import { funnelPlugin } from "@/lib/plugins/funnel-plugin"
+import { waterfallPlugin } from "@/lib/plugins/waterfall-plugin"
 import { ResizableChartArea } from "@/components/resizable-chart-area"
 
 import { parseDimension } from "@/lib/utils/dimension-utils"
@@ -85,7 +86,8 @@ ChartJS.register(
   bar3dPlugin,
   slicePatternPlugin,
   gaugePlugin,
-  funnelPlugin
+  funnelPlugin,
+  waterfallPlugin
 );
 
 // Plugin registration verified
@@ -538,7 +540,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
   });
 
   // Always ensure datasets have valid Chart.js types
-  let filteredDatasetsPatched = [...filteredDatasets];
+  let filteredDatasetsPatched: any[] = [...filteredDatasets];
 
   filteredDatasetsPatched = filteredDatasetsPatched.map((ds, i) => {
     // In single mode, use global chartType; in grouped mixed mode, use dataset-specific type
@@ -551,7 +553,8 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
           (datasetType === 'doughnut3d' ? 'doughnut' :
             (datasetType === 'bar3d' ? 'bar' :
               (datasetType === 'gauge' ? 'doughnut' :
-                (datasetType === 'funnel' ? 'bar' : datasetType))))));
+                (datasetType === 'funnel' ? 'bar' :
+                  (datasetType === 'waterfall' ? 'bar' : datasetType)))))));
 
     let patched = { ...ds, type: validType };
     if (chartType === 'funnel') {
@@ -560,7 +563,86 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
       patched.categoryPercentage = (chartConfig.plugins as any)?.funnel?.spacing ?? defaultSpacing;
       patched.barPercentage = 1.0;
     }
+    if (chartType === 'waterfall') {
+      const wfConfig = (chartConfig.plugins as any)?.waterfall || {};
+      const positiveColor = wfConfig.positiveColor || '#10b981';
+      const negativeColor = wfConfig.negativeColor || '#ef4444';
+      const totalColor = wfConfig.totalColor || '#3b82f6';
+      const showTotal = wfConfig.showTotal !== false;
+      const totalLabel = wfConfig.totalLabel || 'Total';
+      const treatLastAsTotal = showTotal ? false : (wfConfig.treatLastAsTotal !== false);
 
+      const totalIndicesSet = new Set<number>();
+      if (wfConfig.totalIndices && typeof wfConfig.totalIndices === 'string') {
+        wfConfig.totalIndices.split(',').forEach((s: string) => {
+          const idx = parseInt(s.trim(), 10);
+          if (!isNaN(idx)) {
+            totalIndicesSet.add(idx);
+          }
+        });
+      }
+
+      let cumulative = 0;
+      const originalData = Array.isArray(ds.data) ? ds.data : [];
+      const transformedData: [number, number][] = [];
+      const bgColors: string[] = [];
+      const borderColors: string[] = [];
+
+      originalData.forEach((val: any, idx: number) => {
+        const numVal = typeof val === 'number' ? val : 0;
+        let isTotal = false;
+        if (treatLastAsTotal && idx === originalData.length - 1) {
+          isTotal = true;
+        } else if (totalIndicesSet.has(idx)) {
+          isTotal = true;
+        }
+
+        let start = 0;
+        let end = 0;
+        let color = positiveColor;
+
+        if (isTotal) {
+          start = 0;
+          end = cumulative;
+          color = totalColor;
+        } else {
+          start = cumulative;
+          end = cumulative + numVal;
+          cumulative = end;
+          color = numVal >= 0 ? positiveColor : negativeColor;
+        }
+
+        transformedData.push([start, end]);
+        bgColors.push(color);
+
+        const borderColor = (typeof ds.borderColor === 'string') 
+          ? ds.borderColor 
+          : (ds.borderColor === 'auto' || !ds.borderColor) 
+            ? darkenColor(color, 20) 
+            : (Array.isArray(ds.borderColor) && ds.borderColor[idx] ? ds.borderColor[idx] : color);
+        borderColors.push(borderColor);
+      });
+
+      if (showTotal) {
+        transformedData.push([0, cumulative]);
+        bgColors.push(totalColor);
+        const totalBorderColor = (typeof ds.borderColor === 'string') 
+          ? ds.borderColor 
+          : (ds.borderColor === 'auto' || !ds.borderColor) 
+            ? darkenColor(totalColor, 20) 
+            : (Array.isArray(ds.borderColor) && ds.borderColor[originalData.length] ? ds.borderColor[originalData.length] : totalColor);
+        borderColors.push(totalBorderColor);
+        if (i === 0) {
+          filteredLabels.push(totalLabel);
+        }
+      }
+
+      patched.data = transformedData as any;
+      patched.backgroundColor = bgColors;
+      patched.borderColor = borderColors;
+      patched.borderWidth = ds.borderWidth ?? 1;
+      patched.borderSkipped = ds.borderSkipped !== undefined ? ds.borderSkipped : false;
+    }
     if (
       chartConfig.hoverFadeEffect !== false &&
       chartMode === 'grouped' && hoveredDatasetIndex !== null
@@ -569,10 +651,10 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
         patched = {
           ...patched,
           backgroundColor: Array.isArray(patched.backgroundColor)
-            ? patched.backgroundColor.map(c => fadeColor(c))
+            ? patched.backgroundColor.map((c: any) => fadeColor(c))
             : fadeColor(patched.backgroundColor),
           borderColor: Array.isArray(patched.borderColor)
-            ? patched.borderColor.map(c => fadeColor(c))
+            ? patched.borderColor.map((c: any) => fadeColor(c))
             : fadeColor(patched.borderColor),
           pointBackgroundColor: Array.isArray((patched as any).pointBackgroundColor)
             ? (patched as any).pointBackgroundColor.map((c: any) => fadeColor(c))
@@ -611,9 +693,13 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
     // Extract numeric value
     if (typeof rawValue === 'number') {
       numValue = rawValue;
+    } else if (Array.isArray(rawValue) && rawValue.length === 2 && typeof rawValue[0] === 'number' && typeof rawValue[1] === 'number') {
+      numValue = rawValue[1] - rawValue[0];
     } else if (rawValue && typeof rawValue === 'object' && 'y' in rawValue && typeof rawValue.y === 'number') {
       numValue = rawValue.y;
-    } else {
+    }
+
+    if (numValue === null) {
       return String(rawValue);
     }
 
@@ -749,25 +835,43 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
 
   const customLabels = filteredDatasetsPatched.map((ds, datasetIdx) => {
     let baseConfig = { ...globalCustomLabelsConfig, ...(ds.customLabelsConfig || {}) };
-    return ds.data.map((value, filteredPointIdx) => {
+    return ds.data.map((value: any, filteredPointIdx: number) => {
+      const wfConfig = (chartConfig.plugins as any)?.waterfall || {};
+      const showTotal = wfConfig.showTotal !== false;
+      const isVirtualTotalBar = chartType === 'waterfall' && showTotal && filteredPointIdx === ds.data.length - 1;
+
       // Map filtered index back to original index
-      const originalPointIdx = enabledSliceIndices[filteredPointIdx];
+      let originalPointIdx = enabledSliceIndices[filteredPointIdx];
+      if (isVirtualTotalBar) {
+        originalPointIdx = enabledSliceIndices.length;
+      }
 
       // Merge per-slice label overrides if they exist (highest priority)
-      const sliceOverride = ds.sliceLabelOverrides?.[originalPointIdx];
+      const sliceOverride = !isVirtualTotalBar ? ds.sliceLabelOverrides?.[originalPointIdx] : undefined;
       const customLabelsConfig = sliceOverride
         ? { ...baseConfig, ...sliceOverride }
         : baseConfig;
 
       // If this slice is hidden by legend, also hide its label
-      if (originalPointIdx === undefined || !isSliceVisible(originalPointIdx)) {
+      if (!isVirtualTotalBar && (originalPointIdx === undefined || !isSliceVisible(originalPointIdx))) {
         return { text: '' };
       }
       if (customLabelsConfig.display === false) return { text: '' };
 
       let text = '';
 
-      if (customLabelsConfig.labelContent === 'label') {
+      if (isVirtualTotalBar) {
+        if (customLabelsConfig.labelContent === 'label') {
+          text = wfConfig.totalLabel || 'Total';
+        } else if (customLabelsConfig.labelContent === 'index') {
+          text = String(filteredPointIdx + 1);
+        } else if (customLabelsConfig.labelContent === 'dataset') {
+          text = ds.label ?? 'Total';
+        } else {
+          // Default: format the value
+          text = formatLabelValue(value, customLabelsConfig);
+        }
+      } else if (customLabelsConfig.labelContent === 'label') {
         // For both single and grouped modes, use sliceLabels from the dataset if available
         const originalDs = modeFilteredDatasets[datasetIdx];
         if (originalDs?.sliceLabels && Array.isArray(originalDs.sliceLabels)) {
@@ -857,7 +961,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
   });
 
   // Determine chart type for Chart.js
-  let chartTypeForChart = chartType === 'area' ? 'line' :
+  let chartTypeForChart: string = chartType === 'area' ? 'line' :
     (chartType === 'stackedBar' ? 'bar' :
       (chartType === 'horizontalBar' ? 'bar' :
         (chartType === 'pie3d' ? 'pie' :
@@ -865,7 +969,8 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
             (chartType === 'bar3d' ? 'bar' :
               (chartType === 'horizontalBar3d' ? 'bar' :
                 (chartType === 'gauge' ? 'doughnut' :
-                  (chartType === 'funnel' ? 'bar' : chartType))))))));
+                  (chartType === 'funnel' ? 'bar' :
+                    (chartType === 'waterfall' ? 'bar' : chartType)))))))));
 
   // In single mode, ALWAYS use the global chart type (user expects to change the whole chart)
   // In grouped mode with uniform, also use global chart type
@@ -884,7 +989,8 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
                 (chartType === 'bar3d' ? 'bar' :
                   (chartType === 'horizontalBar3d' ? 'bar' :
                     (chartType === 'gauge' ? 'doughnut' :
-                      (chartType === 'funnel' ? 'bar' : chartType))))))));
+                      (chartType === 'funnel' ? 'bar' :
+                        (chartType === 'waterfall' ? 'bar' : chartType)))))))));
     } else {
       // Mixed mode: the chart type is 'bar' as base, but each dataset has its own type
       chartTypeForChart = 'bar';
@@ -911,7 +1017,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
     chartTypeForChart = 'bar';
   } else if (chartTypeForChart === 'gauge') {
     chartTypeForChart = 'doughnut';
-  } else if (chartTypeForChart === 'funnel') {
+  } else if (chartTypeForChart === 'funnel' || chartTypeForChart === 'waterfall') {
     chartTypeForChart = 'bar';
   }
 
@@ -1093,36 +1199,121 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
     return undefined;
   };
 
+  // Helper functions for zero line highlighting on value axes
+  const getZeroLineColor = (scaleBase: any, highlightZeroLine: boolean) => {
+    const defaultColor = scaleBase?.grid?.color || 'rgba(0,0,0,0.06)';
+    const defaultDraw = scaleBase?.grid?.drawOnChartArea !== false;
+    if (!highlightZeroLine) return defaultColor;
+    return (context: any) => {
+      if (context.tick?.value === 0) {
+        return '#475569'; // sleek dark graphite color
+      }
+      if (!defaultDraw) {
+        return 'transparent'; // Mask out non-zero grid lines since they shouldn't be drawn
+      }
+      return typeof defaultColor === 'function' ? defaultColor(context) : defaultColor;
+    };
+  };
+
+  const getZeroLineWidth = (scaleBase: any, highlightZeroLine: boolean) => {
+    const defaultWidth = scaleBase?.grid?.lineWidth ?? 1;
+    if (!highlightZeroLine) return defaultWidth;
+    return (context: any) => {
+      if (context.tick?.value === 0) {
+        return 2; // thicker line
+      }
+      return typeof defaultWidth === 'function' ? defaultWidth(context) : defaultWidth;
+    };
+  };
+
+  // Check if any slice value is below zero
+  const hasNegativeValues = filteredDatasetsPatched.some((ds: any) => 
+    Array.isArray(ds.data) && ds.data.some((val: any) => {
+      if (typeof val === 'number') return val < 0;
+      if (Array.isArray(val)) {
+        return val[0] < 0 || val[1] < 0;
+      }
+      if (val && typeof val === 'object') {
+        return (typeof val.y === 'number' && val.y < 0) || (typeof val.x === 'number' && val.x < 0);
+      }
+      return false;
+    })
+  );
+
   if (chartType === 'stackedBar') {
+    const xBase = { ...(optionsScales?.x || {}) };
     const yBase = { ...(optionsScales?.y || {}) };
     const sugMax = computeGraceSuggestedMax(yBase);
     // Strip native grace to prevent double-application
     delete yBase.grace;
+
+    const highlightXZero = xBase.highlightZeroLine === true || 
+      (xBase.highlightZeroLine === undefined && hasNegativeValues && needsHorizontal);
+    const highlightYZero = yBase.highlightZeroLine === true || 
+      (yBase.highlightZeroLine === undefined && hasNegativeValues && !needsHorizontal);
+
     appliedOptions = {
       ...baseOptions,
       scales: {
-        x: { ...(optionsScales?.x || {}), stacked: true },
+        x: {
+          ...xBase,
+          stacked: true,
+          grid: {
+            ...(xBase.grid || {}),
+            color: getZeroLineColor(xBase, highlightXZero),
+            lineWidth: getZeroLineWidth(xBase, highlightXZero),
+            drawOnChartArea: highlightXZero ? true : (xBase.grid?.drawOnChartArea !== false),
+          }
+        },
         y: {
           ...yBase,
           stacked: true,
           ...(sugMax !== undefined ? { suggestedMax: sugMax } : {}),
+          grid: {
+            ...(yBase.grid || {}),
+            color: getZeroLineColor(yBase, highlightYZero),
+            lineWidth: getZeroLineWidth(yBase, highlightYZero),
+            drawOnChartArea: highlightYZero ? true : (yBase.grid?.drawOnChartArea !== false),
+          },
         },
       },
     };
   } else if (!isCircularType && !isRadialType) {
+    const xBase = { ...(optionsScales?.x || {}) };
     const yBase = { ...(optionsScales?.y || {}) };
     const sugMax = computeGraceSuggestedMax(yBase);
     // Strip native grace to prevent double-application
     delete yBase.grace;
+
+    const highlightXZero = xBase.highlightZeroLine === true || 
+      (xBase.highlightZeroLine === undefined && hasNegativeValues && needsHorizontal);
+    const highlightYZero = yBase.highlightZeroLine === true || 
+      (yBase.highlightZeroLine === undefined && hasNegativeValues && !needsHorizontal);
+
     // For other Cartesian charts, explicit stacked: false
     appliedOptions = {
       ...baseOptions,
       scales: {
-        x: { ...(optionsScales?.x || {}), stacked: false },
+        x: {
+          ...xBase,
+          stacked: false,
+          grid: {
+            ...(xBase.grid || {}),
+            color: getZeroLineColor(xBase, highlightXZero),
+            lineWidth: getZeroLineWidth(xBase, highlightXZero),
+            drawOnChartArea: highlightXZero ? true : (xBase.grid?.drawOnChartArea !== false),
+          }
+        },
         y: {
           ...yBase,
           stacked: false,
           ...(sugMax !== undefined ? { suggestedMax: sugMax } : {}),
+          grid: {
+            ...(yBase.grid || {}),
+            color: getZeroLineColor(yBase, highlightYZero),
+            lineWidth: getZeroLineWidth(yBase, highlightYZero),
+            drawOnChartArea: highlightYZero ? true : (yBase.grid?.drawOnChartArea !== false),
+          },
           ticks: {
             ...(yBase.ticks || {}),
             // Inject smart decimals for Y-axis ticks to prevent "identical" labels on small scales
@@ -1250,8 +1441,10 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
         currentBorderColor = dataset.borderColor;
       }
 
-      let sliceValue = dataset.data ? dataset.data[globalSliceIndex] : 0;
-      if (sliceValue !== null && typeof sliceValue === 'object' && 'y' in sliceValue) {
+      let sliceValue: any = dataset.data ? dataset.data[globalSliceIndex] : 0;
+      if (Array.isArray(sliceValue) && sliceValue.length === 2 && typeof sliceValue[0] === 'number' && typeof sliceValue[1] === 'number') {
+        sliceValue = sliceValue[1] - sliceValue[0];
+      } else if (sliceValue !== null && typeof sliceValue === 'object' && 'y' in sliceValue) {
         sliceValue = sliceValue.y;
       }
 
@@ -1476,14 +1669,14 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
                     'data-debug-height': chartConfig.height
                   })}
                   options={{
-                    ...chartConfig,
+                    ...appliedOptions,
                     devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio * devicePixelRatioMultiplier : 1,
-                    circumference: chartType === 'gauge' ? (chartConfig.circumference ?? 180) : chartConfig.circumference,
-                    rotation: chartType === 'gauge' ? (chartConfig.rotation ?? 270) : chartConfig.rotation,
+                    circumference: chartType === 'gauge' ? (appliedOptions.circumference ?? 180) : appliedOptions.circumference,
+                    rotation: chartType === 'gauge' ? (appliedOptions.rotation ?? 270) : appliedOptions.rotation,
                     responsive: true,
                     maintainAspectRatio: false,
                     layout: {
-                      padding: (globalCustomLabelsConfig.anchor === 'callout') ? 60 : (chartConfig.layout?.padding || 0)
+                      padding: (globalCustomLabelsConfig.anchor === 'callout') ? 60 : (appliedOptions.layout?.padding || 0)
                     },
                     hover: {
                       intersect: chartConfig.hover?.intersect ?? false,
@@ -1527,7 +1720,17 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
                       customLabels: { shapeSize: 32, labels: customLabels, display: globalCustomLabelsConfig.display !== false },
                       legend: {
                         ...((chartConfig.plugins as any)?.legend),
-                        display: chartType === 'gauge' ? false : ((chartConfig.plugins as any)?.legend?.display !== false),
+                        display: ((chartConfig.plugins as any)?.legend?.display !== false),
+                        onClick: (e: any, legendItem: any, legend: any) => {
+                          const currentLegendType = legend.options?.plugins?.legendType || (chartConfig.plugins as any)?.legendType;
+                          if (currentLegendType === 'waterfall') {
+                            return; // Do nothing for waterfall legend items
+                          }
+                          const defaultClick = (ChartJS.defaults.plugins.legend as any)?.onClick;
+                          if (defaultClick) {
+                            defaultClick.call(legend, e, legendItem, legend);
+                          }
+                        },
                         labels: {
                           ...(((chartConfig.plugins as any)?.legend)?.labels || {}),
                           generateLabels: (chart: any) => {
@@ -1608,6 +1811,46 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
                                   index: i,
                                   type: 'dataset',
                                 }, isHidden));
+                              }
+                            }
+                            if (legendType === 'waterfall' && chartType === 'waterfall') {
+                              const wfConfig = chart.config?.options?.plugins?.waterfall || (chartConfig.plugins as any)?.waterfall || {};
+                              const positiveColor = wfConfig.positiveColor || '#10b981';
+                              const negativeColor = wfConfig.negativeColor || '#ef4444';
+                              const totalColor = wfConfig.totalColor || '#3b82f6';
+                              const legendLabels = wfConfig.legendLabels || {};
+                              const increaseLabel = legendLabels.increase || 'Increase';
+                              const decreaseLabel = legendLabels.decrease || 'Decrease';
+                              const totalLabelVal = legendLabels.total || 'Total';
+                              const hasTotal = wfConfig.showTotal !== false || wfConfig.treatLastAsTotal === true || (wfConfig.totalIndices && wfConfig.totalIndices.trim() !== '');
+
+                              items.push(createItem({
+                                text: increaseLabel,
+                                fillStyle: positiveColor,
+                                strokeStyle: positiveColor,
+                                datasetIndex: 0,
+                                index: 0,
+                                type: 'waterfall_increase'
+                              }, false));
+
+                              items.push(createItem({
+                                text: decreaseLabel,
+                                fillStyle: negativeColor,
+                                strokeStyle: negativeColor,
+                                datasetIndex: 0,
+                                index: 1,
+                                type: 'waterfall_decrease'
+                              }, false));
+
+                              if (hasTotal) {
+                                items.push(createItem({
+                                  text: totalLabelVal,
+                                  fillStyle: totalColor,
+                                  strokeStyle: totalColor,
+                                  datasetIndex: 0,
+                                  index: 2,
+                                  type: 'waterfall_total'
+                                }, false));
                               }
                             }
                             return items;
@@ -1744,7 +1987,17 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
                       customLabels: { shapeSize: 32, labels: customLabels, display: globalCustomLabelsConfig.display !== false },
                       legend: {
                         ...((chartConfig.plugins as any)?.legend),
-                        display: chartType === 'gauge' ? false : ((chartConfig.plugins as any)?.legend?.display !== false),
+                        display: ((chartConfig.plugins as any)?.legend?.display !== false),
+                        onClick: (e: any, legendItem: any, legend: any) => {
+                          const currentLegendType = legend.options?.plugins?.legendType || (chartConfig.plugins as any)?.legendType;
+                          if (currentLegendType === 'waterfall') {
+                            return; // Do nothing for waterfall legend items
+                          }
+                          const defaultClick = (ChartJS.defaults.plugins.legend as any)?.onClick;
+                          if (defaultClick) {
+                            defaultClick.call(legend, e, legendItem, legend);
+                          }
+                        },
                         labels: {
                           ...(((chartConfig.plugins as any)?.legend)?.labels || {}),
                           generateLabels: (chart: any) => {
@@ -1822,6 +2075,46 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
                                   index: i,
                                   type: 'dataset',
                                 }, isHidden));
+                              }
+                            }
+                            if (legendType === 'waterfall' && chartType === 'waterfall') {
+                              const wfConfig = chart.config?.options?.plugins?.waterfall || (chartConfig.plugins as any)?.waterfall || {};
+                              const positiveColor = wfConfig.positiveColor || '#10b981';
+                              const negativeColor = wfConfig.negativeColor || '#ef4444';
+                              const totalColor = wfConfig.totalColor || '#3b82f6';
+                              const legendLabels = wfConfig.legendLabels || {};
+                              const increaseLabel = legendLabels.increase || 'Increase';
+                              const decreaseLabel = legendLabels.decrease || 'Decrease';
+                              const totalLabelVal = legendLabels.total || 'Total';
+                              const hasTotal = wfConfig.showTotal !== false || wfConfig.treatLastAsTotal === true || (wfConfig.totalIndices && wfConfig.totalIndices.trim() !== '');
+
+                              items.push(createItem({
+                                text: increaseLabel,
+                                fillStyle: positiveColor,
+                                strokeStyle: positiveColor,
+                                datasetIndex: 0,
+                                index: 0,
+                                type: 'waterfall_increase'
+                              }, false));
+
+                              items.push(createItem({
+                                text: decreaseLabel,
+                                fillStyle: negativeColor,
+                                strokeStyle: negativeColor,
+                                datasetIndex: 0,
+                                index: 1,
+                                type: 'waterfall_decrease'
+                              }, false));
+
+                              if (hasTotal) {
+                                items.push(createItem({
+                                  text: totalLabelVal,
+                                  fillStyle: totalColor,
+                                  strokeStyle: totalColor,
+                                  datasetIndex: 0,
+                                  index: 2,
+                                  type: 'waterfall_total'
+                                }, false));
                               }
                             }
                             return items;
@@ -1991,7 +2284,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
               : Array(dataset.data.length).fill(dataset.backgroundColor || '#3b82f6');
             const newBorderColors = Array.isArray(dataset.borderColor)
               ? [...dataset.borderColor]
-              : Array(dataset.data.length).fill(dataset.borderColor || darkenColor(dataset.backgroundColor || '#3b82f6', 20));
+              : Array(dataset.data.length).fill(dataset.borderColor || darkenColor((typeof dataset.backgroundColor === 'string' ? dataset.backgroundColor : null) || '#3b82f6', 20));
 
             newBgColors[sliceIndex] = newColor;
             newBorderColors[sliceIndex] = darkenColor(newColor, 20);

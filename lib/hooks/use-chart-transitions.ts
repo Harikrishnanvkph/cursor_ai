@@ -136,7 +136,7 @@ export function useChartTransitions() {
         useChartStore.setState({ chartData: sampleCategoricalData });
         setChartType(targetType as any);
 
-        const newLegendType = (targetType === 'pie' || targetType === 'doughnut' || targetType === 'polarArea') ? 'slice' : 'dataset';
+        const newLegendType = targetType === 'waterfall' ? 'waterfall' : ((targetType === 'pie' || targetType === 'doughnut' || targetType === 'polarArea') ? 'slice' : 'dataset');
         updateChartConfig({
             ...chartConfig,
             plugins: { ...chartConfig.plugins, ...({ legendType: newLegendType } as any) }
@@ -153,7 +153,7 @@ export function useChartTransitions() {
         useChartStore.setState({ chartData: scatterBubbleSetup.backupData });
         setChartType(targetType as any);
 
-        const newLegendType = (targetType === 'pie' || targetType === 'doughnut' || targetType === 'polarArea') ? 'slice' : 'dataset';
+        const newLegendType = targetType === 'waterfall' ? 'waterfall' : ((targetType === 'pie' || targetType === 'doughnut' || targetType === 'polarArea') ? 'slice' : 'dataset');
         updateChartConfig({
             ...chartConfig,
             plugins: { ...chartConfig.plugins, ...({ legendType: newLegendType } as any) }

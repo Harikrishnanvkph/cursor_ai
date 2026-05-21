@@ -57,9 +57,53 @@ export function LegendTab({
                                 <SelectItem value="slice">Slice Only</SelectItem>
                                 <SelectItem value="dataset">Datasets Only</SelectItem>
                                 <SelectItem value="both">Both</SelectItem>
+                                {chartType === 'waterfall' && (
+                                    <SelectItem value="waterfall">Waterfall Legend</SelectItem>
+                                )}
                             </SelectContent>
                         </Select>
                     </div>
+
+                    {chartType === 'waterfall' && (chartConfig.plugins as any)?.legendType === 'waterfall' && (() => {
+                        const showTotal = (chartConfig.plugins as any)?.waterfall?.showTotal !== false;
+                        return (
+                            <div className="space-y-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                <div className="text-xs font-semibold text-gray-700">Waterfall Legend Labels</div>
+                                
+                                <div className="space-y-1">
+                                    <Label className="text-xs font-medium">Increase Label</Label>
+                                    <Input
+                                        type="text"
+                                        value={(chartConfig.plugins as any)?.waterfall?.legendLabels?.increase ?? "Increase"}
+                                        onChange={(e) => handleConfigUpdate("plugins.waterfall.legendLabels.increase", e.target.value)}
+                                        className="h-8 text-xs"
+                                    />
+                                </div>
+
+                                <div className="space-y-1">
+                                    <Label className="text-xs font-medium">Decrease Label</Label>
+                                    <Input
+                                        type="text"
+                                        value={(chartConfig.plugins as any)?.waterfall?.legendLabels?.decrease ?? "Decrease"}
+                                        onChange={(e) => handleConfigUpdate("plugins.waterfall.legendLabels.decrease", e.target.value)}
+                                        className="h-8 text-xs"
+                                    />
+                                </div>
+
+                                <div className={`space-y-1 transition-all duration-200 ${!showTotal ? 'opacity-40' : ''}`}>
+                                    <Label className="text-xs font-medium text-gray-700">Total Label</Label>
+                                    <Input
+                                        type="text"
+                                        disabled={!showTotal}
+                                        value={(chartConfig.plugins as any)?.waterfall?.legendLabels?.total ?? "Total"}
+                                        onChange={(e) => handleConfigUpdate("plugins.waterfall.legendLabels.total", e.target.value)}
+                                        className="h-8 text-xs"
+                                        placeholder={!showTotal ? "Disabled (Total hidden)" : "Total"}
+                                    />
+                                </div>
+                            </div>
+                        );
+                    })()}
 
                     <div className="grid grid-cols-2 gap-3">
                         <div>

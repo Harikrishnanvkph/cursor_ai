@@ -93,7 +93,7 @@ declare module 'chart.js' {
 }
 
 // Define our custom chart types that extend Chart.js types
-export type CustomChartType = 'stackedBar' | 'area' | 'pie3d' | 'doughnut3d' | 'bar3d' | 'horizontalBar3d' | 'gauge' | 'funnel';
+export type CustomChartType = 'stackedBar' | 'area' | 'pie3d' | 'doughnut3d' | 'bar3d' | 'horizontalBar3d' | 'gauge' | 'funnel' | 'waterfall';
 
 // Define supported chart types as a union of Chart.js types and our custom types
 type SupportedChartTypeLocal =
@@ -146,6 +146,10 @@ interface CustomDatasetProperties {
     datasetPattern?: PatternConfig | null      // Whole-dataset pattern overlay (area/radar/grouped)
     customLabelsConfig?: Record<string, any>  // Per-dataset label config overrides
     sliceLabelOverrides?: Record<number, Record<string, any>>  // Per-slice label config overrides (sparse)
+    pointBackgroundColor?: any
+    categoryPercentage?: number
+    barPercentage?: number
+    lastDatasetColor?: string
 }
 
 // Create a type that combines ChartDataset with our custom properties
@@ -224,7 +228,8 @@ export const chartTypeMapping: Record<SupportedChartType, keyof ChartTypeRegistr
     bar3d: 'bar',
     horizontalBar3d: 'bar',
     gauge: 'doughnut',
-    funnel: 'bar'
+    funnel: 'bar',
+    waterfall: 'bar'
 };
 
 // Create a utility function to check if a chart should be displayed as an area chart
@@ -336,6 +341,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
     const is3DBar = type === ('bar3d' as CustomChartType) || type === ('horizontalBar3d' as CustomChartType);
     const isGauge = type === ('gauge' as CustomChartType);
     const isFunnel = type === ('funnel' as CustomChartType);
+    const isWaterfall = type === ('waterfall' as CustomChartType);
 
     // For area chart, use line chart config
     let processedType: keyof ChartTypeRegistry;
@@ -343,7 +349,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
         processedType = 'line';
     } else if (is3DPie || isGauge) {
         processedType = isGauge ? 'doughnut' : (type === 'pie3d' ? 'pie' : 'doughnut');
-    } else if (is3DBar || type === 'horizontalBar' || type === 'stackedBar' || isFunnel) {
+    } else if (is3DBar || type === 'horizontalBar' || type === 'stackedBar' || isFunnel || isWaterfall) {
         processedType = 'bar';
     } else {
         processedType = type as keyof ChartTypeRegistry;
@@ -582,6 +588,73 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
                         color: '#374151',
                     },
                     border: { display: false },
+                },
+            },
+        } as ExtendedChartOptions;
+    }
+
+    // Special configuration for Waterfall chart
+    if (isWaterfall) {
+        return {
+            ...baseConfig,
+            plugins: {
+                ...baseConfig.plugins,
+                // @ts-ignore - legendType is a custom property
+                legendType: 'waterfall',
+                // @ts-ignore
+                waterfall: {
+                    enabled: true,
+                    positiveColor: '#10b981',
+                    negativeColor: '#ef4444',
+                    totalColor: '#3b82f6',
+                    showConnectors: true,
+                    connectorColor: 'rgba(0,0,0,0.35)',
+                    connectorWidth: 1.5,
+                    connectorStyle: 'dashed',
+                    treatLastAsTotal: false,
+                    showTotal: true,
+                    totalLabel: 'Total',
+                    totalIndices: '',
+                    legendLabels: {
+                        increase: 'Increase',
+                        decrease: 'Decrease',
+                        total: 'Total'
+                    }
+                },
+                legend: {
+                    ...((baseConfig.plugins as any)?.legend || {}),
+                    display: false, // Hide legend for waterfall by default
+                },
+                datalabels: {
+                    display: true,
+                    color: '#ffffff',
+                    font: { weight: 'bold', size: 14 },
+                    anchor: 'center',
+                    align: 'center',
+                    formatter: (value: any, context: any) => {
+                        if (Array.isArray(value)) {
+                            const delta = value[1] - value[0];
+                            const treatLastAsTotal = context.chart.config.options?.plugins?.waterfall?.treatLastAsTotal !== false;
+                            const isLast = context.dataIndex === context.dataset.data.length - 1;
+                            if (delta > 0 && !(treatLastAsTotal && isLast)) {
+                                return `+${delta}`;
+                            }
+                            return delta;
+                        }
+                        return value;
+                    }
+                },
+            },
+            scales: {
+                x: {
+                    display: true,
+                    grid: { display: false },
+                    border: { display: true },
+                },
+                y: {
+                    display: true,
+                    grid: { display: true, color: 'rgba(0,0,0,0.06)' },
+                    border: { display: true },
                 },
             },
         } as ExtendedChartOptions;

@@ -115,7 +115,7 @@ const customLabelPlugin = {
               y = transformY(centerY + Math.sin(midAngle) * r);
             } else {
               x = element.x ?? 0;
-              y = (element.y ?? 0) - offset;
+              y = Math.min(element.y ?? 0, element.base ?? 0) - offset;
             }
           }
         }
@@ -142,10 +142,12 @@ const customLabelPlugin = {
                 y = ((element.y ?? 0) + (element.base ?? 0)) / 2;
               } else if (anchor === 'top') {
                 x = element.x ?? 0;
-                y = (element.y ?? 0) - 8;
+                const barTop = Math.min(element.y ?? 0, element.base ?? 0);
+                y = barTop - 8;
               } else if (anchor === 'bottom') {
                 x = element.x ?? 0;
-                y = (element.base ?? 0) - 8;
+                const barBottom = Math.max(element.y ?? 0, element.base ?? 0);
+                y = barBottom - 8;
               }
             }
           } else if (chartType === 'line' || chartType === 'area' || chartType === 'scatter' || chartType === 'bubble') {
@@ -498,7 +500,7 @@ customLabelPlugin.afterInit = function(chart) {
             ly = localTransformY(cY + Math.sin(midAngle) * r);
           } else {
             lx = element.x ?? 0;
-            ly = (element.y ?? 0) - offset;
+            ly = Math.min(element.y ?? 0, element.base ?? 0) - offset;
           }
         }
 

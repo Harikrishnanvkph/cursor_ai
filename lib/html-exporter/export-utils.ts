@@ -168,10 +168,10 @@ export function buildLegendConfigForExport(chartConfig: any, includeLegend: bool
     const labelsConfig = legendConfig.labels ?? {};
     const fontConfig = labelsConfig.font ?? {};
     const usePointStyle = labelsConfig.usePointStyle ?? true;
-    const defaultLegendType = chartType && ['pie', 'doughnut', 'polarArea', 'gauge', 'funnel', 'pie3d', 'doughnut3d'].includes(chartType) ? 'slice' : 'dataset';
+    const defaultLegendType = chartType === 'waterfall' ? 'waterfall' : (chartType && ['pie', 'doughnut', 'polarArea', 'gauge', 'funnel', 'pie3d', 'doughnut3d'].includes(chartType) ? 'slice' : 'dataset');
     const legendType = (chartConfig?.plugins as any)?.legendType || defaultLegendType;
 
-    if (!includeLegend || chartType === 'gauge') {
+    if (!includeLegend) {
         return { display: false, legendType };
     }
 
@@ -203,6 +203,8 @@ export function generateCustomLabelsFromConfig(chartConfig: any, chartData: any,
 
         if (typeof rawValue === 'number') {
             numValue = rawValue;
+        } else if (Array.isArray(rawValue) && rawValue.length === 2 && typeof rawValue[0] === 'number' && typeof rawValue[1] === 'number') {
+            numValue = rawValue[1] - rawValue[0];
         } else if (rawValue && typeof rawValue === 'object' && 'y' in rawValue && typeof rawValue.y === 'number') {
             numValue = rawValue.y;
         } else {

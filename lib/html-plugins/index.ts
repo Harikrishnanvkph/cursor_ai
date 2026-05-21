@@ -8,6 +8,7 @@ import { generateSlicePatternPluginCode } from "./slice-pattern-plugin-code";
 import { generateWatermarkPluginCode } from "./watermark-plugin-code";
 import { generateFunnelPluginCode } from "./funnel-plugin-code";
 import { generateGaugePluginCode } from "./gauge-plugin-code";
+import { generateWaterfallPluginCode } from "./waterfall-plugin-code";
 
 // Re-export individual generators for direct use
 export {
@@ -20,6 +21,7 @@ export {
     generateWatermarkPluginCode,
     generateFunnelPluginCode,
     generateGaugePluginCode,
+    generateWaterfallPluginCode,
 };
 
 /**
@@ -39,6 +41,7 @@ export function generateCompletePluginSystem(chartConfig: any): string {
     const hasFunnel = (chartConfig.plugins as any)?.funnel?.enabled;
     const hasWatermark = !!(chartConfig.plugins as any)?.watermark || !!(chartConfig as any)?.watermark;
     const hasGauge = (chartConfig.plugins as any)?.gauge?.enabled;
+    const hasWaterfall = (chartConfig.plugins as any)?.waterfall?.enabled;
 
     let pluginCode = '';
 
@@ -72,6 +75,11 @@ export function generateCompletePluginSystem(chartConfig: any): string {
     // Add Gauge plugin if needed
     if (hasGauge) {
         pluginCode += generateGaugePluginCode();
+    }
+
+    // Add Waterfall plugin if needed
+    if (hasWaterfall) {
+        pluginCode += generateWaterfallPluginCode();
     }
 
     // Add Slice Pattern plugin if any dataset has patterns

@@ -6,13 +6,23 @@ import { generateDecorationsSVG, generateDecorationsCSS } from "@/lib/template-e
 /**
  * Generate legend config with generateLabels function for HTML export
  */
-function generateLegendConfigWithGenerateLabels(legendConfig: any): string {
+function generateLegendConfigWithGenerateLabels(legendConfig: any, chartType?: string): string {
   const legendType = legendConfig.legendType || 'dataset';
   const legendLabelsConfig = legendConfig.labels || {};
 
   return `{
     ...${JSON.stringify(legendConfig, null, 20)},
-      labels: {
+    onClick: function(e, legendItem, legend) {
+      const currentLegendType = legend.options?.plugins?.legendType || (chartConfig.plugins && chartConfig.plugins.legendType);
+      if (currentLegendType === 'waterfall') {
+        return;
+      }
+      const defaultClick = Chart.defaults.plugins.legend.onClick;
+      if (defaultClick) {
+        defaultClick.call(legend, e, legendItem, legend);
+      }
+    },
+    labels: {
       ...${JSON.stringify(legendLabelsConfig, null, 20)},
       generateLabels: function(chart) {
         const usePointStyle = ${JSON.stringify(legendLabelsConfig.usePointStyle || false)};
@@ -89,6 +99,46 @@ function generateLegendConfigWithGenerateLabels(legendConfig: any): string {
             }, isHidden));
           }
         }
+        if (${JSON.stringify(legendType)} === 'waterfall' && ${JSON.stringify(chartType)} === 'waterfall') {
+          const wfConfig = (chartConfig.plugins && chartConfig.plugins.waterfall) || {};
+          const positiveColor = wfConfig.positiveColor || '#10b981';
+          const negativeColor = wfConfig.negativeColor || '#ef4444';
+          const totalColor = wfConfig.totalColor || '#3b82f6';
+          const legendLabels = wfConfig.legendLabels || {};
+          const increaseLabel = legendLabels.increase || 'Increase';
+          const decreaseLabel = legendLabels.decrease || 'Decrease';
+          const totalLabelVal = legendLabels.total || 'Total';
+          const hasTotal = wfConfig.showTotal !== false || wfConfig.treatLastAsTotal === true || (wfConfig.totalIndices && wfConfig.totalIndices.trim() !== '');
+
+          items.push(createItem({
+            text: increaseLabel,
+            fillStyle: positiveColor,
+            strokeStyle: positiveColor,
+            datasetIndex: 0,
+            index: 0,
+            type: 'waterfall_increase'
+          }, false));
+
+          items.push(createItem({
+            text: decreaseLabel,
+            fillStyle: negativeColor,
+            strokeStyle: negativeColor,
+            datasetIndex: 0,
+            index: 1,
+            type: 'waterfall_decrease'
+          }, false));
+
+          if (hasTotal) {
+            items.push(createItem({
+              text: totalLabelVal,
+              fillStyle: totalColor,
+              strokeStyle: totalColor,
+              datasetIndex: 0,
+              index: 2,
+              type: 'waterfall_total'
+            }, false));
+          }
+        }
         return items;
       }
     }
@@ -142,9 +192,54 @@ function generateChartScript(chartData: any, chartConfig: any, chartType: string
                 tooltip: ${includeTooltips} ? {
                     enabled: true
                 } : { enabled: false },
-                legend: ${includeLegend ? generateLegendConfigWithGenerateLabels(legendConfig) : '{ display: false }'}
+                legend: ${includeLegend ? generateLegendConfigWithGenerateLabels(legendConfig, options.originalChartType || chartType) : '{ display: false }'}
             }
         };
+        
+        // Dynamic Zero Baseline Highlight post-processing
+        if (enhancedConfig.scales) {
+            const needsHorizontal = enhancedConfig.indexAxis === 'y';
+            const valueAxisKey = needsHorizontal ? 'x' : 'y';
+            const valueAxis = enhancedConfig.scales[valueAxisKey];
+            if (valueAxis) {
+                const baseColor = valueAxis.grid.color || 'rgba(0, 0, 0, 0.06)';
+                const baseWidth = valueAxis.grid.lineWidth !== undefined ? valueAxis.grid.lineWidth : 1;
+                const baseDraw = valueAxis.grid.drawOnChartArea !== false;
+                const hasNegativeValues = chartData && Array.isArray(chartData.datasets) && chartData.datasets.some(ds => 
+                    Array.isArray(ds.data) && ds.data.some(val => {
+                        if (typeof val === 'number') return val < 0;
+                        if (Array.isArray(val)) return val[0] < 0 || val[1] < 0;
+                        if (val && typeof val === 'object') {
+                            return (typeof val.y === 'number' && val.y < 0) || (typeof val.x === 'number' && val.x < 0);
+                        }
+                        return false;
+                    })
+                );
+                const highlightZeroLine = valueAxis.highlightZeroLine === true || 
+                    (valueAxis.highlightZeroLine === undefined && hasNegativeValues);
+
+                if (highlightZeroLine) {
+                    valueAxis.grid.color = function(context) {
+                        if (context.tick && context.tick.value === 0) {
+                            return '#475569'; // charcoal graphite zero line
+                        }
+                        if (!baseDraw) {
+                            return 'transparent'; // mask out non-zero grid lines
+                        }
+                        return typeof baseColor === 'function' ? baseColor(context) : baseColor;
+                    };
+
+                    valueAxis.grid.lineWidth = function(context) {
+                        if (context.tick && context.tick.value === 0) {
+                            return 2; // thicker zero line
+                        }
+                        return typeof baseWidth === 'function' ? baseWidth(context) : baseWidth;
+                    };
+
+                    valueAxis.grid.drawOnChartArea = true; // statically enable drawOnChartArea to allow tick evaluation
+                }
+            }
+        }
         
         document.addEventListener('DOMContentLoaded', function() {
             const ctx = document.getElementById('chartCanvas').getContext('2d');

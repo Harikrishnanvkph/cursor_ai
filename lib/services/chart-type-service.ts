@@ -31,7 +31,7 @@ export const ChartTypeService = {
         targetType: SupportedChartType,
         datasets: ExtendedChartDataset[]
     ): { needed: boolean; direction?: 'toScatter' | 'toCategorical' } => {
-        const categoricalTypes = ['bar', 'horizontalBar', 'stackedBar', 'line', 'area', 'pie', 'doughnut', 'polarArea', 'radar', 'pie3d', 'doughnut3d', 'gauge', 'funnel'];
+        const categoricalTypes = ['bar', 'horizontalBar', 'stackedBar', 'line', 'area', 'pie', 'doughnut', 'polarArea', 'radar', 'pie3d', 'doughnut3d', 'gauge', 'funnel', 'waterfall'];
         const scatterBubbleTypes = ['scatter', 'bubble'];
         const isCurrentCategorical = categoricalTypes.includes(currentType);
         const isCurrentScatterBubble = scatterBubbleTypes.includes(currentType);
@@ -85,7 +85,7 @@ export const ChartTypeService = {
      * Helper to determine Legend Type based on Chart Type
      */
     getLegendType: (chartType: SupportedChartType): 'slice' | 'dataset' => {
-        return (chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea' || chartType === 'pie3d' || chartType === 'doughnut3d' || chartType === 'gauge' || chartType === 'funnel')
+        return (chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea' || chartType === 'pie3d' || chartType === 'doughnut3d' || chartType === 'gauge' || chartType === 'funnel' || chartType === 'waterfall')
             ? 'slice'
             : 'dataset';
     },
@@ -113,10 +113,11 @@ export const ChartTypeService = {
             : targetType === ('doughnut3d' as CustomChartType) ? 'doughnut' as const
             : targetType === ('gauge' as CustomChartType) ? 'doughnut' as const
             : targetType === ('funnel' as CustomChartType) ? 'bar' as const
+            : targetType === ('waterfall' as CustomChartType) ? 'bar' as const
             : targetType;
 
         // Auto-switch to uniform mode check
-        const nonMixedModeCharts = ['pie', 'doughnut', 'radar', 'polarArea', 'scatter', 'bubble', 'pie3d', 'doughnut3d', 'gauge', 'funnel'];
+        const nonMixedModeCharts = ['pie', 'doughnut', 'radar', 'polarArea', 'scatter', 'bubble', 'pie3d', 'doughnut3d', 'gauge', 'funnel', 'waterfall'];
         const shouldSwitchToUniform = currentState.chartMode === 'grouped' &&
             (currentState.uniformityMode === 'mixed' || currentState.chartConfig?.visualSettings?.uniformityMode === 'mixed') &&
             nonMixedModeCharts.includes(targetType);
@@ -148,6 +149,8 @@ export const ChartTypeService = {
             } else if (targetType === ('gauge' as CustomChartType)) {
                 newDataset.type = 'doughnut';
             } else if (targetType === ('funnel' as CustomChartType)) {
+                newDataset.type = 'bar';
+            } else if (targetType === ('waterfall' as CustomChartType)) {
                 newDataset.type = 'bar';
             } else {
                 newDataset.type = targetType as keyof ChartTypeRegistry;
@@ -251,7 +254,9 @@ export const ChartTypeService = {
         });
 
         // Set legendType
-        if (targetType === 'pie' || targetType === 'doughnut' || targetType === 'polarArea' || targetType === ('pie3d' as CustomChartType) || targetType === ('doughnut3d' as CustomChartType) || targetType === ('gauge' as CustomChartType) || targetType === ('funnel' as CustomChartType)) {
+        if (targetType === ('waterfall' as CustomChartType)) {
+            (newConfig.plugins as any).legendType = 'waterfall';
+        } else if (targetType === 'pie' || targetType === 'doughnut' || targetType === 'polarArea' || targetType === ('pie3d' as CustomChartType) || targetType === ('doughnut3d' as CustomChartType) || targetType === ('gauge' as CustomChartType) || targetType === ('funnel' as CustomChartType)) {
             (newConfig.plugins as any).legendType = 'slice';
         } else {
             (newConfig.plugins as any).legendType = 'dataset';
@@ -282,7 +287,6 @@ export const ChartTypeService = {
         // default scales.r to prevent settings from leaking between the two types.
         if (targetType === 'radar') {
             const radarConfig = getDefaultConfigForType('radar');
-            const currentType = currentState.chartType;
             const isFromRadialType = currentType === 'radar' || currentType === 'polarArea';
             // If coming from another radial type, always use fresh radar scales
             if (isFromRadialType) {
@@ -294,7 +298,6 @@ export const ChartTypeService = {
 
         if (targetType === 'polarArea') {
             const polarConfig = getDefaultConfigForType('polarArea');
-            const currentType = currentState.chartType;
             const isFromRadialType = currentType === 'radar' || currentType === 'polarArea';
             // If coming from another radial type, always use fresh polar area scales
             if (isFromRadialType) {

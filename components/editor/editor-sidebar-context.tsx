@@ -32,7 +32,12 @@ export function EditorSidebarProvider({ children }: { children: React.ReactNode 
 export function useEditorSidebarContext() {
   const context = useContext(EditorSidebarContext)
   if (context === undefined) {
-    throw new Error("useEditorSidebarContext must be used within an EditorSidebarProvider")
+    return {
+      activeTab: "types_toggles",
+      setActiveTab: () => {},
+      leftSidebarCollapsed: false,
+      setLeftSidebarCollapsed: () => {},
+    }
   }
   return context
 }

@@ -55,6 +55,7 @@ export function AxisSettings({ axis, config, onUpdate, className, chartType }: A
                         config={config}
                         onUpdate={onUpdate}
                         updateConfig={updateConfig}
+                        chartType={chartType}
                     />
                 )
             default:

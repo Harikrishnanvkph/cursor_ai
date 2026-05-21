@@ -3,17 +3,35 @@ import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useState, useEffect } from "react"
+import { useChartStore } from "@/lib/chart-store"
 
 interface MoreTabProps {
     axis: 'x' | 'y'
     config: any
     onUpdate: (path: string, value: any) => void
     updateConfig: (path: string, value: any) => void
+    chartType?: string
 }
 
-export function MoreTab({ axis, config, onUpdate, updateConfig }: MoreTabProps) {
+export function MoreTab({ axis, config, onUpdate, updateConfig, chartType }: MoreTabProps) {
+    const { chartData } = useChartStore()
     const [axisLineDropdownOpen, setAxisLineDropdownOpen] = useState(false)
     const [scaleConfigDropdownOpen, setScaleConfigDropdownOpen] = useState(false)
+
+    // Check if any slice value is below zero
+    const hasNegativeValues = chartData?.datasets?.some((ds: any) => 
+        Array.isArray(ds.data) && ds.data.some((val: any) => {
+            if (typeof val === 'number') return val < 0;
+            if (Array.isArray(val)) return val[0] < 0 || val[1] < 0;
+            if (val && typeof val === 'object') {
+                return (typeof val.y === 'number' && val.y < 0) || (typeof val.x === 'number' && val.x < 0);
+            }
+            return false;
+        })
+    ) || false;
+
+    const isZeroLineHighlighted = config?.highlightZeroLine === true || 
+        (config?.highlightZeroLine === undefined && hasNegativeValues);
 
     // Track grace mode independently so clearing the input doesn't break percent mode
     const [graceIsPercent, setGraceIsPercent] = useState(() => {
@@ -45,6 +63,9 @@ export function MoreTab({ axis, config, onUpdate, updateConfig }: MoreTabProps) 
         return 5;
     })();
 
+    const isValueAxis = (axis === 'y' && !['horizontalBar', 'horizontalBar3d', 'funnel'].includes(chartType || '')) ||
+                        (axis === 'x' && ['horizontalBar', 'horizontalBar3d', 'funnel'].includes(chartType || ''));
+
     return (
         <div className="space-y-2 overflow-y-auto overflow-x-hidden h-full">
             {/* Begin at Zero (Y-axis only) */}
@@ -54,6 +75,21 @@ export function MoreTab({ axis, config, onUpdate, updateConfig }: MoreTabProps) 
                     <Switch
                         checked={!!config?.beginAtZero}
                         onCheckedChange={(checked) => updateConfig('beginAtZero', checked)}
+                        className="data-[state=checked]:bg-blue-600"
+                    />
+                </div>
+            )}
+
+            {/* Zero Line Highlight (Value Axis only) */}
+            {isValueAxis && (
+                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
+                    <div className="space-y-0.5">
+                        <Label className="text-sm font-medium text-blue-900 font-sans">Highlight Zero Line</Label>
+                        <p className="text-[11px] text-blue-700/80 font-sans">Bold the 0 baseline on the grid</p>
+                    </div>
+                    <Switch
+                        checked={isZeroLineHighlighted}
+                        onCheckedChange={(checked) => updateConfig('highlightZeroLine', checked)}
                         className="data-[state=checked]:bg-blue-600"
                     />
                 </div>

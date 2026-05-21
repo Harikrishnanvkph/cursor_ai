@@ -19,4 +19,5 @@ export interface HTMLExportOptions {
     showLabels?: boolean;
     fillArea?: boolean;
     showBorder?: boolean;
+    originalChartType?: string;
 }
