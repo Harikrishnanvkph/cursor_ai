@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,7 +9,8 @@ import { authApi } from '@/lib/auth-client'
 import { toast } from 'sonner'
 
 export function SignUpForm() {
-  const { signUp, signInWithGoogle, signInAsGuest } = useAuth()
+  const { user, loading, signUp, signInWithGoogle, signInAsGuest } = useAuth()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -25,6 +26,23 @@ export function SignUpForm() {
       sessionStorage.setItem('redirectAfterSignIn', redirect)
     }
   }, [searchParams])
+
+  useEffect(() => {
+    if (!loading && user) {
+      const redirectPath = sessionStorage.getItem('redirectAfterSignIn') || '/'
+      sessionStorage.removeItem('redirectAfterSignIn')
+      router.replace(redirectPath)
+    }
+  }, [user, loading, router])
+
+  if (loading || user) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 bg-card border border-border/60 rounded-xl shadow-lg w-full max-w-md min-h-[300px]">
+        <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4" />
+        <p className="text-sm text-muted-foreground font-medium">Verifying session...</p>
+      </div>
+    )
+  }
 
   function validatePassword(pw: string): string | null {
     if (!pw || pw.length < 8) return 'Password must be at least 8 characters'

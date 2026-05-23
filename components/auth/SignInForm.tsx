@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 
 export function SignInForm() {
-  const { signIn, signInWithGoogle, signInAsGuest } = useAuth()
+  const { user, loading, signIn, signInWithGoogle, signInAsGuest } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
@@ -21,6 +21,23 @@ export function SignInForm() {
       sessionStorage.setItem('redirectAfterSignIn', redirect)
     }
   }, [searchParams])
+
+  useEffect(() => {
+    if (!loading && user) {
+      const redirectPath = sessionStorage.getItem('redirectAfterSignIn') || '/'
+      sessionStorage.removeItem('redirectAfterSignIn')
+      router.replace(redirectPath)
+    }
+  }, [user, loading, router])
+
+  if (loading || user) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 bg-card border border-border/60 rounded-xl shadow-lg w-full max-w-md min-h-[300px]">
+        <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4" />
+        <p className="text-sm text-muted-foreground font-medium">Verifying session...</p>
+      </div>
+    )
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
