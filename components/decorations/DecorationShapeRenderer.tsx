@@ -997,9 +997,10 @@ interface DecorationShapeRendererProps {
   containerHeight: number
   panMode?: boolean
   gridSize?: number
+  readOnly?: boolean
 }
 
-export function DecorationShapeRenderer({ containerWidth, containerHeight, panMode, gridSize = 0 }: DecorationShapeRendererProps) {
+export function DecorationShapeRenderer({ containerWidth, containerHeight, panMode, gridSize = 0, readOnly = false }: DecorationShapeRendererProps) {
   const {
     shapes, selectedShapeId, selectedShapeIds, drawingMode, globalShapeSettings,
     setSelectedShapeId, setSelectedShapeIds, toggleShapeSelection, clearMultiSelect,
@@ -2024,26 +2025,26 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
   const svgElement = (
     <svg
       ref={svgRef}
-      className={`absolute inset-0 w-full h-full ${drawingMode ? 'outline-none focus:outline-none' : ''}`}
+      className={`absolute inset-0 w-full h-full ${(!readOnly && drawingMode) ? 'outline-none focus:outline-none' : ''}`}
       viewBox={`0 0 ${containerWidth} ${containerHeight}`}
       style={{
-        cursor: getCursor(),
+        cursor: readOnly ? 'default' : getCursor(),
         // Exclusive Focus Mode: If a shape is selected, or we are drawing/dragging, 
         // the SVG catches ALL clicks and blocks the underlying format zones.
-        pointerEvents: (!panMode && (drawingMode || dragState || marqueeState || selectedShapeId || selectedShapeIds.length > 0 || editingShapeId)) ? 'auto' : 'none',
+        pointerEvents: (!readOnly && !panMode && (drawingMode || dragState || marqueeState || selectedShapeId || selectedShapeIds.length > 0 || editingShapeId)) ? 'auto' : 'none',
         zIndex: 20
       }}
       // These events will only fire on the SVG itself when drawingMode is true OR during drag
-      onMouseDown={(drawingMode || dragState || marqueeState) ? (handleCanvasPointerDown as any) : undefined}
-      onMouseDownCapture={(e) => { lastMouseDownTargetRef.current = e.target }}
-      onMouseMove={(e: any) => { handleCursorTrack(e); (handleCanvasPointerMove as any)(e) }}
-      onMouseUp={handleCanvasPointerUp as any}
-      onMouseLeave={() => { setCursorPos(null) }}
-      onDoubleClick={drawingMode ? handleCanvasDoubleClick : undefined}
-      onTouchStart={(drawingMode || dragState || marqueeState) ? (handleCanvasPointerDown as any) : undefined}
-      onTouchMove={handleCanvasPointerMove as any}
-      onTouchEnd={handleCanvasPointerUp as any}
-      onClick={handleBackgroundClick}
+      onMouseDown={(!readOnly && (drawingMode || dragState || marqueeState)) ? (handleCanvasPointerDown as any) : undefined}
+      onMouseDownCapture={!readOnly ? ((e) => { lastMouseDownTargetRef.current = e.target }) : undefined}
+      onMouseMove={!readOnly ? ((e: any) => { handleCursorTrack(e); (handleCanvasPointerMove as any)(e) }) : undefined}
+      onMouseUp={!readOnly ? (handleCanvasPointerUp as any) : undefined}
+      onMouseLeave={!readOnly ? (() => { setCursorPos(null) }) : undefined}
+      onDoubleClick={(!readOnly && drawingMode) ? handleCanvasDoubleClick : undefined}
+      onTouchStart={(!readOnly && (drawingMode || dragState || marqueeState)) ? (handleCanvasPointerDown as any) : undefined}
+      onTouchMove={!readOnly ? (handleCanvasPointerMove as any) : undefined}
+      onTouchEnd={!readOnly ? (handleCanvasPointerUp as any) : undefined}
+      onClick={!readOnly ? handleBackgroundClick : undefined}
     >
       {/* Invisible background to catch deselection clicks when not drawing,
           placed behind shapes so it doesn't block them, but only active when NOT drawing
@@ -2064,20 +2065,20 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
           key={shape.id}
           style={{
             opacity: shape.locked ? 0.8 : 1,
-            pointerEvents: 'auto', // Important: shapes catch clicks even if SVG doesn't
-            cursor: drawingMode ? 'crosshair' : (shape.locked ? 'default' : 'move')
+            pointerEvents: readOnly ? 'none' : 'auto', // Important: shapes catch clicks even if SVG doesn't
+            cursor: readOnly ? 'default' : (drawingMode ? 'crosshair' : (shape.locked ? 'default' : 'move'))
           }}
-          onMouseDown={(e) => handleShapePointerDown(e, shape)}
-          onTouchStart={(e) => handleShapePointerDown(e, shape)}
-          onMouseEnter={() => setHoveredShapeId(shape.id)}
-          onMouseLeave={() => setHoveredShapeId(null)}
-          onClick={(e) => e.stopPropagation()}
-          onDoubleClick={(e) => handleTextboxDoubleClick(e, shape)}
+          onMouseDown={!readOnly ? ((e) => handleShapePointerDown(e, shape)) : undefined}
+          onTouchStart={!readOnly ? ((e) => handleShapePointerDown(e, shape)) : undefined}
+          onMouseEnter={!readOnly ? (() => setHoveredShapeId(shape.id)) : undefined}
+          onMouseLeave={!readOnly ? (() => setHoveredShapeId(null)) : undefined}
+          onClick={!readOnly ? ((e) => e.stopPropagation()) : undefined}
+          onDoubleClick={!readOnly ? ((e) => handleTextboxDoubleClick(e, shape)) : undefined}
         >
           <ShapeSVG shape={shape} />
 
           {/* Hover highlight — uses computed bounds */}
-          {hoveredShapeId === shape.id && selectedShapeId !== shape.id && (() => {
+          {!readOnly && hoveredShapeId === shape.id && selectedShapeId !== shape.id && (() => {
             const hb = getShapeBounds(shape)
             return (
               <rect
@@ -2092,7 +2093,7 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
       ))}
 
       {/* Multi-select highlights */}
-      {selectedShapeIds.length > 1 && selectedShapeIds.map(sid => {
+      {!readOnly && selectedShapeIds.length > 1 && selectedShapeIds.map(sid => {
         const ms = activeShapes.find(s => s.id === sid)
         if (!ms || !ms.visible) return null
         const msb = getShapeBounds(ms)
@@ -2112,7 +2113,7 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
       })}
 
       {/* Selection UI */}
-      {selectedShape && (() => {
+      {!readOnly && selectedShape && (() => {
         const sb = getShapeBounds(selectedShape)
         const isPointsShape = isPointsBased(selectedShape.type)
         const hasPointsUI = hasEditablePoints(selectedShape.type)
@@ -2327,20 +2328,20 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
       })()}
 
       {/* Snap Guides */}
-      {snapGuides.x !== null && (
+      {!readOnly && snapGuides.x !== null && (
         <line x1={snapGuides.x} y1={0} x2={snapGuides.x} y2={containerHeight} stroke="#ec4899" strokeWidth={1} strokeDasharray="4,4" pointerEvents="none" opacity={0.6} />
       )}
-      {snapGuides.y !== null && (
+      {!readOnly && snapGuides.y !== null && (
         <line x1={0} y1={snapGuides.y} x2={containerWidth} y2={snapGuides.y} stroke="#ec4899" strokeWidth={1} strokeDasharray="4,4" pointerEvents="none" opacity={0.6} />
       )}
 
       {/* Node Snap Guide Indicator */}
-      {nodeSnapGuide && (
+      {!readOnly && nodeSnapGuide && (
         <circle cx={nodeSnapGuide.x} cy={nodeSnapGuide.y} r={5} fill="#ec4899" opacity={0.6} pointerEvents="none" stroke="#fff" strokeWidth={1.5} />
       )}
 
       {/* "A" cursor preview for textbox-auto tool */}
-      {drawingMode === 'textbox-auto' && !drawingInProgress && cursorPos && (
+      {!readOnly && drawingMode === 'textbox-auto' && !drawingInProgress && cursorPos && (
         <g style={{ pointerEvents: 'none' }}>
           {/* Blinking cursor line */}
           <line
@@ -2374,7 +2375,7 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
       )}
 
       {/* Inline contentEditable editing overlay for textboxes */}
-      {editingShapeId && (() => {
+      {!readOnly && editingShapeId && (() => {
         const editShape = shapes.find(s => s.id === editingShapeId)
         if (!editShape) return null
         if (editShape.type !== 'textbox' && editShape.type !== 'textbox-auto') return null
@@ -2449,7 +2450,7 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
     </svg>
   )
 
-  if (drawingMode) {
+  if (!readOnly && drawingMode) {
     return (
       <ContextMenu>
         <ContextMenuTrigger asChild>

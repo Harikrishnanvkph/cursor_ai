@@ -38,7 +38,7 @@ const nextConfig = {
   // Handle trailing slashes consistently
   trailingSlash: false,
   // Improve build output
-  output: 'standalone',
+  // output: 'standalone',
   outputFileTracingRoot: __dirname,
 }
 

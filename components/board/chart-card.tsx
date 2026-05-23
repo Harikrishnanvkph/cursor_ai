@@ -37,7 +37,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import { Chart as ChartJS } from "chart.js"
+import "@/lib/chart-registration"
+import { chartTypeMapping, type SupportedChartType } from "@/lib/chart-defaults"
 
 interface ChartCardProps {
   conversation: Conversation
@@ -53,7 +63,152 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
   const [showRenameDialog, setShowRenameDialog] = useState(false)
   const [newName, setNewName] = useState(conversation.title)
   const [isRenaming, setIsRenaming] = useState(false)
+  const [shareTab, setShareTab] = useState<"share" | "embed">("share")
   const renameInputRef = useRef<HTMLInputElement>(null)
+
+  // Viewport-aware live preview states
+  const [isVisible, setIsVisible] = useState(false)
+  const [snapshotData, setSnapshotData] = useState<{
+    chartType: string
+    chartData: any
+    chartConfig: any
+  } | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [fetchError, setFetchError] = useState<string | null>(null)
+
+  const containerRef = useRef<HTMLDivElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const chartInstanceRef = useRef<ChartJS | null>(null)
+
+  // Intersection Observer to lazy-load card viewports
+  useEffect(() => {
+    if (viewMode !== "grid") {
+      setIsVisible(false)
+      return
+    }
+
+    const el = containerRef.current
+    if (!el) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true)
+          observer.unobserve(el)
+        }
+      },
+      { rootMargin: "150px" } // Pre-fetch slightly before it is visible on screen
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [viewMode])
+
+  // Dynamic snapshot data fetching
+  useEffect(() => {
+    if (!isVisible || viewMode !== "grid") return
+
+    // If conversation already contains full details, utilize immediately
+    if (conversation.snapshot && conversation.snapshot.chartData) {
+      setSnapshotData({
+        chartType: conversation.snapshot.chartType,
+        chartData: conversation.snapshot.chartData,
+        chartConfig: conversation.snapshot.chartConfig
+      })
+      return
+    }
+
+    const loadSnapshot = async () => {
+      setIsLoading(true)
+      setFetchError(null)
+      try {
+        const response = await dataService.getCurrentChartSnapshot(conversation.id)
+        if (response.error) {
+          throw new Error(response.error)
+        }
+        if (response.data) {
+          setSnapshotData({
+            chartType: response.data.chart_type,
+            chartData: response.data.chart_data,
+            chartConfig: response.data.chart_config
+          })
+        }
+      } catch (err: any) {
+        console.warn(`Failed to lazy-load preview snapshot for card ${conversation.id}:`, err)
+        setFetchError("Preview unavailable")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    loadSnapshot()
+  }, [isVisible, conversation.id, conversation.snapshot, viewMode])
+
+  // ChartJS instance instantiation & cleanup
+  useEffect(() => {
+    if (!canvasRef.current || !snapshotData || viewMode !== "grid") return
+
+    const ctx = canvasRef.current.getContext("2d")
+    if (!ctx) return
+
+    // Clean up any existing chart
+    if (chartInstanceRef.current) {
+      chartInstanceRef.current.destroy()
+      chartInstanceRef.current = null
+    }
+
+    try {
+      // Configure high-performance static rendering
+      const options = {
+        ...(snapshotData.chartConfig || {}),
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false, // Turn off active animations for smooth scrolling
+        plugins: {
+          ...(snapshotData.chartConfig?.plugins || {}),
+          legend: { display: false },     // Hide legend in list card previews
+          tooltip: { enabled: false },    // Disable active mouse tooltips
+          datalabels: { display: false }  // Hide text values labels
+        },
+        scales: {
+          ...(snapshotData.chartConfig?.scales || {}),
+          x: { display: false, grid: { display: false } },
+          y: { display: false, grid: { display: false } }
+        }
+      }
+
+      const resolvedType = chartTypeMapping[snapshotData.chartType as SupportedChartType] || snapshotData.chartType;
+
+      const mappedDatasets = (snapshotData.chartData?.datasets || []).map((ds: any) => {
+        const mappedDs = { ...ds }
+        if (ds.type) {
+          mappedDs.type = chartTypeMapping[ds.type as SupportedChartType] || ds.type
+        }
+        if (ds.chartType) {
+          mappedDs.chartType = chartTypeMapping[ds.chartType as SupportedChartType] || ds.chartType
+        }
+        return mappedDs
+      })
+
+      const mappedChartData = {
+        ...snapshotData.chartData,
+        datasets: mappedDatasets
+      }
+
+      chartInstanceRef.current = new ChartJS(ctx, {
+        type: resolvedType as any,
+        data: mappedChartData as any,
+        options: options as any
+      })
+    } catch (err) {
+      console.warn("ChartJS preview rendering error:", err)
+    }
+
+    return () => {
+      if (chartInstanceRef.current) {
+        chartInstanceRef.current.destroy()
+        chartInstanceRef.current = null
+      }
+    }
+  }, [snapshotData, viewMode])
 
   // Focus input when rename dialog opens
   useEffect(() => {
@@ -121,10 +276,28 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
         return
       }
 
+      const resolvedType = chartTypeMapping[conversation.snapshot.chartType as SupportedChartType] || conversation.snapshot.chartType;
+
+      const mappedDatasets = (conversation.snapshot.chartData?.datasets || []).map((ds: any) => {
+        const mappedDs = { ...ds }
+        if (ds.type) {
+          mappedDs.type = chartTypeMapping[ds.type as SupportedChartType] || ds.type
+        }
+        if (ds.chartType) {
+          mappedDs.chartType = chartTypeMapping[ds.chartType as SupportedChartType] || ds.chartType
+        }
+        return mappedDs
+      })
+
+      const mappedChartData = {
+        ...conversation.snapshot.chartData,
+        datasets: mappedDatasets
+      }
+
       // Create chart instance
       const chart = new ChartJS(ctx, {
-        type: conversation.snapshot.chartType as any,
-        data: conversation.snapshot.chartData,
+        type: resolvedType as any,
+        data: mappedChartData as any,
         options: {
           ...conversation.snapshot.chartConfig,
           animation: false,
@@ -177,147 +350,145 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
 
   const getChartTypeColor = (type: string) => {
     const colors: Record<string, string> = {
-      bar: "bg-blue-100 text-blue-700 border-blue-200",
-      line: "bg-green-100 text-green-700 border-green-200",
-      pie: "bg-purple-100 text-purple-700 border-purple-200",
-      doughnut: "bg-pink-100 text-pink-700 border-pink-200",
-      radar: "bg-orange-100 text-orange-700 border-orange-200",
-      polarArea: "bg-cyan-100 text-cyan-700 border-cyan-200",
-      bubble: "bg-indigo-100 text-indigo-700 border-indigo-200",
-      scatter: "bg-teal-100 text-teal-700 border-teal-200",
+      bar: "bg-violet-50 text-violet-750 border-violet-100",
+      line: "bg-fuchsia-50 text-fuchsia-750 border-fuchsia-100",
+      pie: "bg-purple-50 text-purple-750 border-purple-100",
+      doughnut: "bg-pink-50 text-pink-750 border-pink-100",
+      radar: "bg-indigo-50 text-indigo-750 border-indigo-100",
+      polarArea: "bg-rose-50 text-rose-750 border-rose-100",
+      bubble: "bg-blue-50 text-blue-750 border-blue-100",
+      scatter: "bg-cyan-50 text-cyan-750 border-cyan-100",
     }
-    return colors[type] || "bg-gray-100 text-gray-700 border-gray-200"
+    return colors[type] || "bg-zinc-50 text-zinc-700 border-zinc-150"
   }
 
   // Check if this is a template mode snapshot
   const isTemplateMode = conversation.snapshot?.is_template_mode && conversation.snapshot?.template_structure
 
-  const getChartIcon = () => {
-    if (isTemplateMode) return <LayoutTemplate className="w-8 h-8 text-purple-500" />;
+  const getChartIcon = (sizeClass = "w-8 h-8") => {
+    if (isTemplateMode) return <LayoutTemplate className={`${sizeClass} text-purple-500`} />;
 
     const type = conversation.snapshot?.chartType;
     switch (type) {
       case 'pie':
       case 'doughnut':
       case 'polarArea':
-        return <PieChart className="w-8 h-8 text-pink-500" />;
+        return <PieChart className={`${sizeClass} text-pink-500`} />;
       case 'line':
       case 'radar':
-        return <LineChart className="w-8 h-8 text-green-500" />;
+        return <LineChart className={`${sizeClass} text-green-500`} />;
       case 'scatter':
       case 'bubble':
-        return <Activity className="w-8 h-8 text-orange-500" />;
+        return <Activity className={`${sizeClass} text-orange-500`} />;
       default:
-        return <BarChart3 className="w-8 h-8 text-blue-500" />;
+        return <BarChart3 className={`${sizeClass} text-blue-500`} />;
     }
   };
 
   if (viewMode === "list") {
     return (
-      <Card className="group border shadow-sm border-gray-200 bg-white hover:shadow-md transition-all duration-300 hover:-translate-y-0.5">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-4">
-            {/* Enhanced Mini Preview */}
+      <Card className="group border shadow-none border-zinc-200 bg-white hover:border-zinc-300 hover:shadow-[0_2px_8px_rgba(0,0,0,0.02)] transition-all duration-200 rounded-xl overflow-hidden">
+        <div className="p-3.5 sm:py-3.5 sm:px-4 flex flex-col sm:flex-row sm:items-center sm:justify-between w-full gap-4">
+          
+          {/* Left Section: Icon + Title/Date Info */}
+          <div className="flex items-center gap-4 min-w-0 flex-1">
+            {/* Compact Mini Preview Icon Box */}
             <div
-              className="flex-shrink-0 w-24 h-24 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200 overflow-hidden flex items-center justify-center cursor-pointer hover:border-blue-300 transition-all duration-300 group-hover:scale-105 relative"
+              className="flex-shrink-0 w-14 h-14 bg-zinc-50 bg-[radial-gradient(#e4e4e7_1px,transparent_1px)] [background-size:8px_8px] rounded-xl border border-zinc-200 flex items-center justify-center cursor-pointer hover:border-violet-300 hover:shadow-sm transition-all duration-200 relative group/icon overflow-hidden"
               onClick={() => onPreview(conversation)}
+              title="Preview Chart"
             >
-              {/* Background Pattern */}
-              <div className="absolute inset-0 opacity-20">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(59,130,246,0.15)_1px,transparent_0)] bg-[length:12px_12px]"></div>
+              <div className="relative z-10 scale-95 transition-transform duration-200 group-hover:scale-100">
+                {getChartIcon("w-6 h-6")}
               </div>
-
-              {/* Icon */}
-              <div className="relative z-10">
-                {getChartIcon()}
-              </div>
-
-              {/* Hover Overlay */}
-              <div className="absolute inset-0 bg-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                <Eye className="w-5 h-5 text-blue-600" />
+              <div className="absolute inset-0 bg-violet-500/5 opacity-0 group-hover/icon:opacity-100 transition-opacity duration-200 flex items-center justify-center rounded-xl">
+                <Eye className="w-4 h-4 text-violet-600" />
               </div>
             </div>
 
-            {/* Enhanced Info Section */}
-            <div className="flex-1 min-w-0 space-y-2">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-semibold text-gray-900 truncate mb-1 group-hover:text-blue-900 transition-colors">
-                    {conversation.title}
-                  </h3>
-                  <div className="flex items-center gap-3 text-sm text-gray-500">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-4 w-4" />
-                      <span>{formatDate(conversation.timestamp)}</span>
-                    </div>
-                    {conversation.messages.length > 0 && (
-                      <div className="flex items-center gap-1">
-                        <MessageSquare className="h-4 w-4" />
-                        <span>{conversation.messages.length} messages</span>
-                      </div>
-                    )}
-                  </div>
+            {/* Info Section */}
+            <div className="min-w-0 flex-1 flex flex-col justify-center">
+              <h3 
+                className="text-[14.5px] font-semibold text-zinc-950 truncate hover:text-violet-700 cursor-pointer transition-colors leading-tight"
+                onClick={() => onPreview(conversation)}
+              >
+                {conversation.title}
+              </h3>
+              <div className="flex items-center gap-3 text-xs text-zinc-400 mt-1">
+                <div className="flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5 text-zinc-400 shrink-0 align-middle" />
+                  <span className="leading-none">{formatDate(conversation.timestamp)}</span>
                 </div>
-
-                <Badge className={`${getChartTypeColor(conversation.snapshot?.chartType || "")} border text-sm px-3 py-1 font-medium flex-shrink-0`}>
-                  {isTemplateMode ? (
-                    <div className="flex items-center gap-1.5">
-                      <LayoutTemplate className="w-3.5 h-3.5" />
-                      Template
-                    </div>
-                  ) : (
-                    conversation.snapshot?.chartType || "Unknown"
-                  )}
-                </Badge>
+                {conversation.messages.length > 0 && (
+                  <div className="flex items-center gap-1.5 border-l border-zinc-200 pl-3">
+                    <MessageSquare className="h-3.5 w-3.5 text-zinc-400 shrink-0 align-middle" />
+                    <span className="leading-none">{conversation.messages.length} messages</span>
+                  </div>
+                )}
               </div>
             </div>
+          </div>
 
-            {/* Enhanced Actions */}
-            <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Right Section: Badge Tag + Actions */}
+          <div className="flex items-center justify-between sm:justify-end gap-5 flex-shrink-0">
+            {/* Badge Tag */}
+            {isTemplateMode ? (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 border rounded-full text-[11px] font-semibold bg-purple-50 text-purple-750 border-purple-100 shrink-0 select-none leading-none">
+                <LayoutTemplate className="w-3 h-3 text-purple-600 shrink-0" />
+                Template
+              </span>
+            ) : (
+              <span className={`inline-flex items-center px-2.5 py-0.5 border rounded-full text-[11px] font-semibold capitalize shrink-0 select-none leading-none ${getChartTypeColor(conversation.snapshot?.chartType || "")}`}>
+                {conversation.snapshot?.chartType || "Unknown"}
+              </span>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-1.5">
               <Button
                 onClick={() => onPreview(conversation)}
                 variant="outline"
                 size="sm"
-                className="gap-2 h-9 px-4 border-gray-200 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 transition-all"
+                className="gap-1.5 h-8 text-[11px] font-semibold border-zinc-200 text-zinc-700 bg-white hover:border-violet-300 hover:bg-violet-50 hover:text-violet-750 transition-all rounded-lg px-3 shadow-none cursor-pointer"
               >
-                <Eye className="h-4 w-4" />
+                <Eye className="h-3.5 w-3.5 text-zinc-500" />
                 Preview
               </Button>
               <Button
                 onClick={() => onEdit(conversation)}
                 variant="outline"
                 size="sm"
-                className="gap-2 h-9 px-4 border-gray-200 hover:border-green-300 hover:bg-green-50 hover:text-green-700 transition-all"
+                className="gap-1.5 h-8 text-[11px] font-semibold border-zinc-200 text-zinc-700 bg-white hover:border-violet-300 hover:bg-violet-50 hover:text-violet-750 transition-all rounded-lg px-3 shadow-none cursor-pointer"
               >
-                <Edit3 className="h-4 w-4" />
+                <Edit3 className="h-3.5 w-3.5 text-zinc-500" />
                 Edit
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-9 w-9 p-0 border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all">
-                    <MoreVertical className="h-4 w-4" />
+                  <Button variant="outline" size="sm" className="h-8 w-8 p-0 border-zinc-200 text-zinc-500 bg-white hover:border-violet-300 hover:bg-violet-50 hover:text-violet-750 transition-all rounded-lg shadow-none cursor-pointer">
+                    <MoreVertical className="h-3.5 w-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => setShowRenameDialog(true)}>
+                  <DropdownMenuItem onSelect={() => setShowRenameDialog(true)} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-2 cursor-pointer">
                     <Pencil className="h-4 w-4 mr-2" />
                     Rename
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onEditInAdvanced(conversation)}>
+                  <DropdownMenuItem onClick={() => onEditInAdvanced(conversation)} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-2 cursor-pointer">
                     <PencilRuler className="h-4 w-4 mr-2" />
                     Advanced Editor
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleDownload}>
+                  <DropdownMenuItem onClick={handleDownload} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-2 cursor-pointer">
                     <Download className="h-4 w-4 mr-2" />
                     Download PNG
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleShare}>
+                  <DropdownMenuItem onClick={handleShare} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-2 cursor-pointer">
                     <Share2 className="h-4 w-4 mr-2" />
                     Copy Share Link
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleDelete} className="text-red-600 focus:text-red-600">
+                  <DropdownMenuItem onClick={handleDelete} className="text-red-650 focus:text-red-600 focus:bg-red-50/50 text-xs py-2 cursor-pointer">
                     <Trash2 className="h-4 w-4 mr-2" />
                     Delete
                   </DropdownMenuItem>
@@ -325,170 +496,29 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
               </DropdownMenu>
             </div>
           </div>
-        </CardContent>
-      </Card>
-    )
-  }
 
-  // Grid view
-  return (
-    <Card className="group relative overflow-hidden border shadow-sm border-gray-200 bg-white hover:shadow-md transition-all duration-300 hover:-translate-y-1">
-      {/* Gradient Border Effect */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 via-purple-500/20 to-indigo-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-      <CardContent className="relative space-y-4 p-5">
-        {/* Chart Preview */}
-        <div
-          className="aspect-video bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200 overflow-hidden cursor-pointer hover:border-blue-300 transition-all duration-300 group-hover:scale-[1.02] flex items-center justify-center relative"
-          onClick={() => onPreview(conversation)}
-        >
-          {/* Preview Background Pattern */}
-          <div className="absolute inset-0 opacity-30">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(59,130,246,0.15)_1px,transparent_0)] bg-[length:20px_20px]"></div>
-          </div>
-
-          {/* Chart Icon */}
-          <div className="relative z-10 p-4 bg-white rounded-xl shadow-sm border border-gray-100">
-            {getChartIcon()}
-          </div>
-
-          {/* Hover Overlay */}
-          <div className="absolute inset-0 bg-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-            <div className="bg-white rounded-full p-2 border border-gray-100 transform scale-75 group-hover:scale-100 transition-transform duration-300">
-              <Eye className="w-5 h-5 text-blue-600" />
-            </div>
-          </div>
         </div>
 
-        {/* Title and Metadata */}
-        <div className="space-y-3">
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="text-base font-semibold text-gray-900 truncate leading-tight group-hover:text-blue-900 transition-colors">
-              {conversation.title}
-            </h3>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <Badge className={`${getChartTypeColor(conversation.snapshot?.chartType || "")} border text-xs px-3 py-1 font-medium`}>
-              {isTemplateMode ? (
-                <div className="flex items-center gap-1">
-                  <LayoutTemplate className="w-3 h-3" />
-                  Template
-                </div>
-              ) : (
-                conversation.snapshot?.chartType || "Unknown"
-              )}
-            </Badge>
-
-            <div className="flex items-center gap-1 text-xs text-gray-500">
-              <Calendar className="h-3 w-3" />
-              <span>{formatDate(conversation.timestamp)}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Enhanced Action Buttons */}
-        <div className="flex gap-2 pt-2 border-t border-gray-100">
-          <Button
-            onClick={() => onEdit(conversation)}
-            variant="outline"
-            size="sm"
-            className="flex-1 gap-2 h-9 text-xs font-medium border-gray-200 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 transition-all"
-          >
-            <Edit3 className="h-3.5 w-3.5" />
-            Edit
-          </Button>
-          <Button
-            onClick={handleDownload}
-            variant="outline"
-            size="sm"
-            className="flex-1 gap-2 h-9 text-xs font-medium border-gray-200 hover:border-green-300 hover:bg-green-50 hover:text-green-700 transition-all"
-          >
-            <Download className="h-3.5 w-3.5" />
-            Export
-          </Button>
-          <Button
-            onClick={handleShare}
-            variant="outline"
-            size="sm"
-            className="h-9 w-9 p-0 border-gray-200 hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700 transition-all"
-          >
-            <Share2 className="h-3.5 w-3.5" />
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9 w-9 p-0 border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all">
-                <MoreVertical className="h-3.5 w-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onClick={() => onPreview(conversation)}>
-                <Eye className="h-4 w-4 mr-2" />
-                Preview
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setShowRenameDialog(true)}>
-                <Pencil className="h-4 w-4 mr-2" />
-                Rename
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onEdit(conversation)}>
-                <Edit3 className="h-4 w-4 mr-2" />
-                Edit in AI Chat
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onEditInAdvanced(conversation)}>
-                <PencilRuler className="h-4 w-4 mr-2" />
-                Advanced Editor
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleDownload}>
-                <Download className="h-4 w-4 mr-2" />
-                Download PNG
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleShare}>
-                <Share2 className="h-4 w-4 mr-2" />
-                Copy Share Link
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleDelete} className="text-red-600 focus:text-red-600">
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </CardContent>
-
-      {/* Rename Dialog */}
-      {showRenameDialog && (
-        <div
-          className="fixed inset-0 z-[130] flex items-center justify-center"
-          role="dialog"
-          aria-modal="true"
-          onClick={(e) => {
-            if (e.target === e.currentTarget && !isRenaming) {
-              setShowRenameDialog(false)
-            }
-          }}
-        >
-          <div className="fixed inset-0 bg-black/40" />
-          <div className="relative z-[131] w-[92vw] max-w-md rounded-lg bg-white border border-gray-200 shadow-xl p-5">
-            <div className="mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+        <Dialog open={showRenameDialog} onOpenChange={(open) => { if (!isRenaming) setShowRenameDialog(open); }}>
+          <DialogContent className="max-w-md p-5 bg-white border border-gray-200 rounded-lg shadow-xl" hideCloseButton={isRenaming}>
+            <DialogHeader className="mb-4">
+              <DialogTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <Pencil className="h-5 w-5 text-blue-600" />
                 Rename Chart
-              </h3>
-              <p className="mt-1 text-sm text-gray-600">
+              </DialogTitle>
+              <DialogDescription className="mt-1 text-sm text-gray-600">
                 Enter a new name for this chart.
-              </p>
-            </div>
+              </DialogDescription>
+            </DialogHeader>
 
             <form onSubmit={(e) => { e.preventDefault(); handleRename(); }}>
               <div className="mb-5">
-                <Label htmlFor="rename-input" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="rename-input-list" className="text-sm font-medium text-gray-700">
                   Chart Name
                 </Label>
                 <Input
                   ref={renameInputRef}
-                  id="rename-input"
+                  id="rename-input-list"
                   type="text"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
@@ -507,14 +537,14 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                   type="button"
                   onClick={() => setShowRenameDialog(false)}
                   disabled={isRenaming}
-                  className="inline-flex items-center justify-center h-9 rounded-md border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 transition-colors disabled:opacity-50"
+                  className="inline-flex items-center justify-center h-9 rounded-md border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isRenaming}
-                  className="inline-flex items-center justify-center h-9 rounded-md bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 shadow-sm transition-colors disabled:opacity-50"
+                  className="inline-flex items-center justify-center h-9 rounded-md bg-violet-600 px-5 text-sm font-semibold text-white hover:bg-violet-750 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 shadow-sm transition-colors disabled:opacity-50"
                 >
                   {isRenaming ? (
                     <>
@@ -527,9 +557,257 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                 </button>
               </div>
             </form>
+          </DialogContent>
+        </Dialog>
+      </Card>
+    );
+  }
+
+  // Grid view
+  return (
+    <Card className="group relative overflow-hidden border shadow-sm border-gray-200 bg-white hover:shadow-md transition-all duration-300 hover:-translate-y-1">
+      {/* Gradient Border Effect */}
+      <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 via-purple-500/10 to-indigo-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+      <CardContent className="relative space-y-4 p-5">
+        {/* Chart Preview */}
+        <div
+          ref={containerRef}
+          className="aspect-video bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200 overflow-hidden cursor-pointer hover:border-violet-300 transition-all duration-300 group-hover:scale-[1.02] flex items-center justify-center relative"
+          onClick={() => onPreview(conversation)}
+        >
+          {/* Preview Background Pattern */}
+          <div className="absolute inset-0 opacity-30">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(139,92,246,0.15)_1px,transparent_0)] bg-[length:20px_20px]"></div>
+          </div>
+
+          {/* Dynamic Render Conditions */}
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-zinc-50/50 backdrop-blur-[1px] animate-pulse">
+              <div className="flex flex-col items-center gap-2">
+                <Loader2 className="w-5 h-5 text-violet-600 animate-spin" />
+                <span className="text-[10px] font-bold text-violet-700 tracking-wider uppercase">Loading chart...</span>
+              </div>
+            </div>
+          )}
+
+          {snapshotData && !isLoading && !fetchError ? (
+            <div className="absolute inset-0 p-3.5 flex items-center justify-center w-full h-full bg-white/95">
+              <canvas ref={canvasRef} className="w-full h-full max-h-full max-w-full" />
+            </div>
+          ) : (
+            !isLoading && (
+              <div className="relative z-10 p-4 bg-white rounded-xl shadow-sm border border-gray-100">
+                {getChartIcon()}
+              </div>
+            )
+          )}
+
+          {/* Hover Overlay */}
+          <div className="absolute inset-0 bg-violet-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+            <div className="bg-white rounded-full p-2 border border-gray-100 transform scale-75 group-hover:scale-100 transition-transform duration-300">
+              <Eye className="w-5 h-5 text-violet-600" />
+            </div>
           </div>
         </div>
-      )}
+
+        {/* Row 1: Title */}
+        <h3 className="text-base font-semibold text-gray-900 truncate leading-tight group-hover:text-violet-900 transition-colors">
+          {conversation.title}
+        </h3>
+
+        {/* Row 2: Badge + Date + Action Buttons */}
+        <div className="flex items-center justify-between gap-2 pt-1.5">
+          {/* Left: Badge + Date */}
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Badge className={`${getChartTypeColor(conversation.snapshot?.chartType || "")} border text-[11px] px-2 py-0.5 font-medium rounded-full shadow-none shrink-0`}>
+              {isTemplateMode ? (
+                <div className="flex items-center gap-1">
+                  <LayoutTemplate className="w-3 h-3" />
+                  Template
+                </div>
+              ) : (
+                conversation.snapshot?.chartType || "Unknown"
+              )}
+            </Badge>
+            <div className="flex items-center gap-1 text-[11px] text-gray-400 shrink-0">
+              <Calendar className="h-3 w-3" />
+              <span>{formatDate(conversation.timestamp)}</span>
+            </div>
+          </div>
+
+          {/* Right: Icon Action Buttons */}
+          <div className="flex items-center gap-1 shrink-0">
+          <Button
+            onClick={() => onEditInAdvanced(conversation)}
+            variant="outline"
+            size="sm"
+            className="h-8 w-8 p-0 border-zinc-200 text-zinc-500 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 transition-all shadow-none rounded-lg"
+            title="Edit in Editor"
+          >
+            <Edit3 className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            onClick={handleDownload}
+            variant="outline"
+            size="sm"
+            className="h-8 w-8 p-0 border-zinc-200 text-zinc-500 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 transition-all shadow-none rounded-lg"
+            title="Export PNG"
+          >
+            <Download className="h-3.5 w-3.5" />
+          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0 border-zinc-200 text-zinc-500 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 transition-all shadow-none rounded-lg"
+                title="Share"
+              >
+                <Share2 className="h-3.5 w-3.5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-56 p-3">
+              {/* Share vs Embed Toggle */}
+              <div className="flex items-center gap-0.5 bg-zinc-100 rounded-lg p-0.5 border border-zinc-200/50 mb-3 select-none">
+                <button
+                  onClick={() => setShareTab("share")}
+                  className={`flex-1 py-1 text-center text-xs font-semibold rounded-md transition-all ${
+                    shareTab === "share"
+                      ? "bg-white text-violet-700 shadow-sm border border-zinc-200/50"
+                      : "text-zinc-500 hover:text-zinc-900 bg-transparent"
+                  }`}
+                >
+                  Share
+                </button>
+                <button
+                  onClick={() => setShareTab("embed")}
+                  className={`flex-1 py-1 text-center text-xs font-semibold rounded-md transition-all ${
+                    shareTab === "embed"
+                      ? "bg-white text-violet-700 shadow-sm border border-zinc-200/50"
+                      : "text-zinc-500 hover:text-zinc-900 bg-transparent"
+                  }`}
+                >
+                  Embed
+                </button>
+              </div>
+              {/* Copy / Open Actions */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => {
+                    const url = shareTab === "share"
+                      ? `${window.location.origin}/share/${conversation.id}`
+                      : `${window.location.origin}/chart/${conversation.id}`
+                    navigator.clipboard.writeText(url)
+                    toast.success(shareTab === "share" ? "Share link copied!" : "Embed link copied!")
+                  }}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-semibold text-zinc-700 hover:text-violet-750 hover:bg-violet-50/50 rounded-md border border-zinc-200/60 hover:border-violet-100 transition-all"
+                >
+                  <Copy className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
+                  <span>Copy</span>
+                </button>
+                <button
+                  onClick={() => {
+                    const url = shareTab === "share"
+                      ? `/share/${conversation.id}`
+                      : `/chart/${conversation.id}`
+                    window.open(url, "_blank")
+                  }}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-semibold text-zinc-700 hover:text-violet-750 hover:bg-violet-50/50 rounded-md border border-zinc-200/60 hover:border-violet-100 transition-all"
+                >
+                  <ExternalLink className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
+                  <span>Open</span>
+                </button>
+              </div>
+            </PopoverContent>
+          </Popover>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0 border-zinc-200 text-zinc-500 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 transition-all shadow-none rounded-lg">
+                <MoreVertical className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={() => onPreview(conversation)} className="focus:bg-violet-50 focus:text-violet-700">
+                <Eye className="h-4 w-4 mr-2" />
+                Preview
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setShowRenameDialog(true)} className="focus:bg-violet-50 focus:text-violet-700">
+                <Pencil className="h-4 w-4 mr-2" />
+                Rename
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleDelete} className="text-red-650 focus:text-red-650 focus:bg-red-50">
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          </div>
+        </div>
+      </CardContent>
+
+      {/* Rename Dialog */}
+      <Dialog open={showRenameDialog} onOpenChange={(open) => { if (!isRenaming) setShowRenameDialog(open); }}>
+        <DialogContent className="max-w-md p-5 bg-white border border-gray-200 rounded-lg shadow-xl" hideCloseButton={isRenaming}>
+          <DialogHeader className="mb-4">
+            <DialogTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-blue-600" />
+              Rename Chart
+            </DialogTitle>
+            <DialogDescription className="mt-1 text-sm text-gray-600">
+              Enter a new name for this chart.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={(e) => { e.preventDefault(); handleRename(); }}>
+            <div className="mb-5">
+              <Label htmlFor="rename-input-grid" className="text-sm font-medium text-gray-700">
+                Chart Name
+              </Label>
+              <Input
+                ref={renameInputRef}
+                id="rename-input-grid"
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="My Awesome Chart"
+                className="mt-1.5"
+                disabled={isRenaming}
+                maxLength={100}
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                {newName.length}/100 characters
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowRenameDialog(false)}
+                disabled={isRenaming}
+                className="inline-flex items-center justify-center h-9 rounded-md border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isRenaming}
+                className="inline-flex items-center justify-center h-9 rounded-md bg-violet-600 px-5 text-sm font-semibold text-white hover:bg-violet-750 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 shadow-sm transition-colors disabled:opacity-50"
+              >
+                {isRenaming ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Renaming...
+                  </>
+                ) : (
+                  'Rename'
+                )}
+              </button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </Card>
   )
 }

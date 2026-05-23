@@ -3,7 +3,7 @@
 import { useAuth } from "@/components/auth/AuthProvider"
 import { UserAvatar } from "./user-avatar"
 import { SimpleDropdown } from "./simple-dropdown"
-import { BarChart2, PencilRuler, User, LogOut } from "lucide-react"
+import { User, LogOut, BookOpen, DollarSign } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 
@@ -31,19 +31,19 @@ export function SimpleProfileDropdown({
 
   const defaultNavigationItems = [
     {
-      href: "/landing",
-      label: "AI Chart",
-      icon: BarChart2
-    },
-    {
-      href: "/editor", 
-      label: "Advanced Editor",
-      icon: PencilRuler
-    },
-    {
       href: "/about",
       label: "About", 
       icon: User
+    },
+    {
+      href: "/documentation",
+      label: "Documentation",
+      icon: BookOpen
+    },
+    {
+      href: "/pricing",
+      label: "Pricing",
+      icon: DollarSign
     }
   ]
 

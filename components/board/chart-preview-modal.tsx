@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useRef } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -11,6 +11,7 @@ import ChartGenerator from "@/lib/chart_generator"
 import { TemplateChartPreview } from "@/components/template-chart-preview"
 import { Chart as ChartJS } from "chart.js"
 import { toast } from "sonner"
+import { parseDimension } from "@/lib/utils/dimension-utils"
 import {
   X,
   Download,
@@ -26,10 +27,38 @@ import {
   Maximize2,
   LayoutTemplate,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Sparkles,
+  ZoomIn,
+  ZoomOut,
+  Hand,
+  Search
 } from "lucide-react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { embedImagesAsBase64 } from "@/lib/utils/html-export-utils"
+import { useZoomPan } from "@/lib/hooks/use-zoom-pan"
+import { useUIStore } from "@/lib/stores/ui-store"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu"
+import { Slider } from "@/components/ui/slider"
+import { ChartPreviewCanvas } from "@/components/chart-preview/chart-preview-canvas"
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
+
+const ZOOM_VALUES: number[] = (() => {
+  let values: number[] = [];
+  for (let i = 10; i <= 50; i += 1) values.push(i);
+  for (let i = 52; i <= 100; i += 2) values.push(i);
+  for (let i = 103; i <= 160; i += 3) values.push(i);
+  for (let i = 165; i <= 210; i += 5) values.push(i);
+  for (let i = 216; i <= 300; i += 6) values.push(i);
+  for (let i = 310; i <= 380; i += 10) values.push(i);
+  for (let i = 392; i <= 500; i += 12) values.push(i);
+  return values;
+})();
 
 interface ChartPreviewModalProps {
   conversation: Conversation
@@ -43,6 +72,29 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
   const [shareUrl, setShareUrl] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
+  const [isEditingWithAI, setIsEditingWithAI] = useState(false)
+  const [isOpeningAdvanced, setIsOpeningAdvanced] = useState(false)
+  const [shareTab, setShareTab] = useState<"share" | "embed">("share")
+  const containerRef = useRef<HTMLDivElement>(null)
+  const zoomPan = useZoomPan()
+  const canvasBgType = useUIStore(s => s.canvasBgType)
+  const canvasBgColor = useUIStore(s => s.canvasBgColor)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+
+    setContainerSize({ width: el.clientWidth, height: el.clientHeight })
+
+    const observer = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        setContainerSize({ width: entry.contentRect.width, height: entry.contentRect.height })
+      }
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   const { setFullChart } = useChartStore()
   const { conversations, restoreConversation } = useHistoryStore()
@@ -276,6 +328,38 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
     window.open(`/chart/${conversation.id}`, "_blank")
   }
 
+  const handleFullscreen = () => {
+    if (containerRef.current) {
+      if (!document.fullscreenElement) {
+        containerRef.current.requestFullscreen().catch((err) => {
+          toast.error(`Error enabling fullscreen: ${err.message}`)
+        })
+      } else {
+        document.exitFullscreen()
+      }
+    }
+  }
+
+  const handleResetChart = () => {
+    zoomPan.setZoom(1.0)
+    zoomPan.setPanOffset({ x: 0, y: 0 })
+    zoomPan.setPanMode(false)
+    toast.success("Chart view reset successfully")
+  }
+
+  const handleRefreshChart = async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      await restoreConversation(liveConversation.id)
+      toast.success("Chart refreshed successfully!")
+    } catch (err: any) {
+      setError("Failed to refresh chart. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp)
     return date.toLocaleDateString("en-US", {
@@ -289,16 +373,16 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
 
   const getChartTypeColor = (type: string) => {
     const colors: Record<string, string> = {
-      bar: "bg-blue-100 text-blue-700 border-blue-200",
-      line: "bg-green-100 text-green-700 border-green-200",
-      pie: "bg-purple-100 text-purple-700 border-purple-200",
-      doughnut: "bg-pink-100 text-pink-700 border-pink-200",
-      radar: "bg-orange-100 text-orange-700 border-orange-200",
-      polarArea: "bg-cyan-100 text-cyan-700 border-cyan-200",
-      bubble: "bg-indigo-100 text-indigo-700 border-indigo-200",
-      scatter: "bg-teal-100 text-teal-700 border-teal-200",
+      bar: "bg-violet-50 text-violet-750 border-violet-100",
+      line: "bg-fuchsia-50 text-fuchsia-750 border-fuchsia-100",
+      pie: "bg-purple-50 text-purple-750 border-purple-100",
+      doughnut: "bg-pink-50 text-pink-750 border-pink-100",
+      radar: "bg-indigo-50 text-indigo-750 border-indigo-100",
+      polarArea: "bg-rose-50 text-rose-750 border-rose-100",
+      bubble: "bg-blue-50 text-blue-750 border-blue-100",
+      scatter: "bg-cyan-50 text-cyan-750 border-cyan-100",
     }
-    return colors[type] || "bg-gray-100 text-gray-700 border-gray-200"
+    return colors[type] || "bg-zinc-50 text-zinc-700 border-zinc-150"
   }
 
   // Get badge info based on mode
@@ -306,7 +390,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
     if (isTemplateMode) {
       return {
         label: "Template",
-        className: "bg-purple-100 text-purple-700 border-purple-200",
+        className: "bg-purple-50 text-purple-750 border-purple-100",
         icon: <LayoutTemplate className="h-3 w-3 mr-1" />
       }
     }
@@ -319,205 +403,346 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
 
   const badgeInfo = getBadgeInfo()
 
+  const isResponsive = liveConversation.snapshot?.chartConfig?.responsive !== false
+  const chartWidth = !isResponsive ? parseDimension(liveConversation.snapshot?.chartConfig?.width, 800) : 800
+  const chartHeight = !isResponsive ? parseDimension(liveConversation.snapshot?.chartConfig?.height, 600) : 600
+
+  let scale = 1
+  if (!isResponsive && containerSize.width > 0 && containerSize.height > 0) {
+    const padding = 32 // Save some margins around the fixed dimensions
+    const scaleX = Math.max(10, containerSize.width - padding) / chartWidth
+    const scaleY = Math.max(10, containerSize.height - padding) / chartHeight
+    scale = Math.min(scaleX, scaleY, 1.0)
+  }
+
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="w-[95vw] max-w-[95vw] h-[95vh] flex flex-col p-0 [&>button:last-child]:hidden">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex h-full flex-col">
-          {/* Header */}
-          <DialogHeader className="px-6 pt-6 pb-4 border-b border-gray-200 bg-white">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                  <Badge className={`${badgeInfo.className} border text-xs px-3 py-0.5 flex items-center`}>
-                    {badgeInfo.icon}
-                    {badgeInfo.label}
-                  </Badge>
-                  <span className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    {formatDate(liveConversation.timestamp)}
-                  </span>
-                  {liveConversation.messages.length > 0 && (
-                    <span className="flex items-center gap-1">
-                      <MessageSquare className="h-3 w-3" />
-                      {liveConversation.messages.length} message{liveConversation.messages.length !== 1 ? "s" : ""}
-                    </span>
-                  )}
-                </div>
-                <DialogTitle className="text-xl font-semibold text-gray-900">
-                  {liveConversation.title}
-                </DialogTitle>
-              </div>
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <TabsList className="flex gap-2 rounded-md bg-gray-100 p-1 shadow-inner">
-                  <TabsTrigger
-                    value="preview"
-                    className="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm text-gray-600 transition-colors data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm"
-                  >
-                    <Maximize2 className="h-4 w-4" />
-                    Preview
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="share"
-                    className="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm text-gray-600 transition-colors data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm"
-                  >
-                    <Share2 className="h-4 w-4" />
-                    Share
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="export"
-                    className="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm text-gray-600 transition-colors data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm"
-                  >
-                    <Download className="h-4 w-4" />
-                    Export
-                  </TabsTrigger>
-                </TabsList>
-                <Button
-                  onClick={() => onEdit(liveConversation)}
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                >
-                  <Edit3 className="h-4 w-4" />
-                  Edit in AI Chat
-                </Button>
-                <Button
-                  onClick={() => onEditInAdvanced(liveConversation)}
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                >
-                  <PencilRuler className="h-4 w-4" />
-                  Advanced Editor
-                </Button>
-                <DialogClose asChild>
+      <DialogContent className="w-[95vw] max-w-[95vw] h-[95vh] flex flex-col p-0 [&>button:last-child]:hidden bg-[#f6f8fa]">
+        {/* Header */}
+        <DialogHeader className="px-4 py-2.5 border-b border-zinc-200 bg-white">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="space-y-1">
+              <DialogTitle className="text-lg font-bold text-zinc-950 flex items-center gap-2">
+                <span className="truncate max-w-[320px] sm:max-w-[450px]">{liveConversation.title}</span>
+                <Badge className={`rounded-full shadow-none border ${badgeInfo.className} text-[10px] font-semibold px-2 py-0.5 flex items-center justify-center h-5 lowercase gap-1`}>
+                  {badgeInfo.icon}
+                  {badgeInfo.label}
+                </Badge>
+              </DialogTitle>
+            </div>
+
+            {/* Actions Bar */}
+            <div className="flex items-center gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-9 w-9 text-gray-500 hover:text-gray-900"
+                    className="h-9 w-9 text-zinc-500 hover:text-violet-600 hover:bg-violet-50 border border-transparent hover:border-violet-100 rounded-lg transition-all"
+                    title="Share Options"
                   >
-                    <X className="h-4 w-4" />
+                    <Share2 className="h-4.5 w-4.5" />
                   </Button>
-                </DialogClose>
-              </div>
-            </div>
-          </DialogHeader>
-
-          <div className="flex-1 overflow-auto">
-            <TabsContent value="preview" className="h-full p-4 mt-0">
-              <div className="h-full bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="w-full h-full">
-                  {isLoading ? (
-                    <div className="flex flex-col items-center justify-center h-full gap-4 text-gray-500">
-                      <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
-                      <p className="text-sm font-medium">Loading full chart data...</p>
-                    </div>
-                  ) : error ? (
-                    <div className="flex flex-col items-center justify-center h-full gap-4 text-red-500 px-6 text-center">
-                      <AlertCircle className="h-10 w-10" />
-                      <p className="text-sm font-medium">{error}</p>
-                      <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-                        Retry
-                      </Button>
-                    </div>
-                  ) : liveConversation.snapshot?.chartData && activeTab === "preview" ? (
-                    isTemplateMode ? (
-                      <TemplateChartPreview />
-                    ) : (
-                      <ChartGenerator />
-                    )
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-gray-400">
-                      <p>No preview available</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="share" className="p-4 mt-0 space-y-4">
-              <div>
-                <h3 className="text-base font-semibold text-gray-900 mb-3">Share this Chart</h3>
-
-                <div className="space-y-3">
-                  {/* Share Link */}
-                  <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
-                    <label className="text-xs font-medium text-gray-700 mb-1.5 block">
-                      Public Share Link
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={shareUrl}
-                        readOnly
-                        className="flex-1 px-2 py-1.5 border border-gray-300 rounded-lg bg-white text-xs"
-                      />
-                      <Button onClick={handleCopyShareLink} size="sm" variant="outline" className="h-8 px-2 text-xs">
-                        <Copy className="h-3 w-3 mr-1" />
-                        Copy
-                      </Button>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1.5">
-                      Anyone with this link can view your chart
-                    </p>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-56 p-3 z-[9999]">
+                  {/* Share vs Embed Toggle */}
+                  <div className="flex items-center gap-0.5 bg-zinc-100 rounded-lg p-0.5 border border-zinc-200/50 mb-3 select-none">
+                    <button
+                      onClick={() => setShareTab("share")}
+                      className={`flex-1 py-1 text-center text-xs font-semibold rounded-md transition-all ${
+                        shareTab === "share"
+                          ? "bg-white text-violet-700 shadow-sm border border-zinc-200/50"
+                          : "text-zinc-500 hover:text-zinc-900 bg-transparent"
+                      }`}
+                    >
+                      Share
+                    </button>
+                    <button
+                      onClick={() => setShareTab("embed")}
+                      className={`flex-1 py-1 text-center text-xs font-semibold rounded-md transition-all ${
+                        shareTab === "embed"
+                          ? "bg-white text-violet-700 shadow-sm border border-zinc-200/50"
+                          : "text-zinc-500 hover:text-zinc-900 bg-transparent"
+                      }`}
+                    >
+                      Embed
+                    </button>
                   </div>
 
-                  {/* Open in New Tab */}
+                  {/* Actions Row */}
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => {
+                        const url = shareTab === "share"
+                          ? `${window.location.origin}/share/${conversation.id}`
+                          : `${window.location.origin}/chart/${conversation.id}`
+                        navigator.clipboard.writeText(url)
+                      }}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-semibold text-zinc-700 hover:text-violet-750 hover:bg-violet-50/50 rounded-md border border-zinc-200/60 hover:border-violet-100 transition-all"
+                    >
+                      <Copy className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
+                      <span>Copy</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        const url = shareTab === "share"
+                          ? `/share/${conversation.id}`
+                          : `/chart/${conversation.id}`
+                        window.open(url, "_blank")
+                      }}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-semibold text-zinc-700 hover:text-violet-750 hover:bg-violet-50/50 rounded-md border border-zinc-200/60 hover:border-violet-100 transition-all"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
+                      <span>Open</span>
+                    </button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <Button
-                    onClick={handleOpenInNewTab}
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 text-zinc-500 hover:text-violet-600 hover:bg-violet-50 border border-transparent hover:border-violet-100 rounded-lg transition-all"
+                    title="Export Options"
                   >
-                    <ExternalLink className="h-3.5 w-3.5 mr-2" />
-                    Open in New Tab
+                    <Download className="h-4.5 w-4.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={handleDownloadPNG} className="focus:bg-violet-50 focus:text-violet-700">
+                    <ImageIcon className="h-4 w-4 mr-2 text-zinc-450" />
+                    Download PNG
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleDownloadHTML} className="focus:bg-violet-50 focus:text-violet-700">
+                    <FileCode className="h-4 w-4 mr-2 text-zinc-450" />
+                    Download HTML
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <div className="w-[1px] h-5 bg-zinc-200 mx-1"></div>
+
+               <Button
+                onClick={() => {
+                  setIsEditingWithAI(true)
+                  onEdit(liveConversation)
+                }}
+                disabled={isEditingWithAI || isOpeningAdvanced}
+                variant="outline"
+                size="sm"
+                className="h-9 gap-1.5 text-xs font-semibold border-zinc-200 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 rounded-lg transition-all shadow-none"
+              >
+                {isEditingWithAI ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-500" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5 text-violet-500" />
+                )}
+                Edit with AI
+              </Button>
+
+              <Button
+                onClick={() => {
+                  setIsOpeningAdvanced(true)
+                  onEditInAdvanced(liveConversation)
+                }}
+                disabled={isEditingWithAI || isOpeningAdvanced}
+                variant="outline"
+                size="sm"
+                className="h-9 gap-1.5 text-xs font-semibold border-zinc-200 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 rounded-lg transition-all shadow-none"
+              >
+                {isOpeningAdvanced ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-500" />
+                ) : (
+                  <PencilRuler className="h-3.5 w-3.5 text-violet-500" />
+                )}
+                Advanced Editor
+              </Button>
+
+              <div className="w-[1px] h-5 bg-zinc-200 mx-1"></div>
+
+              <DialogClose asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 text-zinc-500 hover:text-zinc-950 hover:bg-zinc-150 rounded-lg transition-all"
+                >
+                  <X className="h-4.5 w-4.5" />
+                </Button>
+              </DialogClose>
+            </div>
+          </div>
+        </DialogHeader>
+
+        {/* Full-bleed Chart Preview Area with dynamic scale-to-fit canvas sizing, zooming and panning */}
+        <div className="flex-1 overflow-hidden flex flex-col relative">
+          <div
+            ref={containerRef}
+            className="w-full h-full relative z-10 flex items-center justify-center overflow-hidden"
+            style={{
+              scrollbarWidth: 'thin',
+              scrollbarColor: '#cbd5e1 #f1f5f9',
+              backgroundColor: canvasBgType === 'transparent' ? 'transparent' : canvasBgColor,
+              backgroundImage: canvasBgType === 'transparent' ? `linear-gradient(45deg, #f1f5f9 25%, transparent 25%), linear-gradient(-45deg, #f1f5f9 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f1f5f9 75%), linear-gradient(-45deg, transparent 75%, #f1f5f9 75%)` : undefined,
+              backgroundSize: canvasBgType === 'transparent' ? '20px 20px' : undefined,
+              backgroundPosition: canvasBgType === 'transparent' ? '0 0, 0 10px, 10px -10px, -10px 0px' : undefined,
+            }}
+          >
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center gap-3 text-zinc-500">
+                  <Loader2 className="h-10 w-10 animate-spin text-violet-600" />
+                  <p className="text-xs font-semibold">Loading full chart data...</p>
+                </div>
+              ) : error ? (
+                <div className="flex flex-col items-center justify-center gap-4 text-red-500 px-6 text-center max-w-sm">
+                  <AlertCircle className="h-10 w-10 text-red-400 animate-pulse" />
+                  <div>
+                    <p className="text-sm font-bold text-zinc-800">Preview Error</p>
+                    <p className="text-xs text-zinc-500 mt-1 leading-relaxed">{error}</p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="border-red-200 text-red-650 hover:bg-red-50/50">
+                    Retry
                   </Button>
                 </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="export" className="p-4 mt-0 space-y-4">
-              <div>
-                <h3 className="text-base font-semibold text-gray-900 mb-3">Export Options</h3>
-
-                <div className="grid gap-3">
-                  {/* PNG Export */}
-                  <button
-                    onClick={handleDownloadPNG}
-                    className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-all text-left"
-                  >
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <ImageIcon className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-sm text-gray-900 mb-0.5">Download as PNG</h4>
-                      <p className="text-xs text-gray-600">
-                        High-quality image file (1920x1080) perfect for presentations
-                      </p>
-                    </div>
-                  </button>
-
-                  {/* HTML Export */}
-                  <button
-                    onClick={handleDownloadHTML}
-                    className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg hover:border-green-300 hover:bg-green-50 transition-all text-left"
-                  >
-                    <div className="p-2 bg-green-100 rounded-lg">
-                      <FileCode className="h-5 w-5 text-green-600" />
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-sm text-gray-900 mb-0.5">Download as HTML</h4>
-                      <p className="text-xs text-gray-600">
-                        Self-contained HTML file with interactive chart
-                      </p>
-                    </div>
-                  </button>
+              ) : liveConversation.snapshot?.chartData ? (
+                isTemplateMode ? (
+                  <TemplateChartPreview readOnly />
+                ) : (
+                  <ChartPreviewCanvas
+                    chartContainerRef={containerRef}
+                    chartConfig={liveConversation.snapshot?.chartConfig}
+                    zoomPan={zoomPan}
+                  />
+                )
+              ) : (
+                <div className="flex items-center justify-center text-zinc-400 text-sm">
+                  <p>No preview available</p>
                 </div>
-              </div>
-            </TabsContent>
-          </div>
-        </Tabs>
+              )}
+            </div>
 
+            {/* Dynamic floating interactive controls (Zoom, Pan, Reset) */}
+            {!isLoading && !error && liveConversation.snapshot?.chartData && !isTemplateMode && (() => {
+              const currentZoomPct = Math.round(zoomPan.zoom * 100);
+              let closestIndex = 0;
+              let minDiff = Infinity;
+              for (let i = 0; i < ZOOM_VALUES.length; i++) {
+                const diff = Math.abs(ZOOM_VALUES[i] - currentZoomPct);
+                if (diff < minDiff) {
+                  minDiff = diff;
+                  closestIndex = i;
+                }
+              }
 
+              return (
+                <div className="absolute bottom-4 right-4 z-30 flex items-center gap-0.5 border border-slate-200 rounded-md p-0.5 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] select-none">
+                  {/* Zoom Dropdown Trigger */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs px-2 text-violet-600 hover:text-violet-750 font-semibold select-none w-[76px] justify-start gap-1.5 hover:bg-violet-50/50 rounded transition-colors"
+                        title="Zoom Options"
+                      >
+                        <Search className="h-3.5 w-3.5 text-violet-500 shrink-0" />
+                        <span className="tabular-nums">{currentZoomPct}%</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-52 p-2 z-[9999]">
+                      <DropdownMenuItem
+                        onClick={() => { zoomPan.setZoom(1); zoomPan.setPanOffset({ x: 0, y: 0 }); }}
+                        className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100"
+                      >
+                        <span className="flex-1">100% (Fit to View)</span>
+                      </DropdownMenuItem>
+
+                      {!isResponsive && (
+                        <DropdownMenuItem
+                          onClick={() => {
+                            const applyFullDimension = () => {
+                              let baseScale = 1.0;
+                              if (containerRef?.current) {
+                                const cWidth = containerRef.current.clientWidth || 800;
+                                const cHeight = containerRef.current.clientHeight || 600;
+                                const padding = 64;
+                                const availableWidth = Math.max(10, cWidth - padding);
+                                const availableHeight = Math.max(10, cHeight - padding);
+                                const scaleX = availableWidth / chartWidth;
+                                const scaleY = availableHeight / chartHeight;
+                                baseScale = Math.min(scaleX, scaleY, 1.0);
+                              }
+                              zoomPan.setZoom(1.0 / baseScale);
+                              zoomPan.setPanOffset({ x: 0, y: 0 });
+                            };
+                            applyFullDimension();
+                            setTimeout(applyFullDimension, 50);
+                          }}
+                          className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100"
+                        >
+                          <span className="flex-1">Full Dimension</span>
+                        </DropdownMenuItem>
+                      )}
+
+                      <DropdownMenuSeparator className="my-1" />
+
+                      <div className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                        <Slider
+                          min={0}
+                          max={ZOOM_VALUES.length - 1}
+                          step={1}
+                          value={[closestIndex]}
+                          onValueChange={(value) => {
+                            const newZoomPct = ZOOM_VALUES[value[0]];
+                            zoomPan.setZoom(newZoomPct / 100);
+                          }}
+                          className="cursor-pointer"
+                        />
+                      </div>
+
+                      <DropdownMenuSeparator className="my-1" />
+                      <div className="flex items-center justify-between gap-1 px-1">
+                        <DropdownMenuItem
+                          onSelect={(e) => { e.preventDefault(); zoomPan.handleZoomOut(); }}
+                          className="flex-1 flex items-center justify-center py-2 cursor-pointer focus:bg-slate-100"
+                          title="Zoom Out"
+                        >
+                          <ZoomOut className="h-4 w-4 text-slate-500" />
+                        </DropdownMenuItem>
+                        <div className="w-[1px] h-4 bg-slate-200" />
+                        <DropdownMenuItem
+                          onSelect={(e) => { e.preventDefault(); zoomPan.handleZoomIn(); }}
+                          className="flex-1 flex items-center justify-center py-2 cursor-pointer focus:bg-slate-100"
+                          title="Zoom In"
+                        >
+                          <ZoomIn className="h-4 w-4 text-slate-500" />
+                        </DropdownMenuItem>
+                      </div>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  {/* Divider */}
+                  <div className="w-[1px] h-4 bg-slate-200 mx-0.5" />
+
+                  {/* Pan Button */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => zoomPan.setPanMode(!zoomPan.panMode)}
+                    className={`h-7 w-7 p-0 transition-all rounded ${
+                      zoomPan.panMode
+                        ? "bg-violet-600 text-white hover:bg-violet-700 hover:text-white shadow-sm"
+                        : "hover:bg-slate-100 text-slate-600"
+                    }`}
+                    title={zoomPan.panMode ? "Disable Pan Mode" : "Enable Pan Mode"}
+                  >
+                    <Hand className="h-4 w-4" />
+                  </Button>
+                </div>
+              );
+            })()}
+        </div>
       </DialogContent>
     </Dialog>
   )

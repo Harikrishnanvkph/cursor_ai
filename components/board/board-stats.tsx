@@ -118,9 +118,8 @@ export function BoardStats({ conversations, allConversations }: BoardStatsProps)
       value: stats.totalCharts,
       subtitle: stats.chartsToday > 0 ? `${stats.chartsToday} created today` : "Ready to create more",
       icon: BarChart2,
-      gradient: "from-blue-500 via-blue-600 to-blue-700",
-      bgGradient: "from-blue-50 to-blue-100/50",
-      iconBg: "bg-blue-500",
+      textColor: "text-blue-600",
+      iconBg: "bg-blue-50/50 text-blue-600 border-blue-100",
       trend: null
     },
     {
@@ -128,9 +127,8 @@ export function BoardStats({ conversations, allConversations }: BoardStatsProps)
       value: stats.chartsThisWeek,
       subtitle: `${Math.abs(stats.weeklyTrend).toFixed(0)}% vs last week`,
       icon: TrendingUp,
-      gradient: "from-emerald-500 via-emerald-600 to-emerald-700",
-      bgGradient: "from-emerald-50 to-emerald-100/50",
-      iconBg: "bg-emerald-500",
+      textColor: "text-emerald-600",
+      iconBg: "bg-emerald-50/50 text-emerald-600 border-emerald-100",
       trend: stats.weeklyTrend
     },
     {
@@ -138,9 +136,8 @@ export function BoardStats({ conversations, allConversations }: BoardStatsProps)
       value: stats.avgPerWeek,
       subtitle: "Over last 4 weeks",
       icon: Activity,
-      gradient: "from-purple-500 via-purple-600 to-purple-700",
-      bgGradient: "from-purple-50 to-purple-100/50",
-      iconBg: "bg-purple-500",
+      textColor: "text-purple-600",
+      iconBg: "bg-purple-50/50 text-purple-600 border-purple-100",
       trend: null
     },
     {
@@ -148,9 +145,8 @@ export function BoardStats({ conversations, allConversations }: BoardStatsProps)
       value: stats.mostUsedType?.[0] || "None yet",
       subtitle: stats.mostUsedType ? `${stats.mostUsedType[1]} charts` : "Create your first",
       icon: Target,
-      gradient: "from-orange-500 via-orange-600 to-orange-700",
-      bgGradient: "from-orange-50 to-orange-100/50",
-      iconBg: "bg-orange-500",
+      textColor: "text-orange-600",
+      iconBg: "bg-orange-50/50 text-orange-600 border-orange-100",
       trend: null
     }
   ]
@@ -160,18 +156,15 @@ export function BoardStats({ conversations, allConversations }: BoardStatsProps)
       {/* Main Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((stat, index) => (
-          <Card key={index} className="relative overflow-hidden border shadow-sm border-gray-200 bg-white hover:shadow-md transition-all duration-300 group">
-            {/* Background Gradient */}
-            <div className={`absolute inset-0 bg-gradient-to-br ${stat.bgGradient} opacity-50`} />
-
-            <CardContent className="relative p-4">
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex-1">
-                  <p className="text-xs font-medium text-gray-600 mb-1">{stat.title}</p>
+          <Card key={index} className="border border-zinc-200 bg-white hover:border-zinc-300 transition-all duration-200 shadow-none">
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between">
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">{stat.title}</p>
                   <div className="flex items-baseline gap-2">
-                    <p className="text-2xl font-bold text-gray-900">
+                    <p className="text-2xl font-bold text-zinc-900 tracking-tight">
                       {typeof stat.value === "string" ? (
-                        <span className="text-base capitalize">{stat.value}</span>
+                        <span className="text-lg capitalize">{stat.value}</span>
                       ) : (
                         stat.value
                       )}
@@ -179,20 +172,19 @@ export function BoardStats({ conversations, allConversations }: BoardStatsProps)
                     {stat.trend !== null && (
                       <div className="flex items-center gap-1">
                         {getTrendIcon(stat.trend)}
-                        <span className={`text-xs font-medium ${getTrendColor(stat.trend)}`}>
+                        <span className={`text-xs font-semibold ${getTrendColor(stat.trend)}`}>
                           {Math.abs(stat.trend).toFixed(0)}%
                         </span>
                       </div>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 mt-0.5">{stat.subtitle}</p>
+                  <p className="text-[12px] text-zinc-500 mt-1 truncate">{stat.subtitle}</p>
                 </div>
 
-                <div className={`p-2 ${stat.iconBg} rounded-lg shadow-md group-hover:scale-110 transition-transform duration-300`}>
-                  <stat.icon className="h-5 w-5 text-white" />
+                <div className={`p-2.5 rounded-lg border ${stat.iconBg} flex-shrink-0 flex items-center justify-center`}>
+                  <stat.icon className="h-4.5 w-4.5" />
                 </div>
               </div>
-
             </CardContent>
           </Card>
         ))}
@@ -200,50 +192,50 @@ export function BoardStats({ conversations, allConversations }: BoardStatsProps)
 
       {/* Chart Mode Breakdown */}
       {stats.totalCharts > 0 && (
-        <Card className="border shadow-sm border-gray-200 bg-white">
-          <CardHeader className="py-3 px-5">
+        <Card className="border border-zinc-200 bg-white shadow-none">
+          <CardHeader className="py-3 px-5 border-b border-zinc-100">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                <Layers className="h-4 w-4 text-blue-600" />
+              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-zinc-500 flex items-center gap-2">
+                <Layers className="h-3.5 w-3.5 text-zinc-400" />
                 Chart Mode Breakdown
               </CardTitle>
-              <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">
+              <Badge className="bg-zinc-100 text-zinc-700 border border-zinc-200 hover:bg-zinc-100 text-xs shadow-none">
                 {stats.totalCharts} total
               </Badge>
             </div>
           </CardHeader>
-          <CardContent className="px-5 pb-4 pt-0">
+          <CardContent className="px-5 py-4">
             <div className="grid grid-cols-3 gap-3">
               {/* Single */}
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-50/60 hover:bg-blue-100/60 transition-colors">
-                <div className="p-2 bg-blue-500 rounded-lg shadow flex-shrink-0">
-                  <BarChart2 className="h-4 w-4 text-white" />
+              <div className="flex items-center gap-3 p-3 rounded-xl border border-zinc-150 bg-zinc-50/50 hover:bg-zinc-50 transition-colors">
+                <div className="p-2 bg-blue-500/10 border border-blue-200 rounded-lg flex-shrink-0">
+                  <BarChart2 className="h-4 w-4 text-blue-600" />
                 </div>
                 <div className="flex items-center justify-between flex-1 min-w-0">
-                  <span className="text-xs font-medium text-gray-700">Single</span>
-                  <span className="text-lg font-bold text-blue-700">{stats.singleCount}</span>
+                  <span className="text-xs font-medium text-zinc-700">Single</span>
+                  <span className="text-lg font-bold text-blue-600">{stats.singleCount}</span>
                 </div>
               </div>
 
               {/* Grouped */}
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-purple-50/60 hover:bg-purple-100/60 transition-colors">
-                <div className="p-2 bg-purple-500 rounded-lg shadow flex-shrink-0">
-                  <LayoutGrid className="h-4 w-4 text-white" />
+              <div className="flex items-center gap-3 p-3 rounded-xl border border-zinc-150 bg-zinc-50/50 hover:bg-zinc-50 transition-colors">
+                <div className="p-2 bg-purple-500/10 border border-purple-200 rounded-lg flex-shrink-0">
+                  <LayoutGrid className="h-4 w-4 text-purple-600" />
                 </div>
                 <div className="flex items-center justify-between flex-1 min-w-0">
-                  <span className="text-xs font-medium text-gray-700">Grouped</span>
-                  <span className="text-lg font-bold text-purple-700">{stats.groupedCount}</span>
+                  <span className="text-xs font-medium text-zinc-700">Grouped</span>
+                  <span className="text-lg font-bold text-purple-600">{stats.groupedCount}</span>
                 </div>
               </div>
 
               {/* Template */}
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-50/60 hover:bg-emerald-100/60 transition-colors">
-                <div className="p-2 bg-emerald-500 rounded-lg shadow flex-shrink-0">
-                  <FileText className="h-4 w-4 text-white" />
+              <div className="flex items-center gap-3 p-3 rounded-xl border border-zinc-150 bg-zinc-50/50 hover:bg-zinc-50 transition-colors">
+                <div className="p-2 bg-emerald-500/10 border border-emerald-200 rounded-lg flex-shrink-0">
+                  <FileText className="h-4 w-4 text-emerald-600" />
                 </div>
                 <div className="flex items-center justify-between flex-1 min-w-0">
-                  <span className="text-xs font-medium text-gray-700">Template</span>
-                  <span className="text-lg font-bold text-emerald-700">{stats.templateCount}</span>
+                  <span className="text-xs font-medium text-zinc-700">Template</span>
+                  <span className="text-lg font-bold text-emerald-600">{stats.templateCount}</span>
                 </div>
               </div>
             </div>
