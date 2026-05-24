@@ -253,7 +253,7 @@ function BoardPageContent() {
       {/* Modern Header */}
       <header className="sticky top-0 z-40 bg-white border-b border-zinc-200 shadow-none">
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          <div className="flex items-center justify-between h-14">
             {/* Logo and Title */}
             <div className="flex items-center gap-4">
               <h1 className="text-lg font-bold text-zinc-950 tracking-tight">Dashboard</h1>
@@ -262,19 +262,19 @@ function BoardPageContent() {
             {/* Actions: Direct buttons for AI Chat and Advanced Editor */}
             <div className="flex items-center gap-2">
               <Link href="/landing">
-                <Button className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-semibold text-xs h-9 rounded-lg px-4 gap-2 flex items-center justify-center shadow-none transition-all">
+                <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs h-8 rounded-md px-3 gap-1.5 flex items-center justify-center shadow-none transition-all">
                   <Sparkles className="h-3.5 w-3.5" />
                   <span>Create with AI</span>
                 </Button>
               </Link>
               <Link href="/editor">
-                <Button variant="outline" className="border border-zinc-200 bg-white hover:bg-violet-50 hover:border-violet-200 hover:text-violet-700 font-semibold text-xs h-9 rounded-lg px-4 gap-2 flex items-center justify-center shadow-none transition-all">
+                <Button variant="outline" className="border border-zinc-200 bg-white hover:bg-zinc-50 hover:text-zinc-900 text-zinc-700 font-semibold text-xs h-8 rounded-md px-3 gap-1.5 flex items-center justify-center shadow-none transition-all">
                   <Edit3 className="h-3.5 w-3.5" />
                   <span>Advanced Editor</span>
                 </Button>
               </Link>
               <div className="w-[1px] h-5 bg-zinc-200 mx-1"></div>
-              <SimpleProfileDropdown size="md" />
+              <SimpleProfileDropdown size="sm" />
             </div>
           </div>
         </div>

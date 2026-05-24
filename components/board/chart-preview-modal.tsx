@@ -417,7 +417,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="w-[95vw] max-w-[95vw] h-[95vh] flex flex-col p-0 [&>button:last-child]:hidden bg-[#f6f8fa]">
+      <DialogContent className="w-[95vw] max-w-[95vw] h-[95vh] flex flex-col gap-0 p-0 [&>button:last-child]:hidden bg-[#f6f8fa]">
         {/* Header */}
         <DialogHeader className="px-4 py-2.5 border-b border-zinc-200 bg-white">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -607,7 +607,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
                 </div>
               ) : liveConversation.snapshot?.chartData ? (
                 isTemplateMode ? (
-                  <TemplateChartPreview readOnly />
+                  <TemplateChartPreview readOnly zoomPan={zoomPan} />
                 ) : (
                   <ChartPreviewCanvas
                     chartContainerRef={containerRef}
@@ -623,7 +623,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
             </div>
 
             {/* Dynamic floating interactive controls (Zoom, Pan, Reset) */}
-            {!isLoading && !error && liveConversation.snapshot?.chartData && !isTemplateMode && (() => {
+            {!isLoading && !error && liveConversation.snapshot?.chartData && (() => {
               const currentZoomPct = Math.round(zoomPan.zoom * 100);
               let closestIndex = 0;
               let minDiff = Infinity;

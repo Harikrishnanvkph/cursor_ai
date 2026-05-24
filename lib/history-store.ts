@@ -129,7 +129,9 @@ export const useHistoryStore = create<HistoryStore>()(
                   template_content: snapshotResponse.data.template_content,     // Map template fields
                   is_template_mode: snapshotResponse.data.is_template_mode      // Map template fields
                 } : null,
-                timestamp: new Date(response.data.created_at).getTime()
+                timestamp: new Date(response.data.created_at).getTime(),
+                is_template_mode: response.data.is_template_mode ?? snapshotResponse.data?.is_template_mode ?? false,
+                chart_mode: response.data.chart_mode ?? 'single'
               };
 
               // Add to local store for future access

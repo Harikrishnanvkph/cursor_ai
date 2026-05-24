@@ -48,6 +48,7 @@ import {
 import { Chart as ChartJS } from "chart.js"
 import "@/lib/chart-registration"
 import { chartTypeMapping, type SupportedChartType } from "@/lib/chart-defaults"
+import { DecorationShapeRenderer } from "@/components/decorations/DecorationShapeRenderer"
 
 interface ChartCardProps {
   conversation: Conversation
@@ -72,6 +73,9 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
     chartType: string
     chartData: any
     chartConfig: any
+    is_template_mode?: boolean
+    template_structure?: any
+    template_content?: any
   } | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
@@ -80,7 +84,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const chartInstanceRef = useRef<ChartJS | null>(null)
 
-  // Intersection Observer to lazy-load card viewports
+  // Intersection Observer — two-way: mount when entering viewport, unmount when leaving
   useEffect(() => {
     if (viewMode !== "grid") {
       setIsVisible(false)
@@ -92,27 +96,30 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true)
-          observer.unobserve(el)
-        }
+        setIsVisible(entry.isIntersecting)
       },
-      { rootMargin: "150px" } // Pre-fetch slightly before it is visible on screen
+      { rootMargin: "200px" } // Pre-mount slightly before visible, keep alive slightly after leaving
     )
     observer.observe(el)
     return () => observer.disconnect()
   }, [viewMode])
 
-  // Dynamic snapshot data fetching
+  // Dynamic snapshot data fetching — only fetches once, cached in state permanently
   useEffect(() => {
     if (!isVisible || viewMode !== "grid") return
+
+    // Already have cached data from a previous mount — skip entirely (no server call)
+    if (snapshotData) return
 
     // If conversation already contains full details, utilize immediately
     if (conversation.snapshot && conversation.snapshot.chartData) {
       setSnapshotData({
         chartType: conversation.snapshot.chartType,
         chartData: conversation.snapshot.chartData,
-        chartConfig: conversation.snapshot.chartConfig
+        chartConfig: conversation.snapshot.chartConfig,
+        is_template_mode: conversation.snapshot.is_template_mode || false,
+        template_structure: conversation.snapshot.template_structure,
+        template_content: conversation.snapshot.template_content
       })
       return
     }
@@ -129,7 +136,10 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
           setSnapshotData({
             chartType: response.data.chart_type,
             chartData: response.data.chart_data,
-            chartConfig: response.data.chart_config
+            chartConfig: response.data.chart_config,
+            is_template_mode: response.data.is_template_mode || false,
+            template_structure: response.data.template_structure,
+            template_content: response.data.template_content
           })
         }
       } catch (err: any) {
@@ -140,16 +150,57 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
       }
     }
     loadSnapshot()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isVisible, conversation.id, conversation.snapshot, viewMode])
 
-  // ChartJS instance instantiation & cleanup
+  const [templateScale, setTemplateScale] = useState(1)
+
   useEffect(() => {
-    if (!canvasRef.current || !snapshotData || viewMode !== "grid") return
+    if (!containerRef.current || !snapshotData?.template_structure || viewMode !== "grid" || !isVisible) return
+    
+    const updateScale = () => {
+      if (!containerRef.current || !snapshotData?.template_structure) return
+      const containerWidth = containerRef.current.clientWidth
+      const containerHeight = containerRef.current.clientHeight
+      
+      const templateW = snapshotData.template_structure.width || 800
+      const templateH = snapshotData.template_structure.height || 600
+      
+      const scaleX = containerWidth / templateW
+      const scaleY = containerHeight / templateH
+      setTemplateScale(Math.min(scaleX, scaleY))
+    }
+
+    updateScale()
+    
+    const resizeObserver = new ResizeObserver(() => {
+      updateScale()
+    })
+    
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current)
+    }
+
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [snapshotData?.template_structure, viewMode, isVisible])
+
+  // ChartJS instance instantiation & cleanup — destroys when card leaves viewport, recreates on re-entry
+  useEffect(() => {
+    if (!canvasRef.current || !snapshotData || viewMode !== "grid" || !isVisible) {
+      // Destroy chart if scrolled off-screen
+      if (chartInstanceRef.current) {
+        chartInstanceRef.current.destroy()
+        chartInstanceRef.current = null
+      }
+      return
+    }
 
     const ctx = canvasRef.current.getContext("2d")
     if (!ctx) return
 
-    // Clean up any existing chart
+    // Clean up any existing chart before creating a new one
     if (chartInstanceRef.current) {
       chartInstanceRef.current.destroy()
       chartInstanceRef.current = null
@@ -166,7 +217,9 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
           ...(snapshotData.chartConfig?.plugins || {}),
           legend: { display: false },     // Hide legend in list card previews
           tooltip: { enabled: false },    // Disable active mouse tooltips
-          datalabels: { display: false }  // Hide text values labels
+          datalabels: { display: false }, // Hide text values labels
+          title: { display: false },      // Hide title inside thumbnail to prevent squishing
+          subtitle: { display: false }    // Hide subtitle inside thumbnail to prevent squishing
         },
         scales: {
           ...(snapshotData.chartConfig?.scales || {}),
@@ -208,7 +261,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
         chartInstanceRef.current = null
       }
     }
-  }, [snapshotData, viewMode])
+  }, [snapshotData, viewMode, isVisible])
 
   // Focus input when rename dialog opens
   useEffect(() => {
@@ -363,7 +416,11 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
   }
 
   // Check if this is a template mode snapshot
-  const isTemplateMode = conversation.snapshot?.is_template_mode && conversation.snapshot?.template_structure
+  const isTemplateMode = !!(
+    conversation.is_template_mode ||
+    conversation.snapshot?.is_template_mode ||
+    snapshotData?.is_template_mode
+  )
 
   const getChartIcon = (sizeClass = "w-8 h-8") => {
     if (isTemplateMode) return <LayoutTemplate className={`${sizeClass} text-purple-500`} />;
@@ -592,9 +649,115 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
           )}
 
           {snapshotData && !isLoading && !fetchError ? (
-            <div className="absolute inset-0 p-3.5 flex items-center justify-center w-full h-full bg-white/95">
-              <canvas ref={canvasRef} className="w-full h-full max-h-full max-w-full" />
-            </div>
+            isTemplateMode && snapshotData.template_structure ? (
+              <div
+                className="absolute inset-0 overflow-hidden flex items-center justify-center bg-zinc-50 bg-[radial-gradient(#e4e4e7_1.2px,transparent_1.2px)] [background-size:12px_12px] p-4"
+              >
+                {/* Scaled Real Template Wrapper */}
+                <div
+                  className="relative origin-top-left shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-zinc-200 rounded-lg overflow-hidden"
+                  style={{
+                    width: snapshotData.template_structure.width || 800,
+                    height: snapshotData.template_structure.height || 600,
+                    transform: `scale(${templateScale})`,
+                    transformOrigin: 'top left',
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    marginTop: -((snapshotData.template_structure.height || 600) * templateScale) / 2,
+                    marginLeft: -((snapshotData.template_structure.width || 800) * templateScale) / 2,
+                  }}
+                >
+                  {/* Real Background Layer */}
+                  {(() => {
+                    const bg = snapshotData.template_structure.background || { type: 'color', color: '#ffffff' };
+                    if (bg.type === 'color' || bg.type === undefined) {
+                      return <div className="absolute inset-0" style={{ backgroundColor: bg.color || '#ffffff', opacity: (bg.opacity ?? 100) / 100 }} />;
+                    }
+                    if (bg.type === 'gradient') {
+                      const color1 = bg.gradientColor1 || '#ffffff';
+                      const color2 = bg.gradientColor2 || '#000000';
+                      const direction = bg.gradientDirection || 'to right';
+                      const gradient = bg.gradientType === 'radial' 
+                        ? `radial-gradient(circle, ${color1}, ${color2})`
+                        : `linear-gradient(${direction}, ${color1}, ${color2})`;
+                      return <div className="absolute inset-0" style={{ backgroundImage: gradient, opacity: (bg.opacity ?? 100) / 100 }} />;
+                    }
+                    if (bg.type === 'image' && bg.imageUrl) {
+                      const size = bg.imageFit === 'fill' ? '100% 100%' : bg.imageFit === 'contain' ? 'contain' : 'cover';
+                      return <div className="absolute inset-0" style={{ backgroundImage: `url(${bg.imageUrl})`, backgroundSize: size, backgroundPosition: 'center', backgroundRepeat: 'no-repeat', opacity: (bg.opacity ?? 100) / 100 }} />;
+                    }
+                    return null;
+                  })()}
+
+                  {/* Real Text Area Zones */}
+                  {(snapshotData.template_structure.textAreas || [])
+                    .filter((ta: any) => ta.visible)
+                    .map((ta: any) => {
+                      const areaContent = snapshotData.template_content?.[ta.type];
+                      let contentText = ta.content || '';
+                      if (areaContent !== undefined) {
+                        if (Array.isArray(areaContent)) {
+                          const sameTypeAreas = snapshotData.template_structure.textAreas.filter((item: any) => item.type === ta.type);
+                          const index = sameTypeAreas.indexOf(ta);
+                          contentText = areaContent[index] || areaContent[0] || ta.content;
+                        } else {
+                          contentText = areaContent;
+                        }
+                      }
+                      
+                      return (
+                        <div
+                          key={ta.id}
+                          className="absolute overflow-hidden"
+                          style={{
+                            left: ta.position.x,
+                            top: ta.position.y,
+                            width: ta.position.width,
+                            height: ta.position.height,
+                            fontSize: `${ta.style?.fontSize || 16}px`,
+                            fontFamily: ta.style?.fontFamily,
+                            fontWeight: ta.style?.fontWeight,
+                            color: ta.style?.color,
+                            textAlign: ta.style?.textAlign,
+                            lineHeight: ta.style?.lineHeight || 1.2,
+                            padding: '4px',
+                            wordBreak: 'break-word',
+                          }}
+                          dangerouslySetInnerHTML={{ __html: contentText }}
+                        />
+                      );
+                    })}
+
+                  {/* Real Bounded Chart Zone */}
+                  {snapshotData.template_structure.chartArea && (
+                    <div
+                      className="absolute"
+                      style={{
+                        left: snapshotData.template_structure.chartArea.x,
+                        top: snapshotData.template_structure.chartArea.y,
+                        width: snapshotData.template_structure.chartArea.width,
+                        height: snapshotData.template_structure.chartArea.height,
+                      }}
+                    >
+                      <canvas ref={canvasRef} className="w-full h-full" />
+                    </div>
+                  )}
+
+                  {/* Decoration Shapes Layer */}
+                  <DecorationShapeRenderer
+                    containerWidth={snapshotData.template_structure.width || 800}
+                    containerHeight={snapshotData.template_structure.height || 600}
+                    readOnly={true}
+                    shapes={snapshotData.chartConfig?.decorationShapes || snapshotData.template_structure?.decorations || []}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="absolute inset-0 p-3.5 flex items-center justify-center w-full h-full bg-white/95">
+                <canvas ref={canvasRef} className="w-full h-full max-h-full max-w-full" />
+              </div>
+            )
           ) : (
             !isLoading && (
               <div className="relative z-10 p-4 bg-white rounded-xl shadow-sm border border-gray-100">

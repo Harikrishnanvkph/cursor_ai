@@ -998,14 +998,17 @@ interface DecorationShapeRendererProps {
   panMode?: boolean
   gridSize?: number
   readOnly?: boolean
+  shapes?: DecorationShape[]
 }
 
-export function DecorationShapeRenderer({ containerWidth, containerHeight, panMode, gridSize = 0, readOnly = false }: DecorationShapeRendererProps) {
+export function DecorationShapeRenderer({ containerWidth, containerHeight, panMode, gridSize = 0, readOnly = false, shapes: propsShapes }: DecorationShapeRendererProps) {
+  const storeState = useDecorationStore()
+  const shapes = propsShapes || storeState.shapes
   const {
-    shapes, selectedShapeId, selectedShapeIds, drawingMode, globalShapeSettings,
+    selectedShapeId, selectedShapeIds, drawingMode, globalShapeSettings,
     setSelectedShapeId, setSelectedShapeIds, toggleShapeSelection, clearMultiSelect,
     setDrawingMode, addShape, updateShape
-  } = useDecorationStore()
+  } = storeState
 
   const [hoveredShapeId, setHoveredShapeId] = useState<string | null>(null)
   const [drawingInProgress, setDrawingInProgress] = useState<DrawingState | null>(null)

@@ -68,6 +68,7 @@ interface TemplateChartPreviewProps {
   onTabChange?: (tab: string) => void
   onNewChart?: () => void
   readOnly?: boolean
+  zoomPan?: any
 }
 
 export function TemplateChartPreview({
@@ -78,7 +79,8 @@ export function TemplateChartPreview({
   activeTab,
   onTabChange,
   onNewChart,
-  readOnly = false
+  readOnly = false,
+  zoomPan
 }: TemplateChartPreviewProps) {
   const canvasBgType = useUIStore(s => s.canvasBgType);
   const canvasBgColor = useUIStore(s => s.canvasBgColor);
@@ -171,13 +173,25 @@ export function TemplateChartPreview({
   const rightSidebarPanelRef = useRef<HTMLDivElement>(null)
   const exportCanvasRef = useRef<HTMLDivElement>(null)
 
-  const [zoom, setZoom] = useState(1)
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
-  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
+  const [localZoom, setLocalZoom] = useState(1)
+  const [localIsDragging, setLocalIsDragging] = useState(false)
+  const [localDragStart, setLocalDragStart] = useState({ x: 0, y: 0 })
+  const [localPanOffset, setLocalPanOffset] = useState({ x: 0, y: 0 })
   const [showGuides, setShowGuides] = useState(false)
   const effectiveShowGuides = !readOnly && showGuides
-  const [panMode, setPanMode] = useState(false)
+  const [localPanMode, setLocalPanMode] = useState(false)
+
+  // Integrate external zoomPan if available
+  const zoom = zoomPan ? zoomPan.zoom : localZoom
+  const setZoom = zoomPan ? zoomPan.setZoom : setLocalZoom
+  const isDragging = zoomPan ? zoomPan.isDragging : localIsDragging
+  const setIsDragging = zoomPan ? zoomPan.setIsDragging : setLocalIsDragging
+  const dragStart = zoomPan ? zoomPan.dragStart : localDragStart
+  const setDragStart = zoomPan ? zoomPan.setDragStart : setLocalDragStart
+  const panOffset = zoomPan ? zoomPan.panOffset : localPanOffset
+  const setPanOffset = zoomPan ? zoomPan.setPanOffset : setLocalPanOffset
+  const panMode = zoomPan ? zoomPan.panMode : localPanMode
+  const setPanMode = zoomPan ? zoomPan.setPanMode : setLocalPanMode
 
   // Fullscreen state
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -369,15 +383,15 @@ export function TemplateChartPreview({
 
 
   // Handle zoom controls
-  const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.1, 3))
-  const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.1, 0.1))
-  const handleResetZoom = () => {
+  const handleZoomIn = zoomPan ? zoomPan.handleZoomIn : () => setZoom(prev => Math.min(prev + 0.1, 3))
+  const handleZoomOut = zoomPan ? zoomPan.handleZoomOut : () => setZoom(prev => Math.max(prev - 0.1, 0.1))
+  const handleResetZoom = zoomPan ? zoomPan.handleResetZoom : () => {
     setZoom(1)
     setPanOffset({ x: 0, y: 0 })
   }
 
   // Handle mouse/touch events for panning
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handleMouseDown = zoomPan ? zoomPan.handleMouseDown : (e: React.MouseEvent) => {
     // Only allow panning when pan mode is active
     if (!panMode) {
       return
@@ -396,7 +410,7 @@ export function TemplateChartPreview({
     e.stopPropagation() // Prevent event bubbling
   }
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const handleMouseMove = zoomPan ? zoomPan.handleMouseMove : (e: React.MouseEvent) => {
     if (isDragging) {
       setPanOffset({
         x: e.clientX - dragStart.x,
@@ -405,7 +419,7 @@ export function TemplateChartPreview({
     }
   }
 
-  const handleMouseUp = () => {
+  const handleMouseUp = zoomPan ? zoomPan.handleMouseUp : () => {
     setIsDragging(false)
   }
 
@@ -501,7 +515,6 @@ export function TemplateChartPreview({
     }
   }
 
-  // Calculate template dimensions and scaling
   const getTemplateDimensions = () => {
     if (renderedFormat) {
       const formatW = renderedFormat.skeleton.dimensions.width
@@ -510,12 +523,12 @@ export function TemplateChartPreview({
       const containerWidth = containerRef.current?.clientWidth || 800
       const containerHeight = containerRef.current?.clientHeight || 600
       const padding = 40
-      const availableWidth = containerWidth - padding
-      const availableHeight = containerHeight - padding
+      const availableWidth = Math.max(10, containerWidth - padding)
+      const availableHeight = Math.max(10, containerHeight - padding)
 
       const scaleX = availableWidth / formatW
       const scaleY = availableHeight / formatH
-      const baseScale = Math.min(scaleX, scaleY, 1)
+      const baseScale = Math.max(0.001, Math.min(scaleX, scaleY, 1))
 
       return {
         width: formatW,
@@ -532,12 +545,12 @@ export function TemplateChartPreview({
 
     // Calculate scale to fit template in container with some padding
     const padding = 40
-    const availableWidth = containerWidth - padding
-    const availableHeight = containerHeight - padding
+    const availableWidth = Math.max(10, containerWidth - padding)
+    const availableHeight = Math.max(10, containerHeight - padding)
 
     const scaleX = availableWidth / template.width
     const scaleY = availableHeight / template.height
-    const baseScale = Math.min(scaleX, scaleY, 1) // Don't scale up beyond original size
+    const baseScale = Math.max(0.001, Math.min(scaleX, scaleY, 1)) // Don't scale up beyond original size
 
     return {
       width: template.width,
@@ -972,7 +985,7 @@ export function TemplateChartPreview({
   };
 
   return (
-    <div className="flex flex-col h-full" ref={fullscreenContainerRef}>
+    <div className="flex flex-col h-full w-full" ref={fullscreenContainerRef}>
       {/* Fullscreen overlay */}
       {isFullscreen && (
         <div className="fixed inset-0 bg-white z-40" />
@@ -1242,7 +1255,9 @@ export function TemplateChartPreview({
       <div className="flex-1 overflow-hidden">
         <div
           ref={containerRef}
-          className={`relative w-full h-full overflow-auto border rounded-lg shadow-sm flex items-center justify-center transition-colors${isFullscreen ? ' fixed inset-4 z-50 m-0' : ''}`}
+          className={`relative w-full h-full ${
+            readOnly ? 'overflow-hidden border-none shadow-none' : 'overflow-auto border rounded-lg shadow-sm'
+          } flex items-center justify-center transition-colors${isFullscreen ? ' fixed inset-4 z-50 m-0' : ''}`}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
@@ -1270,8 +1285,7 @@ export function TemplateChartPreview({
               style={{
                 width: width,
                 height: height,
-                zoom: scale,
-                transform: `translate(${panOffset.x / scale}px, ${panOffset.y / scale}px)`,
+                transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${scale})`,
                 transformOrigin: 'top left'
               }}
             >
