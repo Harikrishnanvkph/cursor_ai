@@ -281,29 +281,75 @@ import {
 export interface ChartGeneratorProps {
   className?: string;
   devicePixelRatioMultiplier?: number;
+  /** When provided, use this data instead of reading from the global chart store */
+  dataOverride?: { labels: string[]; datasets: any[] };
+  /** When provided, use this config instead of reading from the global chart store */
+  configOverride?: Record<string, any>;
+  /** When provided, use this chart type instead of reading from the global chart store */
+  typeOverride?: string;
+  /** When true, disables interactive features (context menus, resize handlers, hydration gate, etc.) */
+  readOnly?: boolean;
+  /** Optional override for chart mode in readOnly preview */
+  chartModeOverride?: 'single' | 'grouped';
+  /** When true, forces templates/formats layout behavior (responsive canvas inside scaled zone) */
+  isTemplateOrFormat?: boolean;
 }
 
-export const ChartGenerator = memo(function ChartGenerator({ className = "", devicePixelRatioMultiplier = 1 }: ChartGeneratorProps) {
+export const ChartGenerator = memo(function ChartGenerator({ className = "", devicePixelRatioMultiplier = 1, dataOverride, configOverride, typeOverride, readOnly = false, chartModeOverride, isTemplateOrFormat = false }: ChartGeneratorProps) {
   // Granular hooks to prevent unnecessary re-renders
-  const chartConfig = useChartConfig();
-  const chartData = useChartData();
-  const chartType = useChartType();
-  const legendFilter = useLegendFilter();
-  const fillArea = useFillArea();
-  const fillPoints = useFillPoints();
-  const showBorder = useShowBorder();
-  const showImages = useShowImages();
-  const chartMode = useChartMode();
+  // When overrides are provided, use them; otherwise read from store
+  const storeChartConfig = useChartConfig();
+  const storeChartData = useChartData();
+  const storeChartType = useChartType();
+  const chartConfig = configOverride ?? storeChartConfig;
+  const chartData = dataOverride ?? storeChartData;
+  const chartType = typeOverride ?? storeChartType;
+  
+  const storeLegendFilter = useLegendFilter();
+  const storeFillArea = useFillArea();
+  const storeFillPoints = useFillPoints();
+  const storeShowBorder = useShowBorder();
+  const storeShowImages = useShowImages();
+  const storeChartMode = useChartMode();
   const activeDatasetIndex = useActiveDatasetIndex();
-  const uniformityMode = useUniformityMode();
+  const storeUniformityMode = useUniformityMode();
   const activeGroupId = useActiveGroupId();
   const groups = useChartGroups();
 
+  // Use local overrides in readOnly mode to prevent state leakage from the active editor store
+  const legendFilter = readOnly || configOverride
+    ? { datasets: {}, slices: {} }
+    : storeLegendFilter;
+
+  const fillArea = readOnly || configOverride
+    ? (chartConfig?.visualSettings?.fillArea ?? true)
+    : storeFillArea;
+
+  const fillPoints = readOnly || configOverride
+    ? (chartConfig?.visualSettings?.fillPoints !== false)
+    : storeFillPoints;
+
+  const showBorder = readOnly || configOverride
+    ? (chartConfig?.visualSettings?.showBorder ?? true)
+    : storeShowBorder;
+
+  const showImages = readOnly || configOverride
+    ? (chartConfig?.visualSettings?.showImages ?? true)
+    : storeShowImages;
+
+  const chartMode = readOnly || configOverride
+    ? (chartModeOverride ?? chartConfig?.mode ?? (chartData?.datasets?.length > 1 ? 'grouped' : 'single'))
+    : storeChartMode;
+
+  const uniformityMode = readOnly || configOverride
+    ? (chartConfig?.visualSettings?.uniformityMode ?? 'uniform')
+    : storeUniformityMode;
 
   // When rendered inside a template or format, force responsive mode
   // so the chart always fills its container zone regardless of its own fixed dimensions.
   const editorMode = useTemplateStore(s => s.editorMode);
-  const isInsideTemplateOrFormat = editorMode === 'template';
+  // template/format mode is active when specified by prop or in template editor mode
+  const isInsideTemplateOrFormat = isTemplateOrFormat || editorMode === 'template';
 
 
 
@@ -332,9 +378,11 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
   // Prevents the chart from rendering until the chart store has finished hydrating
   // from localStorage. Without this, the component renders first with empty/default
   // state, then re-renders with hydrated data — causing a visible double-load flicker.
-  const [storeHydrated, setStoreHydrated] = useState(false);
-  const initialRenderRef = useRef(true);
+  // In readOnly mode, data is provided via props so hydration isn't needed.
+  const [storeHydrated, setStoreHydrated] = useState(readOnly ? true : false);
+  const initialRenderRef = useRef(!readOnly);
   useEffect(() => {
+    if (readOnly) return; // Skip hydration gate when data is provided directly
     // Check if already hydrated (can happen if persist completes synchronously)
     const alreadyHydrated = (useChartStore.persist as any)?.hasHydrated?.();
     if (alreadyHydrated) {
@@ -381,8 +429,9 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
     currentValue: 0
   });
 
-  // Mobile detection
+  // Mobile detection — skip in readOnly mode to avoid unnecessary listeners
   useEffect(() => {
+    if (readOnly) return;
     const check = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth <= 576);
     check();
     console.log('Adding Resize event listener')
@@ -391,7 +440,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
       console.log('Removing Resize event listener')
       window.removeEventListener('resize', check);
     }
-  }, []);
+  }, [readOnly]);
 
   // Keep refs in sync with latest values (runs every render but does no real work)
   useEffect(() => {
@@ -400,37 +449,46 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
     stateRef.current = { chartData } as any;
   });
 
-  // Register chart ref globally
+  // Register chart ref globally — skip in readOnly mode to avoid overwriting editor's chart ref
   useEffect(() => {
+    if (readOnly) return;
     setGlobalChartRef(chartRef);
-  }, [setGlobalChartRef]);
+  }, [setGlobalChartRef, readOnly]);
 
 
 
 
   // Get enabled datasets (respect single/grouped mode and legendFilter)
-  const enabledDatasets = chartMode === 'single'
-    ? chartData.datasets.filter((_, i) => i === activeDatasetIndex)
-    : chartData.datasets
-      .map((ds, i) => (legendFilter.datasets[i] === false ? null : ds))
-      .filter((ds): ds is typeof chartData.datasets[number] => ds !== null);
+  // In readOnly mode (tile preview), skip all filtering and use data as-is
+  const enabledDatasets = readOnly
+    ? chartData.datasets
+    : chartMode === 'single'
+      ? chartData.datasets.filter((_, i) => i === activeDatasetIndex)
+      : chartData.datasets
+        .map((ds, i) => (legendFilter.datasets[i] === false ? null : ds))
+        .filter((ds): ds is typeof chartData.datasets[number] => ds !== null);
 
   // Filter datasets based on mode and active group
-  const modeFilteredDatasets = enabledDatasets.filter(dataset => {
-    if (dataset.mode) {
-      if (dataset.mode !== chartMode) return false;
+  // In readOnly mode, skip mode/group filtering
+  const modeFilteredDatasets = readOnly
+    ? enabledDatasets
+    : enabledDatasets.filter(dataset => {
+        if (dataset.mode) {
+          if (dataset.mode !== chartMode) return false;
 
-      // For grouped mode, also filter by active group
-      if (chartMode === 'grouped' && dataset.groupId !== activeGroupId) {
-        return false;
-      }
-      return true;
-    }
-    return true;
-  });
+          // For grouped mode, also filter by active group
+          if (chartMode === 'grouped' && dataset.groupId !== activeGroupId) {
+            return false;
+          }
+          return true;
+        }
+        return true;
+      });
 
   // Slice-level visibility (for pie/doughnut/polarArea) - respect legendFilter
+  // In readOnly mode, all slices are visible
   const isSliceVisible = (index: number): boolean => {
+    if (readOnly) return true;
     return (legendFilter.slices[index] !== false);
   };
 
@@ -1383,6 +1441,21 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
   // Apply the parsing to the options
   appliedOptions = parseCallbacks(appliedOptions);
 
+  // In readOnly mode (tile preview), force-disable tooltips, animations, and responsive
+  // (responsive: false because CSS transform: scale() causes ResizeObserver to report
+  // the visual/post-transform size, not the layout size, making Chart.js render at the wrong size)
+  if (readOnly) {
+    appliedOptions = {
+      ...appliedOptions,
+      animation: false,
+      responsive: true,
+      plugins: {
+        ...appliedOptions.plugins,
+        tooltip: { ...(appliedOptions.plugins?.tooltip || {}), enabled: false },
+      },
+    };
+  }
+
   // Context menu handlers
   const handleNativeContextMenu = (event: MouseEvent) => {
 
@@ -1632,8 +1705,9 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
         <div
           className={`h-full w-full ${isResponsive ? '' : 'flex items-start justify-center'} relative`}
           style={{
-            ...(!isMobile && isResponsive ? { minHeight: 300, minWidth: 400, height: '100%', width: '100%' } : { height: '100%', width: '100%' }),
-            ...chartBorderStyles
+            ...(!isMobile && isResponsive && !readOnly ? { minHeight: 300, minWidth: 400, height: '100%', width: '100%' } : { height: '100%', width: '100%' }),
+            ...chartBorderStyles,
+            ...(readOnly ? { pointerEvents: 'none' as const } : {})
           }}
         >
           {getBackgroundLayers()}
@@ -1654,8 +1728,8 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
               maxWidth: '100%',
               maxHeight: '100%',
             }}
-            onMouseLeave={() => setHoveredDatasetIndex(null)}
-            onContextMenu={(e) => handleNativeContextMenu(e.nativeEvent as MouseEvent)}
+            onMouseLeave={() => !readOnly && setHoveredDatasetIndex(null)}
+            onContextMenu={(e) => !readOnly && handleNativeContextMenu(e.nativeEvent as MouseEvent)}
           >
             {chartConfig.dynamicDimension ? (
               <ResizableChartArea>
@@ -1668,6 +1742,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
                     'data-debug-width': chartConfig.width,
                     'data-debug-height': chartConfig.height
                   })}
+                  {...(readOnly && (isInsideTemplateOrFormat || !isResponsive) ? { width: isInsideTemplateOrFormat ? 800 : chartWidth, height: isInsideTemplateOrFormat ? 600 : chartHeight } : {})}
                   options={{
                     ...appliedOptions,
                     devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio * devicePixelRatioMultiplier : 1,
@@ -1675,6 +1750,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
                     rotation: chartType === 'gauge' ? (appliedOptions.rotation ?? 270) : appliedOptions.rotation,
                     responsive: true,
                     maintainAspectRatio: false,
+                    ...(readOnly ? { resizeDelay: 0 } : {}),
                     layout: {
                       padding: (globalCustomLabelsConfig.anchor === 'callout') ? 60 : (appliedOptions.layout?.padding || 0)
                     },
@@ -1935,6 +2011,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
                     'data-debug-width': chartConfig.width,
                     'data-debug-height': chartConfig.height
                   })}
+                  {...(readOnly && (isInsideTemplateOrFormat || !isResponsive) ? { width: isInsideTemplateOrFormat ? 800 : chartWidth, height: isInsideTemplateOrFormat ? 600 : chartHeight } : {})}
                   options={{
                     ...appliedOptions,
                     devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio * devicePixelRatioMultiplier : 1,
@@ -2260,8 +2337,8 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
 
 
 
-      {/* Slice Color Context Menu */}
-      <SliceColorPickerPopover
+      {/* Slice Color Context Menu — skip in readOnly mode */}
+      {!readOnly && <SliceColorPickerPopover
         isOpen={sliceContextMenu.isOpen}
         x={sliceContextMenu.x}
         y={sliceContextMenu.y}
@@ -2412,7 +2489,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
             data: newData
           });
         }}
-      />
+      />}
     </div>
   );
 });

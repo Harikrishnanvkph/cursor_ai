@@ -1299,6 +1299,7 @@ export function TemplateChartPreview({
                     zoomLevel={scale}
                     interactive={!readOnly}
                     panMode={panMode}
+                    forceRealChart={true}
                   />
                   {/* Decoration Shapes Layer (format mode) */}
                   <DecorationShapeRenderer

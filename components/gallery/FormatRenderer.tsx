@@ -17,6 +17,7 @@ import { sanitizeHTML, sanitizeSVG } from "@/lib/utils/sanitize"
  */
 
 import React, { useMemo, useRef, useCallback, useEffect, useState } from "react"
+
 import type {
   RenderedFormat,
   RenderedZone,
@@ -50,6 +51,8 @@ interface FormatRendererProps {
   forceRealChart?: boolean
   /** The actual optical zoom level (used for Chart devicePixelRatio) */
   zoomLevel?: number
+  /** Force rendering the actual ChartJS canvas locally instead of using ChartGenerator */
+  renderLocalCanvas?: boolean
 }
 
 export function FormatRenderer({
@@ -60,6 +63,7 @@ export function FormatRenderer({
   panMode = false,
   forceRealChart = false,
   zoomLevel = 1,
+  renderLocalCanvas = false,
 }: FormatRendererProps) {
   const { skeleton, renderedZones, colorPalette } = rendered
   const { width, height } = skeleton.dimensions
@@ -103,6 +107,7 @@ export function FormatRenderer({
             interactive={interactive}
             forceRealChart={forceRealChart}
             zoomLevel={zoomLevel}
+            renderLocalCanvas={renderLocalCanvas}
           />
         ))}
 
@@ -152,9 +157,10 @@ interface ZoneViewProps {
   interactive?: boolean
   forceRealChart?: boolean
   zoomLevel?: number
+  renderLocalCanvas?: boolean
 }
 
-function ZoneView({ renderedZone, scale, palette, canvasWidth, canvasHeight, interactive, forceRealChart, zoomLevel }: ZoneViewProps) {
+function ZoneView({ renderedZone, scale, palette, canvasWidth, canvasHeight, interactive, forceRealChart, zoomLevel, renderLocalCanvas }: ZoneViewProps) {
   const { zone } = renderedZone
 
   // Background zones don't need position — they fill the canvas
@@ -231,7 +237,7 @@ function ZoneView({ renderedZone, scale, palette, canvasWidth, canvasHeight, int
       content = <TextZoneContent renderedZone={renderedZone} scale={scale} interactive={!!interactive} />
       break
     case 'chart':
-      content = <ChartZoneView renderedZone={renderedZone} scale={scale} style={{}} palette={palette} interactive={interactive} forceRealChart={forceRealChart} zoomLevel={zoomLevel} />
+      content = <ChartZoneView renderedZone={renderedZone} scale={scale} style={{}} palette={palette} interactive={interactive} forceRealChart={forceRealChart} zoomLevel={zoomLevel} renderLocalCanvas={renderLocalCanvas} />
       break
     case 'stat':
       content = <StatZoneContent renderedZone={renderedZone} scale={scale} interactive={!!interactive} />
@@ -645,7 +651,16 @@ function StatZoneContent({ renderedZone, scale, interactive }: {
 
 import { ChartGenerator } from "@/lib/chart_generator"
 
-function ChartZoneView({ renderedZone, scale, style, palette, interactive, forceRealChart, zoomLevel = 1 }: {
+function ChartZoneView({
+  renderedZone,
+  scale,
+  style,
+  palette,
+  interactive,
+  forceRealChart,
+  zoomLevel = 1,
+  renderLocalCanvas = false,
+}: {
   renderedZone: RenderedZone
   scale: number
   style: React.CSSProperties
@@ -653,12 +668,12 @@ function ChartZoneView({ renderedZone, scale, style, palette, interactive, force
   interactive?: boolean
   forceRealChart?: boolean
   zoomLevel?: number
+  renderLocalCanvas?: boolean
 }) {
   const chartType = renderedZone.resolvedChartType || 'bar'
   const data = renderedZone.resolvedChartData
+  const config = renderedZone.resolvedChartConfig
 
-  // For preview we render a simplified chart representation
-  // Full Chart.js rendering is too heavy for gallery thumbnails
   const containerStyle: React.CSSProperties = {
     width: '100%',
     height: '100%',
@@ -670,7 +685,24 @@ function ChartZoneView({ renderedZone, scale, style, palette, interactive, force
     overflow: 'hidden',
   }
 
-  // Interactive mode renders the actual Chart.js chart
+  // Render the full ChartGenerator with override props — gives exact fidelity
+  if (renderLocalCanvas) {
+    return (
+      <div style={{ ...containerStyle, padding: 0 }}>
+        <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+          <ChartGenerator
+            readOnly
+            dataOverride={data}
+            configOverride={config}
+            typeOverride={chartType}
+            isTemplateOrFormat={true}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  // Interactive mode renders the actual Chart.js chart (from global store)
   if (interactive || forceRealChart) {
     return (
       <div style={{ ...containerStyle, padding: 0 }}>

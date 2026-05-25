@@ -128,10 +128,24 @@ function BoardPageContent() {
     return colors[type] || "bg-[#8b949e]"
   }
 
+  // Filter conversations by active tab
+  const currentConversations = useMemo(() => {
+    if (activeTab === "templates") {
+      return conversations.filter(c => c.is_template_mode)
+    }
+    if (activeTab === "single") {
+      return conversations.filter(c => !c.is_template_mode && c.chart_mode !== 'grouped')
+    }
+    if (activeTab === "group") {
+      return conversations.filter(c => !c.is_template_mode && c.chart_mode === 'grouped')
+    }
+    return conversations.filter(c => !c.is_template_mode)
+  }, [conversations, activeTab])
+
   const typeDistribution = useMemo(() => {
     const typeCount: Record<string, number> = {}
     let total = 0
-    conversations.forEach(conv => {
+    currentConversations.forEach(conv => {
       const type = conv.snapshot?.chartType
       if (type) {
         typeCount[type] = (typeCount[type] || 0) + 1
@@ -147,21 +161,7 @@ function BoardPageContent() {
         color: getChartTypeDotColor(type)
       }))
       .sort((a, b) => b.count - a.count)
-  }, [conversations])
-
-  // Filter and sort conversations
-  const currentConversations = useMemo(() => {
-    if (activeTab === "templates") {
-      return conversations.filter(c => c.is_template_mode)
-    }
-    if (activeTab === "single") {
-      return conversations.filter(c => !c.is_template_mode && c.chart_mode !== 'grouped')
-    }
-    if (activeTab === "group") {
-      return conversations.filter(c => !c.is_template_mode && c.chart_mode === 'grouped')
-    }
-    return conversations.filter(c => !c.is_template_mode)
-  }, [conversations, activeTab])
+  }, [currentConversations])
 
   const filteredConversations = useMemo(() => {
     let filtered = currentConversations.filter(conv => {
@@ -221,11 +221,14 @@ function BoardPageContent() {
 
   // Quick stats for header
   const quickStats = useMemo(() => {
-    const total = conversations.length
+    const total = currentConversations.length
     const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
-    const thisWeek = conversations.filter(conv => conv.timestamp > weekAgo).length
-    return { total, thisWeek }
-  }, [conversations])
+    const thisWeek = currentConversations.filter(conv => conv.timestamp > weekAgo).length
+    const fourWeeksAgo = Date.now() - 28 * 24 * 60 * 60 * 1000
+    const lastMonth = currentConversations.filter(conv => conv.timestamp > fourWeeksAgo).length
+    const avgPerWeek = Math.round(lastMonth / 4)
+    return { total, thisWeek, avgPerWeek }
+  }, [currentConversations])
 
 
 
@@ -665,7 +668,7 @@ function BoardPageContent() {
                 <CardHeader className="py-3 px-4 border-b border-zinc-100">
                   <CardTitle className="text-xs font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-2">
                     <LayoutDashboard className="h-3.5 w-3.5 text-violet-500" />
-                    About Dashboard
+                    {activeTab === 'templates' ? 'About Templates' : activeTab === 'group' ? 'About Grouped Charts' : 'About Single Charts'}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 space-y-3">
@@ -674,21 +677,21 @@ function BoardPageContent() {
                       <BarChart2 className="h-4 w-4 text-violet-500" />
                       Total Created
                     </span>
-                    <span className="font-semibold text-zinc-900">{conversations.length} charts</span>
+                    <span className="font-semibold text-zinc-900">{quickStats.total} {activeTab === 'templates' ? 'templates' : 'charts'}</span>
                   </div>
                   <div className="flex items-center justify-between text-xs text-zinc-600">
                     <span className="flex items-center gap-2">
                       <TrendingUp className="h-4 w-4 text-violet-500" />
                       Active this week
                     </span>
-                    <span className="font-semibold text-zinc-900">{quickStats.thisWeek} charts</span>
+                    <span className="font-semibold text-zinc-900">{quickStats.thisWeek} {activeTab === 'templates' ? 'templates' : 'charts'}</span>
                   </div>
                   <div className="flex items-center justify-between text-xs text-zinc-600">
                     <span className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-violet-500" />
                       Weekly Average
                     </span>
-                    <span className="font-semibold text-zinc-900">{conversations.length > 0 ? Math.round(conversations.length / 4) : 0} avg</span>
+                    <span className="font-semibold text-zinc-900">{quickStats.avgPerWeek} avg</span>
                   </div>
                 </CardContent>
               </Card>
@@ -698,7 +701,7 @@ function BoardPageContent() {
                 <Card className="border border-zinc-200 bg-white shadow-none rounded-lg">
                   <CardHeader className="py-3 px-4 border-b border-zinc-100">
                     <CardTitle className="text-xs font-bold uppercase tracking-wider text-zinc-500">
-                      Chart Types
+                      {activeTab === 'templates' ? 'Template Chart Types' : 'Chart Types'}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-4">

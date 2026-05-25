@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge"
 import { type Conversation, useHistoryStore } from "@/lib/history-store"
 import { useChartStore } from "@/lib/chart-store"
 import { useTemplateStore } from "@/lib/template-store"
+import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
+import { dataService } from "@/lib/data-service"
 import ChartGenerator from "@/lib/chart_generator"
 import { TemplateChartPreview } from "@/components/template-chart-preview"
 import { Chart as ChartJS } from "chart.js"
@@ -145,8 +147,47 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
           chartConfig: updatedConv.snapshot.chartConfig
         })
 
-        // If template mode, also load template into store
-        if (updatedConv.snapshot.is_template_mode && updatedConv.snapshot.template_structure) {
+        // Restore format mode if snapshot has format data
+        const chartConfig = updatedConv.snapshot.chartConfig as any;
+        if (chartConfig?.formatData) {
+          const { formatId, contentPackage, contextualImageUrl } = chartConfig.formatData;
+          const formatStore = useFormatGalleryStore.getState();
+          
+          let templateStructure = updatedConv.snapshot.template_structure;
+          if (!templateStructure || templateStructure.isFormatReference || !templateStructure.zones) {
+            setIsLoading(true);
+            try {
+              const formatRes = await dataService.getFormat(formatId);
+              if (formatRes.data && formatRes.data.skeleton) {
+                templateStructure = formatRes.data.skeleton;
+              }
+            } catch (e) {
+              console.error("Failed to fetch format skeleton in preview modal", e);
+            } finally {
+              setIsLoading(false);
+            }
+          }
+          
+          useFormatGalleryStore.setState({
+            selectedFormatId: formatId,
+            selectedChartType: updatedConv.snapshot.chartType,
+            contentPackage: contentPackage || formatStore.contentPackage,
+            contextualImageUrl: contextualImageUrl || formatStore.contextualImageUrl,
+            selectedFormatSnapshot: {
+              id: formatId,
+              name: 'Persisted Format',
+              skeleton: templateStructure,
+              dimensions: templateStructure?.dimensions || { width: 800, height: 600, aspect: '4:3', label: 'Default' }
+            } as any
+          });
+          
+          const templateStore = useTemplateStore.getState();
+          templateStore.clearAllTemplateState(); // Clear standard templates
+          templateStore.setEditorMode('template'); // Set to template mode for format rendering
+          templateStore.setGenerateMode('format'); // Set to format mode so Browse Formats button remains
+          templateStore.setTemplateSavedToCloud(true);
+        } else if (updatedConv.snapshot.is_template_mode && updatedConv.snapshot.template_structure) {
+          // If template mode, also load template into store
           const template = updatedConv.snapshot.template_structure
           const content = updatedConv.snapshot.template_content
 
@@ -172,9 +213,10 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
     return () => {
       if (isTemplateMode) {
         clearAllTemplateState()
+        useFormatGalleryStore.getState().clearSelection()
       }
     }
-  }, [liveConversation.snapshot, liveConversation.id, liveConversation.messages.length, activeTab, setFullChart, setCurrentTemplate, setEditorMode, clearAllTemplateState, restoreConversation])
+  }, [liveConversation.snapshot, liveConversation.id, liveConversation.messages.length, activeTab, setFullChart, setCurrentTemplate, setEditorMode, clearAllTemplateState, restoreConversation, isTemplateMode])
 
   const handleDownloadPNG = async () => {
     if (!liveConversation.snapshot?.chartData) {

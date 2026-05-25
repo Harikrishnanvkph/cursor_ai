@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -45,10 +45,11 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog"
-import { Chart as ChartJS } from "chart.js"
-import "@/lib/chart-registration"
-import { chartTypeMapping, type SupportedChartType } from "@/lib/chart-defaults"
+
 import { DecorationShapeRenderer } from "@/components/decorations/DecorationShapeRenderer"
+import { renderFormat } from "@/lib/variant-engine"
+import { FormatRenderer } from "@/components/gallery/FormatRenderer"
+import { ChartGenerator } from "@/lib/chart_generator"
 
 interface ChartCardProps {
   conversation: Conversation
@@ -80,9 +81,8 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
   const [isLoading, setIsLoading] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
 
+
   const containerRef = useRef<HTMLDivElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const chartInstanceRef = useRef<ChartJS | null>(null)
 
   // Intersection Observer — two-way: mount when entering viewport, unmount when leaving
   useEffect(() => {
@@ -111,16 +111,34 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
     // Already have cached data from a previous mount — skip entirely (no server call)
     if (snapshotData) return
 
-    // If conversation already contains full details, utilize immediately
+    // If conversation already contains full details, utilize immediately (fetching format skeleton if needed)
     if (conversation.snapshot && conversation.snapshot.chartData) {
-      setSnapshotData({
-        chartType: conversation.snapshot.chartType,
-        chartData: conversation.snapshot.chartData,
-        chartConfig: conversation.snapshot.chartConfig,
-        is_template_mode: conversation.snapshot.is_template_mode || false,
-        template_structure: conversation.snapshot.template_structure,
-        template_content: conversation.snapshot.template_content
-      })
+      const runImmediateLoad = async () => {
+        let templateStructure = conversation.snapshot.template_structure
+        // If this is a format, check if we need to load the full format skeleton
+        if (conversation.snapshot.chartConfig?.formatData?.formatId && (!templateStructure || templateStructure.isFormatReference || !templateStructure.zones)) {
+          setIsLoading(true)
+          try {
+            const formatRes = await dataService.getFormat(conversation.snapshot.chartConfig.formatData.formatId)
+            if (formatRes.data && formatRes.data.skeleton) {
+              templateStructure = formatRes.data.skeleton
+            }
+          } catch (e) {
+            console.error("Failed to fetch format skeleton on immediate load", e)
+          } finally {
+            setIsLoading(false)
+          }
+        }
+        setSnapshotData({
+          chartType: conversation.snapshot.chartType,
+          chartData: conversation.snapshot.chartData,
+          chartConfig: conversation.snapshot.chartConfig,
+          is_template_mode: conversation.snapshot.is_template_mode || false,
+          template_structure: templateStructure,
+          template_content: conversation.snapshot.template_content
+        })
+      }
+      runImmediateLoad()
       return
     }
 
@@ -133,12 +151,25 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
           throw new Error(response.error)
         }
         if (response.data) {
+          let templateStructure = response.data.template_structure
+          // If this is a format, load the format skeleton if not already loaded
+          if (response.data.chart_config?.formatData?.formatId) {
+            try {
+              const formatRes = await dataService.getFormat(response.data.chart_config.formatData.formatId)
+              if (formatRes.data && formatRes.data.skeleton) {
+                templateStructure = formatRes.data.skeleton
+              }
+            } catch (e) {
+              console.error("Failed to fetch format skeleton in card", e)
+            }
+          }
+
           setSnapshotData({
             chartType: response.data.chart_type,
             chartData: response.data.chart_data,
             chartConfig: response.data.chart_config,
             is_template_mode: response.data.is_template_mode || false,
-            template_structure: response.data.template_structure,
+            template_structure: templateStructure,
             template_content: response.data.template_content
           })
         }
@@ -156,18 +187,46 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
   const [templateScale, setTemplateScale] = useState(1)
 
   useEffect(() => {
-    if (!containerRef.current || !snapshotData?.template_structure || viewMode !== "grid" || !isVisible) return
+    if (!containerRef.current || !snapshotData || viewMode !== "grid" || !isVisible) return
     
     const updateScale = () => {
-      if (!containerRef.current || !snapshotData?.template_structure) return
+      if (!containerRef.current || !snapshotData) return
       const containerWidth = containerRef.current.clientWidth
       const containerHeight = containerRef.current.clientHeight
       
-      const templateW = snapshotData.template_structure.width || 800
-      const templateH = snapshotData.template_structure.height || 600
+      let contentW: number, contentH: number
+
+      if (snapshotData.template_structure) {
+        // Template or format mode
+        const isFormat = !!snapshotData.template_structure.zones
+        contentW = isFormat 
+          ? snapshotData.template_structure.dimensions?.width || 800
+          : snapshotData.template_structure.width || 800
+        contentH = isFormat 
+          ? snapshotData.template_structure.dimensions?.height || 600
+          : snapshotData.template_structure.height || 600
+      } else {
+        // Plain chart mode
+        const isResponsive = snapshotData.chartConfig?.responsive !== false && !snapshotData.chartConfig?.manualDimensions;
+        if (isResponsive) {
+          contentW = 800
+          contentH = 600
+        } else {
+          const parseDim = (val: any, fallback: number): number => {
+            if (typeof val === 'number') return val;
+            if (typeof val === 'string') {
+              const parsed = parseInt(val, 10);
+              return isNaN(parsed) ? fallback : parsed;
+            }
+            return fallback;
+          };
+          contentW = parseDim(snapshotData.chartConfig?.width, 800)
+          contentH = parseDim(snapshotData.chartConfig?.height, 600)
+        }
+      }
       
-      const scaleX = containerWidth / templateW
-      const scaleY = containerHeight / templateH
+      const scaleX = containerWidth / contentW
+      const scaleY = containerHeight / contentH
       setTemplateScale(Math.min(scaleX, scaleY))
     }
 
@@ -183,83 +242,6 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
 
     return () => {
       resizeObserver.disconnect()
-    }
-  }, [snapshotData?.template_structure, viewMode, isVisible])
-
-  // ChartJS instance instantiation & cleanup — destroys when card leaves viewport, recreates on re-entry
-  useEffect(() => {
-    if (!canvasRef.current || !snapshotData || viewMode !== "grid" || !isVisible) {
-      // Destroy chart if scrolled off-screen
-      if (chartInstanceRef.current) {
-        chartInstanceRef.current.destroy()
-        chartInstanceRef.current = null
-      }
-      return
-    }
-
-    const ctx = canvasRef.current.getContext("2d")
-    if (!ctx) return
-
-    // Clean up any existing chart before creating a new one
-    if (chartInstanceRef.current) {
-      chartInstanceRef.current.destroy()
-      chartInstanceRef.current = null
-    }
-
-    try {
-      // Configure high-performance static rendering
-      const options = {
-        ...(snapshotData.chartConfig || {}),
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: false, // Turn off active animations for smooth scrolling
-        plugins: {
-          ...(snapshotData.chartConfig?.plugins || {}),
-          legend: { display: false },     // Hide legend in list card previews
-          tooltip: { enabled: false },    // Disable active mouse tooltips
-          datalabels: { display: false }, // Hide text values labels
-          title: { display: false },      // Hide title inside thumbnail to prevent squishing
-          subtitle: { display: false }    // Hide subtitle inside thumbnail to prevent squishing
-        },
-        scales: {
-          ...(snapshotData.chartConfig?.scales || {}),
-          x: { display: false, grid: { display: false } },
-          y: { display: false, grid: { display: false } }
-        }
-      }
-
-      const resolvedType = chartTypeMapping[snapshotData.chartType as SupportedChartType] || snapshotData.chartType;
-
-      const mappedDatasets = (snapshotData.chartData?.datasets || []).map((ds: any) => {
-        const mappedDs = { ...ds }
-        if (ds.type) {
-          mappedDs.type = chartTypeMapping[ds.type as SupportedChartType] || ds.type
-        }
-        if (ds.chartType) {
-          mappedDs.chartType = chartTypeMapping[ds.chartType as SupportedChartType] || ds.chartType
-        }
-        return mappedDs
-      })
-
-      const mappedChartData = {
-        ...snapshotData.chartData,
-        datasets: mappedDatasets
-      }
-
-      chartInstanceRef.current = new ChartJS(ctx, {
-        type: resolvedType as any,
-        data: mappedChartData as any,
-        options: options as any
-      })
-    } catch (err) {
-      console.warn("ChartJS preview rendering error:", err)
-    }
-
-    return () => {
-      if (chartInstanceRef.current) {
-        chartInstanceRef.current.destroy()
-        chartInstanceRef.current = null
-      }
     }
   }, [snapshotData, viewMode, isVisible])
 
@@ -401,6 +383,17 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
     })
   }
 
+  const getDimensionText = () => {
+    const config = snapshotData?.chartConfig ?? conversation.snapshot?.chartConfig;
+    if (!config) return "";
+    const isResp = config.responsive !== false && !config.manualDimensions;
+    if (isResp) return "Responsive";
+    
+    const w = String(config.width || "800").replace("px", "");
+    const h = String(config.height || "600").replace("px", "");
+    return `${w} × ${h}`;
+  };
+
   const getChartTypeColor = (type: string) => {
     const colors: Record<string, string> = {
       bar: "bg-violet-50 text-violet-750 border-violet-100",
@@ -421,6 +414,40 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
     conversation.snapshot?.is_template_mode ||
     snapshotData?.is_template_mode
   )
+
+  const isFormat = !!(
+    snapshotData?.template_structure?.zones ||
+    conversation.snapshot?.template_structure?.zones
+  )
+
+  const renderedFormat = useMemo(() => {
+    if (!isFormat || !snapshotData?.template_structure) return null
+    try {
+      const blueprint = {
+        id: 'card-format',
+        name: 'Card Format',
+        skeleton: snapshotData.template_structure
+      }
+      const contentPkg = snapshotData.chartConfig?.formatData?.contentPackage || snapshotData.template_content || {}
+      const ctxImage = snapshotData.chartConfig?.formatData?.contextualImageUrl || undefined
+
+      // Ensure the content package has the latest chart data and config from the snapshot.
+      // The stored contentPackage may be stale if the user modified chart options after it was created.
+      if (snapshotData.chartData) {
+        contentPkg.chartData = snapshotData.chartData
+      }
+      if (snapshotData.chartConfig) {
+        // Merge but exclude formatData to avoid circular references
+        const { formatData, ...cleanConfig } = snapshotData.chartConfig
+        contentPkg.chartConfig = cleanConfig
+      }
+
+      return renderFormat(blueprint as any, contentPkg, snapshotData.chartType, ctxImage)
+    } catch (err) {
+      console.error("Failed to render format in card", err)
+      return null
+    }
+  }, [isFormat, snapshotData])
 
   const getChartIcon = (sizeClass = "w-8 h-8") => {
     if (isTemplateMode) return <LayoutTemplate className={`${sizeClass} text-purple-500`} />;
@@ -472,9 +499,17 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                 {conversation.title}
               </h3>
               <div className="flex items-center gap-3 text-xs text-zinc-400 mt-1">
-                <div className="flex items-center gap-1.5">
-                  <Calendar className="h-3.5 w-3.5 text-zinc-400 shrink-0 align-middle" />
-                  <span className="leading-none">{formatDate(conversation.timestamp)}</span>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Calendar className="h-3.5 w-3.5 text-zinc-400 shrink-0 align-middle" />
+                    <span className="leading-none">{formatDate(conversation.timestamp)}</span>
+                  </div>
+                  {(snapshotData?.chartConfig || conversation.snapshot?.chartConfig) && (
+                    <>
+                      <span className="text-gray-300 shrink-0">•</span>
+                      <span className="truncate leading-none" title={getDimensionText()}>{getDimensionText()}</span>
+                    </>
+                  )}
                 </div>
                 {conversation.messages.length > 0 && (
                   <div className="flex items-center gap-1.5 border-l border-zinc-200 pl-3">
@@ -648,114 +683,191 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
             </div>
           )}
 
-          {snapshotData && !isLoading && !fetchError ? (
+          {isVisible && snapshotData && !isLoading && !fetchError ? (
             isTemplateMode && snapshotData.template_structure ? (
+              isFormat && renderedFormat ? (
+                <div
+                  className="absolute inset-0 overflow-hidden flex items-center justify-center bg-zinc-50 bg-[radial-gradient(#e4e4e7_1.2px,transparent_1.2px)] [background-size:12px_12px] p-4"
+                >
+                  {/* Scaled Real Format Wrapper */}
+                  <div
+                    className="relative origin-top-left shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-zinc-200 rounded-lg overflow-hidden"
+                    style={{
+                      width: snapshotData.template_structure.dimensions?.width || 800,
+                      height: snapshotData.template_structure.dimensions?.height || 600,
+                      transform: `scale(${templateScale})`,
+                      transformOrigin: 'top left',
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      marginTop: -((snapshotData.template_structure.dimensions?.height || 600) * templateScale) / 2,
+                      marginLeft: -((snapshotData.template_structure.dimensions?.width || 800) * templateScale) / 2,
+                    }}
+                  >
+                    <FormatRenderer
+                      rendered={renderedFormat}
+                      scale={1}
+                      className="w-full h-full"
+                      renderLocalCanvas={true}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className="absolute inset-0 overflow-hidden flex items-center justify-center bg-zinc-50 bg-[radial-gradient(#e4e4e7_1.2px,transparent_1.2px)] [background-size:12px_12px] p-4"
+                >
+                  {/* Scaled Real Template Wrapper */}
+                  <div
+                    className="relative origin-top-left shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-zinc-200 rounded-lg overflow-hidden"
+                    style={{
+                      width: snapshotData.template_structure.width || 800,
+                      height: snapshotData.template_structure.height || 600,
+                      transform: `scale(${templateScale})`,
+                      transformOrigin: 'top left',
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      marginTop: -((snapshotData.template_structure.height || 600) * templateScale) / 2,
+                      marginLeft: -((snapshotData.template_structure.width || 800) * templateScale) / 2,
+                    }}
+                  >
+                    {/* Real Background Layer */}
+                    {(() => {
+                      const bg = snapshotData.template_structure.background || { type: 'color', color: '#ffffff' };
+                      if (bg.type === 'color' || bg.type === undefined) {
+                        return <div className="absolute inset-0" style={{ backgroundColor: bg.color || '#ffffff', opacity: (bg.opacity ?? 100) / 100 }} />;
+                      }
+                      if (bg.type === 'gradient') {
+                        const color1 = bg.gradientColor1 || '#ffffff';
+                        const color2 = bg.gradientColor2 || '#000000';
+                        const direction = bg.gradientDirection || 'to right';
+                        const gradient = bg.gradientType === 'radial' 
+                          ? `radial-gradient(circle, ${color1}, ${color2})`
+                          : `linear-gradient(${direction}, ${color1}, ${color2})`;
+                        return <div className="absolute inset-0" style={{ backgroundImage: gradient, opacity: (bg.opacity ?? 100) / 100 }} />;
+                      }
+                      if (bg.type === 'image' && bg.imageUrl) {
+                        const size = bg.imageFit === 'fill' ? '100% 100%' : bg.imageFit === 'contain' ? 'contain' : 'cover';
+                        return <div className="absolute inset-0" style={{ backgroundImage: `url(${bg.imageUrl})`, backgroundSize: size, backgroundPosition: 'center', backgroundRepeat: 'no-repeat', opacity: (bg.opacity ?? 100) / 100 }} />;
+                      }
+                      return null;
+                    })()}
+
+                    {/* Real Text Area Zones */}
+                    {(snapshotData.template_structure.textAreas || [])
+                      .filter((ta: any) => ta.visible)
+                      .map((ta: any) => {
+                        const areaContent = snapshotData.template_content?.[ta.type];
+                        let contentText = ta.content || '';
+                        if (areaContent !== undefined) {
+                          if (Array.isArray(areaContent)) {
+                            const sameTypeAreas = snapshotData.template_structure.textAreas.filter((item: any) => item.type === ta.type);
+                            const index = sameTypeAreas.indexOf(ta);
+                            contentText = areaContent[index] || areaContent[0] || ta.content;
+                          } else {
+                            contentText = areaContent;
+                          }
+                        }
+                        
+                        return (
+                          <div
+                            key={ta.id}
+                            className="absolute overflow-hidden"
+                            style={{
+                              left: ta.position.x,
+                              top: ta.position.y,
+                              width: ta.position.width,
+                              height: ta.position.height,
+                              fontSize: `${ta.style?.fontSize || 16}px`,
+                              fontFamily: ta.style?.fontFamily,
+                              fontWeight: ta.style?.fontWeight,
+                              color: ta.style?.color,
+                              textAlign: ta.style?.textAlign,
+                              lineHeight: ta.style?.lineHeight || 1.2,
+                              padding: '4px',
+                              wordBreak: 'break-word',
+                            }}
+                            dangerouslySetInnerHTML={{ __html: contentText }}
+                          />
+                        );
+                      })}
+
+                    {/* Real Bounded Chart Zone */}
+                    {snapshotData.template_structure.chartArea && (
+                      <div
+                        className="absolute"
+                        style={{
+                          left: snapshotData.template_structure.chartArea.x,
+                          top: snapshotData.template_structure.chartArea.y,
+                          width: snapshotData.template_structure.chartArea.width,
+                          height: snapshotData.template_structure.chartArea.height,
+                        }}
+                      >
+                        <ChartGenerator
+                          readOnly
+                          dataOverride={snapshotData.chartData}
+                          configOverride={snapshotData.chartConfig}
+                          typeOverride={snapshotData.chartType}
+                          chartModeOverride={conversation.chart_mode}
+                          isTemplateOrFormat={true}
+                        />
+                      </div>
+                    )}
+
+                    {/* Decoration Shapes Layer */}
+                    <DecorationShapeRenderer
+                      containerWidth={snapshotData.template_structure.width || 800}
+                      containerHeight={snapshotData.template_structure.height || 600}
+                      readOnly={true}
+                      shapes={snapshotData.chartConfig?.decorationShapes || snapshotData.template_structure?.decorations || []}
+                    />
+                  </div>
+                </div>
+              )
+            ) : (
               <div
                 className="absolute inset-0 overflow-hidden flex items-center justify-center bg-zinc-50 bg-[radial-gradient(#e4e4e7_1.2px,transparent_1.2px)] [background-size:12px_12px] p-4"
               >
-                {/* Scaled Real Template Wrapper */}
-                <div
-                  className="relative origin-top-left shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-zinc-200 rounded-lg overflow-hidden"
-                  style={{
-                    width: snapshotData.template_structure.width || 800,
-                    height: snapshotData.template_structure.height || 600,
-                    transform: `scale(${templateScale})`,
-                    transformOrigin: 'top left',
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    marginTop: -((snapshotData.template_structure.height || 600) * templateScale) / 2,
-                    marginLeft: -((snapshotData.template_structure.width || 800) * templateScale) / 2,
-                  }}
-                >
-                  {/* Real Background Layer */}
-                  {(() => {
-                    const bg = snapshotData.template_structure.background || { type: 'color', color: '#ffffff' };
-                    if (bg.type === 'color' || bg.type === undefined) {
-                      return <div className="absolute inset-0" style={{ backgroundColor: bg.color || '#ffffff', opacity: (bg.opacity ?? 100) / 100 }} />;
+                {(() => {
+                  const parseDim = (val: any, fallback: number): number => {
+                    if (typeof val === 'number') return val;
+                    if (typeof val === 'string') {
+                      const parsed = parseInt(val, 10);
+                      return isNaN(parsed) ? fallback : parsed;
                     }
-                    if (bg.type === 'gradient') {
-                      const color1 = bg.gradientColor1 || '#ffffff';
-                      const color2 = bg.gradientColor2 || '#000000';
-                      const direction = bg.gradientDirection || 'to right';
-                      const gradient = bg.gradientType === 'radial' 
-                        ? `radial-gradient(circle, ${color1}, ${color2})`
-                        : `linear-gradient(${direction}, ${color1}, ${color2})`;
-                      return <div className="absolute inset-0" style={{ backgroundImage: gradient, opacity: (bg.opacity ?? 100) / 100 }} />;
-                    }
-                    if (bg.type === 'image' && bg.imageUrl) {
-                      const size = bg.imageFit === 'fill' ? '100% 100%' : bg.imageFit === 'contain' ? 'contain' : 'cover';
-                      return <div className="absolute inset-0" style={{ backgroundImage: `url(${bg.imageUrl})`, backgroundSize: size, backgroundPosition: 'center', backgroundRepeat: 'no-repeat', opacity: (bg.opacity ?? 100) / 100 }} />;
-                    }
-                    return null;
-                  })()}
+                    return fallback;
+                  };
 
-                  {/* Real Text Area Zones */}
-                  {(snapshotData.template_structure.textAreas || [])
-                    .filter((ta: any) => ta.visible)
-                    .map((ta: any) => {
-                      const areaContent = snapshotData.template_content?.[ta.type];
-                      let contentText = ta.content || '';
-                      if (areaContent !== undefined) {
-                        if (Array.isArray(areaContent)) {
-                          const sameTypeAreas = snapshotData.template_structure.textAreas.filter((item: any) => item.type === ta.type);
-                          const index = sameTypeAreas.indexOf(ta);
-                          contentText = areaContent[index] || areaContent[0] || ta.content;
-                        } else {
-                          contentText = areaContent;
-                        }
-                      }
-                      
-                      return (
-                        <div
-                          key={ta.id}
-                          className="absolute overflow-hidden"
-                          style={{
-                            left: ta.position.x,
-                            top: ta.position.y,
-                            width: ta.position.width,
-                            height: ta.position.height,
-                            fontSize: `${ta.style?.fontSize || 16}px`,
-                            fontFamily: ta.style?.fontFamily,
-                            fontWeight: ta.style?.fontWeight,
-                            color: ta.style?.color,
-                            textAlign: ta.style?.textAlign,
-                            lineHeight: ta.style?.lineHeight || 1.2,
-                            padding: '4px',
-                            wordBreak: 'break-word',
-                          }}
-                          dangerouslySetInnerHTML={{ __html: contentText }}
-                        />
-                      );
-                    })}
-
-                  {/* Real Bounded Chart Zone */}
-                  {snapshotData.template_structure.chartArea && (
+                  const isResponsive = snapshotData.chartConfig?.responsive !== false && !snapshotData.chartConfig?.manualDimensions;
+                  const chartW = isResponsive ? 800 : parseDim(snapshotData.chartConfig?.width, 800)
+                  const chartH = isResponsive ? 600 : parseDim(snapshotData.chartConfig?.height, 600)
+                  const safeScale = (!templateScale || isNaN(templateScale) || templateScale <= 0) ? 0.3 : templateScale
+                  return (
                     <div
-                      className="absolute"
+                      className="relative origin-top-left shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-zinc-200 rounded-lg overflow-hidden bg-white"
                       style={{
-                        left: snapshotData.template_structure.chartArea.x,
-                        top: snapshotData.template_structure.chartArea.y,
-                        width: snapshotData.template_structure.chartArea.width,
-                        height: snapshotData.template_structure.chartArea.height,
+                        width: chartW,
+                        height: chartH,
+                        transform: `scale(${safeScale})`,
+                        transformOrigin: 'top left',
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        marginTop: -(chartH * safeScale) / 2,
+                        marginLeft: -(chartW * safeScale) / 2,
                       }}
                     >
-                      <canvas ref={canvasRef} className="w-full h-full" />
+                      <ChartGenerator
+                        readOnly
+                        dataOverride={snapshotData.chartData}
+                        configOverride={snapshotData.chartConfig}
+                        typeOverride={snapshotData.chartType}
+                        chartModeOverride={conversation.chart_mode}
+                        isTemplateOrFormat={isResponsive}
+                      />
                     </div>
-                  )}
-
-                  {/* Decoration Shapes Layer */}
-                  <DecorationShapeRenderer
-                    containerWidth={snapshotData.template_structure.width || 800}
-                    containerHeight={snapshotData.template_structure.height || 600}
-                    readOnly={true}
-                    shapes={snapshotData.chartConfig?.decorationShapes || snapshotData.template_structure?.decorations || []}
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="absolute inset-0 p-3.5 flex items-center justify-center w-full h-full bg-white/95">
-                <canvas ref={canvasRef} className="w-full h-full max-h-full max-w-full" />
+                  )
+                })()}
               </div>
             )
           ) : (
@@ -793,9 +905,17 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                 conversation.snapshot?.chartType || "Unknown"
               )}
             </Badge>
-            <div className="flex items-center gap-1 text-[11px] text-gray-400 shrink-0">
-              <Calendar className="h-3 w-3" />
-              <span>{formatDate(conversation.timestamp)}</span>
+            <div className="flex items-center gap-1.5 text-[11px] text-gray-400 shrink-0 min-w-0">
+              <div className="flex items-center gap-1 shrink-0">
+                <Calendar className="h-3 w-3" />
+                <span>{formatDate(conversation.timestamp)}</span>
+              </div>
+              {(snapshotData?.chartConfig || conversation.snapshot?.chartConfig) && (
+                <>
+                  <span className="text-gray-300 shrink-0">•</span>
+                  <span className="truncate" title={getDimensionText()}>{getDimensionText()}</span>
+                </>
+              )}
             </div>
           </div>
 
