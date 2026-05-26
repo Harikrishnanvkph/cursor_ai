@@ -52,7 +52,9 @@ class DataService {
           error: errorMessage,
           errorData
         });
-        throw new Error(errorMessage);
+        const err = new Error(errorMessage);
+        (err as any).alreadyLogged = true;
+        throw err;
       }
 
       const data = await response.json();
@@ -72,8 +74,10 @@ class DataService {
       }
 
       return { data };
-    } catch (error) {
-      console.error(`API request failed: ${endpoint}`, error);
+    } catch (error: any) {
+      if (!error?.alreadyLogged) {
+        console.error(`API request failed: ${endpoint}`, error);
+      }
 
       // Provide more specific error messages
       let errorMessage = 'Unknown error';

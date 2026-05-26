@@ -52,7 +52,7 @@ import { renderFormat } from "@/lib/variant-engine"
 import { FormatRenderer } from "@/components/gallery/FormatRenderer"
 import { useDecorationStore } from "@/lib/stores/decoration-store"
 import { DecorationShapeRenderer } from "@/components/decorations/DecorationShapeRenderer"
-import { useChartStore } from "@/lib/chart-store"
+import { useChartStore, chartTypeMapping, type SupportedChartType } from "@/lib/chart-store"
 import { useTemplateStore } from "@/lib/template-store"
 import { getPatternCSS } from "@/lib/utils"
 import { ChartGenerator } from "@/lib/chart_generator"
@@ -495,13 +495,7 @@ export default function SharedChartPage() {
       }
 
       // Determine valid Chart.js type
-      let chartTypeForChart = chart.chart_type;
-      if (chart.chart_type === 'area') chartTypeForChart = 'line';
-      else if (chart.chart_type === 'stackedBar') chartTypeForChart = 'bar';
-      else if (chart.chart_type === 'horizontalBar' || chart.chart_type === 'horizontalBar3d') chartTypeForChart = 'bar';
-      else if (chart.chart_type === 'pie3d') chartTypeForChart = 'pie';
-      else if (chart.chart_type === 'doughnut3d') chartTypeForChart = 'doughnut';
-      else if (chart.chart_type === 'bar3d') chartTypeForChart = 'bar';
+      let chartTypeForChart = chartTypeMapping[chart.chart_type as SupportedChartType] || chart.chart_type;
       
       // Ensure scales are explicitly stacked if needed
       if (chart.chart_type === 'stackedBar') {
@@ -523,12 +517,7 @@ export default function SharedChartPage() {
           ...chart.chart_data,
           datasets: chart.chart_data.datasets.map((ds: any) => ({
             ...ds,
-            type: ds.type ? (
-              ds.type === 'bar3d' || ds.type === 'horizontalBar3d' ? 'bar' :
-              ds.type === 'pie3d' ? 'pie' :
-              ds.type === 'doughnut3d' ? 'doughnut' :
-              ds.type
-            ) : undefined
+            type: ds.type ? (chartTypeMapping[ds.type as SupportedChartType] || ds.type) : undefined
           }))
         },
         options: {

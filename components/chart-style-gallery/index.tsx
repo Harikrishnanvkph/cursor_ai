@@ -9,6 +9,7 @@ import { PresetCard } from "./preset-card"
 import { PresetFilters } from "./preset-filters"
 import type { ChartStylePreset } from "@/lib/chart-style-types"
 import { checkPresetCompatibility } from "@/lib/chart-style-engine"
+import { PresetPreviewDialog } from "./preset-preview-dialog"
 
 /** Number of presets to show initially and per "Show More" click */
 const PAGE_SIZE = 12
@@ -33,6 +34,16 @@ export function ChartStyleGallery() {
   // ── Progressive loading state ──────────────────────
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const [syncCooldown, setSyncCooldown] = useState(0)
+  const [showFilters, setShowFilters] = useState(true)
+  const [previewPreset, setPreviewPreset] = useState<ChartStylePreset | null>(null)
+
+  // Compute chart aspect ratio from dimensions for preview cards
+  const chartAspectRatio = useMemo(() => {
+    const w = (chartConfig as any)?.dimensions?.width
+    const h = (chartConfig as any)?.dimensions?.height
+    if (w && h && h > 0) return w / h
+    return 4 / 3 // Default fallback
+  }, [chartConfig])
 
   // Countdown timer for sync cooldown
   useEffect(() => {
@@ -73,9 +84,11 @@ export function ChartStyleGallery() {
     if (!isGalleryOpen) return
 
     const handleClickOutside = (e: MouseEvent) => {
-      // Don't close if clicking the Styles button itself (toggle handles that)
       const target = e.target as HTMLElement
+      // Don't close if clicking the Styles button itself (toggle handles that)
       if (target.closest('[data-styles-toggle]')) return
+      // Don't close if clicking inside a Dialog portal/content modal
+      if (target.closest('[role="dialog"]') || target.closest('[data-radix-portal]')) return
 
       if (panelRef.current && !panelRef.current.contains(target)) {
         closeGallery()
@@ -122,29 +135,37 @@ export function ChartStyleGallery() {
     const success = applyPreset(preset.id, !!preset.dimensions) // Apply dimensions if preset has them
 
     if (success) {
+      closeGallery()
       if (warnings.length > 0) {
         warnings.forEach(w => toast.info(w, { duration: 5000 }))
       }
     } else {
       toast.error("Failed to apply style preset.")
     }
-  }, [hasChartData, chartData, applyPreset])
+  }, [hasChartData, chartData, applyPreset, closeGallery])
 
   if (!isGalleryOpen) return null
 
   return (
     <div
       ref={panelRef}
-      className="absolute inset-y-0 right-0 w-[340px] bg-white border-l border-gray-200 shadow-xl z-30 flex flex-col"
+      className="absolute inset-0 bg-white border-l border-gray-200 shadow-xl z-[35] flex flex-col"
       style={{
-        animation: 'slideInFromRight 200ms ease-out forwards',
+        animation: 'slideInFromRight 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards',
       }}
     >
-      {/* Inline animation keyframes */}
+      {/* Inline styles for precise responsive breakpoints and animation */}
       <style>{`
         @keyframes slideInFromRight {
-          from { transform: translateX(100%); opacity: 0.5; }
-          to { transform: translateX(0); opacity: 1; }
+          from { transform: translate3d(100%, 0, 0); opacity: 0.9; }
+          to { transform: translate3d(0, 0, 0); opacity: 1; }
+        }
+
+        /* 2 columns on full-screen overlay for all viewports starting at 481px */
+        @media (min-width: 481px) {
+          .gallery-grid-responsive {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
         }
       `}</style>
 
@@ -156,12 +177,21 @@ export function ChartStyleGallery() {
           </div>
           <div>
             <h3 className="text-sm font-bold text-gray-900 leading-tight">Chart Gallery</h3>
-            <p className="text-[10px] text-gray-400 font-medium">
-              {filteredPresets.length} style{filteredPresets.length !== 1 ? 's' : ''} available
-            </p>
           </div>
         </div>
         <div className="flex items-center gap-1">
+          {/* Filter Toggle Button */}
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`p-1.5 rounded-lg transition-all border flex items-center justify-center ${
+              showFilters
+                ? 'bg-violet-50 text-violet-600 border-violet-200 shadow-sm'
+                : 'bg-white text-gray-400 border-gray-200 hover:bg-gray-50'
+            }`}
+            title={showFilters ? "Hide Filters" : "Show Filters"}
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+          </button>
           <button
             onClick={async () => {
               if (isLoading || syncCooldown > 0) return;
@@ -201,7 +231,7 @@ export function ChartStyleGallery() {
       )}
 
       {/* Filters */}
-      <PresetFilters />
+      {showFilters && <PresetFilters />}
 
       {/* Preset Grid */}
       <div className="flex-1 overflow-y-auto px-3 py-3">
@@ -214,7 +244,7 @@ export function ChartStyleGallery() {
           </div>
         ) : filteredPresets.length > 0 ? (
           <>
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-1 gallery-grid-responsive gap-2.5">
               {visiblePresets.map(preset => (
                 <PresetCard
                   key={preset.id}
@@ -222,9 +252,11 @@ export function ChartStyleGallery() {
                   isSelected={selectedPresetId === preset.id}
                   hasChartData={hasChartData}
                   onApply={() => handleApplyPreset(preset)}
+                  onPreview={() => setPreviewPreset(preset)}
                   chartData={hasChartData ? chartData : undefined}
                   chartConfig={hasChartData ? chartConfig : undefined}
                   chartType={chartType}
+                  chartAspectRatio={chartAspectRatio}
                 />
               ))}
             </div>
@@ -263,6 +295,17 @@ export function ChartStyleGallery() {
           </div>
         )}
       </div>
+
+      {/* Preset Preview Dialog — shared component */}
+      <PresetPreviewDialog
+        preset={previewPreset}
+        onClose={() => setPreviewPreset(null)}
+        onApply={handleApplyPreset}
+        hasChartData={hasChartData}
+        chartData={hasChartData ? chartData : undefined}
+        chartConfig={hasChartData ? chartConfig : undefined}
+        chartType={chartType}
+      />
     </div>
   )
 }

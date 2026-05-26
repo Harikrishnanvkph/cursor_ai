@@ -69,6 +69,20 @@ interface ChartStyleStore {
    * @returns true if applied successfully, false if preset not found
    */
   applyPreset: (presetId: string, applyDimensions?: boolean) => boolean
+
+  // ── Ephemeral Preset Editor State ─────
+  editPresetId: string | null
+  setEditPresetId: (id: string | null) => void
+  isBuiltInPreset: boolean
+  setIsBuiltInPreset: (isBuiltIn: boolean) => void
+  presetMetadata: {
+    name: string
+    description: string
+    category: PresetCategory
+    tags: string[]
+    isOfficial: boolean
+  } | null
+  setPresetMetadata: (metadata: any) => void
 }
 
 // ========================================
@@ -124,6 +138,14 @@ export const useChartStyleStore = create<ChartStyleStore>()(
   userPresets: [],
   isLoading: false,
   lastLoadedAt: null,
+
+  // ── Ephemeral Preset Editor State ─────
+  editPresetId: null,
+  setEditPresetId: (id) => set({ editPresetId: id }),
+  isBuiltInPreset: false,
+  setIsBuiltInPreset: (isBuiltIn) => set({ isBuiltInPreset: isBuiltIn }),
+  presetMetadata: null,
+  setPresetMetadata: (metadata) => set({ presetMetadata: metadata }),
 
   // ── Filters ───────────────────────────
   filters: { ...defaultFilters },

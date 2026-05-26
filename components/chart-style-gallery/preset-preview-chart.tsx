@@ -2,10 +2,19 @@
 
 import React, { useMemo, memo, useRef, useState, useEffect } from "react"
 import { Chart } from "react-chartjs-2"
+import "@/lib/chart-registration"
 import type { ChartStylePreset } from "@/lib/chart-style-types"
 import { applyPresetToChart } from "@/lib/chart-style-engine"
 import type { ExtendedChartData, ExtendedChartOptions } from "@/lib/chart-defaults"
-import { Palette } from "lucide-react"
+import { chartTypeMapping, type SupportedChartType } from "@/lib/chart-defaults"
+import { Palette, Loader2 } from "lucide-react"
+import dynamic from "next/dynamic"
+
+// Dynamic import to avoid SSG module resolution crashes on pages like /admin/presets
+const ChartGenerator = dynamic(
+  () => import("@/lib/chart_generator").then(mod => mod.ChartGenerator),
+  { ssr: false, loading: () => <div className="w-full h-full flex items-center justify-center"><Loader2 className="w-5 h-5 text-violet-500 animate-spin" /></div> }
+)
 
 /**
  * Fallback sample data — only used when no real chart data is available.
@@ -33,13 +42,17 @@ interface PresetPreviewChartProps {
 }
 
 /**
- * Real-data Chart.js preview that renders what the user's chart would
- * actually look like with a given preset applied.
+ * Real-data Chart preview that renders what the user's chart would actually
+ * look like with a given preset applied.
  *
- * Uses IntersectionObserver for lazy rendering — the Chart.js canvas is only
- * created when the card scrolls into the viewport.
+ * When real chart data is available, applies the preset and renders using
+ * ChartGenerator readOnly (same as board tiles) scaled-to-fit.
  *
- * When no user chart data is available, falls back to synthetic sample data.
+ * When no user chart data is available, falls back to synthetic sample data
+ * rendered with a lightweight react-chartjs-2 Chart instance.
+ *
+ * Uses IntersectionObserver for lazy rendering — the chart is only created
+ * when the card scrolls into the viewport.
  */
 export const PresetPreviewChart = memo(function PresetPreviewChart({
   preset,
@@ -49,11 +62,9 @@ export const PresetPreviewChart = memo(function PresetPreviewChart({
 }: PresetPreviewChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [isInView, setIsInView] = useState(false)
+  const [tileScale, setTileScale] = useState(0.3)
 
   // ── Two-way lazy loading via IntersectionObserver ──────────
-  // Creates Chart.js canvas when card enters viewport,
-  // destroys it when card leaves — keeps memory constant at ~25MB
-  // regardless of total preset count (scales to 200+).
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
@@ -62,226 +73,46 @@ export const PresetPreviewChart = memo(function PresetPreviewChart({
       ([entry]) => {
         setIsInView(entry.isIntersecting)
       },
-      { rootMargin: '150px' } // Pre-render 150px ahead for smooth scrolling
+      { rootMargin: '150px' }
     )
     observer.observe(el)
     return () => observer.disconnect()
   }, [])
 
-  // ── Build chart data ──────────────────────────────────────
-  const { previewData, previewOptions, resolvedType } = useMemo(() => {
+  // ── Build styled data by applying preset ──────────────────
+  const styledResult = useMemo(() => {
     const hasRealData = userChartData && userChartData.datasets?.length > 0
 
     if (hasRealData && userChartConfig) {
-      // ── REAL DATA PATH: Apply preset to actual user data ──
       try {
-        // Sample the data if too many points
         const sampledData = sampleChartData(userChartData, MAX_PREVIEW_POINTS)
 
         const result = applyPresetToChart(
           preset,
           sampledData,
           userChartConfig,
-          { applyDimensions: false }
+          { applyDimensions: !!preset.dimensions }
         )
 
-        // Resolve chart type for Chart.js (3D → 2D fallback)
-        let resolvedType = result.chartType as string
-        if (resolvedType === 'pie3d') resolvedType = 'pie'
-        else if (resolvedType === 'doughnut3d') resolvedType = 'doughnut'
-        else if (resolvedType === 'bar3d') resolvedType = 'bar'
-        else if (resolvedType === 'horizontalBar' || resolvedType === 'horizontalBar3d') resolvedType = 'bar'
-        else if (resolvedType === 'stackedBar') resolvedType = 'bar'
-        else if (resolvedType === 'area') resolvedType = 'line'
-
-        const isHorizontal = result.chartType === 'horizontalBar' || result.chartType === 'horizontalBar3d'
-        const isArc = ARC_TYPES.has(result.chartType as string)
-
-        // ── Build FAITHFUL preview options ──
-        // Instead of stripping everything, inherit from the user's actual config
-        // with scaled-down fonts so it looks like a mini replica of the real chart.
-        const srcPlugins = (result.chartConfig as any)?.plugins || {}
-        const srcScales = (result.chartConfig as any)?.scales || {}
-
-        const PREVIEW_TITLE_SIZE = 9
-        const PREVIEW_LABEL_SIZE = 7
-        const PREVIEW_LEGEND_SIZE = 7
-        const PREVIEW_DATALABEL_SIZE = 8
-
-        // Title config — inherit text, show if original shows it
-        const srcTitle = srcPlugins.title || {}
-        const srcSubtitle = srcPlugins.subtitle || {}
-        const titleDisplay = srcTitle.display !== false && !!srcTitle.text
-
-        // Legend config — show if original shows it
-        const srcLegend = srcPlugins.legend || {}
-        const legendDisplay = srcLegend.display !== false
-
-        // Data labels — show if original has them
-        const srcDatalabels = srcPlugins.datalabels || {}
-        const datalabelsDisplay = srcDatalabels.display !== false
-
-        const previewOptions: any = {
-          responsive: true,
-          maintainAspectRatio: false,
-          animation: false,
-          layout: { padding: isArc ? 8 : 6 },
-          indexAxis: isHorizontal ? 'y' : 'x',
-          plugins: {
-            legend: legendDisplay ? {
-              display: true,
-              position: srcLegend.position || 'top',
-              labels: {
-                font: { size: PREVIEW_LEGEND_SIZE },
-                boxWidth: 6,
-                boxHeight: 6,
-                padding: 4,
-                color: srcLegend.labels?.color || '#666',
-              },
-            } : { display: false },
-            title: titleDisplay ? {
-              display: true,
-              text: srcTitle.text || '',
-              font: { size: PREVIEW_TITLE_SIZE, weight: 'bold' as const },
-              padding: { top: 2, bottom: 2 },
-              color: srcTitle.color || '#1f2937',
-            } : { display: false },
-            subtitle: srcSubtitle.display && srcSubtitle.text ? {
-              display: true,
-              text: srcSubtitle.text || '',
-              font: { size: PREVIEW_LABEL_SIZE },
-              padding: { top: 0, bottom: 2 },
-              color: srcSubtitle.color || '#6b7280',
-            } : { display: false },
-            tooltip: { enabled: false },
-            datalabels: datalabelsDisplay ? {
-              display: true,
-              font: { size: PREVIEW_DATALABEL_SIZE, weight: 'bold' as const },
-              color: srcDatalabels.color || '#fff',
-              formatter: srcDatalabels.formatter || undefined,
-              anchor: srcDatalabels.anchor || undefined,
-              align: srcDatalabels.align || undefined,
-            } : { display: false },
-            customLabels: false,
-          },
-          scales: isArc || result.chartType === 'radar'
-            ? undefined
-            : {
-              x: {
-                display: true,
-                grid: {
-                  display: srcScales.x?.grid?.display !== false,
-                  color: srcScales.x?.grid?.color || 'rgba(0,0,0,0.06)',
-                  lineWidth: 0.5,
-                },
-                ticks: {
-                  display: true,
-                  font: { size: PREVIEW_LABEL_SIZE },
-                  color: srcScales.x?.ticks?.color || '#9ca3af',
-                  maxRotation: 0,
-                  autoSkip: true,
-                  maxTicksLimit: 6,
-                },
-                border: { display: false },
-              },
-              y: {
-                display: true,
-                grid: {
-                  display: srcScales.y?.grid?.display !== false,
-                  color: srcScales.y?.grid?.color || 'rgba(0,0,0,0.06)',
-                  lineWidth: 0.5,
-                },
-                ticks: {
-                  display: true,
-                  font: { size: PREVIEW_LABEL_SIZE },
-                  color: srcScales.y?.ticks?.color || '#9ca3af',
-                  maxTicksLimit: 5,
-                },
-                beginAtZero: true,
-                border: { display: false },
-              },
-            },
-          elements: {
-            arc: { borderWidth: 1 },
-          },
-        }
-
-        // Radar-specific scale
-        if (result.chartType === 'radar') {
-          previewOptions.scales = {
-            r: {
-              display: true,
-              grid: { display: true, color: 'rgba(0,0,0,0.06)', lineWidth: 0.5 },
-              ticks: { display: false },
-              pointLabels: {
-                display: true,
-                font: { size: PREVIEW_LABEL_SIZE },
-                color: '#9ca3af',
-              },
-            },
-          }
-        }
-
-        // Clean datasets for preview — strip metadata Chart.js doesn't understand
-        const visualSettings = (result.chartConfig as any)?.visualSettings || {}
-        const fillArea = visualSettings.fillArea !== false
-        const fillPoints = visualSettings.fillPoints !== false
-        const showBorder = visualSettings.showBorder !== false
-        const showImages = visualSettings.showImages !== false
-
-        const cleanDatasets = result.chartData.datasets.map((ds: any) => {
-          const { groupId, mode, sourceTitle, sourceId, sliceLabels, chartType: dsChartType, datasetColorMode, uniformityMode, ...chartjsProps } = ds
-          
-          if (resolvedType === 'line' || resolvedType === 'radar' || resolvedType === 'area') {
-            if (!fillPoints) {
-              chartjsProps.pointBackgroundColor = 'transparent';
-            } else if (!chartjsProps.pointBackgroundColor) {
-              chartjsProps.pointBackgroundColor = chartjsProps.backgroundColor;
-            }
-          }
-
-          if (!fillArea) {
-             if (Array.isArray(chartjsProps.backgroundColor)) {
-               chartjsProps.backgroundColor = chartjsProps.backgroundColor.map(() => 'transparent')
-             } else {
-               chartjsProps.backgroundColor = 'transparent'
-             }
-             if (resolvedType === 'line' || resolvedType === 'radar') {
-               chartjsProps.fill = false
-             }
-          }
-
-          if (!showBorder) {
-             if (Array.isArray(chartjsProps.borderColor)) {
-               chartjsProps.borderColor = chartjsProps.borderColor.map(() => 'transparent')
-             } else {
-               chartjsProps.borderColor = 'transparent'
-             }
-             chartjsProps.borderWidth = 0
-          }
-
-          if (!showImages) {
-             chartjsProps.pointImages = []
-             chartjsProps.pointImageConfig = []
-          }
-
-          return chartjsProps
-        })
-
         return {
-          previewData: { ...result.chartData, datasets: cleanDatasets },
-          previewOptions,
-          resolvedType,
+          chartData: result.chartData,
+          chartConfig: result.chartConfig,
+          chartType: result.chartType,
+          hasRealData: true,
         }
       } catch (e) {
-        // Fallback to synthetic data if apply fails
         console.warn('[PresetPreview] Real data apply failed, using fallback:', e)
       }
     }
 
-    // ── FALLBACK PATH: Synthetic sample data ──
-    return buildSyntheticPreview(preset)
+    return null
   }, [preset, userChartData, userChartConfig])
+
+  // ── Synthetic fallback for when no real data ──────────────
+  const syntheticPreview = useMemo(() => {
+    if (styledResult) return null
+    return buildSyntheticPreview(preset)
+  }, [preset, styledResult])
 
   // ── Background styling ──
   const wrapperStyle = useMemo(() => {
@@ -300,6 +131,65 @@ export const PresetPreviewChart = memo(function PresetPreviewChart({
     return {}
   }, [preset.configSnapshot?.background])
 
+  // ── Compute chart dimensions from user's config (matches board tile logic) ──
+  // Priority: preset dimensions > styled config > user config > default 800×600
+  const { chartW, chartH, isResponsive } = useMemo(() => {
+    const parseDim = (val: any, fallback: number): number => {
+      if (typeof val === 'number') return val
+      if (typeof val === 'string') {
+        const parsed = parseInt(val, 10)
+        return isNaN(parsed) ? fallback : parsed
+      }
+      return fallback
+    }
+
+    // If preset specifies its own dimensions, use those (preview should show preset's original aspect ratio)
+    if (preset.dimensions?.width && preset.dimensions?.height) {
+      return {
+        chartW: parseDim(preset.dimensions.width, 800),
+        chartH: parseDim(preset.dimensions.height, 600),
+        isResponsive: false,
+      }
+    }
+
+    // Otherwise use the user's chart config dimensions
+    const cfg = userChartConfig as any
+    if (!cfg) return { chartW: 800, chartH: 600, isResponsive: true }
+
+    const resp = cfg.responsive !== false && !cfg.manualDimensions
+    if (resp) return { chartW: 800, chartH: 600, isResponsive: true }
+
+    return {
+      chartW: parseDim(cfg.width, 800),
+      chartH: parseDim(cfg.height, 600),
+      isResponsive: false,
+    }
+  }, [preset.dimensions, userChartConfig])
+
+  // ── Compute scale factor for board-style scaled rendering ──
+  useEffect(() => {
+    if (!containerRef.current || !isInView) return
+
+    const updateScale = () => {
+      if (!containerRef.current) return
+      const containerWidth = containerRef.current.clientWidth
+      const containerHeight = containerRef.current.clientHeight
+
+      const scaleX = containerWidth / chartW
+      const scaleY = containerHeight / chartH
+      setTileScale(Math.min(scaleX, scaleY))
+    }
+
+    updateScale()
+
+    const resizeObserver = new ResizeObserver(() => updateScale())
+    resizeObserver.observe(containerRef.current)
+
+    return () => resizeObserver.disconnect()
+  }, [isInView, chartW, chartH, styledResult])
+
+  const safeScale = (!tileScale || isNaN(tileScale) || tileScale <= 0) ? 0.3 : tileScale
+
   return (
     <div
       ref={containerRef}
@@ -307,11 +197,40 @@ export const PresetPreviewChart = memo(function PresetPreviewChart({
       style={wrapperStyle}
     >
       {isInView ? (
-        <Chart
-          type={resolvedType as any}
-          data={previewData}
-          options={previewOptions}
-        />
+        styledResult ? (
+          /* ── REAL DATA: Board-tile-style scaled rendering ── */
+          <div className="absolute inset-0 overflow-hidden flex items-center justify-center bg-zinc-50 bg-[radial-gradient(#e4e4e7_1.2px,transparent_1.2px)] [background-size:12px_12px] p-0">
+            <div
+              className="relative origin-top-left shadow-[0_4px_20px_rgba(0,0,0,0.08)] border border-zinc-200 rounded-lg overflow-hidden bg-white"
+              style={{
+                width: chartW,
+                height: chartH,
+                transform: `scale(${safeScale})`,
+                transformOrigin: 'top left',
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                marginTop: -(chartH * safeScale) / 2,
+                marginLeft: -(chartW * safeScale) / 2,
+              }}
+            >
+              <ChartGenerator
+                readOnly
+                dataOverride={styledResult.chartData}
+                configOverride={styledResult.chartConfig as any}
+                typeOverride={styledResult.chartType}
+                isTemplateOrFormat={isResponsive}
+              />
+            </div>
+          </div>
+        ) : syntheticPreview ? (
+          /* ── FALLBACK: Synthetic sample chart ── */
+          <Chart
+            type={syntheticPreview.resolvedType as any}
+            data={syntheticPreview.previewData}
+            options={syntheticPreview.previewOptions}
+          />
+        ) : null
       ) : (
         /* Lightweight skeleton placeholder until card enters viewport */
         <div className="w-full h-full flex items-center justify-center bg-gray-50/50">
@@ -385,13 +304,7 @@ function buildSyntheticPreview(preset: ChartStylePreset) {
     ? scalePreviewColors(preset.colorStrategy.baseBorderColors, SAMPLE_VALUES.length)
     : colors.map(c => darkenHex(c, 20))
 
-  let resolvedType: string = preset.chartType
-  if (resolvedType === 'pie3d') resolvedType = 'pie'
-  else if (resolvedType === 'doughnut3d') resolvedType = 'doughnut'
-  else if (resolvedType === 'bar3d') resolvedType = 'bar'
-  else if (resolvedType === 'horizontalBar' || resolvedType === 'horizontalBar3d') resolvedType = 'bar'
-  else if (resolvedType === 'stackedBar') resolvedType = 'bar'
-  else if (resolvedType === 'area') resolvedType = 'line'
+  let resolvedType: string = chartTypeMapping[preset.chartType as SupportedChartType] || preset.chartType;
 
   const dataset: any = {
     data: SAMPLE_VALUES,

@@ -1,15 +1,20 @@
 "use client"
 
 import React, { useEffect, useMemo, useCallback, useState } from "react"
+import { ChevronDown } from "lucide-react"
 import { useChartStyleStore } from "@/lib/stores/chart-style-store"
 import { useChartStore } from "@/lib/chart-store"
 import { X, Palette, SlidersHorizontal, BarChart3, Search, TrendingUp, PieChart, CircleDot, Radar, Target, BarChartHorizontal, Box, Layers, RefreshCw, Check } from "lucide-react"
+
+/** Number of presets to show initially and per "Load More" click */
+const PAGE_SIZE = 12
 import { toast } from "sonner"
 import { PresetCard } from "./preset-card"
 import type { ChartStylePreset, PresetCategory } from "@/lib/chart-style-types"
 import { checkPresetCompatibility } from "@/lib/chart-style-engine"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
 import type { SupportedChartType } from "@/lib/chart-defaults"
+import { PresetPreviewDialog } from "./preset-preview-dialog"
 
 // Category filter options matching the preset categories
 const CATEGORY_OPTIONS: { label: string; value: string; color: string }[] = [
@@ -66,6 +71,8 @@ export function ChartStyleGalleryPage() {
   const [showFilters, setShowFilters] = useState(false)
   const [searchInput, setSearchInput] = useState('')
   const [syncCooldown, setSyncCooldown] = useState(0)
+  const [previewPreset, setPreviewPreset] = useState<ChartStylePreset | null>(null)
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
   // Countdown timer for sync cooldown
   useEffect(() => {
@@ -107,6 +114,19 @@ export function ChartStyleGalleryPage() {
     () => getFilteredPresets(),
     [officialPresets, filters.chartType, filters.category, filters.searchQuery]
   )
+
+  // Reset visible count when filters change
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE)
+  }, [filters.chartType, filters.category, filters.searchQuery])
+
+  // Paginated subset
+  const visiblePresets = useMemo(
+    () => filteredPresets.slice(0, visibleCount),
+    [filteredPresets, visibleCount]
+  )
+  const hasMore = visibleCount < filteredPresets.length
+  const remainingCount = filteredPresets.length - visibleCount
 
   const handleApplyPreset = useCallback(
     (preset: ChartStylePreset) => {
@@ -285,21 +305,48 @@ export function ChartStyleGalleryPage() {
             </div>
           </div>
         ) : filteredPresets.length > 0 ? (
-          <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredPresets.map(preset => (
-              <PresetCard
-                key={preset.id}
-                preset={preset}
-                isSelected={selectedPresetId === preset.id}
-                hasChartData={hasChartData}
-                onApply={() => handleApplyPreset(preset)}
-                chartData={hasChartData ? chartData : undefined}
-                chartConfig={hasChartData ? chartConfig : undefined}
-                chartType={chartType}
-                chartAspectRatio={chartAspectRatio}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid gap-5 grid-cols-1 sm:grid-cols-2">
+              {visiblePresets.map(preset => (
+                <PresetCard
+                  key={preset.id}
+                  preset={preset}
+                  isSelected={selectedPresetId === preset.id}
+                  hasChartData={hasChartData}
+                  onApply={() => handleApplyPreset(preset)}
+                  onPreview={() => setPreviewPreset(preset)}
+                  chartData={hasChartData ? chartData : undefined}
+                  chartConfig={hasChartData ? chartConfig : undefined}
+                  chartType={chartType}
+                  chartAspectRatio={chartAspectRatio}
+                />
+              ))}
+            </div>
+
+            {/* Load More */}
+            {hasMore && (
+              <button
+                onClick={() => setVisibleCount(prev => prev + PAGE_SIZE)}
+                className="mt-5 w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl
+                  border border-gray-200 bg-gray-50 hover:bg-gray-100 hover:border-gray-300
+                  text-xs font-semibold text-gray-600 hover:text-gray-800
+                  transition-all duration-200 group"
+              >
+                <ChevronDown className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600 transition-colors" />
+                Load More
+                <span className="px-1.5 py-0.5 rounded-md bg-gray-200/80 text-[10px] font-bold text-gray-500 group-hover:bg-violet-100 group-hover:text-violet-600 transition-colors">
+                  {remainingCount} more
+                </span>
+              </button>
+            )}
+
+            {/* Showing count */}
+            {filteredPresets.length > PAGE_SIZE && (
+              <p className="text-center text-[10px] text-gray-400 mt-2 font-medium">
+                Showing {Math.min(visibleCount, filteredPresets.length)} of {filteredPresets.length}
+              </p>
+            )}
+          </>
         ) : (
           <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-center">
             <div className="w-20 h-20 bg-gray-100 rounded-3xl flex items-center justify-center mb-4">
@@ -325,6 +372,17 @@ export function ChartStyleGalleryPage() {
           </div>
         )}
       </div>
+
+      {/* Preset Preview Dialog — shared component */}
+      <PresetPreviewDialog
+        preset={previewPreset}
+        onClose={() => setPreviewPreset(null)}
+        onApply={handleApplyPreset}
+        hasChartData={hasChartData}
+        chartData={hasChartData ? chartData : undefined}
+        chartConfig={hasChartData ? chartConfig : undefined}
+        chartType={chartType}
+      />
     </div>
   )
 }

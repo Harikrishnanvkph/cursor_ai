@@ -28,8 +28,8 @@ export function VariantCard({ format, onSelect, isSelected, renderedVariant }: V
   const palette = skeleton?.colorPalette
 
   // Calculate scale to fit in the card preview area
-  const previewW = 240
-  const previewH = 160
+  const previewW = 360
+  const previewH = 300
   const scale = Math.min(previewW / dims.width, previewH / dims.height, 1)
   const scaledW = dims.width * scale
   const scaledH = dims.height * scale
@@ -37,77 +37,99 @@ export function VariantCard({ format, onSelect, isSelected, renderedVariant }: V
   return (
     <button
       onClick={() => onSelect(format.id)}
-      className={`group relative flex flex-col rounded-xl border transition-all duration-300 overflow-hidden text-left
+      className={`group relative flex flex-col rounded-xl border transition-all duration-300 overflow-hidden text-left w-full
         ${isSelected 
           ? 'border-purple-500 bg-white shadow-lg shadow-purple-500/10 ring-2 ring-purple-500/30' 
           : 'border-gray-200 bg-white hover:border-purple-300 hover:shadow-md hover:shadow-purple-500/5'
         }`}
     >
       {/* Skeleton Preview */}
-      <div className="relative w-full h-44 flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
+      <div className="relative w-full h-80 flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
         {renderedVariant ? (
           /* Live preview with FormatRenderer when chart data available */
           <div
-            className="relative rounded-sm overflow-hidden shadow-sm"
+            className="relative rounded-sm overflow-hidden shadow-sm bg-white"
             style={{
               width: scaledW,
               height: scaledH,
               border: '1px solid rgba(0,0,0,0.08)',
             }}
           >
-            <FormatRenderer
-              rendered={renderedVariant}
-              scale={scale}
-              className="w-full h-full"
-            />
+            <div
+              style={{
+                width: dims.width,
+                height: dims.height,
+                transform: `scale(${scale})`,
+                transformOrigin: 'top left',
+                pointerEvents: 'none',
+              }}
+            >
+              <FormatRenderer
+                rendered={renderedVariant}
+                scale={1}
+                className="w-full h-full"
+                renderLocalCanvas={true}
+              />
+            </div>
           </div>
         ) : (
           /* Fallback: colored zone placeholders */
           <div
-            className="relative rounded-sm overflow-hidden shadow-sm"
+            className="relative rounded-sm overflow-hidden shadow-sm bg-white"
             style={{
               width: scaledW,
               height: scaledH,
-              backgroundColor: palette?.background || '#f8f9fa',
               border: '1px solid rgba(0,0,0,0.08)',
             }}
           >
-            {zones
-              .filter((z: any) => z.position)
-              .map((zone: any) => {
-                const colors = ZONE_COLORS[zone.type] || ZONE_COLORS.decoration
-                const zoneW = zone.position.width * scale
-                const zoneH = zone.position.height * scale
+            <div
+              style={{
+                width: dims.width,
+                height: dims.height,
+                transform: `scale(${scale})`,
+                transformOrigin: 'top left',
+                pointerEvents: 'none',
+                backgroundColor: palette?.background || '#f8f9fa',
+                position: 'relative',
+              }}
+            >
+              {zones
+                .filter((z: any) => z.position)
+                .map((zone: any) => {
+                  const colors = ZONE_COLORS[zone.type] || ZONE_COLORS.decoration
+                  const zoneW = zone.position.width
+                  const zoneH = zone.position.height
 
-                return (
-                  <div
-                    key={zone.id}
-                    className="absolute flex items-center justify-center overflow-hidden"
-                    style={{
-                      left: zone.position.x * scale,
-                      top: zone.position.y * scale,
-                      width: zoneW,
-                      height: zoneH,
-                      backgroundColor: colors.bg,
-                      borderColor: colors.border,
-                      borderWidth: 1,
-                      borderStyle: 'solid',
-                    }}
-                  >
-                    {zoneW > 25 && zoneH > 12 && (
-                      <span 
-                        className="text-[7px] font-semibold uppercase tracking-wider truncate px-0.5 opacity-70"
-                        style={{ color: colors.border }}
-                      >
-                        {zone.type === 'chart' ? '📊' : 
-                         zone.type === 'stat' ? '#' :
-                         zone.type === 'text' ? (zone.role === 'title' ? 'T' : 'Aa') :
-                         ''}
-                      </span>
-                    )}
-                  </div>
-                )
-              })}
+                  return (
+                    <div
+                      key={zone.id}
+                      className="absolute flex items-center justify-center overflow-hidden"
+                      style={{
+                        left: zone.position.x,
+                        top: zone.position.y,
+                        width: zoneW,
+                        height: zoneH,
+                        backgroundColor: colors.bg,
+                        borderColor: colors.border,
+                        borderWidth: 2,
+                        borderStyle: 'solid',
+                      }}
+                    >
+                      {zoneW > 40 && zoneH > 20 && (
+                        <span 
+                          className="text-xs font-semibold uppercase tracking-wider truncate px-1 opacity-70"
+                          style={{ color: colors.border }}
+                        >
+                          {zone.type === 'chart' ? '📊' : 
+                           zone.type === 'stat' ? '#' :
+                           zone.type === 'text' ? (zone.role === 'title' ? 'T' : 'Aa') :
+                           ''}
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
+            </div>
           </div>
         )}
 
@@ -120,17 +142,10 @@ export function VariantCard({ format, onSelect, isSelected, renderedVariant }: V
 
         {/* Selected indicator */}
         {isSelected && (
-          <div className="absolute top-2 right-2 w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center shadow-md">
+          <div className="absolute top-2 right-2 w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center shadow-md z-30">
             <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
             </svg>
-          </div>
-        )}
-
-        {/* Live preview badge */}
-        {renderedVariant && (
-          <div className="absolute top-2 left-2 px-1.5 py-0.5 bg-green-500/90 text-white text-[9px] font-bold rounded-md shadow-sm uppercase tracking-wider">
-            Live
           </div>
         )}
       </div>
@@ -139,23 +154,7 @@ export function VariantCard({ format, onSelect, isSelected, renderedVariant }: V
       <div className="p-3 flex flex-col gap-1.5 flex-1">
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-semibold text-gray-800 truncate">{format.name}</h4>
-          <span className="text-[10px] text-gray-400 font-medium shrink-0 ml-2">
-            {dims.aspect}
-          </span>
         </div>
-
-        {/* Color palette strip */}
-        {palette && (
-          <div className="flex gap-0.5 h-2 rounded-sm overflow-hidden">
-            {[palette.primary, palette.secondary, palette.accent, palette.text, palette.background].map((color: string, i: number) => (
-              <div
-                key={i}
-                className="flex-1"
-                style={{ backgroundColor: color }}
-              />
-            ))}
-          </div>
-        )}
 
         {/* Dimension label and category */}
         <div className="flex items-center gap-1.5 mt-0.5">

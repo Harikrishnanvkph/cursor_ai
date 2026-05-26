@@ -1,6 +1,9 @@
 "use client"
 
 import React, { useState, useEffect, useRef, useMemo } from "react"
+import { Chart as ChartJS } from "chart.js"
+import "@/lib/chart-registration"
+import { chartTypeMapping, type SupportedChartType } from "@/lib/chart-defaults"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"

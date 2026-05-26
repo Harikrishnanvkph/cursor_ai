@@ -281,7 +281,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
 
   // --- Render ---
   return (
-    <div className="flex min-w-full flex-col overflow-hidden h-full" ref={fullscreenContainerRef}>
+    <div className="flex min-w-full flex-col overflow-hidden h-full relative" ref={fullscreenContainerRef}>
       {/* Fullscreen bg overlay */}
       {fullscreen.isFullscreen && <div className="fixed inset-0 bg-white z-40" />}
 
@@ -341,11 +341,11 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
               />
             )}
           </div>
-
-          {/* Chart Style Gallery Panel — slides in over the chart area */}
-          <ChartStyleGallery />
         </CardContent>
       </Card>
+
+      {/* Chart Style Gallery Panel — on lg+ slides over chart area; on <lg covers entire preview section */}
+      <ChartStyleGallery />
 
       {/* Create Scatter/Bubble Data Modal */}
       <CreateScatterDataModal

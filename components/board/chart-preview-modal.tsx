@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { type Conversation, useHistoryStore } from "@/lib/history-store"
 import { useChartStore } from "@/lib/chart-store"
+import { chartTypeMapping, type SupportedChartType } from "@/lib/chart-defaults"
 import { useTemplateStore } from "@/lib/template-store"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { dataService } from "@/lib/data-service"
@@ -235,9 +236,16 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
         return
       }
 
+      const resolvedType = chartTypeMapping[liveConversation.snapshot.chartType as SupportedChartType] || liveConversation.snapshot.chartType;
       const chart = new ChartJS(ctx, {
-        type: liveConversation.snapshot.chartType as any,
-        data: liveConversation.snapshot.chartData,
+        type: resolvedType as any,
+        data: {
+          ...liveConversation.snapshot.chartData,
+          datasets: (liveConversation.snapshot.chartData?.datasets || []).map((ds: any) => ({
+            ...ds,
+            type: ds.type ? (chartTypeMapping[ds.type as SupportedChartType] || ds.type) : undefined
+          }))
+        },
         options: {
           ...liveConversation.snapshot.chartConfig,
           animation: false,
@@ -285,6 +293,8 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
         liveConversation.snapshot.chartData,
         liveConversation.snapshot.chartConfig
       )
+
+      const resolvedType = chartTypeMapping[liveConversation.snapshot.chartType as SupportedChartType] || liveConversation.snapshot.chartType;
 
       const htmlContent = `<!DOCTYPE html>
 <html lang="en">
@@ -336,7 +346,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
   <script>
     const ctx = document.getElementById('chart').getContext('2d');
     new Chart(ctx, {
-      type: '${liveConversation.snapshot.chartType}',
+      type: '${resolvedType}',
       data: ${JSON.stringify(chartData)},
       options: ${JSON.stringify(chartConfig)}
     });

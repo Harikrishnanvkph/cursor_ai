@@ -1,4 +1,5 @@
 "use client"
+import { useSearchParams } from "next/navigation";
 
 import React, { memo, useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -22,6 +23,8 @@ import { useChartStyleStore } from "@/lib/stores/chart-style-store"
 import { ChartBgColorPicker } from "./chart-bg-color-picker"
 import { useAuth } from "@/components/auth/AuthProvider"
 import { PublishStyleDialog } from "@/components/chart-style-gallery/publish-dialog"
+import { UpdatePresetDialog } from "@/components/chart-style-gallery/update-preset-dialog"
+import { dataService } from "@/lib/data-service"
 
 const ZOOM_VALUES: number[] = (() => {
     let values: number[] = [];
@@ -152,9 +155,63 @@ const PublishStyleButton = memo(() => {
     const { user } = useAuth();
     const hasJSON = useChartStore(s => s.hasJSON);
     const [dialogOpen, setDialogOpen] = useState(false);
+    
+    // Read from useChartStyleStore instead of searchParams!
+    const { editPresetId, isBuiltInPreset, presetMetadata } = useChartStyleStore();
 
     // Only render for admins who have a chart loaded
     if (!user?.is_admin || !hasJSON) return null;
+
+    if (editPresetId) {
+        return (
+            <>
+                <TooltipProvider delayDuration={0}>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button
+                                onClick={() => setDialogOpen(true)}
+                                className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold transition-all border bg-white text-emerald-600 border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50"
+                            >
+                                <Upload className="w-3.5 h-3.5" />
+                                <span className="hidden xl:inline">Update</span>
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" sideOffset={5} className="z-[100] text-xs">
+                            Update this preset with current settings
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+                <UpdatePresetDialog
+                    open={dialogOpen}
+                    onOpenChange={setDialogOpen}
+                    presetId={editPresetId}
+                    initialData={presetMetadata}
+                    isBuiltIn={isBuiltInPreset}
+                    onSuccess={(newDbId) => {
+                        // Update global store values if they change
+                        const store = useChartStyleStore.getState();
+                        if (newDbId && isBuiltInPreset) {
+                            store.setEditPresetId(newDbId);
+                            store.setIsBuiltInPreset(false);
+                        }
+                        // Optionally fetch updated metadata to update store
+                        const idToFetch = newDbId || editPresetId;
+                        dataService.getChartStylePreset(idToFetch).then((res) => {
+                            if (res.data) {
+                                store.setPresetMetadata({
+                                    name: res.data.name,
+                                    description: res.data.description || '',
+                                    category: res.data.category || 'minimal',
+                                    tags: res.data.tags || [],
+                                    isOfficial: res.data.is_official || false,
+                                });
+                            }
+                        });
+                    }}
+                />
+            </>
+        );
+    }
 
     return (
         <>

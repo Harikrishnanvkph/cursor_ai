@@ -1,4 +1,4 @@
-import { useChartStore } from "./chart-store";
+import { useChartStore, chartTypeMapping, type SupportedChartType } from "./chart-store";
 import { type HTMLExportOptions } from "./html-exporter";
 import { generateChartHTML } from "./html-exporter";
 
@@ -182,7 +182,7 @@ export function createSelfContainedHTML(options: HTMLExportOptions): string {
         loadChartJS().then(() => {
             const ctx = document.getElementById('chart').getContext('2d');
             new Chart(ctx, {
-                type: '${chartType}',
+                type: '${chartTypeMapping[chartType as SupportedChartType] || chartType}',
                 data: ${JSON.stringify(chartData)},
                 options: ${JSON.stringify(chartConfig)}
             });
@@ -201,7 +201,7 @@ export function generateHTMLWithEmbeddedData(options: HTMLExportOptions): string
   const { chartType, chartData, chartConfig } = useChartStore.getState();
   
   const embeddedData = {
-    chartType,
+    chartType: chartTypeMapping[chartType as SupportedChartType] || chartType,
     chartData,
     chartConfig,
     exportInfo: {
@@ -406,7 +406,7 @@ export function createResponsiveHTML(options: HTMLExportOptions): string {
         const ctx = document.getElementById('chart').getContext('2d');
         
         const chart = new Chart(ctx, {
-            type: '${chartType}',
+            type: '${chartTypeMapping[chartType as SupportedChartType] || chartType}',
             data: ${JSON.stringify(chartData)},
             options: {
                 ...${JSON.stringify(chartConfig)},

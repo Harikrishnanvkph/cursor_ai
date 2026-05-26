@@ -26,6 +26,7 @@ import {
 } from "chart.js"
 import { Chart } from "react-chartjs-2"
 import { useChartStore } from "@/lib/chart-store"
+import { chartTypeMapping, type SupportedChartType } from "@/lib/chart-defaults"
 import { Button } from "@/components/ui/button"
 import { Download, RefreshCw } from "lucide-react"
 import { BarChart3 } from "lucide-react"
@@ -97,8 +98,14 @@ export function PreviewPanel() {
             <div className="w-full h-full">
               <Chart
                 ref={chartRef}
-                type={chartType as any}
-                data={chartData}
+                type={(chartTypeMapping[chartType as SupportedChartType] || chartType) as any}
+                data={{
+                  ...chartData,
+                  datasets: (chartData.datasets || []).map((ds: any) => ({
+                    ...ds,
+                    type: ds.type ? (chartTypeMapping[ds.type as SupportedChartType] || ds.type) : undefined
+                  }))
+                }}
                 options={{
                   ...chartConfig,
                   responsive: chartConfig.manualDimensions ? false : true,

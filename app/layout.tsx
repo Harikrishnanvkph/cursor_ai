@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import "@/lib/chart-registration"
 import { AuthProvider } from '@/components/auth/AuthProvider'
 import { Toaster } from '@/components/ui/sonner'
 import ConsoleSilencer from '@/components/ConsoleSilencer'

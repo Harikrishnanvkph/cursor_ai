@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { embedImagesAsBase64 } from "@/lib/utils/html-export-utils"
+import { chartTypeMapping, type SupportedChartType } from "@/lib/chart-defaults"
 
 interface ChartSnapshot {
   chart_type: string
@@ -92,9 +93,16 @@ export default function PublicChartPage() {
     }
 
     try {
+      const resolvedType = chartTypeMapping[conversation.snapshot.chart_type as SupportedChartType] || conversation.snapshot.chart_type;
       chartRef.current = new ChartJS(ctx, {
-        type: conversation.snapshot.chart_type as any,
-        data: conversation.snapshot.chart_data,
+        type: resolvedType as any,
+        data: {
+          ...conversation.snapshot.chart_data,
+          datasets: (conversation.snapshot.chart_data?.datasets || []).map((ds: any) => ({
+            ...ds,
+            type: ds.type ? (chartTypeMapping[ds.type as SupportedChartType] || ds.type) : undefined
+          }))
+        },
         options: {
           ...conversation.snapshot.chart_config,
           responsive: true,
@@ -127,9 +135,16 @@ export default function PublicChartPage() {
         return
       }
 
+      const resolvedType = chartTypeMapping[conversation.snapshot.chart_type as SupportedChartType] || conversation.snapshot.chart_type;
       const chart = new ChartJS(ctx, {
-        type: conversation.snapshot.chart_type as any,
-        data: conversation.snapshot.chart_data,
+        type: resolvedType as any,
+        data: {
+          ...conversation.snapshot.chart_data,
+          datasets: (conversation.snapshot.chart_data?.datasets || []).map((ds: any) => ({
+            ...ds,
+            type: ds.type ? (chartTypeMapping[ds.type as SupportedChartType] || ds.type) : undefined
+          }))
+        },
         options: {
           ...conversation.snapshot.chart_config,
           animation: false,
@@ -174,6 +189,8 @@ export default function PublicChartPage() {
         conversation.snapshot.chart_data,
         conversation.snapshot.chart_config
       )
+
+      const resolvedType = chartTypeMapping[conversation.snapshot.chart_type as SupportedChartType] || conversation.snapshot.chart_type;
 
       const htmlContent = `<!DOCTYPE html>
 <html lang="en">
@@ -225,7 +242,7 @@ export default function PublicChartPage() {
   <script>
     const ctx = document.getElementById('chart').getContext('2d');
     new Chart(ctx, {
-      type: '${conversation.snapshot.chart_type}',
+      type: '${resolvedType}',
       data: ${JSON.stringify(chartData)},
       options: ${JSON.stringify(chartConfig)}
     });

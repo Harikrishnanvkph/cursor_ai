@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react"
 import { EditorSidebarProvider } from "@/components/editor/editor-sidebar-context"
 import { EditorLeftSidebar } from "@/components/editor/editor-left-sidebar"
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 
 /**
  * Editor Layout — App Shell Architecture
@@ -17,18 +18,20 @@ import { EditorLeftSidebar } from "@/components/editor/editor-left-sidebar"
  */
 export default function EditorLayout({ children }: { children: React.ReactNode }) {
   return (
-    <EditorSidebarProvider>
-      <div className="fixed inset-0 flex bg-gray-50 overflow-hidden">
-        {/* Persistent Interactive Left Sidebar - Hidden on mobile/tablet (<1024px) */}
-        <div className="hidden lg:flex flex-shrink-0 z-10 h-full">
-          <EditorLeftSidebar />
-        </div>
+    <ProtectedRoute>
+      <EditorSidebarProvider>
+        <div className="fixed inset-0 flex bg-gray-50 overflow-hidden">
+          {/* Persistent Interactive Left Sidebar - Hidden on mobile/tablet (<1024px) */}
+          <div className="hidden lg:flex flex-shrink-0 z-10 h-full">
+            <EditorLeftSidebar />
+          </div>
 
-        {/* Content Area — this is replaced by loading.tsx during page transitions */}
-        <div className="flex-1 flex min-w-0 overflow-hidden">
-          {children}
+          {/* Content Area — this is replaced by loading.tsx during page transitions */}
+          <div className="flex-1 flex min-w-0 overflow-hidden">
+            {children}
+          </div>
         </div>
-      </div>
-    </EditorSidebarProvider>
+      </EditorSidebarProvider>
+    </ProtectedRoute>
   )
 }

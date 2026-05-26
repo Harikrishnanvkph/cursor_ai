@@ -8,11 +8,13 @@ import { dataService } from "@/lib/data-service"
 import { VariantCard } from "@/components/gallery/VariantCard"
 import { extractContentFromChartData, renderFormat, generateGalleryVariants } from "@/lib/variant-engine"
 import type { FormatCategory, LLMContentPackage, RenderedFormat } from "@/lib/format-types"
-import { X, Layers, SlidersHorizontal, LayoutGrid, BarChart3, ChevronLeft, Check, StickyNote, Code2, Trash2, Plus, Info, Eye } from "lucide-react"
+import { X, Layers, SlidersHorizontal, LayoutGrid, BarChart3, ChevronLeft, Check, StickyNote, Code2, Trash2, Plus, Info, Eye, RefreshCw, Search, ChevronDown } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
+
+const FORMAT_PAGE_SIZE = 8
 
 // Available dimension filters
 const DIMENSION_OPTIONS = [
@@ -67,6 +69,57 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
   const [activeTab, setActiveTab] = useState<'official' | 'mine'>('official')
   const [previewFormatId, setPreviewFormatId] = useState<string | null>(null)
   const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({})
+  const [searchQuery, setSearchQuery] = useState('')
+  const [showSearch, setShowSearch] = useState(false)
+  const [syncCooldown, setSyncCooldown] = useState(0)
+  const [visibleCount, setVisibleCount] = useState(FORMAT_PAGE_SIZE)
+
+  // Reset visible count when filters or search changes
+  useEffect(() => {
+    setVisibleCount(FORMAT_PAGE_SIZE)
+  }, [filters.category, filters.dimension, searchQuery])
+
+  // Countdown timer for sync cooldown
+  useEffect(() => {
+    if (syncCooldown > 0) {
+      const timer = setTimeout(() => setSyncCooldown(syncCooldown - 1), 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [syncCooldown])
+
+  // Mock template content package to serve high-fidelity real previews when no user chart exists
+  const MOCK_CONTENT_PACKAGE = useMemo(() => ({
+    title: "Top 6 Countries by Smartphone Users",
+    subtitle: "Projected number of smartphone users (in millions)",
+    body: "China leads with 950M, followed by India (780M) and the United States (280M). Brazil follow closely at 165M.",
+    source: "Source: Statista Global Survey 2025",
+    callout: "950M — China Leads",
+    stats: [
+      { value: "950M", label: "China" },
+      { value: "780M", label: "India" },
+      { value: "165M", label: "Brazil" },
+    ],
+    keywords: ["smartphone", "users", "technology", "global"],
+    dataStory: "ranking",
+    chartData: {
+      labels: ["China", "India", "US", "Brazil", "Indonesia", "Japan"],
+      datasets: [{
+        label: "Users (Millions)",
+        data: [950, 780, 280, 165, 120, 85],
+        chartType: "bar",
+        backgroundColor: ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"],
+      }],
+    },
+    suggestedChartTypes: ["bar", "horizontalBar", "pie", "doughnut"],
+    chartConfig: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        title: { display: false },
+      },
+    },
+  }), [])
 
   // If left sidebar expands, collapse the format side section
   useEffect(() => {
@@ -156,21 +209,37 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
     if (filters.dimension) {
       result = result.filter(f => f.dimensions.aspect === filters.dimension)
     }
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase()
+      result = result.filter(f => 
+        f.name.toLowerCase().includes(q) || 
+        (f.description && f.description.toLowerCase().includes(q)) ||
+        (f.category && f.category.toLowerCase().includes(q))
+      )
+    }
     return result.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
-  }, [currentFormatsList, filters])
+  }, [currentFormatsList, filters, searchQuery])
+
+  const visibleFormats = useMemo(() => {
+    return filteredFormats.slice(0, visibleCount)
+  }, [filteredFormats, visibleCount])
+
+  const hasMore = visibleCount < filteredFormats.length
+  const remainingCount = filteredFormats.length - visibleCount
 
   // Batch-render variants when chart data available
   const renderedVariantsMap = useMemo(() => {
     const map = new Map<string, RenderedFormat>()
-    if (!localContentPackage || filteredFormats.length === 0) return map
+    if (filteredFormats.length === 0) return map
 
-    const variants = generateGalleryVariants(filteredFormats, localContentPackage, contextualImageUrl || undefined)
+    const activeContent = localContentPackage || MOCK_CONTENT_PACKAGE
+    const variants = generateGalleryVariants(filteredFormats, activeContent, contextualImageUrl || undefined)
     variants.forEach(v => {
       const blueprintId = v.variantId.replace(/-[^-]+$/, '')
       map.set(blueprintId, v)
     })
     return map
-  }, [localContentPackage, filteredFormats, contextualImageUrl])
+  }, [localContentPackage, MOCK_CONTENT_PACKAGE, filteredFormats, contextualImageUrl])
 
   const previewFormat = useMemo(() => {
     if (!previewFormatId) return null
@@ -240,14 +309,6 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
       {/* Header */}
       <div className="flex flex-shrink-0 items-center justify-between px-5 py-3 border-b border-gray-200 bg-white z-10">
         <div className="flex items-center gap-4">
-          <button
-            onClick={closeGallery}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors border border-transparent hover:border-gray-200"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Back
-          </button>
-          <div className="h-5 w-px bg-gray-300"></div>
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-inner">
               <LayoutGrid className="w-4 h-4 text-white" />
@@ -282,13 +343,63 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Search Input (conditionally visible) */}
+          {showSearch && (
+            <div className="relative animate-in fade-in slide-in-from-right-3 duration-200">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search formats..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-transparent w-36 transition-all"
+                autoFocus
+              />
+            </div>
+          )}
+
+          {/* Search Toggle Button */}
+          <button
+            onClick={() => setShowSearch(!showSearch)}
+            className={`p-1.5 rounded-lg transition-all border flex items-center justify-center ${
+              showSearch || searchQuery
+                ? 'bg-purple-50 text-purple-600 border-purple-200 shadow-sm'
+                : 'bg-white text-gray-400 border-gray-200 hover:bg-gray-50'
+            }`}
+            title={showSearch ? "Hide Search" : "Search Formats"}
+          >
+            <Search className="w-4 h-4" />
+          </button>
+
+          {/* Sync Button */}
+          <button
+            onClick={async () => {
+              if (isLoadingFormats || isLoadingUserFormats || syncCooldown > 0) return;
+              await loadFormats()
+              setSyncCooldown(10)
+            }}
+            disabled={isLoadingFormats || isLoadingUserFormats || syncCooldown > 0}
+            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-450 hover:text-purple-600 transition-colors disabled:opacity-50 border border-gray-200 flex items-center justify-center"
+            title={syncCooldown > 0 ? "Synced" : "Sync latest formats"}
+          >
+            {isLoadingCurrent ? (
+              <RefreshCw className="w-4 h-4 animate-spin text-purple-500" />
+            ) : syncCooldown > 0 ? (
+              <Check className="w-4 h-4 text-green-500" />
+            ) : (
+              <RefreshCw className="w-4 h-4" />
+            )}
+          </button>
+
+          <div className="h-5 w-px bg-gray-200 mx-1"></div>
+
           {/* Filter toggle */}
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
               showFilters || filters.category || filters.dimension
-                ? 'bg-purple-50 text-purple-600 border-purple-200'
-                : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100'
+                ? 'bg-purple-50 text-purple-600 border-purple-200 shadow-sm'
+                : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-100'
             }`}
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -300,11 +411,6 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
             )}
           </button>
 
-          <div className="h-5 w-px bg-gray-200 mx-1"></div>
-          
-          <HistoryDropdown variant="icon-badge" />
-          <SimpleProfileDropdown size="sm" />
-          
           <div className="h-5 w-px bg-gray-200 mx-1"></div>
 
           {/* Close button */}
@@ -542,19 +648,34 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
               </div>
             </div>
           ) : filteredFormats.length > 0 ? (
-            <div className={`grid gap-4 ${previewFormatId ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}`}>
-              {filteredFormats.map(format => {
-                const variant = renderedVariantsMap.get(format.id)
-                return (
-                  <VariantCard
-                    key={format.id}
-                    format={format}
-                    onSelect={handlePreviewClick}
-                    isSelected={previewFormatId === format.id}
-                    renderedVariant={variant}
-                  />
-                )
-              })}
+            <div className="flex flex-col gap-6">
+              <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+                {visibleFormats.map(format => {
+                  const variant = renderedVariantsMap.get(format.id)
+                  return (
+                    <VariantCard
+                      key={format.id}
+                      format={format}
+                      onSelect={handlePreviewClick}
+                      isSelected={previewFormatId === format.id}
+                      renderedVariant={variant}
+                    />
+                  )
+                })}
+              </div>
+
+              {hasMore && (
+                <button
+                  onClick={() => setVisibleCount(prev => prev + FORMAT_PAGE_SIZE)}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-gray-200 bg-gray-50 hover:bg-gray-100 text-xs font-semibold text-gray-650 transition-all duration-200 shadow-sm"
+                >
+                  <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
+                  <span>Load More</span>
+                  <span className="px-1.5 py-0.5 rounded-md bg-gray-200/80 text-[10px] font-bold text-gray-500">
+                    {remainingCount} more
+                  </span>
+                </button>
+              )}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-center">

@@ -13,9 +13,8 @@ import { dataService } from "@/lib/data-service"
 import { Button } from "@/components/ui/button"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
 import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Layers, Settings, Download, ChevronLeft, ChevronRight, FileText, Save, X, Loader2, Plus, Info, LayoutDashboard, MessageSquare, Edit3, BarChart2, SlidersHorizontal } from "lucide-react"
-import Link from "next/link"
 import React from "react"
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
+import Link from "next/link"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import { useChatStore } from "@/lib/chat-store"
 import { useEditorSidebarContext } from "@/components/editor/editor-sidebar-context"
@@ -33,6 +32,10 @@ import { EditorWelcomeScreen } from "@/components/editor-welcome-screen"
 import { DimensionMismatchDialog } from "@/components/dialogs/dimension-mismatch-dialog"
 import { SaveModeConflictDialog } from "@/components/dialogs/save-mode-conflict-dialog"
 import { ChartSetupDialog, type ChartDimensions } from "@/components/dialogs/chart-setup-dialog"
+import { applyPresetToChart } from "@/lib/chart-style-engine"
+import type { PresetCategory } from "@/lib/chart-style-types"
+import { getPresetById } from "@/lib/chart-style-defaults"
+import { useChartStyleStore } from "@/lib/stores/chart-style-store"
 
 import {
   useChartConfig,
@@ -46,14 +49,194 @@ import { parseDimension } from "@/lib/utils/dimension-utils"
 
 
 export default function EditorPage() {
-  return (
-    <ProtectedRoute>
-      <EditorPageContent />
-    </ProtectedRoute>
-  )
+  return <EditorPageContent />
 }
 
 function EditorPageContent() {
+  const {
+    editPresetId,
+    setEditPresetId,
+    isBuiltInPreset,
+    setIsBuiltInPreset,
+    presetMetadata,
+    setPresetMetadata
+  } = useChartStyleStore()
+  const [showUpdatePresetDialog, setShowUpdatePresetDialog] = useState(false)
+
+  // Helper function to load compatible dummy data for chart type
+  const generateDummyDataForType = (type: string): any => {
+    const isArcType = ['pie', 'doughnut', 'polarArea', 'pie3d', 'doughnut3d', 'gauge'].includes(type);
+    if (isArcType) {
+      return {
+        labels: ["Category A", "Category B", "Category C", "Category D", "Category E"],
+        datasets: [{
+          label: "Sample Data",
+          data: [30, 20, 15, 25, 10],
+          chartType: type,
+        }]
+      };
+    }
+
+    if (type === 'waterfall') {
+      return {
+        labels: ["Start", "Q1 Sales", "Refunds", "Q2 Sales", "Tax", "Net"],
+        datasets: [{
+          label: "Cashflow",
+          data: [100, 30, -10, 45, -15, 150],
+          chartType: "waterfall",
+        }]
+      };
+    }
+
+    if (type === 'gauge') {
+      return {
+        labels: ["Speed"],
+        datasets: [{
+          label: "Value",
+          data: [65],
+          chartType: "gauge",
+        }]
+      };
+    }
+
+    return {
+      labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+      datasets: [{
+        label: "Sample Dataset",
+        data: [12, 19, 3, 5, 2, 8, 15],
+        chartType: type,
+      }]
+    };
+  };
+
+  const generateDummyGroupedData = (type: string): any => {
+    return {
+      labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+      datasets: [
+        {
+          label: "Dataset A",
+          data: [12, 19, 3, 5, 2, 8, 15],
+          chartType: type,
+          groupId: "default",
+        },
+        {
+          label: "Dataset B",
+          data: [7, 11, 5, 8, 3, 10, 12],
+          chartType: type,
+          groupId: "default",
+        }
+      ]
+    };
+  };
+
+  const loadPresetForEditing = async (id: string) => {
+    try {
+      let parsedPreset: any = null
+      let presetName = ''
+      let isBuiltIn = false
+
+      // Check if it is a built-in preset first to avoid redundant API errors for official presets
+      const builtInPreset = getPresetById(id)
+
+      let res: any = null
+      if (builtInPreset) {
+        isBuiltIn = true
+      } else {
+        try {
+          res = await dataService.getChartStylePreset(id)
+        } catch (err) {
+          // If the DB query fails or throws (e.g. 404), treat it as not found in DB so we can fallback
+          res = { error: err }
+        }
+      }
+
+      if (res && !res.error && res.data) {
+        const rawPreset = res.data
+        presetName = rawPreset.name
+        isBuiltIn = false
+
+        setPresetMetadata({
+          name: rawPreset.name,
+          description: rawPreset.description || '',
+          category: rawPreset.category || 'minimal',
+          tags: rawPreset.tags || [],
+          isOfficial: rawPreset.is_official || false,
+        })
+
+        parsedPreset = {
+          id: rawPreset.id,
+          name: rawPreset.name,
+          description: rawPreset.description || '',
+          chartType: rawPreset.chart_type,
+          colorStrategy: rawPreset.color_strategy,
+          configSnapshot: rawPreset.config_snapshot || {},
+          datasetStyle: rawPreset.dataset_style || {},
+          dimensions: rawPreset.dimensions || null,
+          category: rawPreset.category || 'minimal',
+          tags: rawPreset.tags || [],
+          isOfficial: rawPreset.is_official || false,
+          sortOrder: rawPreset.sort_order || 100,
+        }
+      } else {
+        // Fallback to hardcoded built-in presets
+        if (!builtInPreset) throw new Error("Preset not found in database or built-in defaults")
+
+        presetName = builtInPreset.name
+        isBuiltIn = true
+
+        setPresetMetadata({
+          name: builtInPreset.name,
+          description: builtInPreset.description || '',
+          category: builtInPreset.category || 'minimal',
+          tags: builtInPreset.tags || [],
+          isOfficial: builtInPreset.isOfficial || false,
+        })
+
+        parsedPreset = {
+          id: builtInPreset.id,
+          name: builtInPreset.name,
+          description: builtInPreset.description || '',
+          chartType: builtInPreset.chartType,
+          colorStrategy: builtInPreset.colorStrategy,
+          configSnapshot: builtInPreset.configSnapshot || {},
+          datasetStyle: builtInPreset.datasetStyle || {},
+          dimensions: builtInPreset.dimensions || null,
+          category: builtInPreset.category || 'minimal',
+          tags: builtInPreset.tags || [],
+          isOfficial: builtInPreset.isOfficial || false,
+          sortOrder: builtInPreset.sortOrder || 100,
+        }
+      }
+
+      setIsBuiltInPreset(isBuiltIn)
+
+      const dummy = parsedPreset.colorStrategy.mode === 'grouped'
+        ? generateDummyGroupedData(parsedPreset.chartType)
+        : generateDummyDataForType(parsedPreset.chartType)
+
+      const result = applyPresetToChart(parsedPreset, dummy, parsedPreset.configSnapshot)
+
+      clearCurrentChart()
+      clearMessages()
+      startNewConversation()
+      
+      useChartStore.setState({
+        chartType: result.chartType as any,
+        chartData: result.chartData,
+        chartConfig: result.chartConfig,
+        hasJSON: true,
+        chartMode: parsedPreset.colorStrategy.mode === 'grouped' ? 'grouped' : 'single',
+      })
+      setHasJSON(true)
+      
+      setActiveTab('design_settings')
+      toast.success(`Preset "${presetName}" loaded for editing with dummy data!${isBuiltIn ? ' (Built-in preset)' : ''}`)
+    } catch (err: any) {
+      console.error("Failed to load preset for editing:", err)
+      toast.error(err.message || "Failed to load preset")
+    }
+  }
+
   // ── Decoration store isolation ──
   // When entering the editor via client-side navigation, force rehydrate to flush
   // any format-builder shapes. Skip on hard refresh to prevent hydration race conditions.
@@ -151,6 +334,7 @@ function EditorPageContent() {
     }
   }, [isTablet]);
 
+  // Respect ?tab= or ?editPresetId= query parameters
   // Respect ?tab= query parameter (e.g., /editor?tab=templates)
   useEffect(() => {
     const tabParam = searchParams.get('tab')
@@ -158,6 +342,13 @@ function EditorPageContent() {
       setActiveTab(tabParam)
       // Clean the URL so it goes back to /editor without query params
       router.replace("/editor")
+    }
+
+    const presetIdParam = searchParams.get('editPresetId')
+    if (presetIdParam) {
+      setEditPresetId(presetIdParam)
+      router.replace("/editor")
+      loadPresetForEditing(presetIdParam)
     }
   }, [searchParams, router])
 
@@ -393,6 +584,11 @@ function EditorPageContent() {
   }
 
   const handleSaveClick = () => {
+    if (editPresetId) {
+      setShowUpdatePresetDialog(true)
+      return
+    }
+
     if (!hasJSON || !user) {
       toast.error("No chart to save or user not authenticated");
       return;
@@ -413,6 +609,17 @@ function EditorPageContent() {
     // No conflicts - proceed to save dialog
     proceedToSaveDialog()
   };
+
+  const saveClickRef = useRef(handleSaveClick);
+  useEffect(() => {
+    saveClickRef.current = handleSaveClick;
+  });
+
+  useEffect(() => {
+    const handleTriggerSave = () => saveClickRef.current();
+    window.addEventListener('triggerSaveClick', handleTriggerSave);
+    return () => window.removeEventListener('triggerSaveClick', handleTriggerSave);
+  }, []);
 
   const handleSave = async (chartName: string) => {
     setIsSaving(true);
@@ -481,6 +688,11 @@ function EditorPageContent() {
     setBackendConversationId(null)
     // Clear all template state to prevent data cascading to new charts
     useTemplateStore.getState().clearAllTemplateState()
+    
+    // Clear editPresetId state
+    setEditPresetId(null)
+    setPresetMetadata(null)
+
     // Show new chart setup
     setShowSetupDialog(true)
   };
@@ -488,6 +700,8 @@ function EditorPageContent() {
   // Handle dimensions confirmed from the setup dialog
   const handleDimensionsConfirmed = (dims: ChartDimensions) => {
     setShowSetupDialog(false)
+    setEditPresetId(null)
+    setPresetMetadata(null)
 
     // Set editor mode to chart
     setEditorMode('chart')
@@ -1049,6 +1263,7 @@ function EditorPageContent() {
         onClose={() => setShowSetupDialog(false)}
         onConfirm={handleDimensionsConfirmed}
       />
+
     </>
   )
 }
