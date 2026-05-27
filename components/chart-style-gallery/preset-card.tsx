@@ -6,6 +6,19 @@ import type { ExtendedChartData, ExtendedChartOptions } from "@/lib/chart-defaul
 import { Check, BarChart3, TrendingUp, PieChart, CircleDot, Radar, Target, BarChartHorizontal, Box, AreaChart, ScatterChart, Circle, Eye, Palette, Loader2 } from "lucide-react"
 import { PresetPreviewChart } from "./preset-preview-chart"
 
+// Helper to calculate clean aspect ratio from dimension strings (e.g. '800px')
+function calculateAspectRatio(widthStr: string, heightStr: string): string {
+  const w = parseInt(widthStr)
+  const h = parseInt(heightStr)
+  if (isNaN(w) || isNaN(h) || w <= 0 || h <= 0) return ""
+
+  const gcd = (a: number, b: number): number => {
+    return b === 0 ? a : gcd(b, a % b);
+  }
+  const divisor = gcd(w, h)
+  return `${w / divisor}:${h / divisor}`
+}
+
 // Chart type → Lucide icon component
 const CHART_TYPE_ICONS: Record<string, React.ReactNode> = {
   bar: <BarChart3 className="w-3.5 h-3.5" />,
@@ -163,9 +176,19 @@ export function PresetCard({
           <span className="text-[10px] text-gray-400 font-medium flex-shrink-0 mr-1">
             {CHART_TYPE_NAMES[preset.chartType] || preset.chartType}
           </span>
-          <h4 className="text-xs font-semibold text-gray-900 truncate leading-tight flex-1">
-            {preset.name}
-          </h4>
+          <div className="flex items-center justify-between gap-2 flex-1 min-w-0">
+            <h4 className="text-xs font-semibold text-gray-900 truncate leading-tight flex-1">
+              {preset.name}
+            </h4>
+            {preset.dimensions && (() => {
+              const aspect = calculateAspectRatio(preset.dimensions.width, preset.dimensions.height)
+              return aspect ? (
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 font-medium flex-shrink-0">
+                  {aspect}
+                </span>
+              ) : null
+            })()}
+          </div>
         </div>
 
         {/* Category badge + dimensions */}

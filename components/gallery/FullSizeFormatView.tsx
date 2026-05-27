@@ -118,6 +118,11 @@ export function FullSizeFormatView() {
           <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700">
             {renderedFormat.skeleton.dimensions.width}x{renderedFormat.skeleton.dimensions.height}
           </span>
+          {renderedFormat.skeleton.dimensions.aspect && (
+            <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-100 text-indigo-700">
+              {renderedFormat.skeleton.dimensions.aspect}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {/* HTML2Canvas note: Charts might take a second to render cleanly */}

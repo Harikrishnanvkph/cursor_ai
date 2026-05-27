@@ -152,8 +152,13 @@ export function VariantCard({ format, onSelect, isSelected, renderedVariant }: V
 
       {/* Info Area */}
       <div className="p-3 flex flex-col gap-1.5 flex-1">
-        <div className="flex items-center justify-between">
-          <h4 className="text-sm font-semibold text-gray-800 truncate">{format.name}</h4>
+        <div className="flex items-center justify-between gap-2">
+          <h4 className="text-sm font-semibold text-gray-800 truncate flex-1">{format.name}</h4>
+          {dims.aspect && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 font-medium flex-shrink-0">
+              {dims.aspect}
+            </span>
+          )}
         </div>
 
         {/* Dimension label and category */}
