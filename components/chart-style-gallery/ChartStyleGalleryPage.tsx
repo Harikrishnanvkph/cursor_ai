@@ -12,7 +12,6 @@ import { toast } from "sonner"
 import { PresetCard } from "./preset-card"
 import type { ChartStylePreset, PresetCategory } from "@/lib/chart-style-types"
 import { checkPresetCompatibility } from "@/lib/chart-style-engine"
-import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
 import type { SupportedChartType } from "@/lib/chart-defaults"
 import { PresetPreviewDialog } from "./preset-preview-dialog"
 
@@ -219,10 +218,6 @@ export function ChartStyleGalleryPage() {
               </span>
             )}
           </button>
-
-          <div className="h-5 w-px bg-gray-200 mx-1" />
-
-          <SimpleProfileDropdown size="sm" />
 
           <div className="h-5 w-px bg-gray-200 mx-1" />
 
