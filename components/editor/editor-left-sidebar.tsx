@@ -14,8 +14,17 @@ import {
   MessageSquare,
   Sparkles,
   SlidersHorizontal,
-  BarChart2
+  BarChart2,
+  PanelLeft,
+  ExternalLink,
+  Edit3
 } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem
+} from "@/components/ui/dropdown-menu"
 
 export function EditorLeftSidebar() {
   const router = useRouter()
@@ -38,23 +47,46 @@ export function EditorLeftSidebar() {
     return (
       <div className="w-16 flex-shrink-0 flex flex-col h-full items-center bg-white border-r border-gray-200 py-3 z-10 group">
         <div className="flex flex-col items-center space-y-3 w-full">
-          {/* Application Logo - Routes to home */}
-          <button
-            onClick={() => router.push("/")}
-            className="p-2 bg-slate-50 border border-slate-200 rounded-lg shadow-sm hover:bg-slate-100 text-slate-600 transition-colors"
-            title="Go to Home"
-          >
-            <SlidersHorizontal className="w-5 h-5" />
-          </button>
-
-          {/* Expand Sidebar Icon */}
+          {/* Company Logo / Toggle Sidebar */}
           <button
             onClick={() => setLeftSidebarCollapsed(false)}
-            className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+            className="p-2 bg-slate-50 border border-slate-200 rounded-xl shadow-xs hover:bg-slate-100 transition-all flex items-center justify-center w-9 h-9"
             title="Expand Sidebar"
           >
-            <ChevronRight className="w-4 h-4" />
+            {/* Logo image, hidden when parent sidebar is hovered */}
+            <img src="/logo.png" alt="Company Logo" className="w-5 h-5 object-contain group-hover:hidden" />
+            
+            {/* PanelLeft icon, visible only when parent sidebar is hovered */}
+            <PanelLeft className="w-5 h-5 hidden group-hover:block text-slate-500 hover:text-slate-800" />
           </button>
+
+          {/* Quick Navigation Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="p-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200/60 shadow-xs transition-all hover:shadow-sm"
+                title="Quick Navigation"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" side="right" className="w-40 z-50 bg-white/95 backdrop-blur-xl border border-slate-200/80 shadow-lg rounded-xl p-1.5">
+              <DropdownMenuItem
+                onClick={() => router.push('/board')}
+                className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
+              >
+                <LayoutDashboard className="w-3.5 h-3.5 text-slate-500" />
+                <span>Board Page</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => router.push('/landing')}
+                className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-slate-500" />
+                <span>AI Chat Page</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <div className="w-10 h-px bg-gray-200 my-4" />
@@ -99,9 +131,10 @@ export function EditorLeftSidebar() {
       {/* Unified Editor Header */}
       <div className="flex flex-col border-b border-gray-100 flex-shrink-0 pt-2 pb-2">
         <div className="flex justify-center mb-2">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-            {/* <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400" /> */}
-            Advanced Editor
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2.5">
+            <img src="/logo.png" alt="Company Logo" className="w-[22px] h-[22px] object-contain" />
+            <span className="text-slate-300 font-light text-sm">|</span>
+            <span>Advanced Editor</span>
           </span>
         </div>
 
