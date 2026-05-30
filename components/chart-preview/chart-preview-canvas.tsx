@@ -65,6 +65,12 @@ export const ChartPreviewCanvas = React.memo(({
     const chartHeight = !isResponsive ? parseDimension(chartConfig?.height, 800) : 600;
 
     if (isResponsive) {
+        const rWidth = containerSize.width || 800;
+        const rHeight = containerSize.height || 600;
+        const displayWidth = Math.round(rWidth * zoom);
+        const displayHeight = Math.round(rHeight * zoom);
+        const exactScale = rWidth > 0 ? displayWidth / rWidth : zoom;
+
         return (
             <div
                 className="absolute inset-0"
@@ -90,8 +96,8 @@ export const ChartPreviewCanvas = React.memo(({
                     style={{
                         width: '100%', height: '100%',
                         top: 0, left: 0, right: 0, bottom: 0,
-                        transform: `scale(${zoom}) translate(${panOffset.x / zoom}px, ${panOffset.y / zoom}px)`,
-                        transformOrigin: 'center center',
+                        transform: `translate(${Math.round((rWidth - displayWidth) / 2) + Math.round(panOffset.x)}px, ${Math.round((rHeight - displayHeight) / 2) + Math.round(panOffset.y)}px) scale(${exactScale})`,
+                        transformOrigin: 'top left',
                         zIndex: 10,
                         cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'default',
                         pointerEvents: 'auto'
@@ -118,7 +124,7 @@ export const ChartPreviewCanvas = React.memo(({
                             className="absolute inset-0"
                             style={{ width: '100%', height: '100%', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: panMode ? 'none' : 'auto' }}
                         >
-                            <ChartGenerator devicePixelRatioMultiplier={Math.max(1, zoom)} />
+                            <ChartGenerator devicePixelRatioMultiplier={Math.max(1.0, exactScale)} />
                         </div>
                         {/* Decoration Shapes Layer (chart mode) */}
                         {(hasDecorations || drawingMode) && containerSize.width > 0 && (
@@ -148,12 +154,16 @@ export const ChartPreviewCanvas = React.memo(({
     const baseScale = Math.min(scaleX, scaleY, 1.0); // Never scale UP above 100%
     const finalScale = baseScale * zoom;
 
+    const displayWidth = Math.round(chartWidth * finalScale);
+    const displayHeight = Math.round(chartHeight * finalScale);
+    const exactScale = displayWidth / chartWidth;
+
     return (
         <div
             className="relative flex-shrink-0"
             style={{
-                width: chartWidth * finalScale,
-                height: chartHeight * finalScale,
+                width: displayWidth,
+                height: displayHeight,
                 margin: 'auto', // This centers it if the parent has flex
                 backgroundColor: 'transparent'
             }}
@@ -173,7 +183,7 @@ export const ChartPreviewCanvas = React.memo(({
                 style={{
                     width: `${chartWidth}px`,
                     height: `${chartHeight}px`,
-                    transform: `scale(${finalScale}) translate(${panOffset.x / finalScale}px, ${panOffset.y / finalScale}px)`,
+                    transform: `translate(${Math.round(panOffset.x)}px, ${Math.round(panOffset.y)}px) scale(${exactScale})`,
                     transformOrigin: 'top left',
                     zIndex: 10,
                     cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'default',
@@ -194,8 +204,17 @@ export const ChartPreviewCanvas = React.memo(({
                     }}
                     onDragStart={(e) => { if (panMode) e.preventDefault(); }}
                 >
-                    <div ref={containerRef} style={{ pointerEvents: panMode ? 'none' : 'auto', position: 'relative' }}>
-                        <ChartGenerator devicePixelRatioMultiplier={Math.max(1, finalScale)} />
+                    <div 
+                        ref={containerRef} 
+                        className="w-full h-full"
+                        style={{ 
+                            width: '100%',
+                            height: '100%',
+                            position: 'relative',
+                            pointerEvents: panMode ? 'none' : 'auto' 
+                        }}
+                    >
+                        <ChartGenerator devicePixelRatioMultiplier={Math.max(1.0, exactScale)} />
                         {/* Decoration Shapes Layer (chart mode, fixed dimensions) */}
                         {(hasDecorations || drawingMode) && (
                             <div className="absolute inset-0" style={{ zIndex: 20, pointerEvents: drawingMode ? 'auto' : 'none' }}>

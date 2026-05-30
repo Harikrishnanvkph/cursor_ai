@@ -380,6 +380,32 @@ export function TemplateChartPreview({
     }
   }, [isFullscreen, onTabChange])
 
+  // --- Ctrl + mouse wheel/trackpad zoom handler ---
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      if (container.contains(e.target as Node)) {
+        if (e.ctrlKey) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          const zoomFactor = 1.05;
+          setZoom(prev => {
+            const newZoom = e.deltaY < 0 ? prev * zoomFactor : prev / zoomFactor;
+            return Math.min(Math.max(newZoom, 0.1), 5);
+          });
+        }
+      }
+    };
+
+    window.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      window.removeEventListener("wheel", handleWheel);
+    };
+  }, [setZoom]);
+
 
 
   // Handle zoom controls

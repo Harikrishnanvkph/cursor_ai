@@ -116,6 +116,33 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
     setShareUrl(`${window.location.origin}/chart/${conversation.id}`)
   }, [conversation.id])
 
+  // --- Ctrl + mouse wheel/trackpad zoom handler ---
+  const { setZoom } = zoomPan;
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      if (container.contains(e.target as Node)) {
+        if (e.ctrlKey) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          const zoomFactor = 1.05;
+          setZoom(prev => {
+            const newZoom = e.deltaY < 0 ? prev * zoomFactor : prev / zoomFactor;
+            return Math.min(Math.max(newZoom, 0.1), 5);
+          });
+        }
+      }
+    };
+
+    window.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      window.removeEventListener("wheel", handleWheel);
+    };
+  }, [setZoom]);
+
   // Load chart/template data into stores when modal opens
   useEffect(() => {
     const loadData = async () => {

@@ -130,6 +130,33 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     }
   }, [zoomPan.zoom, zoomPan.panOffset.x, zoomPan.panOffset.y]);
 
+  // --- Ctrl + mouse wheel/trackpad zoom handler ---
+  const { setZoom } = zoomPan;
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      const container = chartContainerRef.current;
+      if (!container) return;
+
+      if (container.contains(e.target as Node)) {
+        if (e.ctrlKey) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          const zoomFactor = 1.05;
+          setZoom(prev => {
+            const newZoom = e.deltaY < 0 ? prev * zoomFactor : prev / zoomFactor;
+            return Math.min(Math.max(newZoom, 0.1), 5);
+          });
+        }
+      }
+    };
+
+    window.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      window.removeEventListener("wheel", handleWheel);
+    };
+  }, [setZoom]);
+
   // Auto-fit logic has been refactored to use synchronous CSS-based scaling and flex-centering in ChartPreviewCanvas.
 
   // --- Radar chart config fix ---
@@ -180,22 +207,6 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   const chartWidth = !isResponsive ? parseDimension((chartConfig as any)?.width) : undefined;
   const chartHeight = !isResponsive ? parseDimension((chartConfig as any)?.height) : undefined;
 
-  useEffect(() => {
-    const getGlobalChartRef = () => useChartStore.getState().globalChartRef;
-    if (!isResponsive && getGlobalChartRef()?.current) {
-      const canvas = getGlobalChartRef()?.current?.canvas;
-      if (canvas) {
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = (chartWidth || 800) * dpr;
-        canvas.height = (chartHeight || 600) * dpr;
-        canvas.style.width = (chartWidth || 800) + 'px';
-        canvas.style.height = (chartHeight || 600) + 'px';
-        const ctx = canvas.getContext('2d');
-        if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        getGlobalChartRef()?.current?.resize();
-      }
-    }
-  }, [isResponsive, chartWidth, chartHeight]);
 
   useEffect(() => {
     const getGlobalChartRef = () => useChartStore.getState().globalChartRef;

@@ -368,6 +368,50 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
   const [hoveredDatasetIndex, setHoveredDatasetIndex] = useState<number | null>(null);
   const [isMobile, setIsMobile] = useState(false);
 
+  // Track browser-level DPR changes (caused by browser zoom in/out).
+  // When the user zooms the page via browser (Ctrl+/- or browser menu),
+  // window.devicePixelRatio changes. We need to detect this and re-render
+  // the chart so it adapts to the new zoom level.
+  const [browserDpr, setBrowserDpr] = useState(() => typeof window !== 'undefined' ? window.devicePixelRatio : 1);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let currentDpr = window.devicePixelRatio;
+    let mediaQuery: MediaQueryList | null = null;
+
+    const updateDpr = () => {
+      const newDpr = window.devicePixelRatio;
+      if (newDpr !== currentDpr) {
+        currentDpr = newDpr;
+        setBrowserDpr(newDpr);
+        // Force the existing chart instance to resize and re-render
+        // at the new resolution after DPR change
+        if (chartRef.current) {
+          chartRef.current.resize();
+          chartRef.current.update();
+        }
+      }
+      // Re-register since matchMedia DPR queries are one-shot
+      listenForDprChange();
+    };
+
+    const listenForDprChange = () => {
+      // Clean up previous listener
+      if (mediaQuery) {
+        mediaQuery.removeEventListener('change', updateDpr);
+      }
+      // Create a media query that matches the current DPR
+      mediaQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+      mediaQuery.addEventListener('change', updateDpr);
+    };
+
+    listenForDprChange();
+    return () => {
+      if (mediaQuery) {
+        mediaQuery.removeEventListener('change', updateDpr);
+      }
+    };
+  }, []);
+
   // Refs for stable event listener callbacks — prevents the event listener
   // useEffect from re-running on every render when action functions change
   const actionsRef = useRef({ updateDataset });
@@ -454,6 +498,14 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
     if (readOnly) return;
     setGlobalChartRef(chartRef);
   }, [setGlobalChartRef, readOnly]);
+
+  // Smoothly resize and update chart when zoom level (devicePixelRatioMultiplier) changes
+  useEffect(() => {
+    if (chartRef.current) {
+      chartRef.current.resize();
+      chartRef.current.update();
+    }
+  }, [devicePixelRatioMultiplier]);
 
 
 
@@ -1734,7 +1786,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
             {chartConfig.dynamicDimension ? (
               <ResizableChartArea>
                 <Chart
-                  key={`${chartTypeForChart}-${isResponsive ? 'responsive' : 'fixed'}-${chartConfig.manualDimensions ? 'manual' : 'auto'}-dpr${devicePixelRatioMultiplier}`}
+                  key={`${chartTypeForChart}-${isResponsive ? 'responsive' : 'fixed'}-${chartConfig.manualDimensions ? 'manual' : 'auto'}`}
                   ref={chartRef}
                   type={chartTypeForChart as any}
                   data={chartDataForChart}
@@ -1742,10 +1794,14 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
                     'data-debug-width': chartConfig.width,
                     'data-debug-height': chartConfig.height
                   })}
-                  {...(readOnly && (isInsideTemplateOrFormat || !isResponsive) ? { width: isInsideTemplateOrFormat ? 800 : chartWidth, height: isInsideTemplateOrFormat ? 600 : chartHeight } : {})}
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    display: 'block',
+                  }}
                   options={{
                     ...appliedOptions,
-                    devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio * devicePixelRatioMultiplier : 1,
+                    devicePixelRatio: Math.max(1, Math.ceil(browserDpr * devicePixelRatioMultiplier)),
                     circumference: chartType === 'gauge' ? (appliedOptions.circumference ?? 180) : appliedOptions.circumference,
                     rotation: chartType === 'gauge' ? (appliedOptions.rotation ?? 270) : appliedOptions.rotation,
                     responsive: true,
@@ -2003,7 +2059,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
                 }}
               >
                 <Chart
-                  key={`${chartTypeForChart}-${isResponsive ? 'responsive' : 'fixed'}-${chartConfig.manualDimensions ? `manual-${chartWidth}-${chartHeight}` : 'auto'}-dpr${devicePixelRatioMultiplier}`}
+                  key={`${chartTypeForChart}-${isResponsive ? 'responsive' : 'fixed'}-${chartConfig.manualDimensions ? `manual-${chartWidth}-${chartHeight}` : 'auto'}`}
                   ref={chartRef}
                   type={chartTypeForChart as any}
                   data={chartDataForChart}
@@ -2011,10 +2067,15 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
                     'data-debug-width': chartConfig.width,
                     'data-debug-height': chartConfig.height
                   })}
-                  {...(readOnly && (isInsideTemplateOrFormat || !isResponsive) ? { width: isInsideTemplateOrFormat ? 800 : chartWidth, height: isInsideTemplateOrFormat ? 600 : chartHeight } : {})}
+                  {...((isInsideTemplateOrFormat || !isResponsive) ? { width: isInsideTemplateOrFormat ? 800 : chartWidth, height: isInsideTemplateOrFormat ? 600 : chartHeight } : {})}
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    display: 'block',
+                  }}
                   options={{
                     ...appliedOptions,
-                    devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio * devicePixelRatioMultiplier : 1,
+                    devicePixelRatio: Math.max(1, Math.ceil(browserDpr * devicePixelRatioMultiplier)),
                     circumference: chartType === 'gauge' ? (appliedOptions.circumference ?? 180) : appliedOptions.circumference,
                     rotation: chartType === 'gauge' ? (appliedOptions.rotation ?? 270) : appliedOptions.rotation,
                     responsive: isInsideTemplateOrFormat || chartConfig.manualDimensions ? true : isResponsive,
