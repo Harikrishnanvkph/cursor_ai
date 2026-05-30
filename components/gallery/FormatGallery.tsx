@@ -686,10 +686,20 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
               <p className="text-sm text-gray-500 max-w-sm mb-4">
                 {currentFormatsList.length === 0 
                   ? (activeTab === 'mine' ? "You haven't created any custom formats yet." : "No official formats are currently available.")
+                  : filters.dimension
+                  ? `There are no templates specifically designed for the ${filters.dimension} aspect ratio.`
                   : "We couldn't find any formats matching your current filters."}
               </p>
+              {filters.dimension && (
+                <button
+                  onClick={() => setFilters({ dimension: undefined })}
+                  className="text-sm px-4 py-2 font-semibold rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors border border-purple-100 mb-2"
+                >
+                  Reset Aspect Ratio to All
+                </button>
+              )}
               {(filters.category || filters.dimension) && (
-                <button onClick={clearFilters} className="text-sm px-4 py-2 font-medium rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors">
+                <button onClick={clearFilters} className="text-sm px-4 py-2 font-medium rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
                   Clear All Filters
                 </button>
               )}

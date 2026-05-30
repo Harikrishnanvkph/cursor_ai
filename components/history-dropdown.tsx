@@ -126,20 +126,17 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
       <>
         <DropdownMenu open={open} onOpenChange={setOpen}>
           <DropdownMenuTrigger asChild>
-            <Button
+            <button
               data-history-dropdown
               aria-label="Open history"
-              variant="outline"
-              size="sm"
-              className={`relative h-10 w-10 p-0 border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-transparent ${variant === 'icon-badge' ? 'rounded-full bg-white shadow-sm h-9 w-9 border' : ''}`}
+              className={`relative p-1.5 transition-all duration-200 focus-visible:outline-none ${
+                variant === 'icon-badge'
+                  ? 'rounded-full bg-white shadow-sm h-9 w-9 border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300'
+                  : 'rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200/60 shadow-xs'
+              }`}
             >
               <History className="h-4 w-4" />
-              {(variant === 'icon-badge' || variant === 'compact') && safeConversations.length > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 bg-purple-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center shadow-md border border-white">
-                  {safeConversations.length > 99 ? '99+' : safeConversations.length}
-                </span>
-              )}
-            </Button>
+            </button>
           </DropdownMenuTrigger>
 
           <DropdownMenuContent className="w-72 mt-2 rounded-lg" align="end" forceMount>
@@ -245,20 +242,13 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
       <>
         <DropdownMenu open={open} onOpenChange={setOpen}>
           <DropdownMenuTrigger asChild>
-            <Button
+            <button
               data-history-dropdown
               aria-label="Open history"
-              variant="outline"
-              size="sm"
-              className="relative h-8 w-10 p-0 text-xs border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-transparent"
+              className="relative h-8 w-8 flex items-center justify-center rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200/60 shadow-xs transition-all duration-200 focus-visible:outline-none"
             >
-              <History className="w-3 h-3" />
-              {safeConversations.length > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 bg-purple-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center shadow-md border border-white">
-                  {safeConversations.length > 99 ? '99+' : safeConversations.length}
-                </span>
-              )}
-            </Button>
+              <History className="w-4 h-4" />
+            </button>
           </DropdownMenuTrigger>
 
           <DropdownMenuContent className="w-72 mt-2 rounded-lg" align="end" forceMount>
@@ -480,11 +470,6 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
             <span className="text-gray-700">
               History
             </span>
-            {safeConversations.length > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 bg-purple-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center shadow-md border border-white">
-                {safeConversations.length > 99 ? '99+' : safeConversations.length}
-              </span>
-            )}
             {open ? <ChevronUp className="w-3 h-3 text-gray-700" /> : <ChevronDown className="w-3 h-3 text-gray-700" />}
           </Button>
         </DropdownMenuTrigger>

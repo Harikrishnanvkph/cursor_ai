@@ -311,11 +311,11 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
       <div
         className={cn(
           "p-4 overflow-auto absolute inset-0 right-auto",
-          isCollapsed ? "right-16" : "right-[280px]"
+          isCollapsed ? "right-14" : "right-[280px]"
         )}
         style={{
           left: 0,
-          width: isCollapsed ? 'calc(100% - 64px)' : 'calc(100% - 280px)'
+          width: isCollapsed ? 'calc(100% - 56px)' : 'calc(100% - 280px)'
         }}
       >
         <ChartPreview
@@ -329,58 +329,50 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
       {/* Right Sidebar (Config Panel) - Collapsible */}
       <div
         className={cn(
-          "absolute landing-right-sidebar right-0 top-0 bottom-0 border-l bg-white shadow-lg flex flex-col z-10",
-          isCollapsed ? "w-16" : "w-[280px]"
+          "absolute landing-right-sidebar right-0 top-0 bottom-0 border-l border-slate-200/80 bg-slate-50/60 backdrop-blur-xl shadow-md flex flex-col z-10",
+          isCollapsed ? "w-14" : "w-[280px]"
         )}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
       >
         {isCollapsed ? (
           // Collapsed state: show profile, expand button, and action buttons
-          <div className="flex flex-col items-center h-full py-2 group">
-            {/* Profile Icon - Top */}
-            <div className="p-2 border-b border-gray-200 w-full flex justify-center">
-              <SimpleProfileDropdown size="md" />
-            </div>
+          <div className="flex flex-col items-center h-full py-4 bg-slate-50/60 backdrop-blur-xl group">
+            <div className="flex flex-col items-center space-y-4 w-full">
+              {/* Profile Icon - Top */}
+              <div className="pb-4 border-b border-slate-200/60 w-full flex justify-center">
+                <SimpleProfileDropdown size="sm" />
+              </div>
 
-            {/* Expand Button - Below Profile */}
-            <div className="p-2 w-full flex justify-center">
-              <Button
-                variant="ghost"
-                size="sm"
+              {/* Expand Button - Below Profile */}
+              <button
                 onClick={toggleSidebar}
-                className="h-10 w-10 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg"
+                className="p-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200/60 shadow-xs transition-all duration-200 hover:shadow-sm"
                 title="Expand Settings"
               >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-            </div>
+                <ChevronLeft className="w-4 h-4" />
+              </button>
 
-            {/* Action Buttons: Save, Cancel, History - Below expand button */}
-            <div className="flex flex-col items-center gap-2 px-2 w-full">
-              <Button
-                size="sm"
-                variant="default"
+              {/* Action Buttons: Save, Cancel, History */}
+              <button
                 onClick={handleSaveClick}
                 disabled={!hasJSON || isSaving}
-                className="h-10 w-10 p-0 bg-blue-600 hover:bg-blue-700 text-white"
+                className="p-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-100/50 hover:border-indigo-200 text-indigo-600 transition-all duration-200 shadow-xs disabled:opacity-30 flex items-center justify-center"
                 title="Save chart to online database"
               >
-                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              </button>
+
+              <button
                 onClick={handleCancel}
                 disabled={!hasJSON}
-                className="h-10 w-10 p-0 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                className="p-1.5 rounded-xl bg-red-50 hover:bg-red-100 border border-red-100/50 hover:border-red-200 text-red-600 transition-all duration-200 shadow-xs disabled:opacity-30 flex items-center justify-center"
                 title="Clear chart and start new"
               >
-                <X className="h-4 w-4" />
-              </Button>
-              <div className="h-10 w-10">
-                <HistoryDropdown variant="compact" />
-              </div>
+                <X className="w-4 h-4" />
+              </button>
+
+              <HistoryDropdown variant="compact" />
             </div>
 
             {/* Spacer to push buttons to top */}
@@ -389,38 +381,34 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
         ) : (
           // Expanded state: show ConfigSidebar with top bar (expand, history, profile)
           <>
-            <div className="flex items-center p-2.5 border-b bg-gray-50/50 gap-2">
+            <div className="flex items-center p-2.5 border-b border-slate-200/80 bg-white/40 gap-2">
               {/* Expand/Collapse Button */}
               <button
                 onClick={toggleSidebar}
-                className="h-8 w-8 p-0 flex items-center justify-center rounded-md hover:bg-gray-100 transition-all duration-200 text-gray-600 hover:text-gray-800 flex-shrink-0"
+                className="h-8 w-8 p-0 flex items-center justify-center rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200/60 shadow-xs transition-all duration-200 flex-shrink-0"
                 title="Collapse Settings"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
 
               {/* Action Buttons: Save, Cancel, History */}
-              <div className="flex gap-2 flex-shrink-0">
-                <Button
-                  size="sm"
-                  variant="default"
+              <div className="flex gap-1.5 flex-shrink-0 items-center">
+                <button
                   onClick={handleSaveClick}
                   disabled={!hasJSON || isSaving}
-                  className="h-8 w-10 p-0 text-xs bg-blue-600 hover:bg-blue-700 text-white"
+                  className="h-8 w-8 p-0 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-100/50 hover:border-indigo-200 text-indigo-600 transition-all duration-200 shadow-xs disabled:opacity-30 flex items-center justify-center"
                   title="Save chart to online database"
                 >
-                  {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                </button>
+                <button
                   onClick={handleCancel}
                   disabled={!hasJSON}
-                  className="h-8 w-10 p-0 text-xs border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                  className="h-8 w-8 p-0 rounded-xl bg-red-50 hover:bg-red-100 border border-red-100/50 hover:border-red-200 text-red-600 transition-all duration-200 shadow-xs disabled:opacity-30 flex items-center justify-center"
                   title="Clear chart and start new"
                 >
-                  <X className="w-3 h-3" />
-                </Button>
+                  <X className="w-4 h-4" />
+                </button>
                 <HistoryDropdown variant="inline" />
               </div>
 

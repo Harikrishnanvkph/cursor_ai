@@ -21,9 +21,6 @@ import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
 import { clearStoreData } from "@/lib/utils"
 import { ResponsiveAnimationsPanel } from "@/components/panels/responsive-animations-panel";
 import { Chart } from "react-chartjs-2"
-import { PromptTemplate, chartTemplate, ChatWindow } from "@/components/landing"
-import { ConfigSidebar } from "@/components/config-sidebar"
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 import { toast } from "sonner"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { FormatGallery } from "@/components/gallery/FormatGallery"
@@ -31,13 +28,11 @@ import { useChartStyleStore } from "@/lib/stores/chart-style-store"
 import { ChartStyleGalleryPage } from "@/components/chart-style-gallery/ChartStyleGalleryPage"
 import { useSidebarContext } from "@/components/landing/sidebar-context"
 import { useIsMobile576, useIsTablet } from "@/lib/hooks/use-screen-dimensions"
+import { PromptTemplate, chartTemplate, ChatWindow } from "@/components/landing"
+import { ConfigSidebar } from "@/components/config-sidebar"
 
 export default function LandingPage() {
-  return (
-    <ProtectedRoute>
-      <LandingPageContent />
-    </ProtectedRoute>
-  )
+  return <LandingPageContent />
 }
 
 function LandingPageContent() {

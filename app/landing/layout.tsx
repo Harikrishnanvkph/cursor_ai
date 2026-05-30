@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react"
 import { LandingSidebar } from "@/components/landing/landing-sidebar"
 import { SidebarProvider, useSidebarContext } from "@/components/landing/sidebar-context"
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 
 /**
  * Landing Layout — App Shell Architecture
@@ -17,9 +18,11 @@ import { SidebarProvider, useSidebarContext } from "@/components/landing/sidebar
  */
 export default function LandingLayout({ children }: { children: React.ReactNode }) {
   return (
-    <SidebarProvider>
-      <LandingLayoutInner>{children}</LandingLayoutInner>
-    </SidebarProvider>
+    <ProtectedRoute>
+      <SidebarProvider>
+        <LandingLayoutInner>{children}</LandingLayoutInner>
+      </SidebarProvider>
+    </ProtectedRoute>
   )
 }
 

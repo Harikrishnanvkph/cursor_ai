@@ -18,10 +18,25 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   // Display a secure loading state instead.
   if (loading) {
     return (
-      <div className="flex h-full min-h-screen flex-1 w-full bg-gray-50 items-center justify-center p-4">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-          <p className="text-sm font-medium text-gray-500">Verifying access...</p>
+      <div className="fixed inset-0 z-[9999] bg-[#f6f8fa] flex items-center justify-center p-4">
+        {/* Soft background glow circles */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] rounded-full bg-gradient-to-br from-indigo-500/10 to-purple-500/10 blur-[80px]" />
+        </div>
+        
+        <div className="flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-500 relative z-10">
+          <div className="relative">
+            {/* Outer spinning ring */}
+            <div className="w-16 h-16 rounded-full border-4 border-indigo-100 border-t-indigo-600 animate-spin shadow-md"></div>
+            {/* Inner pulsing core */}
+            <div className="absolute inset-0 m-auto w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 animate-pulse shadow-sm"></div>
+          </div>
+          <div className="flex flex-col items-center">
+            <span className="text-sm font-semibold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 animate-pulse tracking-wide">
+              Verifying access...
+            </span>
+            <span className="text-xs text-slate-400 mt-1">Securing your session...</span>
+          </div>
         </div>
       </div>
     )

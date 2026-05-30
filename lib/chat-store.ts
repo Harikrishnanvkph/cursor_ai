@@ -516,8 +516,27 @@ export const useChatStore = create<ChatStore>()(
 
           // Update chart store
           if (assistantMsg.chartSnapshot) {
-            useChartStore.getState().setFullChart({ ...assistantMsg.chartSnapshot, replaceMode: true });
-            useChartStore.getState().setHasJSON(true);
+            const chartStore = useChartStore.getState();
+            const currentConfig = chartStore.chartConfig;
+
+            // Preserve manual dimensions if set in the previous state config (e.g. 1:1, 16:9 selected initially)
+            if (currentConfig && (currentConfig.manualDimensions || !currentConfig.responsive)) {
+              if (currentConfig.width && currentConfig.height) {
+                assistantMsg.chartSnapshot.chartConfig = {
+                  ...(assistantMsg.chartSnapshot.chartConfig || {}),
+                  responsive: currentConfig.responsive,
+                  manualDimensions: currentConfig.manualDimensions,
+                  dynamicDimension: currentConfig.dynamicDimension,
+                  templateDimensions: currentConfig.templateDimensions,
+                  originalDimensions: currentConfig.originalDimensions,
+                  width: currentConfig.width,
+                  height: currentConfig.height,
+                };
+              }
+            }
+
+            chartStore.setFullChart({ ...assistantMsg.chartSnapshot, replaceMode: true });
+            chartStore.setHasJSON(true);
 
             // Populate template text areas if template structure was provided and response includes template content
             const templateStore = useTemplateStore.getState();

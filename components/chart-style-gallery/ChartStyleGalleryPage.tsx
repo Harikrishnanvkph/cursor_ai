@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useCallback, useState } from "react"
 import { ChevronDown } from "lucide-react"
 import { useChartStyleStore } from "@/lib/stores/chart-style-store"
 import { useChartStore } from "@/lib/chart-store"
-import { X, Palette, SlidersHorizontal, BarChart3, Search, TrendingUp, PieChart, CircleDot, Radar, Target, BarChartHorizontal, Box, Layers, RefreshCw, Check } from "lucide-react"
+import { X, Palette, SlidersHorizontal, BarChart3, Search, TrendingUp, PieChart, CircleDot, Radar, Target, BarChartHorizontal, Box, Layers, RefreshCw, Check, Layout } from "lucide-react"
 
 /** Number of presets to show initially and per "Load More" click */
 const PAGE_SIZE = 12
@@ -40,6 +40,17 @@ const CHART_TYPE_OPTIONS: { label: string; value: string; icon: React.ReactNode 
   { label: 'H-Bar', value: 'horizontalBar', icon: <BarChartHorizontal className="w-3.5 h-3.5" /> },
   { label: '3D Bar', value: 'bar3d', icon: <Box className="w-3.5 h-3.5" /> },
   { label: '3D Pie', value: 'pie3d', icon: <Box className="w-3.5 h-3.5" /> },
+]
+
+// Aspect ratio filter options
+const ASPECT_RATIO_OPTIONS: { label: string; value: string; icon: React.ReactNode }[] = [
+  { label: 'All Aspect Ratios', value: 'all', icon: <Layers className="w-3.5 h-3.5" /> },
+  { label: '16:9 Landscape', value: '16:9', icon: <Layout className="w-3.5 h-3.5" style={{ transform: 'rotate(90deg) scaleY(1.5)' }} /> },
+  { label: '9:16 Portrait', value: '9:16', icon: <Layout className="w-3.5 h-3.5" style={{ transform: 'scaleY(1.5)' }} /> },
+  { label: '1:1 Square', value: '1:1', icon: <Box className="w-3.5 h-3.5" /> },
+  { label: '4:5 Classic', value: '4:5', icon: <Layout className="w-3.5 h-3.5" style={{ transform: 'scaleY(1.25)' }} /> },
+  { label: '4:3 Traditional', value: '4:3', icon: <Layout className="w-3.5 h-3.5" style={{ transform: 'rotate(90deg) scaleY(1.33)' }} /> },
+  { label: '3:2 Photographic', value: '3:2', icon: <Layout className="w-3.5 h-3.5" style={{ transform: 'rotate(90deg) scaleY(1.5)' }} /> },
 ]
 
 export function ChartStyleGalleryPage() {
@@ -111,13 +122,13 @@ export function ChartStyleGalleryPage() {
 
   const filteredPresets = useMemo(
     () => getFilteredPresets(),
-    [officialPresets, filters.chartType, filters.category, filters.searchQuery]
+    [officialPresets, filters.chartType, filters.category, filters.aspectRatio, filters.searchQuery]
   )
 
   // Reset visible count when filters change
   useEffect(() => {
     setVisibleCount(PAGE_SIZE)
-  }, [filters.chartType, filters.category, filters.searchQuery])
+  }, [filters.chartType, filters.category, filters.aspectRatio, filters.searchQuery])
 
   // Paginated subset
   const visiblePresets = useMemo(
@@ -152,6 +163,7 @@ export function ChartStyleGalleryPage() {
   const activeFilterCount =
     (filters.category !== 'all' && filters.category ? 1 : 0) +
     (filters.chartType !== 'all' ? 1 : 0) +
+    (filters.aspectRatio !== 'all' ? 1 : 0) +
     (filters.searchQuery ? 1 : 0)
 
   return (
@@ -245,6 +257,27 @@ export function ChartStyleGalleryPage() {
                   onClick={() => setFilters({ chartType: (opt.value || 'all') as any })}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border transition-all ${
                     (filters.chartType || 'all') === opt.value
+                      ? 'bg-violet-50 text-violet-600 border-violet-200 shadow-sm'
+                      : 'bg-white text-gray-400 border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  {opt.icon}
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Aspect Ratio */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Aspect Ratio</span>
+            <div className="flex gap-1.5 flex-wrap">
+              {ASPECT_RATIO_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setFilters({ aspectRatio: opt.value })}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border transition-all ${
+                    (filters.aspectRatio || 'all') === opt.value
                       ? 'bg-violet-50 text-violet-600 border-violet-200 shadow-sm'
                       : 'bg-white text-gray-400 border-gray-200 hover:border-gray-300'
                   }`}
@@ -351,15 +384,25 @@ export function ChartStyleGalleryPage() {
             <p className="text-sm text-gray-500 max-w-sm mb-4">
               {officialPresets.length === 0
                 ? "No styles are currently available."
+                : filters.aspectRatio !== 'all'
+                ? `There are no presets specifically designed for the ${filters.aspectRatio} aspect ratio.`
                 : "We couldn't find any styles matching your current filters."}
             </p>
+            {filters.aspectRatio !== 'all' && (
+              <button
+                onClick={() => setFilters({ aspectRatio: 'all' })}
+                className="text-sm px-4 py-2 font-semibold rounded-lg bg-violet-50 text-violet-600 hover:bg-violet-100 transition-colors border border-violet-100 mb-2"
+              >
+                Reset Aspect Ratio to All
+              </button>
+            )}
             {activeFilterCount > 0 && (
               <button
                 onClick={() => {
                   resetFilters()
                   setSearchInput('')
                 }}
-                className="text-sm px-4 py-2 font-medium rounded-lg bg-violet-50 text-violet-600 hover:bg-violet-100 transition-colors"
+                className="text-sm px-4 py-2 font-medium rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
               >
                 Clear All Filters
               </button>

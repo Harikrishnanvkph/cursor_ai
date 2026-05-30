@@ -22,6 +22,7 @@ export function ChartStyleGallery() {
     loadPresets,
     officialPresets,
     filters,
+    setFilters,
     getFilteredPresets,
     selectedPresetId,
     applyPreset,
@@ -286,12 +287,26 @@ export function ChartStyleGallery() {
             )}
           </>
         ) : (
-          <div className="flex flex-col items-center justify-center h-40 text-center px-4">
+          <div className="flex flex-col items-center justify-center h-full min-h-[250px] text-center px-4 py-8">
             <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center mb-3">
               <SlidersHorizontal className="w-5 h-5 text-gray-300" />
             </div>
             <p className="text-sm font-semibold text-gray-700 mb-1">No styles found</p>
-            <p className="text-xs text-gray-400">Try adjusting your filters</p>
+            {filters.aspectRatio !== 'all' ? (
+              <>
+                <p className="text-xs text-gray-400 max-w-[200px] mx-auto mb-3">
+                  There are no presets specifically designed for the <span className="font-semibold text-gray-650">{filters.aspectRatio}</span> aspect ratio.
+                </p>
+                <button
+                  onClick={() => setFilters({ aspectRatio: 'all' })}
+                  className="text-xs px-3 py-1.5 font-semibold rounded-lg bg-violet-50 text-violet-600 hover:bg-violet-100 transition-colors border border-violet-100"
+                >
+                  Show All Aspect Ratios
+                </button>
+              </>
+            ) : (
+              <p className="text-xs text-gray-400">Try adjusting your filters</p>
+            )}
           </div>
         )}
       </div>

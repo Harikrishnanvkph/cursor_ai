@@ -23,6 +23,7 @@ import type { SupportedChartType } from '../chart-defaults'
 interface ChartStyleFilters {
   chartType: SupportedChartType | 'all'
   category: PresetCategory | 'all'
+  aspectRatio: string | 'all'
   searchQuery: string
 }
 
@@ -92,7 +93,53 @@ interface ChartStyleStore {
 const defaultFilters: ChartStyleFilters = {
   chartType: 'all',
   category: 'all',
+  aspectRatio: 'all',
   searchQuery: '',
+}
+
+// ========================================
+// ASPECT RATIO UTILITIES
+// ========================================
+
+const parseDimensionValue = (val: string | null | undefined): number => {
+  if (!val) return 0
+  return parseInt(val.replace('px', '')) || 0
+}
+
+const getPresetClosestAspectRatio = (preset: ChartStylePreset): string | null => {
+  if (!preset.dimensions || !preset.dimensions.width || !preset.dimensions.height) {
+    return null
+  }
+  const w = parseDimensionValue(preset.dimensions.width)
+  const h = parseDimensionValue(preset.dimensions.height)
+  if (w === 0 || h === 0) return null
+
+  const presetRatio = w / h
+  const candidates = [
+    { value: '16:9', ratio: 16 / 9 },
+    { value: '9:16', ratio: 9 / 16 },
+    { value: '1:1', ratio: 1 },
+    { value: '4:5', ratio: 4 / 5 },
+    { value: '4:3', ratio: 4 / 3 },
+    { value: '3:2', ratio: 3 / 2 }
+  ]
+
+  let closestValue = candidates[0].value
+  let minDiff = Math.abs(presetRatio - candidates[0].ratio)
+  for (let i = 1; i < candidates.length; i++) {
+    const diff = Math.abs(presetRatio - candidates[i].ratio)
+    if (diff < minDiff) {
+      minDiff = diff
+      closestValue = candidates[i].value
+    }
+  }
+
+  // Only match if the difference is within 0.25 threshold
+  if (minDiff < 0.25) {
+    return closestValue
+  }
+
+  return null
 }
 
 // ========================================
@@ -113,15 +160,59 @@ export const useChartStyleStore = create<ChartStyleStore>()(
     if (state.officialPresets.length === 0) {
       state.loadPresets()
     }
-    // Auto-filter by the current chart type if provided
-    if (chartType) {
-      set({
-        isGalleryOpen: true,
-        filters: { ...state.filters, chartType: chartType as any },
-      })
-    } else {
-      set({ isGalleryOpen: true })
+    
+    // Auto-detect aspect ratio from the active chart in useChartStore
+    let detectedAspectRatio: string | 'all' = 'all'
+    try {
+      const { useChartStore } = require('../chart-store')
+      const chartState = useChartStore.getState()
+      const chartConfig = chartState.chartConfig
+      
+      if (chartConfig && !chartConfig.responsive && chartConfig.width && chartConfig.height) {
+        const w = parseDimensionValue(chartConfig.width as string)
+        const h = parseDimensionValue(chartConfig.height as string)
+        if (w > 0 && h > 0) {
+          const ratio = w / h
+          const candidates = [
+            { value: '16:9', ratio: 16 / 9 },
+            { value: '9:16', ratio: 9 / 16 },
+            { value: '1:1', ratio: 1 },
+            { value: '4:5', ratio: 4 / 5 },
+            { value: '4:3', ratio: 4 / 3 },
+            { value: '3:2', ratio: 3 / 2 }
+          ]
+
+          let closestValue = candidates[0].value
+          let minDiff = Math.abs(ratio - candidates[0].ratio)
+          for (let i = 1; i < candidates.length; i++) {
+            const diff = Math.abs(ratio - candidates[i].ratio)
+            if (diff < minDiff) {
+              minDiff = diff
+              closestValue = candidates[i].value
+            }
+          }
+
+          if (minDiff < 0.25) {
+            detectedAspectRatio = closestValue
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[ChartStyleStore] Failed to detect active chart aspect ratio:', e)
     }
+
+    const newFilters = { ...state.filters }
+    if (chartType) {
+      newFilters.chartType = chartType as any
+    }
+    if (detectedAspectRatio !== 'all') {
+      newFilters.aspectRatio = detectedAspectRatio
+    }
+
+    set({
+      isGalleryOpen: true,
+      filters: newFilters,
+    })
   },
   closeGallery: () => set({ isGalleryOpen: false, selectedPresetId: null }),
   toggleGallery: () => {
@@ -169,6 +260,14 @@ export const useChartStyleStore = create<ChartStyleStore>()(
       // Filter by category
       if (filters.category !== 'all' && preset.category !== filters.category) {
         return false
+      }
+
+      // Filter by aspect ratio
+      if (filters.aspectRatio !== 'all') {
+        const presetRatio = getPresetClosestAspectRatio(preset)
+        if (presetRatio !== filters.aspectRatio) {
+          return false
+        }
       }
 
       // Filter by search query

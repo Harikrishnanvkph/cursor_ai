@@ -5,8 +5,14 @@ import { useRouter } from "next/navigation"
 import {
   ArrowUp, BarChart2, SquarePen, Edit3,
   MessageSquare, Sparkles, ChevronLeft, ChevronRight,
-  Info, LayoutDashboard
+  Info, LayoutDashboard, Bot, ExternalLink
 } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem
+} from "@/components/ui/dropdown-menu"
 import { useChartStore } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
 import { useTemplateStore } from "@/lib/template-store"
@@ -107,23 +113,22 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
   }, [messages])
 
   return (
-    <aside className={`z-10 flex flex-col border-r border-gray-200 shadow-2xl bg-white ${leftSidebarOpen ? 'w-[320px]' : 'w-14'} overflow-hidden flex-shrink-0`}>
+    <aside className={`z-10 flex flex-col border-r border-slate-200/80 shadow-md bg-white/40 backdrop-blur-xl ${leftSidebarOpen ? 'w-[320px]' : 'w-14'} overflow-hidden flex-shrink-0`}>
       {leftSidebarOpen ? (
         <>
           {/* Unified Header with Title */}
-          <div className="flex flex-col border-b border-white/20 bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg">
-            <div className="flex justify-center pt-3 pb-2">
-              <span className="text-[11px] font-bold text-white/90 uppercase tracking-[0.15em] drop-shadow-sm flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-blue-300" />
+          <div className="flex flex-col border-b border-slate-200/80 bg-transparent shadow-xs">
+            <div className="flex flex-col items-center justify-center pt-4 pb-2.5 text-center w-full">
+              <span className="text-xs font-black tracking-wider uppercase bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent drop-shadow-sm">
                 AI Chart Generator
               </span>
             </div>
 
             <div className="flex items-center justify-between px-3 pb-3">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => router.push('/board')}
-                  className="bg-white/20 hover:bg-white/30 text-white font-semibold px-3 py-1.5 rounded-lg transition-colors text-xs border border-white/20 flex items-center gap-1.5"
+                  className="bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200/80 rounded-xl px-2.5 py-1.5 transition-all text-xs font-semibold flex items-center gap-1.5 shadow-sm"
                   title="Go to Dashboard"
                 >
                   <LayoutDashboard className="w-3.5 h-3.5" />
@@ -131,23 +136,23 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
                 </button>
                 <button
                   onClick={() => router.push('/editor')}
-                  className="bg-white/20 hover:bg-white/30 text-white font-semibold px-3 py-1.5 rounded-lg transition-colors text-xs border border-white/20 flex items-center gap-1.5"
+                  className="bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200/80 rounded-xl px-2.5 py-1.5 transition-all text-xs font-semibold flex items-center gap-1.5 shadow-sm"
                   title="Go to Infographic Editor"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
                   <span>Editor</span>
                 </button>
               </div>
-              <div className="flex gap-1">
+              <div className="flex gap-1.5">
                 <button
-                  className="bg-white/20 hover:bg-white/30 text-white font-semibold px-2 py-1.5 rounded-lg transition-colors text-xs border border-white/20 flex items-center gap-1"
+                  className="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-100 hover:border-indigo-200 rounded-xl px-2.5 py-1.5 font-semibold transition-all text-xs flex items-center gap-1 shadow-sm"
                   onClick={handleNewConversation}
                   title="New Conversation"
                 >
                   <SquarePen className="w-3.5 h-3.5" />
                 </button>
                 <button
-                  className="bg-white/20 hover:bg-white/30 text-white font-semibold px-2 py-1.5 rounded-lg transition-colors text-xs border border-white/20"
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 border border-slate-200/60 rounded-xl px-2.5 py-1.5 transition-all text-xs shadow-sm"
                   onClick={() => setLeftSidebarOpen(false)}
                   title="Collapse Sidebar"
                 >
@@ -160,51 +165,53 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
           {/* Input */}
           <form
             onSubmit={handleSend}
-            className="p-3 border-t border-gray-200 bg-white flex items-end gap-2 flex-shrink-0"
+            className="p-4 border-t border-slate-200/80 bg-transparent flex flex-col gap-2 flex-shrink-0"
           >
-            <textarea
-              ref={textareaRef}
-              className="flex-1 rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-300 bg-white resize-none max-h-[150px] min-h-[44px] leading-relaxed transition-all font-sans disabled:opacity-50 disabled:cursor-not-allowed"
-              placeholder={isChatDisabled ? "Attach a template to start..." : (hasActiveChart ? "Modify the chart..." : "Ask AI to Generate Chart...")}
-              value={input}
-              onChange={handleInputChange}
-              onPaste={handlePaste}
-              disabled={isProcessing || isChatDisabled}
-              rows={1}
-              onKeyDown={e => {
-                if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                  e.preventDefault();
-                  if (!isChatDisabled) {
-                    handleSend(e)
+            <div className="relative flex items-center w-full bg-white border border-slate-200 hover:border-slate-300 focus-within:border-indigo-400 focus-within:ring-4 focus-within:ring-indigo-50/50 transition-all rounded-2xl p-1.5 shadow-xs">
+              <textarea
+                ref={textareaRef}
+                className="flex-1 px-3 py-2 text-sm bg-transparent border-0 outline-none resize-none max-h-[140px] min-h-[38px] leading-relaxed transition-all font-sans text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none disabled:opacity-50"
+                placeholder={isChatDisabled ? "Attach a template to start..." : (hasActiveChart ? "Modify the chart..." : "Ask AI to Generate Chart...")}
+                value={input}
+                onChange={handleInputChange}
+                onPaste={handlePaste}
+                disabled={isProcessing || isChatDisabled}
+                rows={1}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                    e.preventDefault();
+                    if (!isChatDisabled) {
+                      handleSend(e)
+                    }
                   }
-                }
-              }}
-            />
-            <button
-              type="submit"
-              className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white w-[38px] h-[38px] flex items-center justify-center rounded-full flex-shrink-0 disabled:opacity-50 transition-all duration-200 shadow-sm mb-[3px]"
-              disabled={isProcessing || !input.trim() || isChatDisabled}
-            >
-              <ArrowUp className="w-5 h-5" strokeWidth={2.5} />
-            </button>
+                }}
+              />
+              <button
+                type="submit"
+                className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white w-9 h-9 flex items-center justify-center rounded-xl flex-shrink-0 transition-all duration-200 shadow-sm disabled:opacity-30 disabled:hover:bg-indigo-600 disabled:active:scale-100"
+                disabled={isProcessing || !input.trim() || isChatDisabled}
+              >
+                <ArrowUp className="w-4 h-4" strokeWidth={2.5} />
+              </button>
+            </div>
           </form>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2 bg-gradient-to-b from-white/80 to-slate-50/80 font-sans">
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-transparent font-sans scrollbar-thin scrollbar-thumb-slate-200/80 scrollbar-track-transparent">
             {messages.map((msg, idx) => (
               <div
                 key={idx}
-                className={`rounded-2xl px-4 py-3 max-w-[90%] whitespace-pre-wrap break-words shadow-lg font-medium text-sm ${msg.role === "user"
-                  ? "bg-gradient-to-br from-indigo-500 to-purple-600 text-white self-end ml-auto border border-indigo-400/30 shadow-indigo-500/25"
-                  : "bg-gradient-to-br from-white to-slate-50 text-slate-800 self-start mr-auto border border-slate-200/50 shadow-slate-500/10"
+                className={`px-4 py-3 max-w-[85%] whitespace-pre-wrap break-words text-sm leading-relaxed ${msg.role === "user"
+                  ? "bg-gradient-to-br from-indigo-500 to-indigo-600 text-white self-end ml-auto border border-indigo-400/20 rounded-2xl rounded-tr-sm font-semibold shadow-xs"
+                  : "bg-indigo-50/40 text-slate-800 self-start mr-auto border border-indigo-200/70 rounded-2xl rounded-tl-sm px-4 py-3 shadow-[0_2px_8px_rgba(99,102,241,0.04)] font-medium"
                   }`}
                 style={{ wordBreak: 'break-word' }}
               >
                 <div className="flex items-start gap-3">
                   {msg.role === 'assistant' && (
                     <div className="flex flex-col items-center gap-1 flex-shrink-0">
-                      <div className="p-1.5 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-lg">
-                        <Sparkles className="w-4 h-4 text-blue-600" />
+                      <div className="p-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-xs text-white flex items-center justify-center">
+                        <Sparkles className="w-3.5 h-3.5" />
                       </div>
                       {msg.chartSnapshot && (
                         <div className="relative group">
@@ -236,12 +243,12 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
               </div>
             ))}
             {isProcessing && (
-              <div className="bg-gradient-to-br from-white to-slate-50 text-slate-800 self-start mr-auto border border-slate-200/50 rounded-2xl px-4 py-3 max-w-[90%] shadow-lg">
+              <div className="bg-indigo-50/40 text-slate-800 self-start mr-auto border border-indigo-200/70 rounded-2xl rounded-tl-sm px-4 py-3 shadow-[0_2px_8px_rgba(99,102,241,0.04)] font-medium max-w-[85%]">
                 <div className="flex items-center gap-3">
-                  <div className="p-1.5 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-lg">
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
+                  <div className="p-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-xs text-white flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-4.5 w-4.5 border-2 border-white border-t-transparent"></div>
                   </div>
-                  <span className="text-sm font-medium">Processing your request...</span>
+                  <span className="text-sm">Processing...</span>
                 </div>
               </div>
             )}
@@ -251,21 +258,21 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
         </>
       ) : (
         // Collapsed Sidebar - Icon Only
-        <div className="flex flex-col items-center h-full py-4 group">
+        <div className="flex flex-col items-center h-full py-4 bg-transparent group">
           <div className="flex flex-col items-center space-y-4 w-full">
             {/* Application Logo - Always shows logo, routes to home */}
             <button
               onClick={() => router.push("/")}
-              className="p-1.5 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg shadow-lg transition-shadow hover:shadow-md"
+              className="p-1.5 bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200/60 rounded-xl shadow-xs transition-all hover:shadow-sm"
               title="Go to Home"
             >
-              <BarChart2 className="w-5 h-5 text-white" />
+              <BarChart2 className="w-4 h-4" />
             </button>
 
             {/* Expand Sidebar Icon - Separate ChevronRight icon */}
             <button
               onClick={() => setLeftSidebarOpen(true)}
-              className="p-1.5 rounded-lg hover:bg-gradient-to-br hover:from-blue-50 hover:to-indigo-50 text-gray-500 hover:text-blue-600 transition-colors hover:shadow-md"
+              className="p-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200/60 shadow-xs transition-all hover:shadow-sm"
               title="Expand Sidebar"
             >
               <ChevronRight className="w-4 h-4" />
@@ -277,7 +284,7 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
                 handleNewConversation();
                 setLeftSidebarOpen(true);
               }}
-              className="p-1.5 rounded-lg hover:bg-blue-50 transition-all duration-200 text-gray-600 hover:text-blue-600"
+              className="p-1.5 bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200/60 rounded-xl shadow-xs transition-all hover:shadow-sm"
               title="New Chat"
             >
               <SquarePen className="w-4 h-4" />
@@ -290,28 +297,43 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
                   setLeftSidebarOpen(true);
                 }
               }}
-              className={`p-1.5 rounded-lg transition-all duration-200 ${hasActiveChart
-                ? 'text-blue-600 bg-blue-50 hover:bg-blue-100'
-                : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+              className={`p-1.5 rounded-xl border shadow-xs transition-all ${hasActiveChart
+                ? 'bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border-slate-200/60 hover:shadow-sm'
+                : 'text-slate-400 bg-slate-50/50 border-slate-200/40 cursor-not-allowed'
                 }`}
               title={hasActiveChart ? "Current Chat" : "No active chat"}
               disabled={!hasActiveChart}
             >
               <MessageSquare className="w-4 h-4" />
             </button>
-          </div>
 
-          <div className="mt-auto pt-4 pb-4 w-full flex justify-center">
-            <button
-              onClick={() => router.push('/editor')}
-              className="group/btn relative flex flex-col items-center justify-center py-4 px-1.5 gap-3 rounded-lg bg-gray-100 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 hover:shadow-sm transition-all duration-200 w-full mx-2 max-w-[40px]"
-              title="Advanced Editor"
-            >
-              <Edit3 className="w-4 h-4 text-gray-500 group-hover/btn:text-blue-600 transition-colors" />
-              <div className="writing-vertical-rl rotate-180 text-[10px] font-medium text-gray-500 tracking-wider group-hover/btn:text-blue-600 transition-colors uppercase antialiased" style={{ textRendering: 'optimizeLegibility' }}>
-                Advanced Editor
-              </div>
-            </button>
+            {/* External Link Navigation Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="p-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200/60 shadow-xs transition-all hover:shadow-sm"
+                  title="Quick Navigation"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" side="right" className="w-40 z-50 bg-white/95 backdrop-blur-xl border border-slate-200/80 shadow-lg rounded-xl p-1.5">
+                <DropdownMenuItem
+                  onClick={() => router.push('/board')}
+                  className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
+                >
+                  <LayoutDashboard className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Board Page</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => router.push('/editor')}
+                  className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
+                >
+                  <Edit3 className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Editor Page</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       )}
