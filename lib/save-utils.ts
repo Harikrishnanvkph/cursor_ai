@@ -204,7 +204,7 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
 
         // Inject format data into config so it's persisted in the snapshot
         const { editorMode, generateMode } = useTemplateStore.getState();
-        const { selectedFormatId, contentPackage, contextualImageUrl } = useFormatGalleryStore.getState();
+        const { selectedFormatId, contentPackage, contextualImageUrl, selectedFormatSnapshot } = useFormatGalleryStore.getState();
         
         // Only inject format data when BOTH in template mode AND actively using format generate mode.
         // Previously this only checked selectedFormatId, which could be stale if the user
@@ -215,7 +215,8 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
             normalizedConfig.formatData = {
                 formatId: selectedFormatId,
                 contentPackage,
-                contextualImageUrl
+                contextualImageUrl,
+                formatSnapshot: selectedFormatSnapshot
             };
             
             // Note: The Supabase RPC function 'save_chart_snapshot' sets `is_template_mode = true` 

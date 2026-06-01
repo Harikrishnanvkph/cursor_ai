@@ -219,10 +219,13 @@ export const useHistoryStore = create<HistoryStore>()(
 
           // Restore format mode if snapshot has format data
           if (chartConfig?.formatData) {
-            const { formatId, contentPackage, contextualImageUrl } = chartConfig.formatData;
+            const { formatId, contentPackage, contextualImageUrl, formatSnapshot } = chartConfig.formatData;
             const formatStore = useFormatGalleryStore.getState();
             
             formatStore.setSelectedFormat(formatId, conv.snapshot.chartType);
+            if (formatSnapshot) {
+              formatStore.setState({ selectedFormatSnapshot: formatSnapshot });
+            }
             if (contentPackage) formatStore.setContentPackage(contentPackage);
             if (contextualImageUrl) formatStore.setContextualImageUrl(contextualImageUrl);
             
