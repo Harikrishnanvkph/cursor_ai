@@ -419,26 +419,6 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
     }
   }
 
-  const handleResetChart = () => {
-    zoomPan.setZoom(1.0)
-    zoomPan.setPanOffset({ x: 0, y: 0 })
-    zoomPan.setPanMode(false)
-    toast.success("Chart view reset successfully")
-  }
-
-  const handleRefreshChart = async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      await restoreConversation(liveConversation.id)
-      toast.success("Chart refreshed successfully!")
-    } catch (err: any) {
-      setError("Failed to refresh chart. Please try again.")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp)
     return date.toLocaleDateString("en-US", {

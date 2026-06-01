@@ -263,7 +263,7 @@ export const ChartTypeService = {
         }
 
         // Preserve mobile responsiveness settings
-        const isMobile = typeof window !== 'undefined' && window.innerWidth <= 576;
+        const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
         if (isMobile) {
             const keysToPreserve = ['manualDimensions', 'dynamicDimension', 'responsive', 'width', 'height'];
             keysToPreserve.forEach(key => {

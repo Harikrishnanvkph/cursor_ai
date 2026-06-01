@@ -7,7 +7,7 @@ import { saveChartToCloud } from "@/lib/save-utils"
 import { useChatStore } from "@/lib/chat-store"
 import { useTemplateStore } from "@/lib/template-store"
 import { cn } from "@/lib/utils"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useUIStore } from "@/lib/stores/ui-store"
 import { ChevronLeft, ChevronRight, Settings, Save, X, Loader2 } from "lucide-react"
 import { HistoryDropdown } from "@/components/history-dropdown"
@@ -232,10 +232,6 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
 
   // Pre-save check that may show mode conflict or dimension mismatch dialog
   const handleSaveClick = () => {
-    if (!user) {
-      toast.error("Please sign in to save charts")
-      return
-    }
 
     if (!hasJSON) {
       toast.error("No chart to save")
@@ -295,6 +291,24 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
   const handleCancel = () => {
     setShowClearDialog(true)
   }
+
+  const saveClickRef = useRef(handleSaveClick);
+  useEffect(() => {
+    saveClickRef.current = handleSaveClick;
+  });
+
+  useEffect(() => {
+    const handleTriggerSave = () => {
+      console.log("[ChartLayout] Received triggerSaveClick event! Invoking saveClickRef.current()");
+      saveClickRef.current();
+    };
+    window.addEventListener('triggerSaveClick', handleTriggerSave);
+    document.addEventListener('triggerSaveClick', handleTriggerSave);
+    return () => {
+      window.removeEventListener('triggerSaveClick', handleTriggerSave);
+      document.removeEventListener('triggerSaveClick', handleTriggerSave);
+    };
+  }, []);
 
   // Handle chart resize when sidebar toggles
   useEffect(() => {

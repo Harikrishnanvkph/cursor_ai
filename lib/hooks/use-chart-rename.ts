@@ -34,13 +34,17 @@ export function useChartRename() {
     const chartTitle = useChartStore(s => {
         if (s.chartMode === 'grouped' && s.activeGroupId && s.groups) {
             const activeGroup = s.groups.find(g => g.id === s.activeGroupId);
-            if (activeGroup?.name || activeGroup?.sourceTitle) {
-                return activeGroup.name || activeGroup.sourceTitle!;
+            const title = activeGroup?.name || activeGroup?.sourceTitle;
+            if (title && title !== "Untitled" && title !== "Untitled Chart") {
+                return title;
             }
         }
         if (s.chartMode === 'single' && s.chartData.datasets.length > 0) {
             const activeDs = s.chartData.datasets[s.activeDatasetIndex];
-            return activeDs?.sourceTitle || "Untitled Chart";
+            const title = activeDs?.sourceTitle;
+            if (title && title !== "Untitled" && title !== "Untitled Chart") {
+                return title;
+            }
         }
         return s.chartTitle || "Untitled Chart";
     });
@@ -55,7 +59,7 @@ export function useChartRename() {
             targetId = activeGroup.sourceId;
         }
     }
-    const canEditTitle = !!targetId;
+    const canEditTitle = true;
 
     // Focus input when entering rename mode
     useEffect(() => {
@@ -87,11 +91,11 @@ export function useChartRename() {
         const state = useChartStore.getState();
 
         if (state.chartMode === 'single' && state.chartData.datasets?.[state.activeDatasetIndex]?.sourceId) {
-            saveTargetId = state.chartData.datasets[state.activeDatasetIndex].sourceId;
+            saveTargetId = state.chartData.datasets[state.activeDatasetIndex].sourceId || null;
         } else if (state.chartMode === 'grouped' && state.activeGroupId && state.groups) {
             const activeGroup = state.groups.find(g => g.id === state.activeGroupId);
             if (activeGroup?.sourceId) {
-                saveTargetId = activeGroup.sourceId;
+                saveTargetId = activeGroup.sourceId || null;
             }
         }
 

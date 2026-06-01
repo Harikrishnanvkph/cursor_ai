@@ -11,6 +11,8 @@ const config: Config = {
   theme: {
   	extend: {
 		screens: {
+			'xs': '361px',
+			'mob': '415px',
 			'xs576' : {max : '576px'},
 			'xs400' : {max : '400px'},
 			'lap1024' : {max : '1024px'},

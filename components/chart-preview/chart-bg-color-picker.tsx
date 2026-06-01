@@ -11,7 +11,7 @@ const PRESET_COLORS = [
     '#212121', '#2d2d2d', '#1e293b', '#f5f3ff', '#fff1f2'
 ];
 
-export const ChartBgColorPicker = memo(() => {
+export const ChartBgColorPicker = memo(({ className }: { className?: string }) => {
     const canvasBgType = useUIStore(s => s.canvasBgType);
     const canvasBgColor = useUIStore(s => s.canvasBgColor);
     const setCanvasBg = useUIStore(s => s.setCanvasBg);
@@ -34,7 +34,7 @@ export const ChartBgColorPicker = memo(() => {
                     <TooltipTrigger asChild>
                         <PopoverTrigger asChild>
                             <button
-                                className="flex items-center justify-center p-1 rounded hover:bg-gray-100 transition-colors"
+                                className={className || "flex items-center justify-center p-1 rounded hover:bg-gray-100 transition-colors"}
                             >
                                 {isTransparent ? (
                                     <Ban className="w-4 h-4 text-red-500" />

@@ -132,7 +132,7 @@ export class ChartStateService {
         let newConfig = getDefaultConfigForType('bar');
 
         // Preserve manual/responsive/dimension settings for mobile devices
-        const isMobile = typeof window !== 'undefined' && window.innerWidth <= 576;
+        const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
         if (isMobile) {
             // Note: We can't access current state config here easily without passing state,
             // but typically resets clear everything. 
@@ -193,7 +193,7 @@ export class ChartStateService {
                 // Backfill per-dataset chartConfig from top-level config if not present
                 chartConfig: ds.chartConfig || JSON.parse(JSON.stringify(chartConfig)),
                 // Assign source title if provided
-                sourceTitle: ds.sourceTitle || name,
+                sourceTitle: (!ds.sourceTitle || ds.sourceTitle === "Untitled" || ds.sourceTitle === "Untitled Chart") ? (name || ds.sourceTitle) : ds.sourceTitle,
                 // Assign source ID if provided
                 sourceId: ds.sourceId || conversationId || id,
                 // Ensure the dataset owns its labels so they aren't lost
@@ -350,7 +350,7 @@ export class ChartStateService {
             activeDatasetIndex: Math.max(0, processedDatasets.length - datasetCount),
             currentSnapshotId: id !== undefined ? id || null : state.currentSnapshotId,
             chartTitle: finalTitle,
-            // Also return other properties that might be needed
+            originalCloudDimensions: id ? state.originalCloudDimensions : null,
         };
     }
 

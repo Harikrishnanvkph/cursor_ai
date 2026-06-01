@@ -47,7 +47,8 @@ import {
   LineChart,
   Gauge,
   Compass,
-  Activity
+  Activity,
+  Info
 } from "lucide-react"
 import Link from "next/link"
 
@@ -90,6 +91,16 @@ function BoardPageContent() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState<"single" | "group" | "templates">("single")
   const [visibleCount, setVisibleCount] = useState(12)
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false)
+  const [showMobileInfo, setShowMobileInfo] = useState(false)
+  const searchInputRef = React.useRef<HTMLInputElement>(null)
+
+  // Focus search input when expanded
+  useEffect(() => {
+    if (isSearchExpanded && searchInputRef.current) {
+      searchInputRef.current.focus()
+    }
+  }, [isSearchExpanded])
 
   // Load conversations from backend on mount
   useEffect(() => {
@@ -255,7 +266,7 @@ function BoardPageContent() {
     <div className="min-h-screen bg-[#f6f8fa] text-zinc-900">
       {/* Modern Header */}
       <header className="sticky top-0 z-40 bg-white border-b border-zinc-200 shadow-none">
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14">
             {/* Logo and Title */}
             <div className="flex items-center gap-4">
@@ -263,20 +274,20 @@ function BoardPageContent() {
             </div>
 
             {/* Actions: Direct buttons for AI Chat and Advanced Editor */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <Link href="/landing">
-                <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs h-8 rounded-md px-3 gap-1.5 flex items-center justify-center shadow-none transition-all">
+                <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs h-8 rounded-md px-2.5 sm:px-3 gap-1.5 flex items-center justify-center shadow-none transition-all">
                   <Sparkles className="h-3.5 w-3.5" />
-                  <span>Create with AI</span>
+                  <span className="hidden md:inline">Create with AI</span>
                 </Button>
               </Link>
               <Link href="/editor">
-                <Button variant="outline" className="border border-zinc-200 bg-white hover:bg-zinc-50 hover:text-zinc-900 text-zinc-700 font-semibold text-xs h-8 rounded-md px-3 gap-1.5 flex items-center justify-center shadow-none transition-all">
+                <Button variant="outline" className="border border-zinc-200 bg-white hover:bg-zinc-50 hover:text-zinc-900 text-zinc-700 font-semibold text-xs h-8 rounded-md px-2.5 sm:px-3 gap-1.5 flex items-center justify-center shadow-none transition-all">
                   <Edit3 className="h-3.5 w-3.5" />
-                  <span>Advanced Editor</span>
+                  <span className="hidden md:inline">Advanced Editor</span>
                 </Button>
               </Link>
-              <div className="w-[1px] h-5 bg-zinc-200 mx-1"></div>
+              <div className="w-[1px] h-5 bg-zinc-200 mx-0.5 sm:mx-1"></div>
               <SimpleProfileDropdown size="sm" />
             </div>
           </div>
@@ -285,88 +296,119 @@ function BoardPageContent() {
 
       {/* GitHub-style Secondary Sub-header (Tabs) */}
       <div className="bg-white border-b border-zinc-200">
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex space-x-6 -mb-px" aria-label="Tabs">
-            <button
-              onClick={() => setActiveTab("single")}
-              className={`flex items-center gap-1.5 py-3 px-1 border-b-2 font-medium text-xs transition-all ${
-                activeTab === "single"
-                  ? "border-violet-600 text-violet-700"
-                  : "border-transparent text-zinc-500 hover:text-zinc-900 hover:border-zinc-300"
-              }`}
+        <div className="max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between gap-4">
+            <nav 
+              className="flex space-x-4 sm:space-x-6 -mb-px overflow-x-auto flex-1" 
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              aria-label="Tabs"
             >
-              <BarChart2 className={`h-4 w-4 ${activeTab === "single" ? "text-violet-500" : "text-zinc-400"}`} />
-              <span className={`font-semibold text-[13px] ${activeTab === "single" ? "text-violet-900" : "text-zinc-800"}`}>Single Chart</span>
-              <span className={`ml-1.5 px-2 py-0.5 text-[11px] font-bold border rounded-full shadow-none ${
-                activeTab === "single"
-                  ? "bg-violet-50 text-violet-700 border-violet-200"
-                  : "bg-zinc-100 text-zinc-600 border-zinc-200"
-              }`}>
-                {conversations.filter(c => !c.is_template_mode && c.chart_mode !== 'grouped').length}
-              </span>
-            </button>
+              <button
+                onClick={() => {
+                  setActiveTab("single")
+                  setShowMobileInfo(false)
+                }}
+                className={`flex items-center gap-1.5 py-3 px-1 border-b-2 font-medium text-xs transition-all whitespace-nowrap ${
+                  activeTab === "single" && !showMobileInfo
+                    ? "border-violet-600 text-violet-700"
+                    : "border-transparent text-zinc-500 hover:text-zinc-900 hover:border-zinc-300"
+                }`}
+              >
+                <BarChart2 className={`h-4 w-4 ${activeTab === "single" && !showMobileInfo ? "text-violet-500" : "text-zinc-400"}`} />
+                <span className={`hidden mob:inline font-semibold text-[13px] ${activeTab === "single" && !showMobileInfo ? "text-violet-900" : "text-zinc-800"}`}>Single Chart</span>
+                <span className={`ml-0.5 sm:ml-1.5 px-2 py-0.5 text-[11px] font-bold border rounded-full shadow-none ${
+                  activeTab === "single" && !showMobileInfo
+                    ? "bg-violet-50 text-violet-700 border-violet-200"
+                    : "bg-zinc-100 text-zinc-600 border-zinc-200"
+                }`}>
+                  {conversations.filter(c => !c.is_template_mode && c.chart_mode !== 'grouped').length}
+                </span>
+              </button>
 
-            <button
-              onClick={() => setActiveTab("group")}
-              className={`flex items-center gap-1.5 py-3 px-1 border-b-2 font-medium text-xs transition-all ${
-                activeTab === "group"
-                  ? "border-violet-600 text-violet-700"
-                  : "border-transparent text-zinc-500 hover:text-zinc-900 hover:border-zinc-300"
-              }`}
-            >
-              <Layers className={`h-4 w-4 ${activeTab === "group" ? "text-violet-500" : "text-zinc-400"}`} />
-              <span className={`font-semibold text-[13px] ${activeTab === "group" ? "text-violet-900" : "text-zinc-800"}`}>Group chart</span>
-              <span className={`ml-1.5 px-2 py-0.5 text-[11px] font-bold border rounded-full shadow-none ${
-                activeTab === "group"
-                  ? "bg-violet-50 text-violet-700 border-violet-200"
-                  : "bg-zinc-100 text-zinc-600 border-zinc-200"
-              }`}>
-                {conversations.filter(c => !c.is_template_mode && c.chart_mode === 'grouped').length}
-              </span>
-            </button>
+              <button
+                onClick={() => {
+                  setActiveTab("group")
+                  setShowMobileInfo(false)
+                }}
+                className={`flex items-center gap-1.5 py-3 px-1 border-b-2 font-medium text-xs transition-all whitespace-nowrap ${
+                  activeTab === "group" && !showMobileInfo
+                    ? "border-violet-600 text-violet-700"
+                    : "border-transparent text-zinc-500 hover:text-zinc-900 hover:border-zinc-300"
+                }`}
+              >
+                <Layers className={`h-4 w-4 ${activeTab === "group" && !showMobileInfo ? "text-violet-500" : "text-zinc-400"}`} />
+                <span className={`hidden mob:inline font-semibold text-[13px] ${activeTab === "group" && !showMobileInfo ? "text-violet-900" : "text-zinc-800"}`}>Group chart</span>
+                <span className={`ml-0.5 sm:ml-1.5 px-2 py-0.5 text-[11px] font-bold border rounded-full shadow-none ${
+                  activeTab === "group" && !showMobileInfo
+                    ? "bg-violet-50 text-violet-700 border-violet-200"
+                    : "bg-zinc-100 text-zinc-600 border-zinc-200"
+                }`}>
+                  {conversations.filter(c => !c.is_template_mode && c.chart_mode === 'grouped').length}
+                </span>
+              </button>
 
+              <button
+                onClick={() => {
+                  setActiveTab("templates")
+                  setShowMobileInfo(false)
+                }}
+                className={`flex items-center gap-1.5 py-3 px-1 border-b-2 font-medium text-xs transition-all whitespace-nowrap ${
+                  activeTab === "templates" && !showMobileInfo
+                    ? "border-violet-600 text-violet-700"
+                    : "border-transparent text-zinc-500 hover:text-zinc-900 hover:border-zinc-300"
+                }`}
+              >
+                <LayoutTemplate className={`h-4 w-4 ${activeTab === "templates" && !showMobileInfo ? "text-violet-500" : "text-zinc-400"}`} />
+                <span className={`hidden mob:inline font-semibold text-[13px] ${activeTab === "templates" && !showMobileInfo ? "text-violet-900" : "text-zinc-800"}`}>Templates</span>
+                <span className={`ml-0.5 sm:ml-1.5 px-2 py-0.5 text-[11px] font-bold border rounded-full shadow-none ${
+                  activeTab === "templates" && !showMobileInfo
+                    ? "bg-violet-50 text-violet-700 border-violet-200"
+                    : "bg-zinc-100 text-zinc-600 border-zinc-200"
+                }`}>
+                  {conversations.filter(c => c.is_template_mode).length}
+                </span>
+              </button>
+            </nav>
+
+            {/* Info Toggle Icon Button (only visible on mobile/tablet below lg breakpoint) */}
             <button
-              onClick={() => setActiveTab("templates")}
-              className={`flex items-center gap-1.5 py-3 px-1 border-b-2 font-medium text-xs transition-all ${
-                activeTab === "templates"
+              onClick={() => setShowMobileInfo(!showMobileInfo)}
+              className={`lg:hidden flex items-center gap-1.5 py-3 px-1 border-b-2 font-medium text-xs transition-all whitespace-nowrap ${
+                showMobileInfo
                   ? "border-violet-600 text-violet-700"
                   : "border-transparent text-zinc-500 hover:text-zinc-900 hover:border-zinc-300"
               }`}
+              title="Show Analytics & Help"
             >
-              <LayoutTemplate className={`h-4 w-4 ${activeTab === "templates" ? "text-violet-500" : "text-zinc-400"}`} />
-              <span className={`font-semibold text-[13px] ${activeTab === "templates" ? "text-violet-900" : "text-zinc-800"}`}>Templates</span>
-              <span className={`ml-1.5 px-2 py-0.5 text-[11px] font-bold border rounded-full shadow-none ${
-                activeTab === "templates"
-                  ? "bg-violet-50 text-violet-700 border-violet-200"
-                  : "bg-zinc-100 text-zinc-600 border-zinc-200"
-              }`}>
-                {conversations.filter(c => c.is_template_mode).length}
-              </span>
+              <Info className={`h-4 w-4 ${showMobileInfo ? "text-violet-500" : "text-zinc-400"}`} />
+              <span className={`hidden sm:inline font-semibold text-[13px] ${showMobileInfo ? "text-violet-900" : "text-zinc-800"}`}>Analytics & Help</span>
             </button>
-          </nav>
+          </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8">
         
         {(activeTab === "single" || activeTab === "group" || activeTab === "templates") && (
           <div className="flex flex-col lg:flex-row gap-6 items-start w-full">
             {/* Left Column (Search + Filters + Charts List) */}
-            <div className="flex-1 min-w-0 w-full space-y-6">
+            <div className={`flex-1 min-w-0 w-full space-y-6 ${showMobileInfo ? "hidden lg:block" : "block"}`}>
               {/* Search and Filters Card */}
               <Card className="border border-zinc-200 bg-white shadow-none rounded-lg">
-                <CardContent className="p-4">
-                  <div className="flex flex-col lg:flex-row gap-3">
-                    {/* Enhanced Search */}
-                    <div className="flex-1 relative group">
-                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 group-focus-within:text-violet-500 transition-colors" />
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex items-center gap-3 w-full">
+                    {/* Enhanced Search Input: Visible on screens >= 376px OR when expanded on Small Mobile */}
+                    <div className={`relative group flex-1 ${isSearchExpanded ? "flex" : "hidden xs:flex"}`}>
+                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 group-focus-within:text-violet-500 transition-colors hidden mob:block" />
                       <Input
+                        ref={searchInputRef}
                         type="text"
                         placeholder="Search your charts..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 pr-8 py-2 text-sm border-zinc-200 rounded-lg focus-visible:ring-1 focus-visible:ring-violet-500 focus-visible:border-violet-500 bg-zinc-50/50 hover:bg-white transition-all shadow-none"
+                        onBlur={() => setTimeout(() => setIsSearchExpanded(false), 200)}
+                        className="pl-3.5 mob:pl-10 pr-8 py-2 text-sm border-zinc-200 rounded-lg focus-visible:ring-1 focus-visible:ring-violet-500 focus-visible:border-violet-500 bg-zinc-50/50 hover:bg-white transition-all shadow-none w-full"
                       />
                       {searchQuery && (
                         <button
@@ -378,21 +420,31 @@ function BoardPageContent() {
                       )}
                     </div>
 
-                    {/* Filter Controls */}
-                    <div className="flex items-center gap-2">
+                    {/* Filter Controls Row: Hidden when search is expanded on Small Mobile (< 376px) */}
+                    <div className={`items-center justify-between xs:justify-start gap-1.5 xs:gap-2 flex-1 xs:flex-none shrink-0 ${isSearchExpanded ? "hidden xs:flex" : "flex"}`}>
+                      {/* Search Icon Button: Collapsed mode, visible only on Small Mobile (< 376px) */}
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsSearchExpanded(true)}
+                        className="h-9 w-9 p-0 bg-white hover:bg-violet-50/50 hover:text-violet-700 hover:border-violet-200 rounded-lg xs:hidden shadow-none shrink-0 flex items-center justify-center"
+                        title="Search"
+                      >
+                        <Search className="h-4 w-4 text-zinc-400" />
+                      </Button>
+
                       {/* Type Filter */}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="outline" className="gap-1.5 h-9 bg-white hover:bg-violet-50/50 hover:text-violet-700 hover:border-violet-200 rounded-lg text-xs font-semibold text-zinc-700 shadow-none transition-all">
-                            <Filter className="h-3.5 w-3.5 text-zinc-400" />
-                            <span>
+                          <Button variant="outline" className="h-9 w-9 p-0 mob:w-auto mob:px-2.5 sm:mob:px-3 bg-white hover:bg-violet-50/50 hover:text-violet-700 hover:border-violet-200 rounded-lg text-xs font-semibold text-zinc-700 shadow-none transition-all gap-1.5 flex items-center justify-center">
+                            <Filter className={`h-3.5 w-3.5 ${filterType !== "all" ? "text-violet-600" : "text-zinc-400"}`} />
+                            <span className="hidden md:inline">
                               {filterType === "all" ? "Type" : filterType.charAt(0).toUpperCase() + filterType.slice(1)}
                             </span>
-                            <ChevronDown className="h-3 w-3 text-zinc-400" />
+                            <ChevronDown className="h-3 w-3 text-zinc-400 hidden mob:block" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48 max-h-[280px] overflow-y-auto">
-                          <DropdownMenuItem onClick={() => setFilterType("all")} className="focus:bg-violet-50 focus:text-violet-700">
+                          <DropdownMenuItem onClick={() => setFilterType("all")} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-2 cursor-pointer">
                             <Folder className="h-4 w-4 mr-2 text-zinc-400" />
                             All Types
                           </DropdownMenuItem>
@@ -400,7 +452,7 @@ function BoardPageContent() {
                           {chartTypes.map(type => {
                             const IconComponent = getChartTypeIcon(type)
                             return (
-                              <DropdownMenuItem key={type} onClick={() => setFilterType(type)} className="focus:bg-violet-50 focus:text-violet-700">
+                              <DropdownMenuItem key={type} onClick={() => setFilterType(type)} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-2 cursor-pointer">
                                 <IconComponent className="h-4 w-4 mr-2 text-zinc-400" />
                                 {type.charAt(0).toUpperCase() + type.slice(1)}
                               </DropdownMenuItem>
@@ -412,32 +464,32 @@ function BoardPageContent() {
                       {/* Sort */}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="outline" className="gap-1.5 h-9 bg-white hover:bg-violet-50/50 hover:text-violet-700 hover:border-violet-200 rounded-lg text-xs font-semibold text-zinc-700 shadow-none transition-all">
+                          <Button variant="outline" className="h-9 w-9 p-0 mob:w-auto mob:px-2.5 sm:mob:px-3 bg-white hover:bg-violet-50/50 hover:text-violet-700 hover:border-violet-200 rounded-lg text-xs font-semibold text-zinc-700 shadow-none transition-all gap-1.5 flex items-center justify-center">
                             {sortBy === "oldest" ? <SortAsc className="h-3.5 w-3.5 text-zinc-400" /> : <SortDesc className="h-3.5 w-3.5 text-zinc-400" />}
-                            <span>
+                            <span className="hidden md:inline">
                               Sort: {sortBy === "newest" ? "Newest" : sortBy === "oldest" ? "Oldest" : "Name"}
                             </span>
-                            <ChevronDown className="h-3 w-3 text-zinc-400" />
+                            <ChevronDown className="h-3 w-3 text-zinc-400 hidden mob:block" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-40">
-                          <DropdownMenuItem onClick={() => setSortBy("newest")} className="focus:bg-violet-50 focus:text-violet-700">
+                          <DropdownMenuItem onClick={() => setSortBy("newest")} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-2 cursor-pointer">
                             <Clock className="h-4 w-4 mr-2 text-zinc-400" />
                             Newest First
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setSortBy("oldest")} className="focus:bg-violet-50 focus:text-violet-700">
+                          <DropdownMenuItem onClick={() => setSortBy("oldest")} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-2 cursor-pointer">
                             <Calendar className="h-4 w-4 mr-2 text-zinc-400" />
                             Oldest First
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setSortBy("name")} className="focus:bg-violet-50 focus:text-violet-700">
+                          <DropdownMenuItem onClick={() => setSortBy("name")} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-2 cursor-pointer">
                             <Settings2 className="h-4 w-4 mr-2 text-zinc-400" />
                             Alphabetical
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
 
-                      {/* View Mode Toggle */}
-                      <div className="flex items-center gap-0.5 bg-zinc-100 rounded-lg p-1 border border-zinc-200">
+                      {/* View Mode Toggle Segment (Desktop/Large Mobile) */}
+                      <div className="hidden mob:flex items-center gap-0.5 bg-zinc-100 rounded-lg p-1 border border-zinc-200 shrink-0">
                         <button
                           onClick={() => setViewMode("grid")}
                           className={`p-1.5 rounded transition-all ${viewMode === "grid"
@@ -460,23 +512,42 @@ function BoardPageContent() {
                         </button>
                       </div>
 
+                      {/* View Mode Toggle Dropdown (Mobile-only: visible below 426px) */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild className="flex mob:hidden">
+                          <Button variant="outline" className="h-9 w-9 p-0 bg-white hover:bg-violet-50/50 hover:text-violet-700 hover:border-violet-200 rounded-lg text-xs font-semibold text-zinc-700 shadow-none transition-all flex items-center justify-center shrink-0">
+                            {viewMode === "grid" ? <Grid3x3 className="h-3.5 w-3.5 text-violet-600" /> : <List className="h-3.5 w-3.5 text-violet-600" />}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-36">
+                          <DropdownMenuItem onClick={() => setViewMode("grid")} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-2 cursor-pointer">
+                            <Grid3x3 className="h-4 w-4 mr-2 text-zinc-400" />
+                            Grid View
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setViewMode("list")} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-2 cursor-pointer">
+                            <List className="h-4 w-4 mr-2 text-zinc-400" />
+                            List View
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+
                       {/* Refresh */}
                       <Button
                         onClick={handleRefresh}
                         disabled={isRefreshing}
                         variant="outline"
-                        className="gap-1.5 h-9 bg-white hover:bg-zinc-50 border-zinc-200 rounded-lg text-xs font-semibold text-zinc-700 shadow-none"
+                        className="h-9 w-9 p-0 mob:w-auto mob:px-2.5 sm:mob:px-3 bg-white hover:bg-zinc-50 border-zinc-200 rounded-lg text-xs font-semibold text-zinc-700 shadow-none flex items-center justify-center shrink-0"
                       >
                         <RefreshCw className={`h-3.5 w-3.5 text-zinc-400 ${isRefreshing ? "animate-spin" : ""}`} />
-                        <span>Refresh</span>
+                        <span className="hidden md:inline">Refresh</span>
                       </Button>
                     </div>
                   </div>
 
                   {/* Active Filters Display */}
                   {(searchQuery || filterType !== "all") && (
-                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-zinc-100">
-                      <span className="text-xs text-zinc-500">Active filters:</span>
+                    <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-zinc-100">
+                      <span className="text-[10px] xs:text-xs text-zinc-500">Active filters:</span>
                       {searchQuery && (
                         <Badge variant="secondary" className="gap-1 rounded bg-violet-50 text-violet-700 border border-violet-200 shadow-none text-[11px] font-semibold py-0.5 px-2">
                           Search: "{searchQuery}"
@@ -661,17 +732,106 @@ function BoardPageContent() {
               )}
             </div>
 
+            {/* Mobile Info Area: Visible only on screens < lg when showMobileInfo is true */}
+            {showMobileInfo && (
+              <div className="w-full space-y-6 lg:hidden">
+                {/* About / Summary Panel */}
+                <Card className="border border-zinc-200 bg-white shadow-none rounded-lg">
+                  <CardHeader className="py-3 px-3 sm:px-4 border-b border-zinc-100">
+                    <CardTitle className="text-xs font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-2">
+                      <LayoutDashboard className="h-3.5 w-3.5 text-violet-500" />
+                      {activeTab === 'templates' ? 'About Templates' : activeTab === 'group' ? 'About Grouped Charts' : 'About Single Charts'}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-3 sm:p-4 space-y-3">
+                    <div className="flex items-center justify-between text-xs text-zinc-600">
+                      <span className="flex items-center gap-2">
+                        <BarChart2 className="h-4 w-4 text-violet-500" />
+                        Total Created
+                      </span>
+                      <span className="font-semibold text-zinc-900">{quickStats.total} {activeTab === 'templates' ? 'templates' : 'charts'}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-zinc-600">
+                      <span className="flex items-center gap-2">
+                        <TrendingUp className="h-4 w-4 text-violet-500" />
+                        Active this week
+                      </span>
+                      <span className="font-semibold text-zinc-900">{quickStats.thisWeek} {activeTab === 'templates' ? 'templates' : 'charts'}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-zinc-600">
+                      <span className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-violet-500" />
+                        Weekly Average
+                      </span>
+                      <span className="font-semibold text-zinc-900">{quickStats.avgPerWeek} avg</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Chart Types Distribution Panel (GitHub style) */}
+                {typeDistribution.length > 0 && (
+                  <Card className="border border-zinc-200 bg-white shadow-none rounded-lg">
+                    <CardHeader className="py-3 px-3 sm:px-4 border-b border-zinc-100">
+                      <CardTitle className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+                        {activeTab === 'templates' ? 'Template Chart Types' : 'Chart Types'}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-3 sm:p-4">
+                      {/* Language bar representation */}
+                      <div className="h-2 w-full rounded-full overflow-hidden flex bg-zinc-100 mb-4 border border-zinc-200">
+                        {typeDistribution.map((item, idx) => (
+                          <div
+                             key={idx}
+                             className={item.color}
+                             style={{ width: `${item.percentage}%` }}
+                             title={`${item.type}: ${item.percentage}%`}
+                          />
+                        ))}
+                      </div>
+                      {/* Language dot descriptions */}
+                      <div className="grid grid-cols-2 gap-x-2 gap-y-2 xs:gap-x-4 xs:gap-y-2.5">
+                        {typeDistribution.map((item, idx) => (
+                          <div key={idx} className="flex items-center gap-1.5 text-[11px] xs:text-xs">
+                            <span className={`w-2.5 h-2.5 rounded-full ${item.color} flex-shrink-0`} />
+                            <span className="font-medium text-zinc-700 capitalize truncate">{item.type}</span>
+                            <span className="text-zinc-400 text-[10px] ml-auto">{item.percentage}%</span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Tips Panel */}
+                <Card className="border border-violet-100 bg-gradient-to-br from-white to-violet-50/20 shadow-none rounded-lg">
+                  <CardHeader className="py-3 px-3 sm:px-4 border-b border-violet-100/60">
+                    <CardTitle className="text-xs font-bold uppercase tracking-wider text-violet-700 flex items-center gap-2">
+                      <Sparkles className="h-3.5 w-3.5 text-violet-500" />
+                      Quick Help
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-3 sm:p-4">
+                    <ul className="text-xs text-zinc-650 space-y-2.5 list-disc pl-4 leading-relaxed">
+                      <li>Use the <strong className="text-violet-750 font-semibold">Create with AI</strong> button to draft a new chart in natural language.</li>
+                      <li>Toggle the <strong className="text-violet-750 font-semibold">Advanced Editor</strong> to precisely align grids, customize legends, or export canvas data.</li>
+                      <li>Share links are fully public and require no authentication to view.</li>
+                    </ul>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
             {/* Right Column (Sidebar Analytics) */}
-            <div className="w-full lg:w-80 flex-shrink-0 space-y-4 lg:sticky lg:top-24">
+            <div className="w-full lg:w-80 flex-shrink-0 space-y-4 lg:sticky lg:top-24 hidden lg:block">
               {/* About / Summary Panel */}
               <Card className="border border-zinc-200 bg-white shadow-none rounded-lg">
-                <CardHeader className="py-3 px-4 border-b border-zinc-100">
+                <CardHeader className="py-3 px-3 sm:px-4 border-b border-zinc-100">
                   <CardTitle className="text-xs font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-2">
                     <LayoutDashboard className="h-3.5 w-3.5 text-violet-500" />
                     {activeTab === 'templates' ? 'About Templates' : activeTab === 'group' ? 'About Grouped Charts' : 'About Single Charts'}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-4 space-y-3">
+                <CardContent className="p-3 sm:p-4 space-y-3">
                   <div className="flex items-center justify-between text-xs text-zinc-600">
                     <span className="flex items-center gap-2">
                       <BarChart2 className="h-4 w-4 text-violet-500" />
@@ -699,12 +859,12 @@ function BoardPageContent() {
               {/* Chart Types Distribution Panel (GitHub style) */}
               {typeDistribution.length > 0 && (
                 <Card className="border border-zinc-200 bg-white shadow-none rounded-lg">
-                  <CardHeader className="py-3 px-4 border-b border-zinc-100">
+                  <CardHeader className="py-3 px-3 sm:px-4 border-b border-zinc-100">
                     <CardTitle className="text-xs font-bold uppercase tracking-wider text-zinc-500">
                       {activeTab === 'templates' ? 'Template Chart Types' : 'Chart Types'}
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-4">
+                  <CardContent className="p-3 sm:p-4">
                     {/* Language bar visual representation */}
                     <div className="h-2 w-full rounded-full overflow-hidden flex bg-zinc-100 mb-4 border border-zinc-200">
                       {typeDistribution.map((item, idx) => (
@@ -717,9 +877,9 @@ function BoardPageContent() {
                       ))}
                     </div>
                     {/* Language dot descriptions */}
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+                    <div className="grid grid-cols-2 gap-x-2 gap-y-2 xs:gap-x-4 xs:gap-y-2.5">
                       {typeDistribution.map((item, idx) => (
-                        <div key={idx} className="flex items-center gap-1.5 text-xs">
+                        <div key={idx} className="flex items-center gap-1.5 text-[11px] xs:text-xs">
                           <span className={`w-2.5 h-2.5 rounded-full ${item.color} flex-shrink-0`} />
                           <span className="font-medium text-zinc-700 capitalize truncate">{item.type}</span>
                           <span className="text-zinc-400 text-[10px] ml-auto">{item.percentage}%</span>
@@ -732,13 +892,13 @@ function BoardPageContent() {
 
               {/* Tips Panel */}
               <Card className="border border-violet-100 bg-gradient-to-br from-white to-violet-50/20 shadow-none rounded-lg">
-                <CardHeader className="py-3 px-4 border-b border-violet-100/60">
+                <CardHeader className="py-3 px-3 sm:px-4 border-b border-violet-100/60">
                   <CardTitle className="text-xs font-bold uppercase tracking-wider text-violet-700 flex items-center gap-2">
                     <Sparkles className="h-3.5 w-3.5 text-violet-500" />
                     Quick Help
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-4">
+                <CardContent className="p-3 sm:p-4">
                   <ul className="text-xs text-zinc-650 space-y-2.5 list-disc pl-4 leading-relaxed">
                     <li>Use the <strong className="text-violet-750 font-semibold">Create with AI</strong> button to draft a new chart in natural language.</li>
                     <li>Toggle the <strong className="text-violet-750 font-semibold">Advanced Editor</strong> to precisely align grids, customize legends, or export canvas data.</li>

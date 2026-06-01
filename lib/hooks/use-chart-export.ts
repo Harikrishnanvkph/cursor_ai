@@ -149,11 +149,7 @@ export function useChartExport(options?: {
         window.dispatchEvent(event);
     }, [options?.onToggleLeftSidebar, options?.isLeftSidebarCollapsed]);
 
-    const handleRefresh = useCallback(() => {
-        if (getGlobalChartRef()?.current) {
-            getGlobalChartRef()?.current?.update("active");
-        }
-    }, []);
+
 
     return useMemo(() => ({
         handleExport,
@@ -161,13 +157,11 @@ export function useChartExport(options?: {
         handleExportJPEG,
         handleExportCSV,
         handleExportSettings,
-        handleRefresh,
     }), [
         handleExport,
         handleExportHTML,
         handleExportJPEG,
         handleExportCSV,
         handleExportSettings,
-        handleRefresh,
     ]);
 }

@@ -476,7 +476,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
   // Mobile detection — skip in readOnly mode to avoid unnecessary listeners
   useEffect(() => {
     if (readOnly) return;
-    const check = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth <= 576);
+    const check = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth <= 768);
     check();
     console.log('Adding Resize event listener')
     window.addEventListener('resize', check);

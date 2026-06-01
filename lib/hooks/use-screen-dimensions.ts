@@ -2,13 +2,13 @@
 
 import { useState, useEffect } from "react"
 
-// Custom hook to detect <=576px
+// Custom hook to detect <=768px (Mobile Range including Large)
 export function useIsMobile576() {
     const [isMobile, setIsMobile] = useState(false);
     useEffect(() => {
-        setIsMobile(window.innerWidth <= 576);
+        setIsMobile(window.innerWidth <= 768);
         function handleResize() {
-            setIsMobile(window.innerWidth <= 576);
+            setIsMobile(window.innerWidth <= 768);
         }
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);
@@ -36,13 +36,13 @@ export function useScreenDimensions() {
     return dimensions;
 }
 
-// Custom hook to detect 577-1024px
+// Custom hook to detect 769-1023px (Tablet Range)
 export function useIsTablet() {
     const [isTablet, setIsTablet] = useState(false);
     useEffect(() => {
-        setIsTablet(window.innerWidth >= 577 && window.innerWidth <= 1024);
+        setIsTablet(window.innerWidth >= 769 && window.innerWidth < 1024);
         function handleResize() {
-            setIsTablet(window.innerWidth >= 577 && window.innerWidth <= 1024);
+            setIsTablet(window.innerWidth >= 769 && window.innerWidth < 1024);
         }
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);

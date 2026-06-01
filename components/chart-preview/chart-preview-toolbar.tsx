@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { STANDARD_CHART_TYPES, THREE_D_CHART_TYPES } from "@/lib/chart-types"
 import {
-    Download, RefreshCw, Maximize2, RotateCcw,
+    Download, Maximize2,
     Ellipsis, ZoomIn, ZoomOut, Hand, Pencil, Check, Loader2,
-    ChartColumn, RulerDimensionLine, Ban, Search, Palette, Upload
+    ChartColumn, RulerDimensionLine, Ban, Search, Palette, Upload, Cloud
 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -297,14 +297,14 @@ TitleSection.displayName = "TitleSection";
 
 // --- 3. Controls & Actions Section (Independent) ---
 
-const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, onResetChart, isMobile, chartContainerRef, chartWidth, chartHeight }: {
+const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, isMobile, chartContainerRef, chartWidth, chartHeight }: {
     zoomPan: {
         zoom: number;
         panMode: boolean;
         setPanMode: (v: boolean) => void;
         handleZoomIn: () => void;
         handleZoomOut: () => void;
-        handleResetZoom: () => void;
+
         setZoom: (z: number) => void;
     };
     exports: {
@@ -313,10 +313,9 @@ const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, onResetChart
         handleExportJPEG: () => void;
         handleExportCSV: () => void;
         handleExportSettings: () => void;
-        handleRefresh: () => void;
     };
     handleFullscreen: () => void;
-    onResetChart: () => void;
+
     isMobile: boolean;
     chartContainerRef?: React.RefObject<HTMLDivElement | null>;
     chartWidth?: number;
@@ -430,10 +429,17 @@ const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, onResetChart
                     <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600" title="Actions"><Ellipsis className="h-4 w-4" /></Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={exports.handleRefresh}><RefreshCw className="h-4 w-4 mr-2" /><span>Refresh Chart</span></DropdownMenuItem>
-                    <DropdownMenuItem onClick={zoomPan.handleResetZoom}><RotateCcw className="h-4 w-4 mr-2" /><span>Reset Zoom</span></DropdownMenuItem>
                     <DropdownMenuItem onClick={handleFullscreen}><Maximize2 className="h-4 w-4 mr-2" /><span>Fullscreen</span></DropdownMenuItem>
-                    <DropdownMenuItem onClick={onResetChart}><RotateCcw className="h-4 w-4 mr-2" /><span>Reset Chart</span></DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => {
+                        console.log("[ChartPreviewToolbar] Dispatched triggerSaveClick event (deferred)");
+                        setTimeout(() => {
+                            window.dispatchEvent(new CustomEvent('triggerSaveClick'));
+                            document.dispatchEvent(new CustomEvent('triggerSaveClick'));
+                        }, 50);
+                    }}>
+                        <Cloud className="h-4 w-4 mr-2" />
+                        <span>Save to Cloud</span>
+                    </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
 
@@ -529,7 +535,7 @@ interface ChartPreviewToolbarProps {
     zoomPan: any;
     exports: any;
     handleFullscreen: () => void;
-    onResetChart: () => void;
+
 }
 
 export const ChartPreviewToolbar = memo(({
@@ -546,58 +552,34 @@ export const ChartPreviewToolbar = memo(({
     zoomPan,
     exports,
     handleFullscreen,
-    onResetChart,
+
 }: ChartPreviewToolbarProps) => {
 
     return (
         <div className={`${isMobile ? '' : 'mb-1'} flex-shrink-0`}>
-            <div className={`flex${isMobile ? ' mb-1 flex-col' : ' items-center justify-between flex-wrap'} gap-1 px-1`}>
-
-                {isMobile ? (
-                    <div className="min-w-0 flex flex-nowrap items-center gap-x-2 overflow-x-auto pb-1.5 scrollbar-hide select-none px-1">
+            <div className="flex items-center justify-between flex-wrap gap-1 px-1">
+                <div className="min-w-0 flex-1">
+                    <TitleSection rename={rename} />
+                    <div className="flex items-center gap-2 mt-0.5">
                         <ModeAndTypeSection
                             editorMode={editorMode} setEditorMode={setEditorMode}
                             chartType={chartType} onChartTypeChange={onChartTypeChange}
                             isResponsive={isResponsive} chartContainerRef={chartContainerRef}
                             chartWidth={chartWidth} chartHeight={chartHeight}
-                            isMobile={true}
-                        />
-                        <div className="h-4 w-px bg-gray-200 flex-shrink-0 mx-0.5" />
-                        <ControlsSection
-                            zoomPan={zoomPan} exports={exports}
-                            handleFullscreen={handleFullscreen} onResetChart={onResetChart}
-                            isMobile={true}
-                            chartContainerRef={chartContainerRef}
-                            chartWidth={chartWidth}
-                            chartHeight={chartHeight}
+                            isMobile={false}
                         />
                     </div>
-                ) : (
-                    <>
-                        <div className="min-w-0 flex-1">
-                            <TitleSection rename={rename} />
-                            <div className="flex items-center gap-2 mt-0.5">
-                                <ModeAndTypeSection
-                                    editorMode={editorMode} setEditorMode={setEditorMode}
-                                    chartType={chartType} onChartTypeChange={onChartTypeChange}
-                                    isResponsive={isResponsive} chartContainerRef={chartContainerRef}
-                                    chartWidth={chartWidth} chartHeight={chartHeight}
-                                    isMobile={false}
-                                />
-                            </div>
-                        </div>
-                        <div className="flex gap-1 flex-shrink-0 ml-4">
-                            <ControlsSection
-                                zoomPan={zoomPan} exports={exports}
-                                handleFullscreen={handleFullscreen} onResetChart={onResetChart}
-                                isMobile={false}
-                                chartContainerRef={chartContainerRef}
-                                chartWidth={chartWidth}
-                                chartHeight={chartHeight}
-                            />
-                        </div>
-                    </>
-                )}
+                </div>
+                <div className="flex gap-1 flex-shrink-0 ml-4">
+                    <ControlsSection
+                        zoomPan={zoomPan} exports={exports}
+                        handleFullscreen={handleFullscreen}
+                        isMobile={false}
+                        chartContainerRef={chartContainerRef}
+                        chartWidth={chartWidth}
+                        chartHeight={chartHeight}
+                    />
+                </div>
             </div>
         </div>
     );

@@ -12,9 +12,9 @@ import { useHistoryStore } from "@/lib/history-store"
 import { Button } from "@/components/ui/button"
 import { UndoRedoButtons } from "@/components/ui/undo-redo-buttons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ZoomIn, ZoomOut, RotateCcw, Eye, EyeOff, Ellipsis, Maximize2, Minimize2, Settings, Menu, X, ChevronLeft, Download, Hand, Pencil, Check, Loader2, ChartColumn, RulerDimensionLine, Search } from "lucide-react"
+import { ZoomIn, ZoomOut, Eye, EyeOff, Ellipsis, Maximize2, Minimize2, Settings, Menu, X, ChevronLeft, Download, Hand, Pencil, Check, Loader2, ChartColumn, RulerDimensionLine, Search } from "lucide-react"
 import { downloadTemplateExport, downloadFormatExport } from "@/lib/template-export"
-import { FileDown, FileImage, FileCode, Ban } from "lucide-react"
+import { FileDown, FileImage, FileCode, Ban, Cloud } from "lucide-react"
 import { ChartBgColorPicker } from "./chart-preview/chart-bg-color-picker"
 import html2canvas from 'html2canvas'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
@@ -143,20 +143,27 @@ export function TemplateChartPreview({
   }
 
   // Only allow editing if we have a valid target ID (implying the chart is saved/cloud-aware)
-  const canEditTitle = !!targetId;
+  const canEditTitle = true;
 
   // Derive title logic
   let displayTitle = globalTitle || "Untitled Chart";
 
   if (chartMode === 'grouped' && activeGroupId && groups) {
     const activeGroup = groups.find(g => g.id === activeGroupId);
-    if (activeGroup?.name || activeGroup?.sourceTitle) {
-      displayTitle = activeGroup.name || activeGroup.sourceTitle!;
+    const title = activeGroup?.name || activeGroup?.sourceTitle;
+    if (title && title !== "Untitled" && title !== "Untitled Chart") {
+      displayTitle = title;
+    } else {
+      displayTitle = globalTitle || "Untitled Chart";
     }
   } else if (chartMode === 'single' && chartData.datasets.length > 0) {
     const activeDs = chartData.datasets[activeDatasetIndex];
-    // Explicitly handle local single-mode datasets: default to "Untitled Chart" if no sourceTitle
-    displayTitle = activeDs?.sourceTitle || "Untitled Chart";
+    const title = activeDs?.sourceTitle;
+    if (title && title !== "Untitled" && title !== "Untitled Chart") {
+      displayTitle = title;
+    } else {
+      displayTitle = globalTitle || "Untitled Chart";
+    }
   }
 
 
@@ -243,7 +250,11 @@ export function TemplateChartPreview({
       return
     }
 
-
+    if (!targetId) {
+      setChartTitle(renameValue.trim())
+      setIsRenaming(false)
+      return
+    }
 
     setIsSavingRename(true)
     try {
@@ -379,6 +390,7 @@ export function TemplateChartPreview({
       pendingTabRef.current = null
     }
   }, [isFullscreen, onTabChange])
+
 
   // --- Ctrl + mouse wheel/trackpad zoom handler ---
   useEffect(() => {
@@ -540,6 +552,37 @@ export function TemplateChartPreview({
       console.error('Export failed:', error)
     }
   }
+
+  // Global event listener to trigger template exports from parent/landing pages
+  useEffect(() => {
+    const handleGlobalExport = (e: Event) => {
+      const customEvent = e as CustomEvent<{ format: 'png' | 'jpeg' | 'html' }>;
+      if (customEvent.detail && customEvent.detail.format) {
+        handleExport(customEvent.detail.format);
+      }
+    };
+    window.addEventListener('triggerTemplateExport', handleGlobalExport);
+    return () => {
+      window.removeEventListener('triggerTemplateExport', handleGlobalExport);
+    };
+  }, [handleExport])
+
+  // Global event listener to trigger toggle guides and fullscreen in template mode
+  useEffect(() => {
+    const handleToggleGuides = () => {
+      setShowGuides(prev => !prev);
+    };
+    const handleGlobalFullscreen = () => {
+      handleFullscreen();
+    };
+
+    window.addEventListener('triggerToggleGuides', handleToggleGuides);
+    window.addEventListener('triggerFullscreen', handleGlobalFullscreen);
+    return () => {
+      window.removeEventListener('triggerToggleGuides', handleToggleGuides);
+      window.removeEventListener('triggerFullscreen', handleGlobalFullscreen);
+    };
+  }, [handleFullscreen]);
 
   const getTemplateDimensions = () => {
     if (renderedFormat) {
@@ -1236,10 +1279,6 @@ export function TemplateChartPreview({
                     <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-600 hover:bg-slate-100" title="Actions"><Ellipsis className="h-4 w-4" /></Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={handleResetZoom}>
-                      <RotateCcw className="h-4 w-4 mr-2" />
-                      <span>Reset Zoom</span>
-                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setShowGuides(!showGuides)}>
                       {showGuides ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
                       <span>{showGuides ? "Hide Guides" : "Show Guides"}</span>
@@ -1247,6 +1286,16 @@ export function TemplateChartPreview({
                     <DropdownMenuItem onClick={handleFullscreen}>
                       <Maximize2 className="h-4 w-4 mr-2" />
                       <span>Fullscreen</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => {
+                      console.log("[TemplateChartPreview] Dispatched triggerSaveClick event (deferred)");
+                      setTimeout(() => {
+                        window.dispatchEvent(new CustomEvent('triggerSaveClick'));
+                        document.dispatchEvent(new CustomEvent('triggerSaveClick'));
+                      }, 50);
+                    }}>
+                      <Cloud className="h-4 w-4 mr-2" />
+                      <span>Save to Cloud</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

@@ -268,23 +268,26 @@ export function PromptTemplate({
               </button>
             </div>
  
-            {/* Grid of famous aspect ratio boxes - Spacious grid floating natively */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full items-stretch">
+            {/* Grid/Carousel of famous aspect ratio boxes - Swipable on mobile, Grid on desktop */}
+            <div 
+              className="flex sm:grid flex-nowrap sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 overflow-x-auto sm:overflow-x-visible pb-3 sm:pb-0 w-full items-stretch snap-x snap-mandatory scroll-smooth"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
               {FAMOUS_ASPECT_RATIOS.map((opt) => {
                 const isSelected = selectedRatio === opt.value
                 return (
                   <button
                     key={opt.value}
                     onClick={() => handleRatioSelect(opt)}
-                    className={`flex items-center gap-6 p-3.5 rounded-2xl border text-left transition-all duration-200 h-[92px] group relative ${
+                    className={`flex items-center gap-3 sm:gap-6 p-2.5 sm:p-3.5 rounded-2xl border text-left transition-all duration-200 h-[80px] sm:h-[92px] group relative flex-shrink-0 w-[160px] sm:w-auto snap-center ${
                       isSelected
                         ? "border-2 border-indigo-500 ring-4 ring-indigo-500/5 bg-indigo-50/20 text-slate-800 shadow-[0_4px_16px_rgba(99,102,241,0.06)]"
                         : "border border-slate-200 bg-white/90 hover:border-slate-300 hover:bg-white hover:shadow-[0_4px_16px_rgba(0,0,0,0.05)] shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:-translate-y-0.5"
                     }`}
                   >
-                    {/* Visual aspect proportion container (Plain style, no grid, taller h-[76px]) */}
+                    {/* Visual aspect proportion container (Plain style, scale-adjusted on mobile) */}
                     <div 
-                      className="w-[72px] h-[76px] flex-shrink-0 flex items-center justify-center bg-transparent border-none overflow-hidden relative"
+                      className="w-12 h-14 sm:w-[72px] sm:h-[76px] flex-shrink-0 flex items-center justify-center bg-transparent border-none overflow-hidden relative scale-75 sm:scale-100 origin-center"
                     >
                       <div 
                         className={`rounded-[3px] border-2 transition-all duration-300 shadow-xs ${
@@ -296,14 +299,14 @@ export function PromptTemplate({
                       ></div>
                     </div>
  
-                    <div className="flex-1 min-w-0 pr-1">
-                      <div className="font-semibold text-sm text-slate-800 group-hover:text-slate-900 transition-colors flex items-center gap-1.5">
+                    <div className="flex-1 min-w-0 pr-1 select-none">
+                      <div className="font-semibold text-xs sm:text-sm text-slate-800 group-hover:text-slate-900 transition-colors flex items-center gap-1.5 truncate">
                         {opt.label}
                         {isSelected && (
                           <span className="w-1.5 h-1.5 rounded-full bg-indigo-600"></span>
                         )}
                       </div>
-                      <div className="text-xs text-slate-400 font-normal leading-relaxed line-clamp-2 mt-0.5 group-hover:text-slate-500 transition-colors">
+                      <div className="text-[10px] sm:text-xs text-slate-400 font-normal leading-relaxed line-clamp-2 mt-0.5 group-hover:text-slate-500 transition-colors">
                         {opt.sub}
                       </div>
                     </div>

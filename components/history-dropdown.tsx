@@ -14,9 +14,10 @@ import { toast } from "sonner"
 
 interface HistoryDropdownProps {
   variant?: 'full' | 'compact' | 'inline' | 'sidebar' | 'icon-badge'
+  onConversationRestored?: () => void
 }
 
-export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
+export function HistoryDropdown({ variant = 'full', onConversationRestored }: HistoryDropdownProps) {
   const [open, setOpen] = useState(false)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
@@ -62,6 +63,10 @@ export function HistoryDropdown({ variant = 'full' }: HistoryDropdownProps) {
     // since the undo operations from the previous conversation are no longer relevant
     try { useChartStore.temporal.getState().clear() } catch (e) { /* temporal not available */ }
     setOpen(false)
+
+    if (onConversationRestored) {
+      onConversationRestored()
+    }
 
     // Only route to landing if we're not already on a valid chart page
     // If we're on editor, docs, or other chart-related pages, stay there
