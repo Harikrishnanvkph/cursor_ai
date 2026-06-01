@@ -14,6 +14,7 @@ import { useChartStore } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
 import { useTemplateStore } from "@/lib/template-store"
 import { useDecorationStore } from "@/lib/stores/decoration-store"
+import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { clearCurrentChart } from "@/lib/storage-utils"
 import { toast } from "sonner"
 
@@ -53,7 +54,6 @@ export function ClearChartDialog({
 
         // 6. Clear format gallery state
         try {
-            const { useFormatGalleryStore } = require('@/lib/stores/format-gallery-store');
             const formatStore = useFormatGalleryStore.getState();
             formatStore.setContentPackage(null);
             formatStore.setSelectedFormat(null, 'bar');

@@ -15,6 +15,8 @@ import type { ChartStylePreset, PresetCategory } from '../chart-style-types'
 import { getOfficialPresets } from '../chart-style-defaults'
 import { applyPresetToChart, checkPresetCompatibility } from '../chart-style-engine'
 import type { SupportedChartType } from '../chart-defaults'
+import { useChartStore } from '../chart-store'
+import { dataService } from '../data-service'
 
 // ========================================
 // TYPES
@@ -164,7 +166,6 @@ export const useChartStyleStore = create<ChartStyleStore>()(
     // Auto-detect aspect ratio from the active chart in useChartStore
     let detectedAspectRatio: string | 'all' = 'all'
     try {
-      const { useChartStore } = require('../chart-store')
       const chartState = useChartStore.getState()
       const chartConfig = chartState.chartConfig
       
@@ -314,7 +315,6 @@ export const useChartStyleStore = create<ChartStyleStore>()(
 
     // Phase 2: Also attempt to fetch DB-backed presets from the API
     try {
-      const { dataService } = require('../data-service')
       const response = await dataService.getOfficialChartStylePresets()
 
       if (response?.data && Array.isArray(response.data) && response.data.length > 0) {
@@ -362,7 +362,6 @@ export const useChartStyleStore = create<ChartStyleStore>()(
 
     // Dynamic require to avoid circular deps — same pattern as undo-service.ts
     try {
-      const { useChartStore } = require('../chart-store')
       const chartState = useChartStore.getState()
 
       // Check compatibility
@@ -394,8 +393,7 @@ export const useChartStyleStore = create<ChartStyleStore>()(
       // Clear undo history so the selected style becomes the new baseline.
       // Users should not be able to undo back past a style gallery selection.
       try {
-        const { useChartStore: chartStoreRef } = require('../chart-store')
-        chartStoreRef.temporal.getState().clear()
+        useChartStore.temporal.getState().clear()
       } catch (e) {
         console.warn('[ChartStyleStore] Could not clear temporal history:', e)
       }

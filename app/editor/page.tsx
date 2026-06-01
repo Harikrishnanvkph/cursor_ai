@@ -43,7 +43,8 @@ import {
   useChartType,
   useChartData,
   useHasJSON,
-  useCurrentSnapshotId
+  useCurrentSnapshotId,
+  useChartMode
 } from "@/lib/hooks/use-chart-state"
 import { useIsMobile576, useIsTablet, useScreenDimensions } from "@/lib/hooks/use-screen-dimensions"
 import { parseDimension } from "@/lib/utils/dimension-utils"
@@ -326,6 +327,16 @@ function EditorPageContent() {
   const isMobile = useIsMobile576();
   const isTablet = useIsTablet();
   const { width: screenWidth, height: screenHeight } = useScreenDimensions();
+
+  // Clear backendConversationId when chartMode changes
+  const chartMode = useChartMode();
+  const prevChartModeRef = useRef(chartMode);
+  useEffect(() => {
+    if (chartMode !== prevChartModeRef.current) {
+      setBackendConversationId(null);
+      prevChartModeRef.current = chartMode;
+    }
+  }, [chartMode, setBackendConversationId]);
 
   // On tablet, collapse both sidebars by default on mount
   useEffect(() => {

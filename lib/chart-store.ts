@@ -317,15 +317,6 @@ export const useChartStore = create<ChartStore>()(
 
       resetChart: () => set((state) => ChartStateService.resetChart()),
       setChartMode: (mode) => {
-        // Clear backendConversationId when switching modes — the new mode
-        // starts with its own data which may not be cloud-saved yet.
-        try {
-          const { useChatStore } = require('./chat-store');
-          if (useChatStore?.getState) {
-            useChatStore.getState().setBackendConversationId(null);
-          }
-        } catch { /* chat store not available */ }
-
         set((state) => ChartStateService.setChartMode(mode, state));
       },
 

@@ -11,6 +11,7 @@ import {
     useShowBorder,
 } from "@/lib/hooks/use-chart-state"
 import { getBackgroundConfig } from "@/lib/utils/dimension-utils"
+import { getCurrentDragState } from "@/lib/custom-label-plugin"
 
 /**
  * Manages all chart export handlers: PNG, JPEG, HTML, CSV, and export settings navigation.
@@ -56,7 +57,6 @@ export function useChartExport(options?: {
         let currentDragState = {};
         if (getGlobalChartRef()?.current) {
             try {
-                const { getCurrentDragState } = require('@/lib/custom-label-plugin');
                 currentDragState = getCurrentDragState(getGlobalChartRef()?.current);
             } catch (error) {
                 console.warn('Could not capture drag state:', error);

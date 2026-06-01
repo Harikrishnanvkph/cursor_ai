@@ -8,6 +8,8 @@ import { createExpiringStorage } from './storage-utils';
 import { useFormatGalleryStore } from './stores/format-gallery-store';
 import { extractFormatStructure, formatStructureForPrompt } from './format-utils';
 import type { ChartOptions } from 'chart.js';
+import { extractContentFromChartData, suggestChartTypes } from './variant-engine';
+import { useChartStyleStore } from './stores/chart-style-store';
 
 // Helper function to get the appropriate initial message based on template/format mode
 const getInitialMessage = (): ChatMessage => {
@@ -22,7 +24,6 @@ const getInitialMessage = (): ChatMessage => {
     }
     if (templateStore.generateMode === 'format') {
       try {
-        const { useFormatGalleryStore } = require('./stores/format-gallery-store');
         const formatStore = useFormatGalleryStore.getState();
         if (!formatStore.selectedFormatId) {
           return {
@@ -242,7 +243,6 @@ export const useChatStore = create<ChatStore>()(
 
           // Clear template state when clearing chart data
           try {
-            const { useTemplateStore } = require('./template-store');
             useTemplateStore.getState().clearAllTemplateState();
           } catch(e) {
             console.warn("Could not clear template store", e);
@@ -300,7 +300,6 @@ export const useChatStore = create<ChatStore>()(
         const templateStore = useTemplateStore.getState();
         if (templateStore.generateMode === 'format') {
           try {
-            const { useFormatGalleryStore } = require('./stores/format-gallery-store');
             const galleryStore = useFormatGalleryStore.getState();
             if (galleryStore.selectedFormatId) {
               const format = galleryStore.formats.find((f: any) => f.id === galleryStore.selectedFormatId) || 
@@ -323,7 +322,6 @@ export const useChatStore = create<ChatStore>()(
           // If we are generating a standard chart or template (NOT format mode), 
           // clear any existing format data so 'Browse Formats' doesn't persist
           try {
-            const { useFormatGalleryStore } = require('./stores/format-gallery-store');
             const galleryStore = useFormatGalleryStore.getState();
             galleryStore.setContentPackage(null);
             galleryStore.setSelectedFormat(null, 'bar');
@@ -578,15 +576,12 @@ export const useChatStore = create<ChatStore>()(
               if (templateStore.generateMode === 'format') {
                 // Format mode: apply content to the selected format (or open gallery to browse)
                 try {
-                  const { useFormatGalleryStore } = require('./stores/format-gallery-store');
                   const formatStore = useFormatGalleryStore.getState();
-                  const { extractContentFromChartData } = require('./variant-engine');
 
                   // Build content package: prefer AI-generated formatContent, fall back to local extraction
                   let contentPackage = null;
                   if (result.formatContent && result.chartData) {
                     // AI was format-aware and returned zone-specific content
-                    const { suggestChartTypes } = require('./variant-engine');
                     contentPackage = {
                       ...result.formatContent,
                       chartData: { labels: result.chartData.labels, datasets: result.chartData.datasets },
@@ -624,7 +619,6 @@ export const useChatStore = create<ChatStore>()(
                 // Chart mode (not format/template): auto-open Chart Style Gallery
                 // so user can immediately browse and apply styles to their new chart
                 try {
-                  const { useChartStyleStore } = require('./stores/chart-style-store');
                   const styleStore = useChartStyleStore.getState();
                   // Small delay to let the chart render first
                   setTimeout(() => {

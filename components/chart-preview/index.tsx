@@ -19,7 +19,7 @@ const ZOOM_VALUES: number[] = (() => {
   for (let i = 392; i <= 500; i += 12) values.push(i);
   return values;
 })();
-import { useChartStore } from "@/lib/chart-store"
+import { useChartStore, getDefaultConfigForType } from "@/lib/chart-store"
 import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import {
   useChartConfig,
@@ -37,7 +37,7 @@ import { TemplateChartPreview } from "@/components/template-chart-preview"
 import { ScatterBubbleSetupScreen } from "@/components/scatter-bubble-setup-screen"
 import { CreateScatterDataModal } from "@/components/dialogs/create-scatter-data-modal"
 import { ChartTransitionDialog } from "@/components/dialogs/chart-transition-dialog"
-import { parseDimension } from "@/lib/utils/dimension-utils"
+import { parseDimension, getBackgroundConfig } from "@/lib/utils/dimension-utils"
 
 // Extracted hooks
 import { useStoreHydration } from "@/lib/hooks/use-store-hydration"
@@ -182,7 +182,6 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   // --- Radar chart config fix ---
   useEffect(() => {
     if (chartType === 'radar' && (!chartConfig.scales || !(chartConfig.scales as any).r)) {
-      const { getDefaultConfigForType } = require('@/lib/chart-store');
       const newConfig = getDefaultConfigForType('radar');
       useChartStore.getState().updateChartConfig(newConfig);
     }
@@ -290,10 +289,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     plugins: {
       ...chartConfig.plugins,
       exportWithBackground: {
-        background: (() => {
-          const { getBackgroundConfig } = require("@/lib/utils/dimension-utils");
-          return getBackgroundConfig(chartConfig);
-        })(),
+        background: getBackgroundConfig(chartConfig),
         fileNamePrefix: 'chart',
         quality: 1.0
       }
