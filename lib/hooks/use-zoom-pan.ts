@@ -20,22 +20,21 @@ export function useZoomPan() {
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
     const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
 
-    // Refs for pinch-to-zoom tracking (avoid stale closure issues)
-    const pinchRef = useRef<{
-        initialDistance: number;
-        initialZoom: number;
-        isPinching: boolean;
-        // Single-finger pan tracking for touch
-        isTouchPanning: boolean;
-        touchPanStart: { x: number; y: number };
-        panOffsetAtStart: { x: number; y: number };
-    }>({
-        initialDistance: 0,
+    // Refs for touch interaction tracking (avoiding stale closure issues)
+    const touchStateRef = useRef({
+        // The live values synced from state
+        currentZoom: 1,
+        currentPanOffset: { x: 0, y: 0 },
+
+        // Captured snapshots at the moment of touchstart
         initialZoom: 1,
+        initialDistance: 0,
+        initialPanOffset: { x: 0, y: 0 },
+        touchStartPos: { x: 0, y: 0 },
+
+        // Active gesture flags
         isPinching: false,
-        isTouchPanning: false,
-        touchPanStart: { x: 0, y: 0 },
-        panOffsetAtStart: { x: 0, y: 0 },
+        isPanning: false,
     });
 
     const handleZoomIn = useCallback(() => {
@@ -111,57 +110,55 @@ export function useZoomPan() {
     const attachTouchHandlers = useCallback((container: HTMLElement | null) => {
         if (!container) return () => {};
 
-        const ref = pinchRef.current;
+        const state = touchStateRef.current;
 
         const handleTouchStart = (e: TouchEvent) => {
             if (e.touches.length === 2) {
-                // Start pinch-to-zoom
+                // Two-finger pinch-to-zoom
                 e.preventDefault();
-                ref.isPinching = true;
-                ref.isTouchPanning = false;
-                ref.initialDistance = getTouchDistance(e.touches[0], e.touches[1]);
-                // Read current zoom from the state ref (we'll sync below)
-                ref.initialZoom = ref.initialZoom; // Will be set via setZoom wrapper
+                state.isPinching = true;
+                state.isPanning = false;
+                state.initialDistance = getTouchDistance(e.touches[0], e.touches[1]);
+                state.initialZoom = state.currentZoom;
             } else if (e.touches.length === 1) {
-                // Single finger: always allow panning on mobile preview
+                // Single-finger panning
                 e.preventDefault();
-                ref.isTouchPanning = true;
-                ref.isPinching = false;
-                ref.touchPanStart = {
+                state.isPanning = true;
+                state.isPinching = false;
+                state.touchStartPos = {
                     x: e.touches[0].clientX,
                     y: e.touches[0].clientY,
                 };
-                // panOffsetAtStart will be set from current state via the sync effect
+                state.initialPanOffset = { ...state.currentPanOffset };
             }
         };
 
         const handleTouchMove = (e: TouchEvent) => {
-            if (ref.isPinching && e.touches.length === 2) {
+            if (state.isPinching && e.touches.length === 2) {
                 e.preventDefault();
                 const currentDistance = getTouchDistance(e.touches[0], e.touches[1]);
-                const scale = currentDistance / ref.initialDistance;
-                const newZoom = Math.min(Math.max(ref.initialZoom * scale, 0.1), 5);
-                setZoom(newZoom);
-            } else if (ref.isTouchPanning && e.touches.length === 1) {
+                if (state.initialDistance > 0) {
+                    const scale = currentDistance / state.initialDistance;
+                    const newZoom = Math.min(Math.max(state.initialZoom * scale, 0.1), 5);
+                    setZoom(newZoom);
+                }
+            } else if (state.isPanning && e.touches.length === 1) {
                 e.preventDefault();
-                const dx = e.touches[0].clientX - ref.touchPanStart.x;
-                const dy = e.touches[0].clientY - ref.touchPanStart.y;
+                const dx = e.touches[0].clientX - state.touchStartPos.x;
+                const dy = e.touches[0].clientY - state.touchStartPos.y;
                 setPanOffset({
-                    x: ref.panOffsetAtStart.x + dx,
-                    y: ref.panOffsetAtStart.y + dy,
+                    x: state.initialPanOffset.x + dx,
+                    y: state.initialPanOffset.y + dy,
                 });
             }
         };
 
         const handleTouchEnd = (e: TouchEvent) => {
-            if (ref.isPinching) {
-                // If still 2 fingers remain, don't stop
-                if (e.touches.length < 2) {
-                    ref.isPinching = false;
-                }
+            if (state.isPinching && e.touches.length < 2) {
+                state.isPinching = false;
             }
-            if (ref.isTouchPanning && e.touches.length === 0) {
-                ref.isTouchPanning = false;
+            if (state.isPanning && e.touches.length === 0) {
+                state.isPanning = false;
             }
         };
 
@@ -177,14 +174,13 @@ export function useZoomPan() {
         };
     }, [setZoom, setPanOffset]);
 
-    // Keep pinchRef in sync with current zoom and panOffset values
-    // so the touch handlers always read fresh state
+    // Keep touchStateRef in sync with current zoom and panOffset values
     useEffect(() => {
-        pinchRef.current.initialZoom = zoom;
+        touchStateRef.current.currentZoom = zoom;
     }, [zoom]);
 
     useEffect(() => {
-        pinchRef.current.panOffsetAtStart = panOffset;
+        touchStateRef.current.currentPanOffset = panOffset;
     }, [panOffset]);
 
     return useMemo(() => ({
