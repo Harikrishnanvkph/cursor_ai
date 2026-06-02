@@ -17,6 +17,7 @@ interface ChartPreviewCanvasProps {
         handleMouseDown: (e: React.MouseEvent) => void;
         handleMouseMove: (e: React.MouseEvent) => void;
         handleMouseUp: () => void;
+        attachTouchHandlers?: (container: HTMLElement | null) => () => void;
     };
 }
 
@@ -29,7 +30,7 @@ export const ChartPreviewCanvas = React.memo(({
     chartConfig,
     zoomPan,
 }: ChartPreviewCanvasProps) => {
-    const { zoom, panMode, isDragging, panOffset, handleMouseDown } = zoomPan;
+    const { zoom, panMode, isDragging, panOffset, handleMouseDown, attachTouchHandlers } = zoomPan;
     const decorationShapes = useDecorationStore(s => s.shapes);
     const hasDecorations = decorationShapes.length > 0;
     const drawingMode = useDecorationStore(s => s.drawingMode);
@@ -43,6 +44,13 @@ export const ChartPreviewCanvas = React.memo(({
         const timer = setTimeout(() => setIsInitializing(false), 300);
         return () => clearTimeout(timer);
     }, []);
+
+    // Attach pinch-to-zoom touch handlers for mobile
+    useEffect(() => {
+        if (!attachTouchHandlers) return;
+        const el = chartContainerRef.current;
+        return attachTouchHandlers(el);
+    }, [attachTouchHandlers, chartContainerRef]);
 
     React.useLayoutEffect(() => {
         const el = chartContainerRef.current;
@@ -78,7 +86,8 @@ export const ChartPreviewCanvas = React.memo(({
                     backgroundColor: 'transparent',
                     width: '100%',
                     height: '100%',
-                    top: 0, left: 0, right: 0, bottom: 0
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    touchAction: 'none'  // Prevent browser pinch-zoom on this area
                 }}
             >
                 {/* Background layer for dragging (only in pan mode) */}
@@ -165,7 +174,8 @@ export const ChartPreviewCanvas = React.memo(({
                 width: displayWidth,
                 height: displayHeight,
                 margin: 'auto', // This centers it if the parent has flex
-                backgroundColor: 'transparent'
+                backgroundColor: 'transparent',
+                touchAction: 'none'  // Prevent browser pinch-zoom on this area
             }}
         >
             {/* Background layer for dragging (only in pan mode) */}

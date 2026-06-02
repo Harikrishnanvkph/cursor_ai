@@ -4,6 +4,7 @@ import React from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DesignPanel } from "./design-settings"
 import { LabelsPanel } from "./labels-panel"
+import { GroupedSettingsFilter } from "./grouped-settings-filter"
 
 export function CombinedStylingPanel() {
     return (
@@ -19,6 +20,7 @@ export function CombinedStylingPanel() {
                 </TabsContent>
                 
                 <TabsContent value="styling" className="mt-4">
+                    <GroupedSettingsFilter />
                     <LabelsPanel />
                 </TabsContent>
             </Tabs>

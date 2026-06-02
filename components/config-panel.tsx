@@ -16,7 +16,6 @@ import { TemplateChartZonePanel } from "./panels/template-panels/template-chart-
 import { FormatZonesPanel } from "./panels/template-panels/format-zones-panel"
 import { DecorationsPanel } from "./panels/template-panels/decorations-panel"
 import { BackgroundPanel } from "./panels/template-panels/background-panel"
-import { GroupedSettingsFilter } from "./panels/grouped-settings-filter"
 import { Button } from "@/components/ui/button"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
 import { ChevronLeft, Settings, Save, X, Loader2, Share2, Copy, ExternalLink } from "lucide-react"
@@ -257,10 +256,6 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
 
       {/* Panel Content */}
       <div className="flex-1 overflow-y-auto p-4 bg-background">
-        {/* Grouped Mode Settings Filter - shows Group/Dataset dropdowns */}
-        {(activeTab === 'labels' || activeTab === 'styling') && (
-          <GroupedSettingsFilter />
-        )}
         <div className="animate-in fade-in duration-200">
           {renderPanel()}
         </div>

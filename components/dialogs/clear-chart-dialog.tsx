@@ -78,9 +78,10 @@ export function ClearChartDialog({
         <AlertDialog open={open} onOpenChange={onOpenChange}>
             <AlertDialogContent className="sm:max-w-[500px]">
                 <AlertDialogHeader>
-                    <AlertDialogTitle>Reset Application</AlertDialogTitle>
+                    <AlertDialogTitle>Clear Local Workspace</AlertDialogTitle>
                     <AlertDialogDescription>
-                        Are you sure you want to delete everything and start fresh? This will remove all datasets, template settings, and chat history. This action cannot be undone.
+                        Are you sure you want to clear your current editor workspace and start fresh? This will reset the active chart configuration, data values, and chat history on your screen. <br /><br />
+                        <strong>Note: This only clears the local editor state—your saved charts and templates in the cloud history are completely safe.</strong>
                     </AlertDialogDescription>
                 </AlertDialogHeader>
 
@@ -90,7 +91,7 @@ export function ClearChartDialog({
                         onClick={handleConfirmClear}
                         className="bg-red-600 hover:bg-red-700"
                     >
-                        Reset Everything
+                        Clear Workspace
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>

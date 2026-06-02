@@ -117,7 +117,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
   }, [conversation.id])
 
   // --- Ctrl + mouse wheel/trackpad zoom handler ---
-  const { setZoom } = zoomPan;
+  const { setZoom, attachTouchHandlers } = zoomPan;
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
       const container = containerRef.current;
@@ -142,6 +142,11 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
       window.removeEventListener("wheel", handleWheel);
     };
   }, [setZoom]);
+
+  // --- Pinch-to-zoom touch handler for mobile ---
+  useEffect(() => {
+    return attachTouchHandlers(containerRef.current);
+  }, [attachTouchHandlers]);
 
   // Load chart/template data into stores when modal opens
   useEffect(() => {
@@ -642,6 +647,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
             style={{
               scrollbarWidth: 'thin',
               scrollbarColor: '#cbd5e1 #f1f5f9',
+              touchAction: 'none',  // Prevent browser pinch-zoom on this area
               backgroundColor: canvasBgType === 'transparent' ? 'transparent' : canvasBgColor,
               backgroundImage: canvasBgType === 'transparent' ? `linear-gradient(45deg, #f1f5f9 25%, transparent 25%), linear-gradient(-45deg, #f1f5f9 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f1f5f9 75%), linear-gradient(-45deg, transparent 75%, #f1f5f9 75%)` : undefined,
               backgroundSize: canvasBgType === 'transparent' ? '20px 20px' : undefined,

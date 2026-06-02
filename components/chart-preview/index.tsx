@@ -151,7 +151,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   }, [zoomPan.zoom, zoomPan.panOffset.x, zoomPan.panOffset.y]);
 
   // --- Ctrl + mouse wheel/trackpad zoom handler ---
-  const { setZoom } = zoomPan;
+  const { setZoom, attachTouchHandlers } = zoomPan;
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
       const container = chartContainerRef.current;
@@ -176,6 +176,11 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       window.removeEventListener("wheel", handleWheel);
     };
   }, [setZoom]);
+
+  // --- Pinch-to-zoom touch handler for mobile ---
+  useEffect(() => {
+    return attachTouchHandlers(chartContainerRef.current);
+  }, [attachTouchHandlers]);
 
   // Auto-fit logic has been refactored to use synchronous CSS-based scaling and flex-centering in ChartPreviewCanvas.
 
@@ -513,6 +518,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
             style={{
               scrollbarWidth: 'thin',
               scrollbarColor: '#cbd5e1 #f1f5f9',
+              touchAction: 'none',  // Prevent browser pinch-zoom on this area
               minHeight: '100%',
               height: '100%',
               backgroundColor: canvasBgType === 'transparent' ? 'transparent' : canvasBgColor,
