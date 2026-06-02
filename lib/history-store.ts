@@ -20,6 +20,8 @@ export type Conversation = {
   // Mode metadata from backend
   is_template_mode?: boolean;
   chart_mode?: 'single' | 'grouped';
+  width?: string;
+  height?: string;
 };
 
 interface HistoryStore {
@@ -365,7 +367,9 @@ export const useHistoryStore = create<HistoryStore>()(
               timestamp: new Date(conv.created_at).getTime(),
               // Mode metadata from backend
               is_template_mode: conv.is_template_mode || false,
-              chart_mode: conv.chart_mode || 'single'
+              chart_mode: conv.chart_mode || 'single',
+              width: conv.width || undefined,
+              height: conv.height || undefined
             }));
 
             set({

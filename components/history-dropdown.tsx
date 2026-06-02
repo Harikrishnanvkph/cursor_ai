@@ -13,6 +13,18 @@ import { useRouter, usePathname } from "next/navigation"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
+// Helper to format chart/template dimensions
+const formatDimensions = (width?: string, height?: string) => {
+  if (!width || !height) return null;
+  const cleanW = width.replace("px", "").trim();
+  const cleanH = height.replace("px", "").trim();
+  
+  if (cleanW === "100%" || cleanW === "responsive" || cleanH === "100%") {
+    return "Responsive";
+  }
+  return `${cleanW} × ${cleanH} px`;
+};
+
 interface HistoryDropdownProps {
   className?: string
   variant?: 'full' | 'compact' | 'inline' | 'sidebar' | 'icon-badge'
@@ -176,46 +188,64 @@ export function HistoryDropdown({ variant = 'full', className, onConversationRes
               </select>
             </div>
 
-            <div className="max-h-64 overflow-y-auto">
+            <div className="max-h-64 overflow-y-auto p-1 space-y-1">
               {loading ? (
                 <div className="p-4 text-center text-gray-500 text-sm">Loading...</div>
               ) : filteredConversations.length === 0 ? (
                 <div className="p-4 text-center text-gray-500 text-sm">No conversations yet</div>
               ) : (
-                filteredConversations.map((conversation: Conversation) => (
-                  <DropdownMenuItem
-                    key={conversation.id}
-                    onClick={() => handleConversationClick(conversation.id)}
-                    className="flex items-center justify-between p-2 hover:bg-gray-50 cursor-pointer"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-gray-900 text-sm truncate">
-                        {conversation.title}
-                      </div>
-                      <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                        <span className="truncate">
-                          {new Date(conversation.timestamp).toLocaleDateString()}
-                        </span>
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${conversation.chart_mode === 'grouped' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-                          {conversation.chart_mode === 'grouped' ? 'Grouped' : 'Single'}
-                        </span>
-                        {conversation.is_template_mode && (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700">
-                            Template
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => handleDeleteClick(e, conversation.id)}
-                      className="h-6 w-6 p-0 text-gray-400 hover:text-red-500 hover:bg-red-50"
+                filteredConversations.map((conversation: Conversation) => {
+                  const dimStr = formatDimensions(conversation.width, conversation.height);
+                  return (
+                    <DropdownMenuItem
+                      key={conversation.id}
+                      onClick={() => handleConversationClick(conversation.id)}
+                      className={cn(
+                        "flex items-center justify-between p-1.5 px-2 hover:bg-slate-50 cursor-pointer rounded-lg border border-transparent transition-all duration-200 text-left",
+                        historyConversationId === conversation.id ? "bg-blue-50/50 border-blue-100/50" : ""
+                      )}
                     >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </DropdownMenuItem>
-                ))
+                      <div className="flex-1 min-w-0 pr-2">
+                        <div className={cn(
+                          "font-semibold text-sm truncate mb-0.5",
+                          historyConversationId === conversation.id ? "text-blue-900" : "text-slate-800"
+                        )}>
+                          {conversation.title}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-400">
+                          {conversation.is_template_mode ? (
+                            <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200/30 shrink-0">
+                              Template
+                            </span>
+                          ) : (
+                            <span className={cn(
+                              "px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border shrink-0",
+                              conversation.chart_mode === 'grouped'
+                                ? "bg-purple-50 text-purple-700 border-purple-200/30"
+                                : "bg-indigo-50 text-indigo-700 border-indigo-200/30"
+                            )}>
+                              {conversation.chart_mode === 'grouped' ? 'Grouped' : 'Single'}
+                            </span>
+                          )}
+                          {dimStr && (
+                            <>
+                              <span className="w-1 h-1 rounded-full bg-slate-200"></span>
+                              <span className="font-medium text-slate-500">{dimStr}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => handleDeleteClick(e, conversation.id)}
+                        className="h-6 w-6 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all rounded-md shrink-0"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </DropdownMenuItem>
+                  );
+                })
               )}
             </div>
 
@@ -293,46 +323,64 @@ export function HistoryDropdown({ variant = 'full', className, onConversationRes
               </select>
             </div>
 
-            <div className="max-h-64 overflow-y-auto">
+            <div className="max-h-64 overflow-y-auto p-1 space-y-1">
               {loading ? (
                 <div className="p-4 text-center text-gray-500 text-sm">Loading...</div>
               ) : filteredConversations.length === 0 ? (
                 <div className="p-4 text-center text-gray-500 text-sm">No conversations yet</div>
               ) : (
-                filteredConversations.map((conversation: Conversation) => (
-                  <DropdownMenuItem
-                    key={conversation.id}
-                    onClick={() => handleConversationClick(conversation.id)}
-                    className="flex items-center justify-between p-2 hover:bg-gray-50 cursor-pointer"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-gray-900 text-sm truncate">
-                        {conversation.title}
-                      </div>
-                      <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                        <span className="truncate">
-                          {new Date(conversation.timestamp).toLocaleDateString()}
-                        </span>
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${conversation.chart_mode === 'grouped' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-                          {conversation.chart_mode === 'grouped' ? 'Grouped' : 'Single'}
-                        </span>
-                        {conversation.is_template_mode && (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700">
-                            Template
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => handleDeleteClick(e, conversation.id)}
-                      className="h-6 w-6 p-0 text-gray-400 hover:text-red-500 hover:bg-red-50"
+                filteredConversations.map((conversation: Conversation) => {
+                  const dimStr = formatDimensions(conversation.width, conversation.height);
+                  return (
+                    <DropdownMenuItem
+                      key={conversation.id}
+                      onClick={() => handleConversationClick(conversation.id)}
+                      className={cn(
+                        "flex items-center justify-between p-1.5 px-2 hover:bg-slate-50 cursor-pointer rounded-lg border border-transparent transition-all duration-200 text-left",
+                        historyConversationId === conversation.id ? "bg-blue-50/50 border-blue-100/50" : ""
+                      )}
                     >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </DropdownMenuItem>
-                ))
+                      <div className="flex-1 min-w-0 pr-2">
+                        <div className={cn(
+                          "font-semibold text-sm truncate mb-0.5",
+                          historyConversationId === conversation.id ? "text-blue-900" : "text-slate-800"
+                        )}>
+                          {conversation.title}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-400">
+                          {conversation.is_template_mode ? (
+                            <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200/30 shrink-0">
+                              Template
+                            </span>
+                          ) : (
+                            <span className={cn(
+                              "px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border shrink-0",
+                              conversation.chart_mode === 'grouped'
+                                ? "bg-purple-50 text-purple-700 border-purple-200/30"
+                                : "bg-indigo-50 text-indigo-700 border-indigo-200/30"
+                            )}>
+                              {conversation.chart_mode === 'grouped' ? 'Grouped' : 'Single'}
+                            </span>
+                          )}
+                          {dimStr && (
+                            <>
+                              <span className="w-1 h-1 rounded-full bg-slate-200"></span>
+                              <span className="font-medium text-slate-500">{dimStr}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => handleDeleteClick(e, conversation.id)}
+                        className="h-6 w-6 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all rounded-md shrink-0"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </DropdownMenuItem>
+                  );
+                })
               )}
             </div>
 
@@ -374,15 +422,15 @@ export function HistoryDropdown({ variant = 'full', className, onConversationRes
     // Sidebar mode: inline rendering for mobile/tablet sidebars without a wrapping popover
     return (
       <div className="w-full h-full flex flex-col overflow-hidden">
-        <div className="p-3 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
-          <div>
-            <h3 className="font-semibold text-gray-900 text-sm">Chat History</h3>
-            <p className="text-xs text-gray-500">Your previous conversations</p>
+        <div className="pl-[18px] pr-3 py-2 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-2 text-slate-700">
+            <History className="w-4 h-4 text-slate-500" />
+            <span className="font-semibold text-sm">History</span>
           </div>
           <select
             value={filterType}
             onChange={(e: any) => setFilterType(e.target.value)}
-            className="text-xs border border-gray-200 rounded px-2 py-1 text-gray-600 bg-gray-50 hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors cursor-pointer"
+            className="text-xs border border-slate-200 rounded-md px-1.5 py-0.5 text-slate-600 bg-white hover:bg-slate-50 hover:border-slate-300 focus:outline-none transition-colors cursor-pointer"
           >
             <option value="All">All</option>
             <option value="Single Chart">Single Chart</option>
@@ -402,61 +450,74 @@ export function HistoryDropdown({ variant = 'full', className, onConversationRes
             <p className="text-xs text-gray-500">Your conversations will appear here.</p>
           </div>
         ) : (
-          <div className="flex flex-col flex-1 min-h-0">
-            <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-1">
-              {filteredConversations.map((conversation: Conversation) => (
-                <div
-                  key={conversation.id}
-                  onClick={() => handleConversationClick(conversation.id)}
-                  className={`flex items-center justify-between p-2 cursor-pointer rounded-xl border transition-all duration-200 group ${historyConversationId === conversation.id
-                    ? 'bg-blue-50/80 border-blue-200 shadow-sm'
-                    : 'bg-white border-transparent hover:border-gray-200 hover:shadow-sm'
-                    }`}
-                >
-                  <div className="flex-1 min-w-0 pr-3">
-                    <div className={`font-semibold text-sm truncate mb-1 ${historyConversationId === conversation.id ? 'text-blue-900' : 'text-gray-900'
-                      }`}>
-                      {conversation.title}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
-                      <span className="truncate">
-                        {new Date(conversation.timestamp).toLocaleDateString()}
-                      </span>
-                      <span className="w-1 h-1 rounded-full bg-gray-300"></span>
-                      <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-semibold tracking-wide ${conversation.chart_mode === 'grouped'
-                        ? 'bg-purple-100 text-purple-700'
-                        : 'bg-indigo-100 text-indigo-700'
-                        }`}>
-                        {conversation.chart_mode === 'grouped' ? 'Grouped' : 'Single'}
-                      </span>
-                      {conversation.is_template_mode && (
-                        <span className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold tracking-wide bg-amber-100 text-amber-700">
-                          Template
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => handleDeleteClick(e, conversation.id)}
-                    className="h-8 w-8 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50 shrink-0 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity rounded-lg"
-                    title="Delete conversation"
+          <div className="flex flex-col flex-1 min-h-0 bg-transparent">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden py-1.5 space-y-1.5">
+              {filteredConversations.map((conversation: Conversation) => {
+                const dimStr = formatDimensions(conversation.width, conversation.height);
+                const isActive = historyConversationId === conversation.id;
+                return (
+                  <div
+                    key={conversation.id}
+                    onClick={() => handleConversationClick(conversation.id)}
+                    className={cn(
+                      "flex items-center justify-between p-1.5 px-2.5 cursor-pointer rounded-lg border transition-all duration-200 group text-left mx-2 w-[calc(100%-16px)]",
+                      isActive
+                        ? "bg-blue-50/70 border-blue-200 shadow-xs"
+                        : "bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50/50 hover:shadow-xs"
+                    )}
                   >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+                    <div className="flex-1 min-w-0 pr-2">
+                      <div className={cn(
+                        "font-semibold text-sm truncate mb-0.5",
+                        isActive ? "text-blue-900" : "text-slate-800"
+                      )}>
+                        {conversation.title}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-400">
+                        {conversation.is_template_mode ? (
+                          <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200/30 shrink-0">
+                            Template
+                          </span>
+                        ) : (
+                          <span className={cn(
+                            "px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border shrink-0",
+                            conversation.chart_mode === 'grouped'
+                              ? "bg-purple-50 text-purple-700 border-purple-200/30"
+                              : "bg-indigo-50 text-indigo-700 border-indigo-200/30"
+                          )}>
+                            {conversation.chart_mode === 'grouped' ? 'Grouped' : 'Single'}
+                          </span>
+                        )}
+                        {dimStr && (
+                          <>
+                            <span className="w-1 h-1 rounded-full bg-slate-200"></span>
+                            <span className="font-medium text-slate-500">{dimStr}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => handleDeleteClick(e, conversation.id)}
+                      className="h-6 w-6 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 shrink-0 opacity-100 transition-all rounded-md"
+                      title="Delete conversation"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                );
+              })}
             </div>
 
-            <div className="p-3 border-t border-gray-100 bg-gray-50/50 flex-shrink-0">
+            <div className="p-2 border-t border-slate-100 bg-slate-50/30 flex-shrink-0">
               <Button
                 variant="outline"
                 onClick={handleClearClick}
-                className="w-full flex items-center justify-center gap-2 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-200 h-10 rounded-xl transition-colors"
+                className="mx-2 w-[calc(100%-16px)] flex items-center justify-center gap-1.5 text-red-600 hover:bg-red-50 border-slate-200 hover:text-red-700 hover:border-red-200 h-8 rounded-lg transition-colors text-xs font-semibold"
               >
-                <Trash2 className="h-4 w-4" />
-                <span className="text-sm font-semibold">Clear All History</span>
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>Clear All History</span>
               </Button>
             </div>
           </div>
@@ -505,7 +566,6 @@ export function HistoryDropdown({ variant = 'full', className, onConversationRes
           <div className="p-2 border-b border-gray-100 flex items-center justify-between">
             <div>
               <h3 className="font-semibold text-gray-900 text-sm">Chat History</h3>
-              <p className="text-xs text-gray-500">Your previous conversations</p>
             </div>
             <select
               value={filterType}
@@ -525,41 +585,59 @@ export function HistoryDropdown({ variant = 'full', className, onConversationRes
             </div>
           ) : (
             <>
-              <div className="max-h-64 overflow-y-auto">
-                {filteredConversations.map((conversation) => (
-                  <DropdownMenuItem
-                    key={conversation.id}
-                    onClick={() => handleConversationClick(conversation.id)}
-                    className="flex items-center justify-between p-2 hover:bg-gray-50 cursor-pointer"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-gray-900 text-sm truncate">
-                        {conversation.title}
-                      </div>
-                      <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                        <span className="truncate">
-                          {new Date(conversation.timestamp).toLocaleDateString()}
-                        </span>
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${conversation.chart_mode === 'grouped' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-                          {conversation.chart_mode === 'grouped' ? 'Grouped' : 'Single'}
-                        </span>
-                        {conversation.is_template_mode && (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700">
-                            Template
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => handleDeleteClick(e, conversation.id)}
-                      className="h-6 w-6 p-0 text-gray-400 hover:text-red-500 hover:bg-red-50"
+              <div className="max-h-64 overflow-y-auto p-1 space-y-1">
+                {filteredConversations.map((conversation) => {
+                  const dimStr = formatDimensions(conversation.width, conversation.height);
+                  return (
+                    <DropdownMenuItem
+                      key={conversation.id}
+                      onClick={() => handleConversationClick(conversation.id)}
+                      className={cn(
+                        "flex items-center justify-between p-1.5 px-2 hover:bg-slate-50 cursor-pointer rounded-lg border border-transparent transition-all duration-200 text-left",
+                        historyConversationId === conversation.id ? "bg-blue-50/50 border-blue-100/50" : ""
+                      )}
                     >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </DropdownMenuItem>
-                ))}
+                      <div className="flex-1 min-w-0 pr-2">
+                        <div className={cn(
+                          "font-semibold text-sm truncate mb-0.5",
+                          historyConversationId === conversation.id ? "text-blue-900" : "text-slate-800"
+                        )}>
+                          {conversation.title}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-400">
+                          {conversation.is_template_mode ? (
+                            <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200/30 shrink-0">
+                              Template
+                            </span>
+                          ) : (
+                            <span className={cn(
+                              "px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border shrink-0",
+                              conversation.chart_mode === 'grouped'
+                                ? "bg-purple-50 text-purple-700 border-purple-200/30"
+                                : "bg-indigo-50 text-indigo-700 border-indigo-200/30"
+                            )}>
+                              {conversation.chart_mode === 'grouped' ? 'Grouped' : 'Single'}
+                            </span>
+                          )}
+                          {dimStr && (
+                            <>
+                              <span className="w-1 h-1 rounded-full bg-slate-200"></span>
+                              <span className="font-medium text-slate-500">{dimStr}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => handleDeleteClick(e, conversation.id)}
+                        className="h-6 w-6 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all rounded-md shrink-0"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </DropdownMenuItem>
+                  );
+                })}
               </div>
 
               <DropdownMenuSeparator />

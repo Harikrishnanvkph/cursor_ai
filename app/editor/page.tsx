@@ -12,7 +12,7 @@ import { useAuth } from "@/components/auth/AuthProvider"
 import { dataService } from "@/lib/data-service"
 import { Button } from "@/components/ui/button"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
-import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Layers, Settings, Download, ChevronLeft, ChevronRight, FileText, Save, X, Loader2, Plus, Info, LayoutDashboard, MessageSquare, Edit3, BarChart2, SlidersHorizontal, PanelLeft, ExternalLink, Share2, Copy, MoreVertical, Pencil, Check, Cloud, Trash2, ChevronDown, Maximize2, Eye, FileImage, ImageIcon, FileCode, Ellipsis } from "lucide-react"
+import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Layers, Settings, Menu, Download, ChevronLeft, ChevronRight, FileText, Save, X, Loader2, Plus, Info, LayoutDashboard, MessageSquare, Edit3, BarChart2, SlidersHorizontal, PanelLeft, ExternalLink, Share2, Copy, MoreVertical, Pencil, Check, Cloud, Trash2, ChevronDown, Maximize2, Eye, FileImage, ImageIcon, FileCode, Ellipsis } from "lucide-react"
 import React from "react"
 import Link from "next/link"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
@@ -443,6 +443,9 @@ function EditorPageContent() {
   }, [editorMode, selectedFormatId])
 
   // --- Remove independent hook for auto-switching to prevent loop ---
+
+  // Sandwich menu state
+  const [sandwichOpen, setSandwichOpen] = useState(false)
 
   // Dimension mismatch dialog state
   const [showDimensionDialog, setShowDimensionDialog] = useState(false)
@@ -892,12 +895,21 @@ function EditorPageContent() {
       <div className="fixed inset-0 w-full h-full bg-gray-50 flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-2 border-b bg-white flex-shrink-0">
-          <Link href="/landing" className="flex items-center gap-2 px-1 text-slate-700">
-            <img src="/logo.png" alt="Logo" className="h-6 w-6 object-contain" />
-            <span className="hidden mob:inline text-slate-800 dark:text-slate-100 font-bold text-base tracking-tight select-none">
-              Chartography<span className="text-indigo-600 dark:text-indigo-400">.in</span>
-            </span>
-          </Link>
+          <div className="flex items-center gap-2 min-w-0">
+            <button 
+              onClick={() => setSandwichOpen(true)}
+              className="p-1.5 hover:bg-slate-100 rounded-lg transition-all active:scale-90 flex-shrink-0"
+              title="Open Menu"
+            >
+              <Menu className="w-5.5 h-5.5 text-slate-700" />
+            </button>
+            <Link href="/landing" className="flex items-center gap-2 px-1 text-slate-700 min-w-0">
+              <img src="/logo.png" alt="Logo" className="h-6 w-6 object-contain flex-shrink-0" />
+              <span className="hidden mob:inline text-slate-800 dark:text-slate-100 font-bold text-base tracking-tight select-none truncate">
+                Chartography<span className="text-indigo-600 dark:text-indigo-400">.in</span>
+              </span>
+            </Link>
+          </div>
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -1365,6 +1377,74 @@ function EditorPageContent() {
             isSaving={isSaving}
           />
         )}
+        {/* Sandwich Backdrop overlay */}
+        {sandwichOpen && (
+          <div 
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity duration-300 animate-in fade-in"
+            style={{ zIndex: 90 }}
+            onClick={() => setSandwichOpen(false)}
+          />
+        )}
+
+        {/* Sandwich Drawer Window */}
+        <div 
+          className={`fixed top-0 bottom-0 left-0 bg-white border-r border-slate-200 flex flex-col shadow-2xl transition-transform duration-300 ease-out transform ${
+            sandwichOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+          style={{ zIndex: 100, width: '280px' }}
+        >
+          {/* Drawer Header */}
+          <div className="flex items-center justify-between pl-[18px] pr-3 py-2.5 border-b border-slate-100 flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <img src="/logo.png" alt="Logo" className="h-6 w-6 object-contain" />
+              <span className="text-sm font-bold text-slate-700">Chartography.in</span>
+            </div>
+            <button 
+              onClick={() => setSandwichOpen(false)}
+              className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5 text-slate-500" />
+            </button>
+          </div>
+
+          {/* Drawer Content - Scrollable */}
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden px-0 py-2">
+            {/* Navigation Options */}
+            <div className="space-y-1 mb-2">
+              {/* AI Chat Button */}
+              <button
+                onClick={() => {
+                  router.push('/landing');
+                  setSandwichOpen(false);
+                }}
+                className="mx-2 w-[calc(100%-16px)] flex items-center gap-2.5 px-2.5 py-1.5 hover:bg-slate-50 border border-transparent rounded-lg text-left transition-all active:scale-98 text-slate-700 font-semibold text-sm"
+              >
+                <Sparkles className="w-4 h-4 flex-shrink-0 text-slate-500" />
+                <span>AI Chat</span>
+              </button>
+
+              {/* Board Page Button */}
+              <button
+                onClick={() => {
+                  router.push('/board');
+                  setSandwichOpen(false);
+                }}
+                className="mx-2 w-[calc(100%-16px)] flex items-center gap-2.5 px-2.5 py-1.5 hover:bg-slate-50 border border-transparent rounded-lg text-left transition-all active:scale-98 text-slate-700 font-semibold text-sm"
+              >
+                <LayoutDashboard className="w-4 h-4 flex-shrink-0 text-slate-500" />
+                <span>Board</span>
+              </button>
+            </div>
+
+            {/* Divider */}
+            <div className="w-full h-px bg-slate-100 mb-2" />
+
+            {/* History Section - remaining space */}
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <HistoryDropdown variant="sidebar" onConversationRestored={() => setSandwichOpen(false)} />
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
