@@ -12,10 +12,14 @@ import { useAuth } from "@/components/auth/AuthProvider"
 import { dataService } from "@/lib/data-service"
 import { Button } from "@/components/ui/button"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
-import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Layers, Settings, Download, ChevronLeft, ChevronRight, FileText, Save, X, Loader2, Plus, Info, LayoutDashboard, MessageSquare, Edit3, BarChart2, SlidersHorizontal, PanelLeft, ExternalLink } from "lucide-react"
+import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Layers, Settings, Download, ChevronLeft, ChevronRight, FileText, Save, X, Loader2, Plus, Info, LayoutDashboard, MessageSquare, Edit3, BarChart2, SlidersHorizontal, PanelLeft, ExternalLink, Share2, Copy, MoreVertical, Pencil, Check, Cloud, Trash2, ChevronDown, Maximize2, Eye, FileImage, ImageIcon, FileCode, Ellipsis } from "lucide-react"
 import React from "react"
 import Link from "next/link"
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
+import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { STANDARD_CHART_TYPES, THREE_D_CHART_TYPES } from "@/lib/chart-types"
+import { useChartExport } from "@/lib/hooks/use-chart-export"
+import { useChartRename } from "@/lib/hooks/use-chart-rename"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import { useChatStore } from "@/lib/chat-store"
 import { useEditorSidebarContext } from "@/components/editor/editor-sidebar-context"
@@ -231,7 +235,7 @@ function EditorPageContent() {
       })
       setHasJSON(true)
       
-      setActiveTab('design_settings')
+      setActiveTab('styling')
       toast.success(`Preset "${presetName}" loaded for editing with dummy data!${isBuiltIn ? ' (Built-in preset)' : ''}`)
     } catch (err: any) {
       console.error("Failed to load preset for editing:", err)
@@ -290,19 +294,141 @@ function EditorPageContent() {
   const setHasJSON = useChartStore(s => s.setHasJSON)
   const setCurrentSnapshotId = useChartStore(s => s.setCurrentSnapshotId)
 
-  const { updateChartConfig } = useChartActions()
-  const { setEditorMode, currentTemplate, editorMode, syncTemplatesFromCloud } = useTemplateStore()
-  const { selectedFormatId } = useFormatGalleryStore()
+  const { updateChartConfig, setChartType } = useChartActions()
+  const { setEditorMode, currentTemplate, editorMode, syncTemplatesFromCloud, templateInBackground } = useTemplateStore()
+  const { selectedFormatId, contentPackage, formats, userFormats, selectedFormatSnapshot } = useFormatGalleryStore()
   const { messages, clearMessages, startNewConversation, setBackendConversationId } = useChatStore()
+  const originalCloudDimensions = useChartStore(s => s.originalCloudDimensions)
+  const rename = useChartRename()
+  const exports = useChartExport()
+  const [exportExpanded, setExportExpanded] = useState(false)
+  const [shareExpanded, setShareExpanded] = useState(false)
+
+  const activeConfig = useChartStore(s => {
+    if (s.chartMode === 'single') {
+      const ds = s.chartData.datasets[s.activeDatasetIndex];
+      return ds?.chartConfig ?? s.chartConfig;
+    }
+    const group = s.groups?.find(g => g.id === s.activeGroupId);
+    return group?.chartConfig ?? s.chartConfig;
+  });
+
+  const renderedFormat = useMemo(() => {
+    if (!selectedFormatId || !contentPackage) return null;
+    return selectedFormatSnapshot 
+      || [...formats, ...userFormats].find(f => f.id === selectedFormatId);
+  }, [selectedFormatId, contentPackage, selectedFormatSnapshot, formats, userFormats]);
+
+  const parseDim = (val: any): number | null => {
+    if (typeof val === 'number') return val;
+    if (typeof val === 'string') {
+      const parsed = parseInt(val);
+      if (!isNaN(parsed)) return parsed;
+    }
+    return null;
+  };
+
+  const getAspectRatio = (width: number, height: number): string => {
+    const gcd = (a: number, b: number): number => {
+      return b === 0 ? a : gcd(b, a % b);
+    };
+    const divisor = gcd(width, height);
+    const rX = width / divisor;
+    const rY = height / divisor;
+    
+    const ratio = width / height;
+    if (Math.abs(ratio - 1) < 0.02) return '1:1';
+    if (Math.abs(ratio - 16/9) < 0.02) return '16:9';
+    if (Math.abs(ratio - 4/3) < 0.02) return '4:3';
+    if (Math.abs(ratio - 3/2) < 0.02) return '3:2';
+    if (Math.abs(ratio - 4/5) < 0.02) return '4:5';
+    if (Math.abs(ratio - 9/16) < 0.02) return '9:16';
+    
+    return `${rX}:${rY}`;
+  };
+
+  const getChartTypeName = (type: string): string => {
+    switch (type) {
+      case 'bar': return 'Bar';
+      case 'bar3d': return '3D Bar';
+      case 'line': return 'Line';
+      case 'area': return 'Area';
+      case 'pie': return 'Pie';
+      case 'pie3d': return '3D Pie';
+      case 'doughnut': return 'Doughnut';
+      case 'doughnut3d': return '3D Doughnut';
+      case 'polarArea': return 'Polar Area';
+      case 'radar': return 'Radar';
+      case 'scatter': return 'Scatter';
+      case 'bubble': return 'Bubble';
+      case 'waterfall': return 'Waterfall';
+      case 'gauge': return 'Gauge';
+      default: return type ? type.charAt(0).toUpperCase() + type.slice(1) : 'Unknown';
+    }
+  };
+
   // We no longer have local leftSidebarCollapsed here since it's in context
   const [mobilePanel, setMobilePanel] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [isSharingLink, setIsSharingLink] = useState(false)
   const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false)
   const [showSetupDialog, setShowSetupDialog] = useState(false)
   const [showSaveChartDialog, setShowSaveChartDialog] = useState(false)
   const [showClearDialog, setShowClearDialog] = useState(false)
   const [showModeConflictDialog, setShowModeConflictDialog] = useState(false)
   const [currentChartName, setCurrentChartName] = useState<string>("")
+
+  const handleCopyShareLink = async () => {
+    if (!currentSnapshotId) {
+      toast.error("Please ensure the chart is saved before sharing.");
+      return;
+    }
+    try {
+      setIsSharingLink(true);
+      toast.loading("Generating share link...", { id: "share-link" });
+      const response = await dataService.generateShareLink(currentSnapshotId);
+      if (response.error || !response.data) {
+        throw new Error(response.error || "Failed to generate link");
+      }
+      const shareUrl = `${window.location.origin}/share/${response.data.share_id}`;
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Share link copied to clipboard!", { id: "share-link" });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to generate share link.", { id: "share-link" });
+      console.error("Share error:", err);
+    } finally {
+      setIsSharingLink(false);
+    }
+  }
+
+  const handleOpenShareLink = async () => {
+    if (!currentSnapshotId) {
+      toast.error("Please ensure the chart is saved before sharing.");
+      return;
+    }
+    const newWindow = window.open("about:blank", "_blank");
+    if (!newWindow) {
+      toast.error("Pop-up blocked! Please allow popups for this site.");
+      return;
+    }
+    try {
+      setIsSharingLink(true);
+      toast.loading("Generating share link...", { id: "share-link" });
+      const response = await dataService.generateShareLink(currentSnapshotId);
+      if (response.error || !response.data) {
+        throw new Error(response.error || "Failed to generate link");
+      }
+      const shareUrl = `${window.location.origin}/share/${response.data.share_id}`;
+      newWindow.location.href = shareUrl;
+      toast.success("Opened share link!", { id: "share-link" });
+    } catch (err: any) {
+      newWindow.close();
+      toast.error(err.message || "Failed to generate share link.", { id: "share-link" });
+      console.error("Share error:", err);
+    } finally {
+      setIsSharingLink(false);
+    }
+  }
 
   // Computed TABS based on editor mode — used for mobile/tablet bottom nav
   const TABS = useMemo(() => {
@@ -389,7 +515,7 @@ function EditorPageContent() {
       // Explicitly sync editor mode if a specific tab is targeted
       if (tab.startsWith('tpl_')) {
         setEditorMode('template');
-      } else if (CHART_TABS.some(t => t.id === tab && tab !== 'export' && tab !== 'templates')) {
+      } else if (CHART_TABS.some(t => t.id === tab && tab !== 'templates')) {
         setEditorMode('chart');
       }
     };
@@ -766,23 +892,366 @@ function EditorPageContent() {
       <div className="fixed inset-0 w-full h-full bg-gray-50 flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-2 border-b bg-white flex-shrink-0">
-          <Link href="/landing">
-            <Button variant="outline" className="xs400:p-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 flex flex-row items-center justify-center gap-1">
-              <ArrowLeft className="h-5 w-5 xs400:hidden" />
-              Generate
-              <Sparkles className="h-4 w-4" />
-            </Button>
+          <Link href="/landing" className="flex items-center gap-2 px-1 text-slate-700">
+            <img src="/logo.png" alt="Logo" className="h-6 w-6 object-contain" />
+            <span className="hidden mob:inline text-slate-800 dark:text-slate-100 font-bold text-base tracking-tight select-none">
+              Chartography<span className="text-indigo-600 dark:text-indigo-400">.in</span>
+            </span>
           </Link>
-          <div className="flex flex-col items-center">
-            <span className="font-bold text-lg text-gray-900 xs400:text-base">Chart Editor</span>
-          </div>
           <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button 
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all active:scale-90 text-slate-700 dark:text-slate-300 flex items-center justify-center"
+                  title="Quick Navigation"
+                >
+                  <ExternalLink className="w-5.5 h-5.5 text-slate-700 dark:text-slate-300" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-32 z-[100] bg-white border border-slate-200 rounded-lg shadow-lg p-1 space-y-0.5 animate-none">
+                <DropdownMenuItem 
+                  onClick={() => router.push('/board')}
+                  className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 rounded-md text-xs font-medium cursor-pointer text-slate-700"
+                >
+                  <LayoutDashboard className="h-3.5 w-3.5 text-slate-500" />
+                  <span>Board</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => router.push('/landing')}
+                  className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 rounded-md text-xs font-medium cursor-pointer text-slate-700"
+                >
+                  <MessageSquare className="h-3.5 w-3.5 text-slate-500" />
+                  <span>AI Chat</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button 
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all active:scale-90"
+                  title="More Options"
+                >
+                  <Ellipsis className="w-5.5 h-5.5 text-slate-700 dark:text-slate-300" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[270px] p-1.5 z-[100] bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-xl space-y-1">
+                {/* File Name & Metadata Section */}
+                <div className="px-2.5 py-2 border-b border-slate-100 dark:border-slate-800/60 mb-1 space-y-0.5 animate-none" onClick={(e) => e.stopPropagation()}>
+                  {rename.isRenaming && rename.canEditTitle ? (
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        ref={rename.renameInputRef as any}
+                        type="text"
+                        value={rename.renameValue}
+                        onChange={(e) => rename.setRenameValue(e.target.value)}
+                        onKeyDown={rename.handleRenameKeyDown}
+                        onBlur={() => rename.setIsRenaming(false)}
+                        className="flex-1 min-w-0 font-bold text-slate-800 dark:text-slate-100 text-xs.5 bg-transparent border-b border-indigo-500 outline-none w-full px-0 pb-0.5 focus:border-indigo-600"
+                        autoFocus
+                        disabled={rename.isSavingRename}
+                      />
+                      <button
+                        onClick={rename.handleSaveRename}
+                        disabled={rename.isSavingRename}
+                        className="p-1 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded text-emerald-600 dark:text-emerald-400 flex-shrink-0 flex items-center justify-center h-6 w-6"
+                        title="Save"
+                      >
+                        {rename.isSavingRename ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-1.5 min-w-0">
+                      <span className="font-bold text-slate-800 dark:text-slate-100 text-xs.5 truncate flex-1" title={rename.chartTitle}>
+                        {rename.chartTitle}
+                      </span>
+                      {rename.canEditTitle && (
+                        <button 
+                          onClick={() => rename.handleStartRename()} 
+                          className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-400 hover:text-slate-650 transition-colors flex-shrink-0" 
+                          title="Rename"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between gap-2 text-[9.5px] text-slate-400 dark:text-slate-500 font-medium select-none leading-normal w-full">
+                    {(() => {
+                      const cfgW = parseDim(activeConfig?.width);
+                      const cfgH = parseDim(activeConfig?.height);
+                      
+                      let w = 800;
+                      let h = 600;
+                      
+                      if (editorMode === 'template') {
+                        if (renderedFormat) {
+                          w = renderedFormat.skeleton?.dimensions?.width || 800;
+                          h = renderedFormat.skeleton?.dimensions?.height || 600;
+                        } else {
+                          const template = currentTemplate || templateInBackground;
+                          if (template) {
+                            w = template.width;
+                            h = template.height;
+                          }
+                        }
+                      } else {
+                        w = cfgW || (originalCloudDimensions ? parseDim(originalCloudDimensions.width) : null) || 800;
+                        h = cfgH || (originalCloudDimensions ? parseDim(originalCloudDimensions.height) : null) || 600;
+                      }
+                      
+                      const aspect = getAspectRatio(w, h);
+                      
+                      const leftLabel = (editorMode === 'template' && currentTemplate)
+                        ? `Template - ${currentTemplate.name || "Template"}`
+                        : `Chart - ${getChartTypeName(chartType)}`;
+                        
+                      return (
+                        <>
+                          <span className="truncate flex-1 min-w-0 text-left" title={leftLabel}>
+                            {leftLabel}
+                          </span>
+                          <span className="flex-shrink-0 text-right font-semibold tabular-nums text-slate-450 dark:text-slate-405">
+                            {aspect} | {w}px × {h}px
+                          </span>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {/* 1. Segmented Mode Toggle */}
+                <div className="px-2.5 py-0.5 flex justify-center mb-0.5">
+                  <div className="flex w-full bg-slate-100 dark:bg-slate-800 p-0.5 rounded-full border border-slate-200/60 dark:border-slate-700/60 shadow-inner">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const templateStore = useTemplateStore.getState();
+                        templateStore.setGenerateMode('chart');
+                        templateStore.setEditorMode('chart');
+                      }} 
+                      className={`flex-1 py-1 text-[11px] font-semibold rounded-full transition-colors text-center antialiased subpixel-antialiased ${
+                        editorMode === 'chart' 
+                          ? 'bg-indigo-600 text-white shadow-sm' 
+                          : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      Chart
+                    </button>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const templateStore = useTemplateStore.getState();
+                        templateStore.setGenerateMode('template');
+                        if (!templateStore.currentTemplate) {
+                          templateStore.applyTemplate('template-1');
+                        }
+                        templateStore.setEditorMode('template');
+                      }} 
+                      className={`flex-1 py-1 text-[11px] font-semibold rounded-full transition-colors text-center antialiased subpixel-antialiased ${
+                        editorMode === 'template' 
+                          ? 'bg-indigo-600 text-white shadow-sm' 
+                          : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      Template
+                    </button>
+                  </div>
+                </div>
+
+                <DropdownMenuSeparator className="bg-slate-100 dark:bg-slate-800/80" />
+
+                {/* 2. Select Dropdown for Chart Types */}
+                <div className="px-2.5 py-1">
+                  <Select 
+                    value={chartType} 
+                    onValueChange={(val) => {
+                      setChartType(val as any);
+                    }}
+                  >
+                    <SelectTrigger className="h-9 w-full text-xs font-semibold border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-lg flex items-center justify-between px-3 shadow-xs transition-all active:scale-95 antialiased">
+                      <div className="truncate text-slate-700 dark:text-slate-300">
+                        <SelectValue placeholder="Select Chart Type" />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent className="z-[110]">
+                      {STANDARD_CHART_TYPES.map((type) => (
+                        <SelectItem key={type.value} value={type.value} className="text-xs py-1.5">{type.label}</SelectItem>
+                      ))}
+                      <SelectSeparator />
+                      {THREE_D_CHART_TYPES.map((type) => (
+                        <SelectItem key={type.value} value={type.value} className="text-xs py-1.5 font-medium text-blue-600 dark:text-blue-400">{type.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* 3. Dynamic Chart Gallery or Show Guides Trigger */}
+                {editorMode !== 'template' ? (
+                  <DropdownMenuItem 
+                    onClick={() => {
+                      setMobilePanel('styling');
+                    }}
+                    className="flex items-center gap-2 px-2.5 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-300"
+                  >
+                    <Palette className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                    <span>Chart Gallery</span>
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem 
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('triggerToggleGuides'));
+                    }}
+                    className="flex items-center gap-2 px-2.5 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-300"
+                  >
+                    <Eye className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                    <span>Show Guides</span>
+                  </DropdownMenuItem>
+                )}
+
+                {/* 3.5 Fullscreen Trigger */}
+                <DropdownMenuItem 
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('triggerFullscreen'));
+                  }}
+                  className="flex items-center gap-2 px-2.5 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-300"
+                >
+                  <Maximize2 className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                  <span>Fullscreen</span>
+                </DropdownMenuItem>
+
+                {/* 4. Save Chart/Template to Cloud */}
+                <DropdownMenuItem 
+                  onSelect={handleSaveClick}
+                  className="flex items-center gap-2 px-2.5 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-300"
+                >
+                  <Cloud className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                  <span>Save to Cloud</span>
+                </DropdownMenuItem>
+
+                {/* 4.5 Share Collapsible Accordion */}
+                <DropdownMenuItem 
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    if (!currentSnapshotId) {
+                      toast.error("Please save your chart to the cloud first to share.");
+                      return;
+                    }
+                    setShareExpanded(!shareExpanded);
+                  }}
+                  className="flex items-center justify-between w-full px-2.5 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-300 select-none active:scale-98 transition-all"
+                >
+                  <div className="flex items-center gap-2">
+                    <Share2 className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                    <span>Share</span>
+                  </div>
+                  <ChevronDown className={`w-3.5 h-3.5 text-slate-400 dark:text-slate-500 transition-transform duration-200 ${shareExpanded ? "transform rotate-180" : ""}`} />
+                </DropdownMenuItem>
+
+                {shareExpanded && currentSnapshotId && (
+                  <div className="pl-4 pr-1 py-1 space-y-0.5 bg-slate-50 dark:bg-slate-900/50 rounded-lg animate-in fade-in slide-in-from-top-1 duration-200">
+                    <DropdownMenuItem 
+                      onClick={handleCopyShareLink}
+                      className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-755 dark:text-slate-355"
+                    >
+                      <Copy className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                      <span>Copy Link</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={handleOpenShareLink}
+                      className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-755 dark:text-slate-355"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                      <span>Open Link</span>
+                    </DropdownMenuItem>
+                  </div>
+                )}
+
+                {/* 5. Export Collapsible Accordion */}
+                <DropdownMenuItem 
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    setExportExpanded(!exportExpanded);
+                  }}
+                  className="flex items-center justify-between w-full px-2.5 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-300 select-none active:scale-98 transition-all"
+                >
+                  <div className="flex items-center gap-2">
+                    <Download className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                    <span>Export</span>
+                  </div>
+                  <ChevronDown className={`w-3.5 h-3.5 text-slate-400 dark:text-slate-500 transition-transform duration-200 ${exportExpanded ? "transform rotate-180" : ""}`} />
+                </DropdownMenuItem>
+
+                {exportExpanded && (
+                  <div className="pl-4 pr-1 py-1 space-y-0.5 bg-slate-50 dark:bg-slate-900/50 rounded-lg animate-in fade-in slide-in-from-top-1 duration-200">
+                    {editorMode === 'template' ? (
+                      <>
+                        <DropdownMenuItem 
+                          onClick={() => window.dispatchEvent(new CustomEvent('triggerTemplateExport', { detail: { format: 'png' } }))}
+                          className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-750 dark:text-slate-355"
+                        >
+                          <FileImage className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                          <span>PNG Image</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => window.dispatchEvent(new CustomEvent('triggerTemplateExport', { detail: { format: 'html' } }))}
+                          className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-750 dark:text-slate-355"
+                        >
+                          <FileCode className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                          <span>Interactive HTML</span>
+                        </DropdownMenuItem>
+                      </>
+                    ) : (
+                      <>
+                        <DropdownMenuItem 
+                          onClick={exports.handleExport} 
+                          className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-750 dark:text-slate-355"
+                        >
+                          <FileImage className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                          <span>PNG Image</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={exports.handleExportJPEG} 
+                          className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-750 dark:text-slate-355"
+                        >
+                          <ImageIcon className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                          <span>JPEG Image</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={exports.handleExportHTML} 
+                          className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-750 dark:text-slate-355"
+                        >
+                          <FileCode className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                          <span>Interactive HTML</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={exports.handleExportCSV} 
+                          className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-750 dark:text-slate-355"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                          <span>CSV Data</span>
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* 6. Reset / Clear Chart */}
+                <DropdownMenuItem 
+                  onClick={handleCancel}
+                  className="flex items-center gap-2 px-2.5 py-2 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-650 dark:text-red-450 rounded-lg text-xs font-medium cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4 text-red-600 dark:text-red-450" />
+                  <span>Clear Workspace</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <SimpleProfileDropdown size="sm" />
           </div>
         </div>
         {/* Chart Preview */}
-        <div className="flex-1 flex items-start justify-center p-2 pb-20 overflow-hidden">
-          <div className="w-full max-w-full overflow-auto" style={{ maxHeight: 'calc(100vh - 120px)' }}>
+        <div className="flex-1 flex flex-col items-center justify-center p-2 pb-20 overflow-hidden">
+          <div className="w-full max-w-full flex-1 flex flex-col overflow-auto" style={{ maxHeight: 'calc(100vh - 120px)', height: '100%' }}>
             {!storeHydrated ? (
               renderCenterAreaLoader()
             ) : hasJSON ? (
@@ -824,8 +1293,7 @@ function EditorPageContent() {
                       setMobilePanel(tab.id)
                     }
                   }}
-                  className={`flex flex-col items-center justify-center px-2 py-2 min-w-[64px] flex-shrink-0 flex-grow text-center ${mobilePanel === tab.id ? "text-blue-700" : "text-gray-500"}`}
-                  style={{ maxWidth: 96 }}
+                  className={`grow shrink-0 flex flex-col items-center justify-center px-2 py-2 min-w-[60px] text-center ${mobilePanel === tab.id ? "text-blue-700" : "text-gray-500"}`}
                 >
                   <Icon className="h-6 w-6 mb-1 mx-auto" />
                   <span className="text-xs font-medium truncate w-full">{tab.label}</span>
@@ -834,9 +1302,17 @@ function EditorPageContent() {
             })}
           </div>
         </nav>
+        {/* Backdrop for mobile drawer */}
+        {mobilePanel && (
+          <div 
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-[55] transition-opacity duration-200"
+            onClick={() => setMobilePanel(null)}
+          />
+        )}
+
         {/* Bottom Sheet/Drawer for Active Panel */}
         {mobilePanel && (
-          <div className="fixed bottom-0 left-0 w-full mx-auto bg-white rounded-t-2xl shadow-2xl z-[60] animate-slide-up flex flex-col" style={{ height: '70vh' }}>
+          <div className="fixed bottom-0 left-0 w-full mx-auto bg-white rounded-t-2xl shadow-2xl z-[60] animate-slide-up flex flex-col" style={{ height: '80vh' }}>
             <div className="flex items-center justify-between px-4 py-1 border-b">
               <div className="flex items-center gap-2">
                 {(() => {
@@ -1021,17 +1497,35 @@ function EditorPageContent() {
             </Button>
           </div>
 
-          {/* Action Buttons: New, Save, Cancel, History - Below collapse button */}
+          {/* Action Buttons: Share, Save, Cancel, History - Below collapse button */}
           <div className="flex flex-col items-center gap-2 px-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleNewChart}
-              className="h-10 w-10 p-0 border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300"
-              title="Create new chart from scratch"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={isSharingLink || !currentSnapshotId}
+                  className="h-10 w-10 p-0 border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={!currentSnapshotId ? "Save to share" : "Share options"}
+                >
+                  {isSharingLink ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Share2 className="h-4 w-4" />
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" side="right" className="w-40 z-50 bg-white border border-slate-200 shadow-md rounded-md p-1">
+                <DropdownMenuItem onClick={handleCopyShareLink} className="flex items-center gap-2 px-2.5 py-1.5 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md">
+                  <Copy className="h-3.5 w-3.5 text-slate-500" />
+                  <span>Copy Link</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleOpenShareLink} className="flex items-center gap-2 px-2.5 py-1.5 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md">
+                  <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                  <span>Open Link</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button
               size="sm"
               variant="default"
@@ -1052,9 +1546,7 @@ function EditorPageContent() {
             >
               <X className="h-4 w-4" />
             </Button>
-            <div className="h-10 w-10">
-              <HistoryDropdown variant="compact" />
-            </div>
+            <HistoryDropdown variant="compact" className="h-10 w-10 p-0" />
           </div>
 
           {/* Spacer to push buttons to top */}
@@ -1208,17 +1700,35 @@ function EditorPageContent() {
             </Button>
           </div>
 
-          {/* Action Buttons: New, Save, Cancel, History - Below collapse button */}
+          {/* Action Buttons: Share, Save, Cancel, History - Below collapse button */}
           <div className="flex flex-col items-center gap-2 px-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleNewChart}
-              className="h-10 w-10 p-0 border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300"
-              title="Create new chart from scratch"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={isSharingLink || !currentSnapshotId}
+                  className="h-10 w-10 p-0 border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={!currentSnapshotId ? "Save to share" : "Share options"}
+                >
+                  {isSharingLink ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Share2 className="h-4 w-4" />
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" side="right" className="w-40 z-50 bg-white border border-slate-200 shadow-md rounded-md p-1">
+                <DropdownMenuItem onClick={handleCopyShareLink} className="flex items-center gap-2 px-2.5 py-1.5 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md">
+                  <Copy className="h-3.5 w-3.5 text-slate-500" />
+                  <span>Copy Link</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleOpenShareLink} className="flex items-center gap-2 px-2.5 py-1.5 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md">
+                  <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                  <span>Open Link</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button
               size="sm"
               variant="default"
@@ -1239,9 +1749,7 @@ function EditorPageContent() {
             >
               <X className="h-4 w-4" />
             </Button>
-            <div className="h-10 w-10">
-              <HistoryDropdown variant="compact" />
-            </div>
+            <HistoryDropdown variant="compact" className="h-10 w-10 p-0" />
           </div>
 
           {/* Spacer to push buttons to top */}

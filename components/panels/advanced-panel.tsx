@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider"
 import { useChartStore } from "@/lib/chart-store"
 import { useChartActions } from "@/lib/hooks/use-chart-actions"
-import { Copy, RotateCcw } from "lucide-react"
+import { Copy, Download } from "lucide-react"
 import { useState } from "react"
 import { toast } from "sonner"
 
@@ -81,39 +81,23 @@ export function AdvancedPanel() {
     await navigator.clipboard.writeText(JSON.stringify(config, null, 2))
   }
 
-  const handleResetConfig = () => {
-    updateChartConfig({
-      responsive: true,
-      maintainAspectRatio: false,
-      layout: {
-        padding: { top: 10, right: 10, bottom: 10, left: 10 }
-      },
-      plugins: {
-        title: {
-          display: true,
-          text: "My Chart",
-        },
-        legend: {
-          display: true,
-          position: "top",
-        },
-      },
-      scales: {
-        x: {
-          display: true,
-          grid: {
-            display: true,
-          },
-        },
-        y: {
-          display: true,
-          grid: {
-            display: true,
-          },
-        },
-      },
-    })
+  const handleExportConfig = () => {
+    const config = {
+      type: chartType,
+      data: chartData,
+      options: chartConfig,
+    }
+
+    const blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = "chart-config.json"
+    link.click()
+    URL.revokeObjectURL(url)
   }
+
+
 
 
 
@@ -548,14 +532,14 @@ export function AdvancedPanel() {
         }
       </div >
 
-      {/* Raw Config Section */}
-      < div className="space-y-0" >
+      {/* Configuration Section */}
+      <div className="space-y-0">
         <div
           className="flex items-center gap-2 py-2 px-2 border-b cursor-pointer hover:bg-gray-50 transition-colors rounded-t"
           onClick={() => setRawOpen(!rawOpen)}
         >
           <div className="w-2 h-2 bg-gray-600 rounded-full"></div>
-          <h3 className="text-sm font-semibold text-gray-900 flex-1">Raw Configuration</h3>
+          <h3 className="text-sm font-semibold text-gray-900 flex-1">Configuration</h3>
           <div className="ml-auto flex items-center gap-2">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -576,28 +560,28 @@ export function AdvancedPanel() {
         {
           rawOpen && (
             <div className="bg-gray-50 rounded-b-lg p-3 space-y-3 border-x border-b border-gray-100">
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={handleCopyConfig} className="flex-1 h-8 text-xs bg-white hover:bg-gray-100">
-                  <Copy className="h-4 w-4 mr-2" />
-                  Copy Config
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" onClick={handleExportConfig} className="h-8 text-xs bg-white hover:bg-gray-100">
+                  <Download className="h-3 w-3 mr-1" />
+                  JSON
                 </Button>
-                <Button variant="outline" onClick={handleResetConfig} className="flex-1 h-8 text-xs bg-white hover:bg-gray-100">
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  Reset
+                <Button variant="outline" onClick={handleCopyConfig} className="h-8 text-xs bg-white hover:bg-gray-100">
+                  <Copy className="h-3 w-3 mr-1" />
+                  Copy
                 </Button>
               </div>
               <div className="space-y-2 pt-2 border-t border-gray-200">
-                <Label className="text-xs font-medium">Chart.js Configuration (Read-only)</Label>
+                <Label className="text-xs font-medium text-gray-700">Chart.js Config</Label>
                 <Textarea
                   value={JSON.stringify({ type: chartType, data: chartData, options: chartConfig }, null, 2)}
                   readOnly
-                  className="h-40 font-mono text-xs bg-white"
+                  className="h-40 font-mono text-[10px] bg-white"
                 />
               </div>
             </div>
           )
         }
-      </div >
+      </div>
     </div >
   )
 }

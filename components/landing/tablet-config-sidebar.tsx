@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
-import { AlignEndHorizontal, Database, PanelTop, LayoutTemplate, Palette, Grid, Tag, Settings, Download, FileText } from "lucide-react"
+import { AlignEndHorizontal, Database, PanelTop, LayoutTemplate, Palette, Grid, Tag, Settings, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TypesTogglesPanel } from "@/components/panels/types-toggles-panel"
@@ -9,20 +9,19 @@ import { DatasetsSlicesPanel } from "@/components/panels/datasets-slices-panel"
 import { DesignPanel } from "@/components/panels/design-settings"
 import { AxesPanel } from "@/components/panels/axes/axes-panel"
 import { LabelsPanel } from "@/components/panels/labels-panel"
+import { CombinedStylingPanel } from "@/components/panels/combined-styling-panel"
 import { AdvancedPanel } from "@/components/panels/advanced-panel"
-import { ExportPanel } from "@/components/panels/export-panel"
+
 import { TemplatesPanel, TemplateContentPanel } from "@/components/panels/template-settings"
 
 const TABLET_TABS = [
-  { id: "types_toggles", label: "Types", icon: AlignEndHorizontal },
-  { id: "datasets_slices", label: "Data", icon: Database },
-  { id: "design", label: "Background & Legend", icon: PanelTop },
-  { id: "axes", label: "Axes", icon: Grid },
-  { id: "labels", label: "Labels", icon: Tag },
+  { id: "types_toggles", label: "General", icon: AlignEndHorizontal },
+  { id: "datasets_slices", label: "Datasets", icon: Database },
+  { id: "styling", label: "Appearance", icon: Palette },
+  { id: "axes", label: "Scales", icon: Grid },
   { id: "templates", label: "Templates", icon: FileText },
   { id: "tpl_content", label: "Content", icon: FileText },
-  { id: "advanced", label: "Advanced", icon: Settings },
-  { id: "export", label: "Export", icon: Download },
+  { id: "advanced", label: "More", icon: Settings },
 ]
 
 interface TabletConfigSidebarProps {
@@ -43,19 +42,18 @@ export function TabletConfigSidebar({
       case "datasets_slices":
         return <DatasetsSlicesPanel />
       case "design":
-        return <DesignPanel />
+      case "labels":
+      case "styling":
+        return <CombinedStylingPanel />
       case "axes":
         return <AxesPanel />
-      case "labels":
-        return <LabelsPanel />
       case "templates":
         return <TemplatesPanel />
       case "tpl_content":
         return <TemplateContentPanel />
       case "advanced":
         return <AdvancedPanel />
-      case "export":
-        return <ExportPanel />
+
       default:
         return <TypesTogglesPanel />
     }

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import { useChartStore } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
+import { useTemplateStore } from "@/lib/template-store"
 import { useHistoryStore } from "@/lib/history-store"
 import { dataService } from "@/lib/data-service"
 import { toast } from "sonner"
@@ -59,7 +60,9 @@ export function useChartRename() {
             targetId = activeGroup.sourceId;
         }
     }
-    const canEditTitle = true;
+    const currentSnapshotId = useChartStore(s => s.currentSnapshotId);
+    const templateSavedToCloud = useTemplateStore(s => s.templateSavedToCloud);
+    const canEditTitle = !!targetId || !!backendConversationId || !!currentSnapshotId || !!templateSavedToCloud;
 
     // Focus input when entering rename mode
     useEffect(() => {

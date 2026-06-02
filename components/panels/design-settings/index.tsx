@@ -37,20 +37,18 @@ export function DesignPanel() {
 
     return (
         <div className="space-y-4">
-            <Tabs defaultValue="legend" className="w-full">
+            <Tabs defaultValue="background" className="w-full">
                 <div className="overflow-x-auto">
                     <TabsList className="grid w-full grid-cols-3">
-                        <TabsTrigger value="legend">Legend</TabsTrigger>
-                        <TabsTrigger value="title">Title</TabsTrigger>
                         <TabsTrigger value="background">Background</TabsTrigger>
+                        <TabsTrigger value="title">Title</TabsTrigger>
+                        <TabsTrigger value="legend">Legend</TabsTrigger>
                     </TabsList>
                 </div>
 
-                <TabsContent value="legend">
-                    <LegendTab
+                <TabsContent value="background">
+                    <BackgroundTab
                         chartConfig={chartConfig}
-                        chartType={chartType}
-                        applyConfigUpdates={applyConfigUpdates}
                         handleConfigUpdate={handleConfigUpdate}
                     />
                 </TabsContent>
@@ -62,9 +60,11 @@ export function DesignPanel() {
                     />
                 </TabsContent>
 
-                <TabsContent value="background">
-                    <BackgroundTab
+                <TabsContent value="legend">
+                    <LegendTab
                         chartConfig={chartConfig}
+                        chartType={chartType}
+                        applyConfigUpdates={applyConfigUpdates}
                         handleConfigUpdate={handleConfigUpdate}
                     />
                 </TabsContent>

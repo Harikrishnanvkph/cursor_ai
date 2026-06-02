@@ -358,35 +358,36 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       {/* Combined Mobile Float Toolbar */}
       {isMobile && rename.chartTitle && (
         <div className="px-3 pb-3 pt-1 flex justify-center flex-shrink-0 w-full select-none" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center gap-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full px-4 py-1.5 shadow-sm max-w-fit mx-auto">
+          <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full px-3 py-1 shadow-md max-w-fit mx-auto">
             {/* 1. Preview Background Change Picker */}
             <div className="flex items-center flex-shrink-0">
-              <ChartBgColorPicker className="flex items-center justify-center p-1.5 rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 duration-200 h-8 w-8" />
+              <ChartBgColorPicker 
+                className="flex items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 duration-200 h-9 w-9" 
+                innerClassName="w-[18px] h-[18px]"
+              />
             </div>
 
-            <div className="w-px h-4 bg-slate-200 dark:bg-slate-800 flex-shrink-0" />
+            <div className="w-px h-4.5 bg-slate-200 dark:bg-slate-800 flex-shrink-0" />
 
             {/* 2. Pan Mode Toggle */}
             <button
               onClick={() => zoomPan.setPanMode(!zoomPan.panMode)}
-              className={`p-1.5 rounded-full transition-all active:scale-95 duration-200 flex items-center justify-center flex-shrink-0 h-8 w-8 ${
+              className={`rounded-full transition-all active:scale-95 duration-200 flex items-center justify-center flex-shrink-0 h-9 w-9 ${
                 zoomPan.panMode 
                   ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 shadow-inner' 
                   : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 dark:text-slate-400'
               }`}
               title={zoomPan.panMode ? "Disable Pan Mode" : "Enable Pan Mode"}
             >
-              <Hand className="h-4 w-4" />
+              <Hand className="h-5 w-5" />
             </button>
 
-            <div className="w-px h-4 bg-slate-200 dark:bg-slate-800 flex-shrink-0" />
-
-            {/* 3. Custom Zoom Dropdown */}
+            <div className="w-px h-4.5 bg-slate-200 dark:bg-slate-800 flex-shrink-0" />            {/* 3. Custom Zoom Dropdown */}
             <div className="flex items-center flex-shrink-0">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 px-2.5 text-[11px] font-semibold text-slate-700 dark:text-slate-200 select-none justify-start gap-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 flex-shrink-0 transition-colors">
-                    <Search className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                  <Button variant="ghost" size="sm" className="h-9 px-3 text-xs font-semibold text-slate-700 dark:text-slate-200 select-none justify-start gap-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 flex-shrink-0 transition-colors [&_svg]:size-5">
+                    <Search className="h-5 w-5 text-slate-500 shrink-0" />
                     <span className="tabular-nums">{currentZoomPct}%</span>
                   </Button>
                 </DropdownMenuTrigger>
@@ -455,34 +456,30 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
               </DropdownMenu>
             </div>
 
-            <div className="w-px h-4 bg-slate-200 dark:bg-slate-800 flex-shrink-0" />
+            <div className="w-px h-4.5 bg-slate-200 dark:bg-slate-800 flex-shrink-0" />
 
             {/* 4. Undo / Redo Buttons */}
             <div className="flex items-center gap-0.5 flex-shrink-0">
-              <Button
-                variant="ghost"
-                size="sm"
+              <button
                 onClick={() => temporalUndo()}
                 disabled={!canUndo}
                 title="Undo (Ctrl+Z)"
-                className={`h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 rounded-full transition-all active:scale-90 duration-200 flex items-center justify-center flex-shrink-0 hover:scale-105 ${
-                  !canUndo ? "opacity-50 cursor-not-allowed" : "opacity-100"
+                className={`h-9 w-9 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 rounded-full transition-all active:scale-90 duration-200 flex items-center justify-center flex-shrink-0 hover:scale-105 ${
+                  !canUndo ? "opacity-30 cursor-not-allowed" : "opacity-100"
                 }`}
               >
-                <Undo2 className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
+                <Undo2 className="h-[22px] w-[22px]" />
+              </button>
+              <button
                 onClick={() => temporalRedo()}
                 disabled={!canRedo}
                 title="Redo (Ctrl+Y)"
-                className={`h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 rounded-full transition-all active:scale-90 duration-200 flex items-center justify-center flex-shrink-0 hover:scale-105 ${
-                  !canRedo ? "opacity-50 cursor-not-allowed" : "opacity-100"
+                className={`h-9 w-9 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 rounded-full transition-all active:scale-90 duration-200 flex items-center justify-center flex-shrink-0 hover:scale-105 ${
+                  !canRedo ? "opacity-30 cursor-not-allowed" : "opacity-100"
                 }`}
               >
-                <Redo2 className="h-4 w-4" />
-              </Button>
+                <Redo2 className="h-[22px] w-[22px]" />
+              </button>
             </div>
           </div>
         </div>
@@ -508,11 +505,11 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       )}
 
       {/* Chart Container */}
-      <Card className={`w-full flex-1 min-h-[300px] rounded-lg border bg-card text-card-foreground shadow-lg overflow-hidden transition-all duration-200${fullscreen.isFullscreen ? ' fixed inset-4 z-50 m-0 rounded-lg' : ''}`}>
-        <CardContent className={`${isMobile ? 'p-0' : 'p-0'} h-full w-full relative`}>
+      <Card className={`w-full flex flex-col flex-1 min-h-[300px] rounded-lg border bg-card text-card-foreground shadow-lg overflow-hidden transition-all duration-200${fullscreen.isFullscreen ? ' fixed inset-4 z-50 m-0' : ''}`}>
+        <CardContent className="p-0 flex-1 flex flex-col h-full w-full relative">
           <div
             ref={chartContainerRef}
-            className={`relative w-full h-full overflow-auto flex items-center justify-center`}
+            className="relative w-full flex-1 overflow-auto flex items-center justify-center"
             style={{
               scrollbarWidth: 'thin',
               scrollbarColor: '#cbd5e1 #f1f5f9',

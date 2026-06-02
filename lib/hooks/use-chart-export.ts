@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react"
 import { useChartStore } from "@/lib/chart-store"
 import { useTemplateStore } from "@/lib/template-store"
-import { downloadChartAsHTML } from "@/lib/html-exporter"
+import { downloadChartAsHTML, filterChartDataForExport } from "@/lib/html-exporter"
 import {
     useChartConfig,
     useChartType,
@@ -138,7 +138,31 @@ export function useChartExport(options?: {
     }, [chartConfig]);
 
     const handleExportCSV = useCallback(() => {
-        alert('CSV export is not implemented yet.');
+        const { chartData, chartMode, activeDatasetIndex, legendFilter, activeGroupId, chartType } = useChartStore.getState();
+        const exportData = filterChartDataForExport(
+            JSON.parse(JSON.stringify(chartData)),
+            chartMode,
+            activeDatasetIndex,
+            legendFilter,
+            activeGroupId,
+            chartType
+        );
+
+        const csvContent = [
+            ["Label", ...exportData.datasets.map((d: any) => d.label)],
+            ...(exportData.labels?.map((label: string, index: number) => [label, ...exportData.datasets.map((d: any) => d.data[index] || "")]) ||
+                []),
+        ]
+            .map((row) => row.join(","))
+            .join("\n");
+
+        const blob = new Blob([csvContent], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "chart-data.csv";
+        link.click();
+        URL.revokeObjectURL(url);
     }, []);
 
     const handleExportSettings = useCallback(() => {

@@ -386,7 +386,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
                 <X className="w-4 h-4" />
               </button>
 
-              <HistoryDropdown variant="compact" />
+              <HistoryDropdown variant="compact" className="rounded-xl h-8 w-8" />
             </div>
 
             {/* Spacer to push buttons to top */}
@@ -423,7 +423,7 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
                 >
                   <X className="w-4 h-4" />
                 </button>
-                <HistoryDropdown variant="inline" />
+                <HistoryDropdown variant="inline" className="rounded-xl h-8 w-8 p-0" />
               </div>
 
               {/* Spacer to push profile to the right */}

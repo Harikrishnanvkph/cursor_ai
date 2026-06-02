@@ -4,9 +4,10 @@ import { DatasetPanel } from "./panels/dataset-panel"
 import { DesignPanel } from "./panels/design-settings"
 import { AxesPanel } from "./panels/axes/axes-panel"
 import { LabelsPanel } from "./panels/labels-panel"
+import { CombinedStylingPanel } from "./panels/combined-styling-panel"
 
 import { AdvancedPanel } from "./panels/advanced-panel"
-import { ExportPanel } from "./panels/export-panel"
+
 import { TypesTogglesPanel } from "./panels/types-toggles-panel"
 import { DatasetsSlicesPanel } from "./panels/datasets-slices-panel"
 import { TemplatesPanel, TemplateContentPanel } from "./panels/template-settings"
@@ -18,7 +19,8 @@ import { BackgroundPanel } from "./panels/template-panels/background-panel"
 import { GroupedSettingsFilter } from "./panels/grouped-settings-filter"
 import { Button } from "@/components/ui/button"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
-import { ChevronLeft, Settings, Save, X, Loader2, Plus } from "lucide-react"
+import { ChevronLeft, Settings, Save, X, Loader2, Share2, Copy, ExternalLink } from "lucide-react"
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import { useEffect, useState } from "react"
 import { useAuth } from "@/components/auth/AuthProvider"
 import { HistoryDropdown } from "@/components/history-dropdown"
@@ -48,10 +50,63 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
   const [isSaving, setIsSaving] = useState(false);
   const { user, signOut } = useAuth();
   const router = useRouter();
-  const { chartType, chartData, chartConfig, hasJSON, resetChart, setHasJSON } = useChartStore();
+  const { chartType, chartData, chartConfig, hasJSON, resetChart, setHasJSON, currentSnapshotId } = useChartStore();
   const { messages, clearMessages, startNewConversation, setBackendConversationId } = useChatStore();
 
   const [showClearDialog, setShowClearDialog] = useState(false)
+  const [isSharingLink, setIsSharingLink] = useState(false);
+
+  const handleCopyShareLink = async () => {
+    if (!currentSnapshotId) {
+      toast.error("Please ensure the chart is saved before sharing.");
+      return;
+    }
+    try {
+      setIsSharingLink(true);
+      toast.loading("Generating share link...", { id: "share-link" });
+      const response = await dataService.generateShareLink(currentSnapshotId);
+      if (response.error || !response.data) {
+        throw new Error(response.error || "Failed to generate link");
+      }
+      const shareUrl = `${window.location.origin}/share/${response.data.share_id}`;
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Share link copied to clipboard!", { id: "share-link" });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to generate share link.", { id: "share-link" });
+      console.error("Share error:", err);
+    } finally {
+      setIsSharingLink(false);
+    }
+  };
+
+  const handleOpenShareLink = async () => {
+    if (!currentSnapshotId) {
+      toast.error("Please ensure the chart is saved before sharing.");
+      return;
+    }
+    const newWindow = window.open("about:blank", "_blank");
+    if (!newWindow) {
+      toast.error("Pop-up blocked! Please allow popups for this site.");
+      return;
+    }
+    try {
+      setIsSharingLink(true);
+      toast.loading("Generating share link...", { id: "share-link" });
+      const response = await dataService.generateShareLink(currentSnapshotId);
+      if (response.error || !response.data) {
+        throw new Error(response.error || "Failed to generate link");
+      }
+      const shareUrl = `${window.location.origin}/share/${response.data.share_id}`;
+      newWindow.location.href = shareUrl;
+      toast.success("Opened share link!", { id: "share-link" });
+    } catch (err: any) {
+      newWindow.close();
+      toast.error(err.message || "Failed to generate share link.", { id: "share-link" });
+      console.error("Share error:", err);
+    } finally {
+      setIsSharingLink(false);
+    }
+  };
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth <= 768);
@@ -87,11 +142,11 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
       case "datasets":
         return <DatasetPanel />
       case "design":
-        return <DesignPanel />
+      case "labels":
+      case "styling":
+        return <CombinedStylingPanel />
       case "axes":
         return <AxesPanel />
-      case "labels":
-        return <LabelsPanel />
 
       case "decorations":
         return <DecorationsPanel />
@@ -100,8 +155,7 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
       case "templates":
       case "tpl_templates":
         return <TemplatesPanel />
-      case "export":
-        return <ExportPanel onTabChange={onTabChange} />
+
       case "tpl_content":
         return <TemplateContentPanel />
       case "tpl_text":
@@ -141,15 +195,33 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
 
           {/* Action Buttons: New, Save, Cancel, History */}
           <div className="flex gap-2 flex-shrink-0">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={onNewChart}
-              className="h-8 px-3 text-xs border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300"
-              title="Create new chart from scratch"
-            >
-              <Plus className="w-3 h-3" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={isSharingLink || !currentSnapshotId}
+                  className="h-8 px-3 text-xs border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={!currentSnapshotId ? "Save to share" : "Share options"}
+                >
+                  {isSharingLink ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Share2 className="w-3 h-3" />
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-40 z-50 bg-white border border-slate-200 shadow-md rounded-md p-1">
+                <DropdownMenuItem onClick={handleCopyShareLink} className="flex items-center gap-2 px-2.5 py-1.5 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md">
+                  <Copy className="h-3.5 w-3.5 text-slate-500" />
+                  <span>Copy Link</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleOpenShareLink} className="flex items-center gap-2 px-2.5 py-1.5 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md">
+                  <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+                  <span>Open Link</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button
               size="sm"
               variant="default"
@@ -186,7 +258,7 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
       {/* Panel Content */}
       <div className="flex-1 overflow-y-auto p-4 bg-background">
         {/* Grouped Mode Settings Filter - shows Group/Dataset dropdowns */}
-        {activeTab === 'labels' && (
+        {(activeTab === 'labels' || activeTab === 'styling') && (
           <GroupedSettingsFilter />
         )}
         <div className="animate-in fade-in duration-200">

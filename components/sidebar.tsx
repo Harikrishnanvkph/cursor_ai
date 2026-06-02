@@ -12,16 +12,15 @@ import {
   Tag,
   Layers,
   SlidersHorizontal,
-  Download,
   ChevronRight,
   FileText,
   Type,
   BarChart3,
   LayoutGrid,
   ArrowLeftRight,
-  Sparkles,
   Palette,
   LayoutTemplate,
+  Component,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -43,15 +42,13 @@ interface SidebarProps {
 // Chart Mode Tabs (original)
 // ═══════════════════════════════════════════
 const CHART_TABS = [
-  { id: "types_toggles", label: "Types and Toggles", icon: AlignEndHorizontal },
-  { id: "datasets_slices", label: "Datasets and Slices", icon: Database },
-  { id: "design", label: "Background & Legend", icon: PanelTop },
-  { id: "labels", label: "Styling & Labels", icon: Tag },
-  { id: "axes", label: "Axes", icon: Grid },
-  { id: "decorations", label: "Decorations", icon: Sparkles },
-  { id: "advanced", label: "Advanced", icon: SlidersHorizontal },
+  { id: "types_toggles", label: "General", icon: AlignEndHorizontal },
+  { id: "datasets_slices", label: "Datasets", icon: Database },
+  { id: "styling", label: "Appearance", icon: Palette },
+  { id: "axes", label: "Scales", icon: Grid },
+  { id: "decorations", label: "Decorations", icon: Component },
   { id: "templates", label: "Templates", icon: FileText },
-  { id: "export", label: "Export", icon: Download },
+  { id: "advanced", label: "More", icon: SlidersHorizontal },
 ]
 
 // ═══════════════════════════════════════════
@@ -62,10 +59,9 @@ const TEMPLATE_TABS = [
   { id: "tpl_content", label: "Content", icon: Type },
   { id: "tpl_text", label: "Text Areas", icon: Type },
   { id: "tpl_chart_zone", label: "Chart Zone", icon: BarChart3 },
-  { id: "tpl_decorations", label: "Decorations", icon: Sparkles },
+  { id: "tpl_decorations", label: "Decorations", icon: Component },
   { id: "tpl_background", label: "Background", icon: Palette },
   { id: "tpl_format_zones", label: "Format Zones", icon: LayoutGrid },
-  { id: "export", label: "Export", icon: Download },
 ]
 
 // Export for use in editor/page.tsx

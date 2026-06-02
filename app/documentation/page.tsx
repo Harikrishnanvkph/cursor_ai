@@ -28,7 +28,8 @@ import {
   Tag,
   Grid,
   SlidersHorizontal,
-  Download
+  Download,
+  Component
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
@@ -1640,7 +1641,7 @@ const guideData = [
     id: "decorations-panel",
     category: "editor",
     title: "Decorations",
-    icon: Sparkles,
+    icon: Component,
     description: "Overlay vector shapes, icons, custom SVGs, and mark coordinate highlights manually.",
     headers: [
       { id: "decorations-shapes", text: "Vector Shapes Overlay" },

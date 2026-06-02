@@ -170,7 +170,7 @@ export function LabelsPanel() {
             <Tabs defaultValue="styling" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 text-xs">
                     <TabsTrigger value="styling">Styling</TabsTrigger>
-                    <TabsTrigger value="label">Label</TabsTrigger>
+                    <TabsTrigger value="label">Labels</TabsTrigger>
                 </TabsList>
 
                 {/* ==================== LABEL TAB ==================== */}

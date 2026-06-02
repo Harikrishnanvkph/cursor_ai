@@ -3,6 +3,7 @@
 import { sanitizeHTML } from "@/lib/utils/sanitize"
 
 import React, { useRef, useState, useEffect } from "react"
+import { useStore } from "zustand"
 import { useTemplateStore } from "@/lib/template-store"
 import { useChartStore } from "@/lib/chart-store"
 import { useChartActions } from "@/lib/hooks/use-chart-actions"
@@ -12,7 +13,7 @@ import { useHistoryStore } from "@/lib/history-store"
 import { Button } from "@/components/ui/button"
 import { UndoRedoButtons } from "@/components/ui/undo-redo-buttons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ZoomIn, ZoomOut, Eye, EyeOff, Ellipsis, Maximize2, Minimize2, Settings, Menu, X, ChevronLeft, Download, Hand, Pencil, Check, Loader2, ChartColumn, RulerDimensionLine, Search } from "lucide-react"
+import { ZoomIn, ZoomOut, Eye, EyeOff, Ellipsis, Maximize2, Minimize2, Settings, Menu, X, ChevronLeft, Download, Hand, Pencil, Check, Loader2, ChartColumn, RulerDimensionLine, Search, Undo2, Redo2 } from "lucide-react"
 import { downloadTemplateExport, downloadFormatExport } from "@/lib/template-export"
 import { FileDown, FileImage, FileCode, Ban, Cloud } from "lucide-react"
 import { ChartBgColorPicker } from "./chart-preview/chart-bg-color-picker"
@@ -84,7 +85,7 @@ export function TemplateChartPreview({
 }: TemplateChartPreviewProps) {
   const canvasBgType = useUIStore(s => s.canvasBgType);
   const canvasBgColor = useUIStore(s => s.canvasBgColor);
-  const { currentTemplate, templateInBackground, selectedTextAreaId, setSelectedTextAreaId, editorMode, setEditorMode, contentTypePreferences } = useTemplateStore()
+  const { currentTemplate, templateInBackground, selectedTextAreaId, setSelectedTextAreaId, editorMode, setEditorMode, contentTypePreferences, templateSavedToCloud } = useTemplateStore()
   const { selectedFormatId, contentPackage, formats, userFormats, contextualImageUrl,
     selectedFormatSnapshot, setFormats, setUserFormats } = useFormatGalleryStore()
 
@@ -128,6 +129,7 @@ export function TemplateChartPreview({
 
   const { setChartType, setActiveGroup } = useChartActions()
   const setChartTitle = useChartStore(s => s.setChartTitle)
+  const { backendConversationId } = useChatStore()
 
   // Derive targetId for editing
   // Default to null - we ONLY want to enable editing if the active item has a proven sourceId
@@ -143,7 +145,8 @@ export function TemplateChartPreview({
   }
 
   // Only allow editing if we have a valid target ID (implying the chart is saved/cloud-aware)
-  const canEditTitle = true;
+  const currentSnapshotId = useChartStore(s => s.currentSnapshotId)
+  const canEditTitle = !!targetId || !!backendConversationId || !!currentSnapshotId || !!templateSavedToCloud;
 
   // Derive title logic
   let displayTitle = globalTitle || "Untitled Chart";
@@ -169,7 +172,6 @@ export function TemplateChartPreview({
 
   const chartTitle = displayTitle;
 
-  const { backendConversationId } = useChatStore()
   const { conversations, updateConversation } = useHistoryStore()
   const { drawingMode } = useDecorationStore()
 
@@ -212,6 +214,20 @@ export function TemplateChartPreview({
   const [renameValue, setRenameValue] = useState("")
   const [isSavingRename, setIsSavingRename] = useState(false)
   const renameInputRef = useRef<HTMLInputElement>(null)
+
+  // Mobile state and resize listener
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const check = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth <= 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  // Temporal undo/redo states
+  const { undo: temporalUndo, redo: temporalRedo, pastStates, futureStates } = useStore(useChartStore.temporal)
+  const canUndo = pastStates.length > 0;
+  const canRedo = futureStates.length > 0;
 
   // Sync fullscreenActiveTab with activeTab prop
   useEffect(() => {
@@ -1059,8 +1075,153 @@ export function TemplateChartPreview({
       {isFullscreen && (
         <div className="fixed inset-0 bg-white z-40" />
       )}
+
+      {/* Combined Mobile Float Toolbar */}
+      {isMobile && !readOnly && (
+        <div className="px-3 pb-3 pt-1 flex justify-center flex-shrink-0 w-full select-none" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full px-3 py-1 shadow-md max-w-fit mx-auto">
+            {/* 1. Preview Background Change Picker */}
+            <div className="flex items-center flex-shrink-0">
+              <ChartBgColorPicker 
+                className="flex items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 duration-200 h-9 w-9" 
+                innerClassName="w-[18px] h-[18px]"
+              />
+            </div>
+
+            <div className="w-px h-4.5 bg-slate-200 dark:bg-slate-800 flex-shrink-0" />
+
+            {/* 2. Pan Mode Toggle */}
+            <button
+              onClick={() => setPanMode(!panMode)}
+              className={`rounded-full transition-all active:scale-95 duration-200 flex items-center justify-center flex-shrink-0 h-9 w-9 ${
+                panMode 
+                  ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 shadow-inner' 
+                  : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 dark:text-slate-400'
+              }`}
+              title={panMode ? "Disable Pan Mode" : "Enable Pan Mode"}
+            >
+              <Hand className="h-5 w-5" />
+            </button>
+
+            <div className="w-px h-4.5 bg-slate-200 dark:bg-slate-800 flex-shrink-0" />
+
+            {/* 3. Custom Zoom Dropdown */}
+            <div className="flex items-center flex-shrink-0">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-9 px-3 text-xs font-semibold text-slate-700 dark:text-slate-200 select-none justify-start gap-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 flex-shrink-0 transition-colors [&_svg]:size-5">
+                    <Search className="h-5 w-5 text-slate-500 shrink-0" />
+                    <span className="tabular-nums">{currentZoomPct}%</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-52 p-2 z-[150]">
+                  <DropdownMenuItem onClick={handleResetZoom} className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100 dark:text-slate-200 dark:focus:bg-slate-800">
+                    <span className="flex-1">100% (Fit to View)</span>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem onClick={() => {
+                    const applyFullDimension = () => {
+                      let baseScale = 1.0;
+                      if (renderedFormat) {
+                        const formatW = renderedFormat.skeleton.dimensions.width;
+                        const formatH = renderedFormat.skeleton.dimensions.height;
+                        const containerWidth = containerRef.current?.clientWidth || 800;
+                        const containerHeight = containerRef.current?.clientHeight || 600;
+                        const padding = 40;
+                        const availableWidth = containerWidth - padding;
+                        const availableHeight = containerHeight - padding;
+                        const scaleX = availableWidth / formatW;
+                        const scaleY = availableHeight / formatH;
+                        baseScale = Math.min(scaleX, scaleY, 1);
+                      } else {
+                        const template = currentTemplate || templateInBackground;
+                        if (template) {
+                          const containerWidth = containerRef.current?.clientWidth || 800;
+                          const containerHeight = containerRef.current?.clientHeight || 600;
+                          const padding = 40;
+                          const availableWidth = containerWidth - padding;
+                          const availableHeight = containerHeight - padding;
+                          const scaleX = availableWidth / template.width;
+                          const scaleY = availableHeight / template.height;
+                          baseScale = Math.min(scaleX, scaleY, 1);
+                        }
+                      }
+                      setZoom(1.0 / baseScale);
+                      setPanOffset({ x: 0, y: 0 });
+                    };
+                    
+                    applyFullDimension();
+                    setTimeout(applyFullDimension, 50);
+                  }} className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100 dark:text-slate-200 dark:focus:bg-slate-800">
+                    <span className="flex-1">Full Dimension</span>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuSeparator className="my-1" />
+
+                  <div className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                    <Slider
+                      min={0}
+                      max={ZOOM_VALUES.length - 1}
+                      step={1}
+                      value={[closestIndex]}
+                      onValueChange={handleSliderChange}
+                      className="cursor-pointer"
+                    />
+                  </div>
+
+                  <DropdownMenuSeparator className="my-1" />
+                  <div className="flex items-center justify-between gap-1 px-1">
+                    <DropdownMenuItem
+                      onSelect={(e) => { e.preventDefault(); handleZoomOut(); }}
+                      className="flex-1 flex items-center justify-center py-2 cursor-pointer focus:bg-slate-100 dark:focus:bg-slate-800"
+                      title="Zoom Out"
+                    >
+                      <ZoomOut className="h-4 w-4 text-slate-500" />
+                    </DropdownMenuItem>
+                    <div className="w-[1px] h-4 bg-slate-200 dark:bg-slate-800" />
+                    <DropdownMenuItem
+                      onSelect={(e) => { e.preventDefault(); handleZoomIn(); }}
+                      className="flex-1 flex items-center justify-center py-2 cursor-pointer focus:bg-slate-100 dark:focus:bg-slate-800"
+                      title="Zoom In"
+                    >
+                      <ZoomIn className="h-4 w-4 text-slate-500" />
+                    </DropdownMenuItem>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <div className="w-px h-4.5 bg-slate-200 dark:bg-slate-800 flex-shrink-0" />
+
+            {/* 4. Undo / Redo Buttons */}
+            <div className="flex items-center gap-0.5 flex-shrink-0">
+              <button
+                onClick={() => temporalUndo()}
+                disabled={!canUndo}
+                title="Undo (Ctrl+Z)"
+                className={`h-9 w-9 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 rounded-full transition-all active:scale-90 duration-200 flex items-center justify-center flex-shrink-0 hover:scale-105 ${
+                  !canUndo ? "opacity-30 cursor-not-allowed" : "opacity-100"
+                }`}
+              >
+                <Undo2 className="h-[22px] w-[22px]" />
+              </button>
+              <button
+                onClick={() => temporalRedo()}
+                disabled={!canRedo}
+                title="Redo (Ctrl+Y)"
+                className={`h-9 w-9 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 rounded-full transition-all active:scale-90 duration-200 flex items-center justify-center flex-shrink-0 hover:scale-105 ${
+                  !canRedo ? "opacity-30 cursor-not-allowed" : "opacity-100"
+                }`}
+              >
+                <Redo2 className="h-[22px] w-[22px]" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Template Controls */}
-      {!readOnly && (
+      {!readOnly && !isMobile && (
         <div className="flex-shrink-0 mb-1">
           <div className="flex items-center justify-between flex-wrap gap-1 px-1">
             {/* Left: title + chart info */}
@@ -1309,11 +1470,6 @@ export function TemplateChartPreview({
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => handleExport('png')}><FileImage className="h-4 w-4 mr-2" /> Image (PNG)</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleExport('html')}><FileCode className="h-4 w-4 mr-2" /> HTML</DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => {
-                      if (onToggleLeftSidebar && isLeftSidebarCollapsed) onToggleLeftSidebar();
-                      window.dispatchEvent(new CustomEvent('changeActiveTab', { detail: { tab: 'export' } }));
-                    }} className="bg-blue-50 hover:bg-blue-100"><Settings className="h-4 w-4 mr-2" /> Settings</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
 

@@ -3,7 +3,7 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react"
 
 import { useRouter } from "next/navigation"
-import { Send, ArrowUp, BarChart2, Plus, SquarePen, Pencil, PencilRuler, RotateCcw, Edit3, MessageSquare, Sparkles, ArrowRight, X, ChevronLeft, ChevronRight, ChevronDown, PanelLeft, PanelRight, Settings, Brain, Info, LayoutDashboard, Layers, Menu, MoreVertical, Check, Palette, Cloud, Trash2, Download, FileImage, ImageIcon, FileCode, FileText, Maximize2, MessageCircleDashed, ChartColumnBig, Eye, Loader2, History, ToolCase } from "lucide-react"
+import { Send, ArrowUp, BarChart2, Plus, SquarePen, Pencil, PencilRuler, RotateCcw, Edit3, MessageSquare, Sparkles, ArrowRight, X, ChevronLeft, ChevronRight, ChevronDown, PanelLeft, PanelRight, Settings, Brain, Info, LayoutDashboard, Layers, Menu, MoreVertical, Check, Palette, Cloud, Trash2, Download, FileImage, ImageIcon, FileCode, FileText, Maximize2, MessageCircleDashed, ChartColumnBig, Eye, Loader2, History, ToolCase, Share2, Copy, ExternalLink } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { STANDARD_CHART_TYPES, THREE_D_CHART_TYPES } from "@/lib/chart-types"
@@ -91,7 +91,7 @@ function LandingPageContent() {
       default: return 'Chart';
     }
   };
-  const { chartConfig, chartData, chartType, setChartType, setFullChart, resetChart, hasJSON, setHasJSON, originalCloudDimensions } = useChartStore()
+  const { chartConfig, chartData, chartType, setChartType, setFullChart, resetChart, hasJSON, setHasJSON, originalCloudDimensions, currentSnapshotId } = useChartStore()
   const {
     messages,
     currentChartState,
@@ -124,6 +124,8 @@ function LandingPageContent() {
   const { isGalleryOpen: isStyleGalleryOpen } = useChartStyleStore()
   const exports = useChartExport()
   const [exportExpanded, setExportExpanded] = useState(false)
+  const [shareExpanded, setShareExpanded] = useState(false)
+  const [isSharingLink, setIsSharingLink] = useState(false)
   const [input, setInput] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -303,6 +305,58 @@ function LandingPageContent() {
       toast.error("Failed to save chart.", { id: "save-toast" });
     }
   };
+
+  const handleCopyShareLink = async () => {
+    if (!currentSnapshotId) {
+      toast.error("Please ensure the chart is saved before sharing.");
+      return;
+    }
+    try {
+      setIsSharingLink(true);
+      toast.loading("Generating share link...", { id: "share-link" });
+      const response = await dataService.generateShareLink(currentSnapshotId);
+      if (response.error || !response.data) {
+        throw new Error(response.error || "Failed to generate link");
+      }
+      const shareUrl = `${window.location.origin}/share/${response.data.share_id}`;
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Share link copied to clipboard!", { id: "share-link" });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to generate share link.", { id: "share-link" });
+      console.error("Share error:", err);
+    } finally {
+      setIsSharingLink(false);
+    }
+  }
+
+  const handleOpenShareLink = async () => {
+    if (!currentSnapshotId) {
+      toast.error("Please ensure the chart is saved before sharing.");
+      return;
+    }
+    const newWindow = window.open("about:blank", "_blank");
+    if (!newWindow) {
+      toast.error("Pop-up blocked! Please allow popups for this site.");
+      return;
+    }
+    try {
+      setIsSharingLink(true);
+      toast.loading("Generating share link...", { id: "share-link" });
+      const response = await dataService.generateShareLink(currentSnapshotId);
+      if (response.error || !response.data) {
+        throw new Error(response.error || "Failed to generate link");
+      }
+      const shareUrl = `${window.location.origin}/share/${response.data.share_id}`;
+      newWindow.location.href = shareUrl;
+      toast.success("Opened share link!", { id: "share-link" });
+    } catch (err: any) {
+      newWindow.close();
+      toast.error(err.message || "Failed to generate share link.", { id: "share-link" });
+      console.error("Share error:", err);
+    } finally {
+      setIsSharingLink(false);
+    }
+  }
 
   const isUpdate = !!backendConversationId;
 
@@ -1093,6 +1147,44 @@ function LandingPageContent() {
                     <span>Save to Cloud</span>
                   </DropdownMenuItem>
 
+                  {/* 4.5 Share Collapsible Accordion */}
+                  <DropdownMenuItem 
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      if (!currentSnapshotId) {
+                        toast.error("Please save your chart to the cloud first to share.");
+                        return;
+                      }
+                      setShareExpanded(!shareExpanded);
+                    }}
+                    className="flex items-center justify-between w-full px-2.5 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-xs font-semibold cursor-pointer text-slate-700 dark:text-slate-300 select-none active:scale-98 transition-all"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Share2 className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                      <span>Share</span>
+                    </div>
+                    <ChevronDown className={`w-3.5 h-3.5 text-slate-400 dark:text-slate-500 transition-transform duration-200 ${shareExpanded ? "transform rotate-180" : ""}`} />
+                  </DropdownMenuItem>
+
+                  {shareExpanded && currentSnapshotId && (
+                    <div className="pl-4 pr-1 py-1 space-y-0.5 bg-slate-50 dark:bg-slate-900/50 rounded-lg animate-in fade-in slide-in-from-top-1 duration-200">
+                      <DropdownMenuItem 
+                        onClick={handleCopyShareLink}
+                        className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-755 dark:text-slate-355"
+                      >
+                        <Copy className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                        <span>Copy Link</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={handleOpenShareLink}
+                        className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-755 dark:text-slate-355"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                        <span>Open Link</span>
+                      </DropdownMenuItem>
+                    </div>
+                  )}
+
                   {/* 5. Export Collapsible Accordion (Toggles inline, avoids left-clipping, click-again closes) */}
                   <DropdownMenuItem 
                     onSelect={(e) => {
@@ -1219,45 +1311,12 @@ function LandingPageContent() {
           {/* Tab 2: AI Chat with Sticky Input */}
           {mobileActiveTab === 'chat' && (
             <div className="flex-1 flex flex-col h-full overflow-hidden w-full relative">
-              {/* Copilot status indicator */}
-              <div className="px-3.5 py-2 bg-slate-50/90 dark:bg-slate-900/90 border-b border-slate-200/50 dark:border-slate-800 flex items-center justify-between flex-shrink-0">
-                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
-                  AI Copilot Active
-                </span>
-                <button
-                  onClick={handleNewConversation}
-                  className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950 border border-indigo-100 dark:border-indigo-900/60 rounded-lg px-2.5 py-1.5 flex items-center gap-1 active:scale-95 transition-all shadow-xs"
-                >
-                  <Plus className="w-3.5 h-3.5" /> New Chat
-                </button>
-              </div>
 
-              {/* Scrollable messages area */}
-              <div className="flex-1 min-h-0 overflow-y-auto w-full pb-2">
-                <ChatWindow
-                  messages={messages}
-                  input={input}
-                  setInput={setInput}
-                  onSend={handleSend}
-                  handleInputChange={handleInputChange}
-                  handlePaste={handlePaste}
-                  isProcessing={isProcessing}
-                  hasActiveChart={hasActiveChart}
-                  showActiveBanner={showActiveBanner}
-                  setShowActiveBanner={setShowActiveBanner}
-                  isChatDisabled={isChatDisabled}
-                  disabledMessage="Type a message or load a template below to get started."
-                  messagesEndRef={messagesEndRef}
-                  textareaRef={textareaRef}
-                  currentChartState={currentChartState}
-                />
-              </div>
 
-              {/* Keyboard-Safe Sticky Bottom Form */}
+              {/* Sticky Top Form */}
               <form
                 onSubmit={handleSend}
-                className="p-3 border-t border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md flex items-end gap-2 flex-shrink-0 shadow-lg"
+                className="p-3 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md flex items-end gap-2 flex-shrink-0 shadow-sm"
               >
                 <textarea
                   ref={textareaRef}
@@ -1285,6 +1344,27 @@ function LandingPageContent() {
                   <ArrowUp className="w-4.5 h-4.5" strokeWidth={2.5} />
                 </button>
               </form>
+
+              {/* Scrollable messages area */}
+              <div className="flex-1 min-h-0 overflow-y-auto w-full pb-2">
+                <ChatWindow
+                  messages={messages}
+                  input={input}
+                  setInput={setInput}
+                  onSend={handleSend}
+                  handleInputChange={handleInputChange}
+                  handlePaste={handlePaste}
+                  isProcessing={isProcessing}
+                  hasActiveChart={hasActiveChart}
+                  showActiveBanner={showActiveBanner}
+                  setShowActiveBanner={setShowActiveBanner}
+                  isChatDisabled={isChatDisabled}
+                  disabledMessage="Type a message or load a template below to get started."
+                  messagesEndRef={messagesEndRef}
+                  textareaRef={textareaRef}
+                  currentChartState={currentChartState}
+                />
+              </div>
             </div>
           )}
 
@@ -1329,28 +1409,7 @@ function LandingPageContent() {
           )}
         </main>
 
-        {/* Floating Quick Toggle between Preview and AI Chat - ONLY shown when chart is active */}
-        {chartData?.datasets?.length > 0 && hasJSON && (mobileActiveTab === 'chart' || mobileActiveTab === 'chat') && !sandwichOpen && (
-          <button
-            onClick={() => setMobileActiveTab(mobileActiveTab === 'chart' ? 'chat' : 'chart')}
-            className="fixed bottom-6 right-4 z-40 bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700 text-white rounded-full px-4 py-3 flex items-center gap-2 shadow-2xl active:scale-95 hover:scale-105 transition-all duration-300 border border-white/20"
-          >
-            {mobileActiveTab === 'chart' ? (
-              <>
-                <MessageSquare className="w-4 h-4" />
-                <span className="text-xs font-bold tracking-tight">AI Chat</span>
-              </>
-            ) : (
-              <>
-                <BarChart2 className="w-4 h-4" />
-                <span className="text-xs font-bold tracking-tight">Preview</span>
-              </>
-            )}
-            {isProcessing && (
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            )}
-          </button>
-        )}
+
 
         {/* Bottom navigation bar removed at user's request */}
 

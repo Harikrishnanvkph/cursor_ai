@@ -24,7 +24,7 @@ export function parseDimension(value: any, fallback = 500): number {
  * Background configuration type returned by getBackgroundConfig.
  */
 export interface BackgroundConfig {
-    type: 'color' | 'gradient' | 'image';
+    type: 'color' | 'gradient' | 'image' | 'transparent';
     color?: string;
     gradientStart?: string;
     gradientEnd?: string;

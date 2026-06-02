@@ -11,7 +11,7 @@ const PRESET_COLORS = [
     '#212121', '#2d2d2d', '#1e293b', '#f5f3ff', '#fff1f2'
 ];
 
-export const ChartBgColorPicker = memo(({ className }: { className?: string }) => {
+export const ChartBgColorPicker = memo(({ className, innerClassName }: { className?: string, innerClassName?: string }) => {
     const canvasBgType = useUIStore(s => s.canvasBgType);
     const canvasBgColor = useUIStore(s => s.canvasBgColor);
     const setCanvasBg = useUIStore(s => s.setCanvasBg);
@@ -27,6 +27,8 @@ export const ChartBgColorPicker = memo(({ className }: { className?: string }) =
         setCanvasBg('transparent');
     };
 
+    const innerSizeClass = innerClassName || "w-5 h-5";
+
     return (
         <Popover>
             <TooltipProvider delayDuration={0}>
@@ -37,10 +39,10 @@ export const ChartBgColorPicker = memo(({ className }: { className?: string }) =
                                 className={className || "flex items-center justify-center p-1 rounded hover:bg-gray-100 transition-colors"}
                             >
                                 {isTransparent ? (
-                                    <Ban className="w-4 h-4 text-red-500" />
+                                    <Ban className={`${innerSizeClass} text-red-500`} />
                                 ) : (
                                     <div
-                                        className="w-4 h-4 rounded shadow-sm border border-gray-300"
+                                        className={`${innerSizeClass} rounded shadow-sm border border-gray-300`}
                                         style={{ backgroundColor: currentColor }}
                                     />
                                 )}

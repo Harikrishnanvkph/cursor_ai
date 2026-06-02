@@ -343,6 +343,11 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
         // Update backend conversation ID
         useChatStore.getState().setBackendConversationId(conversationId);
 
+        // If in template mode, mark template as saved to cloud
+        if (editorMode === 'template') {
+            useTemplateStore.getState().setTemplateSavedToCloud(true);
+        }
+
         // Update active dataset's or group's source metadata
         // Use Services directly since actions are not available in non-component context
 

@@ -11,13 +11,15 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { useRouter, usePathname } from "next/navigation"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 
 interface HistoryDropdownProps {
+  className?: string
   variant?: 'full' | 'compact' | 'inline' | 'sidebar' | 'icon-badge'
   onConversationRestored?: () => void
 }
 
-export function HistoryDropdown({ variant = 'full', onConversationRestored }: HistoryDropdownProps) {
+export function HistoryDropdown({ variant = 'full', className, onConversationRestored }: HistoryDropdownProps) {
   const [open, setOpen] = useState(false)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
@@ -131,17 +133,32 @@ export function HistoryDropdown({ variant = 'full', onConversationRestored }: Hi
       <>
         <DropdownMenu open={open} onOpenChange={setOpen}>
           <DropdownMenuTrigger asChild>
-            <button
-              data-history-dropdown
-              aria-label="Open history"
-              className={`relative p-1.5 transition-all duration-200 focus-visible:outline-none ${
-                variant === 'icon-badge'
-                  ? 'rounded-full bg-white shadow-sm h-9 w-9 border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300'
-                  : 'rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200/60 shadow-xs'
-              }`}
-            >
-              <History className="h-4 w-4" />
-            </button>
+            {variant === 'icon-badge' ? (
+              <button
+                data-history-dropdown
+                aria-label="Open history"
+                className={cn(
+                  "relative p-1.5 transition-all duration-200 focus-visible:outline-none rounded-full bg-white shadow-sm h-9 w-9 border border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300",
+                  className
+                )}
+              >
+                <History className="h-4 w-4" />
+              </button>
+            ) : (
+              <Button
+                data-history-dropdown
+                aria-label="Open history"
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "p-0 border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800",
+                  variant === 'compact' ? "h-8 w-8" : "",
+                  className
+                )}
+              >
+                <History className="h-4 w-4" />
+              </Button>
+            )}
           </DropdownMenuTrigger>
 
           <DropdownMenuContent className="w-72 mt-2 rounded-lg" align="end" forceMount>
@@ -247,13 +264,18 @@ export function HistoryDropdown({ variant = 'full', onConversationRestored }: Hi
       <>
         <DropdownMenu open={open} onOpenChange={setOpen}>
           <DropdownMenuTrigger asChild>
-            <button
+            <Button
               data-history-dropdown
               aria-label="Open history"
-              className="relative h-8 w-8 flex items-center justify-center rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200/60 shadow-xs transition-all duration-200 focus-visible:outline-none"
+              variant="outline"
+              size="sm"
+              className={cn(
+                "px-3 text-xs border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800 h-8",
+                className
+              )}
             >
               <History className="w-4 h-4" />
-            </button>
+            </Button>
           </DropdownMenuTrigger>
 
           <DropdownMenuContent className="w-72 mt-2 rounded-lg" align="end" forceMount>

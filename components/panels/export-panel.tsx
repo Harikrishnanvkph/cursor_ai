@@ -15,7 +15,7 @@ import { downloadChartAsHTML, type HTMLExportOptions, filterChartDataForExport }
 import { downloadTemplateExport, type TemplateExportOptions } from "@/lib/template-export"
 import { templateList } from "@/lib/html-templates"
 import { type DimensionUnit, convertFromPixels, convertToPixels } from "@/lib/utils/dimension-utils"
-import { Download, Copy, FileImage, FileText, Code, FileCode, Settings, Layers, Share2, Link as LinkIcon } from "lucide-react"
+import { FileImage, FileText, FileCode, Settings, Layers, Share2, Link as LinkIcon } from "lucide-react"
 import { dataService } from "@/lib/data-service"
 import { toast } from "sonner"
 
@@ -288,31 +288,7 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
     return { width: 800, height: 600 }
   }
 
-  const handleExportConfig = () => {
-    const config = {
-      type: chartType,
-      data: chartData,
-      options: chartConfig,
-    }
 
-    const blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.href = url
-    link.download = "chart-config.json"
-    link.click()
-    URL.revokeObjectURL(url)
-  }
-
-  const handleCopyConfig = async () => {
-    const config = {
-      type: chartType,
-      data: chartData,
-      options: chartConfig,
-    }
-
-    await navigator.clipboard.writeText(JSON.stringify(config, null, 2))
-  }
 
   const handleExportData = () => {
     // Filter data so we only export what is visible (e.g. single mode vs grouped mode, legend filters)
@@ -469,179 +445,7 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
 
   return (
     <div className="space-y-4">
-      {/* General Settings */}
-      <Card className="border-blue-100 shadow-sm bg-gradient-to-br from-blue-50 to-white">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Settings className="h-4 w-4 text-blue-600" />
-            General
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {/* Export Mode */}
-          <div>
-            <Label className="text-xs font-medium text-gray-700">Export Mode</Label>
-            <Select value={exportMode} onValueChange={handleExportModeChange}>
-              <SelectTrigger className="h-9 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="chart">Chart Only</SelectItem>
-                <SelectItem value="template">Chart Template</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
 
-          {/* Status Messages */}
-          {exportMode === "template" && !currentTemplate && (
-            <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
-              ⚠️ No template selected. Switch to Template mode in the editor to create one.
-            </div>
-          )}
-
-          {/* Dimension Settings */}
-          <div>
-            <Label className="text-xs font-medium text-gray-700">Dimension</Label>
-            <Select
-              value={dimensionMode}
-              onValueChange={handleDimensionModeChange}
-              disabled={exportMode === "template" || isGlobalTemplateMode}
-            >
-              <SelectTrigger className={`h-9 text-xs ${(exportMode === "template" || isGlobalTemplateMode) ? "opacity-50 cursor-not-allowed" : ""}`}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="auto">Auto (Responsive)</SelectItem>
-                <SelectItem value="manual">Manual</SelectItem>
-              </SelectContent>
-            </Select>
-            {exportMode === "template" && (
-              <p className="text-xs text-gray-500 mt-1">Template dimensions are always used</p>
-            )}
-            {isGlobalTemplateMode && exportMode !== "template" && (
-              <p className="text-xs text-amber-600 mt-1">🔒 Locked to Auto in Template mode</p>
-            )}
-          </div>
-
-          {/* Manual Dimension Inputs */}
-          {exportMode === "chart" && dimensionMode === "manual" && !isGlobalTemplateMode && (
-            <div className="space-y-3 pt-3 border-t">
-              <div className="flex items-center gap-2">
-                <Label className="text-xs font-medium text-gray-700 w-12">Unit</Label>
-                <Select value={unit} onValueChange={(value) => setUnit(value as DimensionUnit)}>
-                  <SelectTrigger className="h-8 text-xs flex-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="px">Pixels (px)</SelectItem>
-                    <SelectItem value="mm">Millimeters (mm)</SelectItem>
-                    <SelectItem value="cm">Centimeters (cm)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs font-medium text-gray-700">Width</Label>
-                  <Input
-                    type="number"
-                    value={unit === 'px' ? widthInput : convertFromPixels(parseFloat(widthInput) || 0, unit)}
-                    onChange={(e) => {
-                      if (!e.target.value) return;
-                      const pxVal = unit === 'px' ? e.target.value : Math.round(convertToPixels(parseFloat(e.target.value), unit)).toString();
-                      handleWidthChange(pxVal);
-                    }}
-                    onBlur={handleWidthBlur}
-                    min={unit === 'px' ? "250" : "1"}
-                    className="h-8 text-xs"
-                    placeholder="800"
-                  />
-                  {unit === 'px' && <p className="text-[10px] text-gray-500 mt-0.5">Min: 250px</p>}
-                </div>
-                <div>
-                  <Label className="text-xs font-medium text-gray-700">Height</Label>
-                  <Input
-                    type="number"
-                    value={unit === 'px' ? heightInput : convertFromPixels(parseFloat(heightInput) || 0, unit)}
-                    onChange={(e) => {
-                      if (!e.target.value) return;
-                      const pxVal = unit === 'px' ? e.target.value : Math.round(convertToPixels(parseFloat(e.target.value), unit)).toString();
-                      handleHeightChange(pxVal);
-                    }}
-                    onBlur={handleHeightBlur}
-                    min={unit === 'px' ? "250" : "1"}
-                    className="h-8 text-xs"
-                    placeholder="600"
-                  />
-                  {unit === 'px' && <p className="text-[10px] text-gray-500 mt-0.5">Min: 250px</p>}
-                </div>
-              </div>
-              
-              {unit !== 'px' && (
-                <div className="text-[10px] text-gray-500 text-right">
-                  ≈ {widthInput} × {heightInput} px
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Current Dimensions Display */}
-          {exportMode === "chart" && dimensionMode === "auto" && !isGlobalTemplateMode && globalChartRef?.current?.canvas && (
-            <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-200">
-              📐 Current canvas: {globalChartRef.current.canvas.width} × {globalChartRef.current.canvas.height} px
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="border-blue-100 shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <FileImage className="h-4 w-4 text-blue-600" />
-            Chart Image
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div>
-            <Label className="text-xs font-medium text-gray-700">Format</Label>
-            <Select value={exportFormat} onValueChange={setExportFormat}>
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="png">PNG (Recommended)</SelectItem>
-                <SelectItem value="jpg">JPG</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label className="text-xs font-medium text-gray-700">Scale / Quality</Label>
-            <Select value={exportScale} onValueChange={setExportScale}>
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1">1x (Standard)</SelectItem>
-                <SelectItem value="2">2x (High - Retina)</SelectItem>
-                <SelectItem value="4">4x (Ultra - Print)</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-[10px] text-gray-500 mt-1">
-              Higher scale = sharper image but larger file size.
-            </p>
-          </div>
-
-          <Button
-            onClick={handleExportImage}
-            className="w-full h-9 text-xs bg-blue-600 hover:bg-blue-700"
-            disabled={exportMode === "template" && !currentTemplate}
-          >
-            <FileImage className="h-3 w-3 mr-2" />
-            Export {exportMode === "template" ? "Template" : "Chart"} as {exportFormat.toUpperCase()}
-          </Button>
-        </CardContent>
-      </Card>
 
       <Card className="border-blue-100 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-50 rounded-bl-full -z-10 opacity-50"></div>
@@ -681,80 +485,9 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
         </CardContent>
       </Card>
 
-      <Card className="border-blue-100 shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <FileCode className="h-4 w-4 text-blue-600" />
-            HTML Export
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div>
-            <Label className="text-xs font-medium text-gray-700">File Name</Label>
-            <Input
-              value={htmlOptions.fileName}
-              onChange={(e) => setHtmlOptions({ ...htmlOptions, fileName: e.target.value })}
-              placeholder="chart.html"
-              className="h-8 text-xs"
-            />
-          </div>
 
-          <div>
-            <Label className="text-xs font-medium text-gray-700">Style</Label>
-            <Select value={htmlOptions.template} onValueChange={(value) => setHtmlOptions({ ...htmlOptions, template: value })}>
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {templateList.map((template) => (
-                  <SelectItem key={template.id} value={template.id}>
-                    <span className="text-xs">{template.name}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
 
-          <Button
-            onClick={handleExportHTML}
-            className="w-full h-9 text-xs bg-blue-600 hover:bg-blue-700 mt-3"
-            disabled={exportMode === "template" && !currentTemplate}
-          >
-            <Download className="h-3 w-3 mr-2" />
-            Download {exportMode === "template" ? "Template" : "Chart"} HTML
-          </Button>
-        </CardContent>
-      </Card>
 
-      <Card className="border-blue-100 shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Code className="h-4 w-4 text-blue-600" />
-            Configuration
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" onClick={handleExportConfig} className="h-8 text-xs">
-              <Download className="h-3 w-3 mr-1" />
-              JSON
-            </Button>
-            <Button variant="outline" onClick={handleCopyConfig} className="h-8 text-xs">
-              <Copy className="h-3 w-3 mr-1" />
-              Copy
-            </Button>
-          </div>
-
-          <div>
-            <Label className="text-xs font-medium text-gray-700">Chart.js Config</Label>
-            <Textarea
-              value={JSON.stringify({ type: chartType, data: chartData, options: chartConfig }, null, 2)}
-              readOnly
-              className="h-24 font-mono text-[10px] bg-gray-50"
-            />
-          </div>
-        </CardContent>
-      </Card>
 
       <Card className="border-blue-100 shadow-sm">
         <CardHeader className="pb-3">
@@ -771,24 +504,7 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
         </CardContent>
       </Card>
 
-      {/* Settings Navigation */}
-      {onTabChange && (
-        <Card className="border-gray-200 shadow-sm bg-gradient-to-br from-gray-50 to-white">
-          <CardContent className="pt-6">
-            <Button
-              variant="outline"
-              onClick={() => onTabChange("export")}
-              className="w-full h-9 text-xs border-2 hover:border-blue-400 hover:bg-blue-50"
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Advanced Export Settings
-            </Button>
-            <p className="text-xs text-gray-500 mt-2 text-center">
-              More export options & customization
-            </p>
-          </CardContent>
-        </Card>
-      )}
+
     </div>
   )
 }

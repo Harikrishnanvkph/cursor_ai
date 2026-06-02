@@ -3,7 +3,7 @@
 import { DatasetPanel } from "./panels/dataset-panel"
 import { DesignPanel } from "./panels/design-settings"
 import { AxesPanel } from "./panels/axes/axes-panel"
-import { ExportPanel } from "./panels/export-panel"
+
 
 interface ChartBuilderProps {
   activeTab: string
@@ -18,8 +18,7 @@ export function ChartBuilder({ activeTab }: ChartBuilderProps) {
         return <DesignPanel />
       case "axes":
         return <AxesPanel />
-      case "export":
-        return <ExportPanel />
+
       default:
         return <DatasetPanel />
     }
