@@ -115,9 +115,11 @@ export const universalImagePlugin = {
                 const imageConfig = dataset.pointImageConfig?.[pointIndex] || getDefaultImageConfig(chart.config.type || 'bar')
 
                 if (imageUrl && element) {
+                    const label = chart.data.labels?.[pointIndex] || "?";
                     const img = new Image()
                     img.crossOrigin = "anonymous"
-                    img.onload = () => {
+
+                    const renderWithImage = (imageSource: HTMLImageElement | null) => {
                         ctx.save()
                         const chartType = chart.config.type
                         const x = element.x
@@ -133,7 +135,7 @@ export const universalImagePlugin = {
                         if (chartType === "pie" || chartType === "doughnut" || chartType === "polarArea" || chartType === "pie3d" || chartType === "doughnut3d") {
                             if (isFillEnabled) {
                                 // Fill slice mode - ignore position setting
-                                renderSliceImage(ctx, element, img, imageConfig)
+                                renderSliceImage(ctx, element, imageSource, imageConfig, label)
                                 ctx.restore()
                                 return
                             }
@@ -141,9 +143,9 @@ export const universalImagePlugin = {
                             if (isFillEnabled) {
                                 // Fill bar mode - ignore position setting
                                 if (chart.config.options?.indexAxis === "y" || chartType === "horizontalBar" || chartType === "horizontalBar3d") {
-                                    renderBarImageHorizontal(ctx, element, img, imageConfig)
+                                    renderBarImageHorizontal(ctx, element, imageSource, imageConfig, label)
                                 } else {
-                                    renderBarImageVertical(ctx, element, img, imageConfig)
+                                    renderBarImageVertical(ctx, element, imageSource, imageConfig, label)
                                 }
                                 ctx.restore()
                                 return
@@ -152,18 +154,18 @@ export const universalImagePlugin = {
 
                         // Handle callout position for all chart types (only if fillSlice/fillBar is not enabled)
                         if (imageConfig.position === "callout") {
-                            renderCalloutImage(ctx, x, y, img, imageConfig, datasetIndex, pointIndex, chart)
+                            renderCalloutImage(ctx, x, y, imageSource, imageConfig, datasetIndex, pointIndex, chart, label)
                             ctx.restore()
                             return
                         }
 
                         if (chartType === "pie" || chartType === "doughnut" || chartType === "polarArea") {
-                            renderSliceImage(ctx, element, img, imageConfig)
+                            renderSliceImage(ctx, element, imageSource, imageConfig, label)
                         } else if (chartType === "bar" || chartType === "waterfall") {
                             if (chart.config.options?.indexAxis === "y") {
-                                renderBarImageHorizontal(ctx, element, img, imageConfig)
+                                renderBarImageHorizontal(ctx, element, imageSource, imageConfig, label)
                             } else {
-                                renderBarImageVertical(ctx, element, img, imageConfig)
+                                renderBarImageVertical(ctx, element, imageSource, imageConfig, label)
                             }
                         } else if (
                             chartType === "line" ||
@@ -171,10 +173,18 @@ export const universalImagePlugin = {
                             chartType === "bubble" ||
                             chartType === "radar"
                         ) {
-                            renderPointImage(ctx, element, img, imageConfig)
+                            renderPointImage(ctx, element, imageSource, imageConfig, label)
                         }
 
                         ctx.restore()
+                    }
+
+                    img.onload = () => {
+                        renderWithImage(img)
+                    }
+                    img.onerror = () => {
+                        console.warn(`[UniversalImagePlugin] Failed to load image at URL: ${imageUrl}. Rendering placeholder instead.`);
+                        renderWithImage(null)
                     }
                     img.src = getProxiedImageUrl(imageUrl)
                 }
@@ -466,7 +476,7 @@ function renderImageInRect(ctx: any, img: any, x: number, y: number, width: numb
 }
 
 // Render image for vertical bar charts
-function renderBarImageVertical(ctx: any, element: any, img: any, config: any) {
+function renderBarImageVertical(ctx: any, element: any, img: any, config: any, placeholderText?: string) {
     const size = config.size || 30
     const x = element.x
     let y = element.y
@@ -488,7 +498,20 @@ function renderBarImageVertical(ctx: any, element: any, img: any, config: any) {
         ctx.rect(barX, barY, barWidth, barHeight)
         ctx.clip()
 
-        renderImageInRect(ctx, img, barX, barY, barWidth, barHeight, config.imageFit)
+        if (img) {
+            renderImageInRect(ctx, img, barX, barY, barWidth, barHeight, config.imageFit)
+        } else {
+            ctx.fillStyle = "#94a3b8";
+            ctx.fill();
+            if (placeholderText) {
+                ctx.fillStyle = "#ffffff";
+                const fontSize = Math.round(Math.min(barWidth, barHeight) * 0.4);
+                ctx.font = `bold ${fontSize > 10 ? fontSize : 10}px sans-serif`;
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(placeholderText.substring(0, 1).toUpperCase(), barX + barWidth / 2, barY + barHeight / 2);
+            }
+        }
 
         ctx.restore()
         return
@@ -522,18 +545,18 @@ function renderBarImageVertical(ctx: any, element: any, img: any, config: any) {
             const chart = element.chart;
             const datasetIndex = element._datasetIndex || 0;
             const pointIndex = element._index || 0;
-            renderCalloutImage(ctx, element.x, element.y, img, config, datasetIndex, pointIndex, chart)
+            renderCalloutImage(ctx, element.x, element.y, img, config, datasetIndex, pointIndex, chart, placeholderText)
             return
         default:
             y = element.y - size / 2 - 5
             break
     }
 
-    drawImageWithClipping(ctx, x - size / 2, y - size / 2, size, size, img, config.type)
+    drawImageWithClipping(ctx, x - size / 2, y - size / 2, size, size, img, config.type, placeholderText)
 }
 
 // Render image for horizontal bar charts
-function renderBarImageHorizontal(ctx: any, element: any, img: any, config: any) {
+function renderBarImageHorizontal(ctx: any, element: any, img: any, config: any, placeholderText?: string) {
     const size = config.size || 30
     let x = element.x
     const y = element.y
@@ -569,7 +592,20 @@ function renderBarImageHorizontal(ctx: any, element: any, img: any, config: any)
         ctx.rect(barX, barY, barWidth, barHeight)
         ctx.clip()
 
-        renderImageInRect(ctx, img, barX, barY, barWidth, barHeight, config.imageFit)
+        if (img) {
+            renderImageInRect(ctx, img, barX, barY, barWidth, barHeight, config.imageFit)
+        } else {
+            ctx.fillStyle = "#94a3b8";
+            ctx.fill();
+            if (placeholderText) {
+                ctx.fillStyle = "#ffffff";
+                const fontSize = Math.round(Math.min(barWidth, barHeight) * 0.4);
+                ctx.font = `bold ${fontSize > 10 ? fontSize : 10}px sans-serif`;
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(placeholderText.substring(0, 1).toUpperCase(), barX + barWidth / 2, barY + barHeight / 2);
+            }
+        }
 
         ctx.restore()
         return
@@ -604,18 +640,18 @@ function renderBarImageHorizontal(ctx: any, element: any, img: any, config: any)
             const chart = element.chart;
             const datasetIndex = element._datasetIndex || 0;
             const pointIndex = element._index || 0;
-            renderCalloutImage(ctx, element.x, element.y, img, config, datasetIndex, pointIndex, chart)
+            renderCalloutImage(ctx, element.x, element.y, img, config, datasetIndex, pointIndex, chart, placeholderText)
             return
         default:
             x = element.x + (element.base - element.x) / 2
             break
     }
 
-    drawImageWithClipping(ctx, x - size / 2, y - size / 2, size, size, img, config.type)
+    drawImageWithClipping(ctx, x - size / 2, y - size / 2, size, size, img, config.type, placeholderText)
 }
 
 // Render image for point-based charts with proper positioning
-function renderPointImage(ctx: any, element: any, img: any, config: any) {
+function renderPointImage(ctx: any, element: any, img: any, config: any, placeholderText?: string) {
     const size = config.size || 25
     let x = element.x
     let y = element.y
@@ -637,13 +673,13 @@ function renderPointImage(ctx: any, element: any, img: any, config: any) {
             const chart = element.chart;
             const datasetIndex = element._datasetIndex || 0;
             const pointIndex = element._index || 0;
-            renderCalloutImage(ctx, element.x, element.y, img, config, datasetIndex, pointIndex, chart)
+            renderCalloutImage(ctx, element.x, element.y, img, config, datasetIndex, pointIndex, chart, placeholderText)
             return
         default:
             break
     }
 
-    drawImageWithClipping(ctx, x - size / 2, y - size / 2, size, size, img, config.type)
+    drawImageWithClipping(ctx, x - size / 2, y - size / 2, size, size, img, config.type, placeholderText)
 }
 
 // Enhanced callout rendering with configurable border and shape
@@ -656,6 +692,7 @@ function renderCalloutImage(
     datasetIndex: number,
     pointIndex: number,
     chart: any,
+    placeholderText?: string
 ) {
     const size = config.size || 30
     const offset = config.offset || 40
@@ -803,7 +840,7 @@ function renderCalloutImage(
     const imageType = config.type || "circle"
 
     // Draw image with configurable clipping shape
-    drawImageWithClipping(ctx, calloutX - size / 2, calloutY - size / 2, size, size, img, imageType)
+    drawImageWithClipping(ctx, calloutX - size / 2, calloutY - size / 2, size, size, img, imageType, placeholderText)
 
     // Draw configurable border around callout
     const borderWidth = config.borderWidth !== undefined ? config.borderWidth : 3
@@ -885,30 +922,64 @@ function renderCalloutImage(
 }
 
 // Helper function to draw images with different clipping shapes
-function drawImageWithClipping(ctx: any, x: any, y: any, width: any, height: any, img: any, type: string) {
+function drawImageWithClipping(ctx: any, x: any, y: any, width: any, height: any, img: any, type: string, placeholderText?: string) {
     ctx.save()
 
-    if (type === "regular") {
-        // Regular: Preserve aspect ratio, scale to fit within bounds, center it
-        renderImageInRect(ctx, img, x, y, width, height, 'contain')
-    } else {
-        // Apply clipping for circle, square, or rounded
-        if (type === "circle") {
-            ctx.beginPath()
-            ctx.arc(x + width / 2, y + height / 2, Math.min(width, height) / 2, 0, 2 * Math.PI)
-            ctx.clip()
-        } else if (type === "square") {
-            ctx.beginPath()
-            ctx.rect(x, y, width, height)
-            ctx.clip()
-        } else if (type === "rounded") {
-            const radius = Math.min(width, height) * 0.15 // 15% border radius
-            ctx.beginPath()
-            roundRect(ctx, x, y, width, height, radius)
-            ctx.clip()
-        }
+    if (img) {
+        if (type === "regular") {
+            // Regular: Preserve aspect ratio, scale to fit within bounds, center it
+            renderImageInRect(ctx, img, x, y, width, height, 'contain')
+        } else {
+            // Apply clipping for circle, square, or rounded
+            if (type === "circle") {
+                ctx.beginPath()
+                ctx.arc(x + width / 2, y + height / 2, Math.min(width, height) / 2, 0, 2 * Math.PI)
+                ctx.clip()
+            } else if (type === "square") {
+                ctx.beginPath()
+                ctx.rect(x, y, width, height)
+                ctx.clip()
+            } else if (type === "rounded") {
+                const radius = Math.min(width, height) * 0.15 // 15% border radius
+                ctx.beginPath()
+                roundRect(ctx, x, y, width, height, radius)
+                ctx.clip()
+            }
 
-        ctx.drawImage(img, x, y, width, height)
+            ctx.drawImage(img, x, y, width, height)
+        }
+    } else {
+        // Draw placeholder shape
+        const radius = Math.min(width, height) / 2
+        ctx.beginPath()
+        if (type === "circle" || type === "regular") {
+            ctx.arc(x + width / 2, y + height / 2, radius, 0, 2 * Math.PI)
+        } else if (type === "square") {
+            ctx.rect(x, y, width, height)
+        } else if (type === "rounded") {
+            const r = Math.min(width, height) * 0.15
+            roundRect(ctx, x, y, width, height, r)
+        }
+        ctx.closePath()
+
+        // Draw neutral placeholder background
+        ctx.fillStyle = "#94a3b8" // Slate 400
+        ctx.fill()
+
+        // White boundary border
+        ctx.strokeStyle = "#ffffff"
+        ctx.lineWidth = 1.5
+        ctx.stroke()
+
+        // Draw label text
+        if (placeholderText) {
+            ctx.fillStyle = "#ffffff"
+            const fontSize = Math.round(Math.min(width, height) * 0.5)
+            ctx.font = `bold ${fontSize > 10 ? fontSize : 10}px sans-serif`
+            ctx.textAlign = "center"
+            ctx.textBaseline = "middle"
+            ctx.fillText(placeholderText.substring(0, 1).toUpperCase(), x + width / 2, y + height / 2)
+        }
     }
 
     ctx.restore()
@@ -930,10 +1001,10 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: n
 }
 
 // Render image for pie/doughnut/polarArea charts
-function renderSliceImage(ctx: any, element: any, img: any, config: any) {
+function renderSliceImage(ctx: any, element: any, img: any, config: any, placeholderText?: string) {
     // Check if this is a fill slice request (robustly check both properties)
     if (config.fillSlice || config.fillBar) {
-        renderSliceFillImage(ctx, element, img, config);
+        renderSliceFillImage(ctx, element, img, config, placeholderText);
         return;
     }
 
@@ -983,7 +1054,7 @@ function renderSliceImage(ctx: any, element: any, img: any, config: any) {
             break
         case "callout":
             // Callout position - handled separately
-            renderCalloutImage(ctx, element.x, element.y, img, config, element._datasetIndex, element._index, chart)
+            renderCalloutImage(ctx, element.x, element.y, img, config, element._datasetIndex, element._index, chart, placeholderText)
             return
         default:
             x = element.x
@@ -991,10 +1062,10 @@ function renderSliceImage(ctx: any, element: any, img: any, config: any) {
             break
     }
 
-    drawImageWithClipping(ctx, x - size / 2, y - size / 2, size, size, img, config.type)
+    drawImageWithClipping(ctx, x - size / 2, y - size / 2, size, size, img, config.type, placeholderText)
 }
 
-function renderSliceFillImage(ctx: any, element: any, img: any, config: any) {
+function renderSliceFillImage(ctx: any, element: any, img: any, config: any, placeholderText?: string) {
     const chart = element._chart || element.chart
     const chartArea = chart.chartArea
     const centerX = element.x ?? (chartArea.left + chartArea.width / 2)
@@ -1005,6 +1076,7 @@ function renderSliceFillImage(ctx: any, element: any, img: any, config: any) {
     const endAngle = element.endAngle || 0
     const innerRadius = element.innerRadius || 0
     const outerRadius = element.outerRadius || Math.min(chartArea.width, chartArea.height) / 2
+    const midAngle = (startAngle + endAngle) / 2
 
     // Save context for clipping
     ctx.save()
@@ -1032,6 +1104,24 @@ function renderSliceFillImage(ctx: any, element: any, img: any, config: any) {
         ctx.closePath()
     }
     ctx.clip()
+
+    if (!img) {
+        ctx.fillStyle = "#94a3b8" // Slate 400
+        ctx.fill()
+        if (placeholderText) {
+            ctx.fillStyle = "#ffffff"
+            const r = innerRadius + (outerRadius - innerRadius) * 0.5
+            const textX = centerX + Math.cos(midAngle) * r
+            const textY = centerY + Math.sin(midAngle) * r
+            const fontSize = Math.round((outerRadius - innerRadius) * 0.3)
+            ctx.font = `bold ${fontSize > 12 ? fontSize : 12}px sans-serif`
+            ctx.textAlign = "center"
+            ctx.textBaseline = "middle"
+            ctx.fillText(placeholderText.substring(0, 1).toUpperCase(), textX, textY)
+        }
+        ctx.restore()
+        return
+    }
 
     const imageFit = config.imageFit || 'cover'
     if (imageFit === 'contain') {

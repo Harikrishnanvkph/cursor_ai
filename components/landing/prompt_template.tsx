@@ -62,15 +62,14 @@ export function PromptTemplate({
   // Format gallery store for format mode
   const {
     formats,
-    setFormats,
     selectedFormatId,
     isLoadingFormats,
-    setLoadingFormats,
     setSelectedFormat,
     clearSelection: clearFormatSelection,
     openGallery,
     filters,
     setFilters,
+    loadFormats,
   } = useFormatGalleryStore()
 
   // Sync selected ratio with the stores
@@ -113,24 +112,10 @@ export function PromptTemplate({
 
   // Load formats on format mode selection
   useEffect(() => {
-    if (generateMode === 'format' && formats.length === 0 && !isLoadingFormats) {
+    if (generateMode === 'format') {
       loadFormats()
     }
-  }, [generateMode, formats.length, isLoadingFormats])
-
-  const loadFormats = async () => {
-    setLoadingFormats(true)
-    try {
-      const res = await dataService.getOfficialFormats()
-      if (!res.error && res.data) {
-        setFormats(res.data)
-      }
-    } catch (err) {
-      console.error('Failed to load formats:', err)
-    } finally {
-      setLoadingFormats(false)
-    }
-  }
+  }, [generateMode, loadFormats])
 
   const handleSampleClick = () => {
     if (onSampleClick) {

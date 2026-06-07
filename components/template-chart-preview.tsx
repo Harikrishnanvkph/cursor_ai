@@ -87,22 +87,16 @@ export function TemplateChartPreview({
   const canvasBgColor = useUIStore(s => s.canvasBgColor);
   const { currentTemplate, templateInBackground, selectedTextAreaId, setSelectedTextAreaId, editorMode, setEditorMode, contentTypePreferences, templateSavedToCloud } = useTemplateStore()
   const { selectedFormatId, contentPackage, formats, userFormats, contextualImageUrl,
-    selectedFormatSnapshot, setFormats, setUserFormats } = useFormatGalleryStore()
+    selectedFormatSnapshot, loadFormats } = useFormatGalleryStore()
 
   // Hydrate format blueprints after page refresh:
   // The persisted snapshot is the primary source, but we also need the full format
   // list for the gallery. Load from database if not yet available.
   React.useEffect(() => {
-    if (selectedFormatId && formats.length === 0) {
-      Promise.all([
-        dataService.getOfficialFormats(),
-        dataService.getUserFormats()
-      ]).then(([officialRes, userRes]) => {
-        if (!officialRes.error && officialRes.data) setFormats(officialRes.data)
-        if (!userRes.error && userRes.data) setUserFormats(userRes.data)
-      }).catch(err => console.warn('Failed to hydrate formats after refresh:', err))
+    if (selectedFormatId) {
+      loadFormats()
     }
-  }, [selectedFormatId])
+  }, [selectedFormatId, loadFormats])
 
   const renderedFormat = React.useMemo(() => {
     if (!selectedFormatId || !contentPackage) return null

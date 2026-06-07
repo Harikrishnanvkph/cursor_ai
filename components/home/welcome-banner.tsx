@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react"
 import { useAuth } from "@/components/auth/AuthProvider"
 import { useSearchParams } from "next/navigation"
-import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { X } from "lucide-react"
 import Image from "next/image"
@@ -21,6 +20,27 @@ export function WelcomeBanner() {
 
   useEffect(() => {
     setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const exiting = sessionStorage.getItem('exiting_app')
+    if (exiting === 'true') {
+      // Push dummy state to intercept Back button on Home page
+      window.history.pushState({ type: 'home-back-interceptor' }, '')
+
+      const handlePopState = (event: PopStateEvent) => {
+        sessionStorage.removeItem('exiting_app')
+        // Redirect out of the app to the search engine (Google)
+        window.location.replace('https://www.google.com')
+      }
+
+      window.addEventListener('popstate', handlePopState)
+      return () => {
+        window.removeEventListener('popstate', handlePopState)
+      }
+    }
   }, [])
 
   const isAuthenticated = mounted && !!user
@@ -42,7 +62,6 @@ export function WelcomeBanner() {
       const url = new URL(window.location.href)
       url.searchParams.delete('oauth')
       window.history.replaceState({}, '', url.toString())
-      toast.success('Successfully signed in with Google!')
       const timer = setTimeout(() => setShowWelcome(false), 5000)
       return () => clearTimeout(timer)
     }

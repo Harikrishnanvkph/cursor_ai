@@ -82,7 +82,7 @@ const ICON_TYPES = [
 ]
 
 export function DecorationZoneStyles() {
-  const { selectedZone, updateZoneStyle } = useFormatBuilder()
+  const { selectedZone, updateZoneStyle, registerBlob, revokeBlob } = useFormatBuilder()
   if (!selectedZone || selectedZone.type !== 'decoration') return null
 
   const zone = selectedZone as any
@@ -299,11 +299,9 @@ export function DecorationZoneStyles() {
                 onChange={e => {
                   const file = e.target.files?.[0]
                   if (!file) return
-                  const reader = new FileReader()
-                  reader.onload = (ev) => {
-                    update({ imageUrl: ev.target?.result as string })
-                  }
-                  reader.readAsDataURL(file)
+                  revokeBlob(s.imageUrl || '') // revoke old blob if replacing
+                  const blobUrl = registerBlob(file)
+                  update({ imageUrl: blobUrl })
                 }}
               />
             </label>

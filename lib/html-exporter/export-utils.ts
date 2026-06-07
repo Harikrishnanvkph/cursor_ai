@@ -1,4 +1,4 @@
-import { type ExtendedChartData, chartTypeMapping } from "../chart-store";
+import { type ExtendedChartData, chartTypeMapping, useChartStore } from "../chart-store";
 
 // Helper to map custom chart types to base Chart.js types
 function getMappedType(type: string): string {
@@ -49,7 +49,7 @@ export function filterChartDataForExport(
     const enabledSliceIndices = Array.from(enabledSliceIndicesSet).sort((a, b) => a - b);
 
     // Apply slice filtering to all datasets
-    exportDatasets = exportDatasets.map((ds: any) => {
+    exportDatasets = exportDatasets.map((ds: any, i: number) => {
         const filterSlice = (arr: any[] | undefined) => {
             if (!arr || !Array.isArray(arr)) return arr;
             return enabledSliceIndices.map(idx => arr[idx]);
@@ -67,10 +67,20 @@ export function filterChartDataForExport(
             remappedOverrides = Object.keys(newOverrides).length > 0 ? newOverrides : undefined;
         }
 
+        // Determine dataset type to assign proper rendering order (lower order renders last/on top)
+        const uniformityMode = (useChartStore.getState() as any).uniformityMode || 'uniform';
+        const datasetType = (chartMode === 'single' || uniformityMode === 'uniform')
+            ? chartType
+            : (ds.chartType || chartType || 'bar');
+        const isLineOrPoint = ['line', 'area', 'radar', 'scatter', 'bubble'].includes(datasetType as string);
+        const orderOffset = isLineOrPoint ? 0 : 100;
+        const defaultOrder = i + orderOffset;
+
         return {
             ...ds,
             // Map custom chart types (like 'bar3d') to base Chart.js types for the dataset
             type: chartMode === 'single' ? getMappedType(chartType) : getMappedType(ds.chartType || chartType),
+            order: ds.order !== undefined && ds.order !== null ? ds.order : defaultOrder,
             data: filterSlice(ds.data),
             backgroundColor: Array.isArray(ds.backgroundColor) ? filterSlice(ds.backgroundColor) : ds.backgroundColor,
             borderColor: Array.isArray(ds.borderColor) ? filterSlice(ds.borderColor) : ds.borderColor,

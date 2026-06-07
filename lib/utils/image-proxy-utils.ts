@@ -1,5 +1,4 @@
 // Utility for routing restricted images through the backend proxy
-import { api } from '../api';
 
 /**
  * Checks if a URL requires proxying to bypass CORS or hotlinking protection
@@ -28,7 +27,10 @@ export function requiresProxy(url: string): boolean {
  * Returns the proxied URL if necessary, otherwise returns the original URL.
  * It uses the session token to authenticate to the backend proxy route.
  */
-export function getProxiedImageUrl(originalUrl: string): string {
+export function getProxiedImageUrl(
+    originalUrl: string, 
+    options?: { width?: number; quality?: number; format?: string }
+): string {
     if (!requiresProxy(originalUrl)) {
         return originalUrl;
     }
@@ -37,6 +39,14 @@ export function getProxiedImageUrl(originalUrl: string): string {
     // Get API URL base
     const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000';
 
-    // Return the full proxy URL
-    return `${apiUrl}/api/proxy/image?url=${encodeURIComponent(originalUrl)}`;
+    // Build the proxy URL with query params
+    let url = `${apiUrl}/api/proxy/image?url=${encodeURIComponent(originalUrl)}`;
+    
+    if (options) {
+        if (options.width) url += `&width=${options.width}`;
+        if (options.quality) url += `&quality=${options.quality}`;
+        if (options.format) url += `&format=${options.format}`;
+    }
+
+    return url;
 }

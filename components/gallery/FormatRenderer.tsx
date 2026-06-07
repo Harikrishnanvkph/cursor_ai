@@ -26,12 +26,14 @@ import type {
   StatZone,
   BackgroundZone,
   DecorationZone,
+  ImageZone,
   FormatColorPalette,
 } from "@/lib/format-types"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { useDecorationStore } from "@/lib/stores/decoration-store"
 import { FormatZoneToolbar } from "@/components/format/FormatZoneToolbar"
 import { getPatternCSS } from "@/lib/utils"
+import { getProxiedImageUrl } from "@/lib/utils/image-proxy-utils"
 
 // ========================================
 // MAIN RENDERER
@@ -138,9 +140,10 @@ function zoneOrder(type: string): number {
     case 'background': return 0
     case 'decoration': return 1
     case 'chart': return 2
-    case 'text': return 3
-    case 'stat': return 4
-    default: return 5
+    case 'image': return 3
+    case 'text': return 4
+    case 'stat': return 5
+    default: return 6
   }
 }
 
@@ -165,7 +168,7 @@ function ZoneView({ renderedZone, scale, palette, canvasWidth, canvasHeight, int
 
   // Background zones don't need position — they fill the canvas
   if (zone.type === 'background') {
-    return <BackgroundZoneView renderedZone={renderedZone} scale={scale} />
+    return <BackgroundZoneView renderedZone={renderedZone} scale={scale} canvasWidth={canvasWidth} />
   }
 
   // Skip zones without position
@@ -244,6 +247,9 @@ function ZoneView({ renderedZone, scale, palette, canvasWidth, canvasHeight, int
       break
     case 'decoration':
       content = <DecorationZoneView renderedZone={renderedZone} scale={scale} style={{}} />
+      break
+    case 'image':
+      content = <ImageZoneContent renderedZone={renderedZone} scale={scale} zoneWidth={pos.width} />
       break
     default:
       return null
@@ -855,9 +861,10 @@ function ChartZoneView({
 // BACKGROUND ZONE
 // ========================================
 
-function BackgroundZoneView({ renderedZone, scale }: {
+function BackgroundZoneView({ renderedZone, scale, canvasWidth }: {
   renderedZone: RenderedZone
   scale: number
+  canvasWidth?: number
 }) {
   const zone = renderedZone.zone as BackgroundZone
 
@@ -869,12 +876,15 @@ function BackgroundZoneView({ renderedZone, scale }: {
 
   // Image background
   if (zone.style.type === 'image' && (renderedZone.resolvedImageUrl || zone.style.imageUrl)) {
-    const imageUrl = renderedZone.resolvedImageUrl || zone.style.imageUrl
+    const rawUrl = renderedZone.resolvedImageUrl || zone.style.imageUrl
+    const imageWidth = canvasWidth ? Math.round(canvasWidth * scale) : undefined
+    const imageUrl = getProxiedImageUrl(rawUrl, imageWidth ? { width: imageWidth, format: 'webp' } : undefined)
     return (
       <div style={bgStyle}>
         <img
           src={imageUrl}
           alt=""
+          loading="lazy"
           style={{
             width: '100%',
             height: '100%',
@@ -1026,4 +1036,63 @@ function DecorationZoneView({ renderedZone, scale, style }: {
   }
 
   return null
+}
+
+// ========================================
+// IMAGE ZONE
+// ========================================
+
+function ImageZoneContent({ renderedZone, scale, zoneWidth }: {
+  renderedZone: RenderedZone
+  scale: number
+  zoneWidth: number
+}) {
+  const zone = renderedZone.zone as ImageZone
+  const rawUrl = renderedZone.resolvedImageUrl || zone.imageUrl
+  
+  const reqWidth = Math.round(zoneWidth * scale)
+  const imageUrl = rawUrl ? getProxiedImageUrl(rawUrl, { width: reqWidth, format: 'webp' }) : ''
+
+  if (!imageUrl) {
+    return (
+      <div
+        style={{
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: zone.style?.backgroundColor || '#1e293b',
+          borderRadius: zone.style?.borderRadius ? `${zone.style.borderRadius * scale}px` : undefined,
+          border: `${1 * scale}px dashed rgba(255, 255, 255, 0.1)`,
+        }}
+      >
+        <span style={{ fontSize: `${14 * scale}px`, opacity: 0.4 }}>🖼️</span>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        overflow: 'hidden',
+        borderRadius: zone.style?.borderRadius ? `${zone.style.borderRadius * scale}px` : undefined,
+        backgroundColor: zone.style?.backgroundColor || 'transparent',
+      }}
+    >
+      <img
+        src={imageUrl}
+        alt=""
+        loading="lazy"
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: (zone.style?.imageFit as any) || 'cover',
+        }}
+      />
+    </div>
+  )
 }

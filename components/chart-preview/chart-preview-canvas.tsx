@@ -133,7 +133,11 @@ export const ChartPreviewCanvas = React.memo(({
                             className="absolute inset-0"
                             style={{ width: '100%', height: '100%', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: panMode ? 'none' : 'auto' }}
                         >
-                            <ChartGenerator devicePixelRatioMultiplier={Math.max(1.0, exactScale)} />
+                            <ChartGenerator 
+                                devicePixelRatioMultiplier={Math.max(1.0, exactScale)} 
+                                responsiveWidth={rWidth}
+                                responsiveHeight={rHeight}
+                            />
                         </div>
                         {/* Decoration Shapes Layer (chart mode) */}
                         {(hasDecorations || drawingMode) && containerSize.width > 0 && (
@@ -224,7 +228,11 @@ export const ChartPreviewCanvas = React.memo(({
                             pointerEvents: panMode ? 'none' : 'auto' 
                         }}
                     >
-                        <ChartGenerator devicePixelRatioMultiplier={Math.max(1.0, exactScale)} />
+                        <ChartGenerator 
+                            devicePixelRatioMultiplier={Math.max(1.0, exactScale)} 
+                            responsiveWidth={chartWidth}
+                            responsiveHeight={chartHeight}
+                        />
                         {/* Decoration Shapes Layer (chart mode, fixed dimensions) */}
                         {(hasDecorations || drawingMode) && (
                             <div className="absolute inset-0" style={{ zIndex: 20, pointerEvents: drawingMode ? 'auto' : 'none' }}>

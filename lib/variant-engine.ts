@@ -20,6 +20,7 @@ import type {
   StatZone,
   BackgroundZone,
   DecorationZone,
+  ImageZone,
   RenderedZone,
   RenderedFormat,
   LLMContentPackage,
@@ -422,6 +423,8 @@ function renderZone(
       return renderBackgroundZone(zone as BackgroundZone, content, contextualImageUrl)
     case 'decoration':
       return renderDecorationZone(zone as DecorationZone)
+    case 'image':
+      return renderImageZone(zone as ImageZone, content, contextualImageUrl)
     default:
       return { zone }
   }
@@ -609,6 +612,31 @@ function renderDecorationZone(zone: DecorationZone): RenderedZone {
     zone,
     resolvedSvg: zone.style.svgContent || undefined,
   }
+}
+
+/**
+ * Map image content to an image zone
+ */
+function renderImageZone(
+  zone: ImageZone,
+  content: LLMContentPackage,
+  contextualImageUrl?: string
+): RenderedZone {
+  const result: RenderedZone = { zone }
+
+  // If the zone has a pre-filled image URL, use it
+  if (zone.imageUrl) {
+    result.resolvedImageUrl = zone.imageUrl
+    return result
+  }
+
+  // Use dynamically fetched contextual image if required by this zone
+  if (zone.contextual && contextualImageUrl) {
+    result.resolvedImageUrl = contextualImageUrl
+    return result
+  }
+
+  return result
 }
 
 // ========================================

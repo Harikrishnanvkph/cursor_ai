@@ -117,9 +117,9 @@ export function SiteHeader() {
                   asChild 
                   className="px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 group text-slate-600 hover:text-purple-700 hover:bg-purple-50 dark:text-slate-300 dark:hover:text-purple-300 dark:hover:bg-purple-500/10"
                 >
-                  <Link href="/board">
+                  <Link href={user?.is_admin ? "/admin" : "/board"}>
                     <LayoutDashboard className="h-4 w-4 mr-2 opacity-70 group-hover:opacity-100 transition-opacity" />
-                    Dashboard
+                    {user?.is_admin ? "Admin" : "Dashboard"}
                   </Link>
                 </Button>
 
@@ -236,12 +236,12 @@ export function SiteHeader() {
                     AI Chat
                   </Link>
                   <Link
-                    href="/board"
+                    href={user?.is_admin ? "/admin" : "/board"}
                     className="flex items-center px-4 py-3 text-slate-700 hover:text-purple-600 hover:bg-purple-50 rounded-xl font-medium transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     <LayoutDashboard className="h-5 w-5 mr-3 text-purple-500" />
-                    Dashboard
+                    {user?.is_admin ? "Admin" : "Dashboard"}
                   </Link>
                   <Link
                     href="/editor"

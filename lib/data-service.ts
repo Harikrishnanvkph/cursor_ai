@@ -321,6 +321,13 @@ class DataService {
   // FORMAT MANAGEMENT (Format Blueprints)
   // =============================================
 
+  async uploadImage(base64Data: string, filename?: string): Promise<ApiResponse<{ publicUrl: string }>> {
+    return this.request('/api/data/upload-image', {
+      method: 'POST',
+      body: JSON.stringify({ base64Data, filename }),
+    }, false);
+  }
+
   async getFormats(): Promise<ApiResponse<any[]>> {
     return this.request('/api/data/formats');
   }

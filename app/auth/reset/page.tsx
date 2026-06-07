@@ -33,7 +33,7 @@ export default function ResetPasswordPage() {
     try {
       await authApi.resetPassword({ token, password })
       toast.success('Password has been reset. You can now sign in.')
-      router.push('/signin')
+      router.replace('/signin')
     } catch {
       toast.error('Failed to reset password. Please request a new link.')
     } finally {

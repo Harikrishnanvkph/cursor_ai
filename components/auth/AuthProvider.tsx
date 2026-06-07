@@ -16,16 +16,23 @@ type AuthContextValue = {
   signOut: () => Promise<void>
   signInWithGoogle: () => void
   signInAsGuest: () => void
+  refresh: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
-const setAuthCookie = (isAuthenticated: boolean) => {
+const setAuthCookie = (isAuthenticated: boolean, isAdmin?: boolean) => {
   if (typeof document !== 'undefined') {
     if (isAuthenticated) {
       document.cookie = `is_authenticated=true; path=/; max-age=${15 * 24 * 60 * 60}; SameSite=Lax`
+      if (isAdmin) {
+        document.cookie = `is_admin=true; path=/; max-age=${15 * 24 * 60 * 60}; SameSite=Lax`
+      } else {
+        document.cookie = `is_admin=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`
+      }
     } else {
-      document.cookie = `is_authenticated=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`
+      document.cookie = `is_authenticated=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`
+      document.cookie = `is_admin=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`
     }
   }
 }
@@ -52,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           localStorage.removeItem('cached_auth_user')
         }
       }
-      setAuthCookie(!!res.user)
+      setAuthCookie(!!res.user, res.user?.is_admin)
     } catch (error: any) {
       console.warn('Unexpected error during refresh:', error)
       setUser(null)
@@ -74,6 +81,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {}
     refresh()
   }, [refresh])
+
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      const protectedPaths = ['/board', '/landing', '/editor', '/admin']
+      const isProtected = protectedPaths.some(p => window.location.pathname.startsWith(p))
+      
+      if (isProtected) {
+        const hasCookie = document.cookie.includes('is_authenticated=true')
+        // Force a page reload if restored from back-forward cache after logging out
+        if (event.persisted && !hasCookie) {
+          window.location.reload()
+        }
+      }
+    }
+
+    window.addEventListener('pageshow', handlePageShow)
+    return () => {
+      window.removeEventListener('pageshow', handlePageShow)
+    }
+  }, [])
 
   const signIn = useCallback(async (email: string, password: string): Promise<boolean> => {
     setLoading(true)
@@ -97,9 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (typeof window !== 'undefined' && res.user?.id) {
         localStorage.setItem('user-id', res.user.id)
       }
-      setAuthCookie(true)
-
-      toast.success('Signed in')
+      setAuthCookie(true, res.user?.is_admin)
 
       // Handle redirect after successful sign-in
       if (typeof window !== 'undefined') {
@@ -107,14 +132,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const redirectPath = sessionStorage.getItem('redirectAfterSignIn')
 
         if (res.user?.is_admin) {
-           router.push('/admin')
+           router.replace('/admin')
         } else if (redirectPath) {
            console.log(`🔄 SignIn successful, redirecting to: ${redirectPath}`)
            sessionStorage.removeItem('redirectAfterSignIn')
-           router.push(redirectPath)
+           router.replace(redirectPath)
         } else {
            // Default redirect if no stored path exists for normal users
-           router.push('/')
+           router.replace('/')
         }
       }
 
@@ -212,42 +237,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = useCallback(async () => {
     setLoading(true)
     try {
+      // Get the userId before we clear state
+      const userId = typeof window !== 'undefined' ? localStorage.getItem('user-id') : null
       const res = await authApi.signOut()
 
       // Always clear the user locally regardless of server response
       setUser(null)
       setAuthCookie(false)
-      localStorage.removeItem('cached_auth_user')
 
-      // Clean up old localStorage data (only clears data older than 12 hours)
       if (typeof window !== 'undefined') {
-        try {
-          const { cleanupOnLogout } = await import('@/lib/storage-utils')
-          cleanupOnLogout()
-        } catch (err) {
-          console.warn('Failed to run logout cleanup:', err);
+        localStorage.removeItem('cached_auth_user')
+        localStorage.removeItem('user-id')
+        sessionStorage.removeItem('auth_user')
+        sessionStorage.removeItem('redirectAfterSignIn')
+        sessionStorage.setItem('logged_out_from_oauth', 'true')
+
+        // Completely evict all user local storage and IndexedDB keys
+        if (userId) {
+          try {
+            const { clearAllUserSessionData } = await import('@/lib/storage-utils')
+            await clearAllUserSessionData(userId)
+          } catch (err) {
+            console.warn('Failed to clear user storage:', err)
+          }
         }
-      }
-
-      // Clear any local caches that could rehydrate user
-      if (typeof window !== 'undefined') {
-        try {
-          sessionStorage.removeItem('auth_user')
-          sessionStorage.removeItem('redirectAfterSignIn')
-        } catch { }
       }
 
       // Only show error if there was an actual problem (not network failure)
       if (!res) {
         console.warn('Server unavailable during sign out, but user cleared locally')
-        // Don't show error toast since sign out actually worked
       }
-      // Soft redirect to home to ensure a clean post-logout view
+
+      // Immediate redirect to sign-in page to secure session and reset memory heap
       if (typeof window !== 'undefined') {
-        setTimeout(() => {
-          // If you're on a protected page, this will take you out cleanly
-          window.location.href = '/'
-        }, 50)
+        window.location.replace('/signin')
+        return
       }
     } catch (error: any) {
       console.error('Sign out error:', error)
@@ -255,45 +279,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Still clear the user locally even if server call fails
       setUser(null)
       setAuthCookie(false)
-      localStorage.removeItem('cached_auth_user')
 
-      // Clear user-specific localStorage even on error
       if (typeof window !== 'undefined') {
-        try {
-          const userId = localStorage.getItem('user-id');
-          if (userId) {
-            const storeNames = [
-              'chart-store-with-sync',
-              'chart-store',
-              'chat-store',
-              'enhanced-chat-store',
-              'template-store',
-              'undo-store',
-              'chat-history',
-              'offline-conversations',
-              'offline-chart-data',
-            ];
+        const userId = localStorage.getItem('user-id')
+        localStorage.removeItem('cached_auth_user')
+        localStorage.removeItem('user-id')
+        sessionStorage.removeItem('auth_user')
+        sessionStorage.removeItem('redirectAfterSignIn')
+        sessionStorage.setItem('logged_out_from_oauth', 'true')
 
-            storeNames.forEach(name => {
-              const key = `${name}-${userId}`;
-              if (localStorage.getItem(key)) {
-                localStorage.removeItem(key);
-              }
-            });
+        if (userId) {
+          try {
+            const { clearAllUserSessionData } = await import('@/lib/storage-utils')
+            await clearAllUserSessionData(userId)
+          } catch (err) {
+            console.warn('Failed to clear user storage on error:', err)
           }
-
-          sessionStorage.removeItem('auth_user')
-          sessionStorage.removeItem('redirectAfterSignIn')
-          localStorage.removeItem('user-id')
-        } catch { }
+        }
       }
 
       // Only show error for actual failures, not network issues
       if (!error.message?.includes('network') && !error.message?.includes('unavailable')) {
         toast.error('Sign out completed, but there was an issue with the server.')
       }
+
+      if (typeof window !== 'undefined') {
+        window.location.replace('/signin')
+        return
+      }
     } finally {
-      setLoading(false)
+      if (typeof window === 'undefined') {
+        setLoading(false)
+      }
     }
   }, [])
 
@@ -302,33 +319,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true)
       const url = await authApi.googleUrl()
 
-      // Check if this is a network failure response
       if (!url) {
-        // Check if it's a network error vs server error
         if (typeof window !== 'undefined' && !navigator.onLine) {
           toast.error('No internet connection. Please check your network and try again.')
         } else {
           toast.error('Server is currently unavailable. Please try again later.')
         }
+        setLoading(false)
         return
       }
 
-      window.location.href = url
+      // Same tab Google OAuth redirect (push to preserve /signin in history)
+      if (typeof window !== 'undefined') {
+        window.location.href = url
+      }
     } catch (error: any) {
       console.error('Failed to get Google OAuth URL:', error)
-
-      // Handle other errors (not network failures)
-      const errorMessage = error?.message || 'Unknown error occurred'
-
-      if (errorMessage.includes('Request timed out')) {
-        toast.error('Request timed out. Please try again.')
-      } else if (errorMessage.includes('Request failed')) {
-        toast.error('Authentication service is temporarily unavailable. Please try again.')
-      } else {
-        toast.error('Failed to start Google OAuth. Please try again.')
-      }
-    } finally {
       setLoading(false)
+      toast.error('Failed to start Google sign-in.')
     }
   }, [])
 
@@ -352,10 +360,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (typeof window !== 'undefined' && res.user?.id) {
         localStorage.setItem('user-id', res.user.id)
       }
-      setAuthCookie(true)
+      setAuthCookie(true, res.user?.is_admin)
 
-      toast.success('Signed in as Guest')
-      router.push('/')
+      router.replace('/')
     } catch (e: any) {
       console.error('Guest sign-in error:', e)
       toast.error('Failed to sign in as guest. Please try again.')
@@ -365,7 +372,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router])
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, signInWithGoogle, signInAsGuest }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, signInWithGoogle, signInAsGuest, refresh }}>
       {children}
     </AuthContext.Provider>
   )

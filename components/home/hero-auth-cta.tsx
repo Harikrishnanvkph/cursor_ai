@@ -22,11 +22,13 @@ export function HeroAuthCta() {
   const isAuthenticated = mounted && !!user
 
   if (isAuthenticated) {
+    const dashboardHref = user?.is_admin ? '/admin' : '/board'
+    const buttonText = user?.is_admin ? 'Admin Panel' : 'View Dashboard'
     return (
       <Button asChild size="lg" variant="outline" className="px-8 py-6 text-base font-semibold bg-white border-slate-200 dark:border-slate-700 dark:bg-slate-800 text-slate-700 dark:text-white hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-700 transition-all duration-300 rounded-xl">
-        <Link href="/board">
+        <Link href={dashboardHref}>
           <LayoutDashboard className="w-5 h-5 mr-2" />
-          View Dashboard
+          {buttonText}
         </Link>
       </Button>
     )

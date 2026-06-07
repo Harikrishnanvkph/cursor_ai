@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useState, useMemo, useCallback, useEffect } from 'react'
+import React, { createContext, useContext, useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import type {
   FormatSkeleton, FormatZone, ZoneType, FormatColorPalette,
   FormatDimensions, ZonePosition, BaseZone, FormatCategory,
@@ -74,6 +74,11 @@ interface FormatBuilderContextValue {
   isEditing: boolean
   editFormat: EditFormatData | null
   adminMode: boolean
+
+  // ─── Blob registry (Object URL image handling) ──
+  registerBlob: (file: File) => string
+  revokeBlob: (blobUrl: string) => void
+  blobRegistry: React.RefObject<Map<string, File>>
 }
 
 const FormatBuilderContext = createContext<FormatBuilderContextValue | null>(null)
@@ -103,30 +108,48 @@ export function FormatBuilderProvider({
   const [skeleton, setSkeleton] = useState<FormatSkeleton>(() => {
     // Editing an existing format from DB — use its skeleton
     if (editFormat?.skeleton) return editFormat.skeleton
-
-    // Creating a new format — always start fresh.
-    // Clear any stale draft from a previous session so it doesn't bleed in.
-    if (typeof window !== 'undefined') {
-      sessionStorage.removeItem('format-builder-draft-skeleton')
-      sessionStorage.removeItem('format-builder-draft-meta')
-    }
     return createDefaultSkeleton()
   })
 
-  // Sync draft to session storage (only while actively working)
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('format-builder-draft-skeleton', JSON.stringify(skeleton))
-    }
-  }, [skeleton])
+  // ─── Blob registry (Object URL image handling) ──
+  // Maps blob URLs to their original File objects for upload at save time
+  const blobRegistryRef = useRef<Map<string, File>>(new Map())
 
-  // Clear draft on unmount so it doesn't leak into future "Create" sessions
+  const registerBlob = useCallback((file: File): string => {
+    const blobUrl = URL.createObjectURL(file)
+    blobRegistryRef.current.set(blobUrl, file)
+    return blobUrl
+  }, [])
+
+  const revokeBlob = useCallback((blobUrl: string) => {
+    if (blobUrl && blobUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(blobUrl)
+      blobRegistryRef.current.delete(blobUrl)
+    }
+  }, [])
+
+  // ─── Warn-on-leave guard ────────────────────
+  // Track whether the builder has unsaved changes
+  const hasSavedRef = useRef(false)
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Only warn if there are blob images (local uploads) that haven't been saved yet
+      if (blobRegistryRef.current.size > 0 && !hasSavedRef.current) {
+        e.preventDefault()
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [])
+
+  // ─── Cleanup blob URLs on unmount ───────────
   useEffect(() => {
     return () => {
-      if (typeof window !== 'undefined') {
-        sessionStorage.removeItem('format-builder-draft-skeleton')
-        sessionStorage.removeItem('format-builder-draft-meta')
-      }
+      blobRegistryRef.current.forEach((_, url) => {
+        URL.revokeObjectURL(url)
+      })
+      blobRegistryRef.current.clear()
     }
   }, [])
 
@@ -312,6 +335,7 @@ export function FormatBuilderProvider({
     drawingMode, setDrawingMode,
     addDecoration, updateDecoration, deleteDecoration, duplicateDecoration,
     isEditing, editFormat, adminMode,
+    registerBlob, revokeBlob, blobRegistry: blobRegistryRef,
   }), [
     skeleton, formatName, formatDesc, category, tagsInput, sortOrder,
     selectedZoneId, selectedZone, zoom, showGuides, gridSize,
@@ -320,6 +344,7 @@ export function FormatBuilderProvider({
     selectedDecoId, selectedDeco, drawingMode,
     addDecoration, updateDecoration, deleteDecoration, duplicateDecoration,
     isEditing, editFormat, adminMode,
+    registerBlob, revokeBlob,
   ])
 
   return (

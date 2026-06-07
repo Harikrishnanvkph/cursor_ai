@@ -65,6 +65,15 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
 
     // Safely get a reference to the primary dataset we are editing to read its current values
     const primaryDataset = chartData.datasets[primaryIndex] || chartData.datasets[0] || {};
+    const effectiveChartType = primaryDataset.chartType || primaryDataset.type || chartType;
+    console.log("DEBUG STYLING TAB:", {
+        primaryIndex,
+        primaryDatasetLabel: primaryDataset.label,
+        primaryDatasetType: primaryDataset.type,
+        primaryDatasetChartType: primaryDataset.chartType,
+        globalChartType: chartType,
+        effectiveChartType
+    });
 
     /**
      * Helper: update a dataset property with per-slice awareness.
@@ -114,7 +123,7 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
     return (
         <div className="space-y-3 mt-4">
             {/* Slice Border Styling - Only for slice-based, bar, and waterfall charts */}
-            {(chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea' || chartType === 'bar' || chartType === 'horizontalBar' || chartType === 'stackedBar' as any || chartType === 'waterfall' as any || chartType === 'pie3d' as any || chartType === 'doughnut3d' as any || chartType === 'bar3d' as any || chartType === 'horizontalBar3d' as any || chartType === 'gauge' as any || chartType === 'funnel' as any) && (
+            {(effectiveChartType === 'pie' || effectiveChartType === 'doughnut' || effectiveChartType === 'polarArea' || effectiveChartType === 'bar' || effectiveChartType === 'horizontalBar' || effectiveChartType === 'stackedBar' as any || effectiveChartType === 'waterfall' as any || effectiveChartType === 'pie3d' as any || effectiveChartType === 'doughnut3d' as any || effectiveChartType === 'bar3d' as any || effectiveChartType === 'horizontalBar3d' as any || effectiveChartType === 'gauge' as any || effectiveChartType === 'funnel' as any) && (
                 <div className="space-y-3">
                     <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
                         <Palette className="h-4 w-4 text-blue-900" />
@@ -169,7 +178,7 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                     </div>
  
                     {/* Border Rounding - Only for bar-based charts */}
-                    {((chartType as any) === 'bar' || chartType === 'horizontalBar' || chartType === 'stackedBar' || chartType === 'waterfall' as any || chartType === 'bar3d' as any || chartType === 'horizontalBar3d' as any || chartType === 'funnel' as any) && (
+                    {((effectiveChartType as any) === 'bar' || effectiveChartType === 'horizontalBar' || effectiveChartType === 'stackedBar' || effectiveChartType === 'waterfall' as any || effectiveChartType === 'bar3d' as any || effectiveChartType === 'horizontalBar3d' as any || effectiveChartType === 'funnel' as any) && (
                         <div className="space-y-1">
                             <Label className="text-xs font-medium">Border Rounding</Label>
                             <div className="flex items-center gap-2">
@@ -255,7 +264,7 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
             )}
 
             {/* Point Settings - For all point-based charts */}
-            {(chartType === 'line' || chartType === 'area' as any || chartType === 'radar' || chartType === 'scatter' || chartType === 'bubble') && (
+            {(effectiveChartType === 'line' || effectiveChartType === 'area' as any || effectiveChartType === 'radar' || effectiveChartType === 'scatter' || effectiveChartType === 'bubble') && (
                 <div className="space-y-3">
                     <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
                         <CircleDot className="h-4 w-4 text-blue-900" />
@@ -268,9 +277,9 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                     <PointFillToggle />
 
                     {/* Row 1: Point Radius, Hover Radius, Border Width */}
-                    <div className={`grid gap-3 ${chartType === 'bubble' ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                    <div className={`grid gap-3 ${effectiveChartType === 'bubble' ? 'grid-cols-2' : 'grid-cols-3'}`}>
                         {/* Point Radius - not for bubble (bubble uses r value in data) */}
-                        {chartType !== 'bubble' && (
+                        {effectiveChartType !== 'bubble' && (
                             <div className="space-y-1">
                                 <Label className="text-xs font-medium">Point Radius</Label>
                                 <Input
@@ -371,7 +380,7 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                     </div>
 
                     {/* Bubble-specific settings */}
-                    {chartType === 'bubble' && (
+                    {effectiveChartType === 'bubble' && (
                         <div className="pt-2 border-t border-blue-100 space-y-3">
                             <div className="text-xs font-medium text-blue-900">Bubble Size Range</div>
                             <div className="grid grid-cols-2 gap-3">
@@ -417,7 +426,7 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
             )}
 
             {/* Line Properties - Only for line, area, radar charts */}
-            {(chartType === 'line' || chartType === 'area' as any || chartType === 'radar') && (
+            {(effectiveChartType === 'line' || effectiveChartType === 'area' as any || effectiveChartType === 'radar') && (
                 <div className="space-y-3">
                     <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
                         <Activity className="h-4 w-4 text-blue-900" />
@@ -491,7 +500,7 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                     </div>
 
                     {/* Area Fill Settings - Only for area charts */}
-                    {chartType === 'area' as any && (
+                    {effectiveChartType === 'area' as any && (
                         <div className="pt-2 border-t border-blue-100 space-y-3">
                             <div className="flex items-center justify-between">
                                 <div className="text-xs font-medium text-blue-900">Area Fill Settings</div>
@@ -599,7 +608,7 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
             )}
 
             {/* 3D Effect Settings - Only for pie3d and doughnut3d */}
-            {(chartType === 'pie3d' as any || chartType === 'doughnut3d' as any) && (
+            {(effectiveChartType === 'pie3d' as any || effectiveChartType === 'doughnut3d' as any) && (
                 <div className="space-y-3">
                     <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
                         <svg className="h-4 w-4 text-blue-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -748,7 +757,7 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
             )}
 
             {/* 3D Bar Effect Settings - Only for bar3d and horizontalBar3d */}
-            {(chartType === 'bar3d' as any || chartType === 'horizontalBar3d' as any) && (
+            {(effectiveChartType === 'bar3d' as any || effectiveChartType === 'horizontalBar3d' as any) && (
                 <div className="space-y-3 mt-4 border-gray-100">
                     <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
                         <svg className="h-4 w-4 text-blue-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -897,7 +906,7 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
             )}
 
             {/* Funnel Chart Settings - Only for funnel charts */}
-            {(chartType === 'funnel' as any) && (
+            {(effectiveChartType === 'funnel' as any) && (
                 <div className="space-y-3 mt-4">
                     <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
                         <svg className="h-4 w-4 text-blue-900" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1007,7 +1016,7 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
             )}
 
             {/* Gauge Chart Settings - Only for gauge charts */}
-            {(chartType === 'gauge' as any) && (
+            {(effectiveChartType === 'gauge' as any) && (
                 <div className="mt-4 space-y-4">
                     {/* ── Section Header ── */}
                     <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
@@ -1437,7 +1446,7 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
             )}
 
             {/* Waterfall Chart Settings - Only for waterfall charts */}
-            {(chartType === 'waterfall' as any) && (
+            {(effectiveChartType === 'waterfall' as any) && (
                 <div className="space-y-4 mt-4">
                     {/* Section Header */}
                     <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
@@ -1646,7 +1655,7 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
             {/* ═══════ Draw Designs on Slices ═══════ */}
             <DrawDesignsSection
                 chartData={chartData}
-                chartType={chartType}
+                chartType={effectiveChartType}
                 handleUpdateDataset={handleUpdateDataset}
             />
         </div>

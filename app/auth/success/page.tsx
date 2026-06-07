@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/components/auth/AuthProvider'
-import { toast } from 'sonner'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { CheckCircle, Loader2 } from 'lucide-react'
@@ -12,7 +11,7 @@ import { authApi } from '@/lib/auth-client'
 export default function AuthSuccessPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { user, loading } = useAuth()
+  const { user, loading, refresh } = useAuth()
   const provider = searchParams.get('provider')
   const [refreshing, setRefreshing] = useState(true)
 
@@ -20,13 +19,8 @@ export default function AuthSuccessPage() {
     const refreshUserData = async () => {
       try {
         setRefreshing(true)
-        // Force refresh user data from backend
-        const res = await authApi.me()
-        if (res.user) {
-          // Update the user state in AuthProvider
-          window.location.reload()
-          return
-        }
+        // Force refresh user data from backend in-memory (no hard reload)
+        await refresh()
       } catch (error) {
         console.error('Failed to refresh user data:', error)
       } finally {
@@ -36,8 +30,7 @@ export default function AuthSuccessPage() {
 
     // If user is already authenticated, redirect to home
     if (user) {
-      toast.success(`Successfully signed in with ${provider || 'OAuth'}!`)
-      router.push('/')
+      router.replace('/')
       return
     }
 
@@ -45,13 +38,13 @@ export default function AuthSuccessPage() {
     if (!loading) {
       refreshUserData()
     }
-  }, [user, loading, router, provider])
+  }, [user, loading, router, provider, refresh])
 
   // Auto-redirect after 5 seconds if still not authenticated
   useEffect(() => {
     if (!user && !refreshing) {
       const timer = setTimeout(() => {
-        router.push('/signin')
+        router.replace('/signin')
       }, 5000)
 
       return () => clearTimeout(timer)
@@ -108,7 +101,7 @@ export default function AuthSuccessPage() {
                   )}
                 </div>
               </div>
-              <Button onClick={() => router.push('/')} className="w-full">
+              <Button onClick={() => router.replace('/')} className="w-full">
                 Continue to Dashboard
               </Button>
             </div>
@@ -117,7 +110,7 @@ export default function AuthSuccessPage() {
               <p className="text-sm text-gray-600">
                 Redirecting you to sign in...
               </p>
-              <Button onClick={() => router.push('/signin')} variant="outline" className="w-full">
+              <Button onClick={() => router.replace('/signin')} variant="outline" className="w-full">
                 Go to Sign In
               </Button>
             </div>

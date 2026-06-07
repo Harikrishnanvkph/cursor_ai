@@ -1,6 +1,6 @@
 "use client"
 
-import type { RenderedFormat, RenderedZone, TextZone, StatZone, BackgroundZone, DecorationZone, ChartZone } from "@/lib/format-types"
+import type { RenderedFormat, RenderedZone, TextZone, StatZone, BackgroundZone, DecorationZone, ChartZone, ImageZone } from "@/lib/format-types"
 import type { DecorationShape } from "@/lib/stores/decoration-store"
 import { generateChartHTMLForTemplate, type HTMLExportOptions } from "@/lib/html-exporter"
 import { generateDecorationsSVG, generateDecorationsCSS } from "./decoration-html-export"
@@ -193,6 +193,8 @@ function renderZoneHTML(
             return renderChartZoneHTML(rz, chartComponents)
         case 'decoration':
             return renderDecorationZoneHTML(rz)
+        case 'image':
+            return renderImageZoneHTML(rz)
         default:
             return ''
     }
@@ -404,4 +406,35 @@ function renderDecorationZoneHTML(rz: RenderedZone): string {
     }
 
     return ''
+}
+
+function renderImageZoneHTML(rz: RenderedZone): string {
+    const zone = rz.zone as ImageZone
+    const pos = zone.position
+    if (!pos) return ''
+
+    const imageUrl = rz.resolvedImageUrl || zone.imageUrl
+    if (!imageUrl) return ''
+
+    const s = zone.style || {}
+    const fit = s.imageFit || 'cover'
+
+    const style = [
+        `left:${pos.x}px`,
+        `top:${pos.y}px`,
+        `width:${pos.width}px`,
+        `height:${pos.height}px`,
+        s.borderRadius ? `border-radius:${s.borderRadius}px` : '',
+        s.backgroundColor ? `background-color:${s.backgroundColor}` : '',
+        'position:absolute',
+        'overflow:hidden',
+    ].filter(Boolean).join(';')
+
+    let imgHtml = `<div class="format-zone" style="${style}">`
+    imgHtml += `<img src="${imageUrl}" alt="" style="width:100%;height:100%;object-fit:${fit};object-position:${s.objectPosition || 'center'}"/>`
+    if (s.overlay) {
+        imgHtml += `<div style="position:absolute;inset:0;background-color:${s.overlay}"></div>`
+    }
+    imgHtml += '</div>'
+    return imgHtml
 }

@@ -45,6 +45,8 @@ const CLEARABLE_STORES = [
   'undo-store',
   'template-store',
   'decoration-store',
+  'chartography-style-presets',
+  'format-gallery-store',
 ];
 
 /**
@@ -99,7 +101,7 @@ export function getCurrentUserId(): string {
 }
 
 /**
- * Clears all localStorage keys for a specific user
+ * Clears all localStorage and IndexedDB keys for a specific user
  * @param userId - The user ID whose data should be cleared
  */
 export function clearUserSpecificStorage(userId: string): void {
@@ -116,6 +118,8 @@ export function clearUserSpecificStorage(userId: string): void {
     'offline-conversations',
     'offline-chart-data',
     'decoration-store',
+    'chartography-style-presets',
+    'format-gallery-store',
   ];
 
   const keysToRemove = storeNames.map(name => `${name}-${userId}`);
@@ -127,13 +131,60 @@ export function clearUserSpecificStorage(userId: string): void {
         localStorage.removeItem(key);
         removedCount++;
       }
+      removeStorageTimestamp(key);
+      // Clean IndexedDB asynchronously to avoid blocking
+      idbStorage.removeItem(key).catch(() => {});
     } catch (error) {
       console.warn(`Failed to remove ${key}:`, error);
     }
   });
 
-  console.log(`✅ Cleared ${removedCount} localStorage keys for user: ${userId}`);
+  console.log(`✅ Cleared ${removedCount} localStorage + IndexedDB keys for user: ${userId}`);
 }
+
+/**
+ * Unconditionally and completely clears all user session data (localStorage + IndexedDB) for a specific user on logout
+ * @param userId - The user ID
+ */
+export async function clearAllUserSessionData(userId: string): Promise<void> {
+  if (typeof window === 'undefined') return;
+
+  const storeNames = [
+    'chart-store-with-sync',
+    'chart-store',
+    'chat-store',
+    'enhanced-chat-store',
+    'chat-history',
+    'offline-conversations',
+    'offline-chart-data',
+    'undo-store',
+    'template-store',
+    'decoration-store',
+    'chartography-style-presets',
+    'format-gallery-store',
+  ];
+
+  const keysToRemove = storeNames.map(name => `${name}-${userId}`);
+
+  let removedCount = 0;
+  for (const key of keysToRemove) {
+    try {
+      if (localStorage.getItem(key) !== null) {
+        localStorage.removeItem(key);
+        removedCount++;
+      }
+      removeStorageTimestamp(key);
+      
+      // Clear from IndexedDB
+      await idbStorage.removeItem(key).catch(() => {});
+    } catch (error) {
+      console.warn(`Failed to remove key ${key}:`, error);
+    }
+  }
+
+  console.log(`✅ Completely cleared all user session data (localStorage + IndexedDB) for user: ${userId}`);
+}
+
 
 /**
  * Clears all localStorage keys (useful for complete logout)

@@ -158,7 +158,7 @@ export function createZone(
       const role: TextZoneRole = subConfig?.role || 'title'
       const isTitle = role === 'title'
       return {
-        id, type: 'text', role,
+        id, type: 'text', role, contentMode: 'ai',
         position: { x: 60, y: isTitle ? 40 : 140, width: dims.width - 120, height: isTitle ? 80 : 60 },
         style: {
           fontSize: isTitle ? 36 : role === 'subtitle' ? 20 : role === 'source' ? 11 : 16,
@@ -168,23 +168,23 @@ export function createZone(
           textAlign: 'center',
           lineHeight: isTitle ? 1.15 : 1.4,
         },
-      }
+      } as any
     }
     case 'chart': {
       return {
-        id, type: 'chart',
+        id, type: 'chart', contentMode: 'ai',
         position: { x: 60, y: 200, width: dims.width - 120, height: Math.min(500, dims.height * 0.45) },
         chartConfig: {
           preferredChartTypes: ['bar', 'pie', 'line'],
           backgroundColor: 'transparent',
           legendPosition: 'bottom',
         },
-      }
+      } as any
     }
     case 'stat': {
       const role: StatZoneRole = subConfig?.role || 'highlight'
       return {
-        id, type: 'stat', role,
+        id, type: 'stat', role, contentMode: 'ai',
         position: { x: 60, y: dims.height - 220, width: (dims.width - 140) / 3, height: 120 },
         style: {
           valueSize: role === 'highlight' ? 52 : 36,
@@ -196,7 +196,7 @@ export function createZone(
           labelFontFamily: 'Inter, sans-serif',
           layout: 'vertical',
         },
-      }
+      } as any
     }
     case 'decoration': {
       const subtype: DecorationSubtype = subConfig?.subtype || 'shape'
@@ -220,7 +220,7 @@ export function createZone(
     }
     case 'background': {
       return {
-        id, type: 'background',
+        id, type: 'background', contentMode: 'ai',
         style: {
           type: 'gradient',
           gradientType: 'linear',
@@ -228,11 +228,11 @@ export function createZone(
           gradientColor1: palette.background || '#0f172a',
           gradientColor2: '#1e293b',
         },
-      }
+      } as any
     }
     case 'image': {
       return {
-        id, type: 'image',
+        id, type: 'image', contentMode: 'ai',
         position: { x: 60, y: dims.height * 0.3, width: dims.width - 120, height: dims.height * 0.35 },
         style: {
           imageFit: 'cover',

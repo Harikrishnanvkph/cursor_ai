@@ -27,10 +27,10 @@ export default function AuthErrorPage() {
             Please try signing in again or contact support if the problem persists.
           </p>
           <div className="space-y-2">
-            <Button onClick={() => router.push('/signin')} className="w-full">
+            <Button onClick={() => router.replace('/signin')} className="w-full">
               Try Again
             </Button>
-            <Button onClick={() => router.push('/')} variant="outline" className="w-full">
+            <Button onClick={() => router.replace('/')} variant="outline" className="w-full">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Home
             </Button>

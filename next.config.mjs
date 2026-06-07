@@ -40,6 +40,18 @@ const nextConfig = {
   // Improve build output
   // output: 'standalone',
   outputFileTracingRoot: __dirname,
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'http://localhost:5000/api/:path*',
+      },
+      {
+        source: '/auth/:path*',
+        destination: 'http://localhost:5000/auth/:path*',
+      },
+    ]
+  },
 }
 
 export default nextConfig

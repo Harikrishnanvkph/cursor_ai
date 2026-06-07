@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation'
 import { dataService } from '@/lib/data-service'
 import { toast } from 'sonner'
 import { useDecorationStore } from '@/lib/stores/decoration-store'
+import { useFormatGalleryStore } from '@/lib/stores/format-gallery-store'
 
 export function FormatBuilderToolbar() {
   const router = useRouter()
@@ -22,10 +23,85 @@ export function FormatBuilderToolbar() {
     gridSize, setGridSize,
     isEditing, editFormat,
     adminMode,
+    blobRegistry,
   } = useFormatBuilder()
 
   const [isBusy, setIsBusy] = React.useState(false)
+  const [busyMessage, setBusyMessage] = React.useState('')
   const dims = skeleton.dimensions
+
+  // Convert a File object to a base64 data URI (one-time conversion at save time)
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+  }
+
+  // Check if a URL is a local image (blob or base64) that needs uploading
+  const isLocalImage = (url: string | undefined): boolean => {
+    return !!url && (url.startsWith('data:image/') || url.startsWith('blob:'))
+  }
+
+  // Resolve a local image URL to base64 for upload
+  const resolveLocalImage = async (url: string): Promise<string> => {
+    if (url.startsWith('blob:')) {
+      const file = blobRegistry.current?.get(url)
+      if (!file) throw new Error('Blob URL not found in registry — the file may have been revoked')
+      return await fileToBase64(file)
+    }
+    return url // already base64
+  }
+
+  const uploadLocalImagesInSkeleton = async (skel: any): Promise<any> => {
+    // Deep clone to avoid mutating local state
+    const cleanSkeleton = JSON.parse(JSON.stringify(skel))
+
+    // 1. Process zones
+    if (cleanSkeleton.zones && Array.isArray(cleanSkeleton.zones)) {
+      for (const zone of cleanSkeleton.zones) {
+        // Background zone
+        if (zone.type === 'background' && zone.style?.type === 'image' && isLocalImage(zone.style?.imageUrl)) {
+          const base64 = await resolveLocalImage(zone.style.imageUrl)
+          const res = await dataService.uploadImage(base64)
+          if (res.data?.publicUrl) {
+            zone.style.imageUrl = res.data.publicUrl
+          } else {
+            throw new Error(res.error || 'Failed to upload background image')
+          }
+        }
+        // Image zone
+        if (zone.type === 'image' && isLocalImage(zone.imageUrl)) {
+          const base64 = await resolveLocalImage(zone.imageUrl)
+          const res = await dataService.uploadImage(base64)
+          if (res.data?.publicUrl) {
+            zone.imageUrl = res.data.publicUrl
+          } else {
+            throw new Error(res.error || 'Failed to upload image zone file')
+          }
+        }
+      }
+    }
+
+    // 2. Process decorations
+    if (cleanSkeleton.decorations && Array.isArray(cleanSkeleton.decorations)) {
+      for (const deco of cleanSkeleton.decorations) {
+        if (isLocalImage(deco.imageUrl)) {
+          const base64 = await resolveLocalImage(deco.imageUrl)
+          const res = await dataService.uploadImage(base64)
+          if (res.data?.publicUrl) {
+            deco.imageUrl = res.data.publicUrl
+          } else {
+            throw new Error(res.error || 'Failed to upload decoration image')
+          }
+        }
+      }
+    }
+
+    return cleanSkeleton
+  }
 
   const handleSave = async () => {
     if (!formatName.trim()) {
@@ -33,9 +109,10 @@ export function FormatBuilderToolbar() {
       return
     }
     setIsBusy(true)
+    setBusyMessage('Uploading images to storage...')
     try {
       const tags = tagsInput.split(',').map(t => t.trim()).filter(Boolean)
-      const finalSkeleton = {
+      const initialSkeleton = {
         ...skeleton,
         decorations: useDecorationStore.getState().shapes,
         name: formatName,
@@ -46,6 +123,11 @@ export function FormatBuilderToolbar() {
         isOfficial: adminMode,
         isPublic: adminMode,
       }
+      
+      const finalSkeleton = await uploadLocalImagesInSkeleton(initialSkeleton)
+
+      setBusyMessage(isEditing ? 'Updating format blueprint...' : 'Creating format blueprint...')
+
       const payload = {
         name: formatName,
         description: formatDesc,
@@ -61,12 +143,21 @@ export function FormatBuilderToolbar() {
         ? await dataService.updateFormat(editFormat.id, payload)
         : await dataService.createFormat(payload)
       if (res.error) throw new Error(res.error)
+
+      // Force reload the format gallery store cache to fetch the newly created/updated format
+      try {
+        await useFormatGalleryStore.getState().loadFormats(true)
+      } catch (galleryErr) {
+        console.error('Failed to reload format gallery store cache:', galleryErr)
+      }
+
       toast.success(isEditing ? 'Format updated!' : 'Format created!')
       router.push(adminMode ? '/admin/formats' : '/editor')
     } catch (err: any) {
       toast.error(err.message || 'Failed to save')
     } finally {
       setIsBusy(false)
+      setBusyMessage('')
     }
   }
 
@@ -80,7 +171,7 @@ export function FormatBuilderToolbar() {
           <div className="flex items-center gap-3 rounded-xl bg-gray-900 px-6 py-4 shadow-2xl border border-gray-700">
             <div className="h-5 w-5 rounded-full border-2 border-orange-500 border-t-transparent animate-spin" />
             <span className="text-sm font-medium text-gray-200">
-              {isEditing ? 'Updating…' : 'Creating…'}
+              {busyMessage || (isEditing ? 'Updating…' : 'Creating…')}
             </span>
           </div>
         </div>

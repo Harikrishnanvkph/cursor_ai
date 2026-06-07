@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { toast } from 'sonner'
 
 export function SignInForm() {
   const { user, loading, signIn, signInWithGoogle, signInAsGuest } = useAuth()
@@ -23,12 +24,47 @@ export function SignInForm() {
   }, [searchParams])
 
   useEffect(() => {
+    const errorParam = searchParams.get('error')
+    if (errorParam) {
+      toast.error(errorParam)
+      // Clean up the URL parameter
+      const url = new URL(window.location.href)
+      url.searchParams.delete('error')
+      window.history.replaceState({}, '', url.toString())
+    }
+  }, [searchParams])
+
+  useEffect(() => {
     if (!loading && user) {
-      const redirectPath = sessionStorage.getItem('redirectAfterSignIn') || '/'
+      const defaultRedirect = user.is_admin ? '/admin' : '/'
+      const redirectPath = sessionStorage.getItem('redirectAfterSignIn') || defaultRedirect
       sessionStorage.removeItem('redirectAfterSignIn')
+      sessionStorage.removeItem('logged_out_from_oauth')
       router.replace(redirectPath)
     }
   }, [user, loading, router])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const loggedOut = sessionStorage.getItem('logged_out_from_oauth')
+    if (loggedOut === 'true') {
+      // Push a dummy state to history to capture the back button action
+      window.history.pushState({ type: 'signin-back-interceptor' }, '')
+
+      const handlePopState = (event: PopStateEvent) => {
+        sessionStorage.removeItem('logged_out_from_oauth')
+        sessionStorage.setItem('exiting_app', 'true')
+        // Redirect to Home page
+        window.location.replace('/')
+      }
+
+      window.addEventListener('popstate', handlePopState)
+      return () => {
+        window.removeEventListener('popstate', handlePopState)
+      }
+    }
+  }, [])
 
   if (loading || user) {
     return (

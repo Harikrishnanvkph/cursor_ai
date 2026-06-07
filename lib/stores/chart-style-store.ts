@@ -17,6 +17,7 @@ import { applyPresetToChart, checkPresetCompatibility } from '../chart-style-eng
 import type { SupportedChartType } from '../chart-defaults'
 import { useChartStore } from '../chart-store'
 import { dataService } from '../data-service'
+import { createExpiringStorage } from '../storage-utils'
 
 // ========================================
 // TYPES
@@ -148,8 +149,8 @@ const getPresetClosestAspectRatio = (preset: ChartStylePreset): string | null =>
 // STORE
 // ========================================
 
-// Cache duration: presets are considered fresh for 1 hour (down from 24h to allow new DB presets to appear sooner)
-const CACHE_MAX_AGE_MS = 1 * 60 * 60 * 1000
+// Cache duration: presets are considered fresh for 15 minutes (aligned with formats gallery)
+const CACHE_MAX_AGE_MS = 15 * 60 * 1000
 
 export const useChartStyleStore = create<ChartStyleStore>()(
   persist(
@@ -307,11 +308,11 @@ export const useChartStyleStore = create<ChartStyleStore>()(
       return
     }
 
-    set({ isLoading: true })
-
-    // Phase 1: Always load hardcoded defaults (instant, no network needed)
     const hardcodedPresets = getOfficialPresets()
-    set({ officialPresets: hardcodedPresets })
+    const silent = state.officialPresets.length > 0;
+    if (!silent) {
+      set({ isLoading: true, officialPresets: hardcodedPresets })
+    }
 
     // Phase 2: Also attempt to fetch DB-backed presets from the API
     try {
@@ -407,7 +408,8 @@ export const useChartStyleStore = create<ChartStyleStore>()(
 }),
     // ── Persist Configuration ──────────────────────────
     {
-      name: 'chartography-style-presets', // localStorage key
+      name: 'chartography-style-presets',
+      storage: createExpiringStorage('chartography-style-presets'),
       version: 2, // Bump this to invalidate cache when preset schema changes
       migrate: (persistedState: any, version: number) => {
         // v1 → v2: preset count grew significantly, wipe cache to force fresh load

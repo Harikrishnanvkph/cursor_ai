@@ -3,8 +3,9 @@
 import { useAuth } from "@/components/auth/AuthProvider"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
-import { BarChart3, Shield, LayoutTemplate, Settings, LogOut, Palette } from "lucide-react"
+import { BarChart3, Shield, LayoutTemplate, Settings, LogOut, Palette, ExternalLink, LayoutDashboard, Sparkles, Edit3 } from "lucide-react"
 import Link from "next/link"
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
 
 export default function AdminPage() {
   const { user, loading, signOut } = useAuth()
@@ -70,12 +71,32 @@ export default function AdminPage() {
                 <span>{user.email}</span>
               </div>
 
-              <Link
-                href="/"
-                className="text-xs text-gray-500 hover:text-gray-300 transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5"
-              >
-                Back to App
-              </Link>
+              <DropdownMenu>
+                <DropdownMenuTrigger className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-200 transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5 focus:outline-none select-none">
+                  <span>Go To</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-gray-900 border border-white/10 text-white min-w-[160px] p-1.5 rounded-xl shadow-2xl">
+                  <DropdownMenuItem asChild className="focus:bg-white/10 focus:text-white text-gray-300 cursor-pointer rounded-lg px-2.5 py-2">
+                    <Link href="/board" className="flex items-center gap-2 w-full text-xs">
+                      <LayoutDashboard className="w-3.5 h-3.5 text-purple-400" />
+                      <span>Dashboard</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="focus:bg-white/10 focus:text-white text-gray-300 cursor-pointer rounded-lg px-2.5 py-2">
+                    <Link href="/landing" className="flex items-center gap-2 w-full text-xs">
+                      <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>AI Chart</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="focus:bg-white/10 focus:text-white text-gray-300 cursor-pointer rounded-lg px-2.5 py-2">
+                    <Link href="/editor" className="flex items-center gap-2 w-full text-xs">
+                      <Edit3 className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Advanced Editor</span>
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               <button
                 onClick={() => signOut()}

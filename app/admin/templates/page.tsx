@@ -12,7 +12,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 export default function AdminTemplatesPage() {
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
   const router = useRouter()
   const [templates, setTemplates] = useState<TemplateLayout[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -23,13 +23,20 @@ export default function AdminTemplatesPage() {
   const [templateToDelete, setTemplateToDelete] = useState<string | null>(null)
 
   useEffect(() => {
-    if (user && !user.is_admin) {
+    if (loading) return
+
+    if (!user) {
+      router.push('/signin')
+      return
+    }
+
+    if (!user.is_admin) {
       router.push('/')
       return
     }
 
     fetchTemplates()
-  }, [user, router])
+  }, [user, loading, router])
 
   const fetchTemplates = async () => {
     try {
@@ -102,6 +109,21 @@ export default function AdminTemplatesPage() {
     // Clear draft and let the builder initialize a new one
     useTemplateStore.getState().clearDraft()
     router.push('/admin/templates/custom-template')
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+          <p className="text-gray-400 text-sm font-medium">Loading admin panel...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user?.is_admin) {
+    return null // Will redirect via useEffect
   }
 
   return (

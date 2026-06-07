@@ -293,9 +293,24 @@ export interface ChartGeneratorProps {
   chartModeOverride?: 'single' | 'grouped';
   /** When true, forces templates/formats layout behavior (responsive canvas inside scaled zone) */
   isTemplateOrFormat?: boolean;
+  /** Layout width in pixels when container is responsive but scaled */
+  responsiveWidth?: number;
+  /** Layout height in pixels when container is responsive but scaled */
+  responsiveHeight?: number;
 }
 
-export const ChartGenerator = memo(function ChartGenerator({ className = "", devicePixelRatioMultiplier = 1, dataOverride, configOverride, typeOverride, readOnly = false, chartModeOverride, isTemplateOrFormat = false }: ChartGeneratorProps) {
+export const ChartGenerator = memo(function ChartGenerator({
+  className = "",
+  devicePixelRatioMultiplier = 1,
+  dataOverride,
+  configOverride,
+  typeOverride,
+  readOnly = false,
+  chartModeOverride,
+  isTemplateOrFormat = false,
+  responsiveWidth,
+  responsiveHeight
+}: ChartGeneratorProps) {
   // Granular hooks to prevent unnecessary re-renders
   // When overrides are provided, use them; otherwise read from store
   const storeChartConfig = useChartConfig();
@@ -351,6 +366,48 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
   // template/format mode is active when specified by prop or in template editor mode
   const isInsideTemplateOrFormat = isTemplateOrFormat || editorMode === 'template';
 
+  // When inside a template or format, always force responsive — the chart zone container
+  // already defines the correct size. Fixed dimensions must not overflow the zone.
+  const isResponsive = isInsideTemplateOrFormat || (chartConfig as any)?.responsive !== false;
+
+  // parseDimension imported from @/lib/utils/dimension-utils
+  // Dimensions are irrelevant (always undefined) inside template/format since isResponsive is forced true
+  const chartWidth = !isResponsive ? parseDimension((chartConfig as any)?.width) : undefined;
+  const chartHeight = !isResponsive ? parseDimension((chartConfig as any)?.height) : undefined;
+
+  const parsedChartWidth = parseDimension((chartConfig as any)?.width, 800);
+  const parsedChartHeight = parseDimension((chartConfig as any)?.height, 600);
+
+  // Determine if we should render with fixed dimensions to prevent scale/zoom squeezing
+  const useFixedDimensions = !!(
+    (responsiveWidth && responsiveHeight) || 
+    (!isResponsive && !isInsideTemplateOrFormat) || 
+    ((chartConfig.manualDimensions || chartConfig.dynamicDimension) && !isInsideTemplateOrFormat)
+  );
+
+  const finalWidth = (responsiveWidth && responsiveHeight)
+    ? responsiveWidth
+    : (isInsideTemplateOrFormat)
+      ? 800
+      : parsedChartWidth;
+
+  const finalHeight = (responsiveWidth && responsiveHeight)
+    ? responsiveHeight
+    : (isInsideTemplateOrFormat)
+      ? 600
+      : parsedChartHeight;
+
+  const chartPropsForZoom = (useFixedDimensions || isInsideTemplateOrFormat)
+    ? { width: finalWidth, height: finalHeight }
+    : {};
+
+  const responsiveOptionForZoom = useFixedDimensions ? false : (isInsideTemplateOrFormat ? true : isResponsive);
+
+  const layoutRef = useRef({ useFixedDimensions, finalWidth, finalHeight });
+  useEffect(() => {
+    layoutRef.current = { useFixedDimensions, finalWidth, finalHeight };
+  }, [useFixedDimensions, finalWidth, finalHeight]);
+
 
 
   // Actions are stable and don't cause re-renders, but good practice to select them or use getState if appropriate
@@ -386,7 +443,12 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
         // Force the existing chart instance to resize and re-render
         // at the new resolution after DPR change
         if (chartRef.current) {
-          chartRef.current.resize();
+          const { useFixedDimensions: ufd, finalWidth: fw, finalHeight: fh } = layoutRef.current;
+          if (ufd && fw && fh) {
+            chartRef.current.resize(fw, fh);
+          } else {
+            chartRef.current.resize();
+          }
           chartRef.current.update();
         }
       }
@@ -502,10 +564,14 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
   // Smoothly resize and update chart when zoom level (devicePixelRatioMultiplier) changes
   useEffect(() => {
     if (chartRef.current) {
-      chartRef.current.resize();
+      if (useFixedDimensions && finalWidth && finalHeight) {
+        chartRef.current.resize(finalWidth, finalHeight);
+      } else {
+        chartRef.current.resize();
+      }
       chartRef.current.update();
     }
-  }, [devicePixelRatioMultiplier]);
+  }, [devicePixelRatioMultiplier, useFixedDimensions, finalWidth, finalHeight]);
 
 
 
@@ -666,7 +732,18 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
                 (datasetType === 'funnel' ? 'bar' :
                   (datasetType === 'waterfall' ? 'bar' : datasetType)))))));
 
-    let patched = { ...ds, type: validType };
+    // In Chart.js, datasets with a LOWER `order` value are rendered last (appearing on top).
+    // To ensure line-like/point-like datasets draw on top of bar-like datasets,
+    // we add a base offset to the bar-like datasets so they have a higher order (appearing behind).
+    const isLineOrPoint = ['line', 'area', 'radar', 'scatter', 'bubble'].includes(datasetType as string);
+    const orderOffset = isLineOrPoint ? 0 : 100;
+    const defaultOrder = i + orderOffset;
+
+    let patched = { 
+      ...ds, 
+      type: validType,
+      order: ds.order !== undefined && ds.order !== null ? ds.order : defaultOrder
+    };
     if (chartType === 'funnel') {
       const coneShape = (chartConfig.plugins as any)?.funnel?.coneShape || 'box';
       const defaultSpacing = coneShape === 'sharp' ? 1.0 : 0.8;
@@ -1201,15 +1278,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
     return null;
   };
 
-  // Chart size logic
-  // When inside a template or format, always force responsive — the chart zone container
-  // already defines the correct size. Fixed dimensions must not overflow the zone.
-  const isResponsive = isInsideTemplateOrFormat || (chartConfig as any)?.responsive !== false;
-
-  // parseDimension imported from @/lib/utils/dimension-utils
-  // Dimensions are irrelevant (always undefined) inside template/format since isResponsive is forced true
-  const chartWidth = !isResponsive ? parseDimension((chartConfig as any)?.width) : undefined;
-  const chartHeight = !isResponsive ? parseDimension((chartConfig as any)?.height) : undefined;
+  // layout variables are declared at the top of the component to be accessible by hooks
 
   // Compute tooltip background color with opacity
   const tooltipBgColor = (chartConfig.plugins as any)?.tooltip?.backgroundColor || '#000000';
@@ -1786,10 +1855,11 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
             {chartConfig.dynamicDimension ? (
               <ResizableChartArea>
                 <Chart
-                  key={`${chartTypeForChart}-${isResponsive ? 'responsive' : 'fixed'}-${chartConfig.manualDimensions ? 'manual' : 'auto'}`}
+                  key={`${chartTypeForChart}-${useFixedDimensions ? 'fixed-zoom' : 'dynamic'}-${useFixedDimensions ? `${finalWidth}-${finalHeight}` : 'auto'}`}
                   ref={chartRef}
                   type={chartTypeForChart as any}
                   data={chartDataForChart}
+                  {...chartPropsForZoom}
                   {...((chartConfig.manualDimensions || chartConfig.dynamicDimension) && {
                     'data-debug-width': chartConfig.width,
                     'data-debug-height': chartConfig.height
@@ -1804,7 +1874,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
                     devicePixelRatio: Math.max(1, Math.ceil(browserDpr * devicePixelRatioMultiplier)),
                     circumference: chartType === 'gauge' ? (appliedOptions.circumference ?? 180) : appliedOptions.circumference,
                     rotation: chartType === 'gauge' ? (appliedOptions.rotation ?? 270) : appliedOptions.rotation,
-                    responsive: true,
+                    responsive: responsiveOptionForZoom,
                     maintainAspectRatio: false,
                     ...(readOnly ? { resizeDelay: 0 } : {}),
                     layout: {
@@ -2051,15 +2121,19 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
             ) : (
               <div
                 style={{
-                  width: (chartConfig.manualDimensions && !isInsideTemplateOrFormat) ? `${chartWidth}px` : '100%',
-                  height: (chartConfig.manualDimensions && !isInsideTemplateOrFormat) ? `${chartHeight}px` : '100%',
+                  width: (chartConfig.manualDimensions && !isInsideTemplateOrFormat) 
+                    ? `${chartWidth}px` 
+                    : (responsiveWidth ? `${responsiveWidth}px` : '100%'),
+                  height: (chartConfig.manualDimensions && !isInsideTemplateOrFormat) 
+                    ? `${chartHeight}px` 
+                    : (responsiveHeight ? `${responsiveHeight}px` : '100%'),
                   position: 'relative',
                   minHeight: isResponsive ? '100%' : 'auto',
                   minWidth: isResponsive ? '100%' : 'auto'
                 }}
               >
                 <Chart
-                  key={`${chartTypeForChart}-${isResponsive ? 'responsive' : 'fixed'}-${chartConfig.manualDimensions ? `manual-${chartWidth}-${chartHeight}` : 'auto'}`}
+                  key={`${chartTypeForChart}-${useFixedDimensions ? 'fixed-zoom' : (isResponsive ? 'responsive' : 'fixed')}-${useFixedDimensions ? `${finalWidth}-${finalHeight}` : 'auto'}`}
                   ref={chartRef}
                   type={chartTypeForChart as any}
                   data={chartDataForChart}
@@ -2067,7 +2141,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
                     'data-debug-width': chartConfig.width,
                     'data-debug-height': chartConfig.height
                   })}
-                  {...((isInsideTemplateOrFormat || !isResponsive) ? { width: isInsideTemplateOrFormat ? 800 : chartWidth, height: isInsideTemplateOrFormat ? 600 : chartHeight } : {})}
+                  {...chartPropsForZoom}
                   style={{
                     maxWidth: '100%',
                     maxHeight: '100%',
@@ -2078,7 +2152,7 @@ export const ChartGenerator = memo(function ChartGenerator({ className = "", dev
                     devicePixelRatio: Math.max(1, Math.ceil(browserDpr * devicePixelRatioMultiplier)),
                     circumference: chartType === 'gauge' ? (appliedOptions.circumference ?? 180) : appliedOptions.circumference,
                     rotation: chartType === 'gauge' ? (appliedOptions.rotation ?? 270) : appliedOptions.rotation,
-                    responsive: isInsideTemplateOrFormat || chartConfig.manualDimensions ? true : isResponsive,
+                    responsive: responsiveOptionForZoom,
                     maintainAspectRatio: false,
                     layout: {
                       padding: (globalCustomLabelsConfig.anchor === 'callout') ? 60 : (chartConfig.layout?.padding || 0)

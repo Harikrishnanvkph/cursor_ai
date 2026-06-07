@@ -98,9 +98,6 @@ export default function SharedChartPage() {
     setTheme(nextTheme)
     localStorage.setItem("share-page-theme", nextTheme)
   }
-  
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const chartRef = useRef<ChartJS | null>(null)
   const mainContainerRef = useRef<HTMLDivElement>(null)
 
   const ZOOM_VALUES = [10, 25, 50, 75, 100, 125, 150, 200, 300, 400, 500];
@@ -360,31 +357,45 @@ export default function SharedChartPage() {
   }, [shareId])
 
   const handleDownloadImage = async () => {
-    if (!chartRef.current) return;
+    const globalChartRef = useChartStore.getState().globalChartRef;
+    const chartInstance = globalChartRef?.current;
+    if (!chartInstance) {
+      toast.error("Chart is not ready for export");
+      return;
+    }
     try {
-      const url = chartRef.current.toBase64Image('image/png', 1.0);
-      const link = document.createElement('a');
-      link.download = `chart-${new Date().toISOString().slice(0, 10)}.png`;
-      link.href = url;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const bgConfig = getBackgroundConfig(chart?.chart_config);
+      if (chartInstance.exportToImage) {
+        chartInstance.exportToImage({
+          background: bgConfig,
+          fileNamePrefix: `chart-${chart?.chart_type || 'export'}`,
+          quality: 1.0
+        });
+      } else {
+        const url = chartInstance.toBase64Image('image/png', 1.0);
+        const link = document.createElement('a');
+        link.download = `chart-${new Date().toISOString().slice(0, 10)}.png`;
+        link.href = url;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
     } catch (err) {
       console.error("Failed to export image:", err);
+      toast.error("Failed to export image");
     }
   };
 
   const handleDownloadHTML = async () => {
     if (!chart) return;
     try {
+      const config = chart.chart_config;
       let width = 800;
       let height = 600;
-      if (canvasRef.current) {
-        width = canvasRef.current.width;
-        height = canvasRef.current.height;
+      if (config) {
+        width = parseInt(config.width) || 800;
+        height = parseInt(config.height) || 600;
       }
-      
-      const config = chart.chart_config;
       const title = config?.plugins?.title?.text || "Chart Export";
       const subtitle = config?.plugins?.subtitle?.display ? config.plugins.subtitle.text : undefined;
       const bgConfig = getBackgroundConfig(config);
@@ -416,234 +427,7 @@ export default function SharedChartPage() {
     }
   };
 
-  useEffect(() => {
-    if (!canvasRef.current || !chart) return
 
-    const ctx = canvasRef.current.getContext("2d")
-    if (!ctx) return
-
-    if (chartRef.current) {
-      chartRef.current.destroy()
-    }
-
-    try {
-      const processedConfig = { ...chart.chart_config }
-      if (chart.chart_type === 'pie' || chart.chart_type === 'doughnut') {
-        delete processedConfig.scales
-      }
-
-      // Generate custom labels if the configuration exists
-      if (processedConfig.plugins?.customLabelsConfig) {
-        const customLabels = generateCustomLabelsFromConfig(
-          processedConfig, 
-          chart.chart_data, 
-          { datasets: [], slices: [] }, 
-          chart.chart_config.dragState || {}
-        );
-        
-        if (customLabels && customLabels.length > 0) {
-          processedConfig.plugins.customLabels = {
-            shapeSize: 32,
-            labels: customLabels
-          };
-        }
-      }
-
-      // Helper to extract a numeric pixel value from config dimension
-      const parseConfigDim = (val: any, fallback: number): number => {
-        if (typeof val === 'number') return val;
-        if (typeof val === 'string') {
-          const parsed = parseInt(val);
-          if (!isNaN(parsed) && !val.includes('%')) return parsed;
-        }
-        return fallback;
-      };
-
-      let containerWidth = "100%"
-      let containerHeight = "100%"
-      let isResponsive = true
-
-      if (dimensionMode === "original") {
-        // Always use fixed pixel dimensions from the backend config
-        const origW = parseConfigDim(processedConfig.width, 800);
-        const origH = parseConfigDim(processedConfig.height, 600);
-        containerWidth = `${origW}px`;
-        containerHeight = `${origH}px`;
-        isResponsive = false; // Original should be fixed, not responsive
-      } else if (dimensionMode === "manual") {
-        containerWidth = `${manualWidth}px`
-        containerHeight = `${manualHeight}px`
-        isResponsive = false
-      } else if (dimensionMode === "responsive") {
-        containerWidth = "100%"
-        containerHeight = "100%"
-        isResponsive = true
-      }
-
-      if (canvasRef.current.parentElement) {
-        if (!chart.template_structure) {
-           canvasRef.current.parentElement.style.width = containerWidth
-           canvasRef.current.parentElement.style.height = containerHeight
-           
-           // Ensure the canvas itself also adopts these dimensions to prevent ChartJS 
-           // from being stuck at 0x0 or previous dimensions during a resize event
-           if (canvasRef.current) {
-             canvasRef.current.style.width = '100%';
-             canvasRef.current.style.height = '100%';
-           }
-        }
-      }
-
-      // Determine valid Chart.js type
-      let chartTypeForChart = chartTypeMapping[chart.chart_type as SupportedChartType] || chart.chart_type;
-      
-      // Ensure scales are explicitly stacked if needed
-      if (chart.chart_type === 'stackedBar') {
-        processedConfig.scales = {
-          ...(processedConfig.scales || {}),
-          x: { ...((processedConfig.scales && processedConfig.scales.x) || {}), stacked: true },
-          y: { ...((processedConfig.scales && processedConfig.scales.y) || {}), stacked: true },
-        };
-      }
-
-      // Handle horizontal orientation
-      if (chart.chart_type === 'horizontalBar' || chart.chart_type === 'horizontalBar3d') {
-        processedConfig.indexAxis = 'y';
-      }
-
-      chartRef.current = new ChartJS(ctx, {
-        type: chartTypeForChart as any,
-        data: {
-          ...chart.chart_data,
-          datasets: chart.chart_data.datasets.map((ds: any) => ({
-            ...ds,
-            type: ds.type ? (chartTypeMapping[ds.type as SupportedChartType] || ds.type) : undefined
-          }))
-        },
-        options: {
-          ...processedConfig,
-          responsive: true, // Always true to fill the CSS-defined container
-          maintainAspectRatio: false, // ALWAYS false so it stretches exactly to our defined container height
-          plugins: {
-            ...processedConfig.plugins,
-            pie3d: {
-               ...(processedConfig.plugins?.pie3d || {}),
-               enabled: chart.chart_type === 'pie3d' || chart.chart_type === 'doughnut3d'
-            },
-            bar3d: {
-               ...(processedConfig.plugins?.bar3d || {}),
-               enabled: chart.chart_type === 'bar3d' || chart.chart_type === 'horizontalBar3d'
-            },
-            legend: {
-              ...processedConfig.plugins?.legend,
-              display: processedConfig.plugins?.legend?.display !== false,
-              labels: {
-                ...(processedConfig.plugins?.legend?.labels || {}),
-                generateLabels: (c: any) => {
-                  const legendType = c.config?.options?.plugins?.legendType || processedConfig.plugins?.legendType || 'dataset';
-                  const usePointStyle = processedConfig.plugins?.legend?.labels?.usePointStyle || false;
-                  const pointStyle = processedConfig.plugins?.legend?.labels?.pointStyle || 'rect';
-                  const fontColor = processedConfig.plugins?.legend?.labels?.color || '#000000';
-                  
-                  const createItem = (props: any) => ({
-                    ...props,
-                    pointStyle: usePointStyle ? pointStyle : undefined,
-                    fontColor: fontColor,
-                    hidden: false,
-                  });
-                  
-                  const items = [] as any[];
-                  
-                  // In shared charts, slice labels apply mainly for pie/doughnut/polarArea
-                  const isCircular = chart.chart_type === 'pie' || chart.chart_type === 'doughnut' || chart.chart_type === 'polarArea';
-                  const typeToUse = isCircular ? (legendType === 'dataset' ? 'dataset' : 'slice') : legendType;
-
-                  if (typeToUse === 'slice' || typeToUse === 'both') {
-                    const labels = chart.chart_data.labels || [];
-                    const ds = chart.chart_data.datasets[0];
-                    for (let i = 0; i < labels.length; ++i) {
-                      items.push(createItem({
-                        text: String(labels[i]),
-                        fillStyle: Array.isArray(ds?.backgroundColor) ? ds.backgroundColor[i] : ds?.backgroundColor || '#ccc',
-                        strokeStyle: Array.isArray(ds?.borderColor) ? ds.borderColor[i] : ds?.borderColor || '#333',
-                        index: i,
-                        datasetIndex: 0,
-                        type: 'slice',
-                      }));
-                    }
-                  }
-                  if (typeToUse === 'dataset' || typeToUse === 'both') {
-                    const datasets = chart.chart_data.datasets || [];
-                    for (let i = 0; i < datasets.length; ++i) {
-                      const ds = datasets[i];
-                      items.push(createItem({
-                        text: ds.label || `Dataset ${i + 1}`,
-                        fillStyle: Array.isArray(ds.backgroundColor) ? ds.backgroundColor[0] : ds.backgroundColor || '#ccc',
-                        strokeStyle: Array.isArray(ds.borderColor) ? ds.borderColor[0] : ds.borderColor || '#333',
-                        datasetIndex: i,
-                        index: i,
-                        type: 'dataset',
-                      }));
-                    }
-                  }
-                  if (legendType === 'waterfall' && chart.chart_type === 'waterfall') {
-                    const wfConfig = c.config?.options?.plugins?.waterfall || processedConfig.plugins?.waterfall || {};
-                    const positiveColor = wfConfig.positiveColor || '#10b981';
-                    const negativeColor = wfConfig.negativeColor || '#ef4444';
-                    const totalColor = wfConfig.totalColor || '#3b82f6';
-                    const legendLabels = wfConfig.legendLabels || {};
-                    const increaseLabel = legendLabels.increase || 'Increase';
-                    const decreaseLabel = legendLabels.decrease || 'Decrease';
-                    const totalLabelVal = legendLabels.total || 'Total';
-                    const hasTotal = wfConfig.showTotal !== false || wfConfig.treatLastAsTotal === true || (wfConfig.totalIndices && wfConfig.totalIndices.trim() !== '');
-
-                    items.push(createItem({
-                      text: increaseLabel,
-                      fillStyle: positiveColor,
-                      strokeStyle: positiveColor,
-                      datasetIndex: 0,
-                      index: 0,
-                      type: 'waterfall_increase'
-                    }));
-
-                    items.push(createItem({
-                      text: decreaseLabel,
-                      fillStyle: negativeColor,
-                      strokeStyle: negativeColor,
-                      datasetIndex: 0,
-                      index: 1,
-                      type: 'waterfall_decrease'
-                    }));
-
-                    if (hasTotal) {
-                      items.push(createItem({
-                        text: totalLabelVal,
-                        fillStyle: totalColor,
-                        strokeStyle: totalColor,
-                        datasetIndex: 0,
-                        index: 2,
-                        type: 'waterfall_total'
-                      }));
-                    }
-                  }
-                  return items;
-                }
-              }
-            }
-          }
-        },
-      })
-    } catch (error) {
-      console.error("Error drawing shared chart:", error)
-    }
-
-    return () => {
-      if (chartRef.current) {
-        chartRef.current.destroy()
-        chartRef.current = null
-      }
-    }
-  }, [chart, dimensionMode, manualWidth, manualHeight])
 
   const handleFitToScreen = React.useCallback(() => {
     if (!mainContainerRef.current || !chart || dimensionMode === 'responsive') return;

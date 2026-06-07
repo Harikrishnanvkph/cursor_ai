@@ -249,7 +249,7 @@ function ZoneVisualContent({ zone, isSelected, onClick }: {
         className="w-full h-full flex items-center justify-center overflow-hidden"
         onClick={e => { e.stopPropagation(); onClick() }}
         style={{
-          background: isSelected ? colors.bg : 'transparent',
+          backgroundColor: isSelected ? colors.bg : 'transparent',
           border: isSelected
             ? `2px solid ${colors.accent}`
             : `2px dashed ${colors.border}`,
@@ -278,7 +278,7 @@ function ZoneVisualContent({ zone, isSelected, onClick }: {
         className="w-full h-full flex items-center justify-center overflow-hidden"
         onClick={e => { e.stopPropagation(); onClick() }}
         style={{
-          background: isSelected ? colors.bg : 'transparent',
+          backgroundColor: isSelected ? colors.bg : 'transparent',
           border: isSelected
             ? `2px solid ${colors.accent}`
             : `2px dashed ${colors.border}`,
@@ -317,7 +317,7 @@ function ZoneVisualContent({ zone, isSelected, onClick }: {
         className="w-full h-full flex flex-col items-center justify-center overflow-hidden rounded"
         onClick={e => { e.stopPropagation(); onClick() }}
         style={{
-          background: isSelected ? colors.bg : `${colors.bg}`,
+          backgroundColor: isSelected ? colors.bg : colors.bg,
           border: isSelected
             ? `2px solid ${colors.accent}`
             : `2px dashed ${colors.border}`,
@@ -348,26 +348,33 @@ function ZoneVisualContent({ zone, isSelected, onClick }: {
   if (zone.type === 'image') {
     const pos = zone.position || { width: 200, height: 200 }
     const iconSize = Math.min(pos.width * 0.3, pos.height * 0.3, 80)
+    const imageUrl = (zone as any).imageUrl
     return (
       <div
-        className="w-full h-full flex flex-col items-center justify-center overflow-hidden rounded"
+        className="w-full h-full flex flex-col items-center justify-center overflow-hidden rounded bg-no-repeat bg-center"
         onClick={e => { e.stopPropagation(); onClick() }}
         style={{
-          background: isSelected ? colors.bg : (s.backgroundColor || '#1e293b'),
+          backgroundColor: isSelected ? colors.bg : (s.backgroundColor || '#1e293b'),
+          backgroundImage: imageUrl ? `url(${imageUrl})` : undefined,
+          backgroundSize: s.imageFit || 'cover',
           border: isSelected
             ? `2px solid ${colors.accent}`
             : `2px dashed ${colors.border}`,
           borderRadius: s.borderRadius || 0,
         }}
       >
-        <ImageIcon
-          className="pointer-events-none select-none"
-          style={{ width: iconSize, height: iconSize, color: colors.accent, opacity: 0.4 }}
-        />
-        {iconSize > 24 && (
-          <span className="text-[10px] uppercase tracking-wider mt-1 pointer-events-none select-none" style={{ color: colors.accent, opacity: 0.5 }}>
-            Image
-          </span>
+        {!imageUrl && (
+          <>
+            <ImageIcon
+              className="pointer-events-none select-none"
+              style={{ width: iconSize, height: iconSize, color: colors.accent, opacity: 0.4 }}
+            />
+            {iconSize > 24 && (
+              <span className="text-[10px] uppercase tracking-wider mt-1 pointer-events-none select-none" style={{ color: colors.accent, opacity: 0.5 }}>
+                Image
+              </span>
+            )}
+          </>
         )}
       </div>
     )
@@ -379,7 +386,7 @@ function ZoneVisualContent({ zone, isSelected, onClick }: {
       className="w-full h-full flex items-center justify-center"
       onClick={e => { e.stopPropagation(); onClick() }}
       style={{
-        background: colors.bg,
+        backgroundColor: colors.bg,
         border: isSelected ? `2px solid ${colors.accent}` : `2px dashed ${colors.border}`,
       }}
     >

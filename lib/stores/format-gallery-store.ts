@@ -16,6 +16,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { createExpiringStorage } from '@/lib/storage-utils'
 import type { FormatCategory, FormatBlueprintRow, GalleryFilters } from '@/lib/format-types'
+import { dataService } from '@/lib/data-service'
 
 interface FormatGalleryStore {
   // Gallery Mode
@@ -78,6 +79,10 @@ interface FormatGalleryStore {
   setFormatZoneNote: (formatId: string, zoneId: string, note: string) => void
   clearFormatZoneNote: (formatId: string, zoneId: string) => void
 
+  // Caching metadata & actions
+  lastFetchedAt: string | null
+  loadFormats: (force?: boolean) => Promise<void>
+
   // Reset all gallery state
   resetGallery: () => void
 }
@@ -98,7 +103,7 @@ function applyZoneStyleToFormat(
 
 export const useFormatGalleryStore = create<FormatGalleryStore>()(
   persist(
-  (set) => ({
+  (set, get) => ({
     // Gallery Mode
     isGalleryOpen: false,
     openGallery: () => set({ isGalleryOpen: true }),
@@ -203,11 +208,53 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
       return { formatZoneNotes: updatedNotes };
     }),
 
+    // Caching metadata & actions
+    lastFetchedAt: null,
+    loadFormats: async (force = false) => {
+      const state = get()
+      const COOLDOWN_MS = 1 * 60 * 1000 // 1 minute
+      const isWithinCooldown = state.lastFetchedAt &&
+        (Date.now() - new Date(state.lastFetchedAt).getTime()) < COOLDOWN_MS
+
+      if (!force && isWithinCooldown && state.formats.length > 0) {
+        return
+      }
+
+      const silent = state.formats.length > 0
+      if (!silent) {
+        set({ isLoadingFormats: true, isLoadingUserFormats: true })
+      }
+
+      try {
+        const [officialRes, userRes] = await Promise.all([
+          dataService.getOfficialFormats(),
+          dataService.getUserFormats()
+        ])
+
+        const updates: Partial<FormatGalleryStore> = {
+          lastFetchedAt: new Date().toISOString()
+        }
+
+        if (!officialRes.error && officialRes.data) {
+          updates.formats = officialRes.data
+        }
+        if (!userRes.error && userRes.data) {
+          updates.userFormats = userRes.data
+        }
+
+        set(updates)
+      } catch (err) {
+        console.error('Failed to load formats in background:', err)
+      } finally {
+        if (!silent) {
+          set({ isLoadingFormats: false, isLoadingUserFormats: false })
+        }
+      }
+    },
+
     // Reset
     resetGallery: () => set({
       isGalleryOpen: false,
-      formats: [],
-      userFormats: [],
       contentPackage: null,
       selectedFormatId: null,
       selectedChartType: null,
@@ -224,7 +271,7 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
   }),
   {
     name: 'format-gallery-store',
-    storage: createExpiringStorage(24 * 60 * 60 * 1000), // 24 hour expiry
+    storage: createExpiringStorage('format-gallery-store'),
     // Persist format selection AND the modified snapshot so edits survive refresh.
     partialize: (state) => ({
       selectedFormatId: state.selectedFormatId,
@@ -232,6 +279,9 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
       contentPackage: state.contentPackage,
       contextualImageUrl: state.contextualImageUrl,
       selectedFormatSnapshot: state.selectedFormatSnapshot,
+      formats: state.formats,
+      userFormats: state.userFormats,
+      lastFetchedAt: state.lastFetchedAt,
     }),
   }
   )

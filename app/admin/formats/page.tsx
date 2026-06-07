@@ -56,7 +56,7 @@ interface FormatRow {
 }
 
 export default function AdminFormatsPage() {
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
   const router = useRouter()
   const [formats, setFormats] = useState<FormatRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -66,12 +66,20 @@ export default function AdminFormatsPage() {
   const [filter, setFilter] = useState<string>('all')
 
   useEffect(() => {
-    if (user && !user.is_admin) {
+    if (loading) return
+
+    if (!user) {
+      router.push('/signin')
+      return
+    }
+
+    if (!user.is_admin) {
       router.push('/')
       return
     }
+
     fetchFormats()
-  }, [user, router])
+  }, [user, loading, router])
 
   const fetchFormats = async () => {
     try {
@@ -149,6 +157,21 @@ export default function AdminFormatsPage() {
   // Filter formats by category
   const filteredFormats = filter === 'all' ? formats : formats.filter(f => f.category === filter)
   const categories = ['all', ...new Set(formats.map(f => f.category))]
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+          <p className="text-gray-400 text-sm font-medium">Loading admin panel...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user?.is_admin) {
+    return null // Will redirect via useEffect
+  }
 
   return (
     <div className="min-h-screen bg-black text-gray-100 p-4 pt-6">
@@ -397,38 +420,7 @@ function FormatCard({
           })}
         </div>
 
-        {/* Color Palette Preview */}
-        {palette && (
-          <div className="flex gap-0.5 mb-2">
-            {[palette.primary, palette.secondary, palette.accent, palette.text, palette.background].map((color: string, i: number) => (
-              <div
-                key={i}
-                className="h-3 flex-1 rounded-sm first:rounded-l last:rounded-r"
-                style={{ backgroundColor: color }}
-                title={color}
-              />
-            ))}
-          </div>
-        )}
 
-        {/* Description */}
-        <p className="text-[11px] text-gray-500 flex-1 line-clamp-2 mb-3">
-          {format.description || "No description."}
-        </p>
-
-        {/* Tags */}
-        {format.tags?.length > 0 && (
-          <div className="flex gap-1 flex-wrap mb-3">
-            {format.tags.slice(0, 4).map(tag => (
-              <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded bg-gray-800/50 text-gray-500 border border-gray-800">
-                #{tag}
-              </span>
-            ))}
-            {format.tags.length > 4 && (
-              <span className="text-[9px] text-gray-600">+{format.tags.length - 4}</span>
-            )}
-          </div>
-        )}
 
         {/* Actions */}
         <div className="flex gap-2 mt-auto pt-3 border-t border-gray-800">

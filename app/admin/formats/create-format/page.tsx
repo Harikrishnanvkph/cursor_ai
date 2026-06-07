@@ -27,6 +27,9 @@ export default function AdminCreateFormatPage() {
 
   // Load format for editing if ID is provided
   useEffect(() => {
+    if (loading) return
+    if (!user || !user.is_admin) return
+
     if (!editId) {
       setIsLoadingFormat(false)
       return
@@ -47,7 +50,7 @@ export default function AdminCreateFormatPage() {
     }
 
     loadFormat()
-  }, [editId])
+  }, [editId, loading, user])
 
   if (loading || !user?.is_admin) return null
 

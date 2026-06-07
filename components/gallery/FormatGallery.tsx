@@ -45,13 +45,9 @@ interface FormatGalleryProps {
 export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGalleryProps) {
   const {
     formats,
-    setFormats,
     userFormats,
-    setUserFormats,
     isLoadingFormats,
-    setLoadingFormats,
     isLoadingUserFormats,
-    setLoadingUserFormats,
     filters,
     setFilters,
     clearFilters,
@@ -62,7 +58,8 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
     setContextualImageUrl,
     formatZoneNotes,
     setFormatZoneNote,
-    clearFormatZoneNote
+    clearFormatZoneNote,
+    loadFormats
   } = useFormatGalleryStore()
 
   const [showFilters, setShowFilters] = useState(false)
@@ -174,28 +171,7 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
     fetchContextualImage()
   }, [localContentPackage?.keywords])
 
-  const loadFormats = async () => {
-    setLoadingFormats(true)
-    setLoadingUserFormats(true)
-    try {
-      const [officialRes, userRes] = await Promise.all([
-        dataService.getOfficialFormats(),
-        dataService.getUserFormats()
-      ])
-      
-      if (!officialRes.error && officialRes.data) {
-        setFormats(officialRes.data)
-      }
-      if (!userRes.error && userRes.data) {
-        setUserFormats(userRes.data)
-      }
-    } catch (err) {
-      console.error('Failed to load formats:', err)
-    } finally {
-      setLoadingFormats(false)
-      setLoadingUserFormats(false)
-    }
-  }
+  // loadFormats is now imported directly from the format gallery store to support SWR and IndexedDB.
 
   const currentFormatsList = activeTab === 'official' ? formats : userFormats
   const isLoadingCurrent = activeTab === 'official' ? isLoadingFormats : isLoadingUserFormats
@@ -375,7 +351,7 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
           <button
             onClick={async () => {
               if (isLoadingFormats || isLoadingUserFormats || syncCooldown > 0) return;
-              await loadFormats()
+              await loadFormats(true)
               setSyncCooldown(10)
             }}
             disabled={isLoadingFormats || isLoadingUserFormats || syncCooldown > 0}
@@ -539,11 +515,19 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
                             </div>
                           )
                         } else if (zone.type === 'image') {
+                          const imageUrl = zone.imageUrl
                           return (
-                             <div key={zone.id} className="absolute border border-teal-400 bg-teal-50/40 text-teal-700 flex items-center justify-center text-[9px] font-medium rounded p-1 text-center overflow-hidden leading-tight"
-                              style={{ left: `${pos.x * scale}px`, top: `${pos.y * scale}px`, width: `${pos.width * scale}px`, height: `${pos.height * scale}px`, zIndex: 5 }}
+                             <div key={zone.id} className="absolute border border-teal-400 bg-teal-50/40 text-teal-700 flex items-center justify-center text-[9px] font-medium rounded p-1 text-center overflow-hidden leading-tight bg-cover bg-center"
+                              style={{
+                                left: `${pos.x * scale}px`,
+                                top: `${pos.y * scale}px`,
+                                width: `${pos.width * scale}px`,
+                                height: `${pos.height * scale}px`,
+                                backgroundImage: imageUrl ? `url(${imageUrl})` : undefined,
+                                zIndex: 5
+                              }}
                             >
-                              Image
+                              {!imageUrl && "Image"}
                             </div>
                           )
                         } else if (zone.type === 'background') {

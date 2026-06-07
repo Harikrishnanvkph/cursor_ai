@@ -29,7 +29,8 @@ export function SignUpForm() {
 
   useEffect(() => {
     if (!loading && user) {
-      const redirectPath = sessionStorage.getItem('redirectAfterSignIn') || '/'
+      const defaultRedirect = user.is_admin ? '/admin' : '/'
+      const redirectPath = sessionStorage.getItem('redirectAfterSignIn') || defaultRedirect
       sessionStorage.removeItem('redirectAfterSignIn')
       router.replace(redirectPath)
     }

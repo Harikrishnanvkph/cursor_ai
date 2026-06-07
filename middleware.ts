@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 // Routes that require authentication
-const protectedRoutes = ['/landing', '/editor', '/admin']
+const protectedRoutes = ['/board', '/landing', '/editor', '/admin']
 
 export function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl
@@ -21,7 +21,8 @@ export function middleware(request: NextRequest) {
       // 1. If they have a custom ?redirect= or ?next= parameter, respect it.
       // 2. Otherwise, default to '/board' (Dashboard).
       const customRedirect = searchParams.get('redirect') || searchParams.get('next')
-      let targetPath = '/board'
+      const isAdminCookie = request.cookies.get('is_admin')
+      let targetPath = isAdminCookie ? '/admin' : '/board'
 
       if (customRedirect) {
         // Prevent open redirect vulnerabilities by ensuring it starts with '/' and not '//'
