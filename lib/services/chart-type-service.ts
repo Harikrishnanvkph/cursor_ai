@@ -250,6 +250,14 @@ export const ChartTypeService = {
             (newConfig as any).background = (currentState.chartConfig as any).background;
         }
 
+        // Preserve visualSettings (such as showLabels)
+        if (currentState.chartConfig.visualSettings) {
+            newConfig.visualSettings = {
+                ...(newConfig.visualSettings || {}),
+                ...currentState.chartConfig.visualSettings
+            };
+        }
+
         const prevPlugins = currentState.chartConfig.plugins || {};
         const pluginsToPreserve = ['title', 'subtitle', 'legend', 'tooltip'];
 
