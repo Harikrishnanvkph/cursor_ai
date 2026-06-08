@@ -14,7 +14,7 @@ function buildConfig(overrides: Record<string, any>): Record<string, any> {
       fillArea: overrides.fillArea ?? true,
       showBorder: overrides.showBorder ?? true,
       showImages: true,
-      showLabels: overrides.showLabels ?? true,
+      showLabels: overrides.showLabels ?? false,
       uniformityMode: 'uniform',
     },
     background: overrides.background || { type: 'color', color: '#ffffff', opacity: 100 },
@@ -48,7 +48,7 @@ function buildConfig(overrides: Record<string, any>): Record<string, any> {
         borderWidth: 1,
       },
       datalabels: {
-        display: overrides.datalabelsDisplay ?? true,
+        display: overrides.datalabelsDisplay ?? false,
         anchor: overrides.datalabelsAnchor || 'center',
         align: overrides.datalabelsAlign || 'center',
         offset: 0,

@@ -18,7 +18,7 @@ export class ChartStyleService {
         state: ChartState,
         dependencies: StyleServiceDependencies
     ): { chartData: ExtendedChartData; chartConfig: ExtendedChartOptions } {
-        const currentSettings = state.chartConfig.visualSettings || { fillArea: true, showBorder: true, showImages: true, showLabels: true, uniformityMode: 'uniform' as const };
+        const currentSettings = state.chartConfig.visualSettings || { fillArea: true, showBorder: true, showImages: true, showLabels: false, uniformityMode: 'uniform' as const };
         const newFillArea = !currentSettings.fillArea;
         const currentShowBorder = currentSettings.showBorder;
 
@@ -51,7 +51,7 @@ export class ChartStyleService {
         state: ChartState,
         dependencies: StyleServiceDependencies
     ): { chartData: ExtendedChartData; chartConfig: ExtendedChartOptions } {
-        const currentSettings = state.chartConfig.visualSettings || { fillArea: true, fillPoints: true, showBorder: true, showImages: true, showLabels: true, uniformityMode: 'uniform' as const };
+        const currentSettings = state.chartConfig.visualSettings || { fillArea: true, fillPoints: true, showBorder: true, showImages: true, showLabels: false, uniformityMode: 'uniform' as const };
         const newFillPoints = currentSettings.fillPoints !== false ? false : true;
 
         const newChartConfig = {
@@ -72,7 +72,7 @@ export class ChartStyleService {
         state: ChartState,
         dependencies: StyleServiceDependencies
     ): Partial<ChartState> & { chartConfig?: ExtendedChartOptions, chartData?: ExtendedChartData } {
-        const currentSettings = state.chartConfig.visualSettings || { fillArea: true, showBorder: true, showImages: true, showLabels: true, uniformityMode: 'uniform' as const };
+        const currentSettings = state.chartConfig.visualSettings || { fillArea: true, showBorder: true, showImages: true, showLabels: false, uniformityMode: 'uniform' as const };
 
         if (!currentSettings.fillArea) {
             return {};
@@ -107,7 +107,7 @@ export class ChartStyleService {
         state: ChartState,
         dependencies: StyleServiceDependencies
     ): { chartConfig: ExtendedChartOptions } {
-        const currentSettings = state.chartConfig.visualSettings || { fillArea: true, showBorder: true, showImages: true, showLabels: true, uniformityMode: 'uniform' as const };
+        const currentSettings = state.chartConfig.visualSettings || { fillArea: true, showBorder: true, showImages: true, showLabels: false, uniformityMode: 'uniform' as const };
         const newShowImages = !currentSettings.showImages;
 
         const newChartConfig = {
@@ -125,8 +125,8 @@ export class ChartStyleService {
         state: ChartState,
         dependencies: StyleServiceDependencies
     ): { chartConfig: ExtendedChartOptions } {
-        const currentSettings = state.chartConfig.visualSettings || { fillArea: true, showBorder: true, showImages: true, showLabels: true, uniformityMode: 'uniform' as const };
-        const currentDisplay = (state.chartConfig.plugins as any)?.customLabelsConfig?.display !== false;
+        const currentSettings = state.chartConfig.visualSettings || { fillArea: true, showBorder: true, showImages: true, showLabels: false, uniformityMode: 'uniform' as const };
+        const currentDisplay = (state.chartConfig.plugins as any)?.customLabelsConfig?.display === true;
         const newShowLabels = !currentDisplay;
 
         const newChartConfig = {

@@ -365,7 +365,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
             fillPoints: true,
             showBorder: true,
             showImages: true,
-            showLabels: true,
+            showLabels: false,
             uniformityMode: 'uniform'
         },
         layout: {
@@ -399,7 +399,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
             },
             // @ts-ignore - datalabels is a valid plugin but not in Chart.js base types
             datalabels: {
-                display: true,
+                display: false,
                 anchor: 'center',
                 align: 'center',
                 offset: 0,
@@ -520,7 +520,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
                 // @ts-ignore - legendType is a custom property
                 legendType: 'slice', // Override to slice for polar area
                 datalabels: { // Override datalabels specifically for polarArea
-                    display: true, // Default to true for polarArea
+                    display: false, // Default to false for polarArea
                     color: '#fff', // White color for better contrast on colored slices
                     formatter: (value: any) => value, // Show the actual value
                     // Add other polarArea specific datalabel defaults if needed
@@ -570,7 +570,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
                     display: false, // Hide legend for funnel
                 },
                 datalabels: {
-                    display: true,
+                    display: false,
                     color: '#ffffff',
                     font: { weight: 'bold', size: 14 },
                     anchor: 'center',
@@ -626,7 +626,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
                     display: false, // Hide legend for waterfall by default
                 },
                 datalabels: {
-                    display: true,
+                    display: false,
                     color: '#ffffff',
                     font: { weight: 'bold', size: 14 },
                     anchor: 'center',
@@ -669,7 +669,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
                 ...baseConfig.plugins,
                 legendType: 'slice', // Override to slice for pie/doughnut
                 datalabels: { // Ensure datalabels are configured for pie/doughnut
-                    display: true,
+                    display: false,
                     color: '#fff',
                     formatter: (value: any, context: any) => {
                         // Example: show percentage by default for pie/doughnut

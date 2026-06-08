@@ -57,7 +57,7 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
     }
     const visualSettings = (resolvedConfig as any)?.visualSettings ?? {};
     const effectiveShowImages = options.showImages ?? visualSettings.showImages ?? true;
-    const effectiveShowLabels = options.showLabels ?? visualSettings.showLabels ?? true;
+    const effectiveShowLabels = options.showLabels ?? visualSettings.showLabels ?? false;
     const effectiveFillArea = options.fillArea ?? visualSettings.fillArea;
     const effectiveShowBorder = options.showBorder ?? visualSettings.showBorder;
 
@@ -107,24 +107,28 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
     if ((effectiveFillArea !== undefined || effectiveShowBorder !== undefined) && Array.isArray(processedChartData.datasets)) {
         processedChartData.datasets = processedChartData.datasets.map((ds: any) => {
             const out = { ...ds } as any;
+            const datasetType = (chartMode === 'single' || uniformityMode === 'uniform')
+                ? chartType
+                : (ds.chartType || chartType || 'bar');
+
             if (effectiveFillArea === false) {
                 if (Array.isArray(out.backgroundColor)) out.backgroundColor = out.backgroundColor.map(() => 'transparent');
                 else out.backgroundColor = 'transparent';
                 
-                const isLineLike = (chartType === 'line' || chartType === 'area' || chartType === 'radar');
+                const isLineLike = (datasetType === 'line' || datasetType === 'area' || datasetType === 'radar');
                 if (isLineLike) {
                     out.fill = false;
                 }
             } else if (effectiveFillArea === true) {
-                if (chartType === 'area' && (out.fill === undefined || out.fill === false)) {
+                if (datasetType === 'area' && (out.fill === undefined || out.fill === false)) {
                     out.fill = 'origin';
                 }
             } else {
                 // FALLBACK CASE: When no explicit option is provided, 
                 // we should respect the chart's nature.
-                if (chartType === 'area' || chartType === 'radar') {
+                if (datasetType === 'area' || datasetType === 'radar') {
                     out.fill = (ds.fill !== undefined) ? ds.fill : true;
-                } else if (chartType === 'line') {
+                } else if (datasetType === 'line') {
                     // Strictly respect the dataset's fill property for line charts
                     out.fill = (ds.fill !== undefined) ? ds.fill : false;
                 }
@@ -146,9 +150,9 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
     // Generate custom labels and enhance chart config
     const effectiveConfig = JSON.parse(JSON.stringify(resolvedConfig));
     if (effectiveShowLabels === false) {
-        if (effectiveConfig.plugins?.customLabelsConfig) {
-            effectiveConfig.plugins.customLabelsConfig.display = false;
-        }
+        if (!effectiveConfig.plugins) effectiveConfig.plugins = {};
+        if (!effectiveConfig.plugins.customLabelsConfig) effectiveConfig.plugins.customLabelsConfig = {};
+        effectiveConfig.plugins.customLabelsConfig.display = false;
     }
     const customLabels = generateCustomLabelsFromConfig(effectiveConfig, processedChartData, legendFilter, currentDragState);
 

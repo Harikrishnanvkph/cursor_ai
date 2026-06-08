@@ -46,6 +46,7 @@ import {
   type DimensionUnit,
   type DimensionPreset,
 } from "@/lib/utils/dimension-utils"
+import { applyOpacityToColor } from "@/lib/utils/color-utils"
 import {
   BarChart3,
   Square,
@@ -121,6 +122,7 @@ interface DatasetConfig {
   category: ChartCategory
   type: SupportedChartType
   dataPoints: DataPoint[]
+  originalStyle?: any
 }
 
 const categoricalChartTypes: { value: SupportedChartType; label: string }[] = [
@@ -321,7 +323,8 @@ export function ChartSetupDialog({
             name: ds.label || ds.sourceTitle || `Dataset ${index + 1}`,
             category,
             type,
-            dataPoints: points.length > 0 ? points : getDefaultPoints(category, 4, datasetType === 'grouped' ? '#1E90FF' : undefined)
+            dataPoints: points.length > 0 ? points : getDefaultPoints(category, 4, datasetType === 'grouped' ? '#1E90FF' : undefined),
+            originalStyle: ds
           }
         })
         setDatasets(loadedDatasets)
@@ -678,20 +681,57 @@ export function ChartSetupDialog({
           data = ds.dataPoints.map(p => p.value)
         }
 
-        return {
+        const finalColors = (datasetType === 'grouped' && actualType === 'area')
+          ? colors.map(c => typeof c === 'string' ? applyOpacityToColor(c, 50) : c)
+          : colors
+
+        const originalType = ds.originalStyle?.chartType || ds.originalStyle?.type;
+        const typeChanged = originalType && actualType !== originalType;
+        const style = (!typeChanged && ds.originalStyle) ? ds.originalStyle : {};
+
+        // Check if colors changed in the setup wizard
+        const originalColors = style.backgroundColor;
+        const colorsChanged = Array.isArray(originalColors)
+          ? originalColors.some((c: any, idx: number) => c !== colors[idx])
+          : originalColors !== colors[0];
+
+        const borderColors = (!colorsChanged && style.borderColor && Array.isArray(style.borderColor) && style.borderColor.length === colors.length)
+          ? style.borderColor
+          : (!colorsChanged && typeof style.borderColor === 'string')
+            ? style.borderColor
+            : colors.map(c => darkenColor(c, 20));
+
+        const baseDataset = {
           label: ds.name,
           data,
-          backgroundColor: colors,
-          borderColor: colors.map(c => darkenColor(c, 20)),
+          backgroundColor: finalColors,
+          borderColor: borderColors,
           borderWidth: 2,
           pointRadius: 5,
-          tension: actualType === 'radar' ? 0 : 0.3,
+          tension: 0,
           fill: false,
           pointImages: Array(ds.dataPoints.length).fill(null),
           mode: datasetType,
           sliceLabels: ds.dataPoints.map(p => p.name),
           chartType: actualType,
+        };
+
+        if (!typeChanged && ds.originalStyle) {
+          return {
+            ...baseDataset,
+            ...style,
+            // Ensure dynamically computed fields are strictly kept
+            label: ds.name,
+            data,
+            backgroundColor: finalColors,
+            borderColor: borderColors,
+            sliceLabels: ds.dataPoints.map(p => p.name),
+            chartType: actualType,
+            mode: datasetType,
+          };
         }
+
+        return baseDataset;
       })
 
       // The chartType parameter passed out will be the first dataset's type

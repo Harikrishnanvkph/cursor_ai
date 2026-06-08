@@ -17,7 +17,9 @@ export async function generateCustomChartHTML(template: string, options: HTMLExp
     const processedChartData = await processChartDataForExport(chartData);
 
     const effectiveConfig2 = JSON.parse(JSON.stringify(chartConfig));
-    if (options.showLabels === false && effectiveConfig2.plugins?.customLabelsConfig) {
+    if (options.showLabels === false) {
+        if (!effectiveConfig2.plugins) effectiveConfig2.plugins = {};
+        if (!effectiveConfig2.plugins.customLabelsConfig) effectiveConfig2.plugins.customLabelsConfig = {};
         effectiveConfig2.plugins.customLabelsConfig.display = false;
     }
     const customLabels = generateCustomLabelsFromConfig(effectiveConfig2, processedChartData, legendFilter, options.dragState);

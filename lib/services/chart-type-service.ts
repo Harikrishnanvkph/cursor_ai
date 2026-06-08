@@ -7,6 +7,7 @@ import {
     getDefaultConfigForType,
     ChartMode
 } from '../chart-defaults';
+import { applyOpacityToColor } from '../utils/color-utils';
 
 // Helper types for the service
 interface ChartTypeTransitionState {
@@ -163,16 +164,25 @@ export const ChartTypeService = {
 
             // Apply default tensions
             if (targetType === 'line' || targetType === 'area') {
-                if (newDataset.tension === undefined) newDataset.tension = 0.3;
+                if (newDataset.tension === undefined) newDataset.tension = 0;
             }
             if (targetType === 'radar') {
                 newDataset.tension = 0;
                 newDataset.fill = true; // Radar default: fill ON
             }
 
-            // Apply fill property (for non-radar types)
+            // Apply fill property (for non-radar types) and 50% opacity in grouped mode
             if (targetType === 'area') {
                 newDataset.fill = 'origin';
+                if (currentState.chartMode === 'grouped') {
+                    if (Array.isArray(newDataset.backgroundColor)) {
+                        newDataset.backgroundColor = newDataset.backgroundColor.map(c =>
+                            typeof c === 'string' ? applyOpacityToColor(c, 50) : c
+                        );
+                    } else if (typeof newDataset.backgroundColor === 'string') {
+                        newDataset.backgroundColor = applyOpacityToColor(newDataset.backgroundColor, 50);
+                    }
+                }
             } else if (targetType !== 'radar') {
                 newDataset.fill = false; // Explicitly turn off for non-area, non-radar
             }

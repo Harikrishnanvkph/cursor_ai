@@ -360,7 +360,7 @@ export function generateCustomLabelsFromConfig(chartConfig: any, chartData: any,
     return filteredDatasets.map((ds: any, datasetIdx: number) => {
         const baseConfig = { ...globalCustomLabelsConfig, ...(ds.customLabelsConfig || {}) };
         
-        if (baseConfig.display === false) {
+        if (baseConfig.display !== true) {
             return ds.data.map(() => ({ text: '' }));
         }
 

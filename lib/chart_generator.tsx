@@ -642,6 +642,10 @@ export const ChartGenerator = memo(function ChartGenerator({
 
   // Filter datasets to only include enabled slices
   const filteredDatasets = modeFilteredDatasets.map(ds => {
+    const effectiveDatasetType = (chartMode === 'single' || uniformityMode === 'uniform')
+      ? chartType
+      : (ds.chartType || chartType || 'bar');
+
     const filterSlice = (arr: any[] | undefined) => {
       if (!arr) return [];
       return enabledSliceIndices.map(idx => arr?.[idx]);
@@ -673,7 +677,7 @@ export const ChartGenerator = memo(function ChartGenerator({
     };
 
     // Handle Points Fill
-    if (chartType === 'line' || chartType === 'area' || chartType === 'radar') {
+    if (effectiveDatasetType === 'line' || effectiveDatasetType === 'area' || effectiveDatasetType === 'radar') {
       if (!fillPoints) {
         processedDs.pointBackgroundColor = 'transparent';
       } else if (!processedDs.pointBackgroundColor) {
@@ -688,17 +692,17 @@ export const ChartGenerator = memo(function ChartGenerator({
       } else {
         processedDs.backgroundColor = 'transparent';
       }
-      if (chartType === 'line' || chartType === 'area' || chartType === 'radar') {
+      if (effectiveDatasetType === 'line' || effectiveDatasetType === 'area' || effectiveDatasetType === 'radar') {
         processedDs.fill = false;
       }
       // 3D pie/doughnut types still behave like pie/doughnut for fill
-      if (chartType === 'pie3d' || chartType === 'doughnut3d') {
+      if (effectiveDatasetType === 'pie3d' || effectiveDatasetType === 'doughnut3d') {
         // No fill changes needed for pie-based types
       }
     } else {
       // When fillArea is true, ensure area charts have a fill value
       // Only default to 'origin' if fill is not already set to a valid value
-      if (chartType === 'area' && (processedDs.fill === undefined || processedDs.fill === false)) {
+      if (effectiveDatasetType === 'area' && (processedDs.fill === undefined || processedDs.fill === false)) {
         processedDs.fill = 'origin';
       }
     }
@@ -1043,7 +1047,7 @@ export const ChartGenerator = memo(function ChartGenerator({
       if (!isVirtualTotalBar && (originalPointIdx === undefined || !isSliceVisible(originalPointIdx))) {
         return { text: '' };
       }
-      if (customLabelsConfig.display === false) return { text: '' };
+      if (customLabelsConfig.display !== true) return { text: '' };
 
       let text = '';
 
@@ -1919,7 +1923,7 @@ export const ChartGenerator = memo(function ChartGenerator({
                         : { enabled: false },
                       legendType: ((chartConfig.plugins as any)?.legendType) || 'dataset',
                       watermark: (chartConfig as any)?.watermark,
-                      customLabels: { shapeSize: 32, labels: customLabels, display: globalCustomLabelsConfig.display !== false },
+                      customLabels: { shapeSize: 32, labels: customLabels, display: globalCustomLabelsConfig.display === true },
                       legend: {
                         ...((chartConfig.plugins as any)?.legend),
                         display: ((chartConfig.plugins as any)?.legend?.display !== false),
@@ -2196,7 +2200,7 @@ export const ChartGenerator = memo(function ChartGenerator({
                         : { enabled: false },
                       legendType: ((chartConfig.plugins as any)?.legendType) || 'dataset',
                       watermark: (chartConfig as any)?.watermark,
-                      customLabels: { shapeSize: 32, labels: customLabels, display: globalCustomLabelsConfig.display !== false },
+                      customLabels: { shapeSize: 32, labels: customLabels, display: globalCustomLabelsConfig.display === true },
                       legend: {
                         ...((chartConfig.plugins as any)?.legend),
                         display: ((chartConfig.plugins as any)?.legend?.display !== false),

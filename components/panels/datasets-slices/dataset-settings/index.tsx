@@ -57,7 +57,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                 fillArea: chartConfig?.visualSettings?.fillArea ?? true,
                 showBorder: chartConfig?.visualSettings?.showBorder ?? true,
                 showImages: chartConfig?.visualSettings?.showImages ?? true,
-                showLabels: chartConfig?.visualSettings?.showLabels ?? true,
+                showLabels: chartConfig?.visualSettings?.showLabels ?? false,
             }
         });
     };

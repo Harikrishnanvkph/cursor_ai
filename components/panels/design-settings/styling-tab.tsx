@@ -458,7 +458,7 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                         <div className="space-y-1">
                             <Label className="text-xs font-medium">Line Tension</Label>
                             <Slider
-                                value={[Number(primaryDataset.tension ?? 0.3)]}
+                                value={[Number(primaryDataset.tension ?? 0)]}
                                 onValueChange={([value]) => {
                                     getTargetDatasetIndices().forEach(index => {
                                         handleUpdateDataset(index, 'tension', value)
@@ -469,7 +469,7 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                                 step={0.1}
                                 className="mt-2"
                             />
-                            <div className="text-xs text-gray-500 mt-1">{Number(primaryDataset.tension ?? 0.3).toFixed(1)}</div>
+                            <div className="text-xs text-gray-500 mt-1">{Number(primaryDataset.tension ?? 0).toFixed(1)}</div>
                         </div>
 
                         <div className="space-y-1">

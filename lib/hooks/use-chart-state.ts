@@ -55,7 +55,7 @@ export const useChartStyleOptions = () => useChartStore(state => {
         fillArea: config?.visualSettings?.fillArea ?? true,
         showBorder: config?.visualSettings?.showBorder ?? true,
         showImages: config?.visualSettings?.showImages ?? true,
-        showLabels: config?.visualSettings?.showLabels ?? true
+        showLabels: config?.visualSettings?.showLabels ?? false
     };
 })
 
@@ -63,5 +63,5 @@ export const useFillArea = () => useChartStore(state => resolveActiveConfig(stat
 export const useFillPoints = () => useChartStore(state => resolveActiveConfig(state)?.visualSettings?.fillPoints !== false)
 export const useShowBorder = () => useChartStore(state => resolveActiveConfig(state)?.visualSettings?.showBorder ?? true)
 export const useShowImages = () => useChartStore(state => resolveActiveConfig(state)?.visualSettings?.showImages ?? true)
-export const useShowLabels = () => useChartStore(state => resolveActiveConfig(state)?.visualSettings?.showLabels ?? true)
+export const useShowLabels = () => useChartStore(state => resolveActiveConfig(state)?.visualSettings?.showLabels ?? false)
 export const useLegendFilter = () => useChartStore(state => state.legendFilter)

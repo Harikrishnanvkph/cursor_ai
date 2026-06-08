@@ -1,5 +1,5 @@
 import { ExtendedChartDataset, ExtendedChartData, ChartGroup, SupportedChartType, getDefaultConfigForType, ChartMode } from '../chart-defaults';
-import { generateColorPalette, darkenColor } from '../utils/color-utils';
+import { generateColorPalette, darkenColor, applyOpacityToColor } from '../utils/color-utils';
 import { getDefaultImageType, getDefaultImageSize, getDefaultImageConfig } from '../plugins/universal-image-plugin';
 import { areDatasetChangesMeaningful } from '../utils/dataset-utils';
 
@@ -44,6 +44,18 @@ export const DatasetService = {
                 // Update global chartType to match the first dataset's type
                 if (finalDataset.chartType) {
                     newChartType = finalDataset.chartType;
+                }
+            }
+
+            // Enforce 50% opacity for area chart in grouped mode
+            const datasetChartType = finalDataset.chartType || newChartType;
+            if (datasetChartType === 'area') {
+                if (Array.isArray(finalDataset.backgroundColor)) {
+                    finalDataset.backgroundColor = finalDataset.backgroundColor.map(c =>
+                        typeof c === 'string' ? applyOpacityToColor(c, 50) : c
+                    );
+                } else if (typeof finalDataset.backgroundColor === 'string') {
+                    finalDataset.backgroundColor = applyOpacityToColor(finalDataset.backgroundColor, 50);
                 }
             }
         }
@@ -178,6 +190,21 @@ export const DatasetService = {
         }
 
         let updatedDataset = { ...dataset, ...updates } as ExtendedChartDataset;
+
+        // Enforce 50% opacity for area chart in grouped mode
+        const datasetChartType = updatedDataset.chartType || currentState.chartType;
+        if (currentState.chartMode === 'grouped' && datasetChartType === 'area') {
+            const hasColorUpdate = updates.backgroundColor || updates.randomizeColors || updates.datasetColorMode || updates.chartType || updates.type;
+            if (hasColorUpdate) {
+                if (Array.isArray(updatedDataset.backgroundColor)) {
+                    updatedDataset.backgroundColor = updatedDataset.backgroundColor.map(c =>
+                        typeof c === 'string' ? applyOpacityToColor(c, 50) : c
+                    );
+                } else if (typeof updatedDataset.backgroundColor === 'string') {
+                    updatedDataset.backgroundColor = applyOpacityToColor(updatedDataset.backgroundColor, 50);
+                }
+            }
+        }
 
         // Reset image callout positions when the dataset's chart type changes
         if ((updates.type && updates.type !== dataset.type) || (updates.chartType && updates.chartType !== dataset.chartType)) {

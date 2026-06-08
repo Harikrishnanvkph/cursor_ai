@@ -400,6 +400,12 @@ export default function SharedChartPage() {
       const subtitle = config?.plugins?.subtitle?.display ? config.plugins.subtitle.text : undefined;
       const bgConfig = getBackgroundConfig(config);
 
+      const visualSettings = config?.visualSettings || {};
+      const showImages = visualSettings.showImages ?? true;
+      const showLabels = visualSettings.showLabels ?? false;
+      const fillArea = visualSettings.fillArea ?? true;
+      const showBorder = visualSettings.showBorder ?? true;
+
       const result = await downloadChartAsHTML({
         title: title as string,
         subtitle: subtitle as string | undefined,
@@ -413,10 +419,10 @@ export default function SharedChartPage() {
         fileName: `chart-${chart.chart_type}-${new Date().toISOString().slice(0, 10)}.html`,
         template: "plain",
         dragState: config?.dragState || {},
-        showImages: true,
-        showLabels: true,
-        fillArea: true,
-        showBorder: true
+        showImages,
+        showLabels,
+        fillArea,
+        showBorder
       });
 
       if (result && !result.success) {

@@ -1,5 +1,9 @@
+import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import { Slider } from "@/components/ui/slider"
+import { getHexFromColor, applyOpacityToColor } from "@/lib/utils/color-utils"
 
 interface ColorsTabProps {
     chartMode: string
@@ -22,6 +26,64 @@ export function ColorsTab({
     currentSliceLabels,
     handleColorChange
 }: ColorsTabProps) {
+    const getCurrentOpacity = () => {
+        if (!currentDataset) return 100
+
+        let firstColor = ''
+        if (Array.isArray(currentDataset.backgroundColor)) {
+            const color = currentDataset.backgroundColor[0]
+            firstColor = typeof color === 'string' ? color : ''
+        } else {
+            const color = currentDataset.backgroundColor
+            firstColor = typeof color === 'string' ? color : ''
+        }
+
+        if (firstColor && firstColor.startsWith('rgba')) {
+            const match = firstColor.match(/rgba?\(\d+,\s*\d+,\s*\d+,\s*([\d.]+)\)/)
+            if (match) {
+                return Math.round(parseFloat(match[1]) * 100)
+            }
+        }
+        return 100
+    }
+
+    const [colorOpacity, setColorOpacity] = useState(getCurrentOpacity())
+
+    // Sync state when currentDataset changes
+    useEffect(() => {
+        setColorOpacity(getCurrentOpacity())
+    }, [currentDataset])
+
+    const applyOpacity = (opacity: number) => {
+        const datasetIndex = chartData.datasets.findIndex((ds: any) => ds === currentDataset)
+        if (datasetIndex === -1) return
+
+        let newBgColors: any
+        if (Array.isArray(currentDataset.backgroundColor)) {
+            newBgColors = currentDataset.backgroundColor.map((color: any) =>
+                typeof color === 'string' ? applyOpacityToColor(color, opacity) : color
+            )
+        } else if (typeof currentDataset.backgroundColor === 'string') {
+            newBgColors = applyOpacityToColor(currentDataset.backgroundColor, opacity)
+        } else {
+            newBgColors = currentDataset.backgroundColor
+        }
+
+        const preservedBorderColor = Array.isArray(currentDataset.borderColor)
+            ? [...currentDataset.borderColor]
+            : currentDataset.borderColor
+
+        updateDataset(datasetIndex, {
+            backgroundColor: newBgColors,
+            borderColor: preservedBorderColor as any
+        })
+    }
+
+    const handleSingleColorChange = (pointIndex: number, newColor: string) => {
+        const finalColor = applyOpacityToColor(newColor, colorOpacity)
+        handleColorChange(pointIndex, finalColor)
+    }
+
     if (!currentDataset) return null;
 
     return (
@@ -58,6 +120,48 @@ export function ColorsTab({
                     </div>
                 </div>
             )}
+
+            {/* Opacity Control */}
+            <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                    <Label className="text-xs font-medium text-gray-700">Opacity</Label>
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-600">{colorOpacity}%</span>
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-2 text-xs"
+                            onClick={() => {
+                                setColorOpacity(100)
+                                applyOpacity(100)
+                            }}
+                            title="Reset to fully opaque"
+                        >
+                            Reset
+                        </Button>
+                    </div>
+                </div>
+                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <Slider
+                        value={[colorOpacity]}
+                        onValueChange={(value) => {
+                            setColorOpacity(value[0])
+                            applyOpacity(value[0])
+                        }}
+                        min={0}
+                        max={100}
+                        step={1}
+                        className="w-full"
+                    />
+                    <div className="flex justify-between mt-2 text-[10px] text-gray-500">
+                        <span>Transparent</span>
+                        <span>Opaque</span>
+                    </div>
+                </div>
+                <p className="text-xs text-gray-500 italic">
+                    Adjusts opacity of background colors (borders unchanged)
+                </p>
+            </div>
 
             {/* Colors Section */}
             <div className="space-y-3">
@@ -114,13 +218,13 @@ export function ColorsTab({
                                         <input
                                             id={`slice-color-${pointIndex}`}
                                             type="color"
-                                            value={currentColor || '#3b82f6'}
-                                            onChange={(e) => handleColorChange(pointIndex, e.target.value)}
+                                            value={getHexFromColor(currentColor || '#3b82f6')}
+                                            onChange={(e) => handleSingleColorChange(pointIndex, e.target.value)}
                                             className="invisible w-0"
                                         />
                                         <Input
                                             value={currentColor || '#3b82f6'}
-                                            onChange={(e) => handleColorChange(pointIndex, e.target.value)}
+                                            onChange={(e) => handleSingleColorChange(pointIndex, e.target.value)}
                                             className="w-20 h-6 text-xs font-mono uppercase"
                                             placeholder="#3b82f6"
                                         />
@@ -134,3 +238,4 @@ export function ColorsTab({
         </div>
     )
 }
+

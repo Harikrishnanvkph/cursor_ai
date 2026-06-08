@@ -51,7 +51,7 @@ export function ConfigSidebar() {
   const fillArea = chartConfig?.visualSettings?.fillArea ?? true;
   const showBorder = chartConfig?.visualSettings?.showBorder ?? true;
   const showImages = chartConfig?.visualSettings?.showImages ?? true;
-  const showLabels = chartConfig?.visualSettings?.showLabels ?? true;
+  const showLabels = chartConfig?.visualSettings?.showLabels ?? false;
 
   const {
     currentTemplate,

@@ -314,7 +314,7 @@ function buildSyntheticPreview(preset: ChartStylePreset) {
   }
 
   if (LINE_TYPES.has(preset.chartType) || resolvedType === 'line') {
-    dataset.tension = preset.datasetStyle?.tension ?? 0.3
+    dataset.tension = preset.datasetStyle?.tension ?? 0
     dataset.fill = preset.datasetStyle?.fill ?? (preset.chartType === 'area')
     dataset.pointRadius = Math.min(preset.datasetStyle?.pointRadius ?? 2, 3)
     if (preset.datasetStyle?.pointStyle !== undefined) dataset.pointStyle = preset.datasetStyle.pointStyle

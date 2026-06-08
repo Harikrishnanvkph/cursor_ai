@@ -25,7 +25,11 @@ type ConfigPathUpdate = {
     value: any;
 };
 
-export function LabelsPanel() {
+interface LabelsPanelProps {
+    mode?: 'styling' | 'labels'
+}
+
+export function LabelsPanel({ mode = 'labels' }: LabelsPanelProps) {
     const { chartConfig, chartData, chartMode, chartType } = useChartStore()
     const { updateChartConfig, updateDataset } = useChartActions()
     const { targetIndices, isAllDatasets } = useGroupedSettingsTarget()
@@ -166,15 +170,18 @@ export function LabelsPanel() {
             {/* Slice Filter for single mode */}
             {isSingleMode && <SliceSettingsFilter />}
 
-            {/* Top-level Label/Styling tabs */}
-            <Tabs defaultValue="styling" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 text-xs">
-                    <TabsTrigger value="styling">Styling</TabsTrigger>
-                    <TabsTrigger value="label">Labels</TabsTrigger>
-                </TabsList>
-
-                {/* ==================== LABEL TAB ==================== */}
-                <TabsContent value="label" className="mt-4">
+            {mode === 'styling' ? (
+                /* ==================== STYLING TAB CONTENT ==================== */
+                <StylingTab
+                    chartData={chartData}
+                    chartConfig={chartConfig}
+                    chartType={chartType as any}
+                    handleUpdateDataset={handleUpdateDataset}
+                    handleConfigUpdate={handleConfigUpdate}
+                />
+            ) : (
+                /* ==================== LABELS TAB CONTENT ==================== */
+                <>
                     <Tabs defaultValue="data-labels" className="w-full">
                         <TabsList className="w-full h-auto p-0 bg-transparent border-b border-gray-200 rounded-none justify-start gap-4">
                             <TabsTrigger
@@ -198,7 +205,7 @@ export function LabelsPanel() {
                             <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
                                 <Label className="text-sm font-medium text-blue-900">Show Data Labels</Label>
                                 <Switch
-                                    checked={customLabelsConfig.display !== false}
+                                    checked={customLabelsConfig.display === true}
                                     onCheckedChange={(checked) => {
                                         if (isGroupedMode && !applyToAll) {
                                             handleCustomLabelConfigUpdate("display", checked);
@@ -699,27 +706,16 @@ export function LabelsPanel() {
                                     </TooltipProvider>
                                 </div>
                                 <Textarea
-                                    value={customLabelsConfig.conditionalFormatting || ""}
-                                    onChange={(e) => handleCustomLabelConfigUpdate("conditionalFormatting", e.target.value)}
-                                    placeholder="if (value > 100) return { text: 'High', color: '#22c55e' };"
-                                    className="h-16 text-xs font-mono"
+                                    value={customLabelsConfig.conditionalFormatter || ""}
+                                    onChange={(e) => handleCustomLabelConfigUpdate("conditionalFormatter", e.target.value)}
+                                    placeholder={`if (value > 100) {\n  return {\n    text: 'High Amount',\n    color: '#22c55e',\n    fontWeight: 'bold'\n  };\n}`}
+                                    className="h-20 text-xs font-mono"
                                 />
                             </div>
                         </TabsContent>
                     </Tabs>
-                </TabsContent>
-
-                {/* ==================== STYLING TAB ==================== */}
-                <TabsContent value="styling" className="mt-4">
-                    <StylingTab
-                        chartData={chartData}
-                        chartConfig={chartConfig}
-                        chartType={chartType as any}
-                        handleUpdateDataset={handleUpdateDataset}
-                        handleConfigUpdate={handleConfigUpdate}
-                    />
-                </TabsContent>
-            </Tabs>
+                </>
+            )}
 
             {/* Specialized panels for specific chart types */}
             {(chartType === 'pie' || chartType === 'doughnut') && (

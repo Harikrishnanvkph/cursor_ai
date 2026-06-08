@@ -219,7 +219,7 @@ export const useChartStore = create<ChartStore>()(
       fillArea: true,
       showBorder: true,
       showImages: true,
-      showLabels: true,
+      showLabels: false,
       hasJSON: false,
       currentSnapshotId: null, // Initialize to null
       // Original cloud dimensions - null for new charts, set when loaded from cloud

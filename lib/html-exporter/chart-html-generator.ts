@@ -101,24 +101,28 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
     if ((options.fillArea !== undefined || options.showBorder !== undefined) && Array.isArray(processedChartData.datasets)) {
         processedChartData.datasets = processedChartData.datasets.map((ds: any) => {
             const out = { ...ds } as any;
+            const datasetType = (chartMode === 'single' || uniformityMode === 'uniform')
+                ? chartType
+                : (ds.chartType || chartType || 'bar');
+
             if (options.fillArea === false) {
                 if (Array.isArray(out.backgroundColor)) out.backgroundColor = out.backgroundColor.map(() => 'transparent');
                 else out.backgroundColor = 'transparent';
                 
-                const isLineLike = (chartType === 'line' || chartType === 'area' || chartType === 'radar');
+                const isLineLike = (datasetType === 'line' || datasetType === 'area' || datasetType === 'radar');
                 if (isLineLike) {
                     out.fill = false;
                 }
             } else if (options.fillArea === true) {
-                if (chartType === 'area' && (out.fill === undefined || out.fill === false)) {
+                if (datasetType === 'area' && (out.fill === undefined || out.fill === false)) {
                     out.fill = 'origin';
                 }
             } else {
                 // FALLBACK CASE: When no explicit export option is provided, 
                 // we should respect the chart's nature.
-                if (chartType === 'area' || chartType === 'radar') {
+                if (datasetType === 'area' || datasetType === 'radar') {
                     out.fill = (ds.fill !== undefined) ? ds.fill : true;
-                } else if (chartType === 'line') {
+                } else if (datasetType === 'line') {
                     // Strictly respect the dataset's fill property for line charts
                     out.fill = (ds.fill !== undefined) ? ds.fill : false;
                 }
@@ -232,9 +236,9 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
     // Apply runtime toggles: hide labels/images if disabled
     const effectiveConfig = JSON.parse(JSON.stringify(chartConfig));
     if (options.showLabels === false) {
-        if (effectiveConfig.plugins?.customLabelsConfig) {
-            effectiveConfig.plugins.customLabelsConfig.display = false;
-        }
+        if (!effectiveConfig.plugins) effectiveConfig.plugins = {};
+        if (!effectiveConfig.plugins.customLabelsConfig) effectiveConfig.plugins.customLabelsConfig = {};
+        effectiveConfig.plugins.customLabelsConfig.display = false;
     }
     const customLabels = generateCustomLabelsFromConfig(effectiveConfig, processedChartData, legendFilter, currentDragState);
 
