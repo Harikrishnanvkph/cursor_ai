@@ -474,6 +474,24 @@ export const ChartGenerator = memo(function ChartGenerator({
     };
   }, []);
 
+  // Handle dimension changes explicitly to prevent top-left corner squeezing
+  useEffect(() => {
+    const handleResize = () => {
+      if (chartRef.current) {
+        if (useFixedDimensions && finalWidth && finalHeight) {
+          chartRef.current.resize(finalWidth, finalHeight);
+        } else {
+          chartRef.current.resize();
+        }
+        chartRef.current.update();
+      }
+    };
+
+    handleResize();
+    const frameId = requestAnimationFrame(handleResize);
+    return () => cancelAnimationFrame(frameId);
+  }, [finalWidth, finalHeight, useFixedDimensions]);
+
   // Refs for stable event listener callbacks — prevents the event listener
   // useEffect from re-running on every render when action functions change
   const actionsRef = useRef({ updateDataset });

@@ -32,6 +32,7 @@ import { SaveChartDialog } from "@/components/ui/save-chart-dialog"
 import { ClearChartDialog } from "@/components/dialogs/clear-chart-dialog"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { useDecorationStore } from "@/lib/stores/decoration-store"
+import { cleanupDecorationFiles } from "@/lib/stores/decoration-file-registry"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { EditorWelcomeScreen } from "@/components/editor-welcome-screen"
 import { DimensionMismatchDialog } from "@/components/dialogs/dimension-mismatch-dialog"
@@ -248,6 +249,9 @@ function EditorPageContent() {
   useEffect(() => {
     if (useDecorationStore.persist?.hasHydrated()) {
       useDecorationStore.persist?.rehydrate?.()
+    }
+    return () => {
+      cleanupDecorationFiles()
     }
   }, [])
 
@@ -1415,30 +1419,31 @@ function EditorPageContent() {
 
           {/* Drawer Content - Scrollable */}
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden px-0 py-2">
-            {/* Navigation Options */}
-            <div className="space-y-1 mb-2">
-              {/* AI Chat Button */}
-              <button
-                onClick={() => {
-                  router.push('/landing');
-                  setSandwichOpen(false);
-                }}
-                className="mx-2 w-[calc(100%-16px)] flex items-center gap-2.5 px-2.5 py-1.5 hover:bg-slate-50 border border-transparent rounded-lg text-left transition-all active:scale-98 text-slate-700 font-semibold text-sm"
-              >
-                <Sparkles className="w-4 h-4 flex-shrink-0 text-slate-500" />
-                <span>AI Chat</span>
-              </button>
-
-              {/* Board Page Button */}
+            <div className="flex items-center gap-2 mx-2 mb-2">
+              {/* Board Button */}
               <button
                 onClick={() => {
                   router.push('/board');
                   setSandwichOpen(false);
                 }}
-                className="mx-2 w-[calc(100%-16px)] flex items-center gap-2.5 px-2.5 py-1.5 hover:bg-slate-50 border border-transparent rounded-lg text-left transition-all active:scale-98 text-slate-700 font-semibold text-sm"
+                className="flex-1 h-9 flex items-center justify-center gap-2 px-3 hover:bg-slate-50 border border-slate-200/60 rounded-lg transition-all active:scale-95 shadow-sm text-slate-700 font-semibold text-sm"
+                title="Board"
               >
-                <LayoutDashboard className="w-4 h-4 flex-shrink-0 text-slate-500" />
+                <LayoutDashboard className="w-4 h-4 text-slate-500" />
                 <span>Board</span>
+              </button>
+
+              {/* AI Button */}
+              <button
+                onClick={() => {
+                  router.push('/landing');
+                  setSandwichOpen(false);
+                }}
+                className="flex-1 h-9 flex items-center justify-center gap-2 px-3 hover:bg-slate-50 border border-slate-200/60 rounded-lg transition-all active:scale-95 shadow-sm text-slate-700 font-semibold text-sm"
+                title="AI Chat"
+              >
+                <Sparkles className="w-4 h-4 text-slate-500" />
+                <span>AI Chat</span>
               </button>
             </div>
 
@@ -1491,14 +1496,14 @@ function EditorPageContent() {
                   className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
                 >
                   <LayoutDashboard className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Board Page</span>
+                  <span>Board</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => router.push('/landing')}
                   className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-slate-500" />
-                  <span>AI Chat Page</span>
+                  <span>AI Chat</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -1641,7 +1646,7 @@ function EditorPageContent() {
 
         {/* Left Sidebar Overlay when expanded */}
         {(!leftSidebarCollapsed) && (
-          <div className="fixed top-0 left-0 h-full w-64 z-40 bg-white shadow-2xl border-r border-gray-200 flex flex-col overflow-hidden">
+          <div className="fixed top-0 left-0 h-full w-52 z-40 bg-white shadow-2xl border-r border-gray-200 flex flex-col overflow-hidden">
             {/* Unified Editor Header */}
             <div className="flex flex-col border-b border-gray-100 flex-shrink-0 pt-2 pb-2">
               <div className="flex justify-center mb-2">
@@ -1652,32 +1657,23 @@ function EditorPageContent() {
                 </span>
               </div>
 
-              <div className="flex items-center justify-between px-2">
+              <div className="flex items-center px-2">
                 <div className="flex items-center gap-1.5 flex-1">
                   <button
                     onClick={() => router.push('/board')}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-medium text-slate-600 bg-white hover:bg-slate-50 rounded-md border border-slate-200 shadow-sm transition-colors"
-                    title="Go to Dashboard"
+                    className="flex-1 flex items-center justify-center gap-1.5 h-8 px-2 text-xs font-medium text-slate-600 bg-white hover:bg-slate-50 rounded-md border border-slate-200 shadow-sm transition-colors"
+                    title="Board"
                   >
                     <LayoutDashboard className="w-3.5 h-3.5 text-slate-500" />
                     <span>Board</span>
                   </button>
                   <button
                     onClick={() => router.push('/landing')}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-medium text-slate-600 bg-white hover:bg-slate-50 rounded-md border border-slate-200 shadow-sm transition-colors"
-                    title="Go to AI Chat"
+                    className="flex-1 flex items-center justify-center gap-1.5 h-8 px-2 text-xs font-medium text-slate-600 bg-white hover:bg-slate-50 rounded-md border border-slate-200 shadow-sm transition-colors"
+                    title="AI Chat"
                   >
                     <Sparkles className="w-3.5 h-3.5 text-slate-500" />
                     <span>AI Chat</span>
-                  </button>
-                </div>
-                <div className="flex gap-1 ml-1.5">
-                  <button
-                    className="h-7 w-7 flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-md transition-colors"
-                    onClick={() => setLeftSidebarCollapsed(true)}
-                    title="Collapse Sidebar"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -1687,6 +1683,8 @@ function EditorPageContent() {
               <Sidebar
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
+                onToggleLeftSidebar={() => setLeftSidebarCollapsed(true)}
+                isLeftSidebarCollapsed={leftSidebarCollapsed}
               />
             </div>
           </div>

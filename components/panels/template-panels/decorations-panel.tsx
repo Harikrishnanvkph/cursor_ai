@@ -15,9 +15,10 @@ import {
   Lock, Unlock, Eye, EyeOff, ArrowUpToLine, ArrowDownToLine,
   Check, X as XIcon, CircleDot, Pentagon, Diamond, Heart, MousePointer2, SquareDashedMousePointer,
   Type, Image as ImageIcon, FileCode, Upload, Bold, Italic, Underline, Strikethrough,
-  AlignLeft, AlignCenter, AlignRight, Spline, Octagon, Info, Undo2, Redo2
+  AlignLeft, AlignCenter, AlignRight, Spline, Octagon, Info, Undo2, Redo2, Blend
 } from "lucide-react"
 import { useDecorationStore, type DecorationShapeType, type DrawingMode } from "@/lib/stores/decoration-store"
+import { decorationFileRegistry } from "@/lib/stores/decoration-file-registry"
 
 // ═══════════════════════════════════════════════════════
 // Shape definitions for the picker
@@ -509,11 +510,9 @@ function ImagePropertyEditor({ shape, onUpdate }: { shape: any, onUpdate: (u: an
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      onUpdate({ imageUrl: e.target?.result as string })
-    }
-    reader.readAsDataURL(file)
+    const blobUrl = URL.createObjectURL(file)
+    decorationFileRegistry.set(blobUrl, file)
+    onUpdate({ imageUrl: blobUrl })
     event.target.value = ''
   }
 
@@ -668,19 +667,17 @@ export function DecorationsPanel() {
   const handleAddImageFile = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      addShape({
-        type: 'deco-image',
-        x: 50, y: 50, width: 150, height: 150,
-        rotation: 0, fillColor: 'transparent', fillOpacity: 100,
-        strokeColor: '#cbd5e1', strokeWidth: 1, strokeStyle: 'solid',
-        visible: true, locked: false, zIndex: shapes.length + 1,
-        imageUrl: e.target?.result as string,
-        imageFit: 'contain', borderRadius: 0,
-      })
-    }
-    reader.readAsDataURL(file)
+    const blobUrl = URL.createObjectURL(file)
+    decorationFileRegistry.set(blobUrl, file)
+    addShape({
+      type: 'deco-image',
+      x: 50, y: 50, width: 150, height: 150,
+      rotation: 0, fillColor: 'transparent', fillOpacity: 100,
+      strokeColor: '#cbd5e1', strokeWidth: 1, strokeStyle: 'solid',
+      visible: true, locked: false, zIndex: shapes.length + 1,
+      imageUrl: blobUrl,
+      imageFit: 'contain', borderRadius: 0,
+    })
     event.target.value = ''
   }
 
@@ -847,8 +844,8 @@ export function DecorationsPanel() {
             Shapes
           </TabsTrigger>
           <TabsTrigger value="section" className="flex items-center gap-1.5 text-xs">
-            <Type className="h-3.5 w-3.5" />
-            Section
+            <Blend className="h-3.5 w-3.5" />
+            Overlay
           </TabsTrigger>
         </TabsList>
 

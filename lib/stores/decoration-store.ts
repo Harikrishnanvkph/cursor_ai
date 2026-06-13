@@ -3,6 +3,7 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { createExpiringStorage } from "@/lib/storage-utils"
+import { decorationFileRegistry } from "@/lib/stores/decoration-file-registry"
 
 // ═══════════════════════════════════════════════════════
 // Types
@@ -282,6 +283,19 @@ export const useDecorationStore = create<DecorationStore>()(
 
       updateShape: (id, updates, skipHistory = false) => {
         if (!skipHistory) get().commitHistory()
+
+        const shape = get().shapes.find(s => s.id === id)
+        if (shape?.type === 'deco-image' && updates.imageUrl !== undefined && updates.imageUrl !== shape.imageUrl) {
+          if (shape.imageUrl?.startsWith('blob:')) {
+            try {
+              URL.revokeObjectURL(shape.imageUrl)
+            } catch (e) {
+              console.error('Failed to revoke blob URL on update:', e)
+            }
+            decorationFileRegistry.delete(shape.imageUrl)
+          }
+        }
+
         set((state) => {
           const newShapes = state.shapes.map(s => s.id === id ? { ...s, ...updates } : s);
           return syncShapes(state, newShapes);
@@ -299,6 +313,17 @@ export const useDecorationStore = create<DecorationStore>()(
 
       removeShape: (id) => {
         get().commitHistory()
+
+        const shape = get().shapes.find(s => s.id === id)
+        if (shape?.type === 'deco-image' && shape.imageUrl?.startsWith('blob:')) {
+          try {
+            URL.revokeObjectURL(shape.imageUrl)
+          } catch (e) {
+            console.error('Failed to revoke blob URL on remove:', e)
+          }
+          decorationFileRegistry.delete(shape.imageUrl)
+        }
+
         set((state) => {
           const newShapes = state.shapes.filter(s => s.id !== id);
           return {
@@ -311,6 +336,19 @@ export const useDecorationStore = create<DecorationStore>()(
 
       clearShapes: () => {
         get().commitHistory()
+
+        // Revoke all blob URLs in shapes before clearing
+        get().shapes.forEach(shape => {
+          if (shape.type === 'deco-image' && shape.imageUrl?.startsWith('blob:')) {
+            try {
+              URL.revokeObjectURL(shape.imageUrl)
+            } catch (e) {
+              console.error('Failed to revoke blob URL on clear:', e)
+            }
+            decorationFileRegistry.delete(shape.imageUrl)
+          }
+        })
+
         set((state) => ({ 
           ...syncShapes(state, []), 
           selectedShapeId: null, 

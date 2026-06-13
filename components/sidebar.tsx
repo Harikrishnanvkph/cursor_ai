@@ -12,7 +12,7 @@ import {
   Tag,
   Layers,
   SlidersHorizontal,
-  ChevronRight,
+  PanelLeft,
   FileText,
   Type,
   BarChart3,
@@ -164,7 +164,7 @@ export function Sidebar({ activeTab, onTabChange, onToggleLeftSidebar, isLeftSid
             className="h-8 w-8 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg flex-shrink-0"
             title={isLeftSidebarCollapsed ? "Expand Left Sidebar" : "Collapse Left Sidebar"}
           >
-            <ChevronRight className={`h-4 w-4 transition-transform duration-200 ${isLeftSidebarCollapsed ? '' : 'rotate-180'}`} />
+            <PanelLeft className="h-4 w-4 text-slate-500 hover:text-slate-700 transition-colors" />
           </Button>
         )}
       </div>

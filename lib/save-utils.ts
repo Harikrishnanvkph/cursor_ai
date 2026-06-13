@@ -15,6 +15,7 @@ import { DatasetService } from './services/dataset-service';
 import { GroupService } from './services/group-service';
 import { useFormatGalleryStore } from './stores/format-gallery-store';
 import { useDecorationStore } from './stores/decoration-store';
+import { decorationFileRegistry } from './stores/decoration-file-registry';
 
 export interface SaveChartOptions {
     /** Custom chart name (used for new saves or renaming) */
@@ -110,6 +111,15 @@ function extractTemplateData(): {
     return { templateStructure: null, templateContent: null };
 }
 
+function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
 /**
  * Main save function - consolidated logic for saving charts to backend.
  * Used by chart-layout.tsx, editor/page.tsx, and config-panel.tsx.
@@ -188,18 +198,53 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
         const normalizedConfig = normalizeChartConfig(chartConfig);
 
 
-        // Inject decorations into config so it's persisted in the snapshot
+        // Process and upload any decoration images loaded via blob URLs
         const decorationShapes = useDecorationStore.getState().shapes;
-        if (decorationShapes && decorationShapes.length > 0) {
-            normalizedConfig.decorationShapes = decorationShapes;
+        const updatedShapes = [...decorationShapes];
+
+        for (let i = 0; i < updatedShapes.length; i++) {
+            const shape = updatedShapes[i];
+            if (shape.type === 'deco-image' && shape.imageUrl && shape.imageUrl.startsWith('blob:')) {
+                const file = decorationFileRegistry.get(shape.imageUrl);
+                if (file) {
+                    const base64 = await fileToBase64(file);
+                    const res = await dataService.uploadImage(base64, file.name);
+                    if (res.data?.publicUrl) {
+                        // Create updated shape
+                        const updatedShape = {
+                            ...shape,
+                            imageUrl: res.data.publicUrl
+                        };
+                        updatedShapes[i] = updatedShape;
+                        
+                        // Update the store so the active editing session uses the public URL
+                        useDecorationStore.getState().updateShape(shape.id, { imageUrl: res.data.publicUrl }, true);
+                        
+                        // Revoke blob URL and remove from registry
+                        try {
+                            URL.revokeObjectURL(shape.imageUrl);
+                        } catch (e) {
+                            console.error('Failed to revoke blob URL during save:', e);
+                        }
+                        decorationFileRegistry.delete(shape.imageUrl);
+                    } else {
+                        throw new Error(res.error || 'Failed to upload decoration image');
+                    }
+                }
+            }
+        }
+
+        // Inject decorations into config so it's persisted in the snapshot
+        if (updatedShapes && updatedShapes.length > 0) {
+            normalizedConfig.decorationShapes = updatedShapes;
         }
 
         // Extract template data
         let { templateStructure, templateContent } = extractTemplateData();
         
         // If we are in template mode, also inject decorations directly into template structure
-        if (templateStructure && decorationShapes && decorationShapes.length > 0) {
-            templateStructure.decorations = decorationShapes;
+        if (templateStructure && updatedShapes && updatedShapes.length > 0) {
+            templateStructure.decorations = updatedShapes;
         }
 
         // Inject format data into config so it's persisted in the snapshot

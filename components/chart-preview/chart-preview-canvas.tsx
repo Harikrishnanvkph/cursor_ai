@@ -158,7 +158,7 @@ export const ChartPreviewCanvas = React.memo(({
     // Non-responsive mode: fixed dimensions with CSS scale wrapper
     const cWidth = containerSize.width || chartContainerRef.current?.clientWidth || 800;
     const cHeight = containerSize.height || chartContainerRef.current?.clientHeight || 600;
-    const padding = 100;
+    const padding = 40;
     const availableWidth = Math.max(10, cWidth - padding);
     const availableHeight = Math.max(10, cHeight - padding);
     

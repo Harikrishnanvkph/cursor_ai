@@ -48,7 +48,7 @@ export function EditorLeftSidebar() {
       className={`h-full bg-white border-r border-gray-200 flex flex-col fixed top-0 left-0 z-40 lg:relative lg:top-auto lg:left-auto lg:z-10 ${
         leftSidebarCollapsed 
           ? "w-16 items-center shadow-sm lg:shadow-none" 
-          : "w-64 shadow-2xl lg:shadow-none"
+          : "w-52 shadow-2xl lg:shadow-none"
       }`}
     >
       {leftSidebarCollapsed ? (
@@ -84,14 +84,14 @@ export function EditorLeftSidebar() {
                   className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
                 >
                   <LayoutDashboard className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Board Page</span>
+                  <span>Board</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => router.push('/landing')}
                   className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-slate-500" />
-                  <span>AI Chat Page</span>
+                  <span>AI Chat</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -132,8 +132,8 @@ export function EditorLeftSidebar() {
           </div>
         </div>
       ) : (
-        /* Expanded Sidebar Content - w-64 fixed content view, prevents text-wrapping during width transition */
-        <div className="w-64 flex-shrink-0 flex flex-col h-full overflow-hidden">
+        /* Expanded Sidebar Content - w-52 fixed content view, prevents text-wrapping during width transition */
+        <div className="w-52 flex-shrink-0 flex flex-col h-full overflow-hidden">
           {/* Unified Editor Header */}
           <div className="flex flex-col border-b border-gray-100 flex-shrink-0 pt-2 pb-2">
             <div className="flex justify-center mb-2">
@@ -144,32 +144,23 @@ export function EditorLeftSidebar() {
               </span>
             </div>
 
-            <div className="flex items-center justify-between px-2">
+             <div className="flex items-center px-2">
               <div className="flex items-center gap-1.5 flex-1">
                 <button
                   onClick={() => router.push('/board')}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-medium text-slate-600 bg-white hover:bg-slate-50 rounded-md border border-slate-200 shadow-sm transition-colors"
-                  title="Go to Dashboard"
+                  className="flex-1 flex items-center justify-center gap-1.5 h-8 px-2 text-xs font-medium text-slate-600 bg-white hover:bg-slate-50 rounded-md border border-slate-200 shadow-sm transition-colors"
+                  title="Board"
                 >
                   <LayoutDashboard className="w-3.5 h-3.5 text-slate-500" />
                   <span>Board</span>
                 </button>
                 <button
                   onClick={() => router.push('/landing')}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-medium text-slate-600 bg-white hover:bg-slate-50 rounded-md border border-slate-200 shadow-sm transition-colors"
-                  title="Go to AI Chat"
+                  className="flex-1 flex items-center justify-center gap-1.5 h-8 px-2 text-xs font-medium text-slate-600 bg-white hover:bg-slate-50 rounded-md border border-slate-200 shadow-sm transition-colors"
+                  title="AI Chat"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-slate-500" />
                   <span>AI Chat</span>
-                </button>
-              </div>
-              <div className="flex gap-1 ml-1.5">
-                <button
-                  className="h-7 w-7 flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-md transition-colors"
-                  onClick={() => setLeftSidebarCollapsed(true)}
-                  title="Collapse Sidebar"
-                >
-                  <ChevronLeft className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -179,6 +170,8 @@ export function EditorLeftSidebar() {
             <Sidebar
               activeTab={activeTab}
               onTabChange={setActiveTab}
+              onToggleLeftSidebar={() => setLeftSidebarCollapsed(true)}
+              isLeftSidebarCollapsed={leftSidebarCollapsed}
             />
           </div>
         </div>

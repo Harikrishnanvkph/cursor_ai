@@ -13,6 +13,7 @@ import { dataService } from '@/lib/data-service'
 import { toast } from 'sonner'
 import { useDecorationStore } from '@/lib/stores/decoration-store'
 import { useFormatGalleryStore } from '@/lib/stores/format-gallery-store'
+import { decorationFileRegistry } from '@/lib/stores/decoration-file-registry'
 
 export function FormatBuilderToolbar() {
   const router = useRouter()
@@ -48,7 +49,10 @@ export function FormatBuilderToolbar() {
   // Resolve a local image URL to base64 for upload
   const resolveLocalImage = async (url: string): Promise<string> => {
     if (url.startsWith('blob:')) {
-      const file = blobRegistry.current?.get(url)
+      let file = blobRegistry.current?.get(url)
+      if (!file) {
+        file = decorationFileRegistry.get(url)
+      }
       if (!file) throw new Error('Blob URL not found in registry — the file may have been revoked')
       return await fileToBase64(file)
     }

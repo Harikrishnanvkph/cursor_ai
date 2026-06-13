@@ -54,7 +54,7 @@ export const useUIStore = create<UIStore>()(
 
             // Canvas pan-area background
             canvasBgType: 'color',
-            canvasBgColor: '#ffffff', // default white
+            canvasBgColor: '#e5e7eb', // default light gray (highlighted preset color)
             setCanvasBg: (type, color) => set((state) => ({
                 canvasBgType: type,
                 canvasBgColor: type === 'color' ? (color ?? state.canvasBgColor) : state.canvasBgColor,

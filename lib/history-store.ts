@@ -117,6 +117,19 @@ export const useHistoryStore = create<HistoryStore>()(
                 } : undefined
               }));
 
+              // Infer chart mode from snapshot if not provided by backend response
+              let inferredChartMode: 'single' | 'grouped' = 'single';
+              if (snapshotResponse.data && snapshotResponse.data.chart_data) {
+                const datasets = snapshotResponse.data.chart_data.datasets || [];
+                if (datasets.some((ds: any) => ds.mode === 'grouped')) {
+                  inferredChartMode = 'grouped';
+                } else if (datasets.some((ds: any) => ds.mode === 'single')) {
+                  inferredChartMode = 'single';
+                } else if (datasets.length > 1) {
+                  inferredChartMode = 'grouped';
+                }
+              }
+
               // Transform to frontend format
               conv = {
                 id: response.data.id,
@@ -133,7 +146,7 @@ export const useHistoryStore = create<HistoryStore>()(
                 } : null,
                 timestamp: new Date(response.data.created_at).getTime(),
                 is_template_mode: response.data.is_template_mode ?? snapshotResponse.data?.is_template_mode ?? false,
-                chart_mode: response.data.chart_mode ?? 'single'
+                chart_mode: response.data.chart_mode ?? conv?.chart_mode ?? inferredChartMode
               };
 
               // Add to local store for future access
@@ -196,10 +209,13 @@ export const useHistoryStore = create<HistoryStore>()(
 
           const chartConfig = conv.snapshot.chartConfig as any;
           
-          // Restore decorations
+          // Restore decorations with correct mode (template vs chart) to prevent race condition during load
+          const isTemplateMode = !!(conv.snapshot.template_structure || conv.snapshot.is_template_mode || chartConfig?.formatData);
+          const targetMode = isTemplateMode ? 'template' : 'chart';
+
           const decorationsToLoad = chartConfig?.decorationShapes || conv.snapshot.template_structure?.decorations || [];
           if (decorationsToLoad.length > 0) {
-            useDecorationStore.getState().setShapes(decorationsToLoad);
+            useDecorationStore.getState().setShapes(decorationsToLoad, targetMode);
           } else {
             useDecorationStore.getState().clearShapes?.();
           }

@@ -1,10 +1,104 @@
 "use client"
 
-import React, { useEffect, useMemo, useCallback, useState } from "react"
+import React, { useEffect, useMemo, useCallback, useState, useRef } from "react"
 import { ChevronDown } from "lucide-react"
 import { useChartStyleStore } from "@/lib/stores/chart-style-store"
 import { useChartStore } from "@/lib/chart-store"
-import { X, Palette, SlidersHorizontal, BarChart3, Search, TrendingUp, PieChart, CircleDot, Radar, Target, BarChartHorizontal, Box, Layers, RefreshCw, Check, Layout } from "lucide-react"
+import { X, Palette, SlidersHorizontal, BarChart3, Search, TrendingUp, PieChart, CircleDot, Radar, Target, BarChartHorizontal, Box, Layers, RefreshCw, Check, Layout, Loader2 } from "lucide-react"
+import dynamic from "next/dynamic"
+
+const ChartGenerator = dynamic(
+  () => import("@/lib/chart_generator").then(mod => mod.ChartGenerator),
+  { ssr: false, loading: () => <div className="w-full h-full flex items-center justify-center"><Loader2 className="w-5 h-5 text-violet-500 animate-spin" /></div> }
+)
+
+interface CurrentChartTileProps {
+  chartData: any
+  chartConfig: any
+  chartType: string
+}
+
+function CurrentChartTile({ chartData, chartConfig, chartType }: CurrentChartTileProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [tileScale, setTileScale] = useState(0.3)
+
+  // Parse width/height from config
+  const { chartW, chartH, isResponsive } = useMemo(() => {
+    const parseDim = (val: any, fallback: number): number => {
+      if (typeof val === 'number') return val
+      if (typeof val === 'string') {
+        const parsed = parseInt(val, 10)
+        return isNaN(parsed) ? fallback : parsed
+      }
+      return fallback
+    }
+
+    const cfg = chartConfig as any
+    if (!cfg) return { chartW: 800, chartH: 600, isResponsive: true }
+
+    const resp = cfg.responsive !== false && !cfg.manualDimensions
+    if (resp) return { chartW: 800, chartH: 600, isResponsive: true }
+
+    return {
+      chartW: parseDim(cfg.width, 800),
+      chartH: parseDim(cfg.height, 600),
+      isResponsive: false,
+    }
+  }, [chartConfig])
+
+  useEffect(() => {
+    if (!containerRef.current) return
+
+    const updateScale = () => {
+      if (!containerRef.current) return
+      const containerWidth = containerRef.current.clientWidth
+      const containerHeight = containerRef.current.clientHeight
+
+      const scaleX = containerWidth / chartW
+      const scaleY = containerHeight / chartH
+      setTileScale(Math.min(scaleX, scaleY))
+    }
+
+    updateScale()
+
+    const resizeObserver = new ResizeObserver(() => updateScale())
+    resizeObserver.observe(containerRef.current)
+
+    return () => resizeObserver.disconnect()
+  }, [chartW, chartH])
+
+  const safeScale = (!tileScale || isNaN(tileScale) || tileScale <= 0) ? 0.3 : tileScale
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative w-full h-full bg-zinc-50 bg-[radial-gradient(#e4e4e7_1.2px,transparent_1.2px)] [background-size:12px_12px] border border-zinc-200 rounded-xl overflow-hidden"
+    >
+      <div
+        className="relative shadow-[0_4px_20px_rgba(0,0,0,0.08)] border border-zinc-200 rounded-lg overflow-hidden bg-white"
+        style={{
+          width: chartW,
+          height: chartH,
+          transform: `scale(${safeScale})`,
+          transformOrigin: 'top left',
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          marginTop: -(chartH * safeScale) / 2,
+          marginLeft: -(chartW * safeScale) / 2,
+        }}
+      >
+        <ChartGenerator
+          readOnly
+          dataOverride={chartData}
+          configOverride={chartConfig}
+          typeOverride={chartType}
+          isTemplateOrFormat={isResponsive}
+        />
+      </div>
+    </div>
+  )
+}
 
 /** Number of presets to show initially and per "Load More" click */
 const PAGE_SIZE = 12
@@ -375,6 +469,64 @@ export function ChartStyleGalleryPage() {
               </p>
             )}
           </>
+        ) : filters.aspectRatio !== 'all' ? (
+          <div className="flex flex-col md:flex-row items-center justify-center h-full min-h-[350px] gap-8 md:gap-12 max-w-4xl mx-auto px-4">
+            {/* Left Side: No Styles Found Info */}
+            <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left">
+              <h3 className="text-xl font-bold text-gray-900 mb-2">No Styles Found</h3>
+              <p className="text-sm text-gray-500 max-w-sm mb-6 leading-relaxed">
+                There are no presets specifically designed for the <strong className="text-violet-600 font-semibold">{filters.aspectRatio}</strong> aspect ratio.
+              </p>
+              
+              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                <button
+                  onClick={() => setFilters({ aspectRatio: 'all' })}
+                  className="text-xs px-4 py-2.5 font-bold rounded-lg bg-violet-600 text-white hover:bg-violet-700 transition-colors shadow-sm cursor-pointer"
+                >
+                  Reset Aspect Ratio to All
+                </button>
+                {activeFilterCount > 1 && (
+                  <button
+                    onClick={() => {
+                      resetFilters()
+                      setSearchInput('')
+                    }}
+                    className="text-xs px-4 py-2.5 font-medium rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer"
+                  >
+                    Clear All Filters
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Right Side: The Simple AI-Generated Chart preview */}
+            <div className="flex-1 w-full max-w-sm flex flex-col items-center">
+              <div className="w-full flex justify-between items-center mb-2 px-1">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Your Chart (AI Generated - Simple)</span>
+                <span className="text-[9px] px-2 py-0.5 rounded bg-gray-100 text-gray-600 font-bold uppercase">{filters.aspectRatio}</span>
+              </div>
+              <div 
+                onClick={closeGallery}
+                className="w-full h-[240px] shadow-md rounded-xl border border-gray-100 overflow-hidden bg-white hover:border-violet-400 hover:shadow-lg transition-all duration-200 cursor-pointer group relative"
+                title="Click to edit or export this chart"
+              >
+                <CurrentChartTile
+                  chartData={chartData}
+                  chartConfig={chartConfig}
+                  chartType={chartType}
+                />
+                {/* Hover overlay explaining action */}
+                <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center pointer-events-none">
+                  <span className="bg-white text-gray-950 text-[11px] font-bold px-3 py-1.5 rounded-lg shadow-md">
+                    Click to Edit or Export
+                  </span>
+                </div>
+              </div>
+              <p className="text-[10px] text-gray-400 mt-2 text-center">
+                Close this gallery (click <strong>X</strong> or <strong>the chart</strong>) to edit or export your chart.
+              </p>
+            </div>
+          </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-center">
             <div className="w-20 h-20 bg-gray-100 rounded-3xl flex items-center justify-center mb-4">
@@ -384,25 +536,15 @@ export function ChartStyleGalleryPage() {
             <p className="text-sm text-gray-500 max-w-sm mb-4">
               {officialPresets.length === 0
                 ? "No styles are currently available."
-                : filters.aspectRatio !== 'all'
-                ? `There are no presets specifically designed for the ${filters.aspectRatio} aspect ratio.`
                 : "We couldn't find any styles matching your current filters."}
             </p>
-            {filters.aspectRatio !== 'all' && (
-              <button
-                onClick={() => setFilters({ aspectRatio: 'all' })}
-                className="text-sm px-4 py-2 font-semibold rounded-lg bg-violet-50 text-violet-600 hover:bg-violet-100 transition-colors border border-violet-100 mb-2"
-              >
-                Reset Aspect Ratio to All
-              </button>
-            )}
             {activeFilterCount > 0 && (
               <button
                 onClick={() => {
                   resetFilters()
                   setSearchInput('')
                 }}
-                className="text-sm px-4 py-2 font-medium rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+                className="text-sm px-4 py-2 font-medium rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer"
               >
                 Clear All Filters
               </button>

@@ -5,6 +5,7 @@ interface ApiResponse<T> {
   data?: T;
   error?: string;
   message?: string;
+  status?: number;
 }
 
 class DataService {
@@ -34,6 +35,9 @@ class DataService {
     }
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout to avoid infinite hangs
+
       const response = await fetch(url, {
         ...options,
         credentials: 'include',
@@ -41,18 +45,32 @@ class DataService {
           'Content-Type': 'application/json',
           ...options.headers,
         },
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         const errorMessage = errorData.error || errorData.message || `HTTP ${response.status}`;
-        console.error(`❌ API request failed: ${endpoint}`, {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorMessage,
-          errorData
-        });
+        
+        if (response.status === 404) {
+          console.warn(`⚠️ API request returned 404 (Not Found): ${endpoint}`, {
+            status: response.status,
+            error: errorMessage,
+            errorData
+          });
+        } else {
+          console.error(`❌ API request failed: ${endpoint}`, {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorMessage,
+            errorData
+          });
+        }
+
         const err = new Error(errorMessage);
+        (err as any).status = response.status;
         (err as any).alreadyLogged = true;
         throw err;
       }
@@ -75,6 +93,14 @@ class DataService {
 
       return { data };
     } catch (error: any) {
+      if (error?.name === 'AbortError') {
+        return {
+          error: 'Request timed out. The server might be slow or offline.',
+          message: 'Request failed',
+          status: 408
+        };
+      }
+
       if (!error?.alreadyLogged) {
         console.error(`API request failed: ${endpoint}`, error);
       }
@@ -89,7 +115,8 @@ class DataService {
 
       return {
         error: errorMessage,
-        message: 'Request failed'
+        message: 'Request failed',
+        status: error?.status
       };
     }
   }
@@ -325,6 +352,16 @@ class DataService {
     return this.request('/api/data/upload-image', {
       method: 'POST',
       body: JSON.stringify({ base64Data, filename }),
+    }, false);
+  }
+
+  async getMyImages(): Promise<ApiResponse<any[]>> {
+    return this.request('/api/data/my-images', {}, false);
+  }
+
+  async deleteMyImage(id: string): Promise<ApiResponse<{ success: boolean; deletedImage: string; cascade: any }>> {
+    return this.request(`/api/data/my-images/${id}`, {
+      method: 'DELETE',
     }, false);
   }
 

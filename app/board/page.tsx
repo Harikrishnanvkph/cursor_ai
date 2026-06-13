@@ -16,6 +16,7 @@ import { ChartPreviewModal } from "@/components/board/chart-preview-modal"
 import { ChartCard } from "@/components/board/chart-card"
 import { BoardStats } from "@/components/board/board-stats"
 import { toast } from "sonner"
+import { dataService } from "@/lib/data-service"
 import {
   BarChart2,
   TrendingUp,
@@ -48,7 +49,11 @@ import {
   Gauge,
   Compass,
   Activity,
-  Info
+  Info,
+  Image as ImageIcon,
+  Copy,
+  Check,
+  Trash2
 } from "lucide-react"
 import Link from "next/link"
 
@@ -93,6 +98,7 @@ function BoardPageContent() {
   const [visibleCount, setVisibleCount] = useState(12)
   const [isSearchExpanded, setIsSearchExpanded] = useState(false)
   const [showMobileInfo, setShowMobileInfo] = useState(false)
+  const [viewTab, setViewTab] = useState<"charts" | "images">("charts")
   const searchInputRef = React.useRef<HTMLInputElement>(null)
 
   // Focus search input when expanded
@@ -275,6 +281,36 @@ function BoardPageContent() {
 
             {/* Actions: Direct buttons for AI Chat and Advanced Editor */}
             <div className="flex items-center gap-1.5 sm:gap-2">
+              {/* Segmented control view switcher for My Charts vs My Images */}
+              <div className="flex items-center bg-zinc-150/80 rounded-lg p-0.5 border border-zinc-200/60 mr-1 sm:mr-2 shrink-0">
+                <Button
+                  onClick={() => setViewTab("charts")}
+                  className={`h-7 px-2.5 text-xs font-semibold rounded-md shadow-none transition-all gap-1.5 flex items-center justify-center shrink-0 ${
+                    viewTab === "charts"
+                      ? "bg-white text-zinc-950 hover:bg-white border-zinc-200/40 shadow-sm"
+                      : "bg-transparent text-zinc-500 hover:text-zinc-900 border-none hover:bg-transparent"
+                  }`}
+                  variant="ghost"
+                  size="sm"
+                >
+                  <LayoutDashboard className="h-3.5 w-3.5" />
+                  <span>My Charts</span>
+                </Button>
+                <Button
+                  onClick={() => setViewTab("images")}
+                  className={`h-7 px-2.5 text-xs font-semibold rounded-md shadow-none transition-all gap-1.5 flex items-center justify-center shrink-0 ${
+                    viewTab === "images"
+                      ? "bg-white text-zinc-950 hover:bg-white border-zinc-200/40 shadow-sm"
+                      : "bg-transparent text-zinc-500 hover:text-zinc-900 border-none hover:bg-transparent"
+                  }`}
+                  variant="ghost"
+                  size="sm"
+                >
+                  <ImageIcon className="h-3.5 w-3.5" />
+                  <span>My Images</span>
+                </Button>
+              </div>
+
               <Link href="/landing">
                 <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs h-8 rounded-md px-2.5 sm:px-3 gap-1.5 flex items-center justify-center shadow-none transition-all">
                   <Sparkles className="h-3.5 w-3.5" />
@@ -295,7 +331,7 @@ function BoardPageContent() {
       </header>
 
       {/* GitHub-style Secondary Sub-header (Tabs) */}
-      <div className="bg-white border-b border-zinc-200">
+      <div className={viewTab === "charts" ? "bg-white border-b border-zinc-200" : "hidden"}>
         <div className="max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-4">
             <nav 
@@ -390,7 +426,8 @@ function BoardPageContent() {
       {/* Main Content */}
       <main className="max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8">
         
-        {(activeTab === "single" || activeTab === "group" || activeTab === "templates") && (
+        <div className={viewTab === "charts" ? "block" : "hidden"}>
+          {(activeTab === "single" || activeTab === "group" || activeTab === "templates") && (
           <div className="flex flex-col lg:flex-row gap-6 items-start w-full">
             {/* Left Column (Search + Filters + Charts List) */}
             <div className={`flex-1 min-w-0 w-full space-y-6 ${showMobileInfo ? "hidden lg:block" : "block"}`}>
@@ -909,6 +946,11 @@ function BoardPageContent() {
             </div>
           </div>
         )}
+        </div>
+
+        {viewTab === "images" && (
+          <MyImagesManager loadConversationsFromBackend={loadConversationsFromBackend} />
+        )}
       </main>
 
       {/* Enhanced Chart Preview Modal */}
@@ -919,6 +961,284 @@ function BoardPageContent() {
           onEdit={handleEdit}
           onEditInAdvanced={handleEditInAdvanced}
         />
+      )}
+    </div>
+  )
+}
+
+interface MyImagesManagerProps {
+  loadConversationsFromBackend: () => Promise<void>;
+}
+
+function MyImagesManager({ loadConversationsFromBackend }: MyImagesManagerProps) {
+  const [images, setImages] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [deletingImage, setDeletingImage] = useState<any | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const fetchImages = async () => {
+    setLoading(true)
+    try {
+      const res = await dataService.getMyImages()
+      if (res.data) {
+        setImages(res.data)
+      } else {
+        toast.error(res.error || "Failed to load images")
+      }
+    } catch (err) {
+      toast.error("Failed to load images")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchImages()
+  }, [])
+
+  const handleCopyUrl = (id: string, url: string) => {
+    navigator.clipboard.writeText(url)
+    setCopiedId(id)
+    toast.success("Image URL copied to clipboard!")
+    setTimeout(() => setCopiedId(null), 2000)
+  }
+
+  const handleDelete = async () => {
+    if (!deletingImage) return
+    setIsDeleting(true)
+    try {
+      const res = await dataService.deleteMyImage(deletingImage.id)
+      if (res.data?.success) {
+        toast.success("Image deleted successfully!")
+        setDeletingImage(null)
+        fetchImages()
+        // Reload conversations to sync the dashboard charts if any were cascaded
+        if (
+          res.data.cascade?.charts?.length > 0 || 
+          res.data.cascade?.templates?.length > 0 || 
+          res.data.cascade?.formats?.length > 0
+        ) {
+          loadConversationsFromBackend()
+        }
+      } else {
+        toast.error(res.error || "Failed to delete image")
+      }
+    } catch (err) {
+      toast.error("Failed to delete image")
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="py-20 flex flex-col items-center justify-center space-y-4">
+        <Loader2 className="h-8 w-8 text-violet-600 animate-spin" />
+        <p className="text-sm text-zinc-500 font-semibold animate-pulse">Loading uploaded images...</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header Info */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-200 pb-5">
+        <div>
+          <h2 className="text-lg font-bold text-zinc-950 flex items-center gap-2">
+            <ImageIcon className="h-5 w-5 text-violet-600" />
+            My Uploaded Images
+          </h2>
+          <p className="text-zinc-500 text-sm mt-1">
+            Manage your images in Supabase Storage. View active chart/template mappings and delete images with cascading warning checks.
+          </p>
+        </div>
+        <div className="bg-violet-50 text-violet-700 border border-violet-200 rounded-full px-3 py-1 text-xs font-bold self-start md:self-center shadow-none">
+          {images.length} {images.length === 1 ? "image" : "images"} uploaded
+        </div>
+      </div>
+
+      {images.length === 0 ? (
+        <Card className="border border-zinc-200 bg-white shadow-none rounded-lg py-16 text-center">
+          <CardContent className="max-w-md mx-auto space-y-6">
+            <div className="relative">
+              <div className="w-20 h-20 bg-zinc-50 border border-zinc-200 rounded-xl mx-auto flex items-center justify-center mb-6">
+                <ImageIcon className="h-10 w-10 text-violet-500" />
+              </div>
+              <div className="absolute top-0 right-1/3 translate-x-4 w-6 h-6 bg-violet-50 border border-violet-200 rounded-full flex items-center justify-center shadow-sm">
+                <Sparkles className="h-3.5 w-3.5 text-violet-600" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold text-zinc-900">No uploaded images</h3>
+              <p className="text-zinc-500 text-sm leading-relaxed">
+                Images you upload inside custom layout formats, image zones, or chart decorations will appear here automatically.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {images.map((img) => (
+            <Card key={img.id} className="border border-zinc-200 bg-white shadow-none rounded-xl overflow-hidden hover:border-zinc-300 transition-all flex flex-col group">
+              {/* Image Thumbnail */}
+              <div className="relative aspect-video bg-zinc-50 border-b border-zinc-100 flex items-center justify-center overflow-hidden p-4 group-hover:bg-zinc-100/60 transition-colors">
+                <img
+                  src={img.image_url}
+                  alt={img.filename}
+                  className="max-h-full max-w-full object-contain rounded shadow-sm hover:scale-102 transition-transform duration-300"
+                />
+              </div>
+
+              {/* Card Body */}
+              <CardContent className="p-4 flex-1 flex flex-col justify-between space-y-4">
+                <div className="space-y-2.5">
+                  {/* Filename & Date */}
+                  <div>
+                    <h4 className="font-bold text-sm text-zinc-900 truncate" title={img.filename}>
+                      {img.filename}
+                    </h4>
+                    <p className="text-[10px] text-zinc-400 mt-0.5">
+                      Uploaded {new Date(img.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                    </p>
+                  </div>
+
+                  {/* Mapping Badges */}
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Mapped to:</p>
+                    
+                    {(!img.mappings?.charts?.length && 
+                      !img.mappings?.templates?.length && 
+                      !img.mappings?.formats?.length) ? (
+                      <Badge variant="outline" className="bg-zinc-50 text-zinc-500 border-zinc-200/60 shadow-none font-semibold text-[10px] py-0.5 px-1.5">
+                        Unused / No mappings
+                      </Badge>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5 max-h-[120px] overflow-y-auto pr-1">
+                        {img.mappings.charts?.map((c: any) => (
+                          <Badge key={c.id} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200/60 shadow-none font-semibold text-[10px] py-0.5 px-1.5 truncate max-w-[200px]" title={`Chart: ${c.title}`}>
+                            Chart: {c.title}
+                          </Badge>
+                        ))}
+                        {img.mappings.templates?.map((t: any) => (
+                          <Badge key={t.id} variant="outline" className="bg-purple-50 text-purple-700 border-purple-200/60 shadow-none font-semibold text-[10px] py-0.5 px-1.5 truncate max-w-[200px]" title={`Template: ${t.name}`}>
+                            Tpl: {t.name}
+                          </Badge>
+                        ))}
+                        {img.mappings.formats?.map((f: any) => (
+                          <Badge key={f.id} variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200/60 shadow-none font-semibold text-[10px] py-0.5 px-1.5 truncate max-w-[200px]" title={`Format: ${f.name}`}>
+                            Fmt: {f.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Action Row */}
+                <div className="flex items-center gap-2 pt-2 border-t border-zinc-100">
+                  <Button
+                    onClick={() => handleCopyUrl(img.id, img.image_url)}
+                    variant="outline"
+                    className="flex-1 h-8 text-xs font-semibold px-2 border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700 rounded-md gap-1 flex items-center justify-center shadow-none transition-all"
+                  >
+                    {copiedId === img.id ? (
+                      <>
+                        <Check className="h-3.5 w-3.5 text-emerald-600" />
+                        <span>Copied</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3.5 w-3.5" />
+                        <span>Copy URL</span>
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={() => setDeletingImage(img)}
+                    variant="outline"
+                    className="h-8 w-8 p-0 border-red-200 bg-white hover:bg-red-50 text-red-600 hover:text-red-700 rounded-md flex items-center justify-center shadow-none transition-all"
+                    title="Delete Image"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Delete Confirmation Warning Modal */}
+      {deletingImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 animate-in fade-in duration-150">
+          <Card className="w-full max-w-md border border-zinc-200 shadow-2xl bg-white rounded-xl overflow-hidden animate-in zoom-in-95 duration-150">
+            <CardHeader className="bg-red-50/50 border-b border-red-100 p-5">
+              <div className="flex items-center gap-3 text-red-600">
+                <Trash2 className="h-5 w-5 flex-shrink-0" />
+                <CardTitle className="text-base font-bold text-red-950">Delete Uploaded Image?</CardTitle>
+              </div>
+              <CardDescription className="text-zinc-500 text-xs mt-1">
+                This action is permanent and will delete the image file from storage.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-5 space-y-4 text-sm text-zinc-750">
+              <p>Are you sure you want to delete <strong className="text-zinc-900">{deletingImage.filename}</strong>?</p>
+              
+              {(deletingImage.mappings?.charts?.length > 0 || 
+                deletingImage.mappings?.templates?.length > 0 || 
+                deletingImage.mappings?.formats?.length > 0) ? (
+                <div className="p-4 bg-red-50/80 border border-red-150/70 rounded-lg space-y-2.5">
+                  <p className="text-xs font-bold text-red-800">
+                    ⚠️ CRITICAL: Deleting this image will also delete all associated mappings:
+                  </p>
+                  <ul className="text-xs text-red-900 space-y-1.5 list-disc pl-4 font-semibold leading-relaxed">
+                    {deletingImage.mappings.charts?.map((c: any) => (
+                      <li key={c.id}>Chart: <span className="text-red-950">{c.title}</span></li>
+                    ))}
+                    {deletingImage.mappings.templates?.map((t: any) => (
+                      <li key={t.id}>Template: <span className="text-red-950">{t.name}</span></li>
+                    ))}
+                    {deletingImage.mappings.formats?.map((f: any) => (
+                      <li key={f.id}>Format Blueprint: <span className="text-red-950">{f.name}</span></li>
+                    ))}
+                  </ul>
+                  <p className="text-[10px] text-red-700 italic">
+                    Note: If associated charts/templates are deleted, their corresponding database conversations and layout files will be permanently purged.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-xs text-zinc-500 bg-zinc-50 border border-zinc-200 p-3 rounded-lg leading-relaxed">
+                  This image is currently not used in any charts, templates, or format configurations. It is safe to delete.
+                </p>
+              )}
+            </CardContent>
+            <div className="bg-zinc-50 border-t border-zinc-150 p-4 flex items-center justify-end gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setDeletingImage(null)} 
+                disabled={isDeleting}
+                className="h-8 text-xs font-semibold px-4 border-zinc-200 bg-white hover:bg-zinc-100 text-zinc-700 rounded-md shadow-none transition-all"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleDelete} 
+                disabled={isDeleting}
+                className="h-8 text-xs font-semibold px-4 bg-red-600 hover:bg-red-700 text-white rounded-md flex items-center gap-1.5 shadow-none transition-all"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete Permanently"
+                )}
+              </Button>
+            </div>
+          </Card>
+        </div>
       )}
     </div>
   )

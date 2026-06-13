@@ -362,7 +362,7 @@ const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, isMobile, ch
                                     if (chartContainerRef?.current) {
                                         const cWidth = chartContainerRef.current.clientWidth || 800;
                                         const cHeight = chartContainerRef.current.clientHeight || 600;
-                                        const padding = 100;
+                                        const padding = 40;
                                         const availableWidth = Math.max(10, cWidth - padding);
                                         const availableHeight = Math.max(10, cHeight - padding);
                                         const scaleX = availableWidth / chartWidth;

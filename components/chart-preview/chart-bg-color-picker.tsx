@@ -17,7 +17,7 @@ export const ChartBgColorPicker = memo(({ className, innerClassName }: { classNa
     const setCanvasBg = useUIStore(s => s.setCanvasBg);
 
     const isTransparent = canvasBgType === 'transparent';
-    const currentColor = canvasBgColor || '#ffffff';
+    const currentColor = canvasBgColor || '#e5e7eb';
 
     const handleColorChange = (color: string) => {
         setCanvasBg('color', color);

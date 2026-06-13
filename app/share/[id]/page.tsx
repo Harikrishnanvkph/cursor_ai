@@ -214,18 +214,28 @@ export default function SharedChartPage() {
         setError(null)
 
         let fetchedChart: SharedChart | null = null;
-        
-        try {
-          const response = await dataService.getSharedChart(shareId);
-          if (response && response.data) {
-            fetchedChart = response.data;
+        let isSharedChartNotFoundError = false;
+        const response = await dataService.getSharedChart(shareId);
+        if (response && response.error) {
+          const errMsg = response.error || "";
+          if (
+            response.status === 404 ||
+            errMsg.includes("Shared chart not found") || 
+            errMsg.includes("HTTP 404") ||
+            errMsg.includes("not found") ||
+            errMsg.includes("Not Found")
+          ) {
+            isSharedChartNotFoundError = true;
+            setError("This shared chart is no longer available or has been removed.");
+          } else {
+            console.warn("Backend not available, falling back to rich interactive mock chart preview", response.error);
           }
-        } catch (e) {
-          console.warn("Backend not available, falling back to rich interactive mock chart preview", e);
+        } else if (response && response.data) {
+          fetchedChart = response.data;
         }
 
         // If backend fails or we are in preview mode, fallback to a gorgeous mock chart
-        if (!fetchedChart) {
+        if (!fetchedChart && !isSharedChartNotFoundError) {
           fetchedChart = {
             chart_type: 'bar',
             chart_data: {
@@ -272,6 +282,10 @@ export default function SharedChartPage() {
             },
             created_at: new Date().toISOString()
           };
+        }
+
+        if (!fetchedChart) {
+          return;
         }
 
         // If this chart is a format, we need to fetch the format blueprint to render it properly
@@ -503,16 +517,173 @@ export default function SharedChartPage() {
 
   if (error || !chart) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 font-sans">
-        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 max-w-md w-full text-center">
-          <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="w-6 h-6" />
+      <div className={`min-h-screen flex flex-col font-sans transition-colors duration-200 ${
+        theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
+      }`}>
+        {/* Header / Brand Bar */}
+        <header className={`h-[56px] border-b flex items-center justify-between px-6 shrink-0 z-20 relative transition-all duration-200 ${
+          theme === 'dark' 
+            ? 'bg-slate-900/80 border-slate-800 backdrop-blur-md' 
+            : 'bg-white/80 border-slate-200 backdrop-blur-md shadow-[0_2px_10px_rgba(0,0,0,0.02)]'
+        }`}>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 via-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+              <BarChart3 className="w-4 h-4 text-white" />
+            </div>
+            <span className={`text-base font-extrabold tracking-tight transition-colors ${
+              theme === 'dark' ? 'text-white' : 'text-slate-900'
+            }`}>
+              AIChartor
+            </span>
           </div>
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Chart Not Found</h1>
-          <p className="text-gray-500 text-sm">
-            {error || "The URL might be broken or the chart has been removed."}
-          </p>
+
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={toggleTheme}
+              size="sm"
+              variant="ghost"
+              className={`w-8 h-8 p-0 rounded-lg flex items-center justify-center transition-all hover:rotate-12 ${
+                theme === 'dark' 
+                  ? 'text-yellow-400 hover:text-yellow-300 hover:bg-slate-800' 
+                  : 'text-slate-600 hover:text-indigo-600 hover:bg-slate-200'
+              }`}
+              title={theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </Button>
+            
+            <a href="/signin">
+              <Button variant="ghost" size="sm" className="text-xs font-semibold">
+                Sign In
+              </Button>
+            </a>
+            
+            <a href="/signup">
+              <Button size="sm" className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white text-xs font-bold shadow-md shadow-indigo-500/10 rounded-lg px-4 h-8">
+                Sign Up Free
+              </Button>
+            </a>
+          </div>
+        </header>
+
+        {/* Ambient Glowing Background Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+          <div className="absolute top-[20%] left-[10%] w-[30vw] h-[30vw] bg-indigo-500/10 rounded-full blur-[120px] dark:bg-indigo-500/5" />
+          <div className="absolute bottom-[20%] right-[10%] w-[25vw] h-[25vw] bg-purple-500/10 rounded-full blur-[120px] dark:bg-purple-500/5" />
         </div>
+
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col items-center justify-center px-4 py-12 z-10 relative max-w-4xl mx-auto w-full">
+          {/* Main Error Box (Glassmorphic) */}
+          <div className={`w-full max-w-2xl rounded-3xl p-8 md:p-10 border text-center transition-all ${
+            theme === 'dark'
+              ? 'bg-slate-900/60 border-slate-800/80 backdrop-blur-xl shadow-2xl'
+              : 'bg-white/80 border-slate-200/60 backdrop-blur-xl shadow-xl shadow-slate-100'
+          }`}>
+            <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-6 rotate-3 shadow-inner">
+              <AlertCircle className="w-8 h-8" />
+            </div>
+            
+            <h1 className="text-3xl font-extrabold tracking-tight mb-4 bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300">
+              Chart Not Available
+            </h1>
+            
+            <p className={`text-base max-w-md mx-auto mb-8 leading-relaxed ${
+              theme === 'dark' ? 'text-slate-400' : 'text-slate-600'
+            }`}>
+              {error || "This shared chart has been removed, deleted, or is no longer available to the public."}
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <a href="/" className="w-full sm:w-auto">
+                <Button className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white font-bold px-6 py-5 rounded-xl text-sm shadow-lg shadow-indigo-500/20 hover:scale-105 transition-all duration-200">
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Create Your Own Chart
+                </Button>
+              </a>
+              <a href="/signup" className="w-full sm:w-auto">
+                <Button variant="outline" className={`w-full font-bold px-6 py-5 rounded-xl text-sm transition-all duration-200 hover:scale-105 ${
+                  theme === 'dark' 
+                    ? 'border-slate-800 hover:bg-slate-800 text-slate-300 hover:text-white' 
+                    : 'border-slate-200 hover:bg-slate-100 text-slate-700 hover:text-slate-950'
+                }`}>
+                  Sign Up Free
+                </Button>
+              </a>
+            </div>
+          </div>
+
+          {/* App Showcase Grid */}
+          <div className="mt-16 w-full text-center">
+            <h2 className={`text-xs font-bold uppercase tracking-widest mb-10 ${
+              theme === 'dark' ? 'text-slate-500' : 'text-slate-400'
+            }`}>
+              Powered by AIChartor — The Ultimate Chart Builder
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+              {/* Feature 1 */}
+              <div className={`p-6 rounded-2xl border transition-all hover:translate-y-[-2px] duration-300 ${
+                theme === 'dark' 
+                  ? 'bg-slate-900/40 border-slate-900 hover:border-indigo-500/30' 
+                  : 'bg-white border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200'
+              }`}>
+                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center mb-4">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <h3 className="text-sm font-bold mb-2">AI-Driven Creation</h3>
+                <p className={`text-xs leading-relaxed ${
+                  theme === 'dark' ? 'text-slate-400' : 'text-slate-500'
+                }`}>
+                  Just describe your data in plain English. Our AI understands and shapes your charts and layouts in seconds.
+                </p>
+              </div>
+
+              {/* Feature 2 */}
+              <div className={`p-6 rounded-2xl border transition-all hover:translate-y-[-2px] duration-300 ${
+                theme === 'dark' 
+                  ? 'bg-slate-900/40 border-slate-900 hover:border-purple-500/30' 
+                  : 'bg-white border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200'
+              }`}>
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center mb-4">
+                  <Settings2 className="w-5 h-5" />
+                </div>
+                <h3 className="text-sm font-bold mb-2">Full Visual Control</h3>
+                <p className={`text-xs leading-relaxed ${
+                  theme === 'dark' ? 'text-slate-400' : 'text-slate-500'
+                }`}>
+                  Add premium gradients, brand-styled custom overlays, text shapes, icons, and background patterns.
+                </p>
+              </div>
+
+              {/* Feature 3 */}
+              <div className={`p-6 rounded-2xl border transition-all hover:translate-y-[-2px] duration-300 ${
+                theme === 'dark' 
+                  ? 'bg-slate-900/40 border-slate-900 hover:border-pink-500/30' 
+                  : 'bg-white border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200'
+              }`}>
+                <div className="w-10 h-10 rounded-xl bg-pink-500/10 text-pink-500 flex items-center justify-center mb-4">
+                  <Download className="w-5 h-5" />
+                </div>
+                <h3 className="text-sm font-bold mb-2">High-Fidelity Exports</h3>
+                <p className={`text-xs leading-relaxed ${
+                  theme === 'dark' ? 'text-slate-400' : 'text-slate-500'
+                }`}>
+                  Download standalone interactive web pages, vector SVGs, or high-res images to embed directly in slides.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <footer className={`py-6 text-center border-t text-xs shrink-0 transition-colors duration-200 ${
+          theme === 'dark' 
+            ? 'border-slate-900 text-slate-500 bg-slate-950' 
+            : 'border-slate-200 text-slate-400 bg-slate-50'
+        }`}>
+          <p>© {new Date().getFullYear()} AIChartor. All rights reserved. Create, present, and stand out.</p>
+        </footer>
       </div>
     )
   }
