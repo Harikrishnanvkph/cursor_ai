@@ -193,7 +193,7 @@ export class ChartStateService {
                 // Backfill per-dataset chartConfig from top-level config if not present
                 chartConfig: ds.chartConfig || JSON.parse(JSON.stringify(chartConfig)),
                 // Assign source title if provided
-                sourceTitle: (!ds.sourceTitle || ds.sourceTitle === "Untitled" || ds.sourceTitle === "Untitled Chart") ? (name || ds.sourceTitle) : ds.sourceTitle,
+                sourceTitle: (name && name !== "Untitled" && name !== "Untitled Chart") ? name : (ds.sourceTitle || "Untitled Chart"),
                 // Assign source ID if provided
                 sourceId: ds.sourceId || conversationId || id,
                 // Ensure the dataset owns its labels so they aren't lost

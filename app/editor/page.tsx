@@ -271,6 +271,7 @@ function EditorPageContent() {
   const chartConfig = useChartConfig()
   const chartType = useChartType()
   const chartData = useChartData()
+  const hasData = chartData?.datasets?.length > 0
   const hasJSON = useHasJSON()
   const currentSnapshotId = useCurrentSnapshotId()
 
@@ -1004,9 +1005,10 @@ function EditorPageContent() {
                 </div>
 
                 {/* 1. Segmented Mode Toggle */}
-                <div className="px-2.5 py-0.5 flex justify-center mb-0.5">
+                <div className={`px-2.5 py-0.5 flex justify-center mb-0.5 ${!hasData ? 'opacity-50 pointer-events-none' : ''}`}>
                   <div className="flex w-full bg-slate-100 dark:bg-slate-800 p-0.5 rounded-full border border-slate-200/60 dark:border-slate-700/60 shadow-inner">
                     <button 
+                      disabled={!hasData}
                       onClick={(e) => {
                         e.stopPropagation();
                         const templateStore = useTemplateStore.getState();
@@ -1022,6 +1024,7 @@ function EditorPageContent() {
                       Chart
                     </button>
                     <button 
+                      disabled={!hasData}
                       onClick={(e) => {
                         e.stopPropagation();
                         const templateStore = useTemplateStore.getState();
@@ -1051,6 +1054,7 @@ function EditorPageContent() {
                     onValueChange={(val) => {
                       setChartType(val as any);
                     }}
+                    disabled={!hasData}
                   >
                     <SelectTrigger className="h-9 w-full text-xs font-semibold border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-lg flex items-center justify-between px-3 shadow-xs transition-all active:scale-95 antialiased">
                       <div className="truncate text-slate-700 dark:text-slate-300">
@@ -1072,6 +1076,7 @@ function EditorPageContent() {
                 {/* 3. Dynamic Chart Gallery or Show Guides Trigger */}
                 {editorMode !== 'template' ? (
                   <DropdownMenuItem 
+                    disabled={!hasData}
                     onClick={() => {
                       setMobilePanel('styling');
                     }}
@@ -1082,10 +1087,11 @@ function EditorPageContent() {
                   </DropdownMenuItem>
                 ) : (
                   <DropdownMenuItem 
+                    disabled={!hasData}
                     onClick={() => {
                       window.dispatchEvent(new CustomEvent('triggerToggleGuides'));
                     }}
-                    className="flex items-center gap-2 px-2.5 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-300"
+                    className="flex items-center gap-2 px-2.5 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-305"
                   >
                     <Eye className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                     <span>Show Guides</span>
@@ -1094,6 +1100,7 @@ function EditorPageContent() {
 
                 {/* 3.5 Fullscreen Trigger */}
                 <DropdownMenuItem 
+                  disabled={!hasData}
                   onClick={() => {
                     window.dispatchEvent(new CustomEvent('triggerFullscreen'));
                   }}
@@ -1105,6 +1112,7 @@ function EditorPageContent() {
 
                 {/* 4. Save Chart/Template to Cloud */}
                 <DropdownMenuItem 
+                  disabled={!hasData}
                   onSelect={handleSaveClick}
                   className="flex items-center gap-2 px-2.5 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-300"
                 >
@@ -1114,6 +1122,7 @@ function EditorPageContent() {
 
                 {/* 4.5 Share Collapsible Accordion */}
                 <DropdownMenuItem 
+                  disabled={!hasData}
                   onSelect={(e) => {
                     e.preventDefault();
                     if (!currentSnapshotId) {
@@ -1134,6 +1143,7 @@ function EditorPageContent() {
                 {shareExpanded && currentSnapshotId && (
                   <div className="pl-4 pr-1 py-1 space-y-0.5 bg-slate-50 dark:bg-slate-900/50 rounded-lg animate-in fade-in slide-in-from-top-1 duration-200">
                     <DropdownMenuItem 
+                      disabled={!hasData}
                       onClick={handleCopyShareLink}
                       className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-755 dark:text-slate-355"
                     >
@@ -1141,6 +1151,7 @@ function EditorPageContent() {
                       <span>Copy Link</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem 
+                      disabled={!hasData}
                       onClick={handleOpenShareLink}
                       className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-755 dark:text-slate-355"
                     >
@@ -1152,6 +1163,7 @@ function EditorPageContent() {
 
                 {/* 5. Export Collapsible Accordion */}
                 <DropdownMenuItem 
+                  disabled={!hasData}
                   onSelect={(e) => {
                     e.preventDefault();
                     setExportExpanded(!exportExpanded);
@@ -1170,6 +1182,7 @@ function EditorPageContent() {
                     {editorMode === 'template' ? (
                       <>
                         <DropdownMenuItem 
+                          disabled={!hasData}
                           onClick={() => window.dispatchEvent(new CustomEvent('triggerTemplateExport', { detail: { format: 'png' } }))}
                           className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-750 dark:text-slate-355"
                         >
@@ -1177,6 +1190,7 @@ function EditorPageContent() {
                           <span>PNG Image</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem 
+                          disabled={!hasData}
                           onClick={() => window.dispatchEvent(new CustomEvent('triggerTemplateExport', { detail: { format: 'html' } }))}
                           className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-750 dark:text-slate-355"
                         >
@@ -1187,6 +1201,7 @@ function EditorPageContent() {
                     ) : (
                       <>
                         <DropdownMenuItem 
+                          disabled={!hasData}
                           onClick={exports.handleExport} 
                           className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-750 dark:text-slate-355"
                         >
@@ -1194,6 +1209,7 @@ function EditorPageContent() {
                           <span>PNG Image</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem 
+                          disabled={!hasData}
                           onClick={exports.handleExportJPEG} 
                           className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-750 dark:text-slate-355"
                         >
@@ -1201,6 +1217,7 @@ function EditorPageContent() {
                           <span>JPEG Image</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem 
+                          disabled={!hasData}
                           onClick={exports.handleExportHTML} 
                           className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-750 dark:text-slate-355"
                         >
@@ -1208,6 +1225,7 @@ function EditorPageContent() {
                           <span>Interactive HTML</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem 
+                          disabled={!hasData}
                           onClick={exports.handleExportCSV} 
                           className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-750 dark:text-slate-355"
                         >

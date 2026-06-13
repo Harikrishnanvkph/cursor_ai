@@ -142,6 +142,23 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
         setColorOpacity(100);
     }, [colorMode, chartMode, filteredDatasets]);
 
+    // Sync backendConversationId to match the active single-mode dataset or active grouped-mode group
+    useEffect(() => {
+        if (chartMode === 'single') {
+            if (chartData.datasets && chartData.datasets.length > 0) {
+                const activeDs = chartData.datasets[activeDatasetIndex];
+                const sourceId = activeDs?.sourceId || null;
+                useChatStore.getState().setBackendConversationId(sourceId);
+            } else {
+                useChatStore.getState().setBackendConversationId(null);
+            }
+        } else {
+            const activeGroup = groups.find(g => g.id === activeGroupId);
+            const sourceId = activeGroup?.sourceId || null;
+            useChatStore.getState().setBackendConversationId(sourceId);
+        }
+    }, [chartMode, activeDatasetIndex, activeGroupId, chartData.datasets, groups]);
+
     // ─── Handlers ───
 
     const handleChartModeChange = (mode: 'single' | 'grouped') => {
@@ -311,7 +328,46 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
             const datasetToRemove = filteredDatasets[datasetToDelete];
             const actualIndex = chartData.datasets.findIndex(d => d === datasetToRemove);
             if (actualIndex !== -1) {
+                // Calculate the new active dataset index before deletion
+                let newActiveIndex = activeDatasetIndex;
+                const remainingDatasets = chartData.datasets.filter((_, i) => i !== actualIndex);
+                
+                if (activeDatasetIndex === actualIndex) {
+                    // Active dataset is being deleted
+                    if (remainingDatasets.length > 0) {
+                        newActiveIndex = Math.min(actualIndex, remainingDatasets.length - 1);
+                    } else {
+                        newActiveIndex = 0;
+                    }
+                } else if (activeDatasetIndex > actualIndex) {
+                    // Shifting index down
+                    newActiveIndex = activeDatasetIndex - 1;
+                }
+
+                // Perform deletion
                 removeDataset(actualIndex);
+
+                // Update active dataset index
+                setActiveDatasetIndex(newActiveIndex);
+
+                // Sync chart settings for single/grouped mode
+                if (remainingDatasets.length === 0) {
+                    useChatStore.getState().setBackendConversationId(null);
+                    useChartStore.setState({ chartTitle: null, currentSnapshotId: null });
+                } else if (chartMode === 'single') {
+                    const newActiveDataset = remainingDatasets[newActiveIndex];
+                    if (newActiveDataset) {
+                        const newType = newActiveDataset.chartType || (newActiveDataset as any).type || 'bar';
+                        setChartType(newType);
+
+                        const sourceId = (newActiveDataset as any)?.sourceId;
+                        if (sourceId) {
+                            useChatStore.getState().setBackendConversationId(sourceId);
+                        } else {
+                            useChatStore.getState().setBackendConversationId(null);
+                        }
+                    }
+                }
             }
             setShowDeleteConfirmDialog(false);
             setDatasetToDelete(null);
@@ -592,7 +648,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                     </DialogHeader>
                     <div className="space-y-4">
                         <p className="text-sm text-gray-600">
-                            Are you sure you want to delete this dataset? This action cannot be undone.
+                            Are you sure you want to remove this dataset from the current chart? This will only remove it from the active workspace and won't delete any saved files from your cloud history unless you save the changes.
                         </p>
                         {datasetToDelete !== null && (
                             <div className="p-3 bg-gray-50 rounded-lg">
@@ -627,7 +683,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                     </DialogHeader>
                     <div className="space-y-4">
                         <p className="text-sm text-gray-600">
-                            Are you sure you want to delete this group? <span className="font-semibold text-red-600">All datasets in this group will also be permanently deleted.</span>
+                            Are you sure you want to remove this group from the current chart? All datasets in this group will be removed from the active workspace. This won't delete any saved files from your cloud history unless you save the changes.
                         </p>
                         {groupToDelete !== null && (
                             <div className="p-3 bg-red-50 rounded-lg border border-red-100">
@@ -635,7 +691,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                                     Group: {groups.find(g => g.id === groupToDelete)?.name || 'Unknown'}
                                 </p>
                                 <p className="text-xs text-red-600 font-medium">
-                                    {chartData.datasets.filter(d => d.groupId === groupToDelete).length} dataset(s) will be deleted
+                                    {chartData.datasets.filter(d => d.groupId === groupToDelete).length} dataset(s) will be removed from workspace
                                 </p>
                             </div>
                         )}

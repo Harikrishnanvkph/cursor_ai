@@ -317,7 +317,51 @@ export const useChartStore = create<ChartStore>()(
 
       resetChart: () => set((state) => ChartStateService.resetChart()),
       setChartMode: (mode) => {
-        set((state) => ChartStateService.setChartMode(mode, state));
+        set((state) => {
+          const nextState = ChartStateService.setChartMode(mode, state);
+          
+          // Sync title and snapshot ID based on the new mode's data
+          const targetData = nextState.chartData || state.chartData;
+          const targetActiveDatasetIndex = nextState.activeDatasetIndex !== undefined ? nextState.activeDatasetIndex : state.activeDatasetIndex;
+
+          let nextChartTitle: string | null = state.chartTitle;
+          let nextSnapshotId: string | null = state.currentSnapshotId;
+
+          if (mode === 'single') {
+            const datasets = targetData?.datasets || [];
+            if (datasets.length > 0) {
+              const activeDs = datasets[targetActiveDatasetIndex];
+              if (activeDs) {
+                if (activeDs.sourceTitle && activeDs.sourceTitle !== "Untitled" && activeDs.sourceTitle !== "Untitled Chart") {
+                  nextChartTitle = activeDs.sourceTitle;
+                }
+              }
+            } else {
+              // No datasets in single mode, clear title and snapshot ID
+              nextChartTitle = null;
+              nextSnapshotId = null;
+            }
+          } else {
+            // Grouped mode: sync with the active group
+            const activeGroupId = state.activeGroupId;
+            const groups = state.groups || [];
+            const activeGroup = groups.find(g => g.id === activeGroupId);
+            if (activeGroup) {
+              if (activeGroup.name && activeGroup.name !== "Untitled" && activeGroup.name !== "Untitled Chart") {
+                nextChartTitle = activeGroup.name;
+              }
+            } else {
+              nextChartTitle = null;
+              nextSnapshotId = null;
+            }
+          }
+
+          return {
+            ...nextState,
+            chartTitle: nextChartTitle,
+            currentSnapshotId: nextSnapshotId
+          };
+        });
       },
 
       setActiveDatasetIndex: (index) => set((state) => {
@@ -330,7 +374,16 @@ export const useChartStore = create<ChartStore>()(
         const typeChanged = state.chartType !== newType;
         const newConfig = dataset.chartConfig
           ? JSON.parse(JSON.stringify(dataset.chartConfig))
-          : (typeChanged ? JSON.parse(JSON.stringify(getDefaultConfigForType(newType))) : state.chartConfig);
+          : (typeChanged ? (() => {
+              const freshConfig = JSON.parse(JSON.stringify(getDefaultConfigForType(newType)));
+              const keysToPreserve = ['manualDimensions', 'dynamicDimension', 'responsive', 'width', 'height'];
+              keysToPreserve.forEach(key => {
+                if (state.chartConfig && key in state.chartConfig) {
+                  freshConfig[key] = state.chartConfig[key];
+                }
+              });
+              return freshConfig;
+            })() : state.chartConfig);
 
         return {
           activeDatasetIndex: index,

@@ -18,6 +18,7 @@ const config: Config = {
 			'lap1024' : {max : '1024px'},
 			'lap1280' : {max : '1280px'},
 			'lap1440' : {max : '1440px'},
+			'lap1025' : '1025px',
 			'lap1025to1280' : {
 				max : '1280px', 
 				min : '1025px'

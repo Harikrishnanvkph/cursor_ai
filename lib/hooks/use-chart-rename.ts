@@ -32,7 +32,14 @@ export function useChartRename() {
     const { backendConversationId } = useChatStore();
     const { updateConversation } = useHistoryStore();
 
-    const chartTitle = useChartStore(s => {
+    // Subscribe to active conversation title in history store as primary source of truth
+    const activeConversationTitle = useHistoryStore(s => {
+        if (!backendConversationId) return null;
+        const conv = s.conversations.find(c => c.id === backendConversationId);
+        return (conv?.title && conv.title !== "Untitled" && conv.title !== "Untitled Chart") ? conv.title : null;
+    });
+
+    const storeChartTitle = useChartStore(s => {
         if (s.chartMode === 'grouped' && s.activeGroupId && s.groups) {
             const activeGroup = s.groups.find(g => g.id === s.activeGroupId);
             const title = activeGroup?.name || activeGroup?.sourceTitle;
@@ -49,6 +56,8 @@ export function useChartRename() {
         }
         return s.chartTitle || "Untitled Chart";
     });
+
+    const chartTitle = chartData.datasets.length === 0 ? "No Chart Available" : (activeConversationTitle || storeChartTitle);
 
     // Determine if this chart has a backend ID and can be renamed
     let targetId: string | null = null;

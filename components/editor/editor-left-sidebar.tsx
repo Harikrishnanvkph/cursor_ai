@@ -32,6 +32,27 @@ export function EditorLeftSidebar() {
 
   const { editorMode } = useTemplateStore()
   const { selectedFormatId } = useFormatGalleryStore()
+  const sidebarRef = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
+      if (
+        !leftSidebarCollapsed && 
+        window.innerWidth < 1280 && 
+        sidebarRef.current && 
+        !sidebarRef.current.contains(event.target as Node)
+      ) {
+        setLeftSidebarCollapsed(true)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    document.addEventListener("touchstart", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+      document.removeEventListener("touchstart", handleClickOutside)
+    }
+  }, [leftSidebarCollapsed, setLeftSidebarCollapsed])
 
   const TABS = React.useMemo(() => {
     if (editorMode === 'template') {
@@ -45,10 +66,11 @@ export function EditorLeftSidebar() {
 
   return (
     <div
-      className={`h-full bg-white border-r border-gray-200 flex flex-col fixed top-0 left-0 z-40 lg:relative lg:top-auto lg:left-auto lg:z-10 ${
+      ref={sidebarRef}
+      className={`h-full bg-white border-r border-gray-200 flex flex-col ${
         leftSidebarCollapsed 
-          ? "w-16 items-center shadow-sm lg:shadow-none" 
-          : "w-52 shadow-2xl lg:shadow-none"
+          ? "w-16 items-center shadow-sm lg:relative lg:top-auto lg:left-auto lg:z-10 lg:shadow-none" 
+          : "w-52 fixed top-0 left-0 z-50 shadow-2xl xl:relative xl:top-auto xl:left-auto xl:z-10 xl:shadow-none"
       }`}
     >
       {leftSidebarCollapsed ? (

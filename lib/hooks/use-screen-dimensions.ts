@@ -36,13 +36,13 @@ export function useScreenDimensions() {
     return dimensions;
 }
 
-// Custom hook to detect 769-1023px (Tablet Range)
+// Custom hook to detect 769-1024px (Tablet Range)
 export function useIsTablet() {
     const [isTablet, setIsTablet] = useState(false);
     useEffect(() => {
-        setIsTablet(window.innerWidth >= 769 && window.innerWidth < 1024);
+        setIsTablet(window.innerWidth >= 769 && window.innerWidth <= 1024);
         function handleResize() {
-            setIsTablet(window.innerWidth >= 769 && window.innerWidth < 1024);
+            setIsTablet(window.innerWidth >= 769 && window.innerWidth <= 1024);
         }
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);

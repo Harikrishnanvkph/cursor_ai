@@ -7,8 +7,8 @@ import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, Sele
 import { STANDARD_CHART_TYPES, THREE_D_CHART_TYPES } from "@/lib/chart-types"
 import {
     Download, Maximize2,
-    Ellipsis, ZoomIn, ZoomOut, Hand, Pencil, Check, Loader2,
-    ChartColumn, RulerDimensionLine, Ban, Search, Palette, Upload, Cloud
+    ZoomIn, ZoomOut, Hand, Pencil, Check, Loader2,
+    ChartColumn, RulerDimensionLine, Ban, Search, Palette, Upload
 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -45,7 +45,8 @@ const ModeAndTypeSection = memo(({
     chartType, onChartTypeChange,
     isResponsive, chartContainerRef,
     chartWidth, chartHeight,
-    isMobile
+    isMobile,
+    disabled
 }: {
     editorMode: string;
     setEditorMode: (mode: string) => void;
@@ -56,6 +57,7 @@ const ModeAndTypeSection = memo(({
     chartWidth?: number;
     chartHeight?: number;
     isMobile: boolean;
+    disabled?: boolean;
 }) => {
     const btnClassName = isMobile ? "px-2 py-0.5 text-[11px] min-w-[50px]" : "px-2 py-0.5 text-[10px] min-w-[50px]";
     const triggerClassName = isMobile
@@ -63,7 +65,7 @@ const ModeAndTypeSection = memo(({
         : "h-6 w-9 lg:w-[90px] text-[10px] px-1 lg:px-2 py-0 border-gray-200 bg-white";
 
     return (
-        <div className="flex items-center gap-1 flex-shrink-0">
+        <div className={`flex items-center gap-1 flex-shrink-0 ${disabled ? 'opacity-40 pointer-events-none select-none' : ''}`}>
             <div className="flex items-center gap-0 bg-gray-100 rounded-full p-[2px] border border-gray-200">
                 <button
                     onClick={() => setEditorMode('chart')}
@@ -297,7 +299,7 @@ TitleSection.displayName = "TitleSection";
 
 // --- 3. Controls & Actions Section (Independent) ---
 
-const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, isMobile, chartContainerRef, chartWidth, chartHeight }: {
+const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, isMobile, chartContainerRef, chartWidth, chartHeight, disabled }: {
     zoomPan: {
         zoom: number;
         panMode: boolean;
@@ -320,6 +322,7 @@ const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, isMobile, ch
     chartContainerRef?: React.RefObject<HTMLDivElement | null>;
     chartWidth?: number;
     chartHeight?: number;
+    disabled?: boolean;
 }) => {
     const currentZoomPct = Math.round(zoomPan.zoom * 100);
 
@@ -341,7 +344,7 @@ const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, isMobile, ch
 
 
     return (
-        <div className="flex items-center gap-0.5 border border-slate-200 rounded-md p-0.5 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+        <div className={`flex items-center gap-0.5 border border-slate-200 rounded-md p-0.5 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] ${disabled ? 'opacity-40 pointer-events-none select-none' : ''}`}>
             <div className="flex items-center">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -424,24 +427,15 @@ const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, isMobile, ch
 
             <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
 
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600" title="Actions"><Ellipsis className="h-4 w-4" /></Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={handleFullscreen}><Maximize2 className="h-4 w-4 mr-2" /><span>Fullscreen</span></DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => {
-                        console.log("[ChartPreviewToolbar] Dispatched triggerSaveClick event (deferred)");
-                        setTimeout(() => {
-                            window.dispatchEvent(new CustomEvent('triggerSaveClick'));
-                            document.dispatchEvent(new CustomEvent('triggerSaveClick'));
-                        }, 50);
-                    }}>
-                        <Cloud className="h-4 w-4 mr-2" />
-                        <span>Save to Cloud</span>
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
+            <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleFullscreen}
+                className="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600"
+                title="Fullscreen"
+            >
+                <Maximize2 className="h-4 w-4" />
+            </Button>
 
             <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
 
@@ -552,6 +546,8 @@ export const ChartPreviewToolbar = memo(({
     handleFullscreen,
 
 }: ChartPreviewToolbarProps) => {
+    const hasData = useChartStore(s => s.chartData.datasets.length > 0);
+    const disabled = !hasData;
 
     return (
         <div className={`${isMobile ? '' : 'mb-1'} flex-shrink-0`}>
@@ -565,6 +561,7 @@ export const ChartPreviewToolbar = memo(({
                             isResponsive={isResponsive} chartContainerRef={chartContainerRef}
                             chartWidth={chartWidth} chartHeight={chartHeight}
                             isMobile={false}
+                            disabled={disabled}
                         />
                     </div>
                 </div>
@@ -576,6 +573,7 @@ export const ChartPreviewToolbar = memo(({
                         chartContainerRef={chartContainerRef}
                         chartWidth={chartWidth}
                         chartHeight={chartHeight}
+                        disabled={disabled}
                     />
                 </div>
             </div>

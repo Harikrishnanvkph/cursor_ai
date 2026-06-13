@@ -280,16 +280,13 @@ export const ChartTypeService = {
             (newConfig.plugins as any).legendType = 'dataset';
         }
 
-        // Preserve mobile responsiveness settings
-        const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
-        if (isMobile) {
-            const keysToPreserve = ['manualDimensions', 'dynamicDimension', 'responsive', 'width', 'height'];
-            keysToPreserve.forEach(key => {
-                if (key in currentState.chartConfig) {
-                    newConfig[key] = currentState.chartConfig[key];
-                }
-            });
-        }
+        // Preserve dimensions and responsiveness settings
+        const keysToPreserve = ['manualDimensions', 'dynamicDimension', 'responsive', 'width', 'height'];
+        keysToPreserve.forEach(key => {
+            if (key in currentState.chartConfig) {
+                newConfig[key] = currentState.chartConfig[key];
+            }
+        });
 
         // Restore datalabels (skip for gauge — it uses its own value display)
         if ((newConfig.plugins as any)?.datalabels && targetType !== ('gauge' as CustomChartType)) {

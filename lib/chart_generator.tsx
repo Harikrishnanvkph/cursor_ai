@@ -2418,76 +2418,28 @@ export const ChartGenerator = memo(function ChartGenerator({
           </div>
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center h-full w-full text-gray-400 gap-4 p-8">
-          <div className="text-center max-w-md">
-            <div className="mb-6">
-              <svg className="w-16 h-16 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="flex flex-col items-center justify-center h-full w-full text-slate-400 gap-4 p-8 bg-slate-50/20">
+          <div className="text-center max-w-sm p-6 bg-white rounded-2xl border border-slate-100 shadow-sm animate-in fade-in duration-300">
+            <div className="mb-4">
+              <svg className="w-12 h-12 mx-auto text-slate-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
-              <p className="text-lg font-semibold text-gray-600 mb-2">No chart data available</p>
+              <h3 className="text-sm font-semibold text-slate-800">No data available</h3>
+              <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                Add a dataset using the <strong>Datasets panel</strong> in the sidebar, or click the button below to add one manually.
+              </p>
             </div>
-
-            {chartMode === 'grouped' && (
-              <>
-                <p className="text-sm text-gray-500 mb-2">
-                  Group: <span className="font-semibold text-purple-600">{groups.find(g => g.id === activeGroupId)?.name || 'Unknown'}</span>
-                </p>
-                <p className="text-sm text-gray-500 mb-6">
-                  This group is empty. Add datasets to get started.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <button
-                    onClick={loadSampleGroupedData}
-                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-medium shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5 text-sm"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                    </svg>
-                    Load Sample Data
-                  </button>
-                  <button
-                    onClick={() => {
-                      // Dispatch a custom event that dataset-settings will listen for
-                      window.dispatchEvent(new CustomEvent('openAddDatasetModal'));
-                    }}
-                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white border-2 border-gray-200 hover:border-blue-400 text-gray-700 hover:text-blue-600 rounded-lg font-medium shadow-sm hover:shadow transition-all duration-200 text-sm"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Add Dataset Manually
-                  </button>
-                </div>
-                <p className="text-xs text-gray-400 mt-4">
-                  Sample data: 2 datasets with 6 data points each
-                </p>
-              </>
-            )}
-
-            {chartMode === 'single' && (
-              <>
-                <p className="text-sm text-gray-500 mb-6">
-                  You're in <span className="font-semibold text-blue-600">single mode</span> but don't have any data yet.
-                </p>
-                <button
-                  onClick={loadSampleSingleData}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Load Sample Single Data
-                </button>
-                <p className="text-xs text-gray-400 mt-4">
-                  This will load 1 dataset with 4 data points
-                </p>
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <p className="text-xs text-gray-500">
-                    Or switch to the <span className="font-semibold">Datasets panel</span> to add your own data manually
-                  </p>
-                </div>
-              </>
-            )}
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('openAddDatasetModal'));
+              }}
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-sm hover:shadow transition-all duration-200 text-xs active:scale-95"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+              </svg>
+              Add Dataset
+            </button>
           </div>
         </div>
       )}

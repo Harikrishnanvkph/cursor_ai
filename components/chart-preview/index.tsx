@@ -71,6 +71,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   // --- Store selectors ---
   const chartConfig = useChartConfig();
   const chartData = useChartData();
+  const hasData = chartData?.datasets?.length > 0;
   const chartType = useChartType();
   const chartMode = useChartMode();
 
@@ -363,12 +364,13 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       {/* Combined Mobile Float Toolbar */}
       {isMobile && rename.chartTitle && (
         <div className="px-3 pb-3 pt-1 flex justify-center flex-shrink-0 w-full select-none" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full px-3 py-1 shadow-md max-w-fit mx-auto">
+          <div className={`flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full px-3 py-1 shadow-md max-w-fit mx-auto ${!hasData ? 'opacity-40 pointer-events-none select-none' : ''}`}>
             {/* 1. Preview Background Change Picker */}
             <div className="flex items-center flex-shrink-0">
               <ChartBgColorPicker 
                 className="flex items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 duration-200 h-9 w-9" 
                 innerClassName="w-[18px] h-[18px]"
+                disabled={!hasData}
               />
             </div>
 
@@ -376,6 +378,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
 
             {/* 2. Pan Mode Toggle */}
             <button
+              disabled={!hasData}
               onClick={() => zoomPan.setPanMode(!zoomPan.panMode)}
               className={`rounded-full transition-all active:scale-95 duration-200 flex items-center justify-center flex-shrink-0 h-9 w-9 ${
                 zoomPan.panMode 
@@ -391,13 +394,13 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
             <div className="flex items-center flex-shrink-0">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-9 px-3 text-xs font-semibold text-slate-700 dark:text-slate-200 select-none justify-start gap-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 flex-shrink-0 transition-colors [&_svg]:size-5">
+                  <Button disabled={!hasData} variant="ghost" size="sm" className="h-9 px-3 text-xs font-semibold text-slate-700 dark:text-slate-200 select-none justify-start gap-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 flex-shrink-0 transition-colors [&_svg]:size-5">
                     <Search className="h-5 w-5 text-slate-500 shrink-0" />
                     <span className="tabular-nums">{currentZoomPct}%</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-52 p-2 z-[150]">
-                  <DropdownMenuItem onClick={() => { zoomPan.setZoom(1); zoomPan.setPanOffset({ x: 0, y: 0 }); }} className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100 dark:text-slate-200 dark:focus:bg-slate-800">
+                  <DropdownMenuItem disabled={!hasData} onClick={() => { zoomPan.setZoom(1); zoomPan.setPanOffset({ x: 0, y: 0 }); }} className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100 dark:text-slate-200 dark:focus:bg-slate-800">
                     <span className="flex-1">100% (Fit to View)</span>
                   </DropdownMenuItem>
 
@@ -467,20 +470,20 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
             <div className="flex items-center gap-0.5 flex-shrink-0">
               <button
                 onClick={() => temporalUndo()}
-                disabled={!canUndo}
+                disabled={!hasData || !canUndo}
                 title="Undo (Ctrl+Z)"
                 className={`h-9 w-9 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 rounded-full transition-all active:scale-90 duration-200 flex items-center justify-center flex-shrink-0 hover:scale-105 ${
-                  !canUndo ? "opacity-30 cursor-not-allowed" : "opacity-100"
+                  (!hasData || !canUndo) ? "opacity-30 cursor-not-allowed" : "opacity-100"
                 }`}
               >
                 <Undo2 className="h-[22px] w-[22px]" />
               </button>
               <button
                 onClick={() => temporalRedo()}
-                disabled={!canRedo}
+                disabled={!hasData || !canRedo}
                 title="Redo (Ctrl+Y)"
                 className={`h-9 w-9 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 rounded-full transition-all active:scale-90 duration-200 flex items-center justify-center flex-shrink-0 hover:scale-105 ${
-                  !canRedo ? "opacity-30 cursor-not-allowed" : "opacity-100"
+                  (!hasData || !canRedo) ? "opacity-30 cursor-not-allowed" : "opacity-100"
                 }`}
               >
                 <Redo2 className="h-[22px] w-[22px]" />
