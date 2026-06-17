@@ -4,6 +4,7 @@ import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { useChartStore } from "../chart-store"
 import { createExpiringStorage } from "../storage-utils"
+import { useDecorationStore } from "../stores/decoration-store"
 import type { TemplateTextArea, TemplateLayout, EditorMode, ChartDimensionState } from "./template-types"
 import { defaultTemplates } from "./template-defaults"
 
@@ -696,4 +697,34 @@ export const useTemplateStore = create<TemplateStore>()(
       })
     }
   )
-) 
+)
+
+if (typeof window !== 'undefined') {
+  let prevState = useTemplateStore.getState();
+
+  useTemplateStore.subscribe((state) => {
+    // Only run if activeMode is 'template'
+    if (useDecorationStore.getState().activeMode !== 'template') {
+      prevState = state;
+      return;
+    }
+
+    const currentTemplate = state.currentTemplate;
+    const prevTemplate = prevState.currentTemplate;
+
+    const templateChanged = currentTemplate?.id !== prevTemplate?.id;
+    const decorationsChanged = JSON.stringify(currentTemplate?.decorations || []) !== JSON.stringify(prevTemplate?.decorations || []);
+
+    if (templateChanged || decorationsChanged) {
+      const incomingShapes = currentTemplate?.decorations || [];
+      const currentDecoShapes = useDecorationStore.getState().shapes;
+
+      if (JSON.stringify(incomingShapes) !== JSON.stringify(currentDecoShapes)) {
+        useDecorationStore.getState().setShapes(incomingShapes, 'template');
+        useDecorationStore.getState().clearShapeHistory();
+      }
+    }
+
+    prevState = state;
+  });
+} 

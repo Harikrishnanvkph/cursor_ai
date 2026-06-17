@@ -198,6 +198,7 @@ export interface ExtendedChartOptions extends ChartOptions {
         imageWhiteBase?: boolean;
         imageOpacity?: number;
     };
+    decorationShapes?: any[];
 }
 
 // Default group that always exists

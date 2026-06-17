@@ -38,6 +38,7 @@ import { ChartTransformService } from "./services/chart-transform-service"
 import { ChartStyleService } from "./services/chart-style-service"
 import { ChartConfigService } from "./services/chart-config-service"
 import { createExpiringStorage } from "./storage-utils"
+import { useDecorationStore } from "./stores/decoration-store"
 
 // Re-export types and constants for compatibility
 export type {
@@ -253,10 +254,6 @@ export const useChartStore = create<ChartStore>()(
 
       clearPendingChartTypeChange: () => set({ pendingChartTypeChange: null }),
 
-      // Data backups for chart type transitions
-      categoricalDataBackup: null,
-      scatterBubbleDataBackup: null,
-
       setCategoricalDataBackup: (data) => set({ categoricalDataBackup: data }),
       setScatterBubbleDataBackup: (data) => set({ scatterBubbleDataBackup: data }),
 
@@ -315,7 +312,11 @@ export const useChartStore = create<ChartStore>()(
       // Data operations - temporary transformations with auto-backup
       datasetBackups: new Map(),
 
-      resetChart: () => set((state) => ChartStateService.resetChart()),
+      resetChart: () => {
+        useDecorationStore.getState().clearShapes();
+        useDecorationStore.getState().clearShapeHistory();
+        set((state) => ChartStateService.resetChart());
+      },
       setChartMode: (mode) => {
         set((state) => {
           const nextState = ChartStateService.setChartMode(mode, state);
@@ -382,13 +383,22 @@ export const useChartStore = create<ChartStore>()(
                   freshConfig[key] = state.chartConfig[key];
                 }
               });
+              freshConfig.decorationShapes = [];
               return freshConfig;
-            })() : state.chartConfig);
+            })() : { ...state.chartConfig, decorationShapes: [] });
+
+        // Update the dataset's own chartConfig in the datasets array so it's not undefined
+        const newDatasets = state.chartData.datasets.map((ds, i) =>
+          i === index ? { ...ds, chartConfig: newConfig } : ds
+        );
+        const newChartData = { ...state.chartData, datasets: newDatasets };
 
         return {
           activeDatasetIndex: index,
           chartType: newType,
-          chartConfig: newConfig
+          chartConfig: newConfig,
+          chartData: newChartData,
+          ...(state.chartMode === 'single' ? { singleModeData: newChartData } : { groupedModeData: newChartData })
         };
       }),
       setActiveGroupId: (id) => set((state) => GroupService.setActiveGroup(id, state)),
@@ -577,3 +587,43 @@ export const useChartStore = create<ChartStore>()(
   }
 )
 );
+
+if (typeof window !== 'undefined') {
+  let prevState = useChartStore.getState();
+
+  useChartStore.subscribe((state) => {
+    // Only run if activeMode is 'chart'
+    if (useDecorationStore.getState().activeMode !== 'chart') {
+      prevState = state;
+      return;
+    }
+    
+    // We want to detect if the active dataset/group's decorationShapes changed
+    // OR if the active dataset index, active group ID, or chartMode changed!
+    const activeConfig = state.chartMode === 'single'
+      ? state.chartData.datasets[state.activeDatasetIndex]?.chartConfig
+      : state.groups.find(g => g.id === state.activeGroupId)?.chartConfig;
+      
+    const prevActiveConfig = prevState.chartMode === 'single'
+      ? prevState.chartData.datasets[prevState.activeDatasetIndex]?.chartConfig
+      : prevState.groups.find(g => g.id === prevState.activeGroupId)?.chartConfig;
+      
+    const activeIndexChanged = state.activeDatasetIndex !== prevState.activeDatasetIndex;
+    const activeGroupChanged = state.activeGroupId !== prevState.activeGroupId;
+    const modeChanged = state.chartMode !== prevState.chartMode;
+    const shapesChanged = JSON.stringify(activeConfig?.decorationShapes || []) !== JSON.stringify(prevActiveConfig?.decorationShapes || []);
+    
+    if (activeIndexChanged || activeGroupChanged || modeChanged || shapesChanged) {
+      const incomingShapes = activeConfig?.decorationShapes || [];
+      const currentDecoShapes = useDecorationStore.getState().shapes;
+      
+      // Only set if different to prevent infinite loops
+      if (JSON.stringify(incomingShapes) !== JSON.stringify(currentDecoShapes)) {
+        useDecorationStore.getState().setShapes(incomingShapes, 'chart');
+        useDecorationStore.getState().clearShapeHistory();
+      }
+    }
+
+    prevState = state;
+  });
+}

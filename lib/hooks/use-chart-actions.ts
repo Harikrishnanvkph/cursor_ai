@@ -268,7 +268,8 @@ export const useChartActions = () => {
         const currentState = useChartStore.getState()
         const newState = GroupService.setActiveGroup(id, {
             groups: currentState.groups,
-            chartType: currentState.chartType
+            chartType: currentState.chartType,
+            chartConfig: currentState.chartConfig
         })
         useChartStore.setState(newState)
     }

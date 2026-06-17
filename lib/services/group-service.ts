@@ -76,6 +76,7 @@ export const GroupService = {
         currentState: {
             groups: ChartGroup[];
             chartType: SupportedChartType;
+            chartConfig?: any;
         }
     ) => {
         const group = currentState.groups.find(g => g.id === id);
@@ -85,14 +86,23 @@ export const GroupService = {
             newChartType = group.baseChartType;
         }
 
-        // Also load the group's per-chart config if available
+        // Resolve active group's chartConfig (clone current but clear decorationShapes if group has no config)
+        const currentConfig = currentState.chartConfig || {};
+        const newConfig = group?.chartConfig
+            ? JSON.parse(JSON.stringify(group.chartConfig))
+            : { ...currentConfig, decorationShapes: [] };
+
+        // Update the group's own chartConfig in the groups array so it's not undefined
+        const updatedGroups = currentState.groups.map(g =>
+            g.id === id ? { ...g, chartConfig: newConfig } : g
+        );
+
         const result: any = {
             activeGroupId: id,
-            chartType: newChartType
+            chartType: newChartType,
+            chartConfig: newConfig,
+            groups: updatedGroups
         };
-        if (group?.chartConfig) {
-            result.chartConfig = JSON.parse(JSON.stringify(group.chartConfig));
-        }
 
         return result;
     }

@@ -181,6 +181,91 @@ const syncShapes = (state: any, newShapes: DecorationShape[]) => {
   return { shapes: newShapes, chartShapes: newShapes };
 };
 
+const syncShapesToActiveStore = (shapes: DecorationShape[]) => {
+  const state = useDecorationStore.getState();
+  if (state.activeMode === 'chart') {
+    try {
+      const { useChartStore } = require("@/lib/chart-store");
+      const chartStore = useChartStore.getState();
+      const { chartMode, activeDatasetIndex, activeGroupId, chartData, groups } = chartStore;
+
+      if (chartMode === 'single') {
+        const activeDs = chartData.datasets[activeDatasetIndex];
+        if (activeDs) {
+          const activeConfig = activeDs.chartConfig || {};
+          if (JSON.stringify(activeConfig.decorationShapes || []) === JSON.stringify(shapes)) {
+            return;
+          }
+          const newConfig = {
+            ...activeConfig,
+            decorationShapes: shapes
+          };
+          const newDatasets = chartData.datasets.map((ds: any, i: number) =>
+            i === activeDatasetIndex ? { ...ds, chartConfig: newConfig } : ds
+          );
+          const newChartData = { ...chartData, datasets: newDatasets };
+          
+          const temporal = useChartStore.temporal?.getState();
+          if (temporal) temporal.pause();
+          useChartStore.setState({
+            chartConfig: newConfig,
+            chartData: newChartData,
+            singleModeData: newChartData
+          });
+          if (temporal) temporal.resume();
+        }
+      } else if (chartMode === 'grouped') {
+        const activeGroup = groups.find((g: any) => g.id === activeGroupId);
+        if (activeGroup) {
+          const activeConfig = activeGroup.chartConfig || {};
+          if (JSON.stringify(activeConfig.decorationShapes || []) === JSON.stringify(shapes)) {
+            return;
+          }
+          const newConfig = {
+            ...activeConfig,
+            decorationShapes: shapes
+          };
+          const newGroups = groups.map((g: any) =>
+            g.id === activeGroupId ? { ...g, chartConfig: newConfig } : g
+          );
+          
+          const temporal = useChartStore.temporal?.getState();
+          if (temporal) temporal.pause();
+          useChartStore.setState({
+            chartConfig: newConfig,
+            groups: newGroups
+          });
+          if (temporal) temporal.resume();
+        }
+      }
+    } catch (e) {
+      console.error("Failed to sync shapes to chart store:", e);
+    }
+  } else if (state.activeMode === 'template') {
+    try {
+      const { useTemplateStore } = require("@/lib/template-store/template-store");
+      const templateStore = useTemplateStore.getState();
+      const { currentTemplate } = templateStore;
+
+      if (currentTemplate) {
+        if (JSON.stringify(currentTemplate.decorations || []) === JSON.stringify(shapes)) {
+          return;
+        }
+        const updatedTemplate = {
+          ...currentTemplate,
+          decorations: shapes
+        };
+        useTemplateStore.setState({
+          currentTemplate: updatedTemplate,
+          templateInBackground: updatedTemplate
+        });
+      }
+    } catch (e) {
+      console.error("Failed to sync shapes to template store:", e);
+    }
+  }
+};
+
 export const useDecorationStore = create<DecorationStore>()(
   persist(
     (set, get) => ({
@@ -234,6 +319,7 @@ export const useDecorationStore = create<DecorationStore>()(
             drawingMode: null
           }
         })
+        syncShapesToActiveStore(get().shapes)
         setTimeout(() => set({ isUndoing: false }), 10)
       },
 
@@ -253,6 +339,7 @@ export const useDecorationStore = create<DecorationStore>()(
             drawingMode: null
           }
         })
+        syncShapesToActiveStore(get().shapes)
         setTimeout(() => set({ isUndoing: false }), 10)
       },
 
@@ -278,6 +365,7 @@ export const useDecorationStore = create<DecorationStore>()(
             selectedShapeIds: isDrawing ? [] : [id],
           }
         })
+        syncShapesToActiveStore(get().shapes)
         return id
       },
 
@@ -300,6 +388,9 @@ export const useDecorationStore = create<DecorationStore>()(
           const newShapes = state.shapes.map(s => s.id === id ? { ...s, ...updates } : s);
           return syncShapes(state, newShapes);
         })
+        if (!skipHistory) {
+          syncShapesToActiveStore(get().shapes)
+        }
       },
 
       updateShapes: (updatesList, skipHistory = false) => {
@@ -309,6 +400,9 @@ export const useDecorationStore = create<DecorationStore>()(
           const newShapes = state.shapes.map(s => updateMap.has(s.id) ? { ...s, ...updateMap.get(s.id) } : s);
           return syncShapes(state, newShapes);
         })
+        if (!skipHistory) {
+          syncShapesToActiveStore(get().shapes)
+        }
       },
 
       removeShape: (id) => {
@@ -332,6 +426,7 @@ export const useDecorationStore = create<DecorationStore>()(
             selectedShapeIds: state.selectedShapeIds.filter(sid => sid !== id)
           }
         })
+        syncShapesToActiveStore(get().shapes)
       },
 
       clearShapes: () => {
@@ -362,6 +457,7 @@ export const useDecorationStore = create<DecorationStore>()(
             strokeDashPattern: ''
           }
         }))
+        syncShapesToActiveStore([])
       },
 
       setSelectedShapeId: (id) => set((state) => ({
@@ -416,6 +512,7 @@ export const useDecorationStore = create<DecorationStore>()(
             selectedShapeIds: [newId]
           }
         })
+        syncShapesToActiveStore(get().shapes)
       },
 
       toggleLock: (id) => {
@@ -424,6 +521,7 @@ export const useDecorationStore = create<DecorationStore>()(
           const newShapes = state.shapes.map(s => s.id === id ? { ...s, locked: !s.locked } : s);
           return syncShapes(state, newShapes);
         })
+        syncShapesToActiveStore(get().shapes)
       },
 
       bringToFront: (id) => {
@@ -433,6 +531,7 @@ export const useDecorationStore = create<DecorationStore>()(
           const newShapes = state.shapes.map(s => s.id === id ? { ...s, zIndex: maxZ + 1 } : s);
           return syncShapes(state, newShapes);
         })
+        syncShapesToActiveStore(get().shapes)
       },
 
       sendToBack: (id) => {
@@ -442,6 +541,7 @@ export const useDecorationStore = create<DecorationStore>()(
           const newShapes = state.shapes.map(s => s.id === id ? { ...s, zIndex: minZ - 1 } : s);
           return syncShapes(state, newShapes);
         })
+        syncShapesToActiveStore(get().shapes)
       },
       setActiveMode: (mode) => set((state) => {
         if (state.activeMode === mode) return {};
@@ -461,20 +561,23 @@ export const useDecorationStore = create<DecorationStore>()(
         };
       }),
 
-      setShapes: (shapes, mode) => set((state) => {
-        const targetMode = mode || state.activeMode;
-        const modeUpdate: any = {};
-        
-        if (targetMode === 'template') modeUpdate.templateShapes = shapes;
-        else if (targetMode === 'custom-format') modeUpdate.formatShapes = shapes;
-        else modeUpdate.chartShapes = shapes;
-        
-        if (targetMode === state.activeMode) {
-           modeUpdate.shapes = shapes;
-        }
-        
-        return modeUpdate;
-      })
+      setShapes: (shapes, mode) => {
+        set((state) => {
+          const targetMode = mode || state.activeMode;
+          const modeUpdate: any = {};
+          
+          if (targetMode === 'template') modeUpdate.templateShapes = shapes;
+          else if (targetMode === 'custom-format') modeUpdate.formatShapes = shapes;
+          else modeUpdate.chartShapes = shapes;
+          
+          if (targetMode === state.activeMode) {
+             modeUpdate.shapes = shapes;
+          }
+          
+          return modeUpdate;
+        });
+        syncShapesToActiveStore(shapes);
+      }
     }),
     {
       name: 'decoration-store',

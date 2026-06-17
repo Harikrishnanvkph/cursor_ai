@@ -237,6 +237,51 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
         // Inject decorations into config so it's persisted in the snapshot
         if (updatedShapes && updatedShapes.length > 0) {
             normalizedConfig.decorationShapes = updatedShapes;
+
+            // Also write back to the active store config so they are in sync locally
+            const { editorMode } = useTemplateStore.getState();
+            if (editorMode === 'template') {
+                const templateStore = useTemplateStore.getState();
+                if (templateStore.currentTemplate) {
+                    const updatedTemplate = {
+                        ...templateStore.currentTemplate,
+                        decorations: updatedShapes
+                    };
+                    useTemplateStore.setState({
+                        currentTemplate: updatedTemplate,
+                        templateInBackground: updatedTemplate
+                    });
+                }
+            } else {
+                const chartStore = useChartStore.getState();
+                const temporal = useChartStore.temporal?.getState();
+                if (temporal) temporal.pause();
+
+                if (chartMode === 'single') {
+                    const activeDs = chartStore.chartData.datasets[activeDatasetIndex];
+                    if (activeDs) {
+                        const newDatasets = chartStore.chartData.datasets.map((ds, i) =>
+                            i === activeDatasetIndex ? { ...ds, chartConfig: { ...(ds.chartConfig || {}), decorationShapes: updatedShapes } } : ds
+                        );
+                        const newChartData = { ...chartStore.chartData, datasets: newDatasets };
+                        useChartStore.setState({
+                            chartConfig: { ...(chartStore.chartConfig || {}), decorationShapes: updatedShapes },
+                            chartData: newChartData,
+                            singleModeData: newChartData
+                        });
+                    }
+                } else if (chartMode === 'grouped') {
+                    const newGroups = chartStore.groups.map(g =>
+                        g.id === activeGroupId ? { ...g, chartConfig: { ...(g.chartConfig || {}), decorationShapes: updatedShapes } } : g
+                    );
+                    useChartStore.setState({
+                        chartConfig: { ...(chartStore.chartConfig || {}), decorationShapes: updatedShapes },
+                        groups: newGroups
+                    });
+                }
+
+                if (temporal) temporal.resume();
+            }
         }
 
         // Extract template data
