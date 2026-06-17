@@ -139,7 +139,12 @@ export function ResponsiveAnimationsPanel() {
       }
 
       if (!newConfig.layout) newConfig.layout = {};
-      if (!newConfig.layout.padding) newConfig.layout.padding = {};
+      if (typeof newConfig.layout.padding === 'number') {
+        const val = newConfig.layout.padding;
+        newConfig.layout.padding = { top: val, right: val, bottom: val, left: val };
+      } else if (!newConfig.layout.padding || typeof newConfig.layout.padding !== 'object') {
+        newConfig.layout.padding = {};
+      }
 
       if (!isNaN(ptNum) && ptNum >= 0) {
         const pxVal = Math.round(convertToPixels(ptNum, unit));

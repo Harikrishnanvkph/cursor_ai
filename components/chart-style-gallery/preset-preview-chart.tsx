@@ -220,6 +220,8 @@ export const PresetPreviewChart = memo(function PresetPreviewChart({
                 configOverride={styledResult.chartConfig as any}
                 typeOverride={styledResult.chartType}
                 isTemplateOrFormat={isResponsive}
+                responsiveWidth={chartW}
+                responsiveHeight={chartH}
               />
             </div>
           </div>

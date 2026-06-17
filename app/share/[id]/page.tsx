@@ -1130,7 +1130,11 @@ export default function SharedChartPage() {
                       backgroundColor: 'transparent',
                       borderRadius: '4px'
                   }}>
-                    <ChartGenerator devicePixelRatioMultiplier={Math.max(1, zoom)} />
+                    <ChartGenerator
+                      devicePixelRatioMultiplier={Math.max(1, zoom)}
+                      responsiveWidth={chart.template_structure.chartArea.width}
+                      responsiveHeight={chart.template_structure.chartArea.height}
+                    />
                   </div>
                 )}
                 
@@ -1167,7 +1171,13 @@ export default function SharedChartPage() {
                 }}
               >
                 <div style={{ position: 'absolute', inset: 0, padding: 0 }}>
-                  <ChartGenerator devicePixelRatioMultiplier={Math.max(1, zoom)} />
+                  <ChartGenerator
+                    devicePixelRatioMultiplier={Math.max(1, zoom)}
+                    {...(dimensionMode !== 'responsive' ? {
+                      responsiveWidth: dimensionMode === 'manual' ? manualWidth : (parseInt(chart?.chart_config?.width) || 800),
+                      responsiveHeight: dimensionMode === 'manual' ? manualHeight : (parseInt(chart?.chart_config?.height) || 600),
+                    } : {})}
+                  />
                 </div>
               </div>
             )}

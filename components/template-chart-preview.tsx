@@ -194,6 +194,29 @@ export function TemplateChartPreview({
   const effectiveShowGuides = !readOnly && showGuides
   const [localPanMode, setLocalPanMode] = useState(false)
 
+  // Stable container size tracking to prevent zoom/layout squeezing loops
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
+
+  React.useLayoutEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+
+    setContainerSize({ width: el.offsetWidth || el.clientWidth, height: el.offsetHeight || el.clientHeight })
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const target = entry.target as HTMLElement
+        const w = target.offsetWidth || target.clientWidth
+        const h = target.offsetHeight || target.clientHeight
+        if (w > 50 && h > 50) {
+          setContainerSize({ width: w, height: h })
+        }
+      }
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
   // Integrate external zoomPan if available
   const zoom = zoomPan ? zoomPan.zoom : localZoom
   const setZoom = zoomPan ? zoomPan.setZoom : setLocalZoom
@@ -605,15 +628,16 @@ export function TemplateChartPreview({
   }, [handleFullscreen]);
 
   const getTemplateDimensions = () => {
+    const cWidth = containerSize.width || 800
+    const cHeight = containerSize.height || 600
+
     if (renderedFormat) {
       const formatW = renderedFormat.skeleton.dimensions.width
       const formatH = renderedFormat.skeleton.dimensions.height
 
-      const containerWidth = containerRef.current?.clientWidth || 800
-      const containerHeight = containerRef.current?.clientHeight || 600
       const padding = 40
-      const availableWidth = Math.max(10, containerWidth - padding)
-      const availableHeight = Math.max(10, containerHeight - padding)
+      const availableWidth = Math.max(10, cWidth - padding)
+      const availableHeight = Math.max(10, cHeight - padding)
 
       const scaleX = availableWidth / formatW
       const scaleY = availableHeight / formatH
@@ -629,13 +653,10 @@ export function TemplateChartPreview({
     const template = currentTemplate || templateInBackground
     if (!template) return { width: 800, height: 600, scale: 1 }
 
-    const containerWidth = containerRef.current?.clientWidth || 800
-    const containerHeight = containerRef.current?.clientHeight || 600
-
     // Calculate scale to fit template in container with some padding
     const padding = 40
-    const availableWidth = Math.max(10, containerWidth - padding)
-    const availableHeight = Math.max(10, containerHeight - padding)
+    const availableWidth = Math.max(10, cWidth - padding)
+    const availableHeight = Math.max(10, cHeight - padding)
 
     const scaleX = availableWidth / template.width
     const scaleY = availableHeight / template.height
@@ -882,7 +903,12 @@ export function TemplateChartPreview({
         )}
 
         <div style={{ pointerEvents: readOnly ? 'none' : ((panMode || drawingMode === 'marquee-select') ? 'none' : 'auto'), width: '100%', height: '100%' }}>
-          <ChartGenerator key={`template-${template.id}-${template.chartArea.width}-${template.chartArea.height}`} devicePixelRatioMultiplier={Math.max(1, scale)} />
+          <ChartGenerator
+            key={`template-${template.id}-${template.chartArea.width}-${template.chartArea.height}`}
+            devicePixelRatioMultiplier={Math.max(1, scale)}
+            responsiveWidth={template.chartArea.width}
+            responsiveHeight={template.chartArea.height}
+          />
         </div>
       </div>
     )
@@ -1500,7 +1526,7 @@ export function TemplateChartPreview({
           {/* Layout wrapper — sized to the scaled template so the scrollable
               area matches the visual size (CSS transform doesn't affect layout). */}
           <div
-            className="relative mx-auto"
+            className="relative mx-auto flex-shrink-0"
             style={{
               width: width * scale,
               height: height * scale,

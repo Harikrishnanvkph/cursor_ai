@@ -813,6 +813,8 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                           typeOverride={snapshotData.chartType}
                           chartModeOverride={conversation.chart_mode}
                           isTemplateOrFormat={true}
+                          responsiveWidth={snapshotData.template_structure.chartArea.width}
+                          responsiveHeight={snapshotData.template_structure.chartArea.height}
                         />
                       </div>
                     )}
@@ -867,6 +869,8 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                         typeOverride={snapshotData.chartType}
                         chartModeOverride={conversation.chart_mode}
                         isTemplateOrFormat={isResponsive}
+                        responsiveWidth={chartW}
+                        responsiveHeight={chartH}
                       />
                     </div>
                   )

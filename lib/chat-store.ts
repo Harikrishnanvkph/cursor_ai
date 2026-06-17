@@ -195,6 +195,13 @@ interface ChatStore {
   backendConversationId: string | null; // NEW: Track if chart is already saved to backend
 
   setBackendConversationId: (id: string | null) => void; // NEW: Setter for backend conversation ID
+  selectedModel: 'deepseek' | 'deepseek-search' | 'gemini-search';
+  setSelectedModel: (model: 'deepseek' | 'deepseek-search' | 'gemini-search') => void;
+  addMessage: (msg: ChatMessage) => void;
+  setMessages: (msgs: ChatMessage[]) => void;
+  clearMessages: () => void;
+  startNewConversation: (keepChartData?: boolean) => void;
+  continueConversation: (input: string) => Promise<void>;
 }
 
 // Default initial message (fallback)
@@ -214,10 +221,12 @@ export const useChatStore = create<ChatStore>()(
       isProcessing: false,
       historyConversationId: null,
       backendConversationId: null, // NEW: Track backend conversation ID for updates
+      selectedModel: 'deepseek',
+      setSelectedModel: (model) => set({ selectedModel: model }),
 
-      addMessage: (msg) => set({ messages: [...get().messages, msg] }),
+      addMessage: (msg: ChatMessage) => set({ messages: [...get().messages, msg] }),
 
-      setMessages: (msgs) => set({ messages: msgs }),
+      setMessages: (msgs: ChatMessage[]) => set({ messages: msgs }),
 
       clearMessages: () => set({ messages: [getInitialMessage()] }),
 
@@ -263,7 +272,8 @@ export const useChatStore = create<ChatStore>()(
       setBackendConversationId: (id) => set({ backendConversationId: id }),
 
       continueConversation: async (input: string) => {
-        const { currentChartState, currentConversationId, messages } = get();
+        const { currentChartState, currentConversationId, messages, selectedModel } = get();
+        const originalMessages = messages;
 
         const userMsg: ChatMessage = {
           role: 'user',
@@ -343,7 +353,9 @@ export const useChatStore = create<ChatStore>()(
         const requestBody: any = {
           input: finalInput,
           conversationId: currentConversationId,
-          messageHistory: compactHistory
+          messageHistory: compactHistory,
+          service: selectedModel === 'gemini-search' ? 'gemini' : 'deepseek',
+          webSearch: selectedModel === 'gemini-search' || selectedModel === 'deepseek-search'
         };
         if (liveChartState) {
           requestBody.currentChartState = liveChartState;
@@ -482,12 +494,20 @@ export const useChatStore = create<ChatStore>()(
           // Safety net: for modifications, preserve the current chart type from the live store.
           // The user may have manually switched chart types (e.g., bar→line) via the editor.
           // The AI might return the old type from conversation history — override it.
+          // Exception: If the user explicitly requested a chart type change in their query, trust the AI's selection.
           let finalChartType = result.chartType;
           if (result.action === 'modify') {
             const liveType = useChartStore.getState().chartType;
             if (liveType && liveType !== result.chartType) {
-              console.log(`Frontend - Chart type override: AI returned "${result.chartType}", using live store "${liveType}"`);
-              finalChartType = liveType;
+              const CHART_TYPE_KEYWORDS = ['pie', 'bar', 'line', 'doughnut', 'scatter', 'bubble', 'radar', 'polar', 'area', 'chart type', 'convert', 'switch', 'change to'];
+              const isTypeChangeRequested = input && CHART_TYPE_KEYWORDS.some(kw => input.toLowerCase().includes(kw));
+
+              if (!isTypeChangeRequested) {
+                console.log(`Frontend - Chart type override: AI returned "${result.chartType}", using live store "${liveType}"`);
+                finalChartType = liveType;
+              } else {
+                console.log(`Frontend - Chart type change accepted: User requested type change to "${result.chartType}"`);
+              }
             }
           }
 
@@ -681,15 +701,12 @@ export const useChatStore = create<ChatStore>()(
             errorMessage = error.message;
           }
 
-          const errorMsg: ChatMessage = {
-            role: 'assistant',
-            content: errorMessage,
-            timestamp: Date.now()
-          };
           set({
-            messages: [...get().messages, errorMsg],
+            messages: originalMessages,
             isProcessing: false
           });
+
+          throw new Error(errorMessage);
         } finally {
           clearTimeout(timeoutId);
           if (currentRequestController === controller) {

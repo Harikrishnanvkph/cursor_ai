@@ -94,6 +94,8 @@ function CurrentChartTile({ chartData, chartConfig, chartType }: CurrentChartTil
           configOverride={chartConfig}
           typeOverride={chartType}
           isTemplateOrFormat={isResponsive}
+          responsiveWidth={chartW}
+          responsiveHeight={chartH}
         />
       </div>
     </div>

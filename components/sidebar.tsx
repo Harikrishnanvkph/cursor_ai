@@ -57,7 +57,6 @@ const CHART_TABS = [
 const TEMPLATE_TABS = [
   { id: "tpl_templates", label: "Templates", icon: FileText },
   { id: "tpl_content", label: "Content", icon: Type },
-  { id: "tpl_text", label: "Text Areas", icon: Type },
   { id: "tpl_chart_zone", label: "Chart Zone", icon: BarChart3 },
   { id: "tpl_decorations", label: "Decorations", icon: Component },
   { id: "tpl_background", label: "Background", icon: Palette },
@@ -66,6 +65,41 @@ const TEMPLATE_TABS = [
 
 // Export for use in editor/page.tsx
 export { CHART_TABS, TEMPLATE_TABS }
+
+export function getVisibleTemplateTabs(selectedFormatId: string | null) {
+  return TEMPLATE_TABS.filter(tab => {
+    if (selectedFormatId) {
+      if (tab.id === 'tpl_content') return false
+      return true
+    } else {
+      if (tab.id === 'tpl_format_zones') return false
+      return true
+    }
+  }).sort((a, b) => {
+    const getOrder = (id: string) => {
+      if (selectedFormatId) {
+        switch (id) {
+          case 'tpl_templates': return 0
+          case 'tpl_format_zones': return 1
+          case 'tpl_chart_zone': return 2
+          case 'tpl_decorations': return 3
+          case 'tpl_background': return 4
+          default: return 99
+        }
+      } else {
+        switch (id) {
+          case 'tpl_templates': return 0
+          case 'tpl_content': return 1
+          case 'tpl_chart_zone': return 2
+          case 'tpl_decorations': return 3
+          case 'tpl_background': return 4
+          default: return 99
+        }
+      }
+    }
+    return getOrder(a.id) - getOrder(b.id)
+  })
+}
 
 export function Sidebar({ activeTab, onTabChange, onToggleLeftSidebar, isLeftSidebarCollapsed }: SidebarProps) {
   const {
@@ -84,14 +118,10 @@ export function Sidebar({ activeTab, onTabChange, onToggleLeftSidebar, isLeftSid
   const datasets = chartData.datasets || []
   const isTemplateMode = editorMode === 'template'
 
-  // Choose tabs based on current editor mode
-  const tabs = isTemplateMode ? TEMPLATE_TABS : CHART_TABS
-
-  // Filter out Format Zones tab if no format is selected
-  const visibleTabs = tabs.filter(tab => {
-    if (tab.id === 'tpl_format_zones' && !selectedFormatId) return false
-    return true
-  })
+  // Filter and order template tabs dynamically, or use default chart tabs
+  const visibleTabs = isTemplateMode
+    ? getVisibleTemplateTabs(selectedFormatId)
+    : CHART_TABS
 
   const handleBackToChart = () => {
     setEditorMode('chart')

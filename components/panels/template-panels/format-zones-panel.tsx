@@ -94,10 +94,11 @@ export function FormatZonesPanel() {
     )
   }
 
-  // Group zones by type
+  // Group zones by type (ignoring chart zone as it is edited from the Chart Zone panel)
   const groupedZones: Record<string, any[]> = {}
   zones.forEach((zone: any) => {
     const type = zone.type || 'unknown'
+    if (type === 'chart') return
     if (!groupedZones[type]) groupedZones[type] = []
     groupedZones[type].push(zone)
   })
@@ -253,93 +254,7 @@ export function FormatZonesPanel() {
                     </div>
                   )}
                   
-                  {type === 'chart' && (
-                    <div className="mt-2 space-y-3">
-                      <div className="flex items-center gap-2 p-2 bg-blue-50/50 rounded text-blue-700/80 border border-blue-100">
-                        <BarChart3 className="h-4 w-4 shrink-0" />
-                        <span className="text-[11px]">Chart driven by active Dataset</span>
-                      </div>
-                      
-                      <div className="border border-slate-100 rounded bg-white p-3 space-y-3 shadow-sm">
-                        <Label className="text-xs font-medium block">
-                          Chart Sizing Mode
-                        </Label>
-                        
-                        <div className="flex bg-slate-100 p-1 rounded-md">
-                          <button 
-                            className={`flex-1 text-[11px] py-1.5 px-2 rounded-sm font-medium transition-colors ${!!chartStore.chartConfig.responsive ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
-                            onClick={() => {
-                              chartStore.updateChartConfig(
-                                ChartConfigService.normalizeConfig({
-                                  ...chartStore.chartConfig,
-                                  responsive: true,
-                                  manualDimensions: false,
-                                  maintainAspectRatio: false
-                                } as any, chartStore.chartType as any)
-                              )
-                            }}
-                          >
-                            Responsive
-                          </button>
-                          <button 
-                            className={`flex-1 text-[11px] py-1.5 px-2 rounded-sm font-medium transition-colors ${!chartStore.chartConfig.responsive ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
-                            onClick={() => {
-                              chartStore.updateChartConfig(
-                                ChartConfigService.normalizeConfig({
-                                  ...chartStore.chartConfig,
-                                  responsive: false,
-                                  manualDimensions: true,
-                                  maintainAspectRatio: false
-                                } as any, chartStore.chartType as any)
-                              )
-                            }}
-                          >
-                            Manual Dim.
-                          </button>
-                        </div>
 
-                        <p className="text-[10px] text-slate-500 leading-tight">
-                          {chartStore.chartConfig.responsive 
-                            ? "Chart automatically stretches to fill the template zone." 
-                            : "Chart uses manual width/height settings from the Design tab."}
-                        </p>
-
-                        <div className="pt-3 mt-3 border-t border-slate-100">
-                          <Label className="text-xs text-gray-500 font-medium mb-1 block">Internal Chart Padding</Label>
-                          <div className="flex items-center gap-2">
-                            <Input
-                              type="number"
-                              value={
-                                typeof chartStore.chartConfig?.layout?.padding === 'number' 
-                                  ? chartStore.chartConfig.layout.padding 
-                                  : chartStore.chartConfig?.layout?.padding?.top ?? 0
-                              }
-                              onChange={(e) => {
-                                const paddingVal = parseInt(e.target.value) || 0;
-                                chartStore.updateChartConfig({
-                                  ...chartStore.chartConfig,
-                                  layout: {
-                                    ...(chartStore.chartConfig.layout || {}),
-                                    padding: paddingVal
-                                  }
-                                } as any)
-                              }}
-                              className="h-8 text-sm"
-                              min={0}
-                            />
-                            <span className="text-[10px] text-gray-400 w-full leading-tight">
-                              Adds spacing inside the chart box.
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-1.5 text-[10px] text-slate-500 italic mt-1 px-1">
-                        <ExternalLink className="h-3 w-3 shrink-0 mt-0.5" />
-                        <span>Navigate to Chart Mode to edit data, axes, constraints and colors.</span>
-                      </div>
-                    </div>
-                  )}
                   
                   {type === 'decoration' && (
                      <div className="flex items-center gap-2 p-2 bg-blue-50/50 rounded text-blue-700/80 border border-blue-100">

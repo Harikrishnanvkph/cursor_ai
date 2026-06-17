@@ -4,8 +4,8 @@ import React, { useRef, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import {
   ArrowUp, BarChart2, SquarePen, Edit3,
-  MessageSquare, Sparkles, ChevronLeft, ChevronRight,
-  Info, LayoutDashboard, Bot, ExternalLink
+  MessageSquare, Sparkles, ChevronLeft, ChevronRight, ChevronDown,
+  Info, LayoutDashboard, Bot, Brain, ExternalLink
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -18,6 +18,7 @@ import { useChatStore } from "@/lib/chat-store"
 import { useTemplateStore } from "@/lib/template-store"
 import { chartTemplate } from "./prompt_template"
 import { useSidebarContext } from "./sidebar-context"
+import { toast } from "sonner"
 
 interface LandingSidebarProps {
   leftSidebarOpen: boolean
@@ -34,6 +35,8 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
     continueConversation,
     startNewConversation,
     setMessages,
+    selectedModel,
+    setSelectedModel,
   } = useChatStore()
 
   const { generateMode, currentTemplate } = useTemplateStore()
@@ -57,12 +60,29 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
       textareaRef.current.style.height = "36px"
     }
 
-    await continueConversation(userInput)
+    try {
+      await continueConversation(userInput)
+    } catch (err: any) {
+      setInput(userInput)
+      toast.error(err.message || "Failed to process request")
+
+      // Update textarea height to fit the restored text
+      if (textareaRef.current) {
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.style.height = "36px"
+            const maxHeight = 100
+            textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`
+            textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > maxHeight ? "auto" : "hidden"
+          }
+        }, 50)
+      }
+    }
 
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
     }, 100)
-  }, [input, isProcessing, continueConversation, isChatDisabled])
+  }, [input, isProcessing, continueConversation, isChatDisabled, setInput, textareaRef])
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value)
@@ -167,6 +187,37 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
             onSubmit={handleSend}
             className="p-4 border-t border-slate-200/80 bg-transparent flex flex-col gap-2 flex-shrink-0"
           >
+            <div className="flex items-center justify-between px-1">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button type="button" className="text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors flex items-center gap-1.5 py-1 px-2.5 bg-white hover:bg-slate-50 border border-slate-200/60 rounded-xl shadow-xs">
+                    <Bot className="w-3.5 h-3.5 text-indigo-500" />
+                    <span>
+                      {selectedModel === 'gemini-search'
+                        ? 'Gemini 2.5 + Search'
+                        : selectedModel === 'deepseek-search'
+                        ? 'DeepSeek + Search'
+                        : 'DeepSeek Chat'}
+                    </span>
+                    <ChevronDown className="w-3 h-3 text-slate-400 ml-0.5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-48 bg-white border border-slate-200 shadow-md rounded-xl p-1 z-50">
+                  <DropdownMenuItem onClick={() => setSelectedModel('deepseek')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 rounded-lg text-slate-700">
+                    <Brain className="w-3.5 h-3.5 text-blue-500" />
+                    <span>DeepSeek Chat</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSelectedModel('deepseek-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 rounded-lg text-slate-700">
+                    <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+                    <span>DeepSeek + Search</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSelectedModel('gemini-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 rounded-lg text-slate-700">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Gemini 2.5 + Search</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
             <div className="relative flex items-center w-full bg-white border border-slate-200 hover:border-slate-300 focus-within:border-indigo-400 focus-within:ring-4 focus-within:ring-indigo-50/50 transition-all rounded-2xl p-1.5 shadow-xs">
               <textarea
                 ref={textareaRef}

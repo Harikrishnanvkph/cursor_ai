@@ -4,7 +4,7 @@ import React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEditorSidebarContext } from "./editor-sidebar-context"
-import { Sidebar, CHART_TABS, TEMPLATE_TABS } from "@/components/sidebar"
+import { Sidebar, CHART_TABS, TEMPLATE_TABS, getVisibleTemplateTabs } from "@/components/sidebar"
 import { useTemplateStore } from "@/lib/template-store"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import {
@@ -56,10 +56,7 @@ export function EditorLeftSidebar() {
 
   const TABS = React.useMemo(() => {
     if (editorMode === 'template') {
-      return TEMPLATE_TABS.filter(tab => {
-        if (tab.id === 'tpl_format_zones' && !selectedFormatId) return false
-        return true
-      })
+      return getVisibleTemplateTabs(selectedFormatId)
     }
     return CHART_TABS
   }, [editorMode, selectedFormatId])

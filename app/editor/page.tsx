@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo, useRef } from "react"
-import { Sidebar, CHART_TABS, TEMPLATE_TABS } from "@/components/sidebar"
+import { Sidebar, CHART_TABS, TEMPLATE_TABS, getVisibleTemplateTabs } from "@/components/sidebar"
 import { ChartPreview } from "@/components/chart-preview"
 import { ConfigPanel } from "@/components/config-panel"
 import { useChartStore } from "@/lib/chart-store"
@@ -308,6 +308,19 @@ function EditorPageContent() {
   const [exportExpanded, setExportExpanded] = useState(false)
   const [shareExpanded, setShareExpanded] = useState(false)
 
+  // Sync sidebar tab when changing editor mode
+  useEffect(() => {
+    if (editorMode === 'chart') {
+      if (activeTab.startsWith('tpl_')) {
+        setActiveTab('types_toggles')
+      }
+    } else if (editorMode === 'template') {
+      if (!activeTab.startsWith('tpl_')) {
+        setActiveTab('tpl_templates')
+      }
+    }
+  }, [editorMode, activeTab, setActiveTab])
+
   const activeConfig = useChartStore(s => {
     if (s.chartMode === 'single') {
       const ds = s.chartData.datasets[s.activeDatasetIndex];
@@ -437,11 +450,7 @@ function EditorPageContent() {
   // Computed TABS based on editor mode — used for mobile/tablet bottom nav
   const TABS = useMemo(() => {
     if (editorMode === 'template') {
-      // Filter out Format Zones if no format is selected
-      return TEMPLATE_TABS.filter(tab => {
-        if (tab.id === 'tpl_format_zones' && !selectedFormatId) return false
-        return true
-      })
+      return getVisibleTemplateTabs(selectedFormatId)
     }
     return CHART_TABS
   }, [editorMode, selectedFormatId])

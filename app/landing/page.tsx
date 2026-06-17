@@ -3,7 +3,7 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react"
 
 import { useRouter } from "next/navigation"
-import { Send, ArrowUp, BarChart2, Plus, SquarePen, Pencil, PencilRuler, RotateCcw, Edit3, MessageSquare, Sparkles, ArrowRight, X, ChevronLeft, ChevronRight, ChevronDown, PanelLeft, PanelRight, Settings, Brain, Info, LayoutDashboard, Layers, Menu, MoreVertical, Check, Palette, Cloud, Trash2, Download, FileImage, ImageIcon, FileCode, FileText, Maximize2, MessageCircleDashed, ChartColumnBig, Eye, Loader2, History, ToolCase, Share2, Copy, ExternalLink } from "lucide-react"
+import { Send, ArrowUp, BarChart2, Plus, SquarePen, Pencil, PencilRuler, RotateCcw, Edit3, MessageSquare, Sparkles, ArrowRight, X, ChevronLeft, ChevronRight, ChevronDown, PanelLeft, PanelRight, Settings, Brain, Bot, Info, LayoutDashboard, Layers, Menu, MoreVertical, Check, Palette, Cloud, Trash2, Download, FileImage, ImageIcon, FileCode, FileText, Maximize2, MessageCircleDashed, ChartColumnBig, Eye, Loader2, History, ToolCase, Share2, Copy, ExternalLink } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { STANDARD_CHART_TYPES, THREE_D_CHART_TYPES } from "@/lib/chart-types"
@@ -100,7 +100,9 @@ function LandingPageContent() {
     startNewConversation,
     clearMessages,
     setMessages,
-    backendConversationId
+    backendConversationId,
+    selectedModel,
+    setSelectedModel
   } = useChatStore()
 
   const { addConversation, loadConversationsFromBackend, restoreConversation } = useHistoryStore()
@@ -398,12 +400,29 @@ function LandingPageContent() {
       textareaRef.current.style.height = "36px"
     }
 
-    await continueConversation(userInput)
+    try {
+      await continueConversation(userInput)
+    } catch (err: any) {
+      setInput(userInput)
+      toast.error(err.message || "Failed to process request")
+
+      // Update textarea height to fit the restored text
+      if (textareaRef.current) {
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.style.height = "36px"
+            const maxHeight = 100
+            textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`
+            textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > maxHeight ? "auto" : "hidden"
+          }
+        }, 50)
+      }
+    }
 
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
     }, 100)
-  }, [input, isProcessing, continueConversation, isChatDisabled])
+  }, [input, isProcessing, continueConversation, isChatDisabled, setInput, textareaRef])
 
   const handleTemplateClick = useCallback(() => {
     // Write to local state (used by tablet/mobile layouts)
@@ -825,33 +844,66 @@ function LandingPageContent() {
                     {/* Chat Input - Tablet */}
                     <form
                       onSubmit={handleSend}
-                      className="p-3 border-b border-gray-200 bg-white flex items-end gap-2 flex-shrink-0"
+                      className="p-3 border-b border-gray-200 bg-white flex flex-col gap-2 flex-shrink-0"
                     >
-                      <textarea
-                        ref={textareaRef}
-                        className="flex-1 rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-300 bg-white resize-none max-h-[150px] min-h-[44px] leading-relaxed transition-all font-sans disabled:opacity-50 disabled:cursor-not-allowed"
-                        placeholder={isChatDisabled ? "Attach a template to start..." : (hasActiveChart ? "Modify the chart..." : "Ask AI to Generate Chart...")}
-                        value={input}
-                        onChange={handleInputChange}
-                        onPaste={handlePaste}
-                        disabled={isProcessing || isChatDisabled}
-                        rows={1}
-                        onKeyDown={e => {
-                          if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                            e.preventDefault();
-                            if (!isChatDisabled) {
-                              handleSend(e)
+                      <div className="flex items-center justify-between px-1">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button type="button" className="text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors flex items-center gap-1.5 py-1 px-2.5 bg-white hover:bg-slate-50 border border-slate-200/60 rounded-xl shadow-xs">
+                              <Bot className="w-3.5 h-3.5 text-indigo-500" />
+                              <span>
+                                {selectedModel === 'gemini-search'
+                                  ? 'Gemini 2.5 + Search'
+                                  : selectedModel === 'deepseek-search'
+                                  ? 'DeepSeek + Search'
+                                  : 'DeepSeek Chat'}
+                              </span>
+                              <ChevronDown className="w-3 h-3 text-slate-400 ml-0.5" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" className="w-48 bg-white border border-slate-200 shadow-md rounded-xl p-1 z-50">
+                            <DropdownMenuItem onClick={() => setSelectedModel('deepseek')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 rounded-lg text-slate-700">
+                              <Brain className="w-3.5 h-3.5 text-blue-500" />
+                              <span>DeepSeek Chat</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setSelectedModel('deepseek-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 rounded-lg text-slate-700">
+                              <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+                              <span>DeepSeek + Search</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setSelectedModel('gemini-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 rounded-lg text-slate-700">
+                              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                              <span>Gemini 2.5 + Search</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                      <div className="flex items-end gap-2 w-full">
+                        <textarea
+                          ref={textareaRef}
+                          className="flex-1 rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-300 bg-white resize-none max-h-[150px] min-h-[44px] leading-relaxed transition-all font-sans disabled:opacity-50 disabled:cursor-not-allowed"
+                          placeholder={isChatDisabled ? "Attach a template to start..." : (hasActiveChart ? "Modify the chart..." : "Ask AI to Generate Chart...")}
+                          value={input}
+                          onChange={handleInputChange}
+                          onPaste={handlePaste}
+                          disabled={isProcessing || isChatDisabled}
+                          rows={1}
+                          onKeyDown={e => {
+                            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                              e.preventDefault();
+                              if (!isChatDisabled) {
+                                handleSend(e)
+                              }
                             }
-                          }
-                        }}
-                      />
-                      <button
-                        type="submit"
-                        className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white w-[38px] h-[38px] flex items-center justify-center rounded-full flex-shrink-0 disabled:opacity-50 transition-all duration-200 shadow-sm mb-[3px]"
-                        disabled={isProcessing || !input.trim() || isChatDisabled}
-                      >
-                        <ArrowUp className="w-5 h-5" strokeWidth={2.5} />
-                      </button>
+                          }}
+                        />
+                        <button
+                          type="submit"
+                          className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white w-[38px] h-[38px] flex items-center justify-center rounded-full flex-shrink-0 disabled:opacity-50 transition-all duration-200 shadow-sm mb-[3px]"
+                          disabled={isProcessing || !input.trim() || isChatDisabled}
+                        >
+                          <ArrowUp className="w-5 h-5" strokeWidth={2.5} />
+                        </button>
+                      </div>
                     </form>
                     <ChatWindow
                       messages={messages}
@@ -1316,33 +1368,66 @@ function LandingPageContent() {
               {/* Sticky Top Form */}
               <form
                 onSubmit={handleSend}
-                className="p-3 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md flex items-end gap-2 flex-shrink-0 shadow-sm"
+                className="p-3 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md flex flex-col gap-2 flex-shrink-0 shadow-sm"
               >
-                <textarea
-                  ref={textareaRef}
-                  className="flex-1 rounded-xl border border-slate-200/80 dark:border-slate-800 px-3 py-2.5 text-xs xs:text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 dark:focus:border-indigo-500 bg-white dark:bg-slate-950 resize-none max-h-[100px] min-h-[40px] leading-relaxed transition-all font-sans text-slate-850 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                  placeholder={isChatDisabled ? "Attach a template to start..." : (hasActiveChart ? "Modify (colors, title, data)..." : "Describe the chart to build...")}
-                  value={input}
-                  onChange={handleInputChange}
-                  onPaste={handlePaste}
-                  disabled={isProcessing || isChatDisabled}
-                  rows={1}
-                  onKeyDown={e => {
-                    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                      e.preventDefault();
-                      if (!isChatDisabled) {
-                        handleSend(e)
+                <div className="flex items-center justify-between px-1">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button type="button" className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors flex items-center gap-1.5 py-1 px-2.5 bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-xs">
+                        <Bot className="w-3.5 h-3.5 text-indigo-500" />
+                        <span>
+                          {selectedModel === 'gemini-search'
+                            ? 'Gemini 2.5 + Search'
+                            : selectedModel === 'deepseek-search'
+                            ? 'DeepSeek + Search'
+                            : 'DeepSeek Chat'}
+                        </span>
+                        <ChevronDown className="w-3 h-3 text-slate-400 ml-0.5" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md rounded-xl p-1 z-50">
+                      <DropdownMenuItem onClick={() => setSelectedModel('deepseek')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-slate-700 dark:text-slate-200">
+                        <Brain className="w-3.5 h-3.5 text-blue-500" />
+                        <span>DeepSeek Chat</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setSelectedModel('deepseek-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-slate-700 dark:text-slate-200">
+                        <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+                        <span>DeepSeek + Search</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setSelectedModel('gemini-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-slate-700 dark:text-slate-200">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Gemini 2.5 + Search</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <div className="flex items-end gap-2 w-full">
+                  <textarea
+                    ref={textareaRef}
+                    className="flex-1 rounded-xl border border-slate-200/80 dark:border-slate-800 px-3 py-2.5 text-xs xs:text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 dark:focus:border-indigo-500 bg-white dark:bg-slate-950 resize-none max-h-[100px] min-h-[40px] leading-relaxed transition-all font-sans text-slate-850 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    placeholder={isChatDisabled ? "Attach a template to start..." : (hasActiveChart ? "Modify (colors, title, data)..." : "Describe the chart to build...")}
+                    value={input}
+                    onChange={handleInputChange}
+                    onPaste={handlePaste}
+                    disabled={isProcessing || isChatDisabled}
+                    rows={1}
+                    onKeyDown={e => {
+                      if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                        e.preventDefault();
+                        if (!isChatDisabled) {
+                          handleSend(e)
+                        }
                       }
-                    }
-                  }}
-                />
-                <button
-                  type="submit"
-                  className="bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-600 active:scale-95 text-white w-[38px] h-[38px] flex items-center justify-center rounded-xl flex-shrink-0 disabled:opacity-50 transition-all duration-200 shadow-sm mb-[1px]"
-                  disabled={isProcessing || !input.trim() || isChatDisabled}
-                >
-                  <ArrowUp className="w-4.5 h-4.5" strokeWidth={2.5} />
-                </button>
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    className="bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-600 active:scale-95 text-white w-[38px] h-[38px] flex items-center justify-center rounded-xl flex-shrink-0 disabled:opacity-50 transition-all duration-200 shadow-sm mb-[1px]"
+                    disabled={isProcessing || !input.trim() || isChatDisabled}
+                  >
+                    <ArrowUp className="w-4.5 h-4.5" strokeWidth={2.5} />
+                  </button>
+                </div>
               </form>
 
               {/* Scrollable messages area */}

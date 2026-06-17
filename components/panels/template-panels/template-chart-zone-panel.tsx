@@ -3,31 +3,68 @@
 import React, { useState } from "react"
 import { useTemplateStore } from "@/lib/template-store"
 import { useChartStore } from "@/lib/chart-store"
+import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
+
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { BarChart3, Link2, Link2Off } from "lucide-react"
 
 export function TemplateChartZonePanel() {
   const { currentTemplate } = useTemplateStore()
+  const { selectedFormatId, formats, selectedFormatSnapshot } = useFormatGalleryStore()
   const chartStore = useChartStore()
 
   // Track whether user wants linked (uniform) or unlinked (per-side) padding
   const [linked, setLinked] = useState(true)
 
-  if (!currentTemplate) {
+  // Find the selected format — prefer the persisted snapshot (contains user modifications)
+  const selectedFormat = selectedFormatId
+    ? (selectedFormatSnapshot || formats.find((f) => f.id === selectedFormatId))
+    : null
+
+  // Guard: require at least a template or a format
+  if (!currentTemplate && !selectedFormat) {
     return (
       <div className="p-4 text-center text-gray-500 text-sm">
-        <p>No template selected.</p>
-        <p className="text-xs mt-1 text-gray-400">Select a template first.</p>
+        <p>No template or format selected.</p>
+        <p className="text-xs mt-1 text-gray-400">Select a template or format first.</p>
       </div>
     )
   }
 
-  const chartArea = currentTemplate.chartArea
+  // Generalize variables for both modes
+  let canvasWidth = 0
+  let canvasHeight = 0
+  let chartArea = { x: 0, y: 0, width: 0, height: 0 }
+  let isFormat = false
+  let displayName = "Chart Area"
+
+  if (selectedFormat) {
+    isFormat = true
+    displayName = `${selectedFormat.name} Chart Zone`
+    canvasWidth = selectedFormat.dimensions.width
+    canvasHeight = selectedFormat.dimensions.height
+    
+    // Find the chart zone within the format skeleton
+    const formatChartZone = ((selectedFormat.skeleton as any)?.zones || []).find((z: any) => z.type === 'chart')
+    if (formatChartZone?.position) {
+      chartArea = {
+        x: formatChartZone.position.x,
+        y: formatChartZone.position.y,
+        width: formatChartZone.position.width,
+        height: formatChartZone.position.height,
+      }
+    }
+  } else if (currentTemplate) {
+    displayName = "Template Chart Area"
+    canvasWidth = currentTemplate.width
+    canvasHeight = currentTemplate.height
+    chartArea = currentTemplate.chartArea
+  }
 
   // Calculate percentage of total canvas
-  const pctW = currentTemplate.width > 0 ? Math.round((chartArea.width / currentTemplate.width) * 100) : 0
-  const pctH = currentTemplate.height > 0 ? Math.round((chartArea.height / currentTemplate.height) * 100) : 0
+  const pctW = canvasWidth > 0 ? Math.round((chartArea.width / canvasWidth) * 100) : 0
+  const pctH = canvasHeight > 0 ? Math.round((chartArea.height / canvasHeight) * 100) : 0
 
   // ── Canvas Padding helpers ──────────────────
   const rawPadding = chartStore?.chartConfig?.layout?.padding
@@ -75,7 +112,7 @@ export function TemplateChartZonePanel() {
       <div>
         <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
           <BarChart3 className="h-4 w-4 text-blue-600" />
-          Chart Area
+          {displayName}
         </h3>
 
         {/* Visual Preview */}
@@ -84,7 +121,7 @@ export function TemplateChartZonePanel() {
             className="relative mx-auto bg-white rounded border border-gray-200"
             style={{
               width: 200,
-              height: Math.round(200 * (currentTemplate.height / currentTemplate.width)),
+              height: canvasWidth > 0 ? Math.round(200 * (canvasHeight / canvasWidth)) : 150,
               maxHeight: 150,
             }}
           >
@@ -92,8 +129,8 @@ export function TemplateChartZonePanel() {
             <div
               className="absolute bg-blue-50 border-2 border-blue-400 border-dashed rounded-sm"
               style={{
-                left: `${currentTemplate.width > 0 ? (chartArea.x / currentTemplate.width) * 100 : 0}%`,
-                top: `${currentTemplate.height > 0 ? (chartArea.y / currentTemplate.height) * 100 : 0}%`,
+                left: `${canvasWidth > 0 ? (chartArea.x / canvasWidth) * 100 : 0}%`,
+                top: `${canvasHeight > 0 ? (chartArea.y / canvasHeight) * 100 : 0}%`,
                 width: `${pctW}%`,
                 height: `${pctH}%`,
               }}
@@ -121,9 +158,11 @@ export function TemplateChartZonePanel() {
             </div>
           </div>
           <p className="text-center text-[10px] text-gray-400 mt-2">
-            {currentTemplate.width} × {currentTemplate.height}px canvas · Chart zone {pctW}% × {pctH}%
+            {canvasWidth} × {canvasHeight}px canvas · Chart zone {pctW}% × {pctH}%
           </p>
         </div>
+
+
 
         {/* ── Canvas Padding Controls ──────────────── */}
         {chartStore && (
@@ -239,7 +278,9 @@ export function TemplateChartZonePanel() {
               </div>
               <div className="flex justify-between">
                 <span>Mode</span>
-                <span className="font-medium text-blue-600">Responsive</span>
+                <span className="font-medium text-blue-600">
+                  {chartStore.chartConfig.responsive ? 'Responsive' : 'Manual'}
+                </span>
               </div>
             </div>
           </div>
@@ -248,3 +289,4 @@ export function TemplateChartZonePanel() {
     </div>
   )
 }
+

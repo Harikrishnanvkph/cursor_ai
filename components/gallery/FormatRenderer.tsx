@@ -32,6 +32,7 @@ import type {
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { useDecorationStore } from "@/lib/stores/decoration-store"
 import { FormatZoneToolbar } from "@/components/format/FormatZoneToolbar"
+import { ChartGenerator } from "@/lib/chart_generator"
 import { getPatternCSS } from "@/lib/utils"
 import { getProxiedImageUrl } from "@/lib/utils/image-proxy-utils"
 
@@ -655,8 +656,6 @@ function StatZoneContent({ renderedZone, scale, interactive }: {
 
 // ========================================
 
-import { ChartGenerator } from "@/lib/chart_generator"
-
 function ChartZoneView({
   renderedZone,
   scale,
@@ -679,6 +678,8 @@ function ChartZoneView({
   const chartType = renderedZone.resolvedChartType || 'bar'
   const data = renderedZone.resolvedChartData
   const config = renderedZone.resolvedChartConfig
+  const zoneWidth = renderedZone.zone.position?.width || 800
+  const zoneHeight = renderedZone.zone.position?.height || 600
 
   const containerStyle: React.CSSProperties = {
     width: '100%',
@@ -702,6 +703,8 @@ function ChartZoneView({
             configOverride={config}
             typeOverride={chartType}
             isTemplateOrFormat={true}
+            responsiveWidth={zoneWidth}
+            responsiveHeight={zoneHeight}
           />
         </div>
       </div>
@@ -715,7 +718,11 @@ function ChartZoneView({
         {/* We use pointer-events-none on the wrapper to let FormatRenderer handle clicks, 
             or remove it if we want tooltips to work */}
         <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-          <ChartGenerator devicePixelRatioMultiplier={Math.max(1, zoomLevel)} />
+          <ChartGenerator
+            devicePixelRatioMultiplier={Math.max(1, zoomLevel)}
+            responsiveWidth={zoneWidth}
+            responsiveHeight={zoneHeight}
+          />
         </div>
       </div>
     )
