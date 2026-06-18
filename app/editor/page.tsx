@@ -38,6 +38,7 @@ import { EditorWelcomeScreen } from "@/components/editor-welcome-screen"
 import { DimensionMismatchDialog } from "@/components/dialogs/dimension-mismatch-dialog"
 import { SaveModeConflictDialog } from "@/components/dialogs/save-mode-conflict-dialog"
 import { ChartSetupDialog, type ChartDimensions } from "@/components/dialogs/chart-setup-dialog"
+import { ModeChangeConfirmDialog } from "@/components/dialogs/mode-change-confirm-dialog"
 import { applyPresetToChart } from "@/lib/chart-style-engine"
 import type { PresetCategory } from "@/lib/chart-style-types"
 import { getPresetById } from "@/lib/chart-style-defaults"
@@ -299,7 +300,17 @@ function EditorPageContent() {
   const setCurrentSnapshotId = useChartStore(s => s.setCurrentSnapshotId)
 
   const { updateChartConfig, setChartType } = useChartActions()
-  const { setEditorMode, currentTemplate, editorMode, syncTemplatesFromCloud, templateInBackground } = useTemplateStore()
+  const { 
+    setEditorMode, 
+    currentTemplate, 
+    editorMode, 
+    syncTemplatesFromCloud, 
+    templateInBackground,
+    showModeChangeConfirm,
+    setModeChangeConfirm,
+    confirmModeChange,
+    cancelModeChange
+  } = useTemplateStore()
   const { selectedFormatId, contentPackage, formats, userFormats, selectedFormatSnapshot } = useFormatGalleryStore()
   const { messages, clearMessages, startNewConversation, setBackendConversationId } = useChatStore()
   const originalCloudDimensions = useChartStore(s => s.originalCloudDimensions)
@@ -307,7 +318,6 @@ function EditorPageContent() {
   const exports = useChartExport()
   const [exportExpanded, setExportExpanded] = useState(false)
   const [shareExpanded, setShareExpanded] = useState(false)
-
   // Sync sidebar tab when changing editor mode
   useEffect(() => {
     if (editorMode === 'chart') {
@@ -1414,6 +1424,14 @@ function EditorPageContent() {
           onClose={() => setShowSetupDialog(false)}
           onConfirm={handleDimensionsConfirmed}
         />
+
+        {/* Mode Change Confirmation Dialog */}
+        <ModeChangeConfirmDialog
+          open={showModeChangeConfirm}
+          onOpenChange={setModeChangeConfirm}
+          onConfirm={confirmModeChange}
+          onCancel={cancelModeChange}
+        />
         {/* Sandwich Backdrop overlay */}
         {sandwichOpen && (
           <div 
@@ -1760,6 +1778,52 @@ function EditorPageContent() {
             isSaving={isSaving}
           />
         )}
+
+        {/* Confirmation Dialog for Save/Clear */}
+        <ConfirmDialog
+          open={showSaveConfirmDialog}
+          onCancel={() => setShowSaveConfirmDialog(false)}
+          title="Existing Chart Data"
+          description="You have unsaved chart data. Would you like to save it before creating a new chart?"
+          onConfirm={handleSaveAndClear}
+          confirmText="Save"
+          cancelText="Cancel"
+          onAlternate={handleJustClear}
+          alternateText="Discard"
+        />
+
+        {/* Clear Chart Dialog */}
+        <ClearChartDialog
+          open={showClearDialog}
+          onOpenChange={setShowClearDialog}
+          onSuccess={() => {
+            // Additional success logic if needed
+          }}
+        />
+
+        {/* Save Mode Conflict Dialog */}
+        <SaveModeConflictDialog
+          isOpen={showModeConflictDialog}
+          onClose={() => setShowModeConflictDialog(false)}
+          onSaveChartDiscardTemplate={handleSaveChartDiscardTemplate}
+          onSaveAsSeparateChart={handleSaveAsSeparateChart}
+          isSaving={isSaving}
+        />
+
+        {/* Setup Dialog for New Charts */}
+        <ChartSetupDialog
+          open={showSetupDialog}
+          onClose={() => setShowSetupDialog(false)}
+          onConfirm={handleDimensionsConfirmed}
+        />
+
+        {/* Mode Change Confirmation Dialog */}
+        <ModeChangeConfirmDialog
+          open={showModeChangeConfirm}
+          onOpenChange={setModeChangeConfirm}
+          onConfirm={confirmModeChange}
+          onCancel={cancelModeChange}
+        />
       </div>
     );
   }
@@ -1941,6 +2005,14 @@ function EditorPageContent() {
         open={showSetupDialog}
         onClose={() => setShowSetupDialog(false)}
         onConfirm={handleDimensionsConfirmed}
+      />
+
+      {/* Mode Change Confirmation Dialog */}
+      <ModeChangeConfirmDialog
+        open={showModeChangeConfirm}
+        onOpenChange={setModeChangeConfirm}
+        onConfirm={confirmModeChange}
+        onCancel={cancelModeChange}
       />
 
     </>

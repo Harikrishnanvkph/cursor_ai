@@ -32,12 +32,16 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { hideCloseButton?: boolean }
->(({ className, children, hideCloseButton, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { 
+    hideCloseButton?: boolean
+    forceBodyPortal?: boolean
+  }
+>(({ className, children, hideCloseButton, forceBodyPortal, ...props }, ref) => {
   const { sidebarContainer } = useSidebarPortal()
+  const portalContainer = forceBodyPortal ? undefined : (sidebarContainer || undefined)
 
   return (
-    <DialogPrimitive.Portal container={sidebarContainer || undefined}>
+    <DialogPrimitive.Portal container={portalContainer}>
       <DialogOverlay />
       <DialogPrimitive.Content
         ref={ref}

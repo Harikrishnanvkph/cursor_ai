@@ -1,11 +1,13 @@
 "use client"
 
+import { useState } from "react"
 import { useAuth } from "@/components/auth/AuthProvider"
 import { UserAvatar } from "./user-avatar"
 import { SimpleDropdown } from "./simple-dropdown"
-import { User, LogOut, BookOpen, DollarSign } from "lucide-react"
+import { User, LogOut, BookOpen, DollarSign, Settings as SettingsIcon } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import { SettingsDialog } from "@/components/dialogs/settings-dialog"
 
 interface SimpleProfileDropdownProps {
   size?: 'sm' | 'md' | 'lg'
@@ -28,6 +30,7 @@ export function SimpleProfileDropdown({
   customNavigationItems
 }: SimpleProfileDropdownProps) {
   const { user, signOut } = useAuth()
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   const defaultNavigationItems = [
     {
@@ -60,6 +63,7 @@ export function SimpleProfileDropdown({
   )
 
   return (
+    <>
     <SimpleDropdown trigger={trigger} align="end">
       {/* User Info Header */}
       <div className="flex flex-col p-3 border-b border-gray-100">
@@ -89,6 +93,15 @@ export function SimpleProfileDropdown({
       {/* Navigation Items */}
       {showNavigation && (
         <div className="p-1.5 border-b border-gray-100">
+          <button 
+            type="button"
+            onClick={() => setIsSettingsOpen(true)}
+            className="flex items-center w-full px-2.5 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors duration-150 text-left cursor-pointer"
+          >
+            <SettingsIcon className="mr-2 h-4 w-4 text-gray-500" />
+            <span className="font-medium">Settings</span>
+          </button>
+          
           {navigationItems.map((item, index) => (
             <Link 
               key={index} 
@@ -105,7 +118,7 @@ export function SimpleProfileDropdown({
       {/* Logout */}
       <div className="p-1.5">
         <button 
-          className="flex items-center w-full px-2.5 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors duration-150"
+          className="flex items-center w-full px-2.5 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors duration-150 cursor-pointer"
           onClick={() => signOut()}
         >
           <LogOut className="mr-2 h-4 w-4" />
@@ -113,6 +126,8 @@ export function SimpleProfileDropdown({
         </button>
       </div>
     </SimpleDropdown>
+    <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
+    </>
   )
 }
 

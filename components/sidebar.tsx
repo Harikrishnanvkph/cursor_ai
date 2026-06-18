@@ -211,7 +211,7 @@ export function Sidebar({ activeTab, onTabChange, onToggleLeftSidebar, isLeftSid
                   if (!templateStore.currentTemplate) {
                     templateStore.applyTemplate('template-1')
                   }
-                  setEditorMode('template')
+                  templateStore.setEditorMode('template')
                   onTabChange('tpl_templates')
                 } else {
                   onTabChange(tab.id)

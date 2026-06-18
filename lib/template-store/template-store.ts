@@ -7,6 +7,7 @@ import { createExpiringStorage } from "../storage-utils"
 import { useDecorationStore } from "../stores/decoration-store"
 import type { TemplateTextArea, TemplateLayout, EditorMode, ChartDimensionState } from "./template-types"
 import { defaultTemplates } from "./template-defaults"
+import { useSettingsStore } from "../stores/settings-store"
 
 
 // Template store interface
@@ -76,6 +77,13 @@ interface TemplateStore {
   // Mode management
   setEditorMode: (mode: EditorMode) => void
   shouldShowTemplate: () => boolean
+  showModeChangeConfirm: boolean
+  pendingModeAction: (() => void) | null
+  setModeChangeConfirm: (show: boolean) => void
+  confirmModeChange: () => void
+  cancelModeChange: () => void
+  performApplyTemplate: (templateId: string) => void
+  performEditorModeChange: (mode: EditorMode) => void
 
   // Content type preferences for AI generation
   contentTypePreferences: Record<string, 'text' | 'html'> // { textAreaId: 'text' | 'html' }
@@ -112,6 +120,31 @@ export const useTemplateStore = create<TemplateStore>()(
       contentTypePreferences: {},
       sectionNotes: {},
       unusedContents: [],
+
+      showModeChangeConfirm: false,
+      pendingModeAction: null,
+      setModeChangeConfirm: (show) => set({ showModeChangeConfirm: show }),
+      confirmModeChange: () => {
+        console.log('Store: confirmModeChange called')
+        const state = get()
+        if (state.pendingModeAction) {
+          console.log('Store: Executing pending mode action')
+          state.pendingModeAction()
+        } else {
+          console.warn('Store: confirmModeChange called but pendingModeAction is null')
+        }
+        set({
+          showModeChangeConfirm: false,
+          pendingModeAction: null
+        })
+      },
+      cancelModeChange: () => {
+        console.log('Store: cancelModeChange called')
+        set({
+          showModeChangeConfirm: false,
+          pendingModeAction: null
+        })
+      },
 
       setDraftTemplate: (template) => set({ draftTemplate: template }),
       clearDraft: () => set({ draftTemplate: null }),
@@ -305,9 +338,52 @@ export const useTemplateStore = create<TemplateStore>()(
       }),
 
       applyTemplate: (templateId) => {
+        console.log('Store: applyTemplate called for:', templateId)
         const state = get()
-        const template = state.templates.find(t => t.id === templateId)
-        if (!template) return
+        if (state.editorMode === 'chart') {
+          const showNotify = useSettingsStore.getState().showModeChangeNotification
+          console.log('Store: applyTemplate intercept check - showNotify:', showNotify, 'showModeChangeConfirm:', state.showModeChangeConfirm)
+          if (state.showModeChangeConfirm) {
+            console.log('Store: applyTemplate - Already confirming, return early')
+            return
+          }
+          if (showNotify) {
+            console.log('Store: applyTemplate - Setting showModeChangeConfirm to true')
+            set({
+              showModeChangeConfirm: true,
+              pendingModeAction: () => {
+                console.log('Store: Executing pending applyTemplate for:', templateId)
+                get().performApplyTemplate(templateId)
+              }
+            })
+            return
+          }
+        }
+        console.log('Store: applyTemplate - Performing applyTemplate immediately')
+        get().performApplyTemplate(templateId)
+      },
+
+      performApplyTemplate: (templateId) => {
+        console.log('Store: performApplyTemplate called for:', templateId)
+        const state = get()
+        let template = state.templates.find(t => t.id === templateId)
+        if (!template) {
+          console.log('Store: templateId not found in state.templates, falling back to defaultTemplates')
+          template = defaultTemplates.find(t => t.id === templateId)
+        }
+        if (!template && state.templates.length > 0) {
+          console.log('Store: falling back to first template in state')
+          template = state.templates[0]
+        }
+        if (!template && defaultTemplates.length > 0) {
+          console.log('Store: falling back to first default template')
+          template = defaultTemplates[0]
+        }
+        if (!template) {
+          console.error('Store: performApplyTemplate - No template resolved!')
+          return
+        }
+        console.log('Store: resolved template:', template.id, template.name)
 
         // Before switching, if current template is Current Cloud Template, save its modified state
         if (state.currentTemplate?.id === 'current-cloud-template') {
@@ -430,7 +506,40 @@ export const useTemplateStore = create<TemplateStore>()(
 
       setDimensionOverride: (dims) => set({ dimensionOverride: dims }),
 
-      setEditorMode: (mode) => set((state) => {
+      setEditorMode: (mode) => {
+        console.log('Store: setEditorMode called for:', mode)
+        const state = get()
+        if (mode === state.editorMode) {
+          console.log('Store: setEditorMode - Mode is already:', mode)
+          return
+        }
+
+        // Intercept: switching from chart to template mode
+        if (mode === 'template' && state.editorMode === 'chart') {
+          const showNotify = useSettingsStore.getState().showModeChangeNotification
+          console.log('Store: setEditorMode intercept check - showNotify:', showNotify, 'showModeChangeConfirm:', state.showModeChangeConfirm)
+          if (state.showModeChangeConfirm) {
+            console.log('Store: setEditorMode - Already confirming, return early')
+            return
+          }
+          if (showNotify) {
+            console.log('Store: setEditorMode - Setting showModeChangeConfirm to true')
+            set({
+              showModeChangeConfirm: true,
+              pendingModeAction: () => {
+                console.log('Store: Executing pending setEditorMode for:', mode)
+                get().performEditorModeChange(mode)
+              }
+            })
+            return
+          }
+        }
+
+        console.log('Store: setEditorMode - Performing mode change immediately')
+        state.performEditorModeChange(mode)
+      },
+
+      performEditorModeChange: (mode) => set((state) => {
         if (mode === state.editorMode) {
           return state
         }
@@ -631,7 +740,9 @@ export const useTemplateStore = create<TemplateStore>()(
           templateSavedToCloud: false,
           editorMode: 'chart',
           generateMode: 'chart',
-          dimensionOverride: null
+          dimensionOverride: null,
+          showModeChangeConfirm: false,
+          pendingModeAction: null
         })
       }
     }),

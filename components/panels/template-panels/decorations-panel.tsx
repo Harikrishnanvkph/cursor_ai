@@ -643,6 +643,17 @@ export function DecorationsPanel() {
   const [svgCode, setSvgCode] = useState('')
   const svgFileRef = useRef<HTMLInputElement>(null)
   const imgFileRef = useRef<HTMLInputElement>(null)
+  const [activeTab, setActiveTab] = useState<'shapes' | 'section'>('shapes')
+  const shapesListRef = useRef<HTMLDivElement>(null)
+  const sectionListRef = useRef<HTMLDivElement>(null)
+
+  const handleScrollToHistory = () => {
+    const targetRef = activeTab === 'shapes' ? shapesListRef : sectionListRef
+    if (targetRef.current) {
+      targetRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      targetRef.current.focus()
+    }
+  }
 
   const selectedShape = shapes.find(s => s.id === selectedShapeId)
 
@@ -650,6 +661,7 @@ export function DecorationsPanel() {
   const SECTION_TYPE_LIST = ['textbox', 'textbox-auto', 'deco-image', 'deco-svg']
   const shapeElements = shapes.filter(s => !SECTION_TYPE_LIST.includes(s.type))
   const sectionElements = shapes.filter(s => SECTION_TYPE_LIST.includes(s.type))
+  const activeCount = activeTab === 'shapes' ? shapeElements.length : sectionElements.length
 
   const handleSelectTool = (type: DrawingMode | 'select') => {
     if (type === 'select') {
@@ -813,7 +825,15 @@ export function DecorationsPanel() {
   return (
     <div className="space-y-2">
       <div className="flex w-full items-center justify-between mb-1">
-        <span className="text-xs font-semibold text-slate-700">Drawing Tools</span>
+        <button
+          onClick={handleScrollToHistory}
+          className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1.5 hover:underline focus:outline-none transition-colors"
+        >
+          <span>History</span>
+          <span className="inline-flex items-center justify-center bg-blue-100 text-blue-700 text-[10px] font-semibold px-2 py-0.5 rounded-full min-w-[18px] h-[18px]">
+            {activeCount}
+          </span>
+        </button>
         <div className="flex gap-1 items-center">
           <Button
             variant="ghost"
@@ -837,7 +857,7 @@ export function DecorationsPanel() {
           </Button>
         </div>
       </div>
-      <Tabs defaultValue="shapes" className="w-full">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'shapes' | 'section')} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="shapes" className="flex items-center gap-1.5 text-xs">
             <Hexagon className="h-3.5 w-3.5" />
@@ -1093,7 +1113,13 @@ export function DecorationsPanel() {
           </div>
 
           {/* Shape List */}
-          {renderElementList(shapeElements, Hexagon, 'No shapes added yet. Select a tool above and draw on the canvas.', 'shapes')}
+          <div
+            ref={shapesListRef}
+            tabIndex={-1}
+            className="scroll-mt-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:ring-offset-2 rounded-lg"
+          >
+            {renderElementList(shapeElements, Hexagon, 'No shapes added yet. Select a tool above and draw on the canvas.', 'shapes')}
+          </div>
         </TabsContent>
 
         {/* ═══════════ SECTION TAB ═══════════ */}
@@ -1215,7 +1241,13 @@ export function DecorationsPanel() {
           )}
 
           {/* Section Elements List */}
-          {renderElementList(sectionElements, Type, 'No section elements yet. Add a textbox, image, or SVG above.', 'section')}
+          <div
+            ref={sectionListRef}
+            tabIndex={-1}
+            className="scroll-mt-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 focus-visible:ring-offset-2 rounded-lg"
+          >
+            {renderElementList(sectionElements, Type, 'No section elements yet. Add a textbox, image, or SVG above.', 'section')}
+          </div>
         </TabsContent>
       </Tabs>
     </div>
