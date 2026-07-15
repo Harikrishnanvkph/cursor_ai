@@ -4,10 +4,29 @@ import React from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
-  ZoomIn, ZoomOut, Eye, EyeOff, Maximize2,
-  Grid3X3, ArrowLeft, Save, X,
+  ZoomIn, ZoomOut, Hand,
+  Grid3X3, ArrowLeft, Save, X, Search, Info,
 } from 'lucide-react'
 import { useFormatBuilder } from './format-builder-context'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator
+} from '@/components/ui/dropdown-menu'
+import { Slider } from '@/components/ui/slider'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
+import { CATEGORY_OPTIONS } from './format-builder-utils'
+import type { FormatCategory } from '@/lib/format-types'
+
+const ZOOM_VALUES: number[] = (() => {
+  let values: number[] = [];
+  for (let i = 10; i <= 50; i += 1) values.push(i);
+  for (let i = 52; i <= 100; i += 2) values.push(i);
+  for (let i = 103; i <= 160; i += 3) values.push(i);
+  for (let i = 165; i <= 210; i += 5) values.push(i);
+  for (let i = 216; i <= 300; i += 6) values.push(i);
+  for (let i = 310; i <= 380; i += 10) values.push(i);
+  for (let i = 392; i <= 500; i += 12) values.push(i);
+  return values;
+})();
 import { useRouter } from 'next/navigation'
 import { dataService } from '@/lib/data-service'
 import { toast } from 'sonner'
@@ -18,10 +37,15 @@ import { decorationFileRegistry } from '@/lib/stores/decoration-file-registry'
 export function FormatBuilderToolbar() {
   const router = useRouter()
   const {
-    skeleton, formatName, setFormatName, formatDesc, category,
-    tagsInput, sortOrder,
+    skeleton, formatName, setFormatName,
+    formatDesc, setFormatDesc,
+    category, setCategory,
+    tagsInput, setTagsInput,
+    sortOrder, setSortOrder,
     zoom, setZoom, showGuides, setShowGuides,
     gridSize, setGridSize,
+    panMode, setPanMode,
+    setPanOffset,
     isEditing, editFormat,
     adminMode,
     blobRegistry,
@@ -30,6 +54,80 @@ export function FormatBuilderToolbar() {
   const [isBusy, setIsBusy] = React.useState(false)
   const [busyMessage, setBusyMessage] = React.useState('')
   const dims = skeleton.dimensions
+
+  const currentZoomPct = Math.round(zoom * 100)
+
+  let closestIndex = 0
+  let minDiff = Infinity
+  for (let i = 0; i < ZOOM_VALUES.length; i++) {
+    const diff = Math.abs(ZOOM_VALUES[i] - currentZoomPct)
+    if (diff < minDiff) {
+      minDiff = diff
+      closestIndex = i
+    }
+  }
+
+  const handleSliderChange = React.useCallback((value: number[]) => {
+    const newZoomPct = ZOOM_VALUES[value[0]]
+    setZoom(newZoomPct / 100)
+  }, [setZoom])
+
+  const handleZoomIn = React.useCallback(() => {
+    setZoom(prev => Math.min(prev + 0.1, 5))
+  }, [setZoom])
+
+  const handleZoomOut = React.useCallback(() => {
+    setZoom(prev => Math.max(prev - 0.1, 0.1))
+  }, [setZoom])
+
+  const handleFitToView = React.useCallback(() => {
+    let fitScale = 0.5
+    if (typeof window !== 'undefined') {
+      const wrapper = document.querySelector('.canvas-wrapper')
+      // p-3 padding is 12px on all sides (total 24px horizontal and vertical padding offset)
+      const padding = 12
+      // Safety buffer of 8px (4px on each side) to prevent rounding/subpixel scrollbars
+      const safetyBuffer = 8
+      const totalPadding = (padding * 2) + safetyBuffer
+
+      let width = window.innerWidth - 300 // default fallback (300px right sidebar)
+      let height = window.innerHeight - 49 // default fallback (49px top toolbar)
+
+      if (wrapper) {
+        width = wrapper.clientWidth
+        height = wrapper.clientHeight
+      }
+
+      const availableWidth = Math.max(10, width - totalPadding)
+      const availableHeight = Math.max(10, height - totalPadding)
+
+      const scaleX = availableWidth / dims.width
+      const scaleY = availableHeight / dims.height
+      fitScale = Math.min(scaleX, scaleY, 1.0)
+    } else {
+      fitScale = Math.min(0.85, 600 / Math.max(dims.width, dims.height))
+    }
+    setZoom(fitScale)
+    setPanOffset({ x: 0, y: 0 })
+  }, [dims.width, dims.height, setZoom, setPanOffset])
+
+  const handleFullDimension = React.useCallback(() => {
+    setZoom(1.0)
+    setPanOffset({ x: 0, y: 0 })
+  }, [setZoom, setPanOffset])
+
+  // Auto-fit on initial mount to ensure canvas fits perfectly on the screen
+  const hasAutoFitted = React.useRef(false)
+  React.useEffect(() => {
+    if (!hasAutoFitted.current && dims.width > 0 && dims.height > 0) {
+      hasAutoFitted.current = true
+      // Use setTimeout to let the DOM layout settle
+      const timer = setTimeout(() => {
+        handleFitToView()
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [dims.width, dims.height, handleFitToView])
 
   // Convert a File object to a base64 data URI (one-time conversion at save time)
   const fileToBase64 = (file: File): Promise<string> => {
@@ -186,35 +284,82 @@ export function FormatBuilderToolbar() {
         <div className="flex items-center gap-1.5">
           <button
             onClick={handleCancel}
-            className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-white transition-colors"
+            className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-white transition-colors focus:outline-none focus:ring-0 focus-visible:ring-0"
             title="Back to Formats"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div className="w-px h-5 bg-gray-800 mx-1" />
 
-          {/* Zoom */}
-          <Button variant="ghost" size="sm" onClick={() => setZoom(z => Math.max(0.15, z - 0.05))} className="h-7 w-7 p-0 text-gray-400 hover:text-white hover:bg-gray-800">
-            <ZoomOut className="h-3.5 w-3.5" />
-          </Button>
-          <span className="text-[10px] text-gray-500 w-9 text-center font-mono select-none">{Math.round(zoom * 100)}%</span>
-          <Button variant="ghost" size="sm" onClick={() => setZoom(z => Math.min(1.5, z + 0.05))} className="h-7 w-7 p-0 text-gray-400 hover:text-white hover:bg-gray-800">
-            <ZoomIn className="h-3.5 w-3.5" />
-          </Button>
+          {/* Custom Zoom Dropdown */}
+          <div className="flex items-center flex-shrink-0">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px] font-semibold text-gray-400 hover:text-white hover:bg-gray-800 select-none justify-start gap-1 rounded flex-shrink-0 transition-colors [&_svg]:size-3.5 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0">
+                  <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                  <span className="font-mono tabular-nums">{currentZoomPct}%</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-52 p-2 z-[150] bg-gray-900 border-gray-800 text-gray-200" onCloseAutoFocus={(e) => e.preventDefault()}>
+                <DropdownMenuItem onClick={handleFitToView} className="text-xs py-1.5 cursor-pointer font-medium text-gray-300 hover:text-white focus:bg-gray-800 focus:text-white">
+                  <span className="flex-1">100% (Fit to View)</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem onClick={handleFullDimension} className="text-xs py-1.5 cursor-pointer font-medium text-gray-300 hover:text-white focus:bg-gray-800 focus:text-white">
+                  <span className="flex-1">Full Dimension</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator className="my-1 border-gray-800" />
+
+                <div className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                  <Slider
+                    min={0}
+                    max={ZOOM_VALUES.length - 1}
+                    step={1}
+                    value={[closestIndex]}
+                    onValueChange={handleSliderChange}
+                    className="cursor-pointer"
+                  />
+                </div>
+
+                <DropdownMenuSeparator className="my-1 border-gray-800" />
+                <div className="flex items-center justify-between gap-1 px-1">
+                  <DropdownMenuItem
+                    onSelect={(e) => { e.preventDefault(); handleZoomOut(); }}
+                    className="flex-1 flex items-center justify-center py-2 cursor-pointer focus:bg-gray-800 text-gray-400 hover:text-white"
+                    title="Zoom Out"
+                  >
+                    <ZoomOut className="h-4 w-4" />
+                  </DropdownMenuItem>
+                  <div className="w-[1px] h-4 bg-gray-800" />
+                  <DropdownMenuItem
+                    onSelect={(e) => { e.preventDefault(); handleZoomIn(); }}
+                    className="flex-1 flex items-center justify-center py-2 cursor-pointer focus:bg-gray-800 text-gray-400 hover:text-white"
+                    title="Zoom In"
+                  >
+                    <ZoomIn className="h-4 w-4" />
+                  </DropdownMenuItem>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
           <div className="w-px h-5 bg-gray-800 mx-1" />
 
-          {/* Guides */}
-          <Button variant="ghost" size="sm" onClick={() => setShowGuides(g => !g)} className={`h-7 w-7 p-0 ${showGuides ? 'text-blue-400' : 'text-gray-500'} hover:text-white hover:bg-gray-800`} title={showGuides ? 'Hide guides' : 'Show guides'}>
-            {showGuides ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-          </Button>
-
-          {/* Grid size */}
-          <div className="flex items-center gap-1 ml-1">
-            <Grid3X3 className="h-3 w-3 text-gray-500" />
+          {/* Grid Visibility & Snap size */}
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowGuides(g => !g)}
+              className={`h-7 w-7 p-0 ${showGuides ? 'text-blue-400 bg-gray-800' : 'text-gray-500'} hover:text-white hover:bg-gray-800 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0`}
+              title={showGuides ? 'Hide grid' : 'Show grid'}
+            >
+              <Grid3X3 className="h-3.5 w-3.5" />
+            </Button>
             <select
               value={gridSize}
               onChange={e => setGridSize(parseInt(e.target.value))}
-              className="h-6 text-[10px] bg-transparent border border-gray-700 rounded px-1 text-gray-400 focus:outline-none"
+              className="h-6 text-[10px] bg-transparent border border-gray-700 rounded px-1 text-gray-400 focus:outline-none focus:ring-0 focus-visible:ring-0"
               title="Grid snap size"
             >
               <option value="0">Off</option>
@@ -225,25 +370,101 @@ export function FormatBuilderToolbar() {
             </select>
           </div>
 
-          {/* Fit to view */}
-          <Button variant="ghost" size="sm" onClick={() => setZoom(Math.min(0.8, 600 / Math.max(dims.width, dims.height)))} className="h-7 w-7 p-0 text-gray-400 hover:text-white hover:bg-gray-800" title="Fit to view">
-            <Maximize2 className="h-3.5 w-3.5" />
+          <div className="w-px h-5 bg-gray-800 mx-1" />
+
+          {/* Pan Tool */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setPanMode(prev => {
+                const next = !prev
+                if (next) {
+                  useDecorationStore.setState({ drawingMode: null })
+                }
+                return next
+              })
+            }}
+            className={`h-7 w-7 p-0 ${panMode ? 'text-blue-400 bg-gray-800' : 'text-gray-500'} hover:text-white hover:bg-gray-800 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0`}
+            title={panMode ? 'Disable pan tool' : 'Enable pan tool'}
+          >
+            <Hand className="h-3.5 w-3.5" />
           </Button>
         </div>
 
         {/* Right: Name + Actions */}
         <div className="flex items-center gap-2">
+          {/* Format Info Popover */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-2.5 bg-gray-900 border-gray-700 text-gray-400 hover:text-white hover:bg-gray-800 rounded focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 flex items-center gap-1.5 text-xs font-medium"
+                title="Format Info"
+              >
+                <Info className="h-3.5 w-3.5" />
+                <span>Info</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80 p-4 bg-gray-900 border-gray-800 text-gray-200 z-[150] shadow-2xl rounded-lg">
+              <h4 className="text-xs font-semibold text-gray-400 uppercase mb-3 tracking-wider">Format Info</h4>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[10px] text-gray-500 uppercase mb-1 block">Description</label>
+                  <textarea
+                    value={formatDesc}
+                    onChange={e => setFormatDesc(e.target.value)}
+                    placeholder="Brief description…"
+                    rows={3}
+                    className="w-full text-xs bg-gray-950 border border-gray-850 rounded-md px-2 py-1.5 text-white placeholder:text-gray-600 resize-none focus:outline-none focus:border-gray-700"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-gray-500 uppercase mb-1 block">Category</label>
+                  <select
+                    value={category}
+                    onChange={e => setCategory(e.target.value as FormatCategory)}
+                    className="w-full h-8 text-xs bg-gray-950 border border-gray-850 rounded-md px-2 text-white focus:outline-none focus:border-gray-700"
+                  >
+                    {CATEGORY_OPTIONS.map(c => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] text-gray-500 uppercase mb-1 block">Tags (comma-separated)</label>
+                  <Input
+                    value={tagsInput}
+                    onChange={e => setTagsInput(e.target.value)}
+                    placeholder="dark, stats, minimal"
+                    className="h-8 text-xs bg-gray-950 border-gray-850 text-white placeholder:text-gray-600 focus-visible:ring-1 focus-visible:ring-gray-700 focus:border-gray-700"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-gray-500 uppercase mb-1 block">Sort Order</label>
+                  <Input
+                    type="number"
+                    value={sortOrder}
+                    onChange={e => setSortOrder(parseInt(e.target.value) || 0)}
+                    className="h-8 text-xs bg-gray-950 border-gray-850 text-white w-20 focus-visible:ring-1 focus-visible:ring-gray-700 focus:border-gray-700"
+                  />
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+
           <Input
             value={formatName}
             onChange={e => setFormatName(e.target.value)}
             placeholder="Format name"
-            className="h-8 w-[200px] text-sm bg-gray-900 border-gray-700 text-white placeholder:text-gray-600"
+            className="h-8 w-[200px] text-sm bg-gray-900 border-gray-700 text-white placeholder:text-gray-600 focus:outline-none focus-visible:ring-1 focus-visible:ring-gray-700"
             disabled={isBusy}
           />
-          <Button variant="ghost" size="sm" onClick={handleCancel} disabled={isBusy} className="h-8 text-xs text-gray-400 hover:text-white hover:bg-gray-800">
+          <Button variant="ghost" size="sm" onClick={handleCancel} disabled={isBusy} className="h-8 text-xs text-gray-400 hover:text-white hover:bg-gray-800 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0">
             <X className="h-3.5 w-3.5 mr-1" /> Cancel
           </Button>
-          <Button size="sm" onClick={handleSave} disabled={isBusy} className="h-8 text-xs bg-orange-600 hover:bg-orange-700 text-white">
+          <Button size="sm" onClick={handleSave} disabled={isBusy} className="h-8 text-xs bg-orange-600 hover:bg-orange-700 text-white focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0">
             <Save className="h-3.5 w-3.5 mr-1" /> {isEditing ? 'Update' : 'Create'}
           </Button>
         </div>

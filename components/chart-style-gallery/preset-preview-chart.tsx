@@ -9,6 +9,7 @@ import type { ExtendedChartData, ExtendedChartOptions } from "@/lib/chart-defaul
 import { chartTypeMapping, type SupportedChartType } from "@/lib/chart-defaults"
 import { Palette, Loader2 } from "lucide-react"
 import dynamic from "next/dynamic"
+import { useChatStore } from "@/lib/chat-store"
 
 // Dynamic import to avoid SSG module resolution crashes on pages like /admin/presets
 const ChartGenerator = dynamic(
@@ -85,6 +86,36 @@ export const PresetPreviewChart = memo(function PresetPreviewChart({
 
     if (hasRealData && userChartConfig) {
       try {
+        if (preset.id === 'preset-simple') {
+          // Revert to original AI-generated chart snapshot if available
+          try {
+            const messages = useChatStore.getState().messages
+            const lastAssistantMsg = [...messages]
+              .reverse()
+              .find((msg: any) => msg.role === 'assistant' && msg.chartSnapshot)
+            const originalSnapshot = lastAssistantMsg?.chartSnapshot
+
+            if (originalSnapshot) {
+              return {
+                chartData: originalSnapshot.chartData,
+                chartConfig: originalSnapshot.chartConfig,
+                chartType: originalSnapshot.chartType,
+                hasRealData: true,
+              }
+            }
+          } catch (e) {
+            console.warn('[PresetPreview] Failed to load original snapshot for simple preset:', e)
+          }
+
+          // Fallback: if no original snapshot is found, just use current data/config
+          return {
+            chartData: userChartData,
+            chartConfig: userChartConfig,
+            chartType: userChartType || 'bar',
+            hasRealData: true,
+          }
+        }
+
         const sampledData = sampleChartData(userChartData, MAX_PREVIEW_POINTS)
 
         const result = applyPresetToChart(
@@ -106,7 +137,7 @@ export const PresetPreviewChart = memo(function PresetPreviewChart({
     }
 
     return null
-  }, [preset, userChartData, userChartConfig])
+  }, [preset, userChartData, userChartConfig, userChartType])
 
   // ── Synthetic fallback for when no real data ──────────────
   const syntheticPreview = useMemo(() => {

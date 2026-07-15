@@ -92,6 +92,41 @@ ChartJS.register(
 
 // Plugin registration verified
 
+class ChartErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallback?: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("Chart Render Crash caught by ChartErrorBoundary:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback || (
+        <div className="flex flex-col items-center justify-center h-full w-full p-4 text-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg">
+          <span className="text-xl mb-1">⚠️</span>
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Preview Error</span>
+          <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 max-w-[200px] truncate block" title={this.state.error?.message}>
+            {this.state.error?.message || "Unknown error"}
+          </span>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+
 interface SliceColorPickerPopoverProps {
   isOpen: boolean;
   x: number;
@@ -277,6 +312,7 @@ import {
   useActiveGroupId,
   useChartGroups,
 } from "@/lib/hooks/use-chart-state"
+import { computeScaledFonts, applyScaledFontsToConfig, applyFontScaling } from "@/lib/utils/font-scale-utils"
 
 export interface ChartGeneratorProps {
   className?: string;
@@ -316,9 +352,9 @@ export const ChartGenerator = memo(function ChartGenerator({
   const storeChartConfig = useChartConfig();
   const storeChartData = useChartData();
   const storeChartType = useChartType();
-  const chartConfig = configOverride ?? storeChartConfig;
-  const chartData = dataOverride ?? storeChartData;
-  const chartType = typeOverride ?? storeChartType;
+  const chartConfig = configOverride ?? storeChartConfig ?? {};
+  const chartData = dataOverride ?? storeChartData ?? { datasets: [] };
+  const chartType = typeOverride ?? storeChartType ?? 'bar';
   
   const storeLegendFilter = useLegendFilter();
   const storeFillArea = useFillArea();
@@ -579,7 +615,15 @@ export const ChartGenerator = memo(function ChartGenerator({
     setGlobalChartRef(chartRef);
   }, [setGlobalChartRef, readOnly]);
 
-  // Smoothly resize and update chart when zoom level (devicePixelRatioMultiplier) changes
+  // Resize the canvas when DPR (zoom) OR chart dimensions change.
+  // Only resize() is called here — update() is intentionally omitted for
+  // DPR-only changes because react-chartjs-2 already calls chart.update() when
+  // options.devicePixelRatio changes. Calling update() here too would cause a
+  // redundant double-update that manifests as vibration when DPR jumps at zoom
+  // boundaries (e.g. crossing the Full Dimension threshold).
+  // The explicit resize(finalWidth, finalHeight) IS necessary here for DPR changes
+  // so the canvas buffer is sized correctly at high zoom levels (e.g. 350%+
+  // where DPR reaches 6, requiring a 4800px-wide canvas buffer).
   useEffect(() => {
     if (chartRef.current) {
       if (useFixedDimensions && finalWidth && finalHeight) {
@@ -587,9 +631,19 @@ export const ChartGenerator = memo(function ChartGenerator({
       } else {
         chartRef.current.resize();
       }
+    }
+  }, [devicePixelRatioMultiplier, useFixedDimensions, finalWidth, finalHeight]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Re-render chart content when fixed chart dimensions change.
+  // react-chartjs-2 does not detect canvas size changes from width/height props,
+  // so an explicit update() is needed after resize() to fill the new canvas.
+  // This is separate from the resize effect above so that DPR-only changes
+  // (handled by react-chartjs-2 internally) don't get a second update() call.
+  useEffect(() => {
+    if (chartRef.current) {
       chartRef.current.update();
     }
-  }, [devicePixelRatioMultiplier, useFixedDimensions, finalWidth, finalHeight]);
+  }, [finalWidth, finalHeight]);
 
 
 
@@ -1339,6 +1393,10 @@ export const ChartGenerator = memo(function ChartGenerator({
       (ds?.chartType || chartType) === 'horizontalBar3d' ||
       (ds?.chartType || chartType) === 'funnel'
     );
+
+  const dataCountForFonts = filteredLabels.length || chartData.datasets?.[0]?.data?.length || 8;
+
+  // Build baseOptions first
   const baseOptions = {
     ...(chartConfig as any),
     indexAxis: needsHorizontal ? 'y' : ((chartConfig as any)?.indexAxis || 'x'),
@@ -1580,6 +1638,19 @@ export const ChartGenerator = memo(function ChartGenerator({
 
     return obj;
   };
+
+  // ── Intelligent Font Scaling ────────────────────────────────────────────────
+  // Applied LAST to the fully-assembled options object (after stackedBar / Cartesian
+  // overrides) so no properties or scales: setups can wipe out our font sizes.
+  // - Reads existing explicit sizes from the assembled options and scales proportionally.
+  // - Falls back to calibrated baseline sizes if no explicit size is set.
+  // - Always writes explicit values so Chart.js global 12px default never wins.
+  appliedOptions = applyFontScaling(appliedOptions, {
+    width:     finalWidth  || parsedChartWidth  || 800,
+    height:    finalHeight || parsedChartHeight || 600,
+    dataCount: dataCountForFonts,
+    chartType,
+  });
 
   // Apply the parsing to the options
   appliedOptions = parseCallbacks(appliedOptions);
@@ -1876,7 +1947,8 @@ export const ChartGenerator = memo(function ChartGenerator({
           >
             {chartConfig.dynamicDimension ? (
               <ResizableChartArea>
-                <Chart
+                <ChartErrorBoundary>
+                  <Chart
                   key={`${chartTypeForChart}-${useFixedDimensions ? 'fixed-zoom' : 'dynamic'}-${useFixedDimensions ? `${finalWidth}-${finalHeight}` : 'auto'}`}
                   ref={chartRef}
                   type={chartTypeForChart as any}
@@ -1903,17 +1975,17 @@ export const ChartGenerator = memo(function ChartGenerator({
                       padding: (globalCustomLabelsConfig.anchor === 'callout') ? 60 : (appliedOptions.layout?.padding || 0)
                     },
                     hover: {
-                      intersect: chartConfig.hover?.intersect ?? false,
-                      animationDuration: chartConfig.hover?.animationDuration ?? 400,
+                      intersect: appliedOptions.hover?.intersect ?? false,
+                      animationDuration: appliedOptions.hover?.animationDuration ?? 400,
                     },
                     interaction: {
-                      intersect: chartConfig.interaction?.intersect ?? true,
-                      mode: chartConfig.interaction?.mode ?? 'point',
+                      intersect: appliedOptions.interaction?.intersect ?? true,
+                      mode: appliedOptions.interaction?.mode ?? 'point',
                     },
                     onHover: (event: any, elements: any[]) => {
                       // Guard: Chart.js can call onHover during init/re-renders.
                       // Only update React state when the hovered dataset index actually changes.
-                      if (!chartConfig.interaction?.mode) {
+                      if (!appliedOptions.interaction?.mode) {
                         setHoveredDatasetIndex((prev) => (prev === null ? prev : null));
                         return
                       }
@@ -1926,27 +1998,27 @@ export const ChartGenerator = memo(function ChartGenerator({
                       setHoveredDatasetIndex((prev) => (prev === next ? prev : next))
                     },
                     plugins: ({
-                      ...chartConfig.plugins,
+                      ...appliedOptions.plugins,
                       pie3d: (chartType === 'pie3d' || chartType === 'doughnut3d')
-                        ? { ...((chartConfig.plugins as any)?.pie3d || {}), enabled: true }
-                        : (chartConfig.plugins as any)?.pie3d,
+                        ? { ...((appliedOptions.plugins as any)?.pie3d || {}), enabled: true }
+                        : (appliedOptions.plugins as any)?.pie3d,
                       bar3d: (chartType === 'bar3d' || chartType === 'horizontalBar3d')
-                        ? { ...((chartConfig.plugins as any)?.bar3d || {}), enabled: true }
-                        : (chartConfig.plugins as any)?.bar3d,
+                        ? { ...((appliedOptions.plugins as any)?.bar3d || {}), enabled: true }
+                        : (appliedOptions.plugins as any)?.bar3d,
                       gauge: chartType === 'gauge'
-                        ? { ...((chartConfig.plugins as any)?.gauge || {}), enabled: true, customLabelsConfig: globalCustomLabelsConfig }
+                        ? { ...((appliedOptions.plugins as any)?.gauge || {}), enabled: true, customLabelsConfig: globalCustomLabelsConfig }
                         : { enabled: false },
                       funnel: chartType === 'funnel'
-                        ? { ...((chartConfig.plugins as any)?.funnel || {}), enabled: true }
+                        ? { ...((appliedOptions.plugins as any)?.funnel || {}), enabled: true }
                         : { enabled: false },
-                      legendType: ((chartConfig.plugins as any)?.legendType) || 'dataset',
-                      watermark: (chartConfig as any)?.watermark,
+                      legendType: ((appliedOptions.plugins as any)?.legendType) || 'dataset',
+                      watermark: (appliedOptions as any)?.watermark,
                       customLabels: { shapeSize: 32, labels: customLabels, display: globalCustomLabelsConfig.display === true },
                       legend: {
-                        ...((chartConfig.plugins as any)?.legend),
-                        display: ((chartConfig.plugins as any)?.legend?.display !== false),
+                        ...((appliedOptions.plugins as any)?.legend),
+                        display: ((appliedOptions.plugins as any)?.legend?.display !== false),
                         onClick: (e: any, legendItem: any, legend: any) => {
-                          const currentLegendType = legend.options?.plugins?.legendType || (chartConfig.plugins as any)?.legendType;
+                          const currentLegendType = legend.options?.plugins?.legendType || (appliedOptions.plugins as any)?.legendType;
                           if (currentLegendType === 'waterfall') {
                             return; // Do nothing for waterfall legend items
                           }
@@ -1956,14 +2028,14 @@ export const ChartGenerator = memo(function ChartGenerator({
                           }
                         },
                         labels: {
-                          ...(((chartConfig.plugins as any)?.legend)?.labels || {}),
+                          ...(((appliedOptions.plugins as any)?.legend)?.labels || {}),
                           generateLabels: (chart: any) => {
                             const legendType = (chart.config?.options?.plugins?.legendType) ||
-                              ((chartConfig.plugins as any)?.legendType) ||
+                              ((appliedOptions.plugins as any)?.legendType) ||
                               (['pie', 'doughnut', 'polarArea', 'gauge', 'funnel', 'pie3d', 'doughnut3d'].includes(chartType) ? 'slice' : 'dataset');
-                            const usePointStyle = (chartConfig.plugins?.legend as any)?.labels?.usePointStyle || false;
-                            const pointStyle = (chartConfig.plugins?.legend as any)?.labels?.pointStyle || 'rect';
-                            const fontColor = (chartConfig.plugins?.legend?.labels as any)?.color || '#000000';
+                            const usePointStyle = (appliedOptions.plugins?.legend as any)?.labels?.usePointStyle || false;
+                            const pointStyle = (appliedOptions.plugins?.legend as any)?.labels?.pointStyle || 'rect';
+                            const fontColor = (appliedOptions.plugins?.legend?.labels as any)?.color || '#000000';
 
                             const createItem = (props: any, isHidden: boolean) => {
                               // For a cleaner visual, we avoid heavy Unicode strikethrough
@@ -2038,7 +2110,7 @@ export const ChartGenerator = memo(function ChartGenerator({
                               }
                             }
                             if (legendType === 'waterfall' && chartType === 'waterfall') {
-                              const wfConfig = chart.config?.options?.plugins?.waterfall || (chartConfig.plugins as any)?.waterfall || {};
+                              const wfConfig = chart.config?.options?.plugins?.waterfall || (appliedOptions.plugins as any)?.waterfall || {};
                               const positiveColor = wfConfig.positiveColor || '#10b981';
                               const negativeColor = wfConfig.negativeColor || '#ef4444';
                               const totalColor = wfConfig.totalColor || '#3b82f6';
@@ -2082,12 +2154,12 @@ export const ChartGenerator = memo(function ChartGenerator({
                         },
                       },
                       tooltip: {
-                        ...((chartConfig.plugins as any)?.tooltip),
+                        ...((appliedOptions.plugins as any)?.tooltip),
                         backgroundColor: tooltipBackgroundWithOpacity,
                         callbacks: {
-                          ...((chartConfig.plugins as any)?.tooltip?.callbacks),
+                          ...((appliedOptions.plugins as any)?.tooltip?.callbacks),
                           label: function (context: any) {
-                            const mode = (chartConfig.plugins as any)?.tooltip?.customDisplayMode || 'slice';
+                            const mode = (appliedOptions.plugins as any)?.tooltip?.customDisplayMode || 'slice';
                             const chart = context.chart;
                             const data = chart.data;
                             const datasetIndex = context.datasetIndex;
@@ -2139,6 +2211,7 @@ export const ChartGenerator = memo(function ChartGenerator({
                   }}
                   plugins={[watermarkPlugin]}
                 />
+                </ChartErrorBoundary>
               </ResizableChartArea>
             ) : (
               <div
@@ -2154,7 +2227,8 @@ export const ChartGenerator = memo(function ChartGenerator({
                   minWidth: isResponsive ? '100%' : 'auto'
                 }}
               >
-                <Chart
+                <ChartErrorBoundary>
+                  <Chart
                   key={`${chartTypeForChart}-${useFixedDimensions ? 'fixed-zoom' : (isResponsive ? 'responsive' : 'fixed')}-${useFixedDimensions ? `${finalWidth}-${finalHeight}` : 'auto'}`}
                   ref={chartRef}
                   type={chartTypeForChart as any}
@@ -2177,20 +2251,20 @@ export const ChartGenerator = memo(function ChartGenerator({
                     responsive: responsiveOptionForZoom,
                     maintainAspectRatio: false,
                     layout: {
-                      padding: (globalCustomLabelsConfig.anchor === 'callout') ? 60 : (chartConfig.layout?.padding || 0)
+                      padding: (globalCustomLabelsConfig.anchor === 'callout') ? 60 : (appliedOptions.layout?.padding || 0)
                     },
                     hover: {
-                      intersect: chartConfig.hover?.intersect ?? false,
-                      animationDuration: chartConfig.hover?.animationDuration ?? 400,
+                      intersect: appliedOptions.hover?.intersect ?? false,
+                      animationDuration: appliedOptions.hover?.animationDuration ?? 400,
                     },
                     interaction: {
-                      intersect: chartConfig.interaction?.intersect ?? true,
-                      mode: chartConfig.interaction?.mode ?? 'point',
+                      intersect: appliedOptions.interaction?.intersect ?? true,
+                      mode: appliedOptions.interaction?.mode ?? 'point',
                     },
                     onHover: (event: any, elements: any[]) => {
                       // Guard: Chart.js can call onHover during init/re-renders.
                       // Only update React state when the hovered dataset index actually changes.
-                      if (!chartConfig.interaction?.mode) {
+                      if (!appliedOptions.interaction?.mode) {
                         setHoveredDatasetIndex((prev) => (prev === null ? prev : null));
                         return
                       }
@@ -2203,27 +2277,27 @@ export const ChartGenerator = memo(function ChartGenerator({
                       setHoveredDatasetIndex((prev) => (prev === next ? prev : next))
                     },
                     plugins: ({
-                      ...chartConfig.plugins,
+                      ...appliedOptions.plugins,
                       pie3d: (chartType === 'pie3d' || chartType === 'doughnut3d')
-                        ? { ...((chartConfig.plugins as any)?.pie3d || {}), enabled: true }
-                        : (chartConfig.plugins as any)?.pie3d,
+                        ? { ...((appliedOptions.plugins as any)?.pie3d || {}), enabled: true }
+                        : (appliedOptions.plugins as any)?.pie3d,
                       bar3d: (chartType === 'bar3d' || chartType === 'horizontalBar3d')
-                        ? { ...((chartConfig.plugins as any)?.bar3d || {}), enabled: true }
-                        : (chartConfig.plugins as any)?.bar3d,
+                        ? { ...((appliedOptions.plugins as any)?.bar3d || {}), enabled: true }
+                        : (appliedOptions.plugins as any)?.bar3d,
                       gauge: chartType === 'gauge'
-                        ? { ...((chartConfig.plugins as any)?.gauge || {}), enabled: true }
+                        ? { ...((appliedOptions.plugins as any)?.gauge || {}), enabled: true }
                         : { enabled: false },
                       funnel: chartType === 'funnel'
-                        ? { ...((chartConfig.plugins as any)?.funnel || {}), enabled: true }
+                        ? { ...((appliedOptions.plugins as any)?.funnel || {}), enabled: true }
                         : { enabled: false },
-                      legendType: ((chartConfig.plugins as any)?.legendType) || 'dataset',
-                      watermark: (chartConfig as any)?.watermark,
+                      legendType: ((appliedOptions.plugins as any)?.legendType) || 'dataset',
+                      watermark: (appliedOptions as any)?.watermark,
                       customLabels: { shapeSize: 32, labels: customLabels, display: globalCustomLabelsConfig.display === true },
                       legend: {
-                        ...((chartConfig.plugins as any)?.legend),
-                        display: ((chartConfig.plugins as any)?.legend?.display !== false),
+                        ...((appliedOptions.plugins as any)?.legend),
+                        display: ((appliedOptions.plugins as any)?.legend?.display !== false),
                         onClick: (e: any, legendItem: any, legend: any) => {
-                          const currentLegendType = legend.options?.plugins?.legendType || (chartConfig.plugins as any)?.legendType;
+                          const currentLegendType = legend.options?.plugins?.legendType || (appliedOptions.plugins as any)?.legendType;
                           if (currentLegendType === 'waterfall') {
                             return; // Do nothing for waterfall legend items
                           }
@@ -2233,19 +2307,20 @@ export const ChartGenerator = memo(function ChartGenerator({
                           }
                         },
                         labels: {
-                          ...(((chartConfig.plugins as any)?.legend)?.labels || {}),
+                          ...(((appliedOptions.plugins as any)?.legend)?.labels || {}),
                           generateLabels: (chart: any) => {
                             const legendType = (chart.config?.options?.plugins?.legendType) ||
-                              ((chartConfig.plugins as any)?.legendType) ||
+                              ((appliedOptions.plugins as any)?.legendType) ||
                               (['pie', 'doughnut', 'polarArea', 'gauge', 'funnel', 'pie3d', 'doughnut3d'].includes(chartType) ? 'slice' : 'dataset');
-                            const usePointStyle = (chartConfig.plugins?.legend as any)?.labels?.usePointStyle || false;
-                            const pointStyle = (chartConfig.plugins?.legend as any)?.labels?.pointStyle || 'rect';
-                            const fontColor = (chartConfig.plugins?.legend?.labels as any)?.color || '#000000';
+                            const usePointStyle = (appliedOptions.plugins?.legend as any)?.labels?.usePointStyle || false;
+                            const pointStyle = (appliedOptions.plugins?.legend as any)?.labels?.pointStyle || 'rect';
+                            const fontColor = (appliedOptions.plugins?.legend?.labels as any)?.color || '#000000';
 
                             const createItem = (props: any, isHidden: boolean) => {
                               const text = props.text as string | undefined;
                               const decoratedText =
                                 isHidden && text ? `${text}` : text;
+
 
                               return {
                                 ...props,
@@ -2312,7 +2387,7 @@ export const ChartGenerator = memo(function ChartGenerator({
                               }
                             }
                             if (legendType === 'waterfall' && chartType === 'waterfall') {
-                              const wfConfig = chart.config?.options?.plugins?.waterfall || (chartConfig.plugins as any)?.waterfall || {};
+                              const wfConfig = chart.config?.options?.plugins?.waterfall || (appliedOptions.plugins as any)?.waterfall || {};
                               const positiveColor = wfConfig.positiveColor || '#10b981';
                               const negativeColor = wfConfig.negativeColor || '#ef4444';
                               const totalColor = wfConfig.totalColor || '#3b82f6';
@@ -2356,12 +2431,12 @@ export const ChartGenerator = memo(function ChartGenerator({
                         },
                       },
                       tooltip: {
-                        ...((chartConfig.plugins as any)?.tooltip),
+                        ...((appliedOptions.plugins as any)?.tooltip),
                         backgroundColor: tooltipBackgroundWithOpacity,
                         callbacks: {
-                          ...((chartConfig.plugins as any)?.tooltip?.callbacks),
+                          ...((appliedOptions.plugins as any)?.tooltip?.callbacks),
                           label: function (context: any) {
-                            const mode = (chartConfig.plugins as any)?.tooltip?.customDisplayMode || 'slice';
+                            const mode = (appliedOptions.plugins as any)?.tooltip?.customDisplayMode || 'slice';
                             const chart = context.chart;
                             const data = chart.data;
                             const datasetIndex = context.datasetIndex;
@@ -2413,6 +2488,7 @@ export const ChartGenerator = memo(function ChartGenerator({
                   }}
                   plugins={[watermarkPlugin]}
                 />
+                </ChartErrorBoundary>
               </div>
             )}
           </div>

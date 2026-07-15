@@ -197,6 +197,8 @@ interface ChatStore {
   setBackendConversationId: (id: string | null) => void; // NEW: Setter for backend conversation ID
   selectedModel: 'deepseek' | 'deepseek-search' | 'gemini-search';
   setSelectedModel: (model: 'deepseek' | 'deepseek-search' | 'gemini-search') => void;
+  includeImages: boolean;
+  setIncludeImages: (include: boolean) => void;
   addMessage: (msg: ChatMessage) => void;
   setMessages: (msgs: ChatMessage[]) => void;
   clearMessages: () => void;
@@ -223,6 +225,8 @@ export const useChatStore = create<ChatStore>()(
       backendConversationId: null, // NEW: Track backend conversation ID for updates
       selectedModel: 'deepseek',
       setSelectedModel: (model) => set({ selectedModel: model }),
+      includeImages: false,
+      setIncludeImages: (include) => set({ includeImages: include }),
 
       addMessage: (msg: ChatMessage) => set({ messages: [...get().messages, msg] }),
 
@@ -355,7 +359,8 @@ export const useChatStore = create<ChatStore>()(
           conversationId: currentConversationId,
           messageHistory: compactHistory,
           service: selectedModel === 'gemini-search' ? 'gemini' : 'deepseek',
-          webSearch: selectedModel === 'gemini-search' || selectedModel === 'deepseek-search'
+          webSearch: selectedModel === 'gemini-search' || selectedModel === 'deepseek-search',
+          includeImages: get().includeImages
         };
         if (liveChartState) {
           requestBody.currentChartState = liveChartState;
@@ -464,6 +469,17 @@ export const useChatStore = create<ChatStore>()(
           } else {
             // Creation flow: build config from frontend defaults
             finalChartConfig = JSON.parse(JSON.stringify(getDefaultConfigForType(result.chartType)));
+
+            // Preserve the user's selected dimension/aspect ratio settings from the store
+            const currentStoreConfig = useChartStore.getState().chartConfig;
+            if (currentStoreConfig) {
+              const keysToPreserve = ['manualDimensions', 'dynamicDimension', 'templateDimensions', 'originalDimensions', 'responsive', 'width', 'height'];
+              keysToPreserve.forEach(key => {
+                if (currentStoreConfig[key] !== undefined) {
+                  finalChartConfig[key] = currentStoreConfig[key];
+                }
+              });
+            }
 
             // Populate with AI-provided text metadata
             if (result.title && finalChartConfig.plugins?.title) {
@@ -640,10 +656,19 @@ export const useChatStore = create<ChatStore>()(
                 // so user can immediately browse and apply styles to their new chart
                 try {
                   const styleStore = useChartStyleStore.getState();
-                  // Small delay to let the chart render first
-                  setTimeout(() => {
+                  
+                  // Check if the user's input explicitly requested a specific chart type
+                  const userPrompt = (input || "").toLowerCase();
+                  const chartKeywords = ['bar', 'line', 'pie', 'doughnut', 'radar', 'polar', 'scatter', 'bubble', 'funnel', 'gauge', 'waterfall', 'area', '3d'];
+                  const requestedSpecificChart = chartKeywords.some(keyword => userPrompt.includes(keyword));
+                  
+                  if (requestedSpecificChart) {
+                    // User requested a specific chart type -> filter presets to that type
                     styleStore.openGallery(result.chartType);
-                  }, 300);
+                  } else {
+                    // User did not request a specific chart type -> show ALL chart types in gallery!
+                    styleStore.openGallery('all');
+                  }
                 } catch (e) {
                   console.warn('Could not auto-open style gallery:', e);
                 }
@@ -749,7 +774,8 @@ export const useChatStore = create<ChatStore>()(
         // NOTE: isProcessing is intentionally EXCLUDED — it's transient UI state.
         // Persisting it would permanently lock the chat input if the browser crashes mid-request.
         historyConversationId: state.historyConversationId,
-        backendConversationId: state.backendConversationId
+        backendConversationId: state.backendConversationId,
+        includeImages: state.includeImages
       }),
     }
   )

@@ -42,6 +42,10 @@ interface FormatBuilderContextValue {
   setShowGuides: (v: boolean | ((prev: boolean) => boolean)) => void
   gridSize: number
   setGridSize: (v: number) => void
+  panMode: boolean
+  setPanMode: React.Dispatch<React.SetStateAction<boolean>>
+  panOffset: { x: number; y: number }
+  setPanOffset: React.Dispatch<React.SetStateAction<{ x: number; y: number }>>
 
   // ─── Zone CRUD ─────────────────────────────
   addZone: (type: ZoneType, subConfig?: Record<string, any>) => void
@@ -164,6 +168,8 @@ export function FormatBuilderProvider({
   const [showGuides, setShowGuides] = useState(true)
   const [gridSize, setGridSize] = useState(10)
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null)
+  const [panMode, setPanMode] = useState(false)
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
 
   // ─── Derived ───────────────────────────────
   const selectedZone = useMemo(() =>
@@ -176,7 +182,8 @@ export function FormatBuilderProvider({
     const newZone = createZone(type, skeleton.dimensions, skeleton.colorPalette, subConfig)
     setSkeleton(prev => ({ ...prev, zones: [...prev.zones, newZone] }))
     setSelectedZoneId(newZone.id)
-  }, [skeleton.dimensions, skeleton.colorPalette])
+    setPanMode(false)
+  }, [skeleton.dimensions, skeleton.colorPalette, setPanMode])
 
   const deleteZone = useCallback((id: string) => {
     setSkeleton(prev => ({ ...prev, zones: prev.zones.filter(z => z.id !== id) }))
@@ -324,6 +331,8 @@ export function FormatBuilderProvider({
     zoom, setZoom,
     showGuides, setShowGuides,
     gridSize, setGridSize,
+    panMode, setPanMode,
+    panOffset, setPanOffset,
     addZone: addZoneHandler,
     deleteZone, duplicateZone,
     updateZone, updateZoneStyle, updateZonePosition,
@@ -339,6 +348,7 @@ export function FormatBuilderProvider({
   }), [
     skeleton, formatName, formatDesc, category, tagsInput, sortOrder,
     selectedZoneId, selectedZone, zoom, showGuides, gridSize,
+    panMode, setPanMode, panOffset, setPanOffset,
     addZoneHandler, deleteZone, duplicateZone, updateZone, updateZoneStyle,
     updateZonePosition, moveZoneOrder, setDimensions, setPalette, alignZone,
     selectedDecoId, selectedDeco, drawingMode,

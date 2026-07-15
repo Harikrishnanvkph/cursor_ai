@@ -7,10 +7,10 @@ export const enhancedTitlePlugin: Plugin = {
   id: 'enhancedTitle',
   
   beforeDraw: (chart: Chart, args: any, options: any) => {
-    const titleConfig = chart.config.options?.plugins?.title as any;
+    const titleConfig = chart?.config?.options?.plugins?.title as any;
     
     // Only render if title is enabled and we have enhanced features
-    if (!titleConfig?.display) return;
+    if (!titleConfig || !titleConfig.display) return;
     
     const hasEnhancedFeatures = titleConfig.shadow || titleConfig.stroke || 
                                 (titleConfig.rotation !== false && titleConfig.rotation !== undefined);
@@ -95,10 +95,10 @@ export const enhancedTitlePlugin: Plugin = {
   },
   
   afterDraw: (chart: Chart, args: any, options: any) => {
-    const titleConfig = chart.config.options?.plugins?.title as any;
+    const titleConfig = chart?.config?.options?.plugins?.title as any;
     
     // Restore the original display setting
-    if (titleConfig?._originalDisplay !== undefined) {
+    if (titleConfig && titleConfig._originalDisplay !== undefined) {
       titleConfig.display = titleConfig._originalDisplay;
       delete titleConfig._originalDisplay;
     }

@@ -118,8 +118,8 @@ export function EditorLeftSidebar() {
 
           <div className="w-10 h-px bg-gray-200 my-4" />
 
-          {/* Config Tabs Icons */}
-          <div className="flex flex-col items-center space-y-1 w-full flex-1 overflow-y-auto overflow-x-hidden no-scrollbar">
+          {/* Config Tabs Icons — natural height, scrollable only if screen is very short */}
+          <div className="flex flex-col items-center space-y-1 w-full overflow-y-auto overflow-x-hidden no-scrollbar">
             {TABS.map((tab) => {
               const Icon = tab.icon
               return (
@@ -136,7 +136,8 @@ export function EditorLeftSidebar() {
                     } else {
                       setActiveTab(tab.id)
                     }
-                    setLeftSidebarCollapsed(false)
+                    // Do NOT expand the sidebar here — expanding should only happen
+                    // via the logo/expand button or clicking the empty sidebar area.
                   }}
                   className={`p-2 rounded-lg flex items-center justify-center w-10 h-10 transition-all duration-200 ${activeTab === tab.id
                     ? "bg-blue-50 text-blue-700 shadow-sm border border-blue-100"
@@ -149,6 +150,13 @@ export function EditorLeftSidebar() {
               )
             })}
           </div>
+
+          {/* Empty space — clicking here expands the sidebar */}
+          <div
+            className="flex-1 w-full cursor-pointer"
+            onClick={() => setLeftSidebarCollapsed(false)}
+            title="Expand Sidebar"
+          />
         </div>
       ) : (
         /* Expanded Sidebar Content - w-52 fixed content view, prevents text-wrapping during width transition */

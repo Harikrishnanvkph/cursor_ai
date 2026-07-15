@@ -68,9 +68,9 @@ export const ChartPreviewCanvas = React.memo(({
         return () => observer.disconnect();
     }, [chartContainerRef]);
 
-    const isResponsive = chartConfig?.responsive !== false;
-    const chartWidth = !isResponsive ? parseDimension(chartConfig?.width, 800) : 800;
-    const chartHeight = !isResponsive ? parseDimension(chartConfig?.height, 800) : 600;
+    const isResponsive = false;
+    const chartWidth = parseDimension(chartConfig?.width, 800);
+    const chartHeight = parseDimension(chartConfig?.height, 600);
 
     if (isResponsive) {
         const rWidth = containerSize.width || 800;
@@ -134,7 +134,7 @@ export const ChartPreviewCanvas = React.memo(({
                             style={{ width: '100%', height: '100%', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: panMode ? 'none' : 'auto' }}
                         >
                             <ChartGenerator 
-                                devicePixelRatioMultiplier={Math.max(1.0, exactScale)} 
+                                devicePixelRatioMultiplier={exactScale >= 1 ? exactScale : 1.0} 
                                 responsiveWidth={rWidth}
                                 responsiveHeight={rHeight}
                             />
@@ -146,6 +146,7 @@ export const ChartPreviewCanvas = React.memo(({
                                     containerWidth={containerSize.width}
                                     containerHeight={containerSize.height}
                                     panMode={panMode}
+                                    zoom={zoom}
                                 />
                             </div>
                         )}
@@ -229,7 +230,7 @@ export const ChartPreviewCanvas = React.memo(({
                         }}
                     >
                         <ChartGenerator 
-                            devicePixelRatioMultiplier={Math.max(1.0, exactScale)} 
+                            devicePixelRatioMultiplier={exactScale >= 1 ? exactScale : 1.0} 
                             responsiveWidth={chartWidth}
                             responsiveHeight={chartHeight}
                         />
@@ -240,6 +241,7 @@ export const ChartPreviewCanvas = React.memo(({
                                     containerWidth={chartWidth}
                                     containerHeight={chartHeight}
                                     panMode={panMode}
+                                    zoom={exactScale}
                                 />
                             </div>
                         )}

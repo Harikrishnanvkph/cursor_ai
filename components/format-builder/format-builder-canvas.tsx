@@ -69,10 +69,48 @@ export function FormatBuilderCanvas() {
   const {
     skeleton, selectedZoneId, setSelectedZoneId,
     zoom, showGuides, gridSize,
-    updateZonePosition, setSkeleton, deleteZone
+    updateZonePosition, setSkeleton, deleteZone,
+    panMode, panOffset, setPanOffset
   } = useFormatBuilder()
 
   const { setSelectedShapeId } = useDecorationStore()
+
+  const [isDragging, setIsDragging] = React.useState(false)
+  const [dragStart, setDragStart] = React.useState({ x: 0, y: 0 })
+
+  const handleMouseDown = React.useCallback((e: React.MouseEvent) => {
+    if (!panMode) return
+    setIsDragging(true)
+    setDragStart({
+      x: e.clientX - panOffset.x,
+      y: e.clientY - panOffset.y
+    })
+    e.preventDefault()
+    e.stopPropagation()
+  }, [panMode, panOffset])
+
+  React.useEffect(() => {
+    if (!isDragging) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      setPanOffset({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y
+      })
+    }
+
+    const handleMouseUp = () => {
+      setIsDragging(false)
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isDragging, dragStart, setPanOffset])
 
   const dims = skeleton.dimensions
   const palette = skeleton.colorPalette
@@ -100,17 +138,30 @@ export function FormatBuilderCanvas() {
     <>
       <DecorationStoreSync skeleton={skeleton} setSkeleton={setSkeleton} />
       <div
-        className="flex-1 overflow-auto p-6"
+        className={`flex-1 overflow-auto flex canvas-wrapper ${panMode ? (isDragging ? 'cursor-grabbing select-none' : 'cursor-grab') : ''}`}
+        onMouseDown={handleMouseDown}
         onClick={(e) => { 
-          if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains('canvas-container')) {
+          if (panMode) return
+          const target = e.target as HTMLElement
+          if (
+            target.classList.contains('canvas-wrapper') || 
+            target.classList.contains('canvas-bg-container') ||
+            target.classList.contains('canvas-container')
+          ) {
             setSelectedZoneId(null); setSelectedShapeId(null) 
           }
         }}
       >
-        <div
-          className="relative mx-auto canvas-container"
-          style={{ width: dims.width * scale, height: dims.height * scale }}
+        <div 
+          className="m-auto p-3 flex items-center justify-center canvas-bg-container"
+          style={{
+            transform: `translate(${panOffset.x}px, ${panOffset.y}px)`,
+          }}
         >
+          <div
+            className="relative canvas-container overflow-hidden"
+            style={{ width: dims.width * scale, height: dims.height * scale }}
+          >
           {/* Scaled surface */}
           <div
             className="absolute inset-0 origin-top-left rounded-lg shadow-2xl"
@@ -177,6 +228,7 @@ export function FormatBuilderCanvas() {
                   grid={gridSize}
                   scale={scale}
                   selected={isSelected}
+                  disabled={panMode}
                   onSelect={() => { setSelectedZoneId(zone.id); setSelectedShapeId(null) }}
                   onChange={(rect) => updateZonePosition(zone.id, rect)}
                   label={getZoneLabel(zone)}
@@ -191,13 +243,11 @@ export function FormatBuilderCanvas() {
           <DecorationShapeRenderer
             containerWidth={dims.width}
             containerHeight={dims.height}
-            panMode={false}
+            panMode={panMode}
             gridSize={gridSize}
+            zoom={zoom}
           />
 
-          {/* Dimension label */}
-          <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] text-gray-600 font-mono whitespace-nowrap pointer-events-none">
-            {dims.width} × {dims.height} px ({dims.aspect})
           </div>
         </div>
       </div>

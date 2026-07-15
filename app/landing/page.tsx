@@ -102,7 +102,9 @@ function LandingPageContent() {
     setMessages,
     backendConversationId,
     selectedModel,
-    setSelectedModel
+    setSelectedModel,
+    includeImages,
+    setIncludeImages
   } = useChatStore()
 
   const { addConversation, loadConversationsFromBackend, restoreConversation } = useHistoryStore()
@@ -688,7 +690,7 @@ function LandingPageContent() {
 
             {/* Right: Profile */}
             <div className="flex items-center gap-3 min-w-0">
-              <SimpleProfileDropdown size="md" />
+              <SimpleProfileDropdown size="sm" />
             </div>
           </div>
         </header>
@@ -750,7 +752,7 @@ function LandingPageContent() {
 
           {/* Profile Icon at bottom */}
           <div className="flex-1"></div>
-          <SimpleProfileDropdown size="md" />
+          <SimpleProfileDropdown size="sm" />
         </aside>
 
         {/* Main Content Area */}
@@ -853,9 +855,9 @@ function LandingPageContent() {
                               <Bot className="w-3.5 h-3.5 text-indigo-500" />
                               <span>
                                 {selectedModel === 'gemini-search'
-                                  ? 'Gemini 2.5 + Search'
+                                  ? 'Gemini Realtime'
                                   : selectedModel === 'deepseek-search'
-                                  ? 'DeepSeek + Search'
+                                  ? 'Deepseek Realtime'
                                   : 'DeepSeek Chat'}
                               </span>
                               <ChevronDown className="w-3 h-3 text-slate-400 ml-0.5" />
@@ -868,14 +870,31 @@ function LandingPageContent() {
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => setSelectedModel('deepseek-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 rounded-lg text-slate-700">
                               <Sparkles className="w-3.5 h-3.5 text-blue-500" />
-                              <span>DeepSeek + Search</span>
+                              <span>Deepseek Realtime</span>
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => setSelectedModel('gemini-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 rounded-lg text-slate-700">
                               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                              <span>Gemini 2.5 + Search</span>
+                              <span>Gemini Realtime</span>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
+
+                        {/* Image Toggle */}
+                        <div className="flex items-center gap-2 select-none">
+                          <span className="text-xs font-semibold text-slate-500">Images</span>
+                          <button
+                            type="button"
+                            onClick={() => setIncludeImages(!includeImages)}
+                            className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent outline-none ${
+                              includeImages ? 'bg-indigo-600' : 'bg-slate-200'
+                            }`}
+                            title={includeImages ? "Auto-fetch images enabled" : "Auto-fetch images disabled"}
+                          >
+                            <span className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-xs ${
+                              includeImages ? 'translate-x-3' : 'translate-x-0'
+                            }`} />
+                          </button>
+                        </div>
                       </div>
                       <div className="flex items-end gap-2 w-full">
                         <textarea
@@ -1377,9 +1396,9 @@ function LandingPageContent() {
                         <Bot className="w-3.5 h-3.5 text-indigo-500" />
                         <span>
                           {selectedModel === 'gemini-search'
-                            ? 'Gemini 2.5 + Search'
+                            ? 'Gemini Realtime'
                             : selectedModel === 'deepseek-search'
-                            ? 'DeepSeek + Search'
+                            ? 'Deepseek Realtime'
                             : 'DeepSeek Chat'}
                         </span>
                         <ChevronDown className="w-3 h-3 text-slate-400 ml-0.5" />
@@ -1392,14 +1411,31 @@ function LandingPageContent() {
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => setSelectedModel('deepseek-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-slate-700 dark:text-slate-200">
                         <Sparkles className="w-3.5 h-3.5 text-blue-500" />
-                        <span>DeepSeek + Search</span>
+                        <span>Deepseek Realtime</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => setSelectedModel('gemini-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-slate-700 dark:text-slate-200">
                         <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                        <span>Gemini 2.5 + Search</span>
+                        <span>Gemini Realtime</span>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
+
+                  {/* Image Toggle */}
+                  <div className="flex items-center gap-2 select-none">
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Images</span>
+                    <button
+                      type="button"
+                      onClick={() => setIncludeImages(!includeImages)}
+                      className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent outline-none ${
+                        includeImages ? 'bg-indigo-600 dark:bg-indigo-500' : 'bg-slate-200 dark:bg-slate-800'
+                      }`}
+                      title={includeImages ? "Auto-fetch images enabled" : "Auto-fetch images disabled"}
+                    >
+                      <span className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-xs ${
+                        includeImages ? 'translate-x-3' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
                 </div>
                 <div className="flex items-end gap-2 w-full">
                   <textarea
@@ -1667,7 +1703,7 @@ function LandingPageContent() {
       {storeHydrated && (!chartData?.datasets?.length || !hasJSON) && !isTablet && !isMobile && !isTemplateModalOpen && !isGalleryOpen && (
         <div className="fixed top-4 right-4 z-50 flex items-center gap-3">
           <HistoryDropdown variant="full" />
-          <SimpleProfileDropdown size="md" />
+          <SimpleProfileDropdown size="sm" />
         </div>
       )}
 

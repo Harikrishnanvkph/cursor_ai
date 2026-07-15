@@ -240,9 +240,9 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   }, [fullscreen]);
 
   // --- Non-responsive canvas DPI handling ---
-  const isResponsive = (chartConfig as any)?.responsive !== false;
-  const chartWidth = !isResponsive ? parseDimension((chartConfig as any)?.width) : undefined;
-  const chartHeight = !isResponsive ? parseDimension((chartConfig as any)?.height) : undefined;
+  const isResponsive = false;
+  const chartWidth = parseDimension((chartConfig as any)?.width);
+  const chartHeight = parseDimension((chartConfig as any)?.height);
 
   const [hoverDimensions, setHoverDimensions] = useState<{ width: number, height: number } | null>(null);
 

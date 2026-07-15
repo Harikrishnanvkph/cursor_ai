@@ -1,4 +1,5 @@
 import { Chart, ChartConfiguration } from 'chart.js';
+import { getProxiedImageUrl } from './utils/image-proxy-utils';
 
 export interface BackgroundImageConfig {
   type: 'image';
@@ -267,7 +268,7 @@ const exportPlugin = {
                 reject(error);
               };
 
-              img.src = background.imageUrl;
+              img.src = getProxiedImageUrl(background.imageUrl);
             });
           } catch (error) {
             console.error('Error processing background image:', error);

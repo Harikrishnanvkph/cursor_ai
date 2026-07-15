@@ -14,7 +14,7 @@ import type { BaseZone } from '@/lib/format-types'
 
 export type ObjectFilter = 'all' | 'zone' | 'decoration'
 
-export function ZoneListPanel() {
+export function ZoneListPanel({ isOpen, onToggle }: { isOpen?: boolean; onToggle?: () => void }) {
   const {
     skeleton, setSkeleton, selectedZoneId, setSelectedZoneId,
     deleteZone, duplicateZone, moveZoneOrder,
@@ -81,7 +81,8 @@ export function ZoneListPanel() {
     <PanelSection
       title={`Zones & Decorations (${zones.length + shapes.length})`}
       icon={<Layers className="w-3.5 h-3.5" />}
-      defaultOpen
+      isOpen={isOpen}
+      onToggle={onToggle}
     >
       <div className="space-y-3">
         {/* Toolbar: Filter + Clear */}

@@ -1,4 +1,5 @@
 import { type ExtendedChartData, chartTypeMapping, useChartStore } from "../chart-store";
+import { buildExportConfig } from "../utils/font-scale-utils";
 
 // Helper to map custom chart types to base Chart.js types
 function getMappedType(type: string): string {
@@ -173,7 +174,7 @@ export async function processChartDataForExport(chartData: ExtendedChartData): P
     return processedData;
 }
 
-export function buildLegendConfigForExport(chartConfig: any, includeLegend: boolean, chartType?: string) {
+export function buildLegendConfigForExport(chartConfig: any, includeLegend: boolean, chartType?: string, exportWidth?: number, exportHeight?: number) {
     const legendConfig = chartConfig?.plugins?.legend ?? {};
     const labelsConfig = legendConfig.labels ?? {};
     const fontConfig = labelsConfig.font ?? {};
@@ -184,6 +185,9 @@ export function buildLegendConfigForExport(chartConfig: any, includeLegend: bool
     if (!includeLegend) {
         return { display: false, legendType };
     }
+
+    // Use already-scaled font size from config if present; fall back to 12
+    const scaledLegendSize = fontConfig.size ?? 12;
 
     return {
         ...legendConfig,
@@ -196,7 +200,7 @@ export function buildLegendConfigForExport(chartConfig: any, includeLegend: bool
             padding: labelsConfig.padding ?? 20,
             font: {
                 ...fontConfig,
-                size: fontConfig.size ?? 12,
+                size: scaledLegendSize,
             },
         },
         legendType, // Preserve legendType for generateLabels function
@@ -204,7 +208,7 @@ export function buildLegendConfigForExport(chartConfig: any, includeLegend: bool
 }
 
 // Shared function to generate custom labels
-export function generateCustomLabelsFromConfig(chartConfig: any, chartData: any, legendFilter: any, dragState: any = {}) {
+export function generateCustomLabelsFromConfig(chartConfig: any, chartData: any, legendFilter: any, dragState: any = {}, options: any = {}, processedChartData: any = null) {
     const globalCustomLabelsConfig = ((chartConfig.plugins as any)?.customLabelsConfig) || {};
 
     // Helper function to format numbers based on customLabelsConfig
@@ -356,6 +360,26 @@ export function generateCustomLabelsFromConfig(chartConfig: any, chartData: any,
     const filteredDatasets = chartData.datasets.filter((_: any, index: number) =>
         legendFilter.datasets[index] !== false
     );
+
+    // ── Intelligent Font Scaling ───────────────────────────────────────────────
+    // Compute scaled fonts using the actual export dimensions and data count.
+    // force=true here — the exported image/HTML must have correct font sizes
+    // regardless of any leftover live-preview values stored in the config.
+    if (processedChartData) {
+        const chartType = (chartConfig?.type) || 'bar';
+        const exportDataCount =
+            Array.isArray(processedChartData.labels)
+                ? processedChartData.labels.length
+                : (processedChartData.datasets?.[0]?.data?.length ?? 8);
+        const fontScaledConfig = buildExportConfig(
+            chartConfig,
+            options.width ?? 800,
+            options.height ?? 600,
+            exportDataCount,
+            chartType
+        );
+        Object.assign(chartConfig, fontScaledConfig);
+    }
 
     return filteredDatasets.map((ds: any, datasetIdx: number) => {
         const baseConfig = { ...globalCustomLabelsConfig, ...(ds.customLabelsConfig || {}) };

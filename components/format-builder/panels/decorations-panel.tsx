@@ -5,8 +5,9 @@ import { useDecorationStore } from '@/lib/stores/decoration-store'
 import { PanelSection } from './panel-section'
 import { SHAPE_GROUPS } from '@/components/panels/template-panels/decorations-panel'
 import type { DrawingMode } from '@/lib/stores/decoration-store'
+import { useFormatBuilder } from '../format-builder-context'
 
-export function DecorationsPanel() {
+export function DecorationsPanel({ isOpen, onToggle }: { isOpen?: boolean; onToggle?: () => void }) {
   const {
     shapes, selectedShapeId, selectedShapeIds, drawingMode,
     setSelectedShapeId, clearMultiSelect, setDrawingMode, updateShape, 
@@ -15,10 +16,15 @@ export function DecorationsPanel() {
     canUndo, canRedo, undoShapeAction, redoShapeAction
   } = useDecorationStore()
 
+  const { setPanMode } = useFormatBuilder()
+
   const [expanded, setExpanded] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(true)
   
   const handleSelectTool = (type: DrawingMode | 'select') => {
+    if (type !== 'select') {
+      setPanMode(false)
+    }
     if (type === 'select') {
       setDrawingMode(null)
       return
@@ -30,7 +36,7 @@ export function DecorationsPanel() {
   const selectedShape = shapes.find(s => s.id === selectedShapeId)
 
   return (
-    <PanelSection title="Decorations" icon={<Hexagon className="w-3.5 h-3.5" />} defaultOpen>
+    <PanelSection title="Decorations" icon={<Hexagon className="w-3.5 h-3.5" />} isOpen={isOpen} onToggle={onToggle}>
       <div className="space-y-4">
         {/* Undo / Redo Row */}
         <div className="flex w-full items-center justify-between">

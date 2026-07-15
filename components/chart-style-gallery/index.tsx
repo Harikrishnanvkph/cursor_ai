@@ -10,6 +10,7 @@ import { PresetFilters } from "./preset-filters"
 import type { ChartStylePreset } from "@/lib/chart-style-types"
 import { checkPresetCompatibility } from "@/lib/chart-style-engine"
 import { PresetPreviewDialog } from "./preset-preview-dialog"
+import { useChatStore } from "@/lib/chat-store"
 
 /** Number of presets to show initially and per "Show More" click */
 const PAGE_SIZE = 12
@@ -107,12 +108,79 @@ export function ChartStyleGallery() {
     }
   }, [isGalleryOpen, closeGallery])
 
-  const filteredPresets = useMemo(() => getFilteredPresets(), [
-    officialPresets,
-    filters.chartType,
-    filters.category,
-    filters.searchQuery,
-  ])
+  const filteredPresets = useMemo(() => {
+    const rawFiltered = getFilteredPresets()
+
+    // ── 1. Create a virtual preset for the simple AI generated style ──
+    const simplePreset: ChartStylePreset = {
+      id: 'preset-simple',
+      name: 'Simple AI Generated',
+      description: 'The original chart layout and styling as generated directly by the AI.',
+      chartType: chartType as any,
+      colorStrategy: {
+        mode: 'single',
+        singleColor: '#6366f1',
+        baseColors: ['#6366f1'],
+        baseBorderColors: ['#4f46e5']
+      },
+      configSnapshot: {},
+      datasetStyle: {},
+      category: 'minimal' as any,
+      tags: ['original', 'default', 'ai'],
+      isOfficial: true,
+      sortOrder: -100
+    }
+
+    // Filter validation for the simple preset
+    const matchesChartType = filters.chartType === 'all' || filters.chartType === chartType
+    const matchesCategory = filters.category === 'all' || filters.category === 'minimal' || !filters.category
+    const matchesSearch = !filters.searchQuery ||
+      simplePreset.name.toLowerCase().includes(filters.searchQuery.toLowerCase()) ||
+      simplePreset.description.toLowerCase().includes(filters.searchQuery.toLowerCase())
+
+    // Check aspect ratio match (sidebar filter doesn't support aspect ratio filtering directly in standard filters, but we have filters.aspectRatio if defined)
+    const ratioFilter = (filters as any).aspectRatio || 'all'
+    let matchesAspectRatio = ratioFilter === 'all'
+    if (!matchesAspectRatio && chartConfig) {
+      const parseDimValue = (val: string | null | undefined): number => {
+        if (!val) return 0
+        return parseInt(val.replace('px', '')) || 0
+      }
+      const cfg = chartConfig as any
+      if (cfg && !cfg.responsive && cfg.width && cfg.height) {
+        const w = parseDimValue(cfg.width as string)
+        const h = parseDimValue(cfg.height as string)
+        if (w > 0 && h > 0) {
+          const ratio = w / h
+          const candidates = [
+            { value: '16:9', ratio: 16 / 9 },
+            { value: '9:16', ratio: 9 / 16 },
+            { value: '1:1', ratio: 1 },
+            { value: '4:5', ratio: 4 / 5 },
+            { value: '4:3', ratio: 4 / 3 },
+            { value: '3:2', ratio: 3 / 2 }
+          ]
+          let closestValue = candidates[0].value
+          let minDiff = Math.abs(ratio - candidates[0].ratio)
+          for (let i = 1; i < candidates.length; i++) {
+            const diff = Math.abs(ratio - candidates[i].ratio)
+            if (diff < minDiff) {
+              minDiff = diff
+              closestValue = candidates[i].value
+            }
+          }
+          if (minDiff < 0.25) {
+            matchesAspectRatio = closestValue === ratioFilter
+          }
+        }
+      }
+    }
+
+    if (matchesChartType && matchesCategory && matchesSearch && matchesAspectRatio) {
+      return [simplePreset, ...rawFiltered]
+    }
+    return rawFiltered
+  }, [getFilteredPresets, chartType, chartConfig, filters.chartType, filters.category, (filters as any).aspectRatio, filters.searchQuery])
 
   // ── Paginated subset: only render what's visible ──
   const visiblePresets = useMemo(
@@ -121,6 +189,7 @@ export function ChartStyleGallery() {
   )
   const hasMore = visibleCount < filteredPresets.length
   const remainingCount = filteredPresets.length - visibleCount
+  const hasActualPresets = filteredPresets.some(p => p.id !== 'preset-simple')
 
   const handleShowMore = useCallback(() => {
     setVisibleCount(prev => prev + PAGE_SIZE)
@@ -129,6 +198,35 @@ export function ChartStyleGallery() {
   const handleApplyPreset = useCallback((preset: ChartStylePreset) => {
     if (!hasChartData) {
       toast.error("Generate a chart first, then apply a style.")
+      return
+    }
+
+    if (preset.id === 'preset-simple') {
+      try {
+        const messages = useChatStore.getState().messages
+        const lastAssistantMsg = [...messages]
+          .reverse()
+          .find((msg: any) => msg.role === 'assistant' && msg.chartSnapshot)
+        const originalSnapshot = lastAssistantMsg?.chartSnapshot
+
+        if (originalSnapshot) {
+          useChartStore.getState().setFullChart({
+            ...originalSnapshot,
+            replaceMode: true
+          })
+          useChartStyleStore.getState().setSelectedPresetId('preset-simple')
+          closeGallery()
+          toast.success("Reverted to original AI-generated chart style.")
+        } else {
+          useChartStyleStore.getState().setSelectedPresetId(null)
+          closeGallery()
+          toast.info("Original style restored.")
+        }
+      } catch (e) {
+        useChartStyleStore.getState().setSelectedPresetId(null)
+        closeGallery()
+        toast.info("Original style restored.")
+      }
       return
     }
 
@@ -243,14 +341,14 @@ export function ChartStyleGallery() {
               <span className="text-xs text-gray-400 font-medium">Loading styles...</span>
             </div>
           </div>
-        ) : filteredPresets.length > 0 ? (
+        ) : hasActualPresets ? (
           <>
             <div className="grid grid-cols-1 gallery-grid-responsive gap-2.5">
               {visiblePresets.map(preset => (
                 <PresetCard
                   key={preset.id}
                   preset={preset}
-                  isSelected={selectedPresetId === preset.id}
+                  isSelected={preset.id === 'preset-simple' ? (selectedPresetId === 'preset-simple' || selectedPresetId === null) : selectedPresetId === preset.id}
                   hasChartData={hasChartData}
                   onApply={() => handleApplyPreset(preset)}
                   onPreview={() => setPreviewPreset(preset)}

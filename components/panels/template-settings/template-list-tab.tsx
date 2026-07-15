@@ -15,11 +15,11 @@ import { dataService } from "@/lib/data-service"
 
 // Zone type → color mapping for skeleton-only format preview
 const ZONE_COLORS: Record<string, { bg: string; border: string }> = {
-  chart:      { bg: 'rgba(59, 130, 246, 0.3)',  border: 'rgba(59, 130, 246, 0.5)' },
-  text:       { bg: 'rgba(16, 185, 129, 0.2)',  border: 'rgba(16, 185, 129, 0.4)' },
-  stat:       { bg: 'rgba(245, 158, 11, 0.3)',  border: 'rgba(245, 158, 11, 0.5)' },
-  background: { bg: 'rgba(139, 92, 246, 0.15)', border: 'rgba(139, 92, 246, 0.3)' },
-  decoration: { bg: 'rgba(236, 72, 153, 0.12)', border: 'rgba(236, 72, 153, 0.3)' },
+    chart: { bg: 'rgba(59, 130, 246, 0.3)', border: 'rgba(59, 130, 246, 0.5)' },
+    text: { bg: 'rgba(16, 185, 129, 0.2)', border: 'rgba(16, 185, 129, 0.4)' },
+    stat: { bg: 'rgba(245, 158, 11, 0.3)', border: 'rgba(245, 158, 11, 0.5)' },
+    background: { bg: 'rgba(139, 92, 246, 0.15)', border: 'rgba(139, 92, 246, 0.3)' },
+    decoration: { bg: 'rgba(236, 72, 153, 0.12)', border: 'rgba(236, 72, 153, 0.3)' },
 }
 
 interface TemplateListTabProps {
@@ -29,7 +29,7 @@ interface TemplateListTabProps {
 
 export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: TemplateListTabProps) {
     const [subTab, setSubTab] = React.useState<'custom' | 'formats'>('custom')
-    
+
     const {
         templates,
         currentTemplate,
@@ -109,7 +109,7 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
             loadUserFormats()
         }
     }, [formatView, setUserFormats, setLoadingUserFormats])
-        
+
     React.useEffect(() => {
         // Reconstruct content package if this is an actual format chart or preparing to be one
         if (!contentPackage && chartData?.datasets?.length > 0) {
@@ -242,38 +242,45 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
     }
 
     return (
-        <div className="space-y-3 mt-3">
+        <div className="space-y-3">
             <Tabs value={subTab} onValueChange={(val) => setSubTab(val as 'custom' | 'formats')} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 mb-3">
-                    <TabsTrigger value="custom" className="text-xs">Custom Layouts</TabsTrigger>
-                    <TabsTrigger value="formats" className="text-xs">Pre-designed</TabsTrigger>
+                    <TabsTrigger value="custom" className="text-xs">Templates</TabsTrigger>
+                    <TabsTrigger value="formats" className="text-xs">Formats (New)</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="formats" className="m-0 space-y-2 focus-visible:outline-none focus-visible:ring-0">
-                    {/* Global / My Formats toggle */}
-                    <div className="flex items-center gap-0 bg-gray-100 rounded-full p-[2px] border border-gray-200 w-fit">
-                        <button
-                            onClick={() => setFormatView('global')}
-                            className={`flex items-center gap-1 px-3 py-1 text-[11px] font-medium rounded-full transition-all ${
-                                formatView === 'global'
-                                    ? 'bg-blue-500 text-white shadow-sm'
-                                    : 'bg-transparent text-gray-500 hover:text-gray-700'
-                            }`}
+                    {/* Global / My Formats toggle & Create Button */}
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <div className="flex items-center gap-0 bg-gray-100 rounded-full p-[2px] border border-gray-200 w-fit">
+                            <button
+                                onClick={() => setFormatView('global')}
+                                className={`flex items-center gap-1 px-3 py-1 text-[11px] font-medium rounded-full transition-all ${formatView === 'global'
+                                        ? 'bg-blue-500 text-white shadow-sm'
+                                        : 'bg-transparent text-gray-500 hover:text-gray-700'
+                                    }`}
+                            >
+                                <Globe className="h-3 w-3" />
+                                Global
+                            </button>
+                            <button
+                                onClick={() => setFormatView('mine')}
+                                className={`flex items-center gap-1 px-3 py-1 text-[11px] font-medium rounded-full transition-all ${formatView === 'mine'
+                                        ? 'bg-blue-500 text-white shadow-sm'
+                                        : 'bg-transparent text-gray-500 hover:text-gray-700'
+                                    }`}
+                            >
+                                <User className="h-3 w-3" />
+                                My Formats
+                            </button>
+                        </div>
+                        <Link
+                            href="/editor/custom-format"
+                            className="flex items-center gap-1 px-3 py-1 text-[11px] font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-full shadow-sm transition-all duration-150"
                         >
-                            <Globe className="h-3 w-3" />
-                            Global
-                        </button>
-                        <button
-                            onClick={() => setFormatView('mine')}
-                            className={`flex items-center gap-1 px-3 py-1 text-[11px] font-medium rounded-full transition-all ${
-                                formatView === 'mine'
-                                    ? 'bg-blue-500 text-white shadow-sm'
-                                    : 'bg-transparent text-gray-500 hover:text-gray-700'
-                            }`}
-                        >
-                            <User className="h-3 w-3" />
-                            My Formats
-                        </button>
+                            <Plus className="h-3 w-3" />
+                            Create
+                        </Link>
                     </div>
 
                     {/* Format list — switches based on formatView */}
@@ -321,20 +328,20 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
                                     const zones = skeleton?.zones || [];
                                     const palette = skeleton?.colorPalette;
                                     const isUserFormat = formatView === 'mine';
-                                    
+
                                     // Skeleton scale math
                                     const dims = format.dimensions;
                                     const previewW = 240;
                                     const previewH = 140;
                                     const scale = Math.min(previewW / dims.width, previewH / dims.height, 1);
-                                    
+
                                     return (
                                         <div
                                             key={format.id}
                                             className={`group p-2 rounded-lg cursor-pointer transition-all duration-200 border ${isSelected
                                                 ? 'border-blue-400 bg-blue-50 ring-1 ring-blue-200 shadow-sm'
                                                 : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-sm'
-                                            }`}
+                                                }`}
                                             onClick={() => handleFormatSelect(format.id)}
                                         >
                                             <div className="min-w-0 flex-1 flex flex-col">
@@ -351,7 +358,7 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
                                                             const colors = ZONE_COLORS[zone.type] || ZONE_COLORS.decoration;
                                                             const zoneW = zone.position.width * scale;
                                                             const zoneH = zone.position.height * scale;
-                                                            
+
                                                             return (
                                                                 <div
                                                                     key={zone.id}
@@ -368,13 +375,13 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
                                                                     }}
                                                                 >
                                                                     {zoneW > 20 && zoneH > 10 && (
-                                                                        <span 
+                                                                        <span
                                                                             className="text-[6px] font-semibold uppercase tracking-wider truncate px-0.5 opacity-70"
                                                                             style={{ color: colors.border }}
                                                                         >
-                                                                            {zone.type === 'chart' ? '📊' : 
-                                                                             zone.type === 'stat' ? '#' :
-                                                                             zone.type === 'text' ? (zone.role === 'title' ? 'T' : 'Aa') : ''}
+                                                                            {zone.type === 'chart' ? '📊' :
+                                                                                zone.type === 'stat' ? '#' :
+                                                                                    zone.type === 'text' ? (zone.role === 'title' ? 'T' : 'Aa') : ''}
                                                                         </span>
                                                                     )}
                                                                 </div>
@@ -382,7 +389,7 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
                                                         })}
                                                     </div>
                                                 </div>
-                                                
+
                                                 <div className="flex items-center gap-1.5 mb-1 px-1">
                                                     {isSelected && (
                                                         <span className="inline-block h-2 w-2 rounded-full bg-blue-600 flex-shrink-0" />
@@ -404,11 +411,10 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
                                                     )}
                                                 </div>
                                                 <div className="flex items-center justify-between px-1">
-                                                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium rounded ${
-                                                        isUserFormat
+                                                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium rounded ${isUserFormat
                                                             ? 'text-blue-700 bg-blue-50 border border-blue-100'
                                                             : 'text-blue-700 bg-blue-50 border border-blue-100'
-                                                    }`}>
+                                                        }`}>
                                                         {isUserFormat ? <User className="h-2.5 w-2.5" /> : <Globe className="h-2.5 w-2.5" />}
                                                         {isUserFormat ? 'Custom' : 'Official'}
                                                     </span>

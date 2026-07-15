@@ -16,9 +16,10 @@ interface DecorationToolbarProps {
   editingShapeId?: string | null
   /** Callback to enter editing mode */
   onStartEditing?: (id: string) => void
+  zoom?: number
 }
 
-export function DecorationToolbar({ shapeId, x, y, editingShapeId, onStartEditing }: DecorationToolbarProps) {
+export function DecorationToolbar({ shapeId, x, y, editingShapeId, onStartEditing, zoom = 1.0 }: DecorationToolbarProps) {
   const { shapes, duplicateShape, toggleLock, removeShape, bringToFront, sendToBack, updateShape } = useDecorationStore()
   const shape = shapes.find(s => s.id === shapeId)
   if (!shape) return null
@@ -82,12 +83,24 @@ export function DecorationToolbar({ shapeId, x, y, editingShapeId, onStartEditin
     }
 
     return (
-      <foreignObject data-export-ignore="true" x={Math.max(0, x)} y={Math.max(0, toolbarY)} width="800" height="80" style={{ overflow: 'visible' }}>
+      <foreignObject
+        data-export-ignore="true"
+        x={Math.max(0, x)}
+        y={Math.max(0, toolbarY)}
+        width={(isEditing ? 600 : 520) / zoom}
+        height={80 / zoom}
+        style={{ overflow: 'visible' }}
+      >
         <div
           className="flex flex-wrap items-center gap-1"
           onMouseDown={e => e.stopPropagation()}
           onTouchStart={e => e.stopPropagation()}
           onClick={e => e.stopPropagation()}
+          style={{
+            transform: `scale(${1 / zoom})`,
+            transformOrigin: 'top left',
+            width: isEditing ? 600 : 520,
+          }}
         >
           {/* Rich text toolbar */}
           <RichTextToolbar
@@ -150,12 +163,24 @@ export function DecorationToolbar({ shapeId, x, y, editingShapeId, onStartEditin
 
   // ── Standard toolbar for non-textbox shapes ──
   return (
-    <foreignObject data-export-ignore="true" x={Math.max(0, x)} y={Math.max(0, toolbarY)} width="350" height="80" style={{ overflow: 'visible' }}>
+    <foreignObject
+      data-export-ignore="true"
+      x={Math.max(0, x)}
+      y={Math.max(0, toolbarY)}
+      width={176 / zoom}
+      height={80 / zoom}
+      style={{ overflow: 'visible' }}
+    >
       <div
         className="flex flex-wrap items-center gap-0.5 bg-white opacity-100 rounded-2xl shadow-xl border border-slate-200 p-1 w-fit"
         onMouseDown={e => e.stopPropagation()}
         onTouchStart={e => e.stopPropagation()}
         onClick={e => e.stopPropagation()}
+        style={{
+          transform: `scale(${1 / zoom})`,
+          transformOrigin: 'top left',
+          width: 176,
+        }}
       >
         <Button
           variant="ghost"

@@ -5,12 +5,12 @@ import { Plus, Palette } from 'lucide-react'
 import { useFormatBuilder } from '../format-builder-context'
 import { PanelSection } from './panel-section'
 
-export function PalettePanel() {
+export function PalettePanel({ isOpen, onToggle }: { isOpen?: boolean; onToggle?: () => void }) {
   const { skeleton, setPalette } = useFormatBuilder()
   const palette = skeleton.colorPalette
 
   return (
-    <PanelSection title="Color Palette" icon={<Palette className="w-3.5 h-3.5" />}>
+    <PanelSection title="Color Palette" icon={<Palette className="w-3.5 h-3.5" />} isOpen={isOpen} onToggle={onToggle}>
       <div className="space-y-2">
         {([
           { key: 'primary',    label: 'Primary' },

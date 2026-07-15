@@ -16,6 +16,7 @@ import {
 import { useDecorationStore } from "../stores/decoration-store";
 import { generateDecorationsSVG, generateDecorationsCSS } from "../template-export/decoration-html-export";
 import { darkenColor } from "../utils/color-utils";
+import { buildExportConfig } from "../utils/font-scale-utils";
 
 /**
  * Generate a complete standalone HTML file with the chart
@@ -308,6 +309,27 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
 
     if (processedChartConfig.background?.type === 'image' && processedChartConfig.background?.imageUrl) {
         processedChartConfig.background.imageUrl = await convertImageToBase64(processedChartConfig.background.imageUrl);
+    }
+
+    // ── Intelligent Font Scaling ───────────────────────────────────────────────
+    // Apply AFTER all scales manipulations above (stacked, funnel, radar deletions)
+    // so the font sizes survive into enhancedChartConfig. Uses applyFontScaling
+    // which always writes explicit sizes — Chart.js 12px global default never wins.
+    {
+        const exportDataCount =
+            Array.isArray(processedChartData.labels)
+                ? processedChartData.labels.length
+                : (processedChartData.datasets?.[0]?.data?.length ?? 8);
+        const fontScaled = buildExportConfig(
+            processedChartConfig,
+            options.width ?? 800,
+            options.height ?? 600,
+            exportDataCount,
+            chartType
+        );
+        // Replace processedChartConfig entirely with the font-scaled clone
+        // (buildExportConfig returns a deep clone, so original is untouched)
+        Object.assign(processedChartConfig, fontScaled);
     }
 
     const enhancedChartConfig = {

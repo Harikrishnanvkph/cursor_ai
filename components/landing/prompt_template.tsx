@@ -182,14 +182,14 @@ export function PromptTemplate({
             Create Your Chart with <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent font-bold">AI Prompt</span>
           </h2>
           
-          <p className="text-slate-500 max-w-xl mx-auto leading-relaxed text-xs md:text-sm font-normal">
+          <p className="text-slate-500 max-w-4xl mx-auto leading-relaxed text-xs md:text-sm font-normal whitespace-nowrap">
             Describe the chart you want to create in natural language. I'll generate it and you can refine it further in chat!
           </p>
         </div>
 
         <div className="relative space-y-5 w-full pb-4">
           {/* Segmented Control - Sleek Apple segmented pill bounded to max-w-xs */}
-          <div className="flex flex-col gap-1.5 max-w-xs w-full mx-auto">
+          <div className="flex flex-col gap-1.5 max-w-[240px] w-full mx-auto">
             <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider text-center">
               Generate As
             </label>
@@ -203,22 +203,22 @@ export function PromptTemplate({
                   setEditorMode(mode === 'chart' ? 'chart' : 'template')
                 }
               }}
-              className="w-full bg-slate-100 border border-slate-200 shadow-inner gap-1"
+              className="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/60 shadow-inner gap-1 p-0.5 rounded-lg h-9"
             >
               <ToggleGroupItem
                 value="chart"
                 aria-label="Chart"
-                className="flex-1 rounded-xl py-3 data-[state=on]:bg-white data-[state=on]:text-slate-800 data-[state=on]:shadow-[0_2px_6px_rgba(0,0,0,0.04)] data-[state=on]:border data-[state=on]:border-slate-200/20 transition-all duration-200 text-slate-500 hover:text-slate-800 font-semibold text-xs tracking-wide uppercase"
+                className="flex-1 rounded-md h-8 py-0.5 data-[state=on]:bg-white dark:data-[state=on]:bg-slate-700 data-[state=on]:text-slate-800 dark:data-[state=on]:text-slate-100 data-[state=on]:shadow-[0_2px_6px_rgba(0,0,0,0.04)] data-[state=on]:border data-[state=on]:border-slate-200/20 transition-all duration-200 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-semibold text-[11px] tracking-wide uppercase"
               >
-                <BarChart2 className="w-3.5 h-3.5 mr-2" />
+                <BarChart2 className="w-3.5 h-3.5 mr-1.5" />
                 Chart
               </ToggleGroupItem>
               <ToggleGroupItem
                 value="format"
                 aria-label="Format"
-                className="flex-1 rounded-xl py-3 data-[state=on]:bg-white data-[state=on]:text-slate-800 data-[state=on]:shadow-[0_2px_6px_rgba(0,0,0,0.04)] data-[state=on]:border data-[state=on]:border-slate-200/20 transition-all duration-200 text-slate-500 hover:text-slate-800 font-semibold text-xs tracking-wide uppercase"
+                className="flex-1 rounded-md h-8 py-0.5 data-[state=on]:bg-white dark:data-[state=on]:bg-slate-700 data-[state=on]:text-slate-800 dark:data-[state=on]:text-slate-100 data-[state=on]:shadow-[0_2px_6px_rgba(0,0,0,0.04)] data-[state=on]:border data-[state=on]:border-slate-200/20 transition-all duration-200 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-semibold text-[11px] tracking-wide uppercase"
               >
-                <LayoutGrid className="w-3.5 h-3.5 mr-2" />
+                <LayoutGrid className="w-3.5 h-3.5 mr-1.5" />
                 Format
               </ToggleGroupItem>
             </ToggleGroup>
@@ -230,21 +230,19 @@ export function PromptTemplate({
               Select Aspect Ratio
             </label>
             
-            {/* Show All Aspect Ratio Option (Checkbox UI, high-contrast border and custom checkbox SVG) */}
+            {/* Show All Aspect Ratio Option (Radio UI, high-contrast border and custom radio circle) */}
             <div className="flex justify-center w-full mb-1.5">
               <button
                 onClick={() => handleRatioSelect(null)}
                 className="flex items-center gap-3 px-4 py-2 text-slate-700 hover:text-indigo-600 transition-all group cursor-pointer"
               >
-                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
                   selectedRatio === null
-                    ? "border-indigo-600 bg-indigo-600 text-white shadow-md scale-105"
-                    : "border-slate-400 bg-white group-hover:border-indigo-500 group-hover:scale-105 shadow-sm"
+                    ? "border-indigo-600 bg-white"
+                    : "border-slate-400 bg-white group-hover:border-indigo-500"
                 }`}>
                   {selectedRatio === null ? (
-                    <svg className="w-3.5 h-3.5 stroke-[3.5]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
+                    <div className="w-2.5 h-2.5 rounded-full bg-indigo-600 animate-scale-up" />
                   ) : null}
                 </div>
                 <span className="text-sm font-semibold text-slate-700 select-none tracking-tight group-hover:text-indigo-600 transition-colors">

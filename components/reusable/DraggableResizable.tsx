@@ -17,6 +17,7 @@ export interface DraggableResizableProps {
   // Used to convert mouse positions (in CSS pixels) to logical coordinates.
   scale?: number
   selected?: boolean
+  disabled?: boolean
   onSelect?: () => void
   onChange: (rect: { x: number; y: number; width: number; height: number }) => void
   children?: React.ReactNode
@@ -42,6 +43,7 @@ export function DraggableResizable({
   grid,
   scale = 1,
   selected = true,
+  disabled = false,
   onSelect,
   onChange,
   children,
@@ -71,6 +73,7 @@ export function DraggableResizable({
   }, [bounds.height, bounds.width, minHeight, minWidth])
 
   const onMouseDownDrag = (e: React.MouseEvent) => {
+    if (disabled) return
     e.stopPropagation()
     e.preventDefault()
     onSelect?.()
@@ -127,6 +130,7 @@ export function DraggableResizable({
   }
 
   const onMouseDownResize = (handle: ResizeHandle) => (e: React.MouseEvent) => {
+    if (disabled) return
     e.stopPropagation()
     e.preventDefault()
     onSelect?.()
@@ -218,7 +222,7 @@ export function DraggableResizable({
   // Hover cursor feedback without clicking: set appropriate cursor when near handles
   useEffect(() => {
     const el = containerRef.current
-    if (!el) return
+    if (!el || disabled) return
     const onMove = (e: MouseEvent) => {
       if (isDragging || isResizing) return
       const rect = el.getBoundingClientRect()
@@ -238,14 +242,14 @@ export function DraggableResizable({
     }
     el.addEventListener("mousemove", onMove)
     return () => el.removeEventListener("mousemove", onMove)
-  }, [isDragging, isResizing])
+  }, [isDragging, isResizing, disabled])
 
   return (
     <div
       ref={containerRef}
       className={"absolute select-none " + (className || "")}
       style={{ left: x, top: y, width, height, ...style }}
-      onMouseDown={onMouseDownDrag}
+      onMouseDown={disabled ? undefined : onMouseDownDrag}
     >
       {/* Content */}
       <div className={`w-full h-full`}>
@@ -261,7 +265,7 @@ export function DraggableResizable({
       </div>
 
       {/* Resize handles */}
-      {selected && (
+      {selected && !disabled && (
         <>
           <div className={`${handleClass}`} style={{ left: -4, top: -4, cursor: "nwse-resize", backgroundColor: accent }} onMouseDown={onMouseDownResize("nw")} />
           <div className={`${handleClass}`} style={{ right: -4, top: -4, cursor: "nesw-resize", backgroundColor: accent }} onMouseDown={onMouseDownResize("ne")} />

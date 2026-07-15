@@ -300,11 +300,11 @@ export function HistoryDropdown({ variant = 'full', className, onConversationRes
               variant="outline"
               size="sm"
               className={cn(
-                "px-3 text-xs border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800 h-8",
+                "h-8 w-8 p-0 border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100",
                 className
               )}
             >
-              <History className="w-4 h-4" />
+              <History className="w-3 h-3" />
             </Button>
           </DropdownMenuTrigger>
 

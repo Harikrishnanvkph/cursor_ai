@@ -4,13 +4,13 @@ import React from 'react'
 import {
   AlignHorizontalJustifyStart, AlignHorizontalJustifyCenter, AlignHorizontalJustifyEnd,
   AlignVerticalJustifyStart, AlignVerticalJustifyCenter, AlignVerticalJustifyEnd,
-  Wrench,
+  AlignLeft,
 } from 'lucide-react'
 import { useFormatBuilder } from '../format-builder-context'
 import { useDecorationStore } from '@/lib/stores/decoration-store'
 import { PanelSection } from './panel-section'
 
-export function CanvasToolsPanel() {
+export function CanvasToolsPanel({ isOpen, onToggle }: { isOpen?: boolean; onToggle?: () => void }) {
   const { selectedZoneId, alignZone, skeleton } = useFormatBuilder()
   const { selectedShapeId, selectedShapeIds, shapes, updateShape } = useDecorationStore()
   const dims = skeleton.dimensions
@@ -105,7 +105,7 @@ export function CanvasToolsPanel() {
   ] as const
 
   return (
-    <PanelSection title="Canvas Tools" icon={<Wrench className="w-3.5 h-3.5" />}>
+    <PanelSection title="Alignment" icon={<AlignLeft className="w-3.5 h-3.5" />} isOpen={isOpen} onToggle={onToggle}>
       <div className="space-y-3">
         {/* Zone Alignment */}
         <div>

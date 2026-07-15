@@ -14,7 +14,7 @@ import type { ZoneType } from '@/lib/format-types'
  *
  * Decorations (shapes, lines, icons, images) are in a SEPARATE panel.
  */
-export function AddZonePanel() {
+export function AddZonePanel({ isOpen, onToggle }: { isOpen?: boolean; onToggle?: () => void }) {
   const { addZone } = useFormatBuilder()
   const [expandedType, setExpandedType] = useState<ZoneType | null>(null)
 
@@ -23,7 +23,7 @@ export function AddZonePanel() {
   }
 
   return (
-    <PanelSection title="Add Content Zone" icon={<Plus className="w-3.5 h-3.5" />} defaultOpen>
+    <PanelSection title="Add Content Zone" icon={<Plus className="w-3.5 h-3.5" />} isOpen={isOpen} onToggle={onToggle}>
       <p className="text-[9px] text-gray-600 mb-1.5 -mt-1">Content slots filled by AI at render time</p>
       <div className="space-y-1">
         {/* Text — expands to show roles */}

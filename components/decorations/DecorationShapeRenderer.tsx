@@ -999,9 +999,10 @@ interface DecorationShapeRendererProps {
   gridSize?: number
   readOnly?: boolean
   shapes?: DecorationShape[]
+  zoom?: number
 }
 
-export function DecorationShapeRenderer({ containerWidth, containerHeight, panMode, gridSize = 0, readOnly = false, shapes: propsShapes }: DecorationShapeRendererProps) {
+export function DecorationShapeRenderer({ containerWidth, containerHeight, panMode, gridSize = 0, readOnly = false, shapes: propsShapes, zoom = 1.0 }: DecorationShapeRendererProps) {
   const storeState = useDecorationStore()
   const shapes = propsShapes || storeState.shapes
   const {
@@ -2083,12 +2084,13 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
           {/* Hover highlight — uses computed bounds */}
           {!readOnly && hoveredShapeId === shape.id && selectedShapeId !== shape.id && (() => {
             const hb = getShapeBounds(shape)
+            const effectiveZoom = zoom < 1.0 ? Math.max(0.01, Math.sqrt(zoom)) : zoom
             return (
               <rect
-                x={hb.x - 3} y={hb.y - 3}
-                width={hb.width + 6} height={hb.height + 6}
-                fill="none" stroke="#f59e0b" strokeWidth={2} strokeDasharray="4,3"
-                rx={3} pointerEvents="none" opacity={0.7}
+                x={hb.x - 3 / effectiveZoom} y={hb.y - 3 / effectiveZoom}
+                width={hb.width + 6 / effectiveZoom} height={hb.height + 6 / effectiveZoom}
+                fill="none" stroke="#f59e0b" strokeWidth={2 / effectiveZoom} strokeDasharray={`${4 / effectiveZoom},${3 / effectiveZoom}`}
+                rx={3 / effectiveZoom} pointerEvents="none" opacity={0.7}
               />
             )
           })()}
@@ -2102,13 +2104,14 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
         const msb = getShapeBounds(ms)
         const msCx = msb.x + msb.width / 2
         const msCy = msb.y + msb.height / 2
+        const effectiveZoom = zoom < 1.0 ? Math.max(0.01, Math.sqrt(zoom)) : zoom
         return (
           <g key={`multisel-${sid}`}>
             <rect
-              x={msb.x - 3} y={msb.y - 3}
-              width={msb.width + 6} height={msb.height + 6}
-              fill="none" stroke="#8b5cf6" strokeWidth={1.5} strokeDasharray="5,3"
-              rx={3} pointerEvents="none"
+              x={msb.x - 3 / effectiveZoom} y={msb.y - 3 / effectiveZoom}
+              width={msb.width + 6 / effectiveZoom} height={msb.height + 6 / effectiveZoom}
+              fill="none" stroke="#8b5cf6" strokeWidth={1.5 / effectiveZoom} strokeDasharray={`${5 / effectiveZoom},${3 / effectiveZoom}`}
+              rx={3 / effectiveZoom} pointerEvents="none"
               transform={ms.rotation ? `rotate(${ms.rotation} ${msCx} ${msCy})` : undefined}
             />
           </g>
@@ -2144,22 +2147,32 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
         const bottomObjectY = Math.max(globalMaxY, rotHandleRotated.y)
 
         const isTextbox = selectedShape.type === 'textbox' || selectedShape.type === 'textbox-auto'
-        const toolbarWidth = isTextbox ? 660 : 200
-        const gap = 20
-        const toolbarHeight = 44
+        
+        const effectiveZoom = zoom < 1.0 ? Math.max(0.01, Math.sqrt(zoom)) : zoom
+        const netScale = zoom / effectiveZoom
+        
+        // Define fixed screen sizes for the toolbars (these match the values inside DecorationToolbar.tsx)
+        const screenToolbarWidth = (isTextbox ? (editingShapeId === selectedShape.id ? 550 : 480) : 160) * netScale
+        const screenToolbarHeight = 46 * netScale
+        const screenGap = 15 * netScale
 
-        let toolbarYPosition = topObjectY - gap - toolbarHeight
-        // If it goes off top edge, place below instead
-        if (toolbarYPosition < 10) {
-          toolbarYPosition = bottomObjectY + gap
+        // Calculate positions in screen coordinates, then map back to SVG coordinates considering zoom scale
+        let yScreen = topObjectY * zoom - screenGap - screenToolbarHeight
+        // If it goes off top edge of screen, place below instead
+        if (yScreen < 10) {
+          yScreen = bottomObjectY * zoom + screenGap
         }
+        const toolbarYPosition = yScreen / zoom
 
-        let toolbarXPosition = cx - toolbarWidth / 2
-        // Constrain to container boundaries horizontally
-        if (toolbarXPosition < 10) toolbarXPosition = 10
-        if (toolbarWidth < containerWidth && toolbarXPosition + toolbarWidth > containerWidth - 10) {
-          toolbarXPosition = containerWidth - toolbarWidth - 10
+        let xScreen = cx * zoom - screenToolbarWidth / 2
+        // Constrain to container boundaries in screen coordinates
+        if (xScreen < 10) {
+          xScreen = 10
         }
+        if (screenToolbarWidth < containerWidth * zoom && xScreen + screenToolbarWidth > containerWidth * zoom - 10) {
+          xScreen = containerWidth * zoom - screenToolbarWidth - 10
+        }
+        const toolbarXPosition = xScreen / zoom
 
         return (
           <g style={{ pointerEvents: 'auto' }}>
@@ -2172,6 +2185,7 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
                 y={toolbarYPosition}
                 editingShapeId={editingShapeId}
                 onStartEditing={(id) => setEditingShapeId(id)}
+                zoom={effectiveZoom}
               />
             )}
 
@@ -2192,10 +2206,10 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
 
               {/* Selection border */}
               <rect
-                x={sb.x - 3} y={sb.y - 3}
-                width={sb.width + 6} height={sb.height + 6}
-                fill="none" stroke="#3b82f6" strokeWidth={1.5} strokeDasharray="5,3"
-                rx={3} pointerEvents="none"
+                x={sb.x - 3 / effectiveZoom} y={sb.y - 3 / effectiveZoom}
+                width={sb.width + 6 / effectiveZoom} height={sb.height + 6 / effectiveZoom}
+                fill="none" stroke="#3b82f6" strokeWidth={1.5 / effectiveZoom} strokeDasharray={`${5 / effectiveZoom},${3 / effectiveZoom}`}
+                rx={3 / effectiveZoom} pointerEvents="none"
               />
 
               {/* Rotation handle — now inside transformed group */}
@@ -2203,14 +2217,14 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
                 <>
                   <line
                     x1={rotCx} y1={sb.y}
-                    x2={rotCx} y2={rotCy + 5}
-                    stroke="#3b82f6" strokeWidth={1}
+                    x2={rotCx} y2={rotCy + 5 / effectiveZoom}
+                    stroke="#3b82f6" strokeWidth={1 / effectiveZoom}
                     pointerEvents="none"
                   />
                   <circle
-                    cx={rotCx} cy={rotCy} r={5}
+                    cx={rotCx} cy={rotCy} r={5 / effectiveZoom}
                     fill="white"
-                    stroke="#3b82f6" strokeWidth={1.5}
+                    stroke="#3b82f6" strokeWidth={1.5 / effectiveZoom}
                     style={{ cursor: ROTATE_CURSOR }}
                     onMouseDown={(e) => {
                       e.preventDefault()
@@ -2242,19 +2256,22 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
               )}
 
               {/* Resize handles — now inside transformed group */}
-              {!hasPointsUI && !selectedShape.locked && getHandlePositions(selectedShape).map(({ pos, x, y, cursor }) => (
-                <rect
-                  key={pos}
-                  x={x - HANDLE_SIZE / 2} y={y - HANDLE_SIZE / 2}
-                  width={HANDLE_SIZE} height={HANDLE_SIZE}
-                  fill="white" stroke="#3b82f6" strokeWidth={1.5}
-                  rx={2}
-                  style={{ cursor }}
-                  onMouseDown={(e) => handleResizePointerDown(e, selectedShape, pos)}
-                  onTouchStart={(e) => handleResizePointerDown(e, selectedShape, pos)}
-                  onClick={(e) => e.stopPropagation()}
-                />
-              ))}
+              {!hasPointsUI && !selectedShape.locked && getHandlePositions(selectedShape).map(({ pos, x, y, cursor }) => {
+                const handleSize = HANDLE_SIZE / effectiveZoom
+                return (
+                  <rect
+                    key={pos}
+                    x={x - handleSize / 2} y={y - handleSize / 2}
+                    width={handleSize} height={handleSize}
+                    fill="white" stroke="#3b82f6" strokeWidth={1.5 / effectiveZoom}
+                    rx={2 / effectiveZoom}
+                    style={{ cursor }}
+                    onMouseDown={(e) => handleResizePointerDown(e, selectedShape, pos)}
+                    onTouchStart={(e) => handleResizePointerDown(e, selectedShape, pos)}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                )
+              })}
 
               {/* Line/arrow/polygon: endpoint circle handles at each point */}
               {hasPointsUI && selectedShape.points && selectedShape.points.length >= 2 && !selectedShape.locked && (
@@ -2262,8 +2279,8 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
                   {selectedShape.points.map((pt, idx) => (
                     <circle
                       key={`ep-${idx}`}
-                      cx={pt.x} cy={pt.y} r={6}
-                      fill="white" stroke="#3b82f6" strokeWidth={2}
+                      cx={pt.x} cy={pt.y} r={6 / effectiveZoom}
+                      fill="white" stroke="#3b82f6" strokeWidth={2 / effectiveZoom}
                       style={{ cursor: 'crosshair' }}
                       onMouseDown={(e) => {
                         e.preventDefault()

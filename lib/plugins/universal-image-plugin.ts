@@ -96,6 +96,11 @@ export const universalImagePlugin = {
         const ctx = chart.ctx
         const chartArea = chart.chartArea
 
+        // Initialize cache map on chart instance if not present
+        if (!chart._imageMap) {
+            chart._imageMap = new Map();
+        }
+
         chart.data.datasets.forEach((dataset: any, datasetIndex: number) => {
             // Respect default Chart.js legend visibility for datasets
             if (typeof chart.isDatasetVisible === 'function' && chart.isDatasetVisible(datasetIndex) === false) {
@@ -116,8 +121,43 @@ export const universalImagePlugin = {
 
                 if (imageUrl && element) {
                     const label = chart.data.labels?.[pointIndex] || "?";
-                    const img = new Image()
-                    img.crossOrigin = "anonymous"
+                    
+                    // Look up image in the local chart cache
+                    let cacheEntry = chart._imageMap.get(imageUrl);
+
+                    if (!cacheEntry) {
+                        const img = new Image();
+                        img.crossOrigin = "anonymous";
+                        
+                        cacheEntry = { img, status: 'loading' };
+                        chart._imageMap.set(imageUrl, cacheEntry);
+
+                        img.onload = () => {
+                            cacheEntry.status = 'loaded';
+                            // Debounce chart updates to execute safely on the next frame (16ms) after the current draw cycle completes
+                            if (!chart._updateScheduled) {
+                                chart._updateScheduled = true;
+                                setTimeout(() => {
+                                    chart._updateScheduled = false;
+                                    chart.update('none');
+                                }, 16);
+                            }
+                        };
+
+                        img.onerror = () => {
+                            console.warn(`[UniversalImagePlugin] Failed to load image at URL: ${imageUrl}. Rendering placeholder instead.`);
+                            cacheEntry.status = 'error';
+                            if (!chart._updateScheduled) {
+                                chart._updateScheduled = true;
+                                setTimeout(() => {
+                                    chart._updateScheduled = false;
+                                    chart.update('none');
+                                }, 16);
+                            }
+                        };
+
+                        img.src = getProxiedImageUrl(imageUrl);
+                    }
 
                     const renderWithImage = (imageSource: HTMLImageElement | null) => {
                         ctx.save()
@@ -179,14 +219,15 @@ export const universalImagePlugin = {
                         ctx.restore()
                     }
 
-                    img.onload = () => {
-                        renderWithImage(img)
+                    // Render immediately based on cache status
+                    if (cacheEntry.status === 'loaded') {
+                        renderWithImage(cacheEntry.img);
+                    } else if (cacheEntry.status === 'error') {
+                        renderWithImage(null);
+                    } else {
+                        // Render initials placeholder while loading
+                        renderWithImage(null);
                     }
-                    img.onerror = () => {
-                        console.warn(`[UniversalImagePlugin] Failed to load image at URL: ${imageUrl}. Rendering placeholder instead.`);
-                        renderWithImage(null)
-                    }
-                    img.src = getProxiedImageUrl(imageUrl)
                 }
             })
         })

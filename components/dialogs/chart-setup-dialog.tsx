@@ -334,14 +334,30 @@ export function ChartSetupDialog({
         }
       } else {
         const initialId = crypto.randomUUID()
-        setDatasets([{
-          id: initialId,
-          name: "Dataset 1",
-          category: 'categorical',
-          type: 'bar',
-          dataPoints: getDefaultPoints('categorical', 4, datasetType === 'grouped' ? '#1E90FF' : undefined)
-        }])
-        setActiveDatasetId(initialId)
+        if (datasetType === 'grouped') {
+          // Grouped mode: start with 2 default datasets so users see a true grouped chart from the start
+          const secondId = crypto.randomUUID()
+          const firstDataPoints = getDefaultPoints('categorical', 4, '#1E90FF')
+          const secondDataPoints = firstDataPoints.map((p, i) => ({
+            ...p,
+            value: [30, 15, 25, 10][i % 4] ?? 10,
+            color: '#ff6b6b',
+          }))
+          setDatasets([
+            { id: initialId, name: 'Dataset 1', category: 'categorical', type: 'bar', dataPoints: firstDataPoints },
+            { id: secondId, name: 'Dataset 2', category: 'categorical', type: 'bar', dataPoints: secondDataPoints },
+          ])
+          setActiveDatasetId(initialId)
+        } else {
+          setDatasets([{
+            id: initialId,
+            name: "Dataset 1",
+            category: 'categorical',
+            type: 'bar',
+            dataPoints: getDefaultPoints('categorical', 4, undefined)
+          }])
+          setActiveDatasetId(initialId)
+        }
         setUniformityMode('uniform')
       }
     }
@@ -436,13 +452,27 @@ export function ChartSetupDialog({
     }
   }
 
+  // Chart types that fundamentally cannot participate in mixed mode because they use
+  // a different coordinate system or are inherently single-series.
+  const MIXED_INCOMPATIBLE_TYPES = [
+    'scatter', 'bubble',                         // coordinate-based — no shared categorical axis
+    'pie', 'doughnut', 'pie3d', 'doughnut3d',    // radial / polar — no cartesian axis
+    'radar', 'polarArea',                        // polar coordinate system
+  ] as const;
+
+  const isMixedModeDisabled = (
+    datasetType === 'grouped' &&
+    MIXED_INCOMPATIBLE_TYPES.includes(datasets[0]?.type as any)
+  );
+
   const triggerModeChange = (mode: 'uniform' | 'mixed') => {
-    if (datasets.length > 1 && uniformityMode !== mode) {
-      setPendingDatasetChange({ type: 'mode', value: mode });
-      setShowInconsistencyPrompt(true);
-    } else {
-      applyModeChange(mode);
-    }
+    if (uniformityMode === mode) return;
+    // Block switching to mixed when the base chart type is incompatible.
+    if (mode === 'mixed' && isMixedModeDisabled) return;
+    // Uniform → Mixed: each dataset keeps its own type, nothing to clean up — apply directly.
+    // Mixed → Uniform: applyModeChange already normalises all datasets to the first dataset's
+    //   type/category without removing any of them, so no destructive popup is needed either.
+    applyModeChange(mode);
   }
 
   const handleInconsistencyUpdate = () => {
@@ -470,9 +500,8 @@ export function ChartSetupDialog({
       setDatasets([newFirstDataset]);
       setActiveDatasetId(newFirstDataset.id);
     } else if (pendingDatasetChange.type === 'mode') {
-      setUniformityMode(pendingDatasetChange.value);
-      setDatasets([firstDataset]);
-      setActiveDatasetId(firstDataset.id);
+      // Use applyModeChange so datasets are normalised but NOT stripped down.
+      applyModeChange(pendingDatasetChange.value);
     }
 
     setShowInconsistencyPrompt(false);
@@ -617,9 +646,11 @@ export function ChartSetupDialog({
   }
 
   const removeDataset = (id: string) => {
-    if (datasets.length <= 1) return;
     const index = datasets.findIndex(d => d.id === id);
     if (index === -1) return;
+    // In grouped mode the first 2 datasets are protected and cannot be deleted
+    if (datasetType === 'grouped' && index < 2) return;
+    if (datasets.length <= 1) return;
 
     const newDatasets = datasets.filter(d => d.id !== id);
     setDatasets(newDatasets);
@@ -940,68 +971,24 @@ export function ChartSetupDialog({
 
               <div className="flex flex-col items-center gap-2 pt-1">
                 <div
-                  className={`
-                    border-2 rounded-md flex items-center justify-center
-                    transition-all duration-300
-                    ${isResponsive
-                      ? 'border-dashed border-green-300 bg-green-50/50'
-                      : 'border-blue-300 bg-gradient-to-br from-blue-50 to-indigo-50'
-                    }
-                  `}
+                  className="border-2 rounded-md flex items-center justify-center transition-all duration-300 border-blue-300 bg-gradient-to-br from-blue-50 to-indigo-50"
                   style={{
-                    width: isResponsive ? maxPreviewSize : previewW,
-                    height: isResponsive ? maxPreviewSize * 0.6 : previewH,
+                    width: previewW,
+                    height: previewH,
                     minWidth: 40,
                     minHeight: 30,
                   }}
                 >
-                  {isResponsive ? (
-                    <div className="flex flex-col items-center gap-0.5">
-                      <Maximize2 className="h-4 w-4 text-green-500" />
-                      <span className="text-[9px] text-green-600 font-medium">Auto</span>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-0.5">
-                      <BarChart3 className="h-4 w-4 text-blue-400" />
-                      <span className="text-[9px] text-gray-500 font-medium">
-                        {widthPx}×{heightPx}
-                      </span>
-                    </div>
-                  )}
+                  <div className="flex flex-col items-center gap-0.5">
+                    <BarChart3 className="h-4 w-4 text-blue-400" />
+                    <span className="text-[9px] text-gray-500 font-medium">
+                      {widthPx}×{heightPx}
+                    </span>
+                  </div>
                 </div>
                 <span className="text-[10px] text-gray-400">
-                  {isResponsive ? 'Fills available space' : `Aspect ratio ${(widthPx / heightPx).toFixed(2)}:1`}
+                  Aspect ratio {(widthPx / heightPx).toFixed(2)}:1
                 </span>
-              </div>
-
-              <div className="border-t border-gray-100 pt-3">
-                <button
-                  onClick={() => {
-                    setIsResponsive(!isResponsive)
-                    if (!isResponsive) setSelectedPreset(null)
-                  }}
-                  className={`
-                    w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border text-left
-                    transition-all duration-200
-                    ${isResponsive
-                      ? 'border-green-500 bg-green-50 shadow-sm ring-1 ring-green-200'
-                      : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
-                    }
-                  `}
-                >
-                  <div className={`p-1.5 rounded-md ${isResponsive ? 'bg-green-100' : 'bg-gray-100'}`}>
-                    <Maximize2 className={`h-4 w-4 ${isResponsive ? 'text-green-600' : 'text-gray-500'}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className={`text-xs font-medium ${isResponsive ? 'text-green-900' : 'text-gray-800'}`}>
-                      Responsive
-                    </div>
-                    <div className="text-[10px] text-gray-400">
-                      Chart auto-fills the available container
-                    </div>
-                  </div>
-                  {isResponsive && <Check className="h-4 w-4 text-green-600 flex-shrink-0" />}
-                </button>
               </div>
 
               <Button
@@ -1179,13 +1166,33 @@ export function ChartSetupDialog({
                       >
                         <Settings2 className="h-3.5 w-3.5" /> Uniform
                       </button>
-                      <button
-                        onClick={() => triggerModeChange('mixed')}
-                        className={`flex-1 flex items-center justify-center gap-1.5 rounded-sm text-xs font-medium transition-all ${uniformityMode === 'mixed' ? 'bg-white shadow-sm text-purple-700' : 'text-gray-500 hover:text-gray-700'
-                          }`}
-                      >
-                        <TableProperties className="h-3.5 w-3.5" /> Mixed
-                      </button>
+                      {isMixedModeDisabled ? (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="flex-1 cursor-not-allowed">
+                                <button
+                                  disabled
+                                  className="w-full h-full flex items-center justify-center gap-1.5 rounded-sm text-xs font-medium text-gray-300 cursor-not-allowed opacity-50"
+                                >
+                                  <TableProperties className="h-3.5 w-3.5" /> Mixed
+                                </button>
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" sideOffset={6} className="bg-slate-800 text-white border-slate-700 shadow-xl px-3 py-2 z-[200] max-w-[200px]">
+                              <p className="text-xs font-medium text-center">Mixed mode is not available for this chart type. Switch to a cartesian type (e.g. Bar, Line) first.</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ) : (
+                        <button
+                          onClick={() => triggerModeChange('mixed')}
+                          className={`flex-1 flex items-center justify-center gap-1.5 rounded-sm text-xs font-medium transition-all ${uniformityMode === 'mixed' ? 'bg-white shadow-sm text-purple-700' : 'text-gray-500 hover:text-gray-700'
+                            }`}
+                        >
+                          <TableProperties className="h-3.5 w-3.5" /> Mixed
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1217,31 +1224,35 @@ export function ChartSetupDialog({
             {/* Dataset Tabs (for Grouped Mode) */}
             {datasetType === 'grouped' && (
               <div className="flex items-center px-4 pt-1 bg-white border-b border-gray-100 overflow-x-auto no-scrollbar gap-1">
-                {datasets.map((ds, index) => (
-                  <div key={ds.id} className="relative group flex items-center">
-                    <button
-                      onClick={() => setActiveDatasetId(ds.id)}
-                      className={`py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap pl-4 ${index > 0 ? 'pr-8' : 'pr-4'} ${activeDatasetId === ds.id
-                        ? 'border-blue-600 text-blue-700 bg-blue-50/50 rounded-t-sm'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 hover:border-gray-200'
-                        }`}
-                    >
-                      {ds.name}
-                    </button>
-                    {index > 0 && (
+                {datasets.map((ds, index) => {
+                  // In grouped mode the first 2 datasets are default/protected — no delete button
+                  const isDeletable = datasetType === 'grouped' ? index > 1 : index > 0;
+                  return (
+                    <div key={ds.id} className="relative group flex items-center">
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          removeDataset(ds.id)
-                        }}
-                        className={`absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity ${activeDatasetId === ds.id ? 'opacity-100' : ''
+                        onClick={() => setActiveDatasetId(ds.id)}
+                        className={`py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap pl-4 ${isDeletable ? 'pr-8' : 'pr-4'} ${activeDatasetId === ds.id
+                          ? 'border-blue-600 text-blue-700 bg-blue-50/50 rounded-t-sm'
+                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 hover:border-gray-200'
                           }`}
                       >
-                        <X className="h-3 w-3" />
+                        {ds.name}
                       </button>
-                    )}
-                  </div>
-                ))}
+                      {isDeletable && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            removeDataset(ds.id)
+                          }}
+                          className={`absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity ${activeDatasetId === ds.id ? 'opacity-100' : ''
+                            }`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
                 <button
                   onClick={() => {
                     const newId = crypto.randomUUID()

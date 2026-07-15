@@ -141,7 +141,7 @@ export function ChatWindow({
         {messages.map((msg, idx) => (
           <div
             key={idx}
-            className={`rounded-2xl px-4 py-3 max-w-[90%] whitespace-pre-wrap break-words shadow-lg font-medium text-sm ${msg.role === "user"
+            className={`rounded-2xl px-4 py-3 w-[95%] whitespace-pre-wrap break-words shadow-lg font-medium text-sm ${msg.role === "user"
               ? "bg-gradient-to-br from-indigo-500 to-purple-600 text-white self-end ml-auto border border-indigo-400/30 shadow-indigo-500/25"
               : "bg-gradient-to-br from-white to-slate-50 text-slate-800 self-start mr-auto border border-slate-200/50 shadow-slate-500/10"
               }`}
@@ -169,7 +169,7 @@ export function ChatWindow({
           </div>
         ))}
         {isProcessing && (
-          <div className="bg-gradient-to-br from-white to-slate-50 text-slate-800 self-start mr-auto border border-slate-200/50 rounded-2xl px-4 py-3 max-w-[90%] shadow-lg">
+          <div className="bg-gradient-to-br from-white to-slate-50 text-slate-800 self-start mr-auto border border-slate-200/50 rounded-2xl px-4 py-3 w-[95%] shadow-lg">
             <div className="flex items-center gap-3">
               <div className="p-1.5 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-lg">
                 <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>

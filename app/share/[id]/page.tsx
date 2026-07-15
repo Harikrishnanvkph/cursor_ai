@@ -1146,6 +1146,7 @@ export default function SharedChartPage() {
                   containerWidth={parseInt(chart.template_structure.width) || manualWidth}
                   containerHeight={parseInt(chart.template_structure.height) || manualHeight}
                   panMode={true}
+                  zoom={zoom}
                 />
               </div>
             ) : (

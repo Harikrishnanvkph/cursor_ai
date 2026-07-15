@@ -177,7 +177,7 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
     <div className="h-full flex flex-col overflow-hidden bg-background border-l border-border shadow-sm">
       {/* Header - Hidden on mobile */}
       {!isMobile && (
-        <div className="flex items-center p-3 border-b bg-muted/50 gap-3">
+        <div className="flex items-center py-1.5 px-3 border-b bg-muted/50 gap-2">
           {/* Expand/Collapse Button */}
           {onToggleSidebar && (
             <Button
@@ -199,7 +199,7 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
                   size="sm"
                   variant="outline"
                   disabled={isSharingLink || !currentSnapshotId}
-                  className="h-8 px-3 text-xs border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="h-8 w-8 p-0 border-blue-200 text-blue-600 bg-blue-50 hover:bg-blue-100 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
                   title={!currentSnapshotId ? "Save to share" : "Share options"}
                 >
                   {isSharingLink ? (
@@ -225,7 +225,7 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
               variant="default"
               onClick={onSaveClick || handleSave}
               disabled={!hasJSON || isSaving}
-              className="h-8 px-3 text-xs bg-green-600 hover:bg-green-700 text-white"
+              className="h-8 w-8 p-0 bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
               title="Save chart to online database"
             >
               {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
@@ -235,7 +235,7 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
               variant="outline"
               onClick={handleCancel}
               disabled={!hasJSON}
-              className="h-8 px-3 text-xs border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+              className="h-8 w-8 p-0 border-red-200 text-red-600 bg-red-50 hover:bg-red-100 hover:border-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
               title="Clear chart and start new"
             >
               <X className="w-3 h-3" />
@@ -254,7 +254,7 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
       )}
 
       {/* Panel Content */}
-      <div className="flex-1 overflow-y-auto p-4 bg-background">
+      <div className="flex-1 overflow-y-auto pt-2.5 px-4 pb-4 bg-background">
         <div className="animate-in fade-in duration-200">
           {renderPanel()}
         </div>

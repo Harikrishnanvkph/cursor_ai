@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react"
 import { EditorSidebarProvider } from "@/components/editor/editor-sidebar-context"
 import { EditorLeftSidebar } from "@/components/editor/editor-left-sidebar"
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
+import { usePathname } from "next/navigation"
 
 /**
  * Editor Layout — App Shell Architecture
@@ -17,6 +18,17 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
  * so we only render the persistent layout on desktop.
  */
 export default function EditorLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
+  const isFullScreenPage = pathname === "/editor/custom-format" || pathname === "/editor/custom-template"
+
+  if (isFullScreenPage) {
+    return (
+      <ProtectedRoute>
+        {children}
+      </ProtectedRoute>
+    )
+  }
+
   return (
     <ProtectedRoute>
       <EditorSidebarProvider>

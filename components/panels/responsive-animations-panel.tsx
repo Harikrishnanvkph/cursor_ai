@@ -550,33 +550,6 @@ export function ResponsiveAnimationsPanel() {
             )}
             {/* Radio Buttons for Chart Mode */}
             <div className={`space-y-3 ${isTemplateMode ? 'opacity-50 pointer-events-none' : ''}`}>
-              {/* Responsive Option */}
-              <div className="flex items-start space-x-3 p-2 rounded-md hover:bg-blue-100/50 transition-colors">
-                <input
-                  type="radio"
-                  id="responsive-mode-anim"
-                  name="chart-mode-anim"
-                  checked={chartConfig.responsive === true && !chartConfig.templateDimensions && !(chartConfig as any).originalDimensions}
-                  onChange={() => {
-                    updateChartConfig({
-                      ...chartConfig,
-                      responsive: true,
-                      manualDimensions: false,
-                      dynamicDimension: false,
-                      templateDimensions: false,
-                      originalDimensions: false
-                    });
-                  }}
-                  className="mt-1 text-blue-600 focus:ring-blue-500"
-                />
-                <div className="flex flex-col">
-                  <Label htmlFor="responsive-mode-anim" className="text-sm font-medium cursor-pointer">
-                    Responsive {chartConfig.responsive === true && !chartConfig.templateDimensions && !(chartConfig as any).originalDimensions ? '(Active)' : ''}
-                  </Label>
-                  <span className="text-xs text-gray-500">Chart auto-fills its container</span>
-                </div>
-              </div>
-
               {/* Fixed Dimensions Option */}
               <div className="flex items-start space-x-3 p-2 rounded-md hover:bg-blue-100/50 transition-colors">
                 <input

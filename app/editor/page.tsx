@@ -1612,21 +1612,19 @@ function EditorPageContent() {
         </div>
 
         {/* Right Sidebar - Collapsed by default, shows profile, expand button, and action buttons */}
-        <div className="w-16 flex-shrink-0 flex flex-col h-full bg-white border-l border-gray-200 shadow-sm z-40 relative">
+        <div className="w-12 flex-shrink-0 flex flex-col h-full bg-white border-l border-gray-200 shadow-sm z-40 relative">
           {/* Profile Button - Top */}
-          <div className="p-2 border-b border-gray-200">
-            <div className="mx-auto">
-              <SimpleProfileDropdown size="md" />
-            </div>
+          <div className="p-2 border-b border-gray-200 flex justify-center">
+            <SimpleProfileDropdown size="sm" />
           </div>
 
           {/* Expand Button */}
-          <div className="p-2">
+          <div className="p-2 flex justify-center">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setRightSidebarCollapsed(false)}
-              className="h-10 w-10 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg mx-auto"
+              className="h-8 w-8 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg mx-auto"
               title="Expand Sidebar"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -1634,20 +1632,20 @@ function EditorPageContent() {
           </div>
 
           {/* Action Buttons: Share, Save, Cancel, History - Below collapse button */}
-          <div className="flex flex-col items-center gap-2 px-2">
+          <div className="flex flex-col items-center gap-2 px-1">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   size="sm"
                   variant="outline"
                   disabled={isSharingLink || !currentSnapshotId}
-                  className="h-10 w-10 p-0 border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="h-8 w-8 p-0 border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
                   title={!currentSnapshotId ? "Save to share" : "Share options"}
                 >
                   {isSharingLink ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : (
-                    <Share2 className="h-4 w-4" />
+                    <Share2 className="h-3.5 w-3.5" />
                   )}
                 </Button>
               </DropdownMenuTrigger>
@@ -1667,26 +1665,26 @@ function EditorPageContent() {
               variant="default"
               onClick={handleSaveClick}
               disabled={!hasJSON || isSaving}
-              className="h-10 w-10 p-0 bg-green-600 hover:bg-green-700 text-white"
+              className="h-8 w-8 p-0 bg-green-600 hover:bg-green-700 text-white"
               title="Save chart to online database"
             >
-              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
             </Button>
             <Button
               size="sm"
               variant="outline"
               onClick={handleCancel}
               disabled={!hasJSON}
-              className="h-10 w-10 p-0 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+              className="h-8 w-8 p-0 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
               title="Clear chart and start new"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
             </Button>
-            <HistoryDropdown variant="compact" className="h-10 w-10 p-0" />
+            <HistoryDropdown variant="compact" className="h-8 w-8 p-0" />
           </div>
 
-          {/* Spacer to push buttons to top */}
-          <div className="flex-1"></div>
+          {/* Spacer — clicking the empty area below buttons expands the sidebar */}
+          <div className="flex-1 cursor-pointer" onClick={() => setRightSidebarCollapsed(false)} title="Expand Sidebar" />
         </div>
 
         {/* Left Sidebar Overlay when expanded */}
@@ -1854,21 +1852,19 @@ function EditorPageContent() {
       </div>
       {/* Right Panel - Configuration */}
       {rightSidebarCollapsed ? (
-        <div className="w-16 flex-shrink-0 flex flex-col h-full bg-white border-l border-gray-200 shadow-sm">
+        <div className="w-12 flex-shrink-0 flex flex-col h-full bg-white border-l border-gray-200 shadow-sm">
           {/* Profile Button - Top */}
-          <div className="p-2 border-b border-gray-200">
-            <div className="mx-auto">
-              <SimpleProfileDropdown size="md" />
-            </div>
+          <div className="p-2 border-b border-gray-200 flex justify-center">
+            <SimpleProfileDropdown size="sm" />
           </div>
 
           {/* Collapse/Expand Button - Below Profile */}
-          <div className="p-2">
+          <div className="p-2 flex justify-center">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setRightSidebarCollapsed((v) => !v)}
-              className="h-10 w-10 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg mx-auto"
+              className="h-8 w-8 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg mx-auto"
               title={rightSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
             >
               <ChevronLeft className={`h-4 w-4 ${rightSidebarCollapsed ? '' : 'rotate-180'}`} />
@@ -1876,20 +1872,20 @@ function EditorPageContent() {
           </div>
 
           {/* Action Buttons: Share, Save, Cancel, History - Below collapse button */}
-          <div className="flex flex-col items-center gap-2 px-2">
+          <div className="flex flex-col items-center gap-2 px-1">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   size="sm"
                   variant="outline"
                   disabled={isSharingLink || !currentSnapshotId}
-                  className="h-10 w-10 p-0 border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="h-8 w-8 p-0 border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
                   title={!currentSnapshotId ? "Save to share" : "Share options"}
                 >
                   {isSharingLink ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : (
-                    <Share2 className="h-4 w-4" />
+                    <Share2 className="h-3.5 w-3.5" />
                   )}
                 </Button>
               </DropdownMenuTrigger>
@@ -1909,26 +1905,26 @@ function EditorPageContent() {
               variant="default"
               onClick={handleSaveClick}
               disabled={!hasJSON || isSaving}
-              className="h-10 w-10 p-0 bg-green-600 hover:bg-green-700 text-white"
+              className="h-8 w-8 p-0 bg-green-600 hover:bg-green-700 text-white"
               title="Save chart to online database"
             >
-              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
             </Button>
             <Button
               size="sm"
               variant="outline"
               onClick={handleCancel}
               disabled={!hasJSON}
-              className="h-10 w-10 p-0 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+              className="h-8 w-8 p-0 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
               title="Clear chart and start new"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
             </Button>
-            <HistoryDropdown variant="compact" className="h-10 w-10 p-0" />
+            <HistoryDropdown variant="compact" className="h-8 w-8 p-0" />
           </div>
 
-          {/* Spacer to push buttons to top */}
-          <div className="flex-1"></div>
+          {/* Spacer — clicking the empty area below buttons expands the sidebar */}
+          <div className="flex-1 cursor-pointer" onClick={() => setRightSidebarCollapsed(false)} title="Expand Sidebar" />
         </div>
       ) : (
         <div className="w-80 flex-shrink-0 border-l bg-white overflow-hidden h-full flex flex-col min-h-0">

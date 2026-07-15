@@ -106,7 +106,7 @@ function getMidAngle(chart: any, datasetIdx: number, pointIdx: number, element: 
 export const customLabelPlugin: Plugin = {
   id: 'customLabels',
   afterDraw(chart) {
-    const opts: CustomLabelPluginOptions | undefined = (chart.options.plugins as any)?.customLabels;
+    const opts: CustomLabelPluginOptions | undefined = (chart?.options?.plugins as any)?.customLabels;
     if (!opts || !opts.labels) return;
     // Top-level display guard: when labels are toggled off, skip all rendering
     if (opts.display === false) return;

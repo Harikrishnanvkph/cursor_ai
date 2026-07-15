@@ -16,7 +16,7 @@ export default function CustomTemplatePage() {
     }
   },[id, templates, setDraftTemplate])
   return (
-    <div className="w-full h-[calc(100vh-0px)]">
+    <div className="fixed inset-0 overflow-hidden bg-gray-950">
       <CustomTemplateBuilder />
     </div>
   )

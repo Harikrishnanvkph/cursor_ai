@@ -1560,6 +1560,7 @@ export function TemplateChartPreview({
                     containerHeight={height}
                     panMode={panMode}
                     readOnly={readOnly}
+                    zoom={scale}
                   />
                 </>
               ) : (
@@ -1579,6 +1580,7 @@ export function TemplateChartPreview({
                     containerHeight={height}
                     panMode={panMode}
                     readOnly={readOnly}
+                    zoom={scale}
                   />
                 </>
               )}

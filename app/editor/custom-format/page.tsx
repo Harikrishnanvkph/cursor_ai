@@ -60,7 +60,7 @@ export default function UserCustomFormatPage() {
   }
 
   return (
-    <div className="w-full h-screen">
+    <div className="fixed inset-0 overflow-hidden bg-gray-950">
       <FormatBuilder adminMode={false} editFormat={editFormat} />
     </div>
   )

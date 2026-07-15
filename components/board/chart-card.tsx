@@ -210,7 +210,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
           : snapshotData.template_structure.height || 600
       } else {
         // Plain chart mode
-        const isResponsive = snapshotData.chartConfig?.responsive !== false && !snapshotData.chartConfig?.manualDimensions;
+        const isResponsive = false;
         if (isResponsive) {
           contentW = 800
           contentH = 600
@@ -474,14 +474,14 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
 
   if (viewMode === "list") {
     return (
-      <Card className="group border shadow-none border-zinc-200 bg-white hover:border-zinc-300 hover:shadow-[0_2px_8px_rgba(0,0,0,0.02)] transition-all duration-200 rounded-xl overflow-hidden">
+      <Card className="group border shadow-none border-slate-200/80 dark:border-slate-800/80 bg-white/90 dark:bg-slate-900/90 hover:shadow-sm dark:hover:border-slate-700 transition-all duration-200 rounded-xl overflow-hidden">
         <div className="p-3.5 sm:py-3.5 sm:px-4 flex flex-col sm:flex-row sm:items-center sm:justify-between w-full gap-4">
           
           {/* Left Section: Icon + Title/Date Info */}
           <div className="flex items-center gap-4 min-w-0 flex-1">
             {/* Compact Mini Preview Icon Box */}
             <div
-              className="flex-shrink-0 w-14 h-14 bg-zinc-50 bg-[radial-gradient(#e4e4e7_1px,transparent_1px)] [background-size:8px_8px] rounded-xl border border-zinc-200 flex items-center justify-center cursor-pointer hover:border-violet-300 hover:shadow-sm transition-all duration-200 relative group/icon overflow-hidden"
+              className="flex-shrink-0 w-14 h-14 bg-slate-50 dark:bg-slate-800/40 bg-[radial-gradient(#e4e4e7_1px,transparent_1px)] dark:[background-image:radial-gradient(#334155_1px,transparent_1px)] [background-size:8px_8px] rounded-xl border border-slate-200/80 dark:border-slate-700 flex items-center justify-center cursor-pointer hover:border-violet-300 hover:shadow-sm transition-all duration-200 relative group/icon overflow-hidden"
               onClick={() => onPreview(conversation)}
               title="Preview Chart"
             >
@@ -496,15 +496,15 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
             {/* Info Section */}
             <div className="min-w-0 flex-1 flex flex-col justify-center">
               <h3 
-                className="text-[14.5px] font-semibold text-zinc-950 truncate hover:text-violet-700 cursor-pointer transition-colors leading-tight"
+                className="text-[14.5px] font-semibold text-slate-900 dark:text-slate-100 truncate hover:text-violet-700 dark:hover:text-violet-400 cursor-pointer transition-colors leading-tight"
                 onClick={() => onPreview(conversation)}
               >
                 {conversation.title}
               </h3>
-              <div className="flex items-center gap-3 text-xs text-zinc-400 mt-1">
+              <div className="flex items-center gap-3 text-xs text-slate-400 dark:text-slate-500 mt-1">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <Calendar className="h-3.5 w-3.5 text-zinc-400 shrink-0 align-middle" />
+                    <Calendar className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500 shrink-0 align-middle" />
                     <span className="leading-none">{formatDate(conversation.timestamp)}</span>
                   </div>
                   {(snapshotData?.chartConfig || conversation.snapshot?.chartConfig) && (
@@ -515,8 +515,8 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                   )}
                 </div>
                 {conversation.messages.length > 0 && (
-                  <div className="flex items-center gap-1.5 border-l border-zinc-200 pl-3">
-                    <MessageSquare className="h-3.5 w-3.5 text-zinc-400 shrink-0 align-middle" />
+                  <div className="flex items-center gap-1.5 border-l border-slate-200 dark:border-slate-700 pl-3">
+                    <MessageSquare className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500 shrink-0 align-middle" />
                     <span className="leading-none">{conversation.messages.length} messages</span>
                   </div>
                 )}
@@ -528,12 +528,12 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
           <div className="flex items-center justify-between sm:justify-end gap-5 flex-shrink-0">
             {/* Badge Tag */}
             {isTemplateMode ? (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 border rounded-full text-[11px] font-semibold bg-purple-50 text-purple-750 border-purple-100 shrink-0 select-none leading-none">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 border rounded-full text-[11px] font-semibold bg-purple-50 dark:bg-violet-950/40 text-purple-700 dark:text-violet-300 border-purple-100 dark:border-violet-800/60 shrink-0 select-none leading-none">
                 <LayoutTemplate className="w-3 h-3 text-purple-600 shrink-0" />
                 Template
               </span>
             ) : (
-              <span className={`inline-flex items-center px-2.5 py-0.5 border rounded-full text-[11px] font-semibold capitalize shrink-0 select-none leading-none ${getChartTypeColor(conversation.snapshot?.chartType || "")}`}>
+              <span className={`inline-flex items-center px-2.5 py-0.5 border rounded-full text-[11px] font-semibold capitalize shrink-0 select-none leading-none bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700`}>
                 {conversation.snapshot?.chartType || "Unknown"}
               </span>
             )}
@@ -544,23 +544,23 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                 onClick={() => onPreview(conversation)}
                 variant="outline"
                 size="sm"
-                className="gap-1.5 h-8 text-[11px] font-semibold border-zinc-200 text-zinc-700 bg-white hover:border-violet-300 hover:bg-violet-50 hover:text-violet-750 transition-all rounded-lg px-3 shadow-none cursor-pointer"
+                className="gap-1.5 h-8 text-[11px] font-semibold border-slate-200 dark:border-slate-700 bg-white dark:bg-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-violet-700 dark:hover:text-violet-400 hover:border-violet-200 dark:hover:border-violet-700 transition-all rounded-lg px-3 shadow-none cursor-pointer"
               >
-                <Eye className="h-3.5 w-3.5 text-zinc-500" />
+                <Eye className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
                 Preview
               </Button>
               <Button
                 onClick={() => onEdit(conversation)}
                 variant="outline"
                 size="sm"
-                className="gap-1.5 h-8 text-[11px] font-semibold border-zinc-200 text-zinc-700 bg-white hover:border-violet-300 hover:bg-violet-50 hover:text-violet-750 transition-all rounded-lg px-3 shadow-none cursor-pointer"
+                className="gap-1.5 h-8 text-[11px] font-semibold border-slate-200 dark:border-slate-700 bg-white dark:bg-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-violet-700 dark:hover:text-violet-400 hover:border-violet-200 dark:hover:border-violet-700 transition-all rounded-lg px-3 shadow-none cursor-pointer"
               >
-                <Edit3 className="h-3.5 w-3.5 text-zinc-500" />
+                <Edit3 className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
                 Edit
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 w-8 p-0 border-zinc-200 text-zinc-500 bg-white hover:border-violet-300 hover:bg-violet-50 hover:text-violet-750 transition-all rounded-lg shadow-none cursor-pointer">
+                  <Button variant="outline" size="sm" className="h-8 w-8 p-0 border-slate-200 dark:border-slate-700 bg-white dark:bg-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-violet-700 dark:hover:text-violet-400 hover:border-violet-200 dark:hover:border-violet-700 transition-all rounded-lg shadow-none cursor-pointer">
                     <MoreVertical className="h-3.5 w-3.5" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -595,20 +595,20 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
         </div>
 
         <Dialog open={showRenameDialog} onOpenChange={(open) => { if (!isRenaming) setShowRenameDialog(open); }}>
-          <DialogContent className="max-w-md p-5 bg-white border border-gray-200 rounded-lg shadow-xl" hideCloseButton={isRenaming}>
+          <DialogContent className="max-w-md p-5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl shadow-xl" hideCloseButton={isRenaming}>
             <DialogHeader className="mb-4">
-              <DialogTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-slate-100 flex items-center gap-2">
                 <Pencil className="h-5 w-5 text-blue-600" />
                 Rename Chart
               </DialogTitle>
-              <DialogDescription className="mt-1 text-sm text-gray-600">
+              <DialogDescription className="mt-1 text-sm text-gray-600 dark:text-slate-400">
                 Enter a new name for this chart.
               </DialogDescription>
             </DialogHeader>
 
             <form onSubmit={(e) => { e.preventDefault(); handleRename(); }}>
               <div className="mb-5">
-                <Label htmlFor="rename-input-list" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="rename-input-list" className="text-sm font-medium text-gray-700 dark:text-slate-300">
                   Chart Name
                 </Label>
                 <Input
@@ -622,7 +622,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                   disabled={isRenaming}
                   maxLength={100}
                 />
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
                   {newName.length}/100 characters
                 </p>
               </div>
@@ -632,7 +632,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                   type="button"
                   onClick={() => setShowRenameDialog(false)}
                   disabled={isRenaming}
-                  className="inline-flex items-center justify-center h-9 rounded-md border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 transition-colors disabled:opacity-50"
+                  className="inline-flex items-center justify-center h-9 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-transparent px-4 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -660,7 +660,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
 
   // Grid view
   return (
-    <Card className="group relative overflow-hidden border shadow-sm border-gray-200 bg-white hover:shadow-md transition-all duration-300 hover:-translate-y-1">
+    <Card className="group relative overflow-hidden border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md hover:-translate-y-0.5 rounded-2xl transition-all duration-200">
       {/* Gradient Border Effect */}
       <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 via-purple-500/10 to-indigo-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
@@ -668,7 +668,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
         {/* Chart Preview */}
         <div
           ref={containerRef}
-          className="aspect-video bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200 overflow-hidden cursor-pointer hover:border-violet-300 transition-all duration-300 group-hover:scale-[1.02] flex items-center justify-center relative"
+          className="aspect-video bg-gradient-to-br from-white/95 dark:from-slate-900/95 to-violet-50/20 dark:to-violet-950/10 rounded-xl border border-slate-200/80 dark:border-slate-700 overflow-hidden cursor-pointer hover:border-violet-300 transition-all duration-300 group-hover:scale-[1.02] flex items-center justify-center relative"
           onClick={() => onPreview(conversation)}
         >
           {/* Preview Background Pattern */}
@@ -690,7 +690,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
             isTemplateMode && snapshotData.template_structure ? (
               isFormat && renderedFormat ? (
                 <div
-                  className="absolute inset-0 overflow-hidden flex items-center justify-center bg-zinc-50 bg-[radial-gradient(#e4e4e7_1.2px,transparent_1.2px)] [background-size:12px_12px] p-4"
+                  className="absolute inset-0 overflow-hidden flex items-center justify-center bg-slate-50 dark:bg-slate-800/40 bg-[radial-gradient(#e4e4e7_1.2px,transparent_1.2px)] dark:[background-image:radial-gradient(#334155_1.2px,transparent_1.2px)] [background-size:12px_12px] p-4"
                 >
                   {/* Scaled Real Format Wrapper */}
                   <div
@@ -717,7 +717,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                 </div>
               ) : (
                 <div
-                  className="absolute inset-0 overflow-hidden flex items-center justify-center bg-zinc-50 bg-[radial-gradient(#e4e4e7_1.2px,transparent_1.2px)] [background-size:12px_12px] p-4"
+                  className="absolute inset-0 overflow-hidden flex items-center justify-center bg-slate-50 dark:bg-slate-800/40 bg-[radial-gradient(#e4e4e7_1.2px,transparent_1.2px)] dark:[background-image:radial-gradient(#334155_1.2px,transparent_1.2px)] [background-size:12px_12px] p-4"
                 >
                   {/* Scaled Real Template Wrapper */}
                   <div
@@ -831,7 +831,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
               )
             ) : (
               <div
-                className="absolute inset-0 overflow-hidden flex items-center justify-center bg-zinc-50 bg-[radial-gradient(#e4e4e7_1.2px,transparent_1.2px)] [background-size:12px_12px] p-4"
+                className="absolute inset-0 overflow-hidden flex items-center justify-center bg-slate-50 dark:bg-slate-800/40 bg-[radial-gradient(#e4e4e7_1.2px,transparent_1.2px)] dark:[background-image:radial-gradient(#334155_1.2px,transparent_1.2px)] [background-size:12px_12px] p-4"
               >
                 {(() => {
                   const parseDim = (val: any, fallback: number): number => {
@@ -843,7 +843,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                     return fallback;
                   };
 
-                  const isResponsive = snapshotData.chartConfig?.responsive !== false && !snapshotData.chartConfig?.manualDimensions;
+                  const isResponsive = false;
                   const chartW = isResponsive ? 800 : parseDim(snapshotData.chartConfig?.width, 800)
                   const chartH = isResponsive ? 600 : parseDim(snapshotData.chartConfig?.height, 600)
                   const safeScale = (!templateScale || isNaN(templateScale) || templateScale <= 0) ? 0.3 : templateScale
@@ -894,7 +894,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
         </div>
 
         {/* Row 1: Title */}
-        <h3 className="text-base font-semibold text-gray-900 truncate leading-tight group-hover:text-violet-900 transition-colors">
+        <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 truncate leading-tight group-hover:text-violet-700 dark:group-hover:text-violet-400 transition-colors">
           {conversation.title}
         </h3>
 
@@ -912,7 +912,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                 conversation.snapshot?.chartType || "Unknown"
               )}
             </Badge>
-            <div className="flex items-center gap-1.5 text-[11px] text-gray-400 shrink-0 min-w-0">
+            <div className="flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500 shrink-0 min-w-0">
               <div className="flex items-center gap-1 shrink-0">
                 <Calendar className="h-3 w-3" />
                 <span>{formatDate(conversation.timestamp)}</span>
@@ -932,7 +932,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
             onClick={() => onEditInAdvanced(conversation)}
             variant="outline"
             size="sm"
-            className="h-8 w-8 p-0 border-zinc-200 text-zinc-500 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 transition-all shadow-none rounded-lg"
+            className="h-8 w-8 p-0 border-slate-200 dark:border-slate-700 bg-white dark:bg-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-violet-700 dark:hover:text-violet-400 hover:border-violet-200 dark:hover:border-violet-700 transition-all shadow-none rounded-lg"
             title="Edit in Editor"
           >
             <Edit3 className="h-3.5 w-3.5" />
@@ -941,7 +941,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
             onClick={handleDownload}
             variant="outline"
             size="sm"
-            className="h-8 w-8 p-0 border-zinc-200 text-zinc-500 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 transition-all shadow-none rounded-lg"
+            className="h-8 w-8 p-0 border-slate-200 dark:border-slate-700 bg-white dark:bg-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-violet-700 dark:hover:text-violet-400 hover:border-violet-200 dark:hover:border-violet-700 transition-all shadow-none rounded-lg"
             title="Export PNG"
           >
             <Download className="h-3.5 w-3.5" />
@@ -951,7 +951,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 w-8 p-0 border-zinc-200 text-zinc-500 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 transition-all shadow-none rounded-lg"
+                className="h-8 w-8 p-0 border-slate-200 dark:border-slate-700 bg-white dark:bg-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-violet-700 dark:hover:text-violet-400 hover:border-violet-200 dark:hover:border-violet-700 transition-all shadow-none rounded-lg"
                 title="Share"
               >
                 <Share2 className="h-3.5 w-3.5" />
@@ -1013,7 +1013,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
           </Popover>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 w-8 p-0 border-zinc-200 text-zinc-500 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 transition-all shadow-none rounded-lg">
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0 border-slate-200 dark:border-slate-700 bg-white dark:bg-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-violet-700 dark:hover:text-violet-400 hover:border-violet-200 dark:hover:border-violet-700 transition-all shadow-none rounded-lg">
                 <MoreVertical className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
@@ -1039,20 +1039,20 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
 
       {/* Rename Dialog */}
       <Dialog open={showRenameDialog} onOpenChange={(open) => { if (!isRenaming) setShowRenameDialog(open); }}>
-        <DialogContent className="max-w-md p-5 bg-white border border-gray-200 rounded-lg shadow-xl" hideCloseButton={isRenaming}>
+        <DialogContent className="max-w-md p-5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl shadow-xl" hideCloseButton={isRenaming}>
           <DialogHeader className="mb-4">
-            <DialogTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-slate-100 flex items-center gap-2">
               <Pencil className="h-5 w-5 text-blue-600" />
               Rename Chart
             </DialogTitle>
-            <DialogDescription className="mt-1 text-sm text-gray-600">
+            <DialogDescription className="mt-1 text-sm text-gray-600 dark:text-slate-400">
               Enter a new name for this chart.
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={(e) => { e.preventDefault(); handleRename(); }}>
             <div className="mb-5">
-              <Label htmlFor="rename-input-grid" className="text-sm font-medium text-gray-700">
+              <Label htmlFor="rename-input-grid" className="text-sm font-medium text-gray-700 dark:text-slate-300">
                 Chart Name
               </Label>
               <Input
@@ -1066,7 +1066,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                 disabled={isRenaming}
                 maxLength={100}
               />
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
                 {newName.length}/100 characters
               </p>
             </div>
@@ -1076,7 +1076,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                 type="button"
                 onClick={() => setShowRenameDialog(false)}
                 disabled={isRenaming}
-                className="inline-flex items-center justify-center h-9 rounded-md border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 transition-colors disabled:opacity-50"
+                className="inline-flex items-center justify-center h-9 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-transparent px-4 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>

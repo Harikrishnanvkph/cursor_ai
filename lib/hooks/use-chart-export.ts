@@ -69,14 +69,21 @@ export function useChartExport(options?: {
             if (templateStore.dimensionOverride) {
                 return templateStore.dimensionOverride;
             }
-            if (getGlobalChartRef()?.current?.canvas) {
+            const canvas = getGlobalChartRef()?.current?.canvas;
+            if (canvas) {
+                // Use CSS (logical) pixel size, NOT canvas.width/height which are
+                // physical pixels (inflated by devicePixelRatio on hi-DPI screens).
                 return {
-                    width: getGlobalChartRef()?.current?.canvas.width,
-                    height: getGlobalChartRef()?.current?.canvas.height
+                    width:  canvas.offsetWidth  || canvas.clientWidth  || canvas.width,
+                    height: canvas.offsetHeight || canvas.clientHeight || canvas.height,
                 };
             }
-            return { width: 800, height: 600 };
+            // Fall back to config-specified dimensions
+            const w = parseInt(String((chartConfig as any)?.width  ?? 800), 10);
+            const h = parseInt(String((chartConfig as any)?.height ?? 600), 10);
+            return { width: isNaN(w) ? 800 : w, height: isNaN(h) ? 600 : h };
         };
+
 
         const dimensions = getExportDimensions();
 

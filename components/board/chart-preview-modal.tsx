@@ -467,9 +467,9 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
 
   const badgeInfo = getBadgeInfo()
 
-  const isResponsive = liveConversation.snapshot?.chartConfig?.responsive !== false
-  const chartWidth = !isResponsive ? parseDimension(liveConversation.snapshot?.chartConfig?.width, 800) : 800
-  const chartHeight = !isResponsive ? parseDimension(liveConversation.snapshot?.chartConfig?.height, 600) : 600
+  const isResponsive = false
+  const chartWidth = parseDimension(liveConversation.snapshot?.chartConfig?.width, 800)
+  const chartHeight = parseDimension(liveConversation.snapshot?.chartConfig?.height, 600)
 
   let scale = 1
   if (!isResponsive && containerSize.width > 0 && containerSize.height > 0) {
@@ -481,12 +481,12 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="w-[95vw] max-w-[95vw] h-[95vh] flex flex-col gap-0 p-0 [&>button:last-child]:hidden bg-[#f6f8fa]">
+      <DialogContent className="w-[95vw] max-w-[95vw] h-[95vh] flex flex-col gap-0 p-0 [&>button:last-child]:hidden bg-slate-50 dark:bg-slate-950 dark:border-slate-800">
         {/* Header */}
-        <DialogHeader className="px-4 py-2.5 border-b border-zinc-200 bg-white">
+        <DialogHeader className="px-4 py-2.5 border-b border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="space-y-1">
-              <DialogTitle className="text-lg font-bold text-zinc-950 flex items-center gap-2">
+              <DialogTitle className="text-lg font-bold text-zinc-950 dark:text-slate-100 flex items-center gap-2">
                 <span className="truncate max-w-[320px] sm:max-w-[450px]">{liveConversation.title}</span>
                 <Badge className={`rounded-full shadow-none border ${badgeInfo.className} text-[10px] font-semibold px-2 py-0.5 flex items-center justify-center h-5 lowercase gap-1`}>
                   {badgeInfo.icon}
@@ -502,13 +502,13 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-9 w-9 text-zinc-500 hover:text-violet-600 hover:bg-violet-50 border border-transparent hover:border-violet-100 rounded-lg transition-all"
+                    className="h-9 w-9 text-zinc-500 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/30 border border-transparent hover:border-violet-100 rounded-lg transition-all"
                     title="Share Options"
                   >
                     <Share2 className="h-4.5 w-4.5" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent align="end" className="w-56 p-3 z-[9999]">
+                <PopoverContent align="end" className="w-56 p-3 z-[9999] dark:bg-slate-900 dark:border-slate-700">
                   {/* Share vs Embed Toggle */}
                   <div className="flex items-center gap-0.5 bg-zinc-100 rounded-lg p-0.5 border border-zinc-200/50 mb-3 select-none">
                     <button
@@ -568,7 +568,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-9 w-9 text-zinc-500 hover:text-violet-600 hover:bg-violet-50 border border-transparent hover:border-violet-100 rounded-lg transition-all"
+                    className="h-9 w-9 text-zinc-500 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/30 border border-transparent hover:border-violet-100 rounded-lg transition-all"
                     title="Export Options"
                   >
                     <Download className="h-4.5 w-4.5" />
@@ -596,7 +596,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
                 disabled={isEditingWithAI || isOpeningAdvanced}
                 variant="outline"
                 size="sm"
-                className="h-9 gap-1.5 text-xs font-semibold border-zinc-200 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 rounded-lg transition-all shadow-none"
+                className="h-9 gap-1.5 text-xs font-semibold border-zinc-200 dark:border-slate-700 dark:text-slate-200 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 dark:hover:bg-violet-950/30 dark:hover:border-violet-500/50 rounded-lg transition-all shadow-none"
               >
                 {isEditingWithAI ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-500" />
@@ -614,7 +614,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
                 disabled={isEditingWithAI || isOpeningAdvanced}
                 variant="outline"
                 size="sm"
-                className="h-9 gap-1.5 text-xs font-semibold border-zinc-200 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 rounded-lg transition-all shadow-none"
+                className="h-9 gap-1.5 text-xs font-semibold border-zinc-200 dark:border-slate-700 dark:text-slate-200 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 dark:hover:bg-violet-950/30 dark:hover:border-violet-500/50 rounded-lg transition-all shadow-none"
               >
                 {isOpeningAdvanced ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-500" />
@@ -655,7 +655,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
             }}
           >
               {isLoading ? (
-                <div className="flex flex-col items-center justify-center gap-3 text-zinc-500">
+                <div className="flex flex-col items-center justify-center gap-3 text-zinc-500 dark:text-slate-400">
                   <Loader2 className="h-10 w-10 animate-spin text-violet-600" />
                   <p className="text-xs font-semibold">Loading full chart data...</p>
                 </div>
@@ -663,8 +663,8 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
                 <div className="flex flex-col items-center justify-center gap-4 text-red-500 px-6 text-center max-w-sm">
                   <AlertCircle className="h-10 w-10 text-red-400 animate-pulse" />
                   <div>
-                    <p className="text-sm font-bold text-zinc-800">Preview Error</p>
-                    <p className="text-xs text-zinc-500 mt-1 leading-relaxed">{error}</p>
+                    <p className="text-sm font-bold text-zinc-800 dark:text-slate-200">Preview Error</p>
+                    <p className="text-xs text-zinc-500 dark:text-slate-400 mt-1 leading-relaxed">{error}</p>
                   </div>
                   <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="border-red-200 text-red-650 hover:bg-red-50/50">
                     Retry
@@ -701,7 +701,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
               }
 
               return (
-                <div className="absolute bottom-4 right-4 z-30 flex items-center gap-0.5 border border-slate-200 rounded-md p-0.5 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] select-none">
+                <div className="absolute bottom-4 right-4 z-30 flex items-center gap-0.5 border border-slate-200/70 dark:border-slate-700/70 rounded-xl p-0.5 bg-white dark:bg-slate-900 shadow-md select-none">
                   {/* Zoom Dropdown Trigger */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -797,7 +797,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
                     onClick={() => zoomPan.setPanMode(!zoomPan.panMode)}
                     className={`h-7 w-7 p-0 transition-all rounded ${
                       zoomPan.panMode
-                        ? "bg-violet-600 text-white hover:bg-violet-700 hover:text-white shadow-sm"
+                        ? "bg-violet-600 text-white hover:bg-violet-700 dark:bg-violet-700 hover:text-white shadow-sm"
                         : "hover:bg-slate-100 text-slate-600"
                     }`}
                     title={zoomPan.panMode ? "Disable Pan Mode" : "Enable Pan Mode"}

@@ -7,7 +7,7 @@ import { useFormatBuilder } from '../format-builder-context'
 import { DIMENSION_PRESETS } from '../format-builder-utils'
 import { PanelSection } from './panel-section'
 
-export function DimensionsPanel() {
+export function DimensionsPanel({ isOpen, onToggle }: { isOpen?: boolean; onToggle?: () => void }) {
   const { skeleton, setDimensions } = useFormatBuilder()
   const dims = skeleton.dimensions
 
@@ -61,7 +61,7 @@ export function DimensionsPanel() {
   }
 
   return (
-    <PanelSection title="Canvas Size" icon={<Maximize2 className="w-3.5 h-3.5" />} defaultOpen>
+    <PanelSection title="Canvas Size" icon={<Maximize2 className="w-3.5 h-3.5" />} isOpen={isOpen} onToggle={onToggle}>
       <div className="grid grid-cols-2 gap-2 mb-2">
         <div>
           <label className="text-[10px] text-gray-500 uppercase mb-0.5 block">Width (px)</label>

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import {
   ArrowUp, BarChart2, SquarePen, Edit3,
   MessageSquare, Sparkles, ChevronLeft, ChevronRight, ChevronDown,
-  Info, LayoutDashboard, Bot, Brain, ExternalLink
+  Info, LayoutDashboard, Bot, Brain, ExternalLink, ImageIcon
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -37,6 +37,8 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
     setMessages,
     selectedModel,
     setSelectedModel,
+    includeImages,
+    setIncludeImages,
   } = useChatStore()
 
   const { generateMode, currentTemplate } = useTemplateStore()
@@ -194,9 +196,9 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
                     <Bot className="w-3.5 h-3.5 text-indigo-500" />
                     <span>
                       {selectedModel === 'gemini-search'
-                        ? 'Gemini 2.5 + Search'
+                        ? 'Gemini Realtime'
                         : selectedModel === 'deepseek-search'
-                        ? 'DeepSeek + Search'
+                        ? 'Deepseek Realtime'
                         : 'DeepSeek Chat'}
                     </span>
                     <ChevronDown className="w-3 h-3 text-slate-400 ml-0.5" />
@@ -209,14 +211,31 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setSelectedModel('deepseek-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 rounded-lg text-slate-700">
                     <Sparkles className="w-3.5 h-3.5 text-blue-500" />
-                    <span>DeepSeek + Search</span>
+                    <span>Deepseek Realtime</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setSelectedModel('gemini-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 rounded-lg text-slate-700">
                     <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Gemini 2.5 + Search</span>
+                    <span>Gemini Realtime</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              {/* Image Toggle */}
+              <div className="flex items-center gap-2 select-none">
+                <span className="text-xs font-semibold text-slate-500">Images</span>
+                <button
+                  type="button"
+                  onClick={() => setIncludeImages(!includeImages)}
+                  className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent outline-none ${
+                    includeImages ? 'bg-indigo-600' : 'bg-slate-200'
+                  }`}
+                  title={includeImages ? "Auto-fetch images enabled" : "Auto-fetch images disabled"}
+                >
+                  <span className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-xs ${
+                    includeImages ? 'translate-x-3' : 'translate-x-0'
+                  }`} />
+                </button>
+              </div>
             </div>
             <div className="relative flex items-center w-full bg-white border border-slate-200 hover:border-slate-300 focus-within:border-indigo-400 focus-within:ring-4 focus-within:ring-indigo-50/50 transition-all rounded-2xl p-1.5 shadow-xs">
               <textarea
@@ -252,7 +271,7 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
             {messages.map((msg, idx) => (
               <div
                 key={idx}
-                className={`px-4 py-3 max-w-[85%] whitespace-pre-wrap break-words text-sm leading-relaxed ${msg.role === "user"
+                className={`px-4 py-3 w-[95%] whitespace-pre-wrap break-words text-sm leading-relaxed ${msg.role === "user"
                   ? "bg-gradient-to-br from-indigo-500 to-indigo-600 text-white self-end ml-auto border border-indigo-400/20 rounded-2xl rounded-tr-sm font-semibold shadow-xs"
                   : "bg-indigo-50/40 text-slate-800 self-start mr-auto border border-indigo-200/70 rounded-2xl rounded-tl-sm px-4 py-3 shadow-[0_2px_8px_rgba(99,102,241,0.04)] font-medium"
                   }`}
@@ -294,7 +313,7 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
               </div>
             ))}
             {isProcessing && (
-              <div className="bg-indigo-50/40 text-slate-800 self-start mr-auto border border-indigo-200/70 rounded-2xl rounded-tl-sm px-4 py-3 shadow-[0_2px_8px_rgba(99,102,241,0.04)] font-medium max-w-[85%]">
+              <div className="bg-indigo-50/40 text-slate-800 self-start mr-auto border border-indigo-200/70 rounded-2xl rounded-tl-sm px-4 py-3 shadow-[0_2px_8px_rgba(99,102,241,0.04)] font-medium w-[95%]">
                 <div className="flex items-center gap-3">
                   <div className="p-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-xs text-white flex items-center justify-center">
                     <div className="animate-spin rounded-full h-4.5 w-4.5 border-2 border-white border-t-transparent"></div>

@@ -389,8 +389,8 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
               <HistoryDropdown variant="compact" className="rounded-xl h-8 w-8" />
             </div>
 
-            {/* Spacer to push buttons to top */}
-            <div className="flex-1"></div>
+            {/* Spacer — clicking the empty area below buttons expands the sidebar */}
+            <div className="flex-1 cursor-pointer" onClick={toggleSidebar} title="Expand Sidebar" />
           </div>
         ) : (
           // Expanded state: show ConfigSidebar with top bar (expand, history, profile)

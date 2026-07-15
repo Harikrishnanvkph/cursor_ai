@@ -16,6 +16,7 @@ import {
   Share2, Copy, BarChart2, Calendar, FileCode
 } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { embedImagesAsBase64 } from "@/lib/utils/html-export-utils"
 import { chartTypeMapping, type SupportedChartType } from "@/lib/chart-defaults"
 
@@ -268,69 +269,226 @@ export default function PublicChartPage() {
   }
 
   const handleCopyLink = () => {
-  navigator.clipboard.writeText(window.location.href)
-  toast.success("Link copied to clipboard!")
-}
-
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString)
-  return date.toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric"
-  })
-}
-
-const getChartTypeColor = (type: string) => {
-  const colors: Record<string, string> = {
-    bar: "bg-blue-100 text-blue-700 border-blue-200",
-    line: "bg-green-100 text-green-700 border-green-200",
-    pie: "bg-purple-100 text-purple-700 border-purple-200",
-    doughnut: "bg-pink-100 text-pink-700 border-pink-200",
-    radar: "bg-orange-100 text-orange-700 border-orange-200",
-    polarArea: "bg-cyan-100 text-cyan-700 border-cyan-200",
-    bubble: "bg-indigo-100 text-indigo-700 border-indigo-200",
-    scatter: "bg-teal-100 text-teal-700 border-teal-200",
+    navigator.clipboard.writeText(window.location.href)
+    toast.success("Link copied to clipboard!")
   }
-  return colors[type] || "bg-gray-100 text-gray-700 border-gray-200"
-}
 
-if (loading) {
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 flex items-center justify-center">
-      <div className="text-center">
-        <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-        <p className="text-gray-600">Loading chart...</p>
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric"
+    })
+  }
+
+  const getChartTypeColor = (type: string) => {
+    const colors: Record<string, string> = {
+      bar:       "bg-blue-500/15 text-blue-300 border-blue-500/30",
+      line:      "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+      pie:       "bg-violet-500/15 text-violet-300 border-violet-500/30",
+      doughnut:  "bg-pink-500/15 text-pink-300 border-pink-500/30",
+      radar:     "bg-orange-500/15 text-orange-300 border-orange-500/30",
+      polarArea: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
+      bubble:    "bg-indigo-500/15 text-indigo-300 border-indigo-500/30",
+      scatter:   "bg-teal-500/15 text-teal-300 border-teal-500/30",
+    }
+    return colors[type] || "bg-slate-700/60 text-slate-300 border-slate-600/50"
+  }
+
+  /* ─────────────── LOADING STATE ─────────────── */
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center relative overflow-hidden">
+        {/* Ambient glow orbs */}
+        <div className="fixed top-[-10%] left-[-5%] w-96 h-96 rounded-full bg-violet-600/20 blur-[120px] pointer-events-none -z-0" />
+        <div className="fixed bottom-[-10%] right-[-5%] w-96 h-96 rounded-full bg-indigo-600/20 blur-[120px] pointer-events-none -z-0" />
+
+        <div className="relative z-10 flex flex-col items-center gap-6">
+          {/* Gradient logo mark */}
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
+            <BarChart2 className="w-8 h-8 text-white" />
+          </div>
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin text-violet-400" />
+              <span className="text-slate-300 font-medium text-sm tracking-wide">Loading chart</span>
+            </div>
+            {/* Animated dots */}
+            <div className="flex items-center gap-1.5">
+              {[0, 150, 300].map((delay) => (
+                <span
+                  key={delay}
+                  className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-bounce"
+                  style={{ animationDelay: `${delay}ms` }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
+    )
+  }
+
+  /* ─────────────── ERROR STATE ─────────────── */
+  if (error || !conversation) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+        <div className="text-center max-w-md w-full">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl p-10 flex flex-col items-center gap-5">
+            <div className="w-16 h-16 rounded-2xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center">
+              <BarChart2 className="w-8 h-8 text-rose-400" />
+            </div>
+            <div className="space-y-1.5">
+              <h1 className="text-xl font-bold text-slate-100">Chart Not Found</h1>
+              <p className="text-slate-400 text-sm leading-relaxed">
+                {error || "The chart you're looking for doesn't exist or has been deleted."}
+              </p>
+            </div>
+            <Link href="/board">
+              <Button
+                size="sm"
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 hover:border-slate-600 transition-all"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Board
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  /* ─────────────── MAIN RENDER ─────────────── */
+  return (
+    <div className="min-h-screen bg-slate-950 flex flex-col">
+
+      {/* ── Header bar ── */}
+      <header className="sticky top-0 z-10 bg-slate-900 border-b border-slate-800 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
+          {/* Brand */}
+          <Link href="/" className="flex items-center gap-2.5 group shrink-0">
+            <Image src="/logo.png" alt="Logo" width={28} height={28} className="rounded-lg" />
+            <span className="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors">
+              ChartAI
+            </span>
+          </Link>
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleCopyLink}
+              className="h-8 px-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-transparent hover:border-slate-700 transition-all text-xs gap-1.5"
+            >
+              <Copy className="h-3.5 w-3.5" />
+              Copy link
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleDownloadPNG}
+              className="h-8 px-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-transparent hover:border-slate-700 transition-all text-xs gap-1.5"
+            >
+              <Download className="h-3.5 w-3.5" />
+              PNG
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleDownloadHTML}
+              className="h-8 px-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-transparent hover:border-slate-700 transition-all text-xs gap-1.5"
+            >
+              <FileCode className="h-3.5 w-3.5" />
+              HTML
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* ── Main content ── */}
+      <main className="flex-1 flex flex-col items-center justify-start py-10 px-4 sm:px-6">
+        <div className="w-full max-w-5xl flex flex-col gap-6">
+
+          {/* Chart title + metadata row */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-start gap-3">
+              {/* Chart type icon flair */}
+              <div className="mt-0.5 w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500/20 to-indigo-600/20 border border-violet-500/20 flex items-center justify-center shrink-0">
+                <BarChart2 className="w-4 h-4 text-violet-400" />
+              </div>
+              <div className="flex flex-col gap-1 min-w-0">
+                <h1 className="text-xl font-bold text-slate-100 leading-snug break-words">
+                  {conversation.title}
+                </h1>
+                {/* Gradient underline accent */}
+                <div className="h-0.5 w-16 rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 opacity-80" />
+              </div>
+            </div>
+
+            {/* Metadata row */}
+            <div className="flex flex-wrap items-center gap-2 pl-12">
+              {conversation.snapshot?.chart_type && (
+                <Badge
+                  variant="outline"
+                  className={`text-xs font-medium border px-2 py-0.5 capitalize ${getChartTypeColor(conversation.snapshot.chart_type)}`}
+                >
+                  {conversation.snapshot.chart_type}
+                </Badge>
+              )}
+              <span className="flex items-center gap-1.5 text-xs text-slate-500">
+                <Calendar className="h-3.5 w-3.5 text-slate-600" />
+                {formatDate(conversation.created_at)}
+              </span>
+            </div>
+          </div>
+
+          {/* ── Chart container card ── */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
+            {/* Card top bar */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-800/60">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-slate-700" />
+                <span className="w-2.5 h-2.5 rounded-full bg-slate-700" />
+                <span className="w-2.5 h-2.5 rounded-full bg-slate-700" />
+              </div>
+              <span className="text-xs text-slate-600 font-mono tracking-wide">chart preview</span>
+              <div className="w-12" />
+            </div>
+
+            {/* Canvas area */}
+            <div className="p-6 sm:p-8">
+              <canvas ref={canvasRef} />
+            </div>
+          </div>
+
+        </div>
+      </main>
+
+      {/* ── Footer ── */}
+      <footer className="border-t border-slate-800 bg-slate-900 py-5 px-6">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p className="text-xs text-slate-600">
+            Powered by{" "}
+            <Link
+              href="/"
+              className="text-violet-400 hover:text-violet-300 font-medium transition-colors"
+            >
+              ChartAI
+            </Link>
+          </p>
+          <div className="flex items-center gap-4">
+            <Link href="/board" className="text-xs text-slate-600 hover:text-slate-400 transition-colors">
+              Board
+            </Link>
+            <Link href="/" className="text-xs text-slate-600 hover:text-slate-400 transition-colors">
+              Home
+            </Link>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }
-
-if (error || !conversation) {
-  return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4">
-      <div className="text-center max-w-md">
-        <h1 className="text-xl font-bold text-gray-900 mb-2">Chart Not Found</h1>
-        <p className="text-gray-600 mb-4 text-sm">
-          {error || "The chart you're looking for doesn't exist or has been deleted."}
-        </p>
-        <Link href="/board">
-          <Button size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Board
-          </Button>
-        </Link>
-      </div>
-    </div>
-  )
-}
-
-return (
-  <div className="min-h-screen bg-white flex items-center justify-center p-4">
-    <div className="w-full h-full">
-      <canvas ref={canvasRef} />
-    </div>
-  </div>
-)
-}
-
