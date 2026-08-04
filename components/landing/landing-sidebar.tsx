@@ -140,7 +140,8 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
         <>
           {/* Unified Header with Title */}
           <div className="flex flex-col border-b border-slate-200/80 bg-transparent shadow-xs">
-            <div className="flex flex-col items-center justify-center pt-4 pb-2.5 text-center w-full">
+            <div className="flex items-center justify-center gap-2 pt-4 pb-2.5 text-center w-full">
+              <img src="/logo.png" alt="Logo" className="w-5 h-5 object-contain" />
               <span className="text-xs font-black tracking-wider uppercase bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent drop-shadow-sm">
                 AI Chart Generator
               </span>

@@ -20,7 +20,7 @@ export interface TemplateTextArea {
         letterSpacing: number
     }
     background?: {
-        type: 'color' | 'gradient' | 'image' | 'transparent'
+        type: 'color' | 'gradient' | 'image' | 'pattern' | 'transparent'
         color?: string
         gradientType?: 'linear' | 'radial'
         gradientDirection?: 'to right' | 'to left' | 'to top' | 'to bottom' | '135deg'
@@ -29,6 +29,9 @@ export interface TemplateTextArea {
         opacity?: number
         imageUrl?: string
         imageFit?: 'fill' | 'contain' | 'cover' | 'none' | 'scale-down'
+        patternType?: string
+        patternColor?: string
+        blur?: number
     }
     visible: boolean
 }
@@ -37,7 +40,7 @@ export interface TemplateTextArea {
 export interface TemplateLayout {
     id: string
     name: string
-    description: string
+    description?: string
     width: number
     height: number
     isCustom?: boolean
@@ -54,8 +57,9 @@ export interface TemplateLayout {
     borderColor: string
     borderWidth: number
     padding: number
+    decorations?: any[]
     background?: {
-        type: 'color' | 'gradient' | 'image' | 'transparent'
+        type: 'color' | 'gradient' | 'image' | 'pattern' | 'transparent'
         color?: string
         gradientType?: 'linear' | 'radial'
         gradientDirection?: 'to right' | 'to left' | 'to top' | 'to bottom' | '135deg'
@@ -64,6 +68,9 @@ export interface TemplateLayout {
         opacity?: number
         imageUrl?: string
         imageFit?: 'fill' | 'contain' | 'cover' | 'none' | 'scale-down'
+        patternType?: string
+        patternColor?: string
+        blur?: number
     }
 }
 

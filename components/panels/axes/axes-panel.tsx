@@ -64,9 +64,19 @@ export function AxesPanel() {
   // Handle Cartesian charts (X and Y axes)
   return (
     <Tabs defaultValue="x" className="w-full">
-      <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="x">X-Axis</TabsTrigger>
-        <TabsTrigger value="y">Y-Axis</TabsTrigger>
+      <TabsList className="grid w-full grid-cols-2 gap-1 h-auto p-1 bg-gray-100 rounded-lg">
+        <TabsTrigger
+          value="x"
+          className="text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
+        >
+          X-Axis
+        </TabsTrigger>
+        <TabsTrigger
+          value="y"
+          className="text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
+        >
+          Y-Axis
+        </TabsTrigger>
       </TabsList>
 
       <TabsContent value="x" className="mt-4">

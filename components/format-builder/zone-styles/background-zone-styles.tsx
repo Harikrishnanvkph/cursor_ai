@@ -102,9 +102,35 @@ export function BackgroundZoneStyles({ showContentControls = true }: { showConte
               <option value="fill">Fill</option>
             </select>
           </div>
-          <div>
-            <label className="text-[10px] text-gray-500 block">Overlay</label>
-            <Input value={s.overlay || ''} onChange={e => update({ overlay: e.target.value })} className="h-6 text-[10px] bg-gray-900 border-gray-700 text-white" placeholder="rgba(0,0,0,0.5)" />
+          <div className="space-y-1.5 pt-1">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] text-gray-500 font-medium">Opacity</label>
+              <span className="text-[10px] text-gray-300 font-mono font-semibold">{s.imageOpacity ?? 100}%</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={s.imageOpacity ?? 100}
+              onChange={e => update({ imageOpacity: parseInt(e.target.value, 10) })}
+              className="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+            />
+          </div>
+
+          <div className="space-y-1.5 pt-1">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] text-gray-500 font-medium">Blur</label>
+              <span className="text-[10px] text-gray-300 font-mono font-semibold">{s.imageBlur ?? 0}px</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="20"
+              step="1"
+              value={s.imageBlur ?? 0}
+              onChange={e => update({ imageBlur: parseInt(e.target.value, 10) })}
+              className="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+            />
           </div>
         </>
       )}
@@ -126,6 +152,86 @@ export function BackgroundZoneStyles({ showContentControls = true }: { showConte
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function parseOverlay(overlayStr?: string): { color: string; opacity: number } {
+  if (!overlayStr) return { color: '#000000', opacity: 50 }
+  
+  const rgbaMatch = overlayStr.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)/i)
+  if (rgbaMatch) {
+    const r = parseInt(rgbaMatch[1], 10)
+    const g = parseInt(rgbaMatch[2], 10)
+    const b = parseInt(rgbaMatch[3], 10)
+    const a = rgbaMatch[4] !== undefined ? parseFloat(rgbaMatch[4]) : 1
+    const hex = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
+    return { color: hex, opacity: Math.round(a * 100) }
+  }
+
+  if (overlayStr.startsWith('#')) {
+    if (overlayStr.length === 9) {
+      const hexColor = overlayStr.slice(0, 7)
+      const alphaHex = overlayStr.slice(7, 9)
+      const a = parseInt(alphaHex, 16) / 255
+      return { color: hexColor, opacity: Math.round(a * 100) }
+    }
+    return { color: overlayStr, opacity: 100 }
+  }
+
+  return { color: '#000000', opacity: 50 }
+}
+
+function formatOverlay(hexColor: string, opacityPercent: number): string {
+  if (opacityPercent === 0) return ''
+  const hex = hexColor.replace('#', '')
+  const r = parseInt(hex.substring(0, 2) || '0', 16)
+  const g = parseInt(hex.substring(2, 4) || '0', 16)
+  const b = parseInt(hex.substring(4, 6) || '0', 16)
+  const alpha = (opacityPercent / 100).toFixed(2)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+function OverlayControl({ overlayValue, onChange }: { overlayValue?: string; onChange: (val: string) => void }) {
+  const { color, opacity } = parseOverlay(overlayValue)
+  const [hexColor, setHexColor] = React.useState(color)
+
+  React.useEffect(() => {
+    setHexColor(color)
+  }, [color])
+
+  const handleOpacityChange = (newOpacity: number) => {
+    onChange(formatOverlay(hexColor, newOpacity))
+  }
+
+  const handleColorChange = (newColor: string) => {
+    setHexColor(newColor)
+    onChange(formatOverlay(newColor, opacity))
+  }
+
+  return (
+    <div className="space-y-1.5 pt-1">
+      <div className="flex items-center justify-between">
+        <label className="text-[10px] text-gray-400 font-medium">Overlay Opacity</label>
+        <span className="text-[10px] text-gray-300 font-mono font-semibold">{opacity}%</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          value={hexColor}
+          onChange={e => handleColorChange(e.target.value)}
+          className="w-6 h-6 rounded border border-gray-700 cursor-pointer bg-transparent flex-shrink-0"
+          title="Overlay Color"
+        />
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={opacity}
+          onChange={e => handleOpacityChange(parseInt(e.target.value, 10))}
+          className="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+        />
+      </div>
     </div>
   )
 }

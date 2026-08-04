@@ -1401,6 +1401,23 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
                             </div>
                         </div>
                     </div>
+                ) : zoneDimensions ? (
+                    <div className="flex justify-center p-4 bg-gray-100 h-full w-full overflow-auto">
+                        <div
+                            style={{
+                                width: `${zoneDimensions.width}px`,
+                                height: `${zoneDimensions.height}px`,
+                                boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
+                                background: editorBg === 'black' ? 'black' : 'white',
+                                borderRadius: '2px',
+                                overflow: 'auto',
+                                flexShrink: 0,
+                                margin: '0 auto'
+                            }}
+                        >
+                            <EditorContent editor={editor} className="h-full" />
+                        </div>
+                    </div>
                 ) : (
                     <EditorContent editor={editor} className="min-h-[400px]" />
                 )}

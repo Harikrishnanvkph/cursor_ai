@@ -183,11 +183,11 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
         // Restore format mode if snapshot has format data
         const chartConfig = updatedConv.snapshot.chartConfig as any;
         if (chartConfig?.formatData) {
-          const { formatId, contentPackage, contextualImageUrl } = chartConfig.formatData;
+          const { formatId, contentPackage, contextualImageUrl, formatSnapshot } = chartConfig.formatData;
           const formatStore = useFormatGalleryStore.getState();
           
-          let templateStructure = updatedConv.snapshot.template_structure;
-          if (!templateStructure || templateStructure.isFormatReference || !templateStructure.zones) {
+          let templateStructure = formatSnapshot?.skeleton || updatedConv.snapshot.template_structure;
+          if ((!templateStructure || templateStructure.isFormatReference || !templateStructure.zones) && !formatSnapshot?.skeleton) {
             setIsLoading(true);
             try {
               const formatRes = await dataService.getFormat(formatId);
@@ -201,17 +201,19 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
             }
           }
           
+          const restoredSnapshot = formatSnapshot || ({
+            id: formatId,
+            name: 'Persisted Format',
+            skeleton: templateStructure,
+            dimensions: templateStructure?.dimensions || { width: 800, height: 600, aspect: '4:3', label: 'Default' }
+          } as any);
+
           useFormatGalleryStore.setState({
             selectedFormatId: formatId,
             selectedChartType: updatedConv.snapshot.chartType,
             contentPackage: contentPackage || formatStore.contentPackage,
             contextualImageUrl: contextualImageUrl || formatStore.contextualImageUrl,
-            selectedFormatSnapshot: {
-              id: formatId,
-              name: 'Persisted Format',
-              skeleton: templateStructure,
-              dimensions: templateStructure?.dimensions || { width: 800, height: 600, aspect: '4:3', label: 'Default' }
-            } as any
+            selectedFormatSnapshot: restoredSnapshot
           });
           
           const templateStore = useTemplateStore.getState();
@@ -318,83 +320,13 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
     }
 
     try {
-      toast.loading("Preparing HTML export (embedding images)...", { id: "html-export" })
+      toast.loading("Preparing HTML export...", { id: "html-export" })
 
-      // Convert all images to Base64 so the HTML file is fully standalone offline
-      const { chartData, chartConfig } = await embedImagesAsBase64(
-        liveConversation.snapshot.chartData,
-        liveConversation.snapshot.chartConfig
-      )
-
-      const resolvedType = chartTypeMapping[liveConversation.snapshot.chartType as SupportedChartType] || liveConversation.snapshot.chartType;
-
-      const htmlContent = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${liveConversation.title}</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      margin: 0;
-      padding: 20px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .container {
-      background: white;
-      border-radius: 16px;
-      padding: 32px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-      max-width: 1200px;
-      width: 100%;
-    }
-    h1 {
-      margin: 0 0 24px 0;
-      color: #1f2937;
-      font-size: 28px;
-      font-weight: 700;
-    }
-    .chart-container {
-      position: relative;
-      height: 600px;
-      width: 100%;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>${liveConversation.title}</h1>
-    <div class="chart-container">
-      <canvas id="chart"></canvas>
-    </div>
-  </div>
-  
-  <script>
-    const ctx = document.getElementById('chart').getContext('2d');
-    new Chart(ctx, {
-      type: '${resolvedType}',
-      data: ${JSON.stringify(chartData)},
-      options: ${JSON.stringify(chartConfig)}
-    });
-  </script>
-</body>
-</html>`
-
-      const blob = new Blob([htmlContent], { type: "text/html" })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `${conversation.title.replace(/[^a-z0-9]/gi, '_')}.html`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      const { downloadChartAsHTML } = await import("@/lib/html-exporter")
+      await downloadChartAsHTML({
+        title: liveConversation.title,
+        fileName: `${liveConversation.title.replace(/[^a-z0-9]/gi, '_')}.html`
+      })
 
       toast.success("HTML downloaded successfully!", { id: "html-export" })
     } catch (error) {

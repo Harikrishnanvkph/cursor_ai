@@ -136,7 +136,7 @@ export default function SharedChartPage() {
       if (navigator.share) {
         try {
           await navigator.share({
-            title: chart?.chart_config?.plugins?.title?.text || "AIChartor Shared Chart",
+            title: chart?.chart_config?.plugins?.title?.text || "Chartography.in Shared Chart",
             url: shareUrl,
           });
         } catch (e) {
@@ -527,13 +527,11 @@ export default function SharedChartPage() {
             : 'bg-white/80 border-slate-200 backdrop-blur-md shadow-[0_2px_10px_rgba(0,0,0,0.02)]'
         }`}>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 via-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <BarChart3 className="w-4 h-4 text-white" />
-            </div>
+            <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
             <span className={`text-base font-extrabold tracking-tight transition-colors ${
               theme === 'dark' ? 'text-white' : 'text-slate-900'
             }`}>
-              AIChartor
+              Chartography.in
             </span>
           </div>
 
@@ -618,7 +616,7 @@ export default function SharedChartPage() {
             <h2 className={`text-xs font-bold uppercase tracking-widest mb-10 ${
               theme === 'dark' ? 'text-slate-500' : 'text-slate-400'
             }`}>
-              Powered by AIChartor — The Ultimate Chart Builder
+              Powered by Chartography.in — The Ultimate Chart Builder
             </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
@@ -682,7 +680,7 @@ export default function SharedChartPage() {
             ? 'border-slate-900 text-slate-500 bg-slate-950' 
             : 'border-slate-200 text-slate-400 bg-slate-50'
         }`}>
-          <p>© {new Date().getFullYear()} AIChartor. All rights reserved. Create, present, and stand out.</p>
+          <p>© {new Date().getFullYear()} Chartography.in. All rights reserved. Create, present, and stand out.</p>
         </footer>
       </div>
     )
@@ -843,14 +841,12 @@ export default function SharedChartPage() {
         {/* Left Section: Sleek AIChartor Brand Logo & Settings dropdown */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 via-purple-500 to-indigo-600 flex items-center justify-center shadow-md shadow-indigo-500/10">
-              <BarChart3 className="w-4 h-4 text-white" />
-            </div>
+            <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
             <div className="flex flex-col justify-center">
               <span className={`text-sm font-extrabold tracking-tight leading-none transition-colors ${
                 theme === 'dark' ? 'text-white' : 'text-slate-900'
               }`}>
-                AIChartor
+                Chartography.in
               </span>
               <span className={`text-[9px] font-semibold uppercase tracking-widest leading-none mt-0.5 hidden sm:block transition-colors ${
                 theme === 'dark' ? 'text-slate-400' : 'text-slate-500'
@@ -1198,7 +1194,7 @@ export default function SharedChartPage() {
            <span className={`text-[10px] font-bold tracking-wider uppercase hidden sm:block transition-colors ${
              theme === 'dark' ? 'text-slate-400' : 'text-slate-500'
            }`}>
-             Powered by AIChartor
+             Powered by Chartography.in
            </span>
          </div>
          

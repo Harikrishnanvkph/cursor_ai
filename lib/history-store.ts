@@ -198,6 +198,9 @@ export const useHistoryStore = create<HistoryStore>()(
           setFullChart({ ...conv.snapshot, id: snapshotId || undefined, name: conv.title, conversationId: conv.id });
           setHasJSON(true);
 
+          // Clear undo/redo history so the newly restored cloud/history chart is the starting baseline
+          try { (useChartStore as any).temporal?.getState()?.clear(); } catch (e) {}
+
           // CRITICAL: Also update chatStore.currentChartState so landing page sees correct chart
           // Without this, navigating from editor to landing after loading from history
           // would show the old chart instead of the newly loaded one
@@ -238,14 +241,19 @@ export const useHistoryStore = create<HistoryStore>()(
           // Restore format mode if snapshot has format data
           if (chartConfig?.formatData) {
             const { formatId, contentPackage, contextualImageUrl, formatSnapshot } = chartConfig.formatData;
-            const formatStore = useFormatGalleryStore.getState();
+            const store = useFormatGalleryStore.getState();
             
-            formatStore.setSelectedFormat(formatId, conv.snapshot.chartType);
-            if (formatSnapshot) {
-              formatStore.setState({ selectedFormatSnapshot: formatSnapshot });
-            }
-            if (contentPackage) formatStore.setContentPackage(contentPackage);
-            if (contextualImageUrl) formatStore.setContextualImageUrl(contextualImageUrl);
+            // Use saved formatSnapshot if present; otherwise fall back to lookup from loaded formats
+            const restoredSnapshot = formatSnapshot || [...store.formats, ...store.userFormats].find(f => f.id === formatId) || null;
+
+            useFormatGalleryStore.setState({
+              selectedFormatId: formatId,
+              selectedChartType: conv.snapshot.chartType,
+              selectedFormatSnapshot: restoredSnapshot,
+              contentPackage: contentPackage || store.contentPackage,
+              contextualImageUrl: contextualImageUrl || store.contextualImageUrl,
+              isGalleryOpen: false,
+            });
             
             const templateStore = useTemplateStore.getState();
             templateStore.clearAllTemplateState(); // Clear standard templates
@@ -253,7 +261,7 @@ export const useHistoryStore = create<HistoryStore>()(
             templateStore.setGenerateMode('format'); // Set to format mode so Browse Formats button remains
             templateStore.setTemplateSavedToCloud(true);
             
-            console.log('📊 Restored infographic format:', formatId);
+            console.log('📊 Restored infographic format:', formatId, restoredSnapshot ? '(with custom snapshot)' : '');
             return; // We're done restoring
           }
 

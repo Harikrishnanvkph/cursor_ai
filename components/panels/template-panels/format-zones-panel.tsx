@@ -7,24 +7,43 @@ import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
-import { LayoutGrid, Type, Hash, BarChart3, Image, Sparkles, ExternalLink, FileEdit, Columns, Rows, Maximize, Minimize, X, Info, PaintBucket } from "lucide-react"
+import { LayoutGrid, Type, Hash, BarChart3, Image, Sparkles, ExternalLink, FileEdit, Columns, Rows, Maximize, Minimize, X, Info, PaintBucket, Upload, Link } from "lucide-react"
 import { useChartStore } from "@/lib/chart-store"
 import { ChartConfigService } from "@/lib/services/chart-config-service"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { TiptapEditor } from "@/components/tiptap-editor"
+import { unwrapProxiedImageUrl } from "@/lib/utils/image-proxy-utils"
 
 const ZONE_TYPE_META: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
   text:       { icon: <Type className="h-3.5 w-3.5" />, color: 'bg-blue-100 text-blue-700 border-blue-200', label: 'Text' },
   stat:       { icon: <Hash className="h-3.5 w-3.5" />, color: 'bg-amber-100 text-amber-700 border-amber-200', label: 'Stat' },
   chart:      { icon: <BarChart3 className="h-3.5 w-3.5" />, color: 'bg-blue-100 text-blue-700 border-blue-200', label: 'Chart' },
   background: { icon: <Image className="h-3.5 w-3.5" />, color: 'bg-blue-100 text-blue-700 border-blue-200', label: 'Background' },
-  decoration: { icon: <Sparkles className="h-3.5 w-3.5" />, color: 'bg-blue-100 text-blue-700 border-blue-200', label: 'Decoration' },
+  image:      { icon: <Image className="h-3.5 w-3.5" />, color: 'bg-cyan-100 text-cyan-700 border-cyan-200', label: 'Image' },
+  decoration: { icon: <Sparkles className="h-3.5 w-3.5" />, color: 'bg-purple-100 text-purple-700 border-purple-200', label: 'Decoration' },
 }
 
 export function FormatZonesPanel() {
-  const { selectedFormatId, contentPackage, setContentPackage, formats, selectedZoneId, setSelectedZoneId } = useFormatGalleryStore()
+  const {
+    selectedFormatId,
+    contentPackage,
+    setContentPackage,
+    formats,
+    userFormats,
+    selectedFormatSnapshot,
+    selectedZoneId,
+    setSelectedZoneId,
+    loadFormats,
+    isLoadingFormats,
+    updateZoneStyle,
+  } = useFormatGalleryStore()
   const chartStore = useChartStore()
+
+  // Ensure formats (including user created custom formats) are loaded
+  useEffect(() => {
+    loadFormats()
+  }, [loadFormats, selectedFormatId])
 
   // Rich editor state for format text zones
   const [richEditorOpen, setRichEditorOpen] = useState(false)
@@ -32,9 +51,9 @@ export function FormatZonesPanel() {
   const [richEditorZoneRole, setRichEditorZoneRole] = useState<string | null>(null)
   const [richEditorZone, setRichEditorZone] = useState<any>(null)
   const [richEditorLayout, setRichEditorLayout] = useState<'side-by-side' | 'stacked'>('side-by-side')
-  const [editorFitToView, setEditorFitToView] = useState(false)
+  const [editorFitToView, setEditorFitToView] = useState(true)
   const [editorBg, setEditorBg] = useState<'white' | 'black'>('white')
-  const [previewFitToView, setPreviewFitToView] = useState(false)
+  const [previewFitToView, setPreviewFitToView] = useState(true)
   const richPreviewContainerRef = useRef<HTMLDivElement>(null)
   const [richPreviewScale, setRichPreviewScale] = useState(1)
 
@@ -74,11 +93,30 @@ export function FormatZonesPanel() {
     )
   }
 
-  const format = formats.find(f => f.id === selectedFormatId)
+  // Look up selected format in snapshot, official formats, or user-created custom formats
+  const format = selectedFormatId
+    ? (selectedFormatSnapshot || [...formats, ...(userFormats || [])].find(f => f.id === selectedFormatId))
+    : null
+
   if (!format) {
+    if (isLoadingFormats) {
+      return (
+        <div className="p-6 text-center text-gray-500 text-sm space-y-2">
+          <div className="h-5 w-5 rounded-full border-2 border-orange-500 border-t-transparent animate-spin mx-auto" />
+          <p className="text-xs text-gray-400">Loading format...</p>
+        </div>
+      )
+    }
+
     return (
-      <div className="p-4 text-center text-gray-500 text-sm">
+      <div className="p-4 text-center text-gray-500 text-sm space-y-2">
         <p>Format not found.</p>
+        <button
+          onClick={() => loadFormats(true)}
+          className="text-xs text-orange-400 hover:underline block mx-auto font-medium"
+        >
+          Refresh templates &amp; formats
+        </button>
       </div>
     )
   }
@@ -109,6 +147,17 @@ export function FormatZonesPanel() {
       ...contentPackage,
       [key]: value,
     })
+  }
+
+  const getTextZoneValue = (zone: any) => {
+    if (!contentPackage) return zone.content || ''
+    if (zone.id && (contentPackage as any)[zone.id] !== undefined) {
+      return String((contentPackage as any)[zone.id])
+    }
+    if (zone.role && (contentPackage as any)[zone.role] !== undefined) {
+      return String((contentPackage as any)[zone.role])
+    }
+    return zone.content || ''
   }
 
   const getStatIndex = (role: string) => {
@@ -194,9 +243,9 @@ export function FormatZonesPanel() {
                   {type === 'text' && (
                     <div>
                       <textarea
-                        value={(contentPackage as any)?.[zone.role] || ''}
-                        onChange={(e) => handleContentPackageChange(zone.role, e.target.value)}
-                        placeholder={`Enter ${zone.role}...`}
+                        value={getTextZoneValue(zone)}
+                        onChange={(e) => handleContentPackageChange(zone.id || zone.role, e.target.value)}
+                        placeholder={`Enter ${zone.role || 'text'}...`}
                         className="w-full min-h-[40px] text-xs border border-gray-200 rounded p-2 resize-y bg-white text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all placeholder:text-gray-300"
                         rows={zone.role === 'body' ? 3 : 1}
                       />
@@ -208,9 +257,9 @@ export function FormatZonesPanel() {
                           className="h-6 text-[10px] gap-1"
                           onClick={(e) => {
                             e.stopPropagation()
-                            setRichEditorZoneRole(zone.role)
+                            setRichEditorZoneRole(zone.role || 'Text')
                             setRichEditorZone(zone)
-                            setRichEditorContent((contentPackage as any)?.[zone.role] || '')
+                            setRichEditorContent(getTextZoneValue(zone))
                             setRichEditorOpen(true)
                           }}
                         >
@@ -244,18 +293,20 @@ export function FormatZonesPanel() {
                     </div>
                   )}
 
-                  {type === 'background' && zone.style?.imageUrl && (
-                    <div className="mt-2">
-                      <Label className="text-[10px] text-gray-400 mb-1">Background Image</Label>
-                      <div
-                        className="h-16 rounded border border-gray-200 bg-cover bg-center overflow-hidden"
-                        style={{ backgroundImage: `url(${zone.style.imageUrl})` }}
-                      />
-                    </div>
+                  {type === 'background' && (
+                    <BackgroundZoneEditor
+                      zone={zone}
+                      onUpdateStyle={(updates) => updateZoneStyle(zone.id, updates)}
+                    />
                   )}
-                  
 
-                  
+                  {type === 'image' && (
+                    <ImageZoneEditor
+                      zone={zone}
+                      onUpdateStyle={(updates) => updateZoneStyle(zone.id, updates)}
+                    />
+                  )}
+
                   {type === 'decoration' && (
                      <div className="flex items-center gap-2 p-2 bg-blue-50/50 rounded text-blue-700/80 border border-blue-100">
                       <Sparkles className="h-4 w-4" />
@@ -346,8 +397,9 @@ export function FormatZonesPanel() {
                     size="sm"
                     className="h-7 text-xs"
                     onClick={() => {
-                      if (richEditorZoneRole && contentPackage) {
-                        handleContentPackageChange(richEditorZoneRole, richEditorContent)
+                      if (contentPackage) {
+                        const key = richEditorZone?.id || richEditorZoneRole || 'body'
+                        handleContentPackageChange(key, richEditorContent)
                       }
                       setRichEditorOpen(false)
                       setRichEditorZoneRole(null)
@@ -494,3 +546,445 @@ export function FormatZonesPanel() {
     </>
   )
 }
+
+function BackgroundZoneEditor({
+  zone,
+  onUpdateStyle,
+}: {
+  zone: any
+  onUpdateStyle: (updates: Record<string, any>) => void
+}) {
+  const style = zone.style || {}
+  const rawUrl = style.imageUrl || style.bgImageUrl || zone.imageUrl || zone.url || ''
+  const displayUrl = unwrapProxiedImageUrl(rawUrl)
+
+  const currentMode = rawUrl || style.type === 'image'
+    ? 'image'
+    : style.gradientColor1 || style.type === 'gradient'
+    ? 'gradient'
+    : style.color === 'transparent'
+    ? 'transparent'
+    : 'color'
+
+  const [activeTab, setActiveTab] = useState<'color' | 'gradient' | 'image' | 'transparent'>(currentMode)
+
+  const updateImageUrl = (newUrl: string) => {
+    zone.imageUrl = newUrl
+    if (zone.style) {
+      zone.style.imageUrl = newUrl
+      zone.style.bgImageUrl = newUrl
+    }
+    onUpdateStyle({ type: 'image', imageUrl: newUrl, bgImageUrl: newUrl, bgType: 'image' })
+  }
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string
+      if (dataUrl) {
+        updateImageUrl(dataUrl)
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
+  return (
+    <div className="mt-2 space-y-3 pt-2 border-t border-gray-100" onClick={(e) => e.stopPropagation()}>
+      {/* Fill Type Tabs */}
+      <div>
+        <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1.5">
+          Background Type
+        </Label>
+        <div className="grid grid-cols-4 gap-1 p-0.5 bg-gray-100 rounded-md">
+          {[
+            { id: 'color', label: 'Color' },
+            { id: 'gradient', label: 'Gradient' },
+            { id: 'image', label: 'Image' },
+            { id: 'transparent', label: 'None' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => {
+                setActiveTab(tab.id as any)
+                if (tab.id === 'transparent') {
+                  onUpdateStyle({ color: 'transparent', imageUrl: '', bgImageUrl: '', type: 'solid' })
+                }
+              }}
+              className={`py-1 text-[10px] font-medium rounded transition-all ${
+                activeTab === tab.id
+                  ? 'bg-white text-gray-800 shadow-sm font-semibold'
+                  : 'text-gray-500 hover:text-gray-800'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Solid Color Controls */}
+      {activeTab === 'color' && (
+        <div className="space-y-2">
+          <Label className="text-[10px] text-gray-500">Solid Color</Label>
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={style.color && style.color !== 'transparent' ? style.color : '#ffffff'}
+              onChange={(e) => onUpdateStyle({ color: e.target.value, type: 'solid', imageUrl: '' })}
+              className="w-8 h-8 rounded border border-gray-200 cursor-pointer p-0 bg-transparent shrink-0"
+            />
+            <Input
+              value={style.color || ''}
+              onChange={(e) => onUpdateStyle({ color: e.target.value, type: 'solid' })}
+              placeholder="#ffffff"
+              className="h-8 text-xs font-mono bg-white"
+            />
+          </div>
+          {/* Preset Palette */}
+          <div className="flex flex-wrap gap-1 pt-1">
+            {['#ffffff', '#0f172a', '#1e293b', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'].map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => onUpdateStyle({ color: c, type: 'solid', imageUrl: '' })}
+                className="w-5 h-5 rounded-full border border-gray-300 shadow-xs hover:scale-110 transition-transform"
+                style={{ backgroundColor: c }}
+                title={c}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Gradient Controls */}
+      {activeTab === 'gradient' && (
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-[10px] text-gray-500 mb-1 block">Start Color</Label>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="color"
+                  value={style.gradientColor1 || '#3b82f6'}
+                  onChange={(e) => onUpdateStyle({ type: 'gradient', gradientColor1: e.target.value })}
+                  className="w-7 h-7 rounded border border-gray-200 cursor-pointer p-0 bg-transparent shrink-0"
+                />
+                <Input
+                  value={style.gradientColor1 || '#3b82f6'}
+                  onChange={(e) => onUpdateStyle({ type: 'gradient', gradientColor1: e.target.value })}
+                  className="h-7 text-[11px] font-mono"
+                />
+              </div>
+            </div>
+            <div>
+              <Label className="text-[10px] text-gray-500 mb-1 block">End Color</Label>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="color"
+                  value={style.gradientColor2 || '#1e3a8a'}
+                  onChange={(e) => onUpdateStyle({ type: 'gradient', gradientColor2: e.target.value })}
+                  className="w-7 h-7 rounded border border-gray-200 cursor-pointer p-0 bg-transparent shrink-0"
+                />
+                <Input
+                  value={style.gradientColor2 || '#1e3a8a'}
+                  onChange={(e) => onUpdateStyle({ type: 'gradient', gradientColor2: e.target.value })}
+                  className="h-7 text-[11px] font-mono"
+                />
+              </div>
+            </div>
+          </div>
+          <div>
+            <Label className="text-[10px] text-gray-500 mb-1 block">Direction</Label>
+            <select
+              value={style.gradientDirection || '135deg'}
+              onChange={(e) => onUpdateStyle({ type: 'gradient', gradientDirection: e.target.value })}
+              className="w-full h-7 text-[11px] bg-white border border-gray-200 rounded px-2 text-gray-700 font-medium"
+            >
+              <option value="135deg">Diagonal (135°)</option>
+              <option value="90deg">Top to Bottom (90°)</option>
+              <option value="0deg">Left to Right (0°)</option>
+              <option value="180deg">Bottom to Top (180°)</option>
+              <option value="270deg">Right to Left (270°)</option>
+              <option value="45deg">Reverse Diagonal (45°)</option>
+            </select>
+          </div>
+        </div>
+      )}
+
+      {/* Image Controls */}
+      {activeTab === 'image' && (
+        <div className="space-y-3">
+          {/* Image Link Input */}
+          <div>
+            <Label className="text-[10px] text-gray-500 mb-1 flex items-center gap-1">
+              <Link className="w-3 h-3 text-blue-500" />
+              <span>Image URL Link</span>
+            </Label>
+            <Input
+              value={displayUrl}
+              onChange={(e) => updateImageUrl(e.target.value)}
+              placeholder="Paste image link https://..."
+              className="h-8 text-xs bg-white"
+            />
+          </div>
+
+          {/* Upload Image Button */}
+          <div>
+            <Label className="text-[10px] text-gray-500 mb-1 flex items-center gap-1">
+              <Upload className="w-3 h-3 text-blue-500" />
+              <span>Or Upload Local Image</span>
+            </Label>
+            <label className="flex items-center justify-center gap-2 p-2 border border-dashed border-gray-300 rounded-lg hover:bg-blue-50/50 hover:border-blue-300 cursor-pointer transition-all text-xs text-gray-600">
+              <Upload className="w-4 h-4 text-blue-500" />
+              <span className="font-medium">Choose Image File</span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+            </label>
+          </div>
+
+          {/* Current Thumbnail Preview */}
+          {displayUrl && (
+            <div className="space-y-1">
+              <Label className="text-[10px] text-gray-500">Preview</Label>
+              <div
+                className="h-20 rounded-md border border-gray-200 bg-cover bg-center relative overflow-hidden shadow-inner"
+                style={{
+                  backgroundImage: `url(${displayUrl})`,
+                  opacity: style.imageOpacity !== undefined ? style.imageOpacity / 100 : 1,
+                  filter: style.imageBlur ? `blur(${style.imageBlur}px)` : 'none',
+                }}
+              />
+            </div>
+          )}
+
+          {/* Image Fit & Controls */}
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <Label className="text-[10px] text-gray-500 mb-1 block">Fit Mode</Label>
+              <select
+                value={style.imageFit || 'cover'}
+                onChange={(e) => onUpdateStyle({ imageFit: e.target.value })}
+                className="w-full h-7 text-[11px] bg-white border border-gray-200 rounded px-1 text-gray-700 font-medium"
+              >
+                <option value="cover">Cover</option>
+                <option value="contain">Contain</option>
+                <option value="fill">Fill</option>
+              </select>
+            </div>
+            <div>
+              <Label className="text-[10px] text-gray-500 mb-1 block">
+                Opacity ({style.imageOpacity !== undefined ? style.imageOpacity : (style.opacity !== undefined ? (style.opacity <= 1 ? Math.round(style.opacity * 100) : style.opacity) : 100)}%)
+              </Label>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                value={style.imageOpacity !== undefined ? style.imageOpacity : (style.opacity !== undefined ? (style.opacity <= 1 ? Math.round(style.opacity * 100) : style.opacity) : 100)}
+                onInput={(e: any) => {
+                  const val = parseInt(e.target.value, 10)
+                  onUpdateStyle({ imageOpacity: val, opacity: val / 100 })
+                }}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10)
+                  onUpdateStyle({ imageOpacity: val, opacity: val / 100 })
+                }}
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600 mt-2"
+              />
+            </div>
+            <div>
+              <Label className="text-[10px] text-gray-500 mb-1 block">
+                Blur ({style.imageBlur !== undefined ? style.imageBlur : (style.blur || 0)}px)
+              </Label>
+              <input
+                type="range"
+                min="0"
+                max="20"
+                step="1"
+                value={style.imageBlur !== undefined ? style.imageBlur : (style.blur || 0)}
+                onInput={(e: any) => {
+                  const val = parseInt(e.target.value, 10)
+                  onUpdateStyle({ imageBlur: val, blur: val })
+                }}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10)
+                  onUpdateStyle({ imageBlur: val, blur: val })
+                }}
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600 mt-2"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'transparent' && (
+        <p className="text-[11px] text-gray-400 italic">
+          Transparent background enabled.
+        </p>
+      )}
+    </div>
+  )
+}
+
+function ImageZoneEditor({
+  zone,
+  onUpdateStyle,
+}: {
+  zone: any
+  onUpdateStyle: (updates: Record<string, any>) => void
+}) {
+  const style = zone.style || {}
+  const rawUrl = style.imageUrl || style.bgImageUrl || zone.imageUrl || zone.url || ''
+  const displayUrl = unwrapProxiedImageUrl(rawUrl)
+
+  const updateImageUrl = (newUrl: string) => {
+    zone.imageUrl = newUrl
+    if (zone.style) {
+      zone.style.imageUrl = newUrl
+      zone.style.bgImageUrl = newUrl
+    }
+    onUpdateStyle({ type: 'image', imageUrl: newUrl, bgImageUrl: newUrl })
+  }
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string
+      if (dataUrl) {
+        updateImageUrl(dataUrl)
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
+  return (
+    <div className="mt-2 space-y-3 pt-2 border-t border-gray-100" onClick={(e) => e.stopPropagation()}>
+      {/* Image Link Input */}
+      <div>
+        <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1">
+          <Link className="w-3 h-3 text-blue-500" />
+          <span>Image Link / URL</span>
+        </Label>
+        <Input
+          value={displayUrl}
+          onChange={(e) => updateImageUrl(e.target.value)}
+          placeholder="Paste image link https://..."
+          className="h-8 text-xs bg-white font-sans text-gray-800"
+        />
+      </div>
+
+      {/* Upload Image File */}
+      <div>
+        <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1">
+          <Upload className="w-3 h-3 text-blue-500" />
+          <span>Upload Image</span>
+        </Label>
+        <label className="flex items-center justify-center gap-2 p-2.5 border border-dashed border-gray-300 rounded-lg hover:bg-blue-50/50 hover:border-blue-400 cursor-pointer transition-all text-xs text-gray-700 bg-gray-50/50">
+          <Upload className="w-4 h-4 text-blue-500" />
+          <span className="font-medium">Choose file or drop image here</span>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+        </label>
+      </div>
+
+      {/* Thumbnail Preview */}
+      {displayUrl && (
+        <div className="space-y-1">
+          <Label className="text-[10px] text-gray-400">Selected Image Preview</Label>
+          <div
+            className="h-24 rounded-lg border border-gray-200 bg-cover bg-center relative overflow-hidden shadow-sm"
+            style={{
+              backgroundImage: `url(${displayUrl})`,
+              opacity: style.imageOpacity !== undefined ? style.imageOpacity / 100 : (style.opacity !== undefined ? (style.opacity <= 1 ? style.opacity : style.opacity / 100) : 1),
+              filter: (style.imageBlur || style.blur) ? `blur(${style.imageBlur || style.blur}px)` : 'none',
+            }}
+          />
+        </div>
+      )}
+
+      {/* Image Fit & Effects */}
+      <div className="grid grid-cols-3 gap-2 pt-1">
+        <div>
+          <Label className="text-[10px] text-gray-500 mb-1 block">Fit Mode</Label>
+          <select
+            value={style.imageFit || 'cover'}
+            onChange={(e) => onUpdateStyle({ imageFit: e.target.value })}
+            className="w-full h-7 text-[11px] bg-white border border-gray-200 rounded px-1.5 text-gray-700 font-medium"
+          >
+            <option value="cover">Cover</option>
+            <option value="contain">Contain</option>
+            <option value="fill">Fill</option>
+          </select>
+        </div>
+        <div>
+          <Label className="text-[10px] text-gray-500 mb-1 block">
+            Opacity ({style.imageOpacity !== undefined ? style.imageOpacity : (style.opacity !== undefined ? (style.opacity <= 1 ? Math.round(style.opacity * 100) : style.opacity) : 100)}%)
+          </Label>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            step="1"
+            value={style.imageOpacity !== undefined ? style.imageOpacity : (style.opacity !== undefined ? (style.opacity <= 1 ? Math.round(style.opacity * 100) : style.opacity) : 100)}
+            onInput={(e: any) => {
+              const val = parseInt(e.target.value, 10)
+              onUpdateStyle({ imageOpacity: val, opacity: val / 100 })
+            }}
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10)
+              onUpdateStyle({ imageOpacity: val, opacity: val / 100 })
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600 mt-2"
+          />
+        </div>
+        <div>
+          <Label className="text-[10px] text-gray-500 mb-1 block">
+            Blur ({style.imageBlur !== undefined ? style.imageBlur : (style.blur || 0)}px)
+          </Label>
+          <input
+            type="range"
+            min="0"
+            max="20"
+            step="1"
+            value={style.imageBlur !== undefined ? style.imageBlur : (style.blur || 0)}
+            onInput={(e: any) => {
+              const val = parseInt(e.target.value, 10)
+              onUpdateStyle({ imageBlur: val, blur: val })
+            }}
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10)
+              onUpdateStyle({ imageBlur: val, blur: val })
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600 mt-2"
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+

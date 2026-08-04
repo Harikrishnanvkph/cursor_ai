@@ -66,7 +66,8 @@ export function TemplateContentPanel() {
     const [richEditorOpen, setRichEditorOpen] = useState(false)
     const [richEditorContent, setRichEditorContent] = useState('')
     const [editorLayout, setEditorLayout] = useState<'side-by-side' | 'stacked'>('side-by-side')
-    const [fitToPreview, setFitToPreview] = useState(false)
+    const [editorFitToView, setEditorFitToView] = useState(true)
+    const [fitToPreview, setFitToPreview] = useState(true)
 
     // Ref for the preview container to calculate scale
     const previewContainerRef = useRef<HTMLDivElement>(null)
@@ -178,6 +179,15 @@ export function TemplateContentPanel() {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <Button
+                                            variant={editorFitToView ? "default" : "outline"}
+                                            size="sm"
+                                            className={`h-7 text-xs gap-1.5 ${editorFitToView ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
+                                            onClick={() => setEditorFitToView(!editorFitToView)}
+                                        >
+                                            {editorFitToView ? <Minimize className="h-3 w-3" /> : <Maximize className="h-3 w-3" />}
+                                            Fit to View
+                                        </Button>
+                                        <Button
                                             variant="outline"
                                             size="sm"
                                             className="h-7 text-xs"
@@ -213,6 +223,11 @@ export function TemplateContentPanel() {
                                                 initialHtml={richEditorContent}
                                                 onChange={(html) => setRichEditorContent(html)}
                                                 className="h-full"
+                                                fitToView={editorFitToView}
+                                                zoneDimensions={selectedTextArea ? {
+                                                    width: selectedTextArea.position.width,
+                                                    height: selectedTextArea.position.height
+                                                } : undefined}
                                                 contentStyle={selectedTextArea ? {
                                                     fontSize: selectedTextArea.style.fontSize,
                                                     fontFamily: selectedTextArea.style.fontFamily,
@@ -276,6 +291,37 @@ export function TemplateContentPanel() {
                                         const width = selectedTextArea.position.width
                                         const height = selectedTextArea.position.height
 
+                                        const getBgStyle = () => {
+                                            const bg = selectedTextArea.background
+                                            if (!bg || bg.type === 'transparent') return { backgroundColor: '#ffffff' }
+                                            const opacity = (bg.opacity ?? 100) / 100
+                                            if (bg.type === 'color' && bg.color) {
+                                                return { backgroundColor: bg.color, opacity }
+                                            }
+                                            if (bg.type === 'gradient') {
+                                                const color1 = bg.gradientColor1 || '#ffffff'
+                                                const color2 = bg.gradientColor2 || '#000000'
+                                                const dir = bg.gradientDirection || 'to right'
+                                                return {
+                                                    backgroundImage: bg.gradientType === 'radial'
+                                                        ? `radial-gradient(circle, ${color1}, ${color2})`
+                                                        : `linear-gradient(${dir}, ${color1}, ${color2})`,
+                                                    opacity
+                                                }
+                                            }
+                                            if (bg.type === 'image' && bg.imageUrl) {
+                                                return {
+                                                    backgroundImage: `url(${bg.imageUrl})`,
+                                                    backgroundSize: bg.imageFit || 'cover',
+                                                    backgroundPosition: 'center',
+                                                    opacity
+                                                }
+                                            }
+                                            return { backgroundColor: '#ffffff' }
+                                        }
+
+                                        const customBg = getBgStyle()
+
                                         if (fitToPreview) {
                                             // Wrapper sized to scaled dimensions so content doesn't clip
                                             return (
@@ -286,7 +332,7 @@ export function TemplateContentPanel() {
                                                     margin: '0 auto'
                                                 }}>
                                                     <div
-                                                        className="bg-white border rounded shadow-sm html-content-area"
+                                                        className="border rounded shadow-sm html-content-area"
                                                         style={{
                                                             width: `${width}px`,
                                                             height: `${height}px`,
@@ -298,9 +344,12 @@ export function TemplateContentPanel() {
                                                             lineHeight: selectedTextArea.style.lineHeight || 'normal',
                                                             letterSpacing: selectedTextArea.style.letterSpacing ? `${selectedTextArea.style.letterSpacing}px` : 'normal',
                                                             padding: '8px',
+                                                            boxSizing: 'border-box',
+                                                            wordBreak: 'break-word',
                                                             overflow: 'hidden',
                                                             transform: `scale(${previewScale})`,
-                                                            transformOrigin: 'top left'
+                                                            transformOrigin: 'top left',
+                                                            ...customBg
                                                         }}
                                                         dangerouslySetInnerHTML={{ __html: sanitizeHTML(richEditorContent || 'Preview will appear here...') }}
                                                     />
@@ -310,7 +359,7 @@ export function TemplateContentPanel() {
 
                                         return (
                                             <div
-                                                className="bg-white border rounded shadow-sm html-content-area"
+                                                className="border rounded shadow-sm html-content-area"
                                                 style={{
                                                     width: `${width}px`,
                                                     height: `${height}px`,
@@ -322,9 +371,12 @@ export function TemplateContentPanel() {
                                                     lineHeight: selectedTextArea.style.lineHeight || 'normal',
                                                     letterSpacing: selectedTextArea.style.letterSpacing ? `${selectedTextArea.style.letterSpacing}px` : 'normal',
                                                     padding: '8px',
+                                                    boxSizing: 'border-box',
+                                                    wordBreak: 'break-word',
                                                     overflow: 'auto',
                                                     flexShrink: 0,
-                                                    margin: '0 auto'
+                                                    margin: '0 auto',
+                                                    ...customBg
                                                 }}
                                                 dangerouslySetInnerHTML={{ __html: sanitizeHTML(richEditorContent || 'Preview will appear here...') }}
                                             />

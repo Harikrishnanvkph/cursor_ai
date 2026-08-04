@@ -118,11 +118,14 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
     if (conversation.snapshot && conversation.snapshot.chartData) {
       const runImmediateLoad = async () => {
         let templateStructure = conversation.snapshot.template_structure
-        // If this is a format, check if we need to load the full format skeleton
-        if (conversation.snapshot.chartConfig?.formatData?.formatId && (!templateStructure || templateStructure.isFormatReference || !templateStructure.zones)) {
+        const immediateFormatData = conversation.snapshot.chartConfig?.formatData
+        // If this is a format, check if custom formatSnapshot exists first, otherwise fetch skeleton
+        if (immediateFormatData?.formatSnapshot?.skeleton) {
+          templateStructure = immediateFormatData.formatSnapshot.skeleton
+        } else if (immediateFormatData?.formatId && (!templateStructure || templateStructure.isFormatReference || !templateStructure.zones)) {
           setIsLoading(true)
           try {
-            const formatRes = await dataService.getFormat(conversation.snapshot.chartConfig.formatData.formatId)
+            const formatRes = await dataService.getFormat(immediateFormatData.formatId)
             if (formatRes.data && formatRes.data.skeleton) {
               templateStructure = formatRes.data.skeleton
             }
@@ -155,10 +158,13 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
         }
         if (response.data) {
           let templateStructure = response.data.template_structure
-          // If this is a format, load the format skeleton if not already loaded
-          if (response.data.chart_config?.formatData?.formatId) {
+          const loadedFormatData = response.data.chart_config?.formatData
+          // If this is a format, check formatSnapshot first, otherwise fetch skeleton
+          if (loadedFormatData?.formatSnapshot?.skeleton) {
+            templateStructure = loadedFormatData.formatSnapshot.skeleton
+          } else if (loadedFormatData?.formatId && (!templateStructure || templateStructure.isFormatReference || !templateStructure.zones)) {
             try {
-              const formatRes = await dataService.getFormat(response.data.chart_config.formatData.formatId)
+              const formatRes = await dataService.getFormat(loadedFormatData.formatId)
               if (formatRes.data && formatRes.data.skeleton) {
                 templateStructure = formatRes.data.skeleton
               }
@@ -847,6 +853,13 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                   const chartW = isResponsive ? 800 : parseDim(snapshotData.chartConfig?.width, 800)
                   const chartH = isResponsive ? 600 : parseDim(snapshotData.chartConfig?.height, 600)
                   const safeScale = (!templateScale || isNaN(templateScale) || templateScale <= 0) ? 0.3 : templateScale
+                  const decShapes = snapshotData.chartConfig?.decorationShapes ||
+                                    snapshotData.chartConfig?.decorations ||
+                                    conversation.snapshot?.chartConfig?.decorationShapes ||
+                                    conversation.snapshot?.chartConfig?.decorations ||
+                                    snapshotData.template_structure?.decorations ||
+                                    conversation.snapshot?.template_structure?.decorations || [];
+
                   return (
                     <div
                       className="relative origin-top-left shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-zinc-200 rounded-lg overflow-hidden bg-white"
@@ -872,6 +885,16 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                         responsiveWidth={chartW}
                         responsiveHeight={chartH}
                       />
+
+                      {/* Render Overlay Decoration Shapes */}
+                      {decShapes && decShapes.length > 0 && (
+                        <DecorationShapeRenderer
+                          containerWidth={chartW}
+                          containerHeight={chartH}
+                          readOnly={true}
+                          shapes={decShapes}
+                        />
+                      )}
                     </div>
                   )
                 })()}

@@ -418,10 +418,8 @@ export default function HomePage() {
                 {/* Brand */}
                 <div className="md:col-span-2">
                   <div className="flex items-center space-x-3 mb-5">
-                    <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                      <BarChart3 className="w-6 h-6 text-white" />
-                    </div>
-                    <span className="text-2xl font-bold">AIChartor</span>
+                    <img src="/logo.png" alt="Logo" className="w-10 h-10 object-contain" />
+                    <span className="text-2xl font-bold">Chartography.in</span>
                   </div>
                   <p className="text-slate-500 dark:text-slate-400 max-w-md leading-relaxed text-sm transition-colors">
                     Transform your data into stunning visualizations with the power of AI and professional design tools.
@@ -454,7 +452,7 @@ export default function HomePage() {
 
               <div className="border-t border-slate-200 dark:border-slate-800 mt-12 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 transition-colors">
                 <div className="text-slate-500 dark:text-slate-400 text-sm transition-colors">
-                  © {new Date().getFullYear()} AIChartor. All rights reserved.
+                  © {new Date().getFullYear()} Chartography.in. All rights reserved.
                 </div>
                 <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
                   <div className="w-2 h-2 bg-emerald-400 rounded-full mr-2 animate-pulse"></div>

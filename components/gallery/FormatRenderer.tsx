@@ -205,16 +205,17 @@ function ZoneView({ renderedZone, scale, palette, canvasWidth, canvasHeight, int
     }
     
     if (bgType === 'image' && zStyle.bgImageUrl) {
+      const proxiedUrl = getProxiedImageUrl(zStyle.bgImageUrl)
       if (opacity < 1) {
         return {
-          backgroundImage: `linear-gradient(rgba(255, 255, 255, ${1 - opacity}), rgba(255, 255, 255, ${1 - opacity})), url(${zStyle.bgImageUrl})`,
+          backgroundImage: `linear-gradient(rgba(255, 255, 255, ${1 - opacity}), rgba(255, 255, 255, ${1 - opacity})), url("${proxiedUrl}")`,
           backgroundSize: zStyle.bgImageFit === 'fill' ? '100% 100%' : (zStyle.bgImageFit || 'cover'),
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat'
         }
       }
       return {
-        backgroundImage: `url("${zStyle.bgImageUrl}")`,
+        backgroundImage: `url("${proxiedUrl}")`,
         backgroundSize: zStyle.bgImageFit === 'fill' ? '100% 100%' : (zStyle.bgImageFit || 'cover'),
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat'
@@ -349,6 +350,8 @@ function InteractiveZoneWrapper({
       {/* Hover/Select overlay border */}
       {borderOverlay && (
         <div
+          className="format-zone-selection-border"
+          data-export-ignore="true"
           style={{
             position: 'absolute',
             inset: -2,
@@ -362,6 +365,8 @@ function InteractiveZoneWrapper({
       {/* Zone type label badge on hover/select */}
       {(isHovered || isSelected) && !isEditing && (
         <div
+          className="format-zone-type-badge"
+          data-export-ignore="true"
           style={{
             position: 'absolute',
             top: -18,
@@ -409,11 +414,16 @@ function TextZoneContent({ renderedZone, scale, interactive }: {
 
   // Read content from contentPackage directly (reactive) or fallback to resolvedContent
   const text = useMemo(() => {
-    if (contentPackage && zone.role && (contentPackage as any)[zone.role] !== undefined) {
-      return String((contentPackage as any)[zone.role])
+    if (contentPackage) {
+      if (zone.id && (contentPackage as any)[zone.id] !== undefined) {
+        return String((contentPackage as any)[zone.id])
+      }
+      if (zone.role && (contentPackage as any)[zone.role] !== undefined) {
+        return String((contentPackage as any)[zone.role])
+      }
     }
     return renderedZone.resolvedContent || ''
-  }, [contentPackage, zone.role, renderedZone.resolvedContent])
+  }, [contentPackage, zone.id, zone.role, renderedZone.resolvedContent])
 
   // Save content when editing stops (isEditing transitions true → false)
   // This replaces onBlur entirely — no more focus-related bugs
@@ -424,15 +434,16 @@ function TextZoneContent({ renderedZone, scale, interactive }: {
       // But let's save innerHTML as a safety measure
       if (textRef.current && contentPackage) {
         const currentHtml = textRef.current.innerHTML || ''
+        const key = zone.id || zone.role
         // Only save if content actually changed
-        const existing = (contentPackage as any)[zone.role]
+        const existing = (contentPackage as any)[key]
         if (currentHtml !== existing) {
-          setContentPackage({ ...contentPackage, [zone.role]: currentHtml })
+          setContentPackage({ ...contentPackage, [key]: currentHtml })
         }
       }
     }
     wasEditingRef.current = isEditing
-  }, [isEditing, contentPackage, zone.role, setContentPackage])
+  }, [isEditing, contentPackage, zone.id, zone.role, setContentPackage])
 
   // Focus when entering edit mode — set innerHTML via ref
   useEffect(() => {
@@ -453,39 +464,49 @@ function TextZoneContent({ renderedZone, scale, interactive }: {
   const handleInput = useCallback(() => {
     if (!textRef.current || !contentPackage) return
     const currentHtml = textRef.current.innerHTML || ''
+    const key = zone.id || zone.role
     
     // Check if changed to avoid unnecessary store updates
-    const existing = (contentPackage as any)[zone.role]
+    const existing = (contentPackage as any)[key]
     if (currentHtml !== existing) {
-      setContentPackage({ ...contentPackage, [zone.role]: currentHtml })
+      setContentPackage({ ...contentPackage, [key]: currentHtml })
     }
-  }, [contentPackage, setContentPackage, zone.role])
+  }, [contentPackage, setContentPackage, zone.id, zone.role])
 
   // Explicit save + exit function (for Escape key and toolbar actions)
   const saveAndExit = useCallback(() => {
     if (textRef.current && contentPackage) {
       const newHtml = textRef.current.innerHTML || ''
-      setContentPackage({ ...contentPackage, [zone.role]: newHtml })
+      const key = zone.id || zone.role
+      setContentPackage({ ...contentPackage, [key]: newHtml })
     }
     setEditingZoneId(null)
-  }, [contentPackage, setContentPackage, zone.role, setEditingZoneId])
+  }, [contentPackage, setContentPackage, zone.id, zone.role, setEditingZoneId])
 
   if (!text && !isEditing) return null
 
   // Check if content has HTML tags (lists, etc.)
   const hasHtml = /<[a-z][\s\S]*>/i.test(text)
+  
+  // Natively force margin 0 via inline styles to completely bypass html2canvas CSS parsing bugs
+  const safeText = text
+    .replace(/<p([^>]*)>/gi, '<p$1 style="margin:0;padding:0;">')
+    .replace(/<h1([^>]*)>/gi, '<h1$1 style="margin:0;padding:0;">')
+    .replace(/<h2([^>]*)>/gi, '<h2$1 style="margin:0;padding:0;">')
+    .replace(/<h3([^>]*)>/gi, '<h3$1 style="margin:0;padding:0;">')
 
   const textStyle: React.CSSProperties = {
     width: '100%',
     height: '100%',
     display: 'block',
     padding: `${4 * scale}px`,
+    boxSizing: 'border-box', // Crucial for html2canvas to not overflow with padding
     fontFamily: zone.style.fontFamily || 'Inter, sans-serif',
     fontSize: `${zone.style.fontSize * scale}px`,
     fontWeight: zone.style.fontWeight || '400',
     color: zone.style.color || '#1a1a2e',
     textAlign: zone.style.textAlign || 'left',
-    lineHeight: zone.style.lineHeight || 1.3,
+    lineHeight: `${(zone.style.lineHeight || 1.3) * (zone.style.fontSize * scale)}px`,
     letterSpacing: zone.style.letterSpacing ? `${zone.style.letterSpacing}px` : undefined,
     fontStyle: zone.style.fontStyle || 'normal',
     textTransform: zone.style.textTransform || 'none',
@@ -500,6 +521,17 @@ function TextZoneContent({ renderedZone, scale, interactive }: {
     <>
       {/* Inline styles for lists inside this zone */}
       <style>{`
+        /* Crucial: html2canvas sometimes misses Tailwind's preflight reset, causing massive vertical offsets */
+        .format-text-zone p,
+        .format-text-zone h1,
+        .format-text-zone h2,
+        .format-text-zone h3,
+        .format-text-zone h4,
+        .format-text-zone h5,
+        .format-text-zone h6 { 
+          margin: 0 !important; 
+          padding: 0 !important;
+        }
         .format-text-zone ul { list-style-type: disc; padding-left: ${16 * scale}px; margin: ${2 * scale}px 0; }
         .format-text-zone ol { list-style-type: decimal; padding-left: ${16 * scale}px; margin: ${2 * scale}px 0; }
         .format-text-zone li { margin-bottom: ${1 * scale}px; }
@@ -517,7 +549,7 @@ function TextZoneContent({ renderedZone, scale, interactive }: {
             saveAndExit()
           }
         } : undefined}
-        {...(!isEditing && hasHtml ? { dangerouslySetInnerHTML: { __html: sanitizeHTML(text) } } : {})}
+        {...(!isEditing && hasHtml ? { dangerouslySetInnerHTML: { __html: sanitizeHTML(safeText) } } : {})}
       >
         {isEditing ? undefined : (!hasHtml ? text : undefined)}
       </div>
@@ -882,10 +914,11 @@ function BackgroundZoneView({ renderedZone, scale, canvasWidth }: {
   }
 
   // Image background
-  if (zone.style.type === 'image' && (renderedZone.resolvedImageUrl || zone.style.imageUrl)) {
-    const rawUrl = renderedZone.resolvedImageUrl || zone.style.imageUrl
+  const isImageBg = zone.style.type === 'image' || (zone.style as any)?.bgType === 'image'
+  const rawBgUrl = renderedZone.resolvedImageUrl || zone.style.imageUrl || (zone.style as any)?.bgImageUrl || (zone as any)?.imageUrl
+  if (isImageBg && rawBgUrl) {
     const imageWidth = canvasWidth ? Math.round(canvasWidth * scale) : undefined
-    const imageUrl = getProxiedImageUrl(rawUrl, imageWidth ? { width: imageWidth, format: 'webp' } : undefined)
+    const imageUrl = getProxiedImageUrl(rawBgUrl, imageWidth ? { width: imageWidth, format: 'webp' } : undefined)
     return (
       <div style={bgStyle}>
         <img
@@ -896,6 +929,8 @@ function BackgroundZoneView({ renderedZone, scale, canvasWidth }: {
             width: '100%',
             height: '100%',
             objectFit: (zone.style.imageFit as any) || 'cover',
+            opacity: zone.style.imageOpacity !== undefined ? zone.style.imageOpacity / 100 : (zone.style.opacity !== undefined ? zone.style.opacity : 1),
+            filter: (zone.style.imageBlur || zone.style.blur) ? `blur(${zone.style.imageBlur || zone.style.blur}px)` : undefined,
           }}
         />
         {zone.style.overlay && (
@@ -1055,7 +1090,7 @@ function ImageZoneContent({ renderedZone, scale, zoneWidth }: {
   zoneWidth: number
 }) {
   const zone = renderedZone.zone as ImageZone
-  const rawUrl = renderedZone.resolvedImageUrl || zone.imageUrl
+  const rawUrl = renderedZone.resolvedImageUrl || zone.imageUrl || (zone.style as any)?.imageUrl || (zone.style as any)?.bgImageUrl || (zone as any)?.url
   
   const reqWidth = Math.round(zoneWidth * scale)
   const imageUrl = rawUrl ? getProxiedImageUrl(rawUrl, { width: reqWidth, format: 'webp' }) : ''
@@ -1080,6 +1115,13 @@ function ImageZoneContent({ renderedZone, scale, zoneWidth }: {
     )
   }
 
+  const opacity = zone.style?.imageOpacity !== undefined
+    ? zone.style.imageOpacity / 100
+    : zone.style?.opacity !== undefined
+      ? (zone.style.opacity > 1 ? zone.style.opacity / 100 : zone.style.opacity)
+      : 1
+  const blurVal = zone.style?.imageBlur || zone.style?.blur || 0
+
   return (
     <div
       style={{
@@ -1098,6 +1140,9 @@ function ImageZoneContent({ renderedZone, scale, zoneWidth }: {
           width: '100%',
           height: '100%',
           objectFit: (zone.style?.imageFit as any) || 'cover',
+          opacity,
+          filter: blurVal ? `blur(${blurVal}px)` : undefined,
+          transition: 'all 0.15s ease-out',
         }}
       />
     </div>

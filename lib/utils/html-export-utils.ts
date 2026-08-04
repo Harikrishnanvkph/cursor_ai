@@ -96,3 +96,63 @@ export async function embedImagesAsBase64(
     updateStatusCallback?.('Finished embedding images.');
     return { chartData: newChartData, chartConfig: newChartConfig };
 }
+
+/**
+ * Scans an HTML string for <img> tags and converts their src attributes to Base64 Data URIs.
+ */
+export async function embedImagesInHtmlString(htmlString: string): Promise<string> {
+    if (!htmlString) return htmlString;
+
+    const imgTagRegex = /<img[^>]+src=["']([^"']+)["']/gi;
+    let match;
+    const urlsToReplace: { original: string; base64: string }[] = [];
+
+    while ((match = imgTagRegex.exec(htmlString)) !== null) {
+        const url = match[1];
+        if (url && typeof url === 'string' && !url.startsWith('data:image/')) {
+            const base64 = await fetchImageAsBase64(url);
+            if (base64 && base64 !== url) {
+                urlsToReplace.push({ original: url, base64 });
+            }
+        }
+    }
+
+    let result = htmlString;
+    for (const { original, base64 } of urlsToReplace) {
+        result = result.replaceAll(original, base64);
+    }
+    return result;
+}
+
+const SYSTEM_FONTS = new Set([
+    'arial', 'helvetica', 'sans-serif', 'serif', 'monospace', 'cursive', 'fantasy',
+    'system-ui', '-apple-system', 'blinkmacsystemfont', 'segoe ui', 'roboto',
+    'times new roman', 'georgia', 'courier new', 'trebuchet ms', 'verdana', 'tahoma'
+]);
+
+/**
+ * Generates Google Fonts stylesheet links for any custom fonts used in templates or text areas.
+ */
+export function generateGoogleFontLinks(fontFamilies: (string | undefined)[]): string {
+    const customFonts = new Set<string>();
+
+    for (const family of fontFamilies) {
+        if (!family) continue;
+        // Clean font name (remove quotes and fallbacks like 'Inter', sans-serif)
+        const primaryFont = family.split(',')[0].replace(/['"]/g, '').trim();
+        if (primaryFont && !SYSTEM_FONTS.has(primaryFont.toLowerCase())) {
+            customFonts.add(primaryFont);
+        }
+    }
+
+    if (customFonts.size === 0) return '';
+
+    const fontQuery = Array.from(customFonts)
+        .map(font => `family=${encodeURIComponent(font)}:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,700`)
+        .join('&');
+
+    return `<link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?${fontQuery}&display=swap" rel="stylesheet">`;
+}
+

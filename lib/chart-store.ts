@@ -316,6 +316,7 @@ export const useChartStore = create<ChartStore>()(
         useDecorationStore.getState().clearShapes();
         useDecorationStore.getState().clearShapeHistory();
         set((state) => ChartStateService.resetChart());
+        try { (useChartStore as any).temporal?.getState()?.clear(); } catch (e) {}
       },
       setChartMode: (mode) => {
         set((state) => {
@@ -423,7 +424,15 @@ export const useChartStore = create<ChartStore>()(
       toggleShowLabels: () => set((state) => applyStyleToggle(state, 'toggleShowLabels')),
       toggleShowLegend: () => set((state) => applyStyleToggle(state, 'toggleShowLegend')),
       setChartTitle: (title: string | null) => set((state) => ChartStateService.setChartTitle(title, state)),
-      setFullChart: (params) => set((state) => ChartStateService.setFullChart(params, state)),
+      setFullChart: (params) => set((state) => {
+        const nextState = ChartStateService.setFullChart(params, state);
+        if (params.replaceMode) {
+          setTimeout(() => {
+            try { (useChartStore as any).temporal?.getState()?.clear(); } catch (e) {}
+          }, 0);
+        }
+        return nextState;
+      }),
       setCurrentSnapshotId: (id: string | null) => set({ currentSnapshotId: id }),
 
       // Initialize chart dimensions from the setup dialog
@@ -455,6 +464,13 @@ export const useChartStore = create<ChartStore>()(
         return 'chart-store-anonymous';
       })(),
       storage: typeof window !== 'undefined' ? createExpiringStorage('chart-store') : undefined,
+      onRehydrateStorage: () => (state, error) => {
+        if (!error && state) {
+          setTimeout(() => {
+            try { (useChartStore as any).temporal?.getState()?.clear(); } catch (e) {}
+          }, 0);
+        }
+      },
       version: 5,
       migrate: (persistedState: any, version: number) => {
         let state = persistedState || {};

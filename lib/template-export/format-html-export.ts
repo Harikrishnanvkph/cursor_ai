@@ -3,9 +3,11 @@
 import type { RenderedFormat, RenderedZone, TextZone, StatZone, BackgroundZone, DecorationZone, ChartZone, ImageZone } from "@/lib/format-types"
 import type { DecorationShape } from "@/lib/stores/decoration-store"
 import { generateChartHTMLForTemplate, type HTMLExportOptions } from "@/lib/html-exporter"
-import { generateDecorationsSVG, generateDecorationsCSS } from "./decoration-html-export"
+import { generateDecorationsSVGAsync, generateDecorationsCSS } from "./decoration-html-export"
 import { getPatternCSS } from "@/lib/utils"
 import { useChartStore } from "@/lib/chart-store"
+import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
+import { fetchImageAsBase64, embedImagesInHtmlString, generateGoogleFontLinks } from "@/lib/utils/html-export-utils"
 
 // ═══════════════════════════════════════════════════════
 // Format → HTML Export
@@ -23,6 +25,9 @@ export async function exportFormatAsHTML(
     const { fileName = 'chart-format' } = options
     const { skeleton, renderedZones, colorPalette } = rendered
     const { width, height } = skeleton.dimensions
+
+    // Read reactive contentPackage from format store to guarantee current user edits
+    const contentPackage = useFormatGalleryStore.getState().contentPackage
 
     // ── Find the chart zone to generate chart JS ──────
     const chartZone = renderedZones.find(rz => rz.zone.type === 'chart')
@@ -68,14 +73,61 @@ export async function exportFormatAsHTML(
         }
     }
 
+    // ── Asynchronously pre-process zones (contentPackage mapping + Base64 images) ────
+    const processedRenderedZones = await Promise.all(
+        renderedZones.map(async rz => {
+            const cloned = JSON.parse(JSON.stringify(rz)) as RenderedZone
+            
+            // Map text & stat zone content from contentPackage
+            if (contentPackage) {
+                if (cloned.zone.type === 'text') {
+                    if (cloned.zone.id && (contentPackage as any)[cloned.zone.id] !== undefined) {
+                        cloned.resolvedContent = String((contentPackage as any)[cloned.zone.id])
+                    } else if (cloned.zone.role && (contentPackage as any)[cloned.zone.role] !== undefined) {
+                        cloned.resolvedContent = String((contentPackage as any)[cloned.zone.role])
+                    }
+                } else if (cloned.zone.type === 'stat') {
+                    const valKey = `${cloned.zone.id}_value`
+                    const labelKey = `${cloned.zone.id}_label`
+                    if ((contentPackage as any)[valKey] !== undefined) {
+                        cloned.resolvedValue = String((contentPackage as any)[valKey])
+                    }
+                    if ((contentPackage as any)[labelKey] !== undefined) {
+                        cloned.resolvedLabel = String((contentPackage as any)[labelKey])
+                    }
+                }
+            }
+
+            if (cloned.resolvedImageUrl && !cloned.resolvedImageUrl.startsWith('data:image/')) {
+                try {
+                    cloned.resolvedImageUrl = await fetchImageAsBase64(cloned.resolvedImageUrl)
+                } catch (e) {
+                    console.warn(`Failed to base64 embed format image: ${cloned.resolvedImageUrl}`, e)
+                }
+            }
+            if (cloned.resolvedContent && cloned.resolvedContent.includes('<img')) {
+                try {
+                    cloned.resolvedContent = await embedImagesInHtmlString(cloned.resolvedContent)
+                } catch (e) {
+                    console.warn('Failed to base64 embed format text zone images', e)
+                }
+            }
+            return cloned
+        })
+    )
+
+    // ── Collect custom fonts ─────────────────────────────
+    const fontFamilies = processedRenderedZones.map(rz => (rz.zone as any).style?.fontFamily || (rz.zone as any).style?.valueFontFamily)
+    const googleFontLinks = generateGoogleFontLinks(fontFamilies)
+
     // ── Sort zones by rendering order ──────────────────
-    const sortedZones = [...renderedZones].sort((a, b) => zoneOrder(a.zone.type) - zoneOrder(b.zone.type))
+    const sortedZones = [...processedRenderedZones].sort((a, b) => zoneOrder(a.zone.type) - zoneOrder(b.zone.type))
 
     // ── Generate zone HTML ────────────────────────────
     const zonesHTML = sortedZones.map(rz => renderZoneHTML(rz, colorPalette, chartComponents)).filter(Boolean).join('\n        ')
 
     // ── Generate decoration shapes SVG ────────────────
-    const decorationsSVG = generateDecorationsSVG(decorationShapes, width, height)
+    const decorationsSVG = await generateDecorationsSVGAsync(decorationShapes, width, height)
 
     // ── Build the final HTML ──────────────────────────
     const html = `<!DOCTYPE html>
@@ -84,13 +136,13 @@ export async function exportFormatAsHTML(
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${skeleton.name}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"><\/script>
+    ${googleFontLinks}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
     
     <!-- Custom Plugins -->
     <script>
         ${chartComponents.pluginsScript}
-    <\/script>
+    </script>
     
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -100,16 +152,25 @@ export async function exportFormatAsHTML(
             background-color: #f5f5f5;
             display: flex;
             justify-content: center;
-            padding: 20px;
+            align-items: center;
+            min-height: 100vh;
+            padding: 40px;
+            margin: 0;
         }
-        
+
         .format-container {
             position: relative;
             width: ${width}px;
             height: ${height}px;
+            min-width: ${width}px;
+            min-height: ${height}px;
+            max-width: ${width}px;
+            max-height: ${height}px;
             overflow: hidden;
+            background-color: #ffffff;
             border-radius: 0px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            flex-shrink: 0;
         }
         
         .format-zone {
@@ -119,6 +180,34 @@ export async function exportFormatAsHTML(
         
         .format-zone-text {
             word-break: break-word;
+            box-sizing: border-box;
+            z-index: 30;
+        }
+        
+        .format-zone-text p,
+        .format-zone-text h1,
+        .format-zone-text h2,
+        .format-zone-text h3,
+        .format-zone-text h4,
+        .format-zone-text h5,
+        .format-zone-text h6 {
+            margin: 0;
+            padding: 0;
+            text-align: inherit;
+        }
+        
+        .format-zone-text img {
+            max-width: 100%;
+            height: auto;
+            display: inline-block;
+            vertical-align: middle;
+            object-fit: fill;
+        }
+        
+        .format-zone-text mark {
+            background-color: #fef08a;
+            padding: 0.1em 0.2em;
+            border-radius: 0.2em;
         }
         
         .format-zone-text ul { list-style-type: disc; padding-left: 16px; margin: 2px 0; }
@@ -129,11 +218,13 @@ export async function exportFormatAsHTML(
             display: flex;
             align-items: center;
             justify-content: center;
+            z-index: 35;
         }
         
         .chart-area {
             position: absolute;
             overflow: hidden;
+            z-index: 10;
         }
         
         ${chartComponents.chartStyles}
@@ -153,7 +244,7 @@ export async function exportFormatAsHTML(
     
     <script>
         ${chartComponents.chartScript}
-    <\/script>
+    </script>
 </body>
 </html>`
 
@@ -204,13 +295,24 @@ function renderBackgroundZoneHTML(rz: RenderedZone): string {
     const zone = rz.zone as BackgroundZone
     const style: string[] = ['position:absolute', 'inset:0', 'z-index:0']
 
+    const zStyle: any = zone.style || {}
+    const rawBgUrl = rz.resolvedImageUrl || zStyle.imageUrl || zStyle.bgImageUrl || (zone as any)?.imageUrl
+    const opacity = zStyle.imageOpacity !== undefined ? zStyle.imageOpacity / 100 : (zStyle.opacity !== undefined ? zStyle.opacity : 1)
+
     // Image background
-    if (rz.resolvedImageUrl) {
-        const fit = zone.style.imageFit || 'cover'
+    if (rawBgUrl) {
+        const fit = zStyle.imageFit || 'cover'
+        let imgStyle = `width:100%;height:100%;object-fit:${fit}`
+        if (opacity < 1) {
+            imgStyle += `;opacity:${opacity}`
+        }
+        if (zStyle.imageBlur || zStyle.blur) {
+            imgStyle += `;filter:blur(${zStyle.imageBlur || zStyle.blur}px)`
+        }
         let imgHtml = `<div style="${style.join(';')}">`
-        imgHtml += `<img src="${rz.resolvedImageUrl}" alt="" style="width:100%;height:100%;object-fit:${fit}"/>`
-        if (zone.style.overlay) {
-            imgHtml += `<div style="position:absolute;inset:0;background-color:${zone.style.overlay}"></div>`
+        imgHtml += `<img src="${rawBgUrl}" alt="" style="${imgStyle}"/>`
+        if (zStyle.overlay) {
+            imgHtml += `<div style="position:absolute;inset:0;background-color:${zStyle.overlay}"></div>`
         }
         imgHtml += '</div>'
         return imgHtml
@@ -239,13 +341,13 @@ function renderBackgroundZoneHTML(rz: RenderedZone): string {
     // Pattern
     if (zone.style.type === 'pattern') {
         const color = zone.style.patternColor || '#e2e8f0'
-        const opacity = zone.style.patternOpacity || 0.3
+        const patternOpacity = zone.style.patternOpacity || 0.3
         const patternType = zone.style.patternType || 'dots'
         const { styleString } = getPatternCSS(patternType, color, 1)
         
         style.push(`background-color:${zone.style.color || '#ffffff'}`)
         style.push(styleString)
-        style.push(`opacity:${opacity}`)
+        style.push(`opacity:${patternOpacity}`)
         return `<div style="${style.join(';')}"></div>`
     }
 
@@ -257,32 +359,46 @@ function renderTextZoneHTML(rz: RenderedZone): string {
     const pos = zone.position
     if (!pos) return ''
 
-    const text = rz.resolvedContent || ''
+    let text = rz.resolvedContent || ''
     if (!text) return ''
 
-    const hasHtml = /<[a-z][\s\S]*>/i.test(text)
+    // Normalize paragraph/heading styles so inner tags inherit text-align and zero-margin
+    const safeText = text
+        .replace(/<p([^>]*)>/gi, '<p$1 style="margin:0;padding:0;text-align:inherit;">')
+        .replace(/<h1([^>]*)>/gi, '<h1$1 style="margin:0;padding:0;text-align:inherit;">')
+        .replace(/<h2([^>]*)>/gi, '<h2$1 style="margin:0;padding:0;text-align:inherit;">')
+        .replace(/<h3([^>]*)>/gi, '<h3$1 style="margin:0;padding:0;text-align:inherit;">')
+        .replace(/<h4([^>]*)>/gi, '<h4$1 style="margin:0;padding:0;text-align:inherit;">')
+        .replace(/<h5([^>]*)>/gi, '<h5$1 style="margin:0;padding:0;text-align:inherit;">')
+        .replace(/<h6([^>]*)>/gi, '<h6$1 style="margin:0;padding:0;text-align:inherit;">')
+
+    const fontSize = zone.style.fontSize || 14
+    const lineHeightVal = zone.style.lineHeight || 1.3
+    const lineHeightPx = Math.round(lineHeightVal * fontSize)
 
     const style = [
         `left:${pos.x}px`,
         `top:${pos.y}px`,
         `width:${pos.width}px`,
         `height:${pos.height}px`,
-        `padding:${4}px`,
+        `padding:4px`,
+        'box-sizing:border-box',
         `font-family:${zone.style.fontFamily || 'Inter, sans-serif'}`,
-        `font-size:${zone.style.fontSize}px`,
+        `font-size:${fontSize}px`,
         `font-weight:${zone.style.fontWeight || '400'}`,
         `color:${zone.style.color || '#1a1a2e'}`,
         `text-align:${zone.style.textAlign || 'left'}`,
-        `line-height:${zone.style.lineHeight || 1.3}`,
+        `line-height:${lineHeightPx}px`,
         zone.style.letterSpacing ? `letter-spacing:${zone.style.letterSpacing}px` : '',
         zone.style.fontStyle ? `font-style:${zone.style.fontStyle}` : '',
         zone.style.textTransform && zone.style.textTransform !== 'none' ? `text-transform:${zone.style.textTransform}` : '',
         zone.style.textDecoration && zone.style.textDecoration !== 'none' ? `text-decoration:${zone.style.textDecoration}` : '',
         'word-break:break-word',
         'overflow:hidden',
+        'z-index:30'
     ].filter(Boolean).join(';')
 
-    return `<div class="format-zone format-zone-text" style="${style}">${text}</div>`
+    return `<div class="format-zone format-zone-text" style="${style}">${safeText}</div>`
 }
 
 function renderStatZoneHTML(rz: RenderedZone): string {

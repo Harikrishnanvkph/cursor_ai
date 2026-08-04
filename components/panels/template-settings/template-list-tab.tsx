@@ -244,9 +244,19 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
     return (
         <div className="space-y-3">
             <Tabs value={subTab} onValueChange={(val) => setSubTab(val as 'custom' | 'formats')} className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-3">
-                    <TabsTrigger value="custom" className="text-xs">Templates</TabsTrigger>
-                    <TabsTrigger value="formats" className="text-xs">Formats (New)</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-2 gap-1 h-auto p-1 bg-gray-100 rounded-lg mb-3">
+                    <TabsTrigger
+                        value="custom"
+                        className="text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
+                    >
+                        Templates
+                    </TabsTrigger>
+                    <TabsTrigger
+                        value="formats"
+                        className="text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
+                    >
+                        Formats (New)
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="formats" className="m-0 space-y-2 focus-visible:outline-none focus-visible:ring-0">

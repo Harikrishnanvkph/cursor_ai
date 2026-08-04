@@ -15,9 +15,8 @@ import { UndoRedoButtons } from "@/components/ui/undo-redo-buttons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ZoomIn, ZoomOut, Eye, EyeOff, Ellipsis, Maximize2, Minimize2, Settings, Menu, X, ChevronLeft, Download, Hand, Pencil, Check, Loader2, ChartColumn, RulerDimensionLine, Search, Undo2, Redo2 } from "lucide-react"
 import { downloadTemplateExport, downloadFormatExport } from "@/lib/template-export"
-import { FileDown, FileImage, FileCode, Ban, Cloud } from "lucide-react"
+import { FileDown, FileImage, FileCode, Ban, Cloud, Camera } from "lucide-react"
 import { ChartBgColorPicker } from "./chart-preview/chart-bg-color-picker"
-import html2canvas from 'html2canvas'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Slider } from "@/components/ui/slider"
@@ -42,6 +41,7 @@ import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { getPatternCSS } from "@/lib/utils"
 import { renderFormat } from "@/lib/variant-engine"
 import { FormatRenderer } from "@/components/gallery/FormatRenderer"
+import { getProxiedImageUrl, requiresProxy } from "@/lib/utils/image-proxy-utils"
 
 const ZOOM_VALUES: number[] = (() => {
   let values: number[] = [];
@@ -510,13 +510,35 @@ export function TemplateChartPreview({
   }
 
   // Handle export
-  const handleExport = async (format: 'png' | 'jpeg' | 'html') => {
+  const handleExport = async (
+    format: 'png' | 'jpeg' | 'html', 
+    engine: 'html2canvas' | 'modern-screenshot' = 'html2canvas'
+  ) => {
     const dateStr = new Date().toISOString().slice(0, 10)
+
+    // Clear active focus & selection state so toolbars and blue selection boxes are removed
+    try {
+      useFormatGalleryStore.getState().setSelectedZoneId(null)
+      useFormatGalleryStore.getState().setEditingZoneId(null)
+      useFormatGalleryStore.getState().setHoveredZoneId(null)
+      if (typeof document !== 'undefined') {
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur()
+        }
+        window.getSelection()?.removeAllRanges()
+      }
+    } catch (e) {
+      console.warn("Failed to clear selection state:", e)
+    }
+
+    // Allow React state updates to unmount selection overlays
+    await new Promise(resolve => setTimeout(resolve, 120))
 
     // ── Format mode export ──────────────────────
     if (renderedFormat) {
       if (format === 'html') {
         try {
+          toast.loading("Generating HTML template...", { id: "template-export" })
           const decorationShapes = useDecorationStore.getState().shapes
           await downloadFormatExport(
             renderedFormat,
@@ -525,16 +547,18 @@ export function TemplateChartPreview({
               fileName: `${renderedFormat.skeleton.name.toLowerCase().replace(/\s+/g, '-')}-${dateStr}`
             }
           )
+          toast.success("HTML template downloaded successfully!", { id: "template-export" })
         } catch (error) {
           console.error('Format HTML export failed:', error)
+          toast.error("Failed to export HTML template", { id: "template-export" })
         }
       } else {
-        // Image export for format mode — capture the preview via html2canvas
         try {
+          toast.loading(`Exporting as ${format.toUpperCase()}...`, { id: "template-export" })
           const target = exportCanvasRef.current
           if (!target) { console.error('Export target not found'); return }
 
-          // Temporarily strip CSS transforms so html2canvas captures at native size
+          // Temporarily strip CSS transforms so snapshot captures at native size
           const origTransform = target.style.transform
           const origTransformOrigin = target.style.transformOrigin
           target.style.transform = 'none'
@@ -542,29 +566,123 @@ export function TemplateChartPreview({
 
           await new Promise(resolve => setTimeout(resolve, 100))
 
-          const canvas = await html2canvas(target, {
-            scale: 4,
-            backgroundColor: null,
-            useCORS: true,
-            allowTaint: true,
-            width: renderedFormat.skeleton.dimensions.width,
-            height: renderedFormat.skeleton.dimensions.height,
-            logging: false,
-          })
+          let dataUrl = ''
+
+          const { domToPng, domToJpeg } = await import('modern-screenshot')
+          
+          // 1. Pre-process canvases: safely snapshot them to image elements
+          const canvases = target.querySelectorAll('canvas')
+          const canvasReplacements: { canvas: HTMLCanvasElement, img: HTMLImageElement }[] = []
+          for (let i = 0; i < canvases.length; i++) {
+            const canvas = canvases[i]
+            try {
+              const data = canvas.toDataURL('image/png')
+              const img = document.createElement('img')
+              img.src = data
+              img.className = canvas.className
+              img.style.cssText = canvas.style.cssText
+              canvas.parentNode?.insertBefore(img, canvas)
+              canvas.style.display = 'none'
+              canvasReplacements.push({ canvas, img })
+            } catch (e) {
+              console.warn("Failed to snapshot canvas:", e)
+            }
+          }
+
+          // 2. Pre-process all <img> elements (inline icons, flags, logos) to base64 data URLs
+          const allImages = Array.from(target.querySelectorAll('img'))
+          const imageSrcRestores: { img: HTMLImageElement; origSrc: string }[] = []
+
+          await Promise.all(
+            allImages.map(async (img) => {
+              const src = img.src || img.getAttribute('src') || ''
+              if (!src || src.startsWith('data:')) return
+
+              try {
+                const proxiedUrl = requiresProxy(src) ? getProxiedImageUrl(src) : src
+                const response = await fetch(proxiedUrl)
+                const blob = await response.blob()
+                const dataUrl = await new Promise<string>((resolve) => {
+                  const reader = new FileReader()
+                  reader.onloadend = () => resolve((reader.result as string) || '')
+                  reader.onerror = () => resolve('')
+                  reader.readAsDataURL(blob)
+                })
+
+                if (dataUrl) {
+                  imageSrcRestores.push({ img, origSrc: src })
+                  img.src = dataUrl
+                }
+              } catch (err) {
+                console.warn('Failed to pre-convert image to data URL:', src, err)
+              }
+            })
+          )
+
+          try {
+            const options = {
+              scale: 4,
+              width: renderedFormat.skeleton.dimensions.width,
+              height: renderedFormat.skeleton.dimensions.height,
+              filter: (node: Node) => {
+                if (node instanceof HTMLElement) {
+                  if (
+                    node.getAttribute('data-export-ignore') === 'true' ||
+                    node.classList.contains('format-zone-toolbar') ||
+                    node.classList.contains('format-zone-selection-border') ||
+                    node.classList.contains('format-zone-type-badge')
+                  ) {
+                    return false
+                  }
+                  if (node.tagName === 'LINK') {
+                    const href = (node as HTMLLinkElement).href || ''
+                    if (href.includes('fonts.googleapis.com') || href.includes('fonts.gstatic.com')) {
+                      return false
+                    }
+                  }
+                }
+                return true
+              },
+              style: {
+                transform: 'none',
+                transformOrigin: 'top left'
+              }
+            }
+
+            if (format === 'jpeg') {
+              dataUrl = await domToJpeg(target, options)
+            } else {
+              dataUrl = await domToPng(target, options)
+            }
+          } finally {
+            // Restore original image sources
+            for (const { img, origSrc } of imageSrcRestores) {
+              img.src = origSrc
+            }
+
+            // Restore original canvases
+            for (const { canvas, img } of canvasReplacements) {
+              canvas.style.display = ''
+              if (img && img.parentNode) {
+                img.parentNode.removeChild(img)
+              }
+            }
+          }
 
           // Restore transforms
           target.style.transform = origTransform
           target.style.transformOrigin = origTransformOrigin
 
-          const dataUrl = canvas.toDataURL(`image/${format}`, 1)
           const link = document.createElement('a')
           link.href = dataUrl
           link.download = `${renderedFormat.skeleton.name.toLowerCase().replace(/\s+/g, '-')}-${dateStr}.${format}`
           document.body.appendChild(link)
           link.click()
           document.body.removeChild(link)
+          toast.success(`Exported successfully as ${format.toUpperCase()}`, { id: "template-export" })
         } catch (error) {
           console.error('Format image export failed:', error)
+          toast.error(`Failed to export as ${format.toUpperCase()}`, { id: "template-export" })
         }
       }
       return
@@ -573,9 +691,13 @@ export function TemplateChartPreview({
     // ── Template mode export ────────────────────
     const template = currentTemplate || templateInBackground
     const chartInstance = globalChartRef?.current
-    if (!template || !chartInstance) return
+    if (!template || !chartInstance) {
+      toast.error("Template or chart not available for export", { id: "template-export" })
+      return
+    }
 
     try {
+      toast.loading(`Generating ${format === 'html' ? 'HTML template' : format.toUpperCase() + ' image'}...`, { id: "template-export" })
       await new Promise(resolve => setTimeout(resolve, 100))
       const chartCanvas = chartInstance.canvas
 
@@ -591,8 +713,13 @@ export function TemplateChartPreview({
           scale: 4
         }
       )
+      toast.success(
+        format === 'html' ? "HTML template downloaded successfully!" : `Template exported as ${format.toUpperCase()}`,
+        { id: "template-export" }
+      )
     } catch (error) {
       console.error('Export failed:', error)
+      toast.error(`Failed to export template as ${format.toUpperCase()}`, { id: "template-export" })
     }
   }
 
@@ -1491,6 +1618,7 @@ export function TemplateChartPreview({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => handleExport('png')}><FileImage className="h-4 w-4 mr-2" /> Image (PNG)</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleExport('jpeg')}><FileImage className="h-4 w-4 mr-2" /> Image (JPEG)</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleExport('html')}><FileCode className="h-4 w-4 mr-2" /> HTML</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

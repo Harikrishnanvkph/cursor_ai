@@ -6,7 +6,7 @@ import { renderFormat } from "@/lib/variant-engine"
 import { FormatRenderer } from "./FormatRenderer"
 import { Button } from "@/components/ui/button"
 import { LayoutGrid, Download, X, AlertTriangle } from "lucide-react"
-import html2canvas from "html2canvas"
+import { domToPng } from "modern-screenshot"
 
 export function FullSizeFormatView() {
   const { formats, contentPackage, selectedFormatId, openGallery, clearSelection, contextualImageUrl } = useFormatGalleryStore()
@@ -74,11 +74,14 @@ export function FullSizeFormatView() {
       // We must wait a tick for layout shifts
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      const canvas = await html2canvas(formatRef.current, {
-        scale: 2, // 2x resolution for export
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: null,
+      const dataUrl = await domToPng(formatRef.current, {
+        scale: 2,
+        width: renderedFormat.skeleton.dimensions.width,
+        height: renderedFormat.skeleton.dimensions.height,
+        style: {
+          transform: 'none',
+          transformOrigin: 'top left'
+        }
       })
 
       // Restore scale visually
@@ -90,7 +93,7 @@ export function FullSizeFormatView() {
       // Download
       const link = document.createElement("a")
       link.download = `chart-${renderedFormat.skeleton.name.toLowerCase().replace(/\s+/g, '-')}.png`
-      link.href = canvas.toDataURL("image/png")
+      link.href = dataUrl
       link.click()
     } catch (err) {
       console.error("Export failed:", err)

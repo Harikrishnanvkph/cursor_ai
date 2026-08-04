@@ -78,8 +78,13 @@ export function PiePanel({ className }: PiePanelProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         <Tabs defaultValue="labels" className="w-full">
-          <TabsList className="grid w-full grid-cols-1"> {/* Can expand if more tabs needed */}
-            <TabsTrigger value="labels">Data Labels</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-1 gap-1 h-auto p-1 bg-gray-100 rounded-lg">
+            <TabsTrigger
+              value="labels"
+              className="text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
+            >
+              Data Labels
+            </TabsTrigger>
           </TabsList>
           <TabsContent value="labels" className="space-y-4 pt-4">
             <Card>

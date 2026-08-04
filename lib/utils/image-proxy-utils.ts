@@ -50,3 +50,24 @@ export function getProxiedImageUrl(
 
     return url;
 }
+
+/**
+ * Extracts the raw underlying image URL if the given URL is a proxied URL
+ */
+export function unwrapProxiedImageUrl(url: string): string {
+    if (!url) return '';
+    try {
+        if (url.includes('/api/proxy/image') && url.includes('url=')) {
+            const searchIndex = url.indexOf('url=');
+            if (searchIndex !== -1) {
+                const paramStr = url.substring(searchIndex + 4);
+                const ampIndex = paramStr.indexOf('&');
+                const encodedUrl = ampIndex !== -1 ? paramStr.substring(0, ampIndex) : paramStr;
+                return decodeURIComponent(encodedUrl);
+            }
+        }
+    } catch (e) {
+        // Fallback to original URL
+    }
+    return url;
+}

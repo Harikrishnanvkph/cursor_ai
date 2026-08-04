@@ -4,6 +4,42 @@
 export function generateUniversalImagePluginCode(): string {
   return `
 // Universal Image Plugin for HTML Export
+const htmlExportImageCache = new Map();
+
+function drawElementImage(ctx, element, img, imageConfig, chart, datasetIndex, pointIndex) {
+  ctx.save();
+  const chartType = chart.config?.type || 'bar';
+  const x = element.x;
+  const y = element.y;
+
+  element.chart = chart;
+
+  if (imageConfig.position === "callout") {
+    renderCalloutImage(ctx, x, y, img, imageConfig, datasetIndex, pointIndex, chart);
+    ctx.restore();
+    return;
+  }
+
+  if (chartType === "pie" || chartType === "doughnut" || chartType === "polarArea" || chartType === "pie3d" || chartType === "doughnut3d") {
+    renderSliceImage(ctx, element, img, imageConfig);
+  } else if (chartType === "bar" || chartType === "bar3d" || chartType === "horizontalBar3d" || chartType === "horizontalBar" || chartType === "stackedBar") {
+    if (chart.config?.options?.indexAxis === "y" || chartType === "horizontalBar" || chartType === "horizontalBar3d") {
+      renderBarImageHorizontal(ctx, element, img, imageConfig);
+    } else {
+      renderBarImageVertical(ctx, element, img, imageConfig);
+    }
+  } else if (
+    chartType === "line" ||
+    chartType === "scatter" ||
+    chartType === "bubble" ||
+    chartType === "radar"
+  ) {
+    renderPointImage(ctx, element, img, imageConfig);
+  }
+
+  ctx.restore();
+}
+
 const universalImagePlugin = {
   id: "universalImages",
   afterDraw: (chart) => {
@@ -13,64 +49,38 @@ const universalImagePlugin = {
     chart.data.datasets.forEach((dataset, datasetIndex) => {
       const meta = chart.getDatasetMeta(datasetIndex);
       if (!meta || !meta.data || !dataset.pointImages) return;
-      // Respect default Chart.js dataset visibility
       if (typeof chart.isDatasetVisible === 'function' && chart.isDatasetVisible(datasetIndex) === false) return;
 
       meta.data.forEach((element, pointIndex) => {
-        // Respect per-slice visibility for pie/doughnut/polarArea
         if ((chart.config?.type === 'pie' || chart.config?.type === 'doughnut' || chart.config?.type === 'polarArea' || chart.config?.type === 'pie3d' || chart.config?.type === 'doughnut3d') &&
             typeof chart.getDataVisibility === 'function' && chart.getDataVisibility(pointIndex) === false) {
           return;
         }
         const imageUrl = dataset.pointImages[pointIndex];
-        const imageConfig = dataset.pointImageConfig?.[pointIndex] || getDefaultImageConfig(chart.config.type || 'bar');
+        const imageConfig = dataset.pointImageConfig?.[pointIndex] || getDefaultImageConfig(chart.config?.type || 'bar');
 
         if (imageUrl && element) {
-          const img = new Image();
-          img.crossOrigin = "anonymous";
-          img.onload = () => {
-            ctx.save();
-            const chartType = chart.config.type;
-            const x = element.x;
-            const y = element.y;
-
-            // Add chart reference to element
-            element.chart = chart;
-
-            // Handle callout position for all chart types
-            if (imageConfig.position === "callout") {
-              renderCalloutImage(ctx, x, y, img, imageConfig, datasetIndex, pointIndex, chart);
-              ctx.restore();
-              return;
-            }
-
-            const isFillEnabled = imageConfig.fillSlice || imageConfig.fillBar;
-            if (chartType === "pie" || chartType === "doughnut" || chartType === "polarArea" || chartType === "pie3d" || chartType === "doughnut3d") {
-              // Priority: if fill is enabled, call renderSliceImage which internally handles both
-              renderSliceImage(ctx, element, img, imageConfig);
-            } else if (chartType === "bar" || chartType === "bar3d" || chartType === "horizontalBar3d" || chartType === "horizontalBar" || chartType === "stackedBar") {
-              if (chart.config.options?.indexAxis === "y" || chartType === "horizontalBar" || chartType === "horizontalBar3d") {
-                renderBarImageHorizontal(ctx, element, img, imageConfig);
-              } else {
-                renderBarImageVertical(ctx, element, img, imageConfig);
+          let cachedImg = htmlExportImageCache.get(imageUrl);
+          if (cachedImg && cachedImg.complete && cachedImg.naturalWidth > 0) {
+            drawElementImage(ctx, element, cachedImg, imageConfig, chart, datasetIndex, pointIndex);
+          } else if (!cachedImg) {
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.onload = () => {
+              htmlExportImageCache.set(imageUrl, img);
+              if (typeof chart.draw === 'function') {
+                chart.draw();
               }
-            } else if (
-              chartType === "line" ||
-              chartType === "scatter" ||
-              chartType === "bubble" ||
-              chartType === "radar"
-            ) {
-              renderPointImage(ctx, element, img, imageConfig);
-            }
-
-            ctx.restore();
-          };
-          img.src = imageUrl;
+            };
+            htmlExportImageCache.set(imageUrl, img);
+            img.src = imageUrl;
+          }
         }
       });
     });
   },
   afterInit: (chart) => {
+
     // Set up event listeners for dragging
     const canvas = chart.canvas;
     let isHovering = false;

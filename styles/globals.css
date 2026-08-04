@@ -103,3 +103,29 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* ═══════════════════════════════════════════════════════
+   DOM Screenshot Export Mode — hides UI-only elements
+   during pixel-perfect image capture
+   ═══════════════════════════════════════════════════════ */
+.dom-export-mode .template-text-area {
+  border: none !important;
+  ring-width: 0 !important;
+}
+.dom-export-mode .ring-2,
+.dom-export-mode .ring-1 {
+  --tw-ring-shadow: 0 0 #0000 !important;
+  box-shadow: none !important;
+}
+.dom-export-mode [data-export-ignore="true"] {
+  display: none !important;
+}
+.dom-export-mode .hover\:ring-1:hover,
+.dom-export-mode .hover\:ring-gray-300:hover {
+  --tw-ring-shadow: 0 0 #0000 !important;
+  box-shadow: none !important;
+}
+.dom-export-mode .ring-blue-500 {
+  --tw-ring-shadow: 0 0 #0000 !important;
+  box-shadow: none !important;
+}

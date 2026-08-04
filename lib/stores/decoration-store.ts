@@ -38,6 +38,9 @@ export type DecorationShapeType =
   | 'dot'
   | 'pushpin'
   | 'bullseye'
+  | 'info'
+  | 'exclamation'
+  | 'question'
   // Or dynamic text types
   | `emoji-${string}`
   | `num-${number}`

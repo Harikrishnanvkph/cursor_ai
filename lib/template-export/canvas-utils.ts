@@ -39,7 +39,7 @@ export async function renderBackgroundOnCanvas(
     width: number,
     height: number,
     background?: {
-        type: 'color' | 'gradient' | 'image' | 'transparent'
+        type: 'color' | 'gradient' | 'image' | 'pattern' | 'transparent'
         color?: string
         gradientType?: 'linear' | 'radial'
         gradientDirection?: 'to right' | 'to left' | 'to top' | 'to bottom' | '135deg'
@@ -48,6 +48,8 @@ export async function renderBackgroundOnCanvas(
         opacity?: number
         imageUrl?: string
         imageFit?: string
+        patternType?: string
+        patternColor?: string
         blur?: number
     }
 ): Promise<void> {
@@ -168,7 +170,11 @@ export async function renderBackgroundOnCanvas(
                 resolve()
             }
 
-            img.src = background.imageUrl
+            if (background.imageUrl) {
+                img.src = background.imageUrl
+            } else {
+                resolve()
+            }
         })
     }
 }
@@ -237,42 +243,63 @@ export async function renderHTMLToCanvas(
     .export-html-container h1 {
       font-size: 2em;
       font-weight: bold;
-      margin: 8px 0;
+      margin: 0.5em 0;
       display: block;
     }
     .export-html-container h2 {
       font-size: 1.5em;
       font-weight: bold;
-      margin: 8px 0;
+      margin: 0.5em 0;
       display: block;
     }
     .export-html-container h3 {
       font-size: 1.17em;
       font-weight: bold;
-      margin: 8px 0;
+      margin: 0.5em 0;
       display: block;
     }
     .export-html-container h4 {
       font-size: 1em;
       font-weight: bold;
-      margin: 8px 0;
+      margin: 0.5em 0;
       display: block;
     }
     .export-html-container h5 {
       font-size: 0.83em;
       font-weight: bold;
-      margin: 8px 0;
+      margin: 0.5em 0;
       display: block;
     }
     .export-html-container h6 {
       font-size: 0.67em;
       font-weight: bold;
-      margin: 8px 0;
+      margin: 0.5em 0;
       display: block;
     }
     .export-html-container p {
       margin: 0.5em 0;
       display: block;
+    }
+    .export-html-container mark {
+      background-color: #fef08a;
+      padding: 0.1em 0.2em;
+      border-radius: 0.2em;
+    }
+    .export-html-container u {
+      text-decoration: underline;
+    }
+    .export-html-container blockquote {
+      border-left: 3px solid #cbd5e1;
+      padding-left: 1em;
+      margin: 0.5em 0;
+      color: #64748b;
+    }
+    .export-html-container code {
+      background-color: #f1f5f9;
+      padding: 0.2em 0.4em;
+      border-radius: 0.25em;
+      font-family: monospace;
+      font-size: 0.9em;
     }
     /* Image styling to prevent overlay */
     .export-html-container img {
@@ -282,27 +309,29 @@ export async function renderHTMLToCanvas(
       margin: 0.5em 0;
     }
     /* Remove top margin from first element, bottom margin from last element */
-    .export-html-container > h1:first-child,
-    .export-html-container > h2:first-child,
-    .export-html-container > h3:first-child,
-    .export-html-container > h4:first-child,
-    .export-html-container > h5:first-child,
-    .export-html-container > h6:first-child,
-    .export-html-container > p:first-child,
-    .export-html-container > ul:first-child,
-    .export-html-container > ol:first-child {
-      margin-top: 0;
+    .export-html-container h1:first-child,
+    .export-html-container h2:first-child,
+    .export-html-container h3:first-child,
+    .export-html-container h4:first-child,
+    .export-html-container h5:first-child,
+    .export-html-container h6:first-child,
+    .export-html-container p:first-child,
+    .export-html-container ul:first-child,
+    .export-html-container ol:first-child,
+    .export-html-container blockquote:first-child {
+      margin-top: 0 !important;
     }
-    .export-html-container > h1:last-child,
-    .export-html-container > h2:last-child,
-    .export-html-container > h3:last-child,
-    .export-html-container > h4:last-child,
-    .export-html-container > h5:last-child,
-    .export-html-container > h6:last-child,
-    .export-html-container > p:last-child,
-    .export-html-container > ul:last-child,
-    .export-html-container > ol:last-child {
-      margin-bottom: 0;
+    .export-html-container h1:last-child,
+    .export-html-container h2:last-child,
+    .export-html-container h3:last-child,
+    .export-html-container h4:last-child,
+    .export-html-container h5:last-child,
+    .export-html-container h6:last-child,
+    .export-html-container p:last-child,
+    .export-html-container ul:last-child,
+    .export-html-container ol:last-child,
+    .export-html-container blockquote:last-child {
+      margin-bottom: 0 !important;
     }
   `
     document.head.appendChild(styleEl)
@@ -311,7 +340,7 @@ export async function renderHTMLToCanvas(
     const container = document.createElement('div')
     container.className = 'export-html-container'
     container.style.cssText = `
-    position: fixed;
+    position: absolute;
     left: -9999px;
     top: 0;
     width: ${width}px;
@@ -343,6 +372,12 @@ export async function renderHTMLToCanvas(
             allowTaint: true,
             width: width,
             height: height,
+            x: 0,
+            y: 0,
+            windowWidth: document.documentElement.offsetWidth,
+            windowHeight: document.documentElement.offsetHeight,
+            scrollX: 0,
+            scrollY: 0
         })
 
         return canvas

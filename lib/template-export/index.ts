@@ -5,3 +5,4 @@ export { exportTemplateAsHTML, exportTemplateAsUnifiedHTML } from "./template-ht
 export { downloadTemplateExport, downloadFormatExport } from "./template-download"
 export { exportFormatAsHTML } from "./format-html-export"
 export { generateDecorationsSVG, generateDecorationsCSS } from "./decoration-html-export"
+export { exportDOMElementAsImage } from "./dom-screenshot-export"

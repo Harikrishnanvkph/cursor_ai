@@ -39,10 +39,25 @@ export function DesignPanel() {
         <div className="space-y-4">
             <Tabs defaultValue="background" className="w-full">
                 <div className="overflow-x-auto">
-                    <TabsList className="grid w-full grid-cols-3">
-                        <TabsTrigger value="background">Background</TabsTrigger>
-                        <TabsTrigger value="title">Title</TabsTrigger>
-                        <TabsTrigger value="legend">Legend</TabsTrigger>
+                    <TabsList className="grid w-full grid-cols-3 gap-1 h-auto p-1 bg-gray-100 rounded-lg">
+                        <TabsTrigger
+                            value="background"
+                            className="text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
+                        >
+                            Background
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="title"
+                            className="text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
+                        >
+                            Title
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="legend"
+                            className="text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
+                        >
+                            Legend
+                        </TabsTrigger>
                     </TabsList>
                 </div>
 

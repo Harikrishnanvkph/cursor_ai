@@ -9,6 +9,7 @@ import { PalettePanel } from './panels/palette-panel'
 import { CanvasToolsPanel } from './panels/canvas-tools-panel'
 import { DecorationsPanel } from './panels/decorations-panel'
 import { AiInstructionsPanel } from './panels/ai-instructions-panel'
+import { EditZoneSectionPanel } from './panels/edit-zone-section-panel'
 
 export function FormatBuilderSidebar() {
   const [activeTab, setActiveTab] = useState<'zones' | 'ai'>('zones')
@@ -18,8 +19,12 @@ export function FormatBuilderSidebar() {
     setOpenSection(prev => prev === section ? null : section)
   }
 
+  const handleSwitchToAi = () => {
+    setActiveTab('ai')
+  }
+
   return (
-    <div className="w-[300px] h-full border-l border-gray-800 bg-gray-900/50 flex flex-col overflow-hidden shrink-0">
+    <div className="w-[310px] h-full border-l border-gray-800 bg-gray-900/50 flex flex-col overflow-hidden shrink-0">
       {/* Tab Switcher */}
       <div className="flex border-b border-gray-800 bg-gray-950 p-2 gap-1.5 shrink-0 select-none">
         <button
@@ -33,6 +38,7 @@ export function FormatBuilderSidebar() {
           <PlusSquare className="w-3.5 h-3.5 shrink-0" />
           <span>Add Zones</span>
         </button>
+
         <button
           onClick={() => setActiveTab('ai')}
           className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-center text-xs font-semibold rounded-md border transition-all focus:outline-none ${
@@ -75,6 +81,10 @@ export function FormatBuilderSidebar() {
               isOpen={openSection === 'palette'}
               onToggle={() => handleToggleSection('palette')}
             />
+            {/* Edit Zone Section — Placed LAST in list & OPEN BY DEFAULT independently */}
+            <EditZoneSectionPanel
+              onNavigateToInstruct={handleSwitchToAi}
+            />
           </>
         ) : (
           <AiInstructionsPanel />
@@ -83,4 +93,3 @@ export function FormatBuilderSidebar() {
     </div>
   )
 }
-

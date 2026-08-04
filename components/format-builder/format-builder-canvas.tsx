@@ -458,10 +458,14 @@ function getBackgroundCSS(s: any): React.CSSProperties {
     }
   }
   if (s.type === 'image' && s.imageUrl) {
+    const opacity = s.imageOpacity !== undefined ? s.imageOpacity / 100 : (s.opacity !== undefined ? s.opacity : 1)
+    const blur = s.imageBlur !== undefined ? s.imageBlur : (s.blur !== undefined ? s.blur : 0)
     return {
       backgroundImage: `url(${s.imageUrl})`,
       backgroundSize: s.imageFit || 'cover',
       backgroundPosition: 'center',
+      opacity,
+      filter: blur > 0 ? `blur(${blur}px)` : undefined,
     }
   }
   if (s.type === 'pattern') {

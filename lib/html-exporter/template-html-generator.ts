@@ -425,12 +425,23 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
         }
     }
     
-    const ctx = document.getElementById('chartCanvas').getContext('2d');
-    new Chart(ctx, {
-        type: chartType,
-        data: chartData,
-        options: enhancedConfig
-    });
+    function initChart() {
+        const canvasEl = document.getElementById('chartCanvas');
+        if (canvasEl) {
+            const ctx = canvasEl.getContext('2d');
+            new Chart(ctx, {
+                type: chartType,
+                data: chartData,
+                options: enhancedConfig
+            });
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        window.addEventListener('DOMContentLoaded', initChart);
+    } else {
+        initChart();
+    }
   `;
 
     // Generate chart styles
@@ -445,8 +456,8 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
     }
     
     .chart-canvas {
-        width: ${width}px !important;
-        height: ${height}px !important;
+        width: 100% !important;
+        height: 100% !important;
     }
   `;
 

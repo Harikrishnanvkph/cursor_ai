@@ -302,11 +302,14 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
         const isActiveFormatMode = editorMode === 'template' && generateMode === 'format' && selectedFormatId;
         
         if (isActiveFormatMode) {
+            const formatStore = useFormatGalleryStore.getState();
+            const snapshotToSave = formatStore.selectedFormatSnapshot || [...formatStore.formats, ...formatStore.userFormats].find(f => f.id === selectedFormatId) || null;
+
             normalizedConfig.formatData = {
                 formatId: selectedFormatId,
                 contentPackage,
                 contextualImageUrl,
-                formatSnapshot: selectedFormatSnapshot
+                formatSnapshot: snapshotToSave
             };
             
             // Note: The Supabase RPC function 'save_chart_snapshot' sets `is_template_mode = true` 

@@ -319,18 +319,14 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
   }
 
   const handleExportHTML = async () => {
-    if (exportMode === "template" && currentTemplate) {
+    const isTemplateActive = isGlobalTemplateMode || exportMode === "template" || !!currentTemplate
+    if (isTemplateActive && currentTemplate) {
       const chartInstance = globalChartRef?.current
-      if (!chartInstance) {
-        console.error('Chart instance not available')
-        return
-      }
+      const chartCanvas = chartInstance?.canvas || null
 
       try {
         // Add a small delay to ensure chart is fully rendered
         await new Promise(resolve => setTimeout(resolve, 100))
-
-        const chartCanvas = chartInstance.canvas
 
         await downloadTemplateExport(
           currentTemplate,
@@ -446,7 +442,6 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
   return (
     <div className="space-y-4">
 
-
       <Card className="border-blue-100 shadow-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-50 rounded-bl-full -z-10 opacity-50"></div>
         <CardHeader className="pb-3">
@@ -485,10 +480,78 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
         </CardContent>
       </Card>
 
+      {/* HTML Export Card */}
+      <Card className="border-blue-100 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <FileCode className="h-4 w-4 text-blue-600" />
+            HTML Template Download
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-[10px] text-gray-500 leading-relaxed">
+            Download a complete, self-contained HTML page containing your {isGlobalTemplateMode ? "template layout, text areas, and interactive chart" : "interactive chart"}.
+          </p>
+          <div className="space-y-1.5">
+            <Label className="text-xs">File Name</Label>
+            <Input
+              value={htmlOptions.fileName || ""}
+              onChange={(e) => setHtmlOptions({ ...htmlOptions, fileName: e.target.value })}
+              placeholder="chart-template.html"
+              className="h-8 text-xs"
+            />
+          </div>
+          <Button onClick={handleExportHTML} className="w-full h-9 text-xs bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
+            <FileCode className="h-3.5 w-3.5 mr-2" />
+            Download HTML {isGlobalTemplateMode ? "Template" : ""}
+          </Button>
+        </CardContent>
+      </Card>
 
+      {/* Image Export Card */}
+      <Card className="border-blue-100 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <FileImage className="h-4 w-4 text-blue-600" />
+            Image Export
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Format</Label>
+              <Select value={exportFormat} onValueChange={setExportFormat}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="png" className="text-xs">PNG</SelectItem>
+                  <SelectItem value="jpeg" className="text-xs">JPEG</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Scale / Quality</Label>
+              <Select value={exportScale} onValueChange={setExportScale}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1" className="text-xs">1x (Standard)</SelectItem>
+                  <SelectItem value="2" className="text-xs">2x (High Quality)</SelectItem>
+                  <SelectItem value="4" className="text-xs">4x (Ultra HD)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <Button onClick={handleExportImage} variant="outline" className="w-full h-9 text-xs">
+            <FileImage className="h-3.5 w-3.5 mr-2" />
+            Download Image ({exportFormat.toUpperCase()})
+          </Button>
+        </CardContent>
+      </Card>
 
-
-
+      {/* Data Export Card */}
       <Card className="border-blue-100 shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm flex items-center gap-2">
@@ -503,7 +566,6 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
           </Button>
         </CardContent>
       </Card>
-
 
     </div>
   )

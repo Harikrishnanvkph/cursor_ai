@@ -7,13 +7,6 @@ import { TEXT_ROLES, STAT_ROLES } from '../format-builder-utils'
 import { PanelSection } from './panel-section'
 import type { ZoneType } from '@/lib/format-types'
 
-/**
- * "Add Zone" panel — content slots only.
- * Zones are semantic placeholders (text, chart, stat, background)
- * that get filled by AI at render time.
- *
- * Decorations (shapes, lines, icons, images) are in a SEPARATE panel.
- */
 export function AddZonePanel({ isOpen, onToggle }: { isOpen?: boolean; onToggle?: () => void }) {
   const { addZone } = useFormatBuilder()
   const [expandedType, setExpandedType] = useState<ZoneType | null>(null)

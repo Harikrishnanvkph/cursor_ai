@@ -435,22 +435,26 @@ function renderZone(
  */
 function renderTextZone(zone: TextZone, content: LLMContentPackage): RenderedZone {
   let text = ''
-  switch (zone.role) {
-    case 'title':
-      text = content.title || 'Untitled'
-      break
-    case 'subtitle':
-      text = content.subtitle || ''
-      break
-    case 'body':
-      text = content.body || ''
-      break
-    case 'source':
-      text = content.source || ''
-      break
-    case 'callout':
-      text = content.callout || ''
-      break
+  if (zone.id && (content as any)[zone.id] !== undefined) {
+    text = String((content as any)[zone.id])
+  } else {
+    switch (zone.role) {
+      case 'title':
+        text = content.title || 'Untitled'
+        break
+      case 'subtitle':
+        text = content.subtitle || ''
+        break
+      case 'body':
+        text = content.body || ''
+        break
+      case 'source':
+        text = content.source || ''
+        break
+      case 'callout':
+        text = content.callout || ''
+        break
+    }
   }
 
   // Enforce character limits to prevent overflow/clipping:

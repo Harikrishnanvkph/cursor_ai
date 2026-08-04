@@ -574,29 +574,29 @@ function FormatBackgroundEditor({ format }: { format: FormatBlueprintRow }) {
                 </Select>
               </div>
               <div>
-                <Label className="text-xs">Overlay</Label>
-                <Input
-                  type="text"
-                  value={bgStyle.overlay || ''}
-                  onChange={(e) => updateBgStyle({ overlay: e.target.value })}
-                  placeholder="rgba(0,0,0,0.3)"
-                  className="h-7 text-xs mt-1"
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">Opacity</Label>
+                  <span className="text-xs font-mono text-slate-400">{bgStyle.imageOpacity ?? 100}%</span>
+                </div>
+                <Slider
+                  value={[bgStyle.imageOpacity ?? 100]}
+                  onValueChange={([v]) => updateBgStyle({ imageOpacity: v })}
+                  min={0} max={100} step={1}
+                  className="mt-1.5 flex-1"
                 />
               </div>
-              {bgStyle.blur !== undefined && (
-                <div>
+              <div>
+                <div className="flex items-center justify-between">
                   <Label className="text-xs">Blur</Label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Slider
-                      value={[bgStyle.blur || 0]}
-                      onValueChange={([v]) => updateBgStyle({ blur: v })}
-                      min={0} max={20} step={1}
-                      className="flex-1"
-                    />
-                    <span className="text-xs w-8 text-right text-gray-500">{bgStyle.blur || 0}px</span>
-                  </div>
+                  <span className="text-xs font-mono text-slate-400">{bgStyle.imageBlur ?? 0}px</span>
                 </div>
-              )}
+                <Slider
+                  value={[bgStyle.imageBlur ?? 0]}
+                  onValueChange={([v]) => updateBgStyle({ imageBlur: v })}
+                  min={0} max={20} step={1}
+                  className="mt-1.5 flex-1"
+                />
+              </div>
             </>
           )}
 
@@ -847,5 +847,83 @@ function FormatZoneBackgroundEditor({ format, zone }: { format: FormatBlueprintR
         )}
       </CardContent>
     </Card>
+  )
+}
+
+function parseOverlayBg(overlayStr?: string): { color: string; opacity: number } {
+  if (!overlayStr) return { color: '#000000', opacity: 50 }
+  
+  const rgbaMatch = overlayStr.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)/i)
+  if (rgbaMatch) {
+    const r = parseInt(rgbaMatch[1], 10)
+    const g = parseInt(rgbaMatch[2], 10)
+    const b = parseInt(rgbaMatch[3], 10)
+    const a = rgbaMatch[4] !== undefined ? parseFloat(rgbaMatch[4]) : 1
+    const hex = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
+    return { color: hex, opacity: Math.round(a * 100) }
+  }
+
+  if (overlayStr.startsWith('#')) {
+    if (overlayStr.length === 9) {
+      const hexColor = overlayStr.slice(0, 7)
+      const alphaHex = overlayStr.slice(7, 9)
+      const a = parseInt(alphaHex, 16) / 255
+      return { color: hexColor, opacity: Math.round(a * 100) }
+    }
+    return { color: overlayStr, opacity: 100 }
+  }
+
+  return { color: '#000000', opacity: 50 }
+}
+
+function formatOverlayBg(hexColor: string, opacityPercent: number): string {
+  if (opacityPercent === 0) return ''
+  const hex = hexColor.replace('#', '')
+  const r = parseInt(hex.substring(0, 2) || '0', 16)
+  const g = parseInt(hex.substring(2, 4) || '0', 16)
+  const b = parseInt(hex.substring(4, 6) || '0', 16)
+  const alpha = (opacityPercent / 100).toFixed(2)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+function OverlaySlider({ overlayValue, onChange }: { overlayValue?: string; onChange: (val: string) => void }) {
+  const { color, opacity } = parseOverlayBg(overlayValue)
+  const [hexColor, setHexColor] = React.useState(color)
+
+  React.useEffect(() => {
+    setHexColor(color)
+  }, [color])
+
+  const handleOpacityChange = (newOpacity: number) => {
+    onChange(formatOverlayBg(hexColor, newOpacity))
+  }
+
+  const handleColorChange = (newColor: string) => {
+    setHexColor(newColor)
+    onChange(formatOverlayBg(newColor, opacity))
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between">
+        <Label className="text-xs">Overlay Opacity</Label>
+        <span className="text-xs font-mono text-slate-400">{opacity}%</span>
+      </div>
+      <div className="flex items-center gap-2 mt-1.5">
+        <input
+          type="color"
+          value={hexColor}
+          onChange={e => handleColorChange(e.target.value)}
+          className="w-7 h-7 rounded border border-slate-700 cursor-pointer bg-transparent flex-shrink-0"
+          title="Overlay Color"
+        />
+        <Slider
+          value={[opacity]}
+          onValueChange={([v]) => handleOpacityChange(v)}
+          min={0} max={100} step={1}
+          className="flex-1"
+        />
+      </div>
+    </div>
   )
 }

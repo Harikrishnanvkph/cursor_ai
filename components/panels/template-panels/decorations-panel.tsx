@@ -858,12 +858,18 @@ export function DecorationsPanel() {
         </div>
       </div>
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'shapes' | 'section')} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="shapes" className="flex items-center gap-1.5 text-xs">
+        <TabsList className="grid w-full grid-cols-2 gap-1 h-auto p-1 bg-gray-100 rounded-lg">
+          <TabsTrigger
+            value="shapes"
+            className="flex items-center justify-center gap-1.5 text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
+          >
             <Hexagon className="h-3.5 w-3.5" />
             Shapes
           </TabsTrigger>
-          <TabsTrigger value="section" className="flex items-center gap-1.5 text-xs">
+          <TabsTrigger
+            value="section"
+            className="flex items-center justify-center gap-1.5 text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
+          >
             <Blend className="h-3.5 w-3.5" />
             Overlay
           </TabsTrigger>

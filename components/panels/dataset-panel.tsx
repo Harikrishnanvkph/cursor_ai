@@ -264,20 +264,35 @@ export function DatasetPanel() {
             </CardHeader>
             <CardContent>
               <Tabs defaultValue="basic" className="w-full">
-                <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 gap-1 h-auto p-1">
-                  <TabsTrigger value="basic" className="text-xs py-2">
+                <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 gap-1 h-auto p-1 bg-gray-100 rounded-lg">
+                  <TabsTrigger
+                    value="basic"
+                    className="text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
+                  >
                     Basic
                   </TabsTrigger>
-                  <TabsTrigger value="colors" className="text-xs py-2">
+                  <TabsTrigger
+                    value="colors"
+                    className="text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
+                  >
                     Colors
                   </TabsTrigger>
-                  <TabsTrigger value="images" className="text-xs py-2">
+                  <TabsTrigger
+                    value="images"
+                    className="text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
+                  >
                     Images
                   </TabsTrigger>
-                  <TabsTrigger value="style" className="text-xs py-2">
+                  <TabsTrigger
+                    value="style"
+                    className="text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
+                  >
                     Style
                   </TabsTrigger>
-                  <TabsTrigger value="data" className="text-xs py-2">
+                  <TabsTrigger
+                    value="data"
+                    className="text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
+                  >
                     Data
                   </TabsTrigger>
                 </TabsList>

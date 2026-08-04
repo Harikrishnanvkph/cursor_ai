@@ -193,7 +193,7 @@ export const exportTemplateAsImage = async (
 
         const { x, y, width, height } = textArea.position
         const style = textArea.style
-        const isHTML = textArea.contentType === 'html'
+        const isHTML = textArea.contentType === 'html' || /<[a-z][\s\S]*>/i.test(textArea.content || '')
         const padding = 8
 
         // Draw text area background first (new feature)
@@ -225,6 +225,13 @@ export const exportTemplateAsImage = async (
             // For plain text, use canvas text rendering
             drawPlainText(ctx, textArea.content, x, y, width, height, style, padding)
         }
+
+        // DEBUG: Draw red border around the text area bounding box
+        ctx.save()
+        ctx.strokeStyle = 'red'
+        ctx.lineWidth = 2
+        ctx.strokeRect(x, y, width, height)
+        ctx.restore()
     }
 
     // Convert to data URL with high quality

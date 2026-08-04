@@ -149,21 +149,53 @@ body {
 .html-content-area ul {
   list-style-type: disc;
   padding-left: 1.5em;
-  margin: 4px 0;
+  margin: 0.5em 0;
 }
 
 .html-content-area ol {
   list-style-type: decimal;
   padding-left: 1.5em;
-  margin: 4px 0;
+  margin: 0.5em 0;
 }
 
 .html-content-area li {
-  margin: 0;
+  margin: 0.25em 0;
 }
 
 .html-content-area p {
-  margin: 0;
+  margin: 0.5em 0;
+}
+
+.html-content-area mark {
+  background-color: #fef08a;
+  padding: 0.1em 0.2em;
+  border-radius: 0.2em;
+}
+
+.html-content-area u {
+  text-decoration: underline;
+}
+
+.html-content-area img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0.5em 0;
+}
+
+.html-content-area blockquote {
+  border-left: 3px solid #cbd5e1;
+  padding-left: 1em;
+  margin: 0.5em 0;
+  color: #64748b;
+}
+
+.html-content-area code {
+  background-color: #f1f5f9;
+  padding: 0.2em 0.4em;
+  border-radius: 0.25em;
+  font-family: monospace;
+  font-size: 0.9em;
 }
 
 /* Ensure empty paragraphs (blank lines from TipTap) preserve their height */
@@ -192,52 +224,56 @@ body {
   list-style-type: lower-roman;
 }
 
-/* Heading styles for HTML content areas - synchronized with .tiptap editor
-   Using fixed pixel values to match Tiptap's rendering exactly */
+/* Heading styles for HTML content areas - synchronized across UI preview, HTML export, and Image export
+   Using proportional em values to scale cleanly with container font-size */
 .html-content-area h1 {
   font-size: 2em;
   font-weight: bold;
-  margin: 8px 0;
+  margin: 0.5em 0;
 }
 
 .html-content-area h2 {
   font-size: 1.5em;
   font-weight: bold;
-  margin: 8px 0;
+  margin: 0.5em 0;
 }
 
 .html-content-area h3 {
   font-size: 1.17em;
   font-weight: bold;
-  margin: 8px 0;
+  margin: 0.5em 0;
 }
 
 .html-content-area h4 {
   font-size: 1em;
   font-weight: bold;
-  margin: 8px 0;
+  margin: 0.5em 0;
 }
 
 .html-content-area h5 {
   font-size: 0.83em;
   font-weight: bold;
-  margin: 8px 0;
+  margin: 0.5em 0;
 }
 
 .html-content-area h6 {
   font-size: 0.67em;
   font-weight: bold;
-  margin: 8px 0;
+  margin: 0.5em 0;
 }
 
-/* Remove top margin from first heading, bottom margin from last heading */
+/* Remove top margin from first child, bottom margin from last child */
 .html-content-area>h1:first-child,
 .html-content-area>h2:first-child,
 .html-content-area>h3:first-child,
 .html-content-area>h4:first-child,
 .html-content-area>h5:first-child,
-.html-content-area>h6:first-child {
-  margin-top: 0;
+.html-content-area>h6:first-child,
+.html-content-area>p:first-child,
+.html-content-area>ul:first-child,
+.html-content-area>ol:first-child,
+.html-content-area>blockquote:first-child {
+  margin-top: 0 !important;
 }
 
 .html-content-area>h1:last-child,
@@ -245,17 +281,12 @@ body {
 .html-content-area>h3:last-child,
 .html-content-area>h4:last-child,
 .html-content-area>h5:last-child,
-.html-content-area>h6:last-child {
-  margin-bottom: 0;
-}
-
-/* Also handle paragraphs */
-.html-content-area>p:first-child {
-  margin-top: 0;
-}
-
-.html-content-area>p:last-child {
-  margin-bottom: 0;
+.html-content-area>h6:last-child,
+.html-content-area>p:last-child,
+.html-content-area>ul:last-child,
+.html-content-area>ol:last-child,
+.html-content-area>blockquote:last-child {
+  margin-bottom: 0 !important;
 }
 
 /* Tiptap Editor Styles */

@@ -46,11 +46,25 @@ export function RadarPanel({ className }: RadarPanelProps) {
           <CardTitle className="text-sm">Radar Chart Axes Settings</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3 mb-4">
-            <TabsTrigger value="scale">Scale</TabsTrigger>
-            <TabsTrigger value="grid">Grid Lines</TabsTrigger>
-            <TabsTrigger value="angle">Angle Lines</TabsTrigger>
-            {/* <TabsTrigger value="labels">Point Labels</TabsTrigger> */}
+          <TabsList className="grid w-full grid-cols-3 gap-1 h-auto p-1 bg-gray-100 rounded-lg mb-4">
+            <TabsTrigger
+              value="scale"
+              className="text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
+            >
+              Scale
+            </TabsTrigger>
+            <TabsTrigger
+              value="grid"
+              className="text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
+            >
+              Grid Lines
+            </TabsTrigger>
+            <TabsTrigger
+              value="angle"
+              className="text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
+            >
+              Angle Lines
+            </TabsTrigger>
           </TabsList>
 
           {/* Scale Tab */}

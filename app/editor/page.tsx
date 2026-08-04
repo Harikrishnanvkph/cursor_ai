@@ -1210,6 +1210,15 @@ function EditorPageContent() {
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           disabled={!hasData}
+                          onClick={() => window.dispatchEvent(new CustomEvent('triggerTemplateExportNew', { detail: { format: 'png' } }))}
+                          className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-750 dark:text-slate-355"
+                        >
+                          <FileImage className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
+                          <span>Image (New)</span>
+                          <span className="ml-auto text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-semibold">NEW</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          disabled={!hasData}
                           onClick={() => window.dispatchEvent(new CustomEvent('triggerTemplateExport', { detail: { format: 'html' } }))}
                           className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-750 dark:text-slate-355"
                         >
@@ -1226,6 +1235,15 @@ function EditorPageContent() {
                         >
                           <FileImage className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                           <span>PNG Image</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          disabled={!hasData}
+                          onClick={() => window.dispatchEvent(new CustomEvent('triggerTemplateExportNew', { detail: { format: 'png' } }))}
+                          className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-750 dark:text-slate-355"
+                        >
+                          <FileImage className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
+                          <span>Image (New)</span>
+                          <span className="ml-auto text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-semibold">NEW</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           disabled={!hasData}

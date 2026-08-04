@@ -122,7 +122,7 @@ export function ConfigSidebar() {
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-violet-600 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-lg transition-all w-full justify-center shadow-sm"
               >
                 <Palette className="w-3.5 h-3.5" />
-                Browse Styles
+                Chart Styles
               </button>
             </div>
           )}
@@ -223,17 +223,17 @@ export function ConfigSidebar() {
             <ResponsiveAnimationsPanel />
           </div>
 
-          <div className={`mt-4 ${activeSidebarTab === 'datasets' ? 'block' : 'hidden'}`}>
+          <div className={`mt-3 ${activeSidebarTab === 'datasets' ? 'block' : 'hidden'}`}>
             <DatasetsSlicesPanel />
           </div>
 
 
 
-          <div className={`mt-4 ${activeSidebarTab === 'templates' ? 'block' : 'hidden'}`}>
+          <div className={`mt-3 ${activeSidebarTab === 'templates' ? 'block' : 'hidden'}`}>
             <TemplateListTab currentCloudTemplate={currentCloudTemplate as any} mode="landing" />
           </div>
         </div>
       </div>
     </div>
   )
-} 
+}

@@ -15,7 +15,9 @@ import {
     Maximize2,
     Crop,
     Grid,
-    RotateCcw
+    RotateCcw,
+    ChevronLeft,
+    ChevronRight
 } from "lucide-react"
 import { getProxiedImageUrl } from "@/lib/utils/image-proxy-utils"
 
@@ -206,11 +208,24 @@ export function ImagesTab({
             <div className="space-y-3">
                 <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-lg p-3 space-y-3 border border-blue-200/50">
                     {/* Slice Selection & Status */}
-                    <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <Label className="text-[10px] font-semibold text-blue-700 uppercase tracking-wide">Slice</Label>
+                    <div className="flex items-center gap-1.5 w-full">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 border border-blue-200 hover:bg-blue-50 text-blue-700 bg-white shadow-sm flex-shrink-0"
+                            onClick={() => {
+                                const totalSlices = currentDataset?.data?.length || 1
+                                const prevIdx = (idx - 1 + totalSlices) % totalSlices
+                                setImageSelectedIndex(prevIdx)
+                            }}
+                            title="Previous Slice"
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+
+                        <div className="flex-1 min-w-0">
                             <Select value={String(idx)} onValueChange={(v) => setImageSelectedIndex(Number(v))}>
-                                <SelectTrigger className="h-7 text-xs flex-1 border-blue-200 focus:border-blue-400">
+                                <SelectTrigger className="h-7 text-xs w-full border-blue-200 focus:border-blue-400 bg-white">
                                     <span className="text-xs truncate">{`#${idx + 1} — ${currentSliceLabels[idx] || `Slice ${idx + 1}`}`}</span>
                                 </SelectTrigger>
                                 <SelectContent>
@@ -222,12 +237,20 @@ export function ImagesTab({
                                 </SelectContent>
                             </Select>
                         </div>
-                        {hasImage && (
-                            <div className="flex items-center gap-1 text-[10px] text-blue-700 bg-blue-100 px-2 py-1 rounded-full border border-blue-300">
-                                <ImageIcon className="h-2.5 w-2.5" />
-                                <span className="font-medium">Active</span>
-                            </div>
-                        )}
+
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 border border-blue-200 hover:bg-blue-50 text-blue-700 bg-white shadow-sm flex-shrink-0"
+                            onClick={() => {
+                                const totalSlices = currentDataset?.data?.length || 1
+                                const nextIdx = (idx + 1) % totalSlices
+                                setImageSelectedIndex(nextIdx)
+                            }}
+                            title="Next Slice"
+                        >
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
                     </div>
 
                     {/* Image Preview */}

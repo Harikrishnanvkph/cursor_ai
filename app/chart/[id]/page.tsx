@@ -183,83 +183,13 @@ export default function PublicChartPage() {
     if (!conversation?.snapshot) return
 
     try {
-      toast.loading("Preparing HTML export (embedding images)...", { id: "html-export" })
+      toast.loading("Preparing HTML export...", { id: "html-export" })
 
-      // Convert all images to Base64 so the HTML file is fully standalone offline
-      const { chartData, chartConfig } = await embedImagesAsBase64(
-        conversation.snapshot.chart_data,
-        conversation.snapshot.chart_config
-      )
-
-      const resolvedType = chartTypeMapping[conversation.snapshot.chart_type as SupportedChartType] || conversation.snapshot.chart_type;
-
-      const htmlContent = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${conversation.title}</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      margin: 0;
-      padding: 20px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .container {
-      background: white;
-      border-radius: 16px;
-      padding: 32px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-      max-width: 1200px;
-      width: 100%;
-    }
-    h1 {
-      margin: 0 0 24px 0;
-      color: #1f2937;
-      font-size: 28px;
-      font-weight: 700;
-    }
-    .chart-container {
-      position: relative;
-      height: 600px;
-      width: 100%;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>${conversation.title}</h1>
-    <div class="chart-container">
-      <canvas id="chart"></canvas>
-    </div>
-  </div>
-  
-  <script>
-    const ctx = document.getElementById('chart').getContext('2d');
-    new Chart(ctx, {
-      type: '${resolvedType}',
-      data: ${JSON.stringify(chartData)},
-      options: ${JSON.stringify(chartConfig)}
-    });
-  </script>
-</body>
-</html>`
-
-      const blob = new Blob([htmlContent], { type: "text/html" })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `${conversation.title.replace(/[^a-z0-9]/gi, '_')}.html`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      const { downloadChartAsHTML } = await import("@/lib/html-exporter")
+      await downloadChartAsHTML({
+        title: conversation.title,
+        fileName: `${conversation.title.replace(/[^a-z0-9]/gi, '_')}.html`
+      })
 
       toast.success("HTML downloaded successfully!", { id: "html-export" })
     } catch (error) {

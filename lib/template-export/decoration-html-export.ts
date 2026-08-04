@@ -462,7 +462,46 @@ export function generateDecorationsSVG(
 
   const svgContent = visibleShapes.map(shape => shapeSVGContent(shape)).join('\n    ')
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" class="decorations-layer" width="${containerWidth}" height="${containerHeight}" viewBox="0 0 ${containerWidth} ${containerHeight}" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10;overflow:visible">
+  return `<svg xmlns="http://www.w3.org/2000/svg" class="decorations-layer" width="${containerWidth}" height="${containerHeight}" viewBox="0 0 ${containerWidth} ${containerHeight}" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:20;overflow:visible">
+    ${svgContent}
+  </svg>`
+}
+
+/**
+ * Async version of generateDecorationsSVG that converts shape images (deco-image) to base64
+ * for offline standalone HTML compatibility.
+ */
+export async function generateDecorationsSVGAsync(
+  shapes: DecorationShape[],
+  containerWidth: number,
+  containerHeight: number
+): Promise<string> {
+  const visibleShapes = shapes
+    .filter(s => s.visible)
+    .sort((a, b) => a.zIndex - b.zIndex)
+
+  if (visibleShapes.length === 0) return ''
+
+  // Import fetchImageAsBase64 lazily or directly
+  const { fetchImageAsBase64 } = await import('@/lib/utils/html-export-utils')
+
+  const processedShapes = await Promise.all(
+    visibleShapes.map(async shape => {
+      const cloned = JSON.parse(JSON.stringify(shape)) as DecorationShape
+      if (cloned.imageUrl && !cloned.imageUrl.startsWith('data:image/')) {
+        try {
+          cloned.imageUrl = await fetchImageAsBase64(cloned.imageUrl)
+        } catch (e) {
+          console.warn(`Failed to base64 embed decoration shape image: ${cloned.imageUrl}`, e)
+        }
+      }
+      return cloned
+    })
+  )
+
+  const svgContent = processedShapes.map(shape => shapeSVGContent(shape)).join('\n    ')
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" class="decorations-layer" width="${containerWidth}" height="${containerHeight}" viewBox="0 0 ${containerWidth} ${containerHeight}" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:20;overflow:visible">
     ${svgContent}
   </svg>`
 }
@@ -472,10 +511,11 @@ export function generateDecorationsSVG(
  */
 export function generateDecorationsCSS(): string {
   return `
-    .decorations-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; overflow: visible; }
+    .decorations-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; overflow: visible; }
     .deco-textbox-export p, .deco-textbox-export div { margin: 0; padding: 0; }
     .deco-textbox-export ul { list-style-type: disc; padding-left: 16px; margin: 2px 0; }
     .deco-textbox-export ol { list-style-type: decimal; padding-left: 16px; margin: 2px 0; }
     .deco-textbox-export li { margin-bottom: 1px; }
   `
 }
+

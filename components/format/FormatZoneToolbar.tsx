@@ -115,6 +115,7 @@ export function FormatZoneToolbar({ zoneId, zoneType, x, y, scale }: FormatZoneT
   return (
     <div
       className="format-zone-toolbar absolute z-[60] pointer-events-auto"
+      data-export-ignore="true"
       style={{ left: toolbarX, top: toolbarY }}
     >
       <RichTextToolbar
