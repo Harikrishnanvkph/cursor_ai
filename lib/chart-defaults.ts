@@ -258,7 +258,8 @@ export function prepareChartDataForSave(
 
     if (chartMode === 'single') {
         // SINGLE MODE: Only save the active dataset
-        const activeDataset = cloned.datasets[activeDatasetIndex];
+        const targetIdx = (activeDatasetIndex >= 0 && activeDatasetIndex < (cloned.datasets?.length || 0)) ? activeDatasetIndex : 0;
+        const activeDataset = cloned.datasets?.[targetIdx];
         if (activeDataset) {
             activeDataset.sourceTitle = savedTitle;
             if (isNewSave) activeDataset.sourceId = conversationId;
@@ -275,16 +276,18 @@ export function prepareChartDataForSave(
         }
     } else if (chartMode === 'grouped') {
         // GROUPED MODE: Only save datasets belonging to the active group
-        const groupDatasets = cloned.datasets.filter((ds: any) => ds.groupId === activeGroupId);
+        const groupDatasets = (cloned.datasets || []).filter((ds: any) => ds.groupId === activeGroupId);
         groupDatasets.forEach((ds: any) => {
             ds.sourceTitle = savedTitle;
             if (isNewSave) ds.sourceId = conversationId;
         });
-        // Replace all datasets with just the group's datasets
-        cloned.datasets = groupDatasets;
-        // For grouped mode, use the first dataset's sliceLabels as the shared labels
-        if (groupDatasets.length > 0 && groupDatasets[0].sliceLabels) {
-            cloned.labels = groupDatasets[0].sliceLabels;
+        if (groupDatasets.length > 0) {
+            // Replace all datasets with just the group's datasets
+            cloned.datasets = groupDatasets;
+            // For grouped mode, use the first dataset's sliceLabels as the shared labels
+            if (groupDatasets[0].sliceLabels) {
+                cloned.labels = groupDatasets[0].sliceLabels;
+            }
         }
     }
 
@@ -606,12 +609,22 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
                 waterfall: {
                     enabled: true,
                     positiveColor: '#10b981',
+                    positiveBorderColor: '#059669',
                     negativeColor: '#ef4444',
+                    negativeBorderColor: '#dc2626',
+                    startColor: '#3b82f6',
+                    startBorderColor: '#1d4ed8',
+                    endColor: '#3b82f6',
+                    endBorderColor: '#1d4ed8',
+                    subtotalColor: '#3b82f6',
+                    subtotalBorderColor: '#1d4ed8',
                     totalColor: '#3b82f6',
+                    totalBorderColor: '#1d4ed8',
                     showConnectors: true,
                     connectorColor: 'rgba(0,0,0,0.35)',
                     connectorWidth: 1.5,
                     connectorStyle: 'dashed',
+                    treatFirstAsTotal: true,
                     treatLastAsTotal: false,
                     showTotal: true,
                     totalLabel: 'Total',

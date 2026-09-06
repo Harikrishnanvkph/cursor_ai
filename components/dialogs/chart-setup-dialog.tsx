@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import {
   Dialog,
   DialogContent,
@@ -47,6 +47,8 @@ import {
   type DimensionPreset,
 } from "@/lib/utils/dimension-utils"
 import { applyOpacityToColor } from "@/lib/utils/color-utils"
+import { getDefaultImageConfig } from "@/lib/plugins/universal-image-plugin"
+import { cn } from "@/lib/utils"
 import {
   BarChart3,
   Square,
@@ -71,6 +73,8 @@ import {
   Link,
   Unlink,
   Info,
+  Pencil,
+  GripVertical,
 } from "lucide-react"
 import { type SupportedChartType, type ExtendedChartDataset } from "@/lib/chart-store"
 
@@ -101,6 +105,7 @@ interface ChartSetupDialogProps {
   step2Title?: string
   hideBackButton?: boolean
   initialExistingDatasets?: ExtendedChartDataset[]
+  initialActiveDatasetIndex?: number
   initialUniformityMode?: 'uniform' | 'mixed'
   confirmButtonText?: string
 }
@@ -108,6 +113,7 @@ interface ChartSetupDialogProps {
 type ChartCategory = 'categorical' | 'coordinate'
 
 interface DataPoint {
+  id?: string
   name: string
   value: number
   x: number
@@ -164,6 +170,7 @@ const darkenColor = (color: string, percent: number) => {
 const getDefaultPoints = (category: ChartCategory, count: number = 3, linkedColor?: string): DataPoint[] => {
   if (category === 'coordinate') {
     return Array.from({ length: count }, (_, i) => ({
+      id: `pt-coord-${i}-${Math.random().toString(36).slice(2, 7)}`,
       name: `Point ${i + 1}`,
       value: 0,
       x: i * 10,
@@ -173,6 +180,7 @@ const getDefaultPoints = (category: ChartCategory, count: number = 3, linkedColo
     }))
   }
   return Array.from({ length: count }, (_, i) => ({
+    id: `pt-cat-${i}-${Math.random().toString(36).slice(2, 7)}`,
     name: `Slice ${i + 1}`,
     value: [10, 20, 15, 25, 30][i % 5],
     x: 0,
@@ -180,6 +188,61 @@ const getDefaultPoints = (category: ChartCategory, count: number = 3, linkedColo
     r: 10,
     color: linkedColor || ['#1E90FF', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4'][i % 5],
   }))
+}
+
+// ─── Pure Dataset Parsing Helper ────────────────────────────────────
+function parseExistingDatasets(
+  existingDatasets: any[] | undefined,
+  datasetType: 'single' | 'grouped'
+): DatasetConfig[] {
+  if (existingDatasets && existingDatasets.length > 0) {
+    return existingDatasets.map((ds: any, index: number) => {
+      const type = ds.chartType || 'bar'
+      const isCoord = type === 'scatter' || type === 'bubble'
+      const category: ChartCategory = isCoord ? 'coordinate' : 'categorical'
+
+      const points = (ds.data || []).map((val: any, i: number) => ({
+        id: `pt-${index}-${i}-${Math.random().toString(36).slice(2, 7)}`,
+        name: ds.sliceLabels?.[i] || `${isCoord ? 'Point' : 'Slice'} ${i + 1}`,
+        value: isCoord ? 0 : (typeof val === 'number' ? val : (Array.isArray(val) ? val[1] - val[0] : val.y || 0)),
+        x: isCoord ? (val.x || 0) : 0,
+        y: isCoord ? (val.y || 0) : 0,
+        r: type === 'bubble' ? (val.r || 10) : 10,
+        color: Array.isArray(ds.backgroundColor) ? (ds.backgroundColor[i] || '#1E90FF') : (ds.backgroundColor || '#1E90FF'),
+      }))
+
+      return {
+        id: `ds-${index}-${ds.label || 'ds'}`,
+        name: ds.label || ds.sourceTitle || `Dataset ${index + 1}`,
+        category,
+        type,
+        dataPoints: points.length > 0 ? points : getDefaultPoints(category, 4, datasetType === 'grouped' ? '#1E90FF' : undefined),
+        originalStyle: ds
+      }
+    })
+  }
+
+  if (datasetType === 'grouped') {
+    const firstDataPoints = getDefaultPoints('categorical', 4, '#1E90FF')
+    const secondDataPoints = firstDataPoints.map((p, i) => ({
+      ...p,
+      id: `pt-grp2-${i}-${Math.random().toString(36).slice(2, 7)}`,
+      value: [30, 15, 25, 10][i % 4] ?? 10,
+      color: '#ff6b6b',
+    }))
+    return [
+      { id: 'ds-0', name: 'Dataset 1', category: 'categorical', type: 'bar', dataPoints: firstDataPoints },
+      { id: 'ds-1', name: 'Dataset 2', category: 'categorical', type: 'bar', dataPoints: secondDataPoints },
+    ]
+  }
+
+  return [{
+    id: 'ds-0',
+    name: "Dataset 1",
+    category: 'categorical',
+    type: 'bar',
+    dataPoints: getDefaultPoints('categorical', 4, undefined)
+  }]
 }
 
 // ─── Icon Map ───────────────────────────────────────────────────────
@@ -221,28 +284,34 @@ export function ChartSetupDialog({
   step2Title,
   hideBackButton = false,
   initialExistingDatasets,
+  initialActiveDatasetIndex,
   initialUniformityMode,
   confirmButtonText,
 }: ChartSetupDialogProps) {
   // ── Step State ──
-  const [step, setStep] = useState<1 | 2>(1)
+  const [step, setStep] = useState<1 | 2>((startAtStep === 2 ? 2 : 1) as 1 | 2)
 
   // ── Step 1: Dimensions State ──
-  const [widthPx, setWidthPx] = useState(DEFAULT_CHART_WIDTH)
-  const [heightPx, setHeightPx] = useState(DEFAULT_CHART_HEIGHT)
+  const [widthPx, setWidthPx] = useState(initialDimensions?.width || DEFAULT_CHART_WIDTH)
+  const [heightPx, setHeightPx] = useState(initialDimensions?.height || DEFAULT_CHART_HEIGHT)
   const [unit, setUnit] = useState<DimensionUnit>('px')
-  const [isResponsive, setIsResponsive] = useState(false)
+  const [isResponsive, setIsResponsive] = useState(!!initialDimensions?.isResponsive)
   const [selectedPreset, setSelectedPreset] = useState<string | null>('Standard')
   const [expandedCategory, setExpandedCategory] = useState<string>('Chart Defaults')
-  const [groupName, setGroupName] = useState(initialGroupName || (datasetType === 'grouped' ? "Group 1" : "Chart 1"))
+  const [groupName, setGroupName] = useState(() => initialGroupName || (datasetType === 'grouped' ? "Group 1" : "Chart 1"))
 
-  const [widthInput, setWidthInput] = useState(DEFAULT_CHART_WIDTH.toString())
-  const [heightInput, setHeightInput] = useState(DEFAULT_CHART_HEIGHT.toString())
+  const [widthInput, setWidthInput] = useState(() => (initialDimensions?.width || DEFAULT_CHART_WIDTH).toString())
+  const [heightInput, setHeightInput] = useState(() => (initialDimensions?.height || DEFAULT_CHART_HEIGHT).toString())
 
-  // ── Step 2: Data Entry State ──
-  const [datasets, setDatasets] = useState<DatasetConfig[]>([])
-  const [activeDatasetId, setActiveDatasetId] = useState<string>('')
-  const [uniformityMode, setUniformityMode] = useState<'uniform' | 'mixed'>('uniform')
+  // ── Step 2: Data Entry State (Synchronous Instant Initialization) ──
+  const [datasets, setDatasets] = useState<DatasetConfig[]>(() =>
+    parseExistingDatasets(initialExistingDatasets, datasetType)
+  )
+  const [activeDatasetId, setActiveDatasetId] = useState<string>(() => {
+    const selIdx = (initialActiveDatasetIndex !== undefined && initialActiveDatasetIndex >= 0 && initialActiveDatasetIndex < datasets.length) ? initialActiveDatasetIndex : 0;
+    return datasets[selIdx]?.id || datasets[0]?.id || 'ds-0'
+  })
+  const [uniformityMode, setUniformityMode] = useState<'uniform' | 'mixed'>(initialUniformityMode || 'uniform')
   const [isColorLinked, setIsColorLinked] = useState(datasetType === 'grouped')
 
   const activeDataset = datasets.find(d => d.id === activeDatasetId) || datasets[0]
@@ -273,9 +342,13 @@ export function ChartSetupDialog({
     }
   }
 
+  const prevOpenRef = useRef(open)
   useEffect(() => {
-    if (open) {
-      setStep(startAtStep)
+    const wasOpen = prevOpenRef.current
+    prevOpenRef.current = open
+
+    if (open && !wasOpen) {
+      setStep((startAtStep === 2 ? 2 : 1) as 1 | 2)
       setIsColorLinked(datasetType === 'grouped')
       if (initialDimensions) {
         setWidthPx(initialDimensions.width)
@@ -301,67 +374,15 @@ export function ChartSetupDialog({
         setGroupName(datasetType === 'grouped' ? "Group 1" : "Chart 1")
       }
 
-      if (initialExistingDatasets && initialExistingDatasets.length > 0) {
-        const loadedDatasets = initialExistingDatasets.map((ds: any, index: number) => {
-          const type = ds.chartType || 'bar'
-          const isCoord = type === 'scatter' || type === 'bubble'
-          const category = isCoord ? 'coordinate' : 'categorical'
-
-          const points = (ds.data || []).map((val: any, i: number) => {
-            return {
-              name: ds.sliceLabels?.[i] || `${isCoord ? 'Point' : 'Slice'} ${i + 1}`,
-              value: isCoord ? 0 : (typeof val === 'number' ? val : (Array.isArray(val) ? val[1] - val[0] : val.y || 0)),
-              x: isCoord ? (val.x || 0) : 0,
-              y: isCoord ? (val.y || 0) : 0,
-              r: type === 'bubble' ? (val.r || 10) : 10,
-              color: Array.isArray(ds.backgroundColor) ? (ds.backgroundColor[i] || '#1E90FF') : (ds.backgroundColor || '#1E90FF'),
-            }
-          })
-
-          return {
-            id: crypto.randomUUID(),
-            name: ds.label || ds.sourceTitle || `Dataset ${index + 1}`,
-            category,
-            type,
-            dataPoints: points.length > 0 ? points : getDefaultPoints(category, 4, datasetType === 'grouped' ? '#1E90FF' : undefined),
-            originalStyle: ds
-          }
-        })
-        setDatasets(loadedDatasets)
-        setActiveDatasetId(loadedDatasets[0].id)
-        if (initialUniformityMode) {
-          setUniformityMode(initialUniformityMode)
-        }
-      } else {
-        const initialId = crypto.randomUUID()
-        if (datasetType === 'grouped') {
-          // Grouped mode: start with 2 default datasets so users see a true grouped chart from the start
-          const secondId = crypto.randomUUID()
-          const firstDataPoints = getDefaultPoints('categorical', 4, '#1E90FF')
-          const secondDataPoints = firstDataPoints.map((p, i) => ({
-            ...p,
-            value: [30, 15, 25, 10][i % 4] ?? 10,
-            color: '#ff6b6b',
-          }))
-          setDatasets([
-            { id: initialId, name: 'Dataset 1', category: 'categorical', type: 'bar', dataPoints: firstDataPoints },
-            { id: secondId, name: 'Dataset 2', category: 'categorical', type: 'bar', dataPoints: secondDataPoints },
-          ])
-          setActiveDatasetId(initialId)
-        } else {
-          setDatasets([{
-            id: initialId,
-            name: "Dataset 1",
-            category: 'categorical',
-            type: 'bar',
-            dataPoints: getDefaultPoints('categorical', 4, undefined)
-          }])
-          setActiveDatasetId(initialId)
-        }
-        setUniformityMode('uniform')
+      const loaded = parseExistingDatasets(initialExistingDatasets, datasetType)
+      setDatasets(loaded)
+      const selIdx = (initialActiveDatasetIndex !== undefined && initialActiveDatasetIndex >= 0 && initialActiveDatasetIndex < loaded.length) ? initialActiveDatasetIndex : 0;
+      setActiveDatasetId(loaded[selIdx]?.id || loaded[0]?.id || '')
+      if (initialUniformityMode) {
+        setUniformityMode(initialUniformityMode)
       }
     }
-  }, [open, initialDimensions, initialExistingDatasets, initialUniformityMode, initialGroupName, startAtStep])
+  }, [open, startAtStep, datasetType, initialDimensions, initialGroupName, initialExistingDatasets, initialActiveDatasetIndex, initialUniformityMode])
 
   // ── Handlers (Step 1) ──
   const handlePresetClick = (preset: DimensionPreset) => {
@@ -587,28 +608,177 @@ export function ChartSetupDialog({
     updateActiveDataset({ dataPoints: randomizedPoints })
   }
 
-  const handleAddPoint = () => {
-    const newIndex = dataPoints.length
-    const newPoint: DataPoint = {
-      name: `${chartCategory === 'coordinate' ? 'Point' : 'Slice'} ${newIndex + 1}`,
-      value: 0,
-      x: newIndex * 10,
-      y: 0,
-      r: 10,
-      color: ['#1E90FF', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4'][newIndex % 5],
+  // ── Drag & Drop State for Slices ──
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+  const [dropPosition, setDropPosition] = useState<'top' | 'bottom' | null>(null)
+  const [draggableIndex, setDraggableIndex] = useState<number | null>(null)
+
+  const handleReorderPoint = (fromIndex: number, toIndex: number, position: 'top' | 'bottom') => {
+    if (fromIndex === toIndex) return
+
+    const reorder = <T,>(arr: T[], from: number, to: number, pos: 'top' | 'bottom'): T[] => {
+      if (from === to) return arr
+      const result = [...arr]
+      const [removed] = result.splice(from, 1)
+      let insertIndex = to
+      if (from < to) {
+        insertIndex = pos === 'top' ? to - 1 : to
+      } else {
+        insertIndex = pos === 'top' ? to : to + 1
+      }
+      insertIndex = Math.max(0, Math.min(result.length, insertIndex))
+      result.splice(insertIndex, 0, removed)
+      return result
     }
 
     if (datasetType === 'grouped') {
       setDatasets(prev => prev.map(d => {
-        const linkedColor = isColorLinked && d.dataPoints.length > 0 ? d.dataPoints[0].color : newPoint.color;
+        const reorderedPoints = reorder(d.dataPoints, fromIndex, toIndex, position)
+        let updatedOriginalStyle = d.originalStyle
+        if (d.originalStyle) {
+          updatedOriginalStyle = {
+            ...d.originalStyle,
+            ...(Array.isArray(d.originalStyle.pointImages) ? {
+              pointImages: reorder(d.originalStyle.pointImages, fromIndex, toIndex, position)
+            } : {}),
+            ...(Array.isArray(d.originalStyle.pointImageConfig) ? {
+              pointImageConfig: reorder(d.originalStyle.pointImageConfig, fromIndex, toIndex, position)
+            } : {}),
+            ...(Array.isArray(d.originalStyle.pointImageSearchQueries) ? {
+              pointImageSearchQueries: reorder(d.originalStyle.pointImageSearchQueries, fromIndex, toIndex, position)
+            } : {}),
+            ...(Array.isArray(d.originalStyle.backgroundColor) ? {
+              backgroundColor: reorder(d.originalStyle.backgroundColor, fromIndex, toIndex, position)
+            } : {}),
+            ...(Array.isArray(d.originalStyle.borderColor) ? {
+              borderColor: reorder(d.originalStyle.borderColor, fromIndex, toIndex, position)
+            } : {})
+          }
+        }
         return {
           ...d,
-          dataPoints: [...d.dataPoints, { ...newPoint, color: linkedColor }]
+          dataPoints: reorderedPoints,
+          originalStyle: updatedOriginalStyle
         }
       }))
     } else {
-      const linkedColor = isColorLinked && dataPoints.length > 0 ? dataPoints[0].color : newPoint.color;
-      updateActiveDataset({ dataPoints: [...dataPoints, { ...newPoint, color: linkedColor }] })
+      const reorderedPoints = reorder(dataPoints, fromIndex, toIndex, position)
+      let updatedOriginalStyle = activeDataset?.originalStyle
+      if (activeDataset?.originalStyle) {
+        updatedOriginalStyle = {
+          ...activeDataset.originalStyle,
+          ...(Array.isArray(activeDataset.originalStyle.pointImages) ? {
+            pointImages: reorder(activeDataset.originalStyle.pointImages, fromIndex, toIndex, position)
+          } : {}),
+          ...(Array.isArray(activeDataset.originalStyle.pointImageConfig) ? {
+            pointImageConfig: reorder(activeDataset.originalStyle.pointImageConfig, fromIndex, toIndex, position)
+          } : {}),
+          ...(Array.isArray(activeDataset.originalStyle.pointImageSearchQueries) ? {
+            pointImageSearchQueries: reorder(activeDataset.originalStyle.pointImageSearchQueries, fromIndex, toIndex, position)
+          } : {}),
+          ...(Array.isArray(activeDataset.originalStyle.backgroundColor) ? {
+            backgroundColor: reorder(activeDataset.originalStyle.backgroundColor, fromIndex, toIndex, position)
+          } : {}),
+          ...(Array.isArray(activeDataset.originalStyle.borderColor) ? {
+            borderColor: reorder(activeDataset.originalStyle.borderColor, fromIndex, toIndex, position)
+          } : {})
+        }
+      }
+      updateActiveDataset({
+        dataPoints: reorderedPoints,
+        originalStyle: updatedOriginalStyle
+      })
+    }
+  }
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    if (!canEditSlices) return
+    setDraggedIndex(index)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', index.toString())
+  }
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>, index: number) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+
+    if (draggedIndex === null || draggedIndex === index) {
+      setDragOverIndex(null)
+      setDropPosition(null)
+      return
+    }
+
+    const rect = e.currentTarget.getBoundingClientRect()
+    const offsetY = e.clientY - rect.top
+    const isTopHalf = offsetY < rect.height / 2
+    const pos = isTopHalf ? 'top' : 'bottom'
+
+    setDragOverIndex(index)
+    setDropPosition(pos)
+  }
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetIndex: number) => {
+    e.preventDefault()
+    if (draggedIndex === null || draggedIndex === targetIndex) {
+      setDraggedIndex(null)
+      setDragOverIndex(null)
+      setDropPosition(null)
+      setDraggableIndex(null)
+      return
+    }
+
+    const pos = dropPosition || 'bottom'
+    handleReorderPoint(draggedIndex, targetIndex, pos)
+
+    setDraggedIndex(null)
+    setDragOverIndex(null)
+    setDropPosition(null)
+    setDraggableIndex(null)
+  }
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null)
+    setDragOverIndex(null)
+    setDropPosition(null)
+    setDraggableIndex(null)
+  }
+
+  const handleAddPoint = (insertAtIndex?: number) => {
+    const targetIdx = insertAtIndex !== undefined ? insertAtIndex : dataPoints.length
+    const newPoint: DataPoint = {
+      id: `pt-new-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      name: `${chartCategory === 'coordinate' ? 'Point' : 'Slice'} ${dataPoints.length + 1}`,
+      value: 0,
+      x: targetIdx * 10,
+      y: 0,
+      r: 10,
+      color: ['#1E90FF', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4'][dataPoints.length % 5],
+    }
+
+    if (datasetType === 'grouped') {
+      setDatasets(prev => prev.map(d => {
+        const linkedColor = isColorLinked && d.dataPoints.length > 0 ? d.dataPoints[0].color : newPoint.color
+        const updatedPoints = [...d.dataPoints]
+        if (insertAtIndex !== undefined && insertAtIndex >= 0 && insertAtIndex <= updatedPoints.length) {
+          updatedPoints.splice(insertAtIndex, 0, { ...newPoint, color: linkedColor })
+        } else {
+          updatedPoints.push({ ...newPoint, color: linkedColor })
+        }
+        return {
+          ...d,
+          dataPoints: updatedPoints
+        }
+      }))
+    } else {
+      const linkedColor = isColorLinked && dataPoints.length > 0 ? dataPoints[0].color : newPoint.color
+      const updatedPoints = [...dataPoints]
+      if (insertAtIndex !== undefined && insertAtIndex >= 0 && insertAtIndex <= updatedPoints.length) {
+        updatedPoints.splice(insertAtIndex, 0, { ...newPoint, color: linkedColor })
+      } else {
+        updatedPoints.push({ ...newPoint, color: linkedColor })
+      }
+      updateActiveDataset({ dataPoints: updatedPoints })
     }
   }
 
@@ -716,23 +886,45 @@ export function ChartSetupDialog({
           ? colors.map(c => typeof c === 'string' ? applyOpacityToColor(c, 50) : c)
           : colors
 
-        const originalType = ds.originalStyle?.chartType || ds.originalStyle?.type;
-        const typeChanged = originalType && actualType !== originalType;
-        const style = (!typeChanged && ds.originalStyle) ? ds.originalStyle : {};
-
-        // Check if colors changed in the setup wizard
-        const originalColors = style.backgroundColor;
+        const originalColors = ds.originalStyle?.backgroundColor;
         const colorsChanged = Array.isArray(originalColors)
-          ? originalColors.some((c: any, idx: number) => c !== colors[idx])
+          ? (originalColors.length !== colors.length || originalColors.some((c: any, idx: number) => c !== colors[idx]))
           : originalColors !== colors[0];
 
-        const borderColors = (!colorsChanged && style.borderColor && Array.isArray(style.borderColor) && style.borderColor.length === colors.length)
-          ? style.borderColor
-          : (!colorsChanged && typeof style.borderColor === 'string')
-            ? style.borderColor
+        const borderColors = (!colorsChanged && ds.originalStyle?.borderColor && Array.isArray(ds.originalStyle.borderColor) && ds.originalStyle.borderColor.length === colors.length)
+          ? ds.originalStyle.borderColor
+          : (!colorsChanged && typeof ds.originalStyle?.borderColor === 'string')
+            ? ds.originalStyle.borderColor
             : colors.map(c => darkenColor(c, 20));
 
-        const baseDataset = {
+        if (ds.originalStyle) {
+          const originalPointImages = Array.isArray(ds.originalStyle.pointImages) ? ds.originalStyle.pointImages : [];
+          const originalPointConfig = Array.isArray(ds.originalStyle.pointImageConfig) ? ds.originalStyle.pointImageConfig : [];
+
+          // Resize point images and pointImageConfig to match new dataPoints length
+          const resizedPointImages = ds.dataPoints.map((_, i) =>
+            originalPointImages[i] !== undefined ? originalPointImages[i] : null
+          );
+          const resizedPointConfig = ds.dataPoints.map((_, i) =>
+            originalPointConfig[i] || getDefaultImageConfig(actualType)
+          );
+
+          return {
+            ...ds.originalStyle,
+            label: ds.name,
+            data,
+            backgroundColor: finalColors,
+            borderColor: borderColors,
+            sliceLabels: ds.dataPoints.map(p => p.name),
+            chartType: actualType,
+            mode: datasetType,
+            pointImages: resizedPointImages,
+            pointImageConfig: resizedPointConfig,
+          };
+        }
+
+        const defaultPointConfig = ds.dataPoints.map(() => getDefaultImageConfig(actualType));
+        return {
           label: ds.name,
           data,
           backgroundColor: finalColors,
@@ -742,27 +934,11 @@ export function ChartSetupDialog({
           tension: 0,
           fill: false,
           pointImages: Array(ds.dataPoints.length).fill(null),
+          pointImageConfig: defaultPointConfig,
           mode: datasetType,
           sliceLabels: ds.dataPoints.map(p => p.name),
           chartType: actualType,
         };
-
-        if (!typeChanged && ds.originalStyle) {
-          return {
-            ...baseDataset,
-            ...style,
-            // Ensure dynamically computed fields are strictly kept
-            label: ds.name,
-            data,
-            backgroundColor: finalColors,
-            borderColor: borderColors,
-            sliceLabels: ds.dataPoints.map(p => p.name),
-            chartType: actualType,
-            mode: datasetType,
-          };
-        }
-
-        return baseDataset;
       })
 
       // The chartType parameter passed out will be the first dataset's type
@@ -781,8 +957,9 @@ export function ChartSetupDialog({
   return (
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose() }}>
       <DialogContent
+        disableAnimation={true}
         onOpenAutoFocus={(e) => e.preventDefault()}
-        className={`max-h-[95vh] overflow-hidden p-0 gap-0 transition-all duration-300 ${step === 2 ? 'max-w-[850px]' : 'max-w-[720px]'}`}
+        className={`max-h-[95vh] overflow-hidden p-0 gap-0 ${step === 2 ? 'max-w-[850px]' : 'max-w-[720px]'}`}
       >
 
         {/* ── Header ── */}
@@ -811,16 +988,19 @@ export function ChartSetupDialog({
                   <div className="flex items-center h-8 border border-gray-200 rounded-lg shadow-sm overflow-hidden focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100/50 transition-all bg-white ml-1">
                     <div className="flex items-center justify-center h-full px-2.5 bg-gray-100 border-r border-gray-200">
                       <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap m-0 cursor-default">
-                        {datasetType === 'grouped' ? 'Group' : 'Chart'}
+                        {datasetType === 'grouped' ? 'Group Name' : 'Chart Name'}
                       </Label>
                     </div>
-                    <Input
-                      type="text"
-                      value={groupName}
-                      onChange={(e) => setGroupName(e.target.value)}
-                      className="h-full w-[320px] border-none focus-visible:ring-0 focus-visible:ring-offset-0 px-2.5 text-sm font-semibold text-gray-800 shadow-none bg-white rounded-none"
-                      placeholder={datasetType === 'grouped' ? 'Enter group name' : 'Enter chart title'}
-                    />
+                    <div className="relative flex items-center flex-1">
+                      <Input
+                        type="text"
+                        value={groupName}
+                        onChange={(e) => setGroupName(e.target.value)}
+                        className="h-full w-[320px] border-none focus-visible:ring-0 focus-visible:ring-offset-0 pl-2.5 pr-8 text-sm font-semibold text-gray-800 shadow-none bg-white rounded-none"
+                        placeholder={datasetType === 'grouped' ? 'Enter group name' : 'Enter chart name'}
+                      />
+                      <Pencil className="absolute right-2.5 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+                    </div>
                   </div>
                 </>
               )}
@@ -1292,163 +1472,154 @@ export function ChartSetupDialog({
             )}
 
             {/* Data Grid Header */}
-            <div className="grid grid-cols-12 gap-3 px-5 py-1.5 bg-gray-50 border-b border-gray-100 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
-              {chartCategory === 'coordinate' ? (
-                <>
-                  <div className="col-span-3">Label</div>
-                  <div className="col-span-2">X</div>
-                  <div className="col-span-2">Y</div>
-                  {isBubbleChart ? (
-                    <>
-                      <div className="col-span-2 text-center">Radius</div>
-                      <div className="col-span-2 flex items-center justify-center gap-1">
-                        Color
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button onClick={toggleColorLinked} className={`p-0.5 rounded-sm transition-colors ${isColorLinked ? 'bg-blue-100 text-blue-600 shadow-sm' : 'hover:bg-gray-200 text-gray-400'}`}>
-                                {isColorLinked ? <Link className="h-3 w-3" /> : <Unlink className="h-3 w-3" />}
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="text-[10px] font-medium z-[200]">
-                              {isColorLinked ? 'Unlink Colors (Individual Mode)' : 'Link Colors (Dataset Mode)'}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="col-span-2"></div>
-                      <div className="col-span-2 flex items-center justify-center gap-1">
-                        Color
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button onClick={toggleColorLinked} className={`p-0.5 rounded-sm transition-colors ${isColorLinked ? 'bg-blue-100 text-blue-600 shadow-sm' : 'hover:bg-gray-200 text-gray-400'}`}>
-                                {isColorLinked ? <Link className="h-3 w-3" /> : <Unlink className="h-3 w-3" />}
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="text-[10px] font-medium z-[200]">
-                              {isColorLinked ? 'Unlink Colors (Individual Mode)' : 'Link Colors (Dataset Mode)'}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                    </>
-                  )}
-                  <div className="col-span-1"></div>
-                </>
-              ) : (
-                <>
-                  {chartType === 'waterfall' ? (
-                    <>
-                      <div className="col-span-4">Label</div>
-                      <div className="col-span-4 text-center">Direction</div>
-                      <div className="col-span-3">Value</div>
-                      <div className="col-span-1"></div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="col-span-5">Label</div>
-                      <div className="col-span-4">Value</div>
-                      <div className="col-span-2 flex items-center justify-center gap-1">
-                        Color
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button onClick={toggleColorLinked} className={`p-0.5 rounded-sm transition-colors ${isColorLinked ? 'bg-blue-100 text-blue-600 shadow-sm' : 'hover:bg-gray-200 text-gray-400'}`}>
-                                {isColorLinked ? <Link className="h-3 w-3" /> : <Unlink className="h-3 w-3" />}
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="text-[10px] font-medium z-[200]">
-                              {isColorLinked ? 'Unlink Colors (Individual Mode)' : 'Link Colors (Dataset Mode)'}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                      <div className="col-span-1"></div>
-                    </>
-                  )}
-                </>
-              )}
+            <div className="flex items-center gap-1.5 px-2 py-1.5 bg-gray-50 border-b border-gray-100 text-[10px] font-semibold text-gray-500 uppercase tracking-wider mx-1">
+              <div className="w-5 flex-shrink-0" />
+              <div className="grid grid-cols-12 gap-2 flex-1 items-center">
+                {chartCategory === 'coordinate' ? (
+                  <>
+                    <div className="col-span-3">Label</div>
+                    <div className="col-span-2">X</div>
+                    <div className="col-span-2">Y</div>
+                    {isBubbleChart ? (
+                      <>
+                        <div className="col-span-2 text-center">Radius</div>
+                        <div className="col-span-2 flex items-center justify-center gap-1">
+                          Color
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button onClick={toggleColorLinked} className={`p-0.5 rounded-sm transition-colors ${isColorLinked ? 'bg-blue-100 text-blue-600 shadow-sm' : 'hover:bg-gray-200 text-gray-400'}`}>
+                                  {isColorLinked ? <Link className="h-3 w-3" /> : <Unlink className="h-3 w-3" />}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-[10px] font-medium z-[200]">
+                                {isColorLinked ? 'Unlink Colors (Individual Mode)' : 'Link Colors (Dataset Mode)'}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="col-span-2"></div>
+                        <div className="col-span-2 flex items-center justify-center gap-1">
+                          Color
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button onClick={toggleColorLinked} className={`p-0.5 rounded-sm transition-colors ${isColorLinked ? 'bg-blue-100 text-blue-600 shadow-sm' : 'hover:bg-gray-200 text-gray-400'}`}>
+                                  {isColorLinked ? <Link className="h-3 w-3" /> : <Unlink className="h-3 w-3" />}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-[10px] font-medium z-[200]">
+                                {isColorLinked ? 'Unlink Colors (Individual Mode)' : 'Link Colors (Dataset Mode)'}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </>
+                    )}
+                    <div className="col-span-1"></div>
+                  </>
+                ) : (
+                  <>
+                    {chartType === 'waterfall' ? (
+                      <>
+                        <div className="col-span-4">Label</div>
+                        <div className="col-span-4 text-center">Direction</div>
+                        <div className="col-span-3">Value</div>
+                        <div className="col-span-1"></div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="col-span-5">Label</div>
+                        <div className="col-span-4">Value</div>
+                        <div className="col-span-2 flex items-center justify-center gap-1">
+                          Color
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button onClick={toggleColorLinked} className={`p-0.5 rounded-sm transition-colors ${isColorLinked ? 'bg-blue-100 text-blue-600 shadow-sm' : 'hover:bg-gray-200 text-gray-400'}`}>
+                                  {isColorLinked ? <Link className="h-3 w-3" /> : <Unlink className="h-3 w-3" />}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-[10px] font-medium z-[200]">
+                                {isColorLinked ? 'Unlink Colors (Individual Mode)' : 'Link Colors (Dataset Mode)'}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                        <div className="col-span-1"></div>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
 
             {/* Data Grid Body */}
             <div className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5 bg-white">
-              {dataPoints.map((point, index) => (
-                <div key={index} className="grid grid-cols-12 gap-2 items-center py-1.5 px-2 hover:bg-gray-50/80 rounded-lg transition-colors group mx-1">
-                  {chartCategory === 'coordinate' ? (
-                    <>
-                      <div className="col-span-3">
-                        {canEditLabels ? (
-                          <Input value={point.name} onChange={e => handleUpdatePoint(index, 'name', e.target.value)} className="h-8 text-xs border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700" />
-                        ) : (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="block">
-                                  <Input value={point.name} disabled className="h-8 text-xs border-gray-200 bg-gray-50 shadow-sm transition-all font-medium text-gray-400 cursor-not-allowed" />
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" sideOffset={5} className="bg-slate-800 text-white border-slate-700 shadow-xl px-3 py-2 z-[150]">
-                                <p className="text-xs font-medium">To edit labels, please use the first dataset tab.</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                      </div>
-                      <div className="col-span-2">
-                        <Input type="number" value={point.x} onChange={e => handleUpdatePoint(index, 'x', Number(e.target.value))} className="h-8 text-xs border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700" />
-                      </div>
-                      <div className="col-span-2">
-                        <Input type="number" value={point.y} onChange={e => handleUpdatePoint(index, 'y', Number(e.target.value))} className="h-8 text-xs border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700" />
-                      </div>
-                      {isBubbleChart ? (
-                        <div className="col-span-2">
-                          <Input type="number" value={point.r} onChange={e => handleUpdatePoint(index, 'r', Number(e.target.value))} className="h-8 text-xs border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700" min="1" />
-                        </div>
+              {dataPoints.map((point, index) => {
+                const isDragging = draggedIndex === index;
+                const isDropTop = dragOverIndex === index && dropPosition === 'top';
+                const isDropBottom = dragOverIndex === index && dropPosition === 'bottom';
+
+                return (
+                  <div
+                    key={point.id || index}
+                    draggable={canEditSlices && draggableIndex === index}
+                    onDragStart={(e) => handleDragStart(e, index)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDrop={(e) => handleDrop(e, index)}
+                    onDragEnd={handleDragEnd}
+                    className={cn(
+                      "relative flex items-center gap-1.5 py-1 px-2 rounded-lg transition-colors group mx-1",
+                      isDragging ? "opacity-35 bg-blue-50/50" : "hover:bg-gray-50/80",
+                      isDropTop && "before:absolute before:top-0 before:left-0 before:right-0 before:h-0.5 before:bg-blue-500 before:rounded-full before:z-10",
+                      isDropBottom && "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-blue-500 after:rounded-full after:z-10"
+                    )}
+                  >
+                    {/* Drag Handle */}
+                    <div className="w-5 flex-shrink-0 flex items-center justify-center">
+                      {canEditSlices ? (
+                        <button
+                          type="button"
+                          onMouseEnter={() => setDraggableIndex(index)}
+                          onMouseLeave={() => setDraggableIndex(null)}
+                          className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-600 p-0.5 rounded transition-colors group-hover:opacity-100"
+                          title="Drag to reorder"
+                        >
+                          <GripVertical className="h-3.5 w-3.5" />
+                        </button>
                       ) : (
-                        <div className="col-span-2"></div>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-not-allowed opacity-30 text-gray-400 p-0.5">
+                                <GripVertical className="h-3.5 w-3.5" />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" sideOffset={5} className="bg-slate-800 text-white border-slate-700 shadow-xl px-3 py-2 z-[150]">
+                              <p className="text-xs font-medium">To reorder slices, please use the first dataset tab.</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       )}
-                      <div className="col-span-2 flex justify-center">
-                        <div className="flex items-center">
-                          <label className="relative flex-shrink-0 cursor-pointer overflow-hidden rounded-md shadow-sm focus-within:ring-0 border border-gray-200">
-                            <input type="color" value={point.color} onChange={e => handleUpdatePoint(index, 'color', e.target.value)} className="w-8 h-8 opacity-0 absolute inset-[-10px] cursor-pointer" />
-                            <div className="w-6 h-6 rounded-sm" style={{ backgroundColor: point.color }} />
-                          </label>
-                        </div>
-                      </div>
-                      <div className="col-span-1 flex justify-end">
-                        {canEditSlices ? (
-                          <Button variant="ghost" size="icon" onClick={() => handleRemovePoint(index)} disabled={dataPoints.length <= 1} className="h-6 w-6 text-gray-400 transition-opacity hover:text-red-500 hover:bg-red-50">
-                            <X className="h-3.5 w-3.5" />
-                          </Button>
-                        ) : (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="cursor-not-allowed">
-                                  <Button variant="ghost" size="icon" disabled className="h-6 w-6 text-gray-300 transition-opacity">
-                                    <X className="h-3.5 w-3.5" />
-                                  </Button>
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" sideOffset={5} className="bg-slate-800 text-white border-slate-700 shadow-xl px-3 py-2 z-[150]">
-                                <p className="text-xs font-medium">To remove slices, please use the first dataset tab.</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      {chartType === 'waterfall' ? (
+                    </div>
+
+                    {/* Columns grid */}
+                    <div className="grid grid-cols-12 gap-2 flex-1 items-center">
+                      {chartCategory === 'coordinate' ? (
                         <>
-                          <div className="col-span-4">
+                          <div className="col-span-3">
                             {canEditLabels ? (
-                              <Input value={point.name} onChange={e => handleUpdatePoint(index, 'name', e.target.value)} className="h-8 text-xs border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700" />
+                              <Input
+                                draggable={false}
+                                onDragStart={(e) => e.stopPropagation()}
+                                value={point.name}
+                                onChange={e => handleUpdatePoint(index, 'name', e.target.value)}
+                                className="h-8 text-xs border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700"
+                              />
                             ) : (
                               <TooltipProvider>
                                 <Tooltip>
@@ -1464,95 +1635,41 @@ export function ChartSetupDialog({
                               </TooltipProvider>
                             )}
                           </div>
-                          <div className="col-span-4 flex items-center justify-center">
-                            {(() => {
-                              const isDecrease = point.value < 0;
-                              return (
-                                <div className="flex bg-gray-100/80 p-0.5 rounded-lg border border-gray-200/60 w-full shadow-inner">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleUpdatePoint(index, 'value', Math.abs(point.value))}
-                                    className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-all ${
-                                      !isDecrease
-                                        ? 'bg-emerald-500 text-white shadow-sm font-semibold'
-                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
-                                    }`}
-                                  >
-                                    Increase
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleUpdatePoint(index, 'value', -Math.abs(point.value))}
-                                    className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-all ${
-                                      isDecrease
-                                        ? 'bg-rose-500 text-white shadow-sm font-semibold'
-                                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
-                                    }`}
-                                  >
-                                    Decrease
-                                  </button>
-                                </div>
-                              );
-                            })()}
-                          </div>
-                          <div className="col-span-3">
+                          <div className="col-span-2">
                             <Input
+                              draggable={false}
+                              onDragStart={(e) => e.stopPropagation()}
                               type="number"
-                              value={Math.abs(point.value)}
-                              onChange={e => {
-                                const val = Number(e.target.value);
-                                const isDecrease = point.value < 0;
-                                handleUpdatePoint(index, 'value', isDecrease ? -Math.abs(val) : Math.abs(val));
-                              }}
+                              value={point.x}
+                              onChange={e => handleUpdatePoint(index, 'x', Number(e.target.value))}
                               className="h-8 text-xs border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700"
                             />
                           </div>
-                          <div className="col-span-1 flex justify-end">
-                            {canEditSlices ? (
-                              <Button variant="ghost" size="icon" onClick={() => handleRemovePoint(index)} disabled={dataPoints.length <= 1} className="h-6 w-6 text-gray-400 transition-opacity hover:text-red-500 hover:bg-red-50">
-                                <X className="h-3.5 w-3.5" />
-                              </Button>
-                            ) : (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <span className="cursor-not-allowed">
-                                      <Button variant="ghost" size="icon" disabled className="h-6 w-6 text-gray-300 transition-opacity">
-                                        <X className="h-3.5 w-3.5" />
-                                      </Button>
-                                    </span>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="top" sideOffset={5} className="bg-slate-800 text-white border-slate-700 shadow-xl px-3 py-2 z-[150]">
-                                    <p className="text-xs font-medium">To remove slices, please use the first dataset tab.</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            )}
+                          <div className="col-span-2">
+                            <Input
+                              draggable={false}
+                              onDragStart={(e) => e.stopPropagation()}
+                              type="number"
+                              value={point.y}
+                              onChange={e => handleUpdatePoint(index, 'y', Number(e.target.value))}
+                              className="h-8 text-xs border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700"
+                            />
                           </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="col-span-5">
-                            {canEditLabels ? (
-                              <Input value={point.name} onChange={e => handleUpdatePoint(index, 'name', e.target.value)} className="h-8 text-xs border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700" />
-                            ) : (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <span className="block">
-                                      <Input value={point.name} disabled className="h-8 text-xs border-gray-200 bg-gray-50 shadow-sm transition-all font-medium text-gray-400 cursor-not-allowed" />
-                                    </span>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="top" sideOffset={5} className="bg-slate-800 text-white border-slate-700 shadow-xl px-3 py-2 z-[150]">
-                                    <p className="text-xs font-medium">To edit labels, please use the first dataset tab.</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            )}
-                          </div>
-                          <div className="col-span-4">
-                            <Input type="number" value={point.value} onChange={e => handleUpdatePoint(index, 'value', Number(e.target.value))} className="h-8 text-xs border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700" />
-                          </div>
+                          {isBubbleChart ? (
+                            <div className="col-span-2">
+                              <Input
+                                draggable={false}
+                                onDragStart={(e) => e.stopPropagation()}
+                                type="number"
+                                value={point.r}
+                                onChange={e => handleUpdatePoint(index, 'r', Number(e.target.value))}
+                                className="h-8 text-xs border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700"
+                                min="1"
+                              />
+                            </div>
+                          ) : (
+                            <div className="col-span-2"></div>
+                          )}
                           <div className="col-span-2 flex justify-center">
                             <div className="flex items-center">
                               <label className="relative flex-shrink-0 cursor-pointer overflow-hidden rounded-md shadow-sm focus-within:ring-0 border border-gray-200">
@@ -1561,11 +1678,36 @@ export function ChartSetupDialog({
                               </label>
                             </div>
                           </div>
-                          <div className="col-span-1 flex justify-end">
+                          <div className="col-span-1 flex items-center justify-end gap-0.5">
                             {canEditSlices ? (
-                              <Button variant="ghost" size="icon" onClick={() => handleRemovePoint(index)} disabled={dataPoints.length <= 1} className="h-6 w-6 text-gray-400 transition-opacity hover:text-red-500 hover:bg-red-50">
-                                <X className="h-3.5 w-3.5" />
-                              </Button>
+                              <>
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => handleAddPoint(index + 1)}
+                                        className="h-6 w-6 text-gray-300 opacity-0 group-hover:opacity-100 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                                      >
+                                        <Plus className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" sideOffset={5} className="text-xs">
+                                      Insert row below
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleRemovePoint(index)}
+                                  disabled={dataPoints.length <= 1}
+                                  className="h-6 w-6 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-opacity"
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </Button>
+                              </>
                             ) : (
                               <TooltipProvider>
                                 <Tooltip>
@@ -1584,11 +1726,287 @@ export function ChartSetupDialog({
                             )}
                           </div>
                         </>
+                      ) : (
+                        <>
+                          {chartType === 'waterfall' ? (
+                            <>
+                              <div className="col-span-4">
+                                {canEditLabels ? (
+                                  <Input
+                                    draggable={false}
+                                    onDragStart={(e) => e.stopPropagation()}
+                                    value={point.name}
+                                    onChange={e => handleUpdatePoint(index, 'name', e.target.value)}
+                                    className="h-8 text-xs border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700"
+                                  />
+                                ) : (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="block">
+                                          <Input value={point.name} disabled className="h-8 text-xs border-gray-200 bg-gray-50 shadow-sm transition-all font-medium text-gray-400 cursor-not-allowed" />
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top" sideOffset={5} className="bg-slate-800 text-white border-slate-700 shadow-xl px-3 py-2 z-[150]">
+                                        <p className="text-xs font-medium">To edit labels, please use the first dataset tab.</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                              </div>
+                              <div className="col-span-4 flex items-center justify-center">
+                                {(() => {
+                                  if (index === 0) {
+                                    return (
+                                      <div className="flex bg-indigo-50/90 py-1 px-2.5 rounded-lg border border-indigo-200/80 w-full justify-center items-center gap-1.5 shadow-sm text-indigo-700 font-bold text-[11px]">
+                                        <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
+                                        Starting Point
+                                      </div>
+                                    );
+                                  }
+                                  const isDecrease = point.value < 0;
+                                  const isSubtotal = (point.name || '').toLowerCase().includes('subtotal') || (point.name || '').toLowerCase().includes('gross profit');
+                                  return (
+                                    <div className="flex bg-gray-100/80 p-0.5 rounded-lg border border-gray-200/60 w-full shadow-inner">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const cleanName = (point.name || '').replace(/\s*subtotal/gi, '').trim();
+                                          handleUpdatePoint(index, 'name', cleanName || `Slice ${index + 1}`);
+                                          handleUpdatePoint(index, 'value', Math.abs(point.value));
+                                        }}
+                                        className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-all ${
+                                          !isDecrease && !isSubtotal
+                                            ? 'bg-emerald-500 text-white shadow-sm font-semibold'
+                                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+                                        }`}
+                                      >
+                                        Increase
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const cleanName = (point.name || '').replace(/\s*subtotal/gi, '').trim();
+                                          handleUpdatePoint(index, 'name', cleanName || `Slice ${index + 1}`);
+                                          handleUpdatePoint(index, 'value', -Math.abs(point.value));
+                                        }}
+                                        className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-all ${
+                                          isDecrease && !isSubtotal
+                                            ? 'bg-rose-500 text-white shadow-sm font-semibold'
+                                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+                                        }`}
+                                      >
+                                        Decrease
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const current = point.name || `Slice ${index + 1}`;
+                                          if (!isSubtotal) {
+                                            handleUpdatePoint(index, 'name', `${current} Subtotal`);
+                                          }
+                                        }}
+                                        className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-all ${
+                                          isSubtotal
+                                            ? 'bg-sky-600 text-white shadow-sm font-semibold'
+                                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+                                        }`}
+                                      >
+                                        Subtotal
+                                      </button>
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                              <div className="col-span-3">
+                                <Input
+                                  draggable={false}
+                                  onDragStart={(e) => e.stopPropagation()}
+                                  type="number"
+                                  value={Math.abs(point.value)}
+                                  onChange={e => {
+                                    const val = Number(e.target.value);
+                                    const isDecrease = point.value < 0;
+                                    handleUpdatePoint(index, 'value', isDecrease ? -Math.abs(val) : Math.abs(val));
+                                  }}
+                                  className="h-8 text-xs border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700"
+                                />
+                              </div>
+                              <div className="col-span-1 flex items-center justify-end gap-0.5">
+                                {canEditSlices ? (
+                                  <>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => handleAddPoint(index + 1)}
+                                            className="h-6 w-6 text-gray-300 opacity-0 group-hover:opacity-100 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                                          >
+                                            <Plus className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" sideOffset={5} className="text-xs">
+                                          Insert row below
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleRemovePoint(index)}
+                                      disabled={dataPoints.length <= 1}
+                                      className="h-6 w-6 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-opacity"
+                                    >
+                                      <X className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="cursor-not-allowed">
+                                          <Button variant="ghost" size="icon" disabled className="h-6 w-6 text-gray-300 transition-opacity">
+                                            <X className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top" sideOffset={5} className="bg-slate-800 text-white border-slate-700 shadow-xl px-3 py-2 z-[150]">
+                                        <p className="text-xs font-medium">To remove slices, please use the first dataset tab.</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="col-span-5">
+                                {canEditLabels ? (
+                                  <Input
+                                    draggable={false}
+                                    onDragStart={(e) => e.stopPropagation()}
+                                    value={point.name}
+                                    onChange={e => handleUpdatePoint(index, 'name', e.target.value)}
+                                    className="h-8 text-xs border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700"
+                                  />
+                                ) : (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="block">
+                                          <Input value={point.name} disabled className="h-8 text-xs border-gray-200 bg-gray-50 shadow-sm transition-all font-medium text-gray-400 cursor-not-allowed" />
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top" sideOffset={5} className="bg-slate-800 text-white border-slate-700 shadow-xl px-3 py-2 z-[150]">
+                                        <p className="text-xs font-medium">To edit labels, please use the first dataset tab.</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                              </div>
+                              <div className="col-span-4">
+                                <Input
+                                  draggable={false}
+                                  onDragStart={(e) => e.stopPropagation()}
+                                  type="number"
+                                  value={point.value}
+                                  onChange={e => handleUpdatePoint(index, 'value', Number(e.target.value))}
+                                  className="h-8 text-xs border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700"
+                                />
+                              </div>
+                              <div className="col-span-2 flex justify-center">
+                                <div className="flex items-center">
+                                  <label className="relative flex-shrink-0 cursor-pointer overflow-hidden rounded-md shadow-sm focus-within:ring-0 border border-gray-200">
+                                    <input type="color" value={point.color} onChange={e => handleUpdatePoint(index, 'color', e.target.value)} className="w-8 h-8 opacity-0 absolute inset-[-10px] cursor-pointer" />
+                                    <div className="w-6 h-6 rounded-sm" style={{ backgroundColor: point.color }} />
+                                  </label>
+                                </div>
+                              </div>
+                              <div className="col-span-1 flex items-center justify-end gap-0.5">
+                                {canEditSlices ? (
+                                  <>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => handleAddPoint(index + 1)}
+                                            className="h-6 w-6 text-gray-300 opacity-0 group-hover:opacity-100 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                                          >
+                                            <Plus className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" sideOffset={5} className="text-xs">
+                                          Insert row below
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleRemovePoint(index)}
+                                      disabled={dataPoints.length <= 1}
+                                      className="h-6 w-6 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-opacity"
+                                    >
+                                      <X className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="cursor-not-allowed">
+                                          <Button variant="ghost" size="icon" disabled className="h-6 w-6 text-gray-300 transition-opacity">
+                                            <X className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top" sideOffset={5} className="bg-slate-800 text-white border-slate-700 shadow-xl px-3 py-2 z-[150]">
+                                        <p className="text-xs font-medium">To remove slices, please use the first dataset tab.</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                              </div>
+                            </>
+                          )}
+                        </>
                       )}
-                    </>
-                  )}
+                    </div>
+                  </div>
+                );
+              })}
+              {chartType === 'waterfall' && (
+                <div className="mx-2 my-2.5 p-3 bg-gradient-to-r from-blue-50/90 via-indigo-50/80 to-blue-50/90 border border-blue-200/90 rounded-xl shadow-sm flex items-center justify-between transition-all">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-sm shadow-md shadow-blue-500/20">
+                      ∑
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-slate-800 flex items-center gap-2">
+                        Total / Net Calculated Bar
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-200/60">
+                          Auto-Generated
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-500 font-medium">
+                        Automatically computed from starting baseline and step changes
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-base font-extrabold text-blue-600 tracking-tight">
+                      {dataPoints.reduce((sum, pt) => sum + (Number(pt.value) || 0), 0).toLocaleString()}
+                    </div>
+                    <div className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">
+                      Ending Net Total
+                    </div>
+                  </div>
                 </div>
-              ))}
+              )}
             </div>
 
             {/* Footer */}
@@ -1598,7 +2016,7 @@ export function ChartSetupDialog({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={handleAddPoint}
+                    onClick={() => handleAddPoint()}
                     className="h-9 px-4 border-dashed border-gray-300 text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                   >
                     <Plus className="h-4 w-4 mr-2" />

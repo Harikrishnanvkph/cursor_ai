@@ -49,7 +49,6 @@ export function PromptTemplate({
   const {
     generateMode,
     setGenerateMode,
-    setEditorMode,
   } = useTemplateStore()
 
   // Auto-migrate legacy 'template' mode to 'format'
@@ -200,7 +199,6 @@ export function PromptTemplate({
                 if (value) {
                   const mode = value as 'chart' | 'format'
                   setGenerateMode(mode)
-                  setEditorMode(mode === 'chart' ? 'chart' : 'template')
                 }
               }}
               className="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/60 shadow-inner gap-1 p-0.5 rounded-lg h-9"
@@ -391,17 +389,17 @@ export function PromptTemplate({
                 </div>
               ) : (
                 /* Format Pick Area - Wide layout to prevent squeezing and vertical bloat */
-                <div className="flex flex-col gap-4 max-w-2xl w-full mx-auto px-4 md:px-0">
-                  {/* Descriptive Title card with standard typography matching the aspect ratio theme */}
-                  <div className="bg-white border border-slate-200/80 rounded-[24px] px-8 py-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] text-center hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300">
-                    <div className="font-semibold text-sm text-slate-800 mb-1.5 tracking-tight">
-                      <span className="text-indigo-600 font-bold mr-1">Optional</span> Format Selection
-                    </div>
-                    <div className="text-xs text-slate-500 leading-relaxed font-normal px-4">
-                      Choose a pre-designed template to customize the AI-generated response and gain full control over the design.
-                    </div>
+                <div className="flex flex-col gap-3 max-w-2xl w-full mx-auto px-4 md:px-0">
+                  {/* OR Divider */}
+                  <div className="flex items-center justify-center gap-3 my-1">
+                    <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
+                    <span className="text-xs font-bold text-slate-400 tracking-widest uppercase bg-slate-100/80 px-3 py-0.5 rounded-full border border-slate-200/60 shadow-2xs">
+                      ( OR )
+                    </span>
+                    <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
                   </div>
 
+                  {/* Choose a Format Layout Button */}
                   <Button
                     onClick={handleChooseFormat}
                     disabled={isLoadingFormats}
@@ -410,6 +408,16 @@ export function PromptTemplate({
                     <LayoutGrid className="w-4 h-4 mr-2.5" />
                     {isLoadingFormats ? 'Loading layouts...' : (selectedRatio ? `Browse ${selectedRatio} Formats` : 'Choose a Format Layout')}
                   </Button>
+
+                  {/* Descriptive Title card moved BELOW button */}
+                  <div className="bg-white border border-slate-200/80 rounded-[24px] px-8 py-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] text-center hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300">
+                    <div className="font-semibold text-sm text-slate-800 mb-1.5 tracking-tight">
+                      <span className="text-indigo-600 font-bold mr-1">Optional</span> Format Selection
+                    </div>
+                    <div className="text-xs text-slate-500 leading-relaxed font-normal px-4">
+                      Choose a pre-designed template to customize the AI-generated response and gain full control over the design.
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

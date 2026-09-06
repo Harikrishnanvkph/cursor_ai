@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { useTheme } from "next-themes"
 import { SiteHeader } from "@/components/site-header"
 import { Sparkles, Sliders, LayoutDashboard, ArrowRight, Layers, PanelLeft, Share2, Settings, Palette, AlertTriangle, CheckCircle2, RefreshCw, Maximize2, Database, Layout, Grid, MessageSquare, MousePointer2, Pencil, Minus, ArrowLeftRight, Square, Circle, Triangle, Star, Hexagon, Heart, Cloud, Plus, Type, Lock, Copy, Trash2, MoreHorizontal, BarChart2, PieChart, FolderOpen, Save, TrendingUp, ChevronLeft, ChevronRight, AlignLeft, CircleDot, Target, Box, Filter, Gauge, LayoutGrid, Activity, Download, Check, Zap, ChevronDown } from "lucide-react"
@@ -124,39 +124,66 @@ function AiChatBento() {
 
               {/* LEFT COLUMN (~38%) — 16:9 on top, 1:1 + 4:5 on bottom */}
               <div className="flex-[38] flex flex-col gap-1.5">
-                {/* 16:9 Landscape — flex-[49] gives ~50% height → width/height ≈ 16:9 */}
-                <div className="flex-[49] bg-slate-200/80 dark:bg-slate-800/60 border border-slate-300/50 dark:border-slate-700/50 flex items-center justify-center overflow-hidden group">
-                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 group-hover:text-indigo-500 transition-colors">16:9</span>
+                <div className="flex-[49] rounded-lg bg-slate-200/80 dark:bg-slate-800/60 border border-slate-300/50 dark:border-slate-700/50 flex items-center justify-center overflow-hidden group relative">
+                  <img
+                    src="https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/fifa%202026.jpg"
+                    alt="FIFA 2026 Men World Ranking"
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
                 </div>
                 {/* Bottom row — 1:1 (flex-5) + 4:5 (flex-4) */}
                 <div className="flex-[51] flex gap-1.5">
-                  <div className="flex-[5] bg-slate-200/80 dark:bg-slate-800/60 border border-slate-300/50 dark:border-slate-700/50 flex items-center justify-center overflow-hidden group">
-                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 group-hover:text-indigo-500 transition-colors">1:1</span>
+                  <div className="flex-[5] rounded-lg bg-slate-200/80 dark:bg-slate-800/60 border border-slate-300/50 dark:border-slate-700/50 flex items-center justify-center overflow-hidden group relative">
+                    <img
+                      src="https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/august_visa_transactions.png"
+                      alt="August VISA Transactions"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
                   </div>
-                  <div className="flex-[4] bg-slate-200/80 dark:bg-slate-800/60 border border-slate-300/50 dark:border-slate-700/50 flex items-center justify-center overflow-hidden group">
-                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 group-hover:text-indigo-500 transition-colors">4:5</span>
+                  <div className="flex-[4] rounded-lg bg-slate-200/80 dark:bg-slate-800/60 border border-slate-300/50 dark:border-slate-700/50 flex items-center justify-center overflow-hidden group relative">
+                    <img
+                      src="https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/last-6-month-spending.png"
+                      alt="Last 6 Month Spending"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
                   </div>
                 </div>
               </div>
 
               {/* CENTER COLUMN (~25%) — 9:16 tall portrait spanning full height */}
-              <div className="flex-[25] bg-slate-200/80 dark:bg-slate-800/60 border border-slate-300/50 dark:border-slate-700/50 flex items-center justify-center overflow-hidden group">
-                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 group-hover:text-indigo-500 transition-colors">9:16</span>
+              <div className="flex-[25] rounded-lg bg-slate-200/80 dark:bg-slate-800/60 border border-slate-300/50 dark:border-slate-700/50 flex items-center justify-center overflow-hidden group relative">
+                <img
+                  src="https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/august-visa-card-transactions.png"
+                  alt="August VISA Card Transactions"
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                />
               </div>
 
               {/* RIGHT COLUMN (~34%) — 4:3 on top, 3:2 + 1:2 on bottom */}
               <div className="flex-[34] flex flex-col gap-1.5">
                 {/* 4:3 — flex-[59] gives ~59% height → width/height ≈ 4:3 */}
-                <div className="flex-[59] bg-slate-200/80 dark:bg-slate-800/60 border border-slate-300/50 dark:border-slate-700/50 flex items-center justify-center overflow-hidden group">
-                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 group-hover:text-indigo-500 transition-colors">4:3</span>
+                <div className="flex-[59] rounded-lg bg-slate-200/80 dark:bg-slate-800/60 border border-slate-300/50 dark:border-slate-700/50 flex items-center justify-center overflow-hidden group relative">
+                  <img
+                    src="https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/highest-grossing-hollywood-films.png"
+                    alt="Highest Grossing Hollywood Films"
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
                 </div>
                 {/* Bottom row — 3:2 (flex-3) + 1:2 (flex-1) */}
                 <div className="flex-[41] flex gap-1.5">
-                  <div className="flex-[3] bg-slate-200/80 dark:bg-slate-800/60 border border-slate-300/50 dark:border-slate-700/50 flex items-center justify-center overflow-hidden group">
-                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 group-hover:text-indigo-500 transition-colors">3:2</span>
+                  <div className="flex-[3] rounded-lg bg-slate-200/80 dark:bg-slate-800/60 border border-slate-300/50 dark:border-slate-700/50 flex items-center justify-center overflow-hidden group relative">
+                    <img
+                      src="https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/top-10-billionaires-2026.png"
+                      alt="Top 10 Billionaires in 2026"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
                   </div>
-                  <div className="flex-[1] bg-slate-200/80 dark:bg-slate-800/60 border border-slate-300/50 dark:border-slate-700/50 flex items-center justify-center overflow-hidden group">
-                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 group-hover:text-indigo-500 transition-colors">1:2</span>
+                  <div className="flex-[1] rounded-lg bg-slate-200/80 dark:bg-slate-800/60 border border-slate-300/50 dark:border-slate-700/50 flex items-center justify-center overflow-hidden group relative">
+                    <img
+                      src="https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/my-study-interests-tall.png"
+                      alt="My Study Interests"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
                   </div>
                 </div>
               </div>
@@ -1399,275 +1426,76 @@ function BoardBento() {
 
 // ── CHART RENDERER HELPER ──────────────────────────────────
 function ChartRenderer({ type, mode }: { type: string; mode: "single" | "grouped" }) {
-  if (type === "bar") {
-    return mode === "single" ? (
-      <div className="w-full h-44 flex items-end justify-around gap-3 px-6">
-        <div className="w-12 bg-gradient-to-t from-teal-600 to-teal-400 rounded-t-lg h-[45%] transition-all duration-500 hover:h-[55%]" />
-        <div className="w-12 bg-gradient-to-t from-teal-600 to-teal-400 rounded-t-lg h-[70%] transition-all duration-500 hover:h-[80%]" />
-        <div className="w-12 bg-gradient-to-t from-teal-600 to-teal-400 rounded-t-lg h-[55%] transition-all duration-500 hover:h-[65%]" />
-        <div className="w-12 bg-gradient-to-t from-teal-600 to-teal-400 rounded-t-lg h-[90%] transition-all duration-500 hover:h-[100%]" />
-        <div className="w-12 bg-gradient-to-t from-teal-600 to-teal-400 rounded-t-lg h-[65%] transition-all duration-500 hover:h-[75%]" />
-      </div>
-    ) : (
-      <div className="w-full h-44 flex items-end justify-around gap-4 px-4">
-        <div className="flex items-end gap-1.5 h-full">
-          <div className="w-6 bg-teal-500 rounded-t-md h-[50%]" />
-          <div className="w-6 bg-indigo-500 rounded-t-md h-[75%]" />
-          <div className="w-6 bg-amber-400 rounded-t-md h-[40%]" />
-        </div>
-        <div className="flex items-end gap-1.5 h-full">
-          <div className="w-6 bg-teal-500 rounded-t-md h-[70%]" />
-          <div className="w-6 bg-indigo-500 rounded-t-md h-[90%]" />
-          <div className="w-6 bg-amber-400 rounded-t-md h-[60%]" />
-        </div>
-        <div className="flex items-end gap-1.5 h-full">
-          <div className="w-6 bg-teal-500 rounded-t-md h-[60%]" />
-          <div className="w-6 bg-indigo-500 rounded-t-md h-[45%]" />
-          <div className="w-6 bg-amber-400 rounded-t-md h-[80%]" />
-        </div>
-      </div>
-    )
-  }
+  if (mode === "single") {
+    const singleImages: Record<string, { src: string; title: string }> = {
+      bar: {
+        src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/top-5-trending-investment-options-2026.png",
+        title: "Top 5 Trending Investment Options 2026"
+      },
+      donut: {
+        src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/most-visited-countries-in-the-world-2026.png",
+        title: "Most Visited Countries in the World (2026)"
+      },
+      waterfall: {
+        src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/lm-company-net-profit-2026-gradient.png",
+        title: "L&M Company Net Profit in Fiscal Year 2026"
+      },
+      "horizontal-bar": {
+        src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/percentage-of-students-enrollment-each-month.png",
+        title: "Percentage (%) of Students Enrollment Each Month"
+      },
+      line: {
+        src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/eur-to-usd-exchange-rate-1999-2025.png",
+        title: "EUR to USD Exchange Rate (1999–2025)"
+      },
+      radar: {
+        src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/my-study-interests.png",
+        title: "My Study Interests"
+      }
+    }
 
-  if (type === "pie") {
-    return mode === "single" ? (
-      <div className="relative w-44 h-44 flex items-center justify-center">
-        <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible transform -rotate-90">
-          <circle cx="50" cy="50" r="40" fill="transparent" stroke="#14b8a6" strokeWidth="20" strokeDasharray="125 251.2" />
-          <circle cx="50" cy="50" r="40" fill="transparent" stroke="#6366f1" strokeWidth="20" strokeDasharray="75 251.2" strokeDashoffset="-125" />
-          <circle cx="50" cy="50" r="40" fill="transparent" stroke="#f59e0b" strokeWidth="20" strokeDasharray="51.2 251.2" strokeDashoffset="-200" />
-        </svg>
-      </div>
-    ) : (
-      <div className="flex items-center gap-6">
-        <div className="relative w-36 h-36 flex flex-col items-center">
-          <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
-            <circle cx="50" cy="50" r="40" fill="transparent" stroke="#14b8a6" strokeWidth="20" strokeDasharray="150 251.2" />
-            <circle cx="50" cy="50" r="40" fill="transparent" stroke="#6366f1" strokeWidth="20" strokeDasharray="101.2 251.2" strokeDashoffset="-150" />
-          </svg>
-          <span className="text-[10px] text-slate-400 font-bold mt-1">Series A</span>
-        </div>
-        <div className="relative w-36 h-36 flex flex-col items-center">
-          <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
-            <circle cx="50" cy="50" r="40" fill="transparent" stroke="#f59e0b" strokeWidth="20" strokeDasharray="180 251.2" />
-            <circle cx="50" cy="50" r="40" fill="transparent" stroke="#ec4899" strokeWidth="20" strokeDasharray="71.2 251.2" strokeDashoffset="-180" />
-          </svg>
-          <span className="text-[10px] text-slate-400 font-bold mt-1">Series B</span>
-        </div>
-      </div>
-    )
-  }
+    const currentSlide = singleImages[type] || singleImages["bar"]
 
-  if (type === "horizontal-bar") {
-    return mode === "single" ? (
-      <div className="w-full space-y-3 px-6">
-        <div className="space-y-1">
-          <div className="flex justify-between text-[10px] text-slate-400 font-semibold"><span>Category A</span><span>85%</span></div>
-          <div className="h-3.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden"><div className="h-full bg-teal-500 rounded-full w-[85%]" /></div>
-        </div>
-        <div className="space-y-1">
-          <div className="flex justify-between text-[10px] text-slate-400 font-semibold"><span>Category B</span><span>62%</span></div>
-          <div className="h-3.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden"><div className="h-full bg-teal-500 rounded-full w-[62%]" /></div>
-        </div>
-        <div className="space-y-1">
-          <div className="flex justify-between text-[10px] text-slate-400 font-semibold"><span>Category C</span><span>44%</span></div>
-          <div className="h-3.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden"><div className="h-full bg-teal-500 rounded-full w-[44%]" /></div>
-        </div>
-      </div>
-    ) : (
-      <div className="w-full space-y-3 px-6">
-        <div className="space-y-1">
-          <div className="flex justify-between text-[10px] text-slate-400 font-semibold"><span>Region North</span></div>
-          <div className="flex gap-1 h-3.5">
-            <div className="h-full bg-teal-500 rounded-l-md w-[50%]" />
-            <div className="h-full bg-indigo-500 rounded-r-md w-[35%]" />
-          </div>
-        </div>
-        <div className="space-y-1">
-          <div className="flex justify-between text-[10px] text-slate-400 font-semibold"><span>Region South</span></div>
-          <div className="flex gap-1 h-3.5">
-            <div className="h-full bg-teal-500 rounded-l-md w-[65%]" />
-            <div className="h-full bg-indigo-500 rounded-r-md w-[25%]" />
-          </div>
-        </div>
-        <div className="space-y-1">
-          <div className="flex justify-between text-[10px] text-slate-400 font-semibold"><span>Region West</span></div>
-          <div className="flex gap-1 h-3.5">
-            <div className="h-full bg-teal-500 rounded-l-md w-[40%]" />
-            <div className="h-full bg-indigo-500 rounded-r-md w-[45%]" />
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (type === "donut") {
-    return mode === "single" ? (
-      <div className="relative w-40 h-40 flex items-center justify-center">
-        <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
-          <circle cx="50" cy="50" r="38" fill="transparent" stroke="#14b8a6" strokeWidth="14" strokeDasharray="140 238.7" />
-          <circle cx="50" cy="50" r="38" fill="transparent" stroke="#6366f1" strokeWidth="14" strokeDasharray="60 238.7" strokeDashoffset="-140" />
-          <circle cx="50" cy="50" r="38" fill="transparent" stroke="#f59e0b" strokeWidth="14" strokeDasharray="38.7 238.7" strokeDashoffset="-200" />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-          <span className="text-[10px] font-bold text-slate-400 uppercase">Total</span>
-          <span className="text-sm font-extrabold text-slate-800 dark:text-white">$248.5K</span>
-        </div>
-      </div>
-    ) : (
-      <div className="relative w-44 h-44 flex items-center justify-center">
-        <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
-          <circle cx="50" cy="50" r="40" fill="transparent" stroke="#14b8a6" strokeWidth="8" strokeDasharray="160 251.2" />
-          <circle cx="50" cy="50" r="40" fill="transparent" stroke="#6366f1" strokeWidth="8" strokeDasharray="91.2 251.2" strokeDashoffset="-160" />
-          <circle cx="50" cy="50" r="28" fill="transparent" stroke="#f59e0b" strokeWidth="8" strokeDasharray="100 175.9" />
-          <circle cx="50" cy="50" r="28" fill="transparent" stroke="#ec4899" strokeWidth="8" strokeDasharray="75.9 175.9" strokeDashoffset="-100" />
-        </svg>
-        <div className="absolute text-[9px] font-bold text-slate-400">Multi-Ring</div>
-      </div>
-    )
-  }
-
-  if (type === "radar") {
     return (
-      <div className="relative w-44 h-44 flex items-center justify-center">
-        <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible">
-          <polygon points="50,10 90,38 75,85 25,85 10,38" fill="none" stroke="#cbd5e1" strokeWidth="1" className="dark:stroke-slate-700" />
-          <polygon points="50,25 75,42 66,73 34,73 25,42" fill="none" stroke="#cbd5e1" strokeWidth="1" className="dark:stroke-slate-700" />
-          <polygon points="50,40 60,49 56,61 44,61 40,49" fill="none" stroke="#cbd5e1" strokeWidth="1" className="dark:stroke-slate-700" />
-          <polygon points="50,15 82,40 70,78 30,70 18,36" fill="rgba(20, 184, 166, 0.35)" stroke="#14b8a6" strokeWidth="2" />
-          {mode === "grouped" && (
-            <polygon points="50,28 72,48 60,82 40,75 22,45" fill="rgba(99, 102, 241, 0.35)" stroke="#6366f1" strokeWidth="2" />
-          )}
-        </svg>
+      <div className="w-full h-full flex items-center justify-center p-1">
+        <img
+          src={currentSlide.src}
+          alt={currentSlide.title}
+          className="w-full h-full object-contain rounded-lg shadow-sm transition-all duration-300"
+        />
       </div>
     )
   }
 
-  if (type === "polar") {
-    return (
-      <div className="relative w-44 h-44 flex items-center justify-center">
-        <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible transform -rotate-90">
-          <circle cx="50" cy="50" r="42" fill="rgba(20, 184, 166, 0.3)" stroke="#14b8a6" strokeWidth="1" />
-          <circle cx="50" cy="50" r="32" fill="rgba(99, 102, 241, 0.4)" stroke="#6366f1" strokeWidth="1" />
-          <circle cx="50" cy="50" r="22" fill="rgba(245, 158, 11, 0.5)" stroke="#f59e0b" strokeWidth="1" />
-        </svg>
-      </div>
-    )
+  // mode === "grouped"
+  const groupedImages: Record<string, { src: string; title: string }> = {
+    "august-visa": {
+      src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/august_visa_transactions.png",
+      title: "August Visa Transactions"
+    },
+    "muscle-workout": {
+      src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/muscle-workout-set-per-day.png",
+      title: "Muscle Workout Set Per Day"
+    },
+    "scatter-plot": {
+      src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/scatter-plot-of-three-groups.png",
+      title: "Scatter Plot of Three Groups"
+    },
+    "mrr-signups": {
+      src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/mrr-and-signups-growth.png",
+      title: "MRR ($) vs Signups"
+    }
   }
 
-  if (type === "3d-bar") {
-    return (
-      <div className="w-full h-44 flex items-center justify-center gap-6 px-4">
-        <div className="relative w-10 h-32 flex flex-col justify-end">
-          <div className="w-full h-[60%] bg-teal-500 relative transform -skew-y-12 rounded-t-xs">
-            <div className="absolute top-0 right-0 h-full w-2 bg-teal-600 transform skew-y-12 origin-top-right" />
-            <div className="absolute top-0 left-0 w-full h-2 bg-teal-300 transform -skew-x-12 origin-top-left" />
-          </div>
-        </div>
-        <div className="relative w-10 h-32 flex flex-col justify-end">
-          <div className="w-full h-[85%] bg-indigo-500 relative transform -skew-y-12 rounded-t-xs">
-            <div className="absolute top-0 right-0 h-full w-2 bg-indigo-600 transform skew-y-12 origin-top-right" />
-            <div className="absolute top-0 left-0 w-full h-2 bg-indigo-300 transform -skew-x-12 origin-top-left" />
-          </div>
-        </div>
-        <div className="relative w-10 h-32 flex flex-col justify-end">
-          <div className="w-full h-[45%] bg-amber-400 relative transform -skew-y-12 rounded-t-xs">
-            <div className="absolute top-0 right-0 h-full w-2 bg-amber-500 transform skew-y-12 origin-top-right" />
-            <div className="absolute top-0 left-0 w-full h-2 bg-amber-200 transform -skew-x-12 origin-top-left" />
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (type === "scatter" || type === "bubble") {
-    return (
-      <div className="w-full h-44 relative bg-slate-200/50 dark:bg-slate-950/50 rounded-xl border border-slate-300 dark:border-slate-800 p-4">
-        <div className="absolute bottom-4 left-4 right-4 h-px bg-slate-300 dark:bg-slate-700" />
-        <div className="absolute top-4 bottom-4 left-4 w-px bg-slate-300 dark:bg-slate-700" />
-        <div className="absolute bottom-10 left-12 w-4 h-4 rounded-full bg-teal-500/80 shadow-xs" />
-        <div className="absolute bottom-20 left-24 w-6 h-6 rounded-full bg-teal-500/80 shadow-xs" />
-        <div className="absolute bottom-14 left-44 w-3 h-3 rounded-full bg-teal-500/80" />
-        <div className="absolute bottom-28 left-56 w-7 h-7 rounded-full bg-teal-500/80 shadow-xs" />
-        {mode === "grouped" && (
-          <>
-            <div className="absolute bottom-16 left-16 w-5 h-5 rounded-full bg-indigo-500/80 shadow-xs" />
-            <div className="absolute bottom-24 left-36 w-4 h-4 rounded-full bg-indigo-500/80" />
-            <div className="absolute bottom-8 left-48 w-6 h-6 rounded-full bg-indigo-500/80 shadow-xs" />
-          </>
-        )}
-      </div>
-    )
-  }
-
-  if (type === "stacked-bar") {
-    return (
-      <div className="w-full h-44 flex items-end justify-around gap-6 px-8">
-        <div className="w-10 h-[80%] flex flex-col justify-end rounded-t-lg overflow-hidden">
-          <div className="h-[40%] bg-teal-500" />
-          <div className="h-[35%] bg-indigo-500" />
-          <div className="h-[25%] bg-amber-400" />
-        </div>
-        <div className="w-10 h-[95%] flex flex-col justify-end rounded-t-lg overflow-hidden">
-          <div className="h-[50%] bg-teal-500" />
-          <div className="h-[30%] bg-indigo-500" />
-          <div className="h-[20%] bg-amber-400" />
-        </div>
-        <div className="w-10 h-[65%] flex flex-col justify-end rounded-t-lg overflow-hidden">
-          <div className="h-[30%] bg-teal-500" />
-          <div className="h-[40%] bg-indigo-500" />
-          <div className="h-[30%] bg-amber-400" />
-        </div>
-      </div>
-    )
-  }
-
-  if (type === "funnel") {
-    return (
-      <div className="w-full h-44 flex flex-col items-center justify-center gap-1.5 px-12">
-        <div className="w-full h-7 bg-teal-500 rounded-md flex items-center justify-center text-[10px] text-white font-bold">100% Leads</div>
-        <div className="w-[80%] h-7 bg-teal-600 rounded-md flex items-center justify-center text-[10px] text-white font-bold">75% Prospects</div>
-        <div className="w-[60%] h-7 bg-indigo-500 rounded-md flex items-center justify-center text-[10px] text-white font-bold">45% Offers</div>
-        <div className="w-[40%] h-7 bg-indigo-600 rounded-md flex items-center justify-center text-[10px] text-white font-bold">25% Deals</div>
-      </div>
-    )
-  }
-
-  if (type === "heatmap" || type === "treemap") {
-    return (
-      <div className="w-full h-44 grid grid-cols-4 gap-1.5 p-2">
-        <div className="bg-teal-600 rounded-md flex items-center justify-center text-[10px] text-white font-bold">92</div>
-        <div className="bg-teal-400 rounded-md flex items-center justify-center text-[10px] text-white font-bold">45</div>
-        <div className="bg-indigo-500 rounded-md flex items-center justify-center text-[10px] text-white font-bold">78</div>
-        <div className="bg-amber-400 rounded-md flex items-center justify-center text-[10px] text-white font-bold">30</div>
-        <div className="bg-indigo-600 rounded-md flex items-center justify-center text-[10px] text-white font-bold">88</div>
-        <div className="bg-teal-500 rounded-md flex items-center justify-center text-[10px] text-white font-bold">64</div>
-        <div className="bg-teal-300 rounded-md flex items-center justify-center text-[10px] text-slate-900 font-bold">22</div>
-        <div className="bg-indigo-400 rounded-md flex items-center justify-center text-[10px] text-white font-bold">50</div>
-      </div>
-    )
-  }
+  const currentSlide = groupedImages[type] || groupedImages["august-visa"]
 
   return (
-    <div className="w-full h-44 relative flex items-center justify-center">
-      <svg className="w-full h-full overflow-visible" viewBox="0 0 100 40" fill="none">
-        <path d="M 5 30 Q 25 10 45 22 T 85 8 L 85 35 L 5 35 Z" fill={type === "area" ? "url(#areaGradSection)" : "none"} />
-        <path d="M 5 30 Q 25 10 45 22 T 85 8" stroke="#14b8a6" strokeWidth="2.5" strokeLinecap="round" />
-        {mode === "grouped" && (
-          <path d="M 5 20 Q 25 32 45 14 T 85 18" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="3 3" />
-        )}
-        <circle cx="5" cy="30" r="2.5" fill="#ffffff" stroke="#14b8a6" strokeWidth="1.5" />
-        <circle cx="25" cy="14" r="2.5" fill="#ffffff" stroke="#14b8a6" strokeWidth="1.5" />
-        <circle cx="45" cy="22" r="2.5" fill="#ffffff" stroke="#14b8a6" strokeWidth="1.5" />
-        <circle cx="65" cy="16" r="2.5" fill="#ffffff" stroke="#14b8a6" strokeWidth="1.5" />
-        <circle cx="85" cy="8" r="2.5" fill="#ffffff" stroke="#14b8a6" strokeWidth="1.5" />
-        <defs>
-          <linearGradient id="areaGradSection" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#14b8a6" stopOpacity="0.4" />
-            <stop offset="100%" stopColor="#14b8a6" stopOpacity="0.0" />
-          </linearGradient>
-        </defs>
-      </svg>
+    <div className="w-full h-full flex items-center justify-center p-1">
+      <img
+        src={currentSlide.src}
+        alt={currentSlide.title}
+        className="w-full h-full object-contain rounded-lg shadow-sm transition-all duration-300"
+      />
     </div>
   )
 }
@@ -1676,17 +1504,32 @@ function ChartRenderer({ type, mode }: { type: string; mode: "single" | "grouped
 function ChartsShowcaseSection() {
   const [mode, setMode] = useState<"single" | "grouped">("single")
   const [selectedType, setSelectedType] = useState<string>("bar")
+  const sectionRef = useRef<HTMLDivElement>(null)
+  const [isInViewport, setIsInViewport] = useState(false)
+  const [isTabActive, setIsTabActive] = useState(true)
+  const [isHovered, setIsHovered] = useState(false)
 
-  // 5 example charts for preview cycling
-  const exampleTypes = [
+  // Single mode carousel options
+  const singleExampleTypes = [
     { id: "bar", label: "Bar" },
-    { id: "line", label: "Line" },
-    { id: "pie", label: "Pie" },
-    { id: "donut", label: "Donut" },
+    { id: "donut", label: "3D Donut" },
+    { id: "waterfall", label: "Waterfall" },
     { id: "horizontal-bar", label: "Horizontal Bar" },
+    { id: "line", label: "Line" },
+    { id: "radar", label: "Radar" },
   ]
 
-  // All supported chart types in clean logical order
+  // Grouped mode carousel options
+  const groupedExampleTypes = [
+    { id: "august-visa", label: "August Visa Transactions" },
+    { id: "muscle-workout", label: "Muscle Workout Set Per Day" },
+    { id: "scatter-plot", label: "Scatter Plot of Three Groups" },
+    { id: "mrr-signups", label: "MRR vs Signups" },
+  ]
+
+  const exampleTypes = mode === "single" ? singleExampleTypes : groupedExampleTypes
+
+  // Supported chart types for horizontal badge list
   const supportedChartTypes = [
     { id: "bar", label: "Bar", icon: BarChart2 },
     { id: "line", label: "Line", icon: TrendingUp },
@@ -1719,8 +1562,59 @@ function ChartsShowcaseSection() {
     setSelectedType(exampleTypes[nextIdx].id)
   }
 
+  // Track viewport intersection
+  useEffect(() => {
+    const el = sectionRef.current
+    if (!el) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsInViewport(entry.isIntersecting)
+      },
+      { threshold: 0.2 }
+    )
+
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  // Track page visibility & window focus
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsTabActive(!document.hidden)
+    }
+
+    const handleFocus = () => setIsTabActive(true)
+    const handleBlur = () => setIsTabActive(false)
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    window.addEventListener("focus", handleFocus)
+    window.addEventListener("blur", handleBlur)
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+      window.removeEventListener("focus", handleFocus)
+      window.removeEventListener("blur", handleBlur)
+    }
+  }, [])
+
+  // Auto-slide to next image every 3 seconds only when visible in viewport, tab active, and not hovered
+  useEffect(() => {
+    if (exampleTypes.length <= 1 || !isInViewport || !isTabActive || isHovered) return
+
+    const interval = setInterval(() => {
+      setSelectedType((prevType) => {
+        const idx = exampleTypes.findIndex(c => c.id === prevType)
+        const nextIdx = (idx + 1) % exampleTypes.length
+        return exampleTypes[nextIdx].id
+      })
+    }, 3000)
+
+    return () => clearInterval(interval)
+  }, [exampleTypes, isInViewport, isTabActive, isHovered])
+
   return (
-    <div className="mt-24 pt-6 font-sans">
+    <div ref={sectionRef} className="mt-24 pt-6 font-sans">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
 
         {/* Left Side (Vertically centered to match reference image) */}
@@ -1768,7 +1662,10 @@ function ChartsShowcaseSection() {
                 type="radio"
                 name="chart-mode-clean"
                 checked={mode === "single"}
-                onChange={() => setMode("single")}
+                onChange={() => {
+                  setMode("single")
+                  setSelectedType("bar")
+                }}
                 className="w-3.5 h-3.5 text-teal-600 focus:ring-teal-500"
               />
               Single
@@ -1778,46 +1675,48 @@ function ChartsShowcaseSection() {
                 type="radio"
                 name="chart-mode-clean"
                 checked={mode === "grouped"}
-                onChange={() => setMode("grouped")}
+                onChange={() => {
+                  setMode("grouped")
+                  setSelectedType("august-visa")
+                }}
                 className="w-3.5 h-3.5 text-teal-600 focus:ring-teal-500"
               />
               Grouped
             </label>
           </div>
 
-          {/* Floating Card Box with Taller Height, Floating Buttons & Pure Chart View */}
-          <div className="w-full max-w-lg h-[330px] bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-lg flex items-center justify-center relative overflow-hidden group">
+          {/* Floating Card Box with Strict Fixed Size (520px x 340px) for Carousel */}
+          <div
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            className="w-full max-w-[520px] h-[340px] shrink-0 bg-transparent flex items-center justify-center relative group"
+          >
             {/* Pure Chart Renderer View */}
-            <div className="w-full h-full flex items-center justify-center p-2">
+            <div className="w-full h-full flex items-center justify-center">
               <ChartRenderer type={selectedType} mode={mode} />
             </div>
 
             {/* Left Floating Arrow Button */}
-            <button
-              onClick={handlePrev}
-              aria-label="Previous chart"
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-8.5 h-8.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 hover:scale-105 transition-all shadow-md cursor-pointer z-10"
-            >
-              <ChevronLeft className="w-4.5 h-4.5" />
-            </button>
-
-            {/* Left Floating Arrow Button */}
-            <button
-              onClick={handlePrev}
-              aria-label="Previous chart"
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-8.5 h-8.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 hover:scale-105 transition-all shadow-md cursor-pointer z-10"
-            >
-              <ChevronLeft className="w-4.5 h-4.5" />
-            </button>
+            {exampleTypes.length > 1 && (
+              <button
+                onClick={handlePrev}
+                aria-label="Previous chart"
+                className="absolute left-0 top-1/2 -translate-y-1/2 w-8.5 h-8.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 hover:scale-105 transition-all shadow-md cursor-pointer z-10"
+              >
+                <ChevronLeft className="w-4.5 h-4.5" />
+              </button>
+            )}
 
             {/* Right Floating Arrow Button */}
-            <button
-              onClick={handleNext}
-              aria-label="Next chart"
-              className="absolute right-3 top-1/2 -translate-y-1/2 w-8.5 h-8.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 hover:scale-105 transition-all shadow-md cursor-pointer z-10"
-            >
-              <ChevronRight className="w-4.5 h-4.5" />
-            </button>
+            {exampleTypes.length > 1 && (
+              <button
+                onClick={handleNext}
+                aria-label="Next chart"
+                className="absolute right-0 top-1/2 -translate-y-1/2 w-8.5 h-8.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 hover:scale-105 transition-all shadow-md cursor-pointer z-10"
+              >
+                <ChevronRight className="w-4.5 h-4.5" />
+              </button>
+            )}
           </div>
         </div>
 

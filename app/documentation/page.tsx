@@ -1520,18 +1520,6 @@ const guideData = [
           </div>
         </section>
 
-        <section id="convert-grouped" className="scroll-mt-24">
-          <h3 className="text-2xl font-semibold tracking-tight mb-4 text-slate-900">Conversion & Group Creation</h3>
-          <p className="leading-7 text-slate-700">
-            Easily scale single-series drafts into robust multi-series dashboards using the **Convert to Grouped** action. Located inside the General tab, this utility migrates existing structures:
-          </p>
-          <ul className="list-disc pl-6 space-y-2 mt-3 text-slate-700">
-            <li><strong>Auto-Migration:</strong> Reads active chart titles or first-series labels and automatically instantiates a new Group (e.g., "Group 0").</li>
-            <li><strong>Type Alignment:</strong> Detects coordinates type (categorical bar/line vs scatter/bubble coordinates) and locks the new group's base chart format.</li>
-            <li><strong>Synchronized State:</strong> Swaps mode properties to grouped, mirrors coordinate matrices to grouped state stores, and resets Single Mode caches.</li>
-          </ul>
-        </section>
-
         <section id="dataset-manager" className="scroll-mt-24">
           <h3 className="text-2xl font-semibold tracking-tight mb-4 text-slate-900">Dataset Tab (Series, Colors, Images)</h3>
           <p className="leading-7 text-slate-700">

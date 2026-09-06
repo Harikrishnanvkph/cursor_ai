@@ -138,10 +138,6 @@ export function SliceSettings({ className }: SliceSettingsProps) {
 
         if (chartMode === 'single') {
             const dataset = chartData.datasets[index]
-            if (dataset && (dataset as any).chartType) {
-                setChartType((dataset as any).chartType)
-            }
-
             const sourceId = (dataset as any)?.sourceId;
             if (sourceId) {
                 useChatStore.getState().setBackendConversationId(sourceId);
@@ -588,37 +584,8 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                                 size="sm"
                                 variant="outline"
                                 className="h-8 gap-1.5 bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 hover:from-blue-100 hover:to-blue-200 text-blue-700 font-medium shadow-sm text-xs"
-                                onClick={() => {
-                                    if (!currentDataset) return
-                                    const isCoordinateChart = isSelectedGroupCoordinateChart
-                                    const rows = currentDataset.data.map((val: any, i: number) => {
-                                        const rawColor = Array.isArray(currentDataset.backgroundColor)
-                                            ? (currentDataset.backgroundColor[i] as string)
-                                            : (currentDataset.backgroundColor as string) || '#3b82f6'
-
-                                        if (isCoordinateChart && typeof val === 'object' && val !== null) {
-                                            const point = val as { x: number; y: number; r?: number }
-                                            return {
-                                                label: String(currentSliceLabels[i] || `Point ${i + 1}`),
-                                                value: 0,
-                                                color: rgbaToHex(rawColor),
-                                                imageUrl: currentDataset.pointImages?.[i] || null,
-                                                x: point.x ?? 0,
-                                                y: point.y ?? 0,
-                                                r: point.r ?? (selectedGroupChartType === 'bubble' ? 10 : undefined),
-                                            }
-                                        } else {
-                                            return {
-                                                label: String(currentSliceLabels[i] || `Slice ${i + 1}`),
-                                                value: typeof val === 'number' ? val : (Array.isArray(val) ? ((val[1] - val[0]) as number) : (val as any)?.y ?? 0),
-                                                color: rgbaToHex(rawColor),
-                                                imageUrl: currentDataset.pointImages?.[i] || null,
-                                            }
-                                        }
-                                    })
-                                    setFullEditRows(rows as any)
-                                    setShowFullEditModal(true)
-                                }}>
+                                onClick={() => setSidebarActiveTab('datasets')}
+                            >
                                 <Edit className="w-3 h-3" />
                                 Full Edit
                             </Button>

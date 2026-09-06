@@ -8,6 +8,7 @@ import { useDecorationStore } from "../stores/decoration-store"
 import type { TemplateTextArea, TemplateLayout, EditorMode, ChartDimensionState } from "./template-types"
 import { defaultTemplates } from "./template-defaults"
 import { useSettingsStore } from "../stores/settings-store"
+import { useFormatGalleryStore } from "../stores/format-gallery-store"
 
 
 // Template store interface
@@ -97,6 +98,9 @@ interface TemplateStore {
 
   // Clear all template state (used when clearing chart and starting new)
   clearAllTemplateState: () => void
+
+  // Park current template in background without clearing user edits (used when switching to chart mode)
+  parkTemplateInBackground: () => void
 }
 
 
@@ -342,12 +346,15 @@ export const useTemplateStore = create<TemplateStore>()(
         const state = get()
         if (state.editorMode === 'chart') {
           const showNotify = useSettingsStore.getState().showModeChangeNotification
-          console.log('Store: applyTemplate intercept check - showNotify:', showNotify, 'showModeChangeConfirm:', state.showModeChangeConfirm)
+          const decoState = useDecorationStore.getState()
+          const hasChartDecorations = (decoState.chartShapes?.length || 0) > 0 || (decoState.activeMode === 'chart' && (decoState.shapes?.length || 0) > 0)
+          
+          console.log('Store: applyTemplate intercept check - showNotify:', showNotify, 'hasChartDecorations:', hasChartDecorations, 'showModeChangeConfirm:', state.showModeChangeConfirm)
           if (state.showModeChangeConfirm) {
             console.log('Store: applyTemplate - Already confirming, return early')
             return
           }
-          if (showNotify) {
+          if (showNotify && hasChartDecorations) {
             console.log('Store: applyTemplate - Setting showModeChangeConfirm to true')
             set({
               showModeChangeConfirm: true,
@@ -396,9 +403,10 @@ export const useTemplateStore = create<TemplateStore>()(
 
         // If no source template, just apply the template without content transfer
         if (!sourceTemplate) {
+          const clonedTemplate = JSON.parse(JSON.stringify(template))
           set({
-            currentTemplate: { ...template },
-            templateInBackground: { ...template },
+            currentTemplate: clonedTemplate,
+            templateInBackground: JSON.parse(JSON.stringify(template)),
             editorMode: 'template',
             unusedContents: [], // Clear unused contents
             // Set dimension override instead of mutating chart store's chartConfig
@@ -468,13 +476,14 @@ export const useTemplateStore = create<TemplateStore>()(
         })
 
         // Apply template with transferred content
+        const baseCloned = JSON.parse(JSON.stringify(template))
         set({
           currentTemplate: {
-            ...template,
+            ...baseCloned,
             textAreas: updatedTextAreas
           },
           templateInBackground: {
-            ...template,
+            ...baseCloned,
             textAreas: updatedTextAreas
           },
           editorMode: 'template',
@@ -490,11 +499,11 @@ export const useTemplateStore = create<TemplateStore>()(
           // Find the original template to get the initial text areas
           const originalTemplate = state.templates.find(t => t.id === state.currentTemplate!.id)
           if (originalTemplate) {
-            // Reset only the text areas to their initial state
+            // Reset only the text areas to their initial state with a deep clone
             set({
               currentTemplate: {
                 ...state.currentTemplate,
-                textAreas: [...originalTemplate.textAreas] // Restore original text areas
+                textAreas: JSON.parse(JSON.stringify(originalTemplate.textAreas))
               },
               // Also reset content type preferences and section notes to defaults
               contentTypePreferences: {},
@@ -514,15 +523,18 @@ export const useTemplateStore = create<TemplateStore>()(
           return
         }
 
-        // Intercept: switching from chart to template mode
+        // Intercept: switching from chart to template mode (only if user actually has chart decorations to lose)
         if (mode === 'template' && state.editorMode === 'chart') {
           const showNotify = useSettingsStore.getState().showModeChangeNotification
-          console.log('Store: setEditorMode intercept check - showNotify:', showNotify, 'showModeChangeConfirm:', state.showModeChangeConfirm)
+          const decoState = useDecorationStore.getState()
+          const hasChartDecorations = (decoState.chartShapes?.length || 0) > 0 || (decoState.activeMode === 'chart' && (decoState.shapes?.length || 0) > 0)
+
+          console.log('Store: setEditorMode intercept check - showNotify:', showNotify, 'hasChartDecorations:', hasChartDecorations, 'showModeChangeConfirm:', state.showModeChangeConfirm)
           if (state.showModeChangeConfirm) {
             console.log('Store: setEditorMode - Already confirming, return early')
             return
           }
-          if (showNotify) {
+          if (showNotify && hasChartDecorations) {
             console.log('Store: setEditorMode - Setting showModeChangeConfirm to true')
             set({
               showModeChangeConfirm: true,
@@ -583,30 +595,48 @@ export const useTemplateStore = create<TemplateStore>()(
         }
 
         if (mode === 'chart') {
-          // When switching back to chart mode, clear the dimension override.
-          // For cloud-saved template conversations, persist template dimensions
-          // as a "Template Dimension" option in Layout & Dimensions.
-          // For non-cloud charts, the chartConfig remains completely unchanged.
-          const isCloudSaved = state.templateSavedToCloud
-          const activeTemplate = state.currentTemplate || state.templateInBackground
+          // When switching back to chart mode from template mode,
+          // the chart inherits the exact width and height of the chart zone
+          // inside the active template or format layout.
+          let targetW: number | null = null
+          let targetH: number | null = null
 
-          if (isCloudSaved && activeTemplate?.chartArea) {
-            // Cloud-saved template: set templateDimensions on chartConfig
-            // so the Layout & Dimensions panel shows "Template Dimension" option
-            useChartStore.setState({
-              chartConfig: {
-                ...chartConfig,
-                templateDimensions: true,
-                originalDimensions: false,
-                manualDimensions: true,
-                responsive: false,
-                dynamicDimension: false,
-                width: `${activeTemplate.chartArea.width}px`,
-                height: `${activeTemplate.chartArea.height}px`
+          // 1. Check format layout store
+          const formatStore = useFormatGalleryStore.getState()
+          const selectedFormatId = formatStore.selectedFormatId
+          if (selectedFormatId) {
+            const formatSnapshot = formatStore.selectedFormatSnapshot
+            const format = formatSnapshot || [...formatStore.formats, ...(formatStore.userFormats || [])].find(f => f.id === selectedFormatId)
+            if (format) {
+              const zones = format.skeleton?.zones || (format as any).zones || []
+              const chartZone = zones.find((z: any) => z.type === 'chart' || z.role === 'chart' || (z.id && String(z.id).startsWith('chart')))
+              if (chartZone?.position?.width && chartZone?.position?.height) {
+                targetW = chartZone.position.width
+                targetH = chartZone.position.height
               }
-            })
+            }
           }
-          // For non-cloud charts, chartConfig remains completely untouched
+
+          // 2. Check template layout store
+          const activeTemplate = state.currentTemplate || state.templateInBackground
+          if (!targetW && activeTemplate?.chartArea) {
+            targetW = activeTemplate.chartArea.width
+            targetH = activeTemplate.chartArea.height
+          }
+
+          if (targetW && targetH) {
+            const updatedConfig = {
+              ...chartConfig,
+              templateDimensions: true,
+              originalDimensions: false,
+              manualDimensions: true,
+              responsive: false,
+              dynamicDimension: false,
+              width: `${targetW}px`,
+              height: `${targetH}px`
+            }
+            useChartStore.getState().updateChartConfig(updatedConfig)
+          }
 
           return {
             editorMode: mode,
@@ -744,6 +774,24 @@ export const useTemplateStore = create<TemplateStore>()(
           showModeChangeConfirm: false,
           pendingModeAction: null
         })
+      },
+
+      parkTemplateInBackground: () => {
+        const state = get()
+        const activeTpl = state.currentTemplate || state.templateInBackground
+        if (activeTpl) {
+          set({
+            currentTemplate: null,
+            templateInBackground: activeTpl,
+            editorMode: 'chart',
+            dimensionOverride: null
+          })
+        } else {
+          set({
+            editorMode: 'chart',
+            dimensionOverride: null
+          })
+        }
       }
     }),
     {

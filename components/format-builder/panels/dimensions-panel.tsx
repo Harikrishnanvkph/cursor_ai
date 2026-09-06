@@ -6,6 +6,7 @@ import { Maximize2 } from 'lucide-react'
 import { useFormatBuilder } from '../format-builder-context'
 import { DIMENSION_PRESETS } from '../format-builder-utils'
 import { PanelSection } from './panel-section'
+import { getStandardAspectRatio } from '@/lib/utils/dimension-utils'
 
 export function DimensionsPanel({ isOpen, onToggle }: { isOpen?: boolean; onToggle?: () => void }) {
   const { skeleton, setDimensions } = useFormatBuilder()
@@ -37,7 +38,7 @@ export function DimensionsPanel({ isOpen, onToggle }: { isOpen?: boolean; onTogg
       return
     }
     setError('')
-    const aspect = `${v}:${dims.height}`
+    const aspect = getStandardAspectRatio(v, dims.height)
     setDimensions(v, dims.height, aspect, 'Custom')
   }
 
@@ -56,7 +57,7 @@ export function DimensionsPanel({ isOpen, onToggle }: { isOpen?: boolean; onTogg
       return
     }
     setError('')
-    const aspect = `${dims.width}:${v}`
+    const aspect = getStandardAspectRatio(dims.width, v)
     setDimensions(dims.width, v, aspect, 'Custom')
   }
 

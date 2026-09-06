@@ -13,103 +13,111 @@ import {
 import { useEffect } from "react"
 
 /**
- * GroupedSettingsFilter - Shows Group and Dataset dropdowns
- * at the top of Design, Labels, and Advanced panels when in grouped mode.
+ * GroupedSettingsFilter - Shows Dataset and Slice dropdowns
+ * at the top of Design, Labels, and Styling panels.
  * 
- * Group dropdown: shows the current active group (synced with chart store)
- * Dataset dropdown: shows datasets within the group + "All" option (default)
- * 
- * When "All" is selected, settings apply to all datasets in the group.
- * When a specific dataset is selected, settings apply only to that dataset.
+ * Dataset dropdown: Select "All Datasets" or a specific dataset
+ * Slice dropdown: Select "All Slices" or a specific slice/data point
  */
 export function GroupedSettingsFilter() {
   const {
     chartMode,
     chartData,
-    groups,
+    activeDatasetIndex,
     activeGroupId,
-    setActiveGroupId,
   } = useChartStore()
 
   const {
-    settingsGroupId,
     settingsDatasetId,
-    setSettingsGroupId,
     setSettingsDatasetId,
+    settingsSliceIndex,
+    setSettingsSliceIndex,
   } = useUIStore()
 
-  // The effective group is either the override from settings or the active group
-  const effectiveGroupId = settingsGroupId || activeGroupId
+  // Get available datasets
+  const availableDatasets = chartMode === 'grouped' && activeGroupId
+    ? chartData.datasets
+        .map((ds: any, i: number) => ({ ds, index: i }))
+        .filter(({ ds }: any) => !ds.groupId || ds.groupId === activeGroupId)
+    : chartData.datasets.map((ds: any, i: number) => ({ ds, index: i }))
 
-  // Get datasets for the effective group
-  const groupDatasets = chartData.datasets
-    .map((ds: any, i: number) => ({ ds, index: i }))
-    .filter(({ ds }: any) => ds.groupId === effectiveGroupId)
+  // Determine active target dataset for slice list
+  const selectedDatasetIdx = settingsDatasetId !== null 
+    ? parseInt(settingsDatasetId) 
+    : (availableDatasets[0]?.index ?? activeDatasetIndex ?? 0)
 
-  // Sync: when the active group changes in chart store, reset settings filter
+  const targetDataset = chartData.datasets[selectedDatasetIdx] || chartData.datasets[0]
+
+  const sliceLabels: string[] =
+    (targetDataset as any)?.sliceLabels ||
+    chartData.labels?.map(String) ||
+    []
+  const sliceCount = targetDataset?.data?.length || sliceLabels.length || 0
+
+  // Reset slice selection when dataset or group changes
   useEffect(() => {
-    setSettingsGroupId(null)
-    setSettingsDatasetId(null)
-  }, [activeGroupId, setSettingsGroupId, setSettingsDatasetId])
+    setSettingsSliceIndex(null)
+  }, [activeDatasetIndex, activeGroupId, setSettingsSliceIndex])
 
-  // Don't render if not in grouped mode
-  if (chartMode !== 'grouped') return null
-
-  // Don't render if no groups exist
-  if (!groups || groups.length === 0) return null
-
-  const handleGroupChange = (value: string) => {
-    // Change both the chart store active group and the settings filter
-    setActiveGroupId(value)
-    setSettingsGroupId(null) // Reset to use active group
-    setSettingsDatasetId(null)
-  }
+  if (!chartData?.datasets || chartData.datasets.length === 0) return null
 
   const handleDatasetChange = (value: string) => {
     setSettingsDatasetId(value === 'all' ? null : value)
+    setSettingsSliceIndex(null) // Reset slice selection when dataset changes
+  }
+
+  const handleSliceChange = (value: string) => {
+    setSettingsSliceIndex(value === 'all' ? null : Number(value))
   }
 
   return (
-    <div className="flex items-start gap-3 pb-3 mb-1 border-b border-gray-100">
-      {/* Group Dropdown */}
-      <div className="flex-1 min-w-0">
-        <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1 block">
-          Group
-        </label>
-        <Select value={effectiveGroupId} onValueChange={handleGroupChange}>
-          <SelectTrigger className="h-8 text-xs bg-gray-50 border-gray-200 hover:bg-gray-100 transition-colors">
-            <SelectValue placeholder="Select group" />
-          </SelectTrigger>
-          <SelectContent>
-            {groups.map((group) => (
-              <SelectItem key={group.id} value={group.id} className="text-xs">
-                {group.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
+    <div className="flex items-start gap-3 pb-3 mb-1 border-b border-gray-100 dark:border-gray-800">
       {/* Dataset Dropdown */}
       <div className="flex-1 min-w-0">
         <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1 block">
           Dataset
         </label>
         <Select
-          value={settingsDatasetId || 'all'}
+          value={settingsDatasetId !== null ? String(settingsDatasetId) : 'all'}
           onValueChange={handleDatasetChange}
         >
-          <SelectTrigger className="h-8 text-xs bg-gray-50 border-gray-200 hover:bg-gray-100 transition-colors">
-            <SelectValue placeholder="All" />
+          <SelectTrigger className="h-8 text-xs bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+            <SelectValue placeholder="All Datasets" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all" className="text-xs font-medium text-blue-600">
               All Datasets
             </SelectItem>
-            {groupDatasets.length > 0 && <SelectSeparator />}
-            {groupDatasets.map(({ ds, index }: any) => (
+            {availableDatasets.length > 0 && <SelectSeparator />}
+            {availableDatasets.map(({ ds, index }: any) => (
               <SelectItem key={index} value={String(index)} className="text-xs">
-                {ds.label || ds.sourceTitle || `Dataset ${index + 1}`}
+                {ds.label || ds.name || ds.sourceTitle || `Dataset ${index + 1}`}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Slice Dropdown */}
+      <div className="flex-1 min-w-0">
+        <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1 block">
+          Slice
+        </label>
+        <Select
+          value={settingsSliceIndex !== null ? String(settingsSliceIndex) : 'all'}
+          onValueChange={handleSliceChange}
+        >
+          <SelectTrigger className="h-8 text-xs bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+            <SelectValue placeholder="All Slices" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-xs font-medium text-blue-600">
+              All Slices
+            </SelectItem>
+            {sliceCount > 0 && <SelectSeparator />}
+            {Array.from({ length: sliceCount }, (_, idx) => (
+              <SelectItem key={idx} value={String(idx)} className="text-xs">
+                {sliceLabels[idx] || chartData.labels?.[idx] || `Slice ${idx + 1}`}
               </SelectItem>
             ))}
           </SelectContent>
@@ -123,11 +131,7 @@ export function GroupedSettingsFilter() {
  * Hook: useGroupedSettingsTarget
  * 
  * Returns the dataset indices that the current settings should apply to,
- * based on the grouped settings filter state.
- * 
- * - If "All" is selected (settingsDatasetId is null), returns all dataset indices in the group
- * - If a specific dataset is selected, returns only that dataset index
- * - In single mode, returns [activeDatasetIndex] (no change from existing behavior)
+ * based on the settings filter state.
  */
 export function useGroupedSettingsTarget() {
   const {
@@ -139,18 +143,7 @@ export function useGroupedSettingsTarget() {
 
   const { settingsDatasetId } = useUIStore()
 
-  if (chartMode === 'single') {
-    return {
-      targetIndices: [activeDatasetIndex],
-      primaryIndex: activeDatasetIndex,
-      isAllDatasets: false,
-      isSingleDataset: true,
-    }
-  }
-
-  // Grouped mode
   if (settingsDatasetId !== null) {
-    // A specific dataset is selected
     const specificIndex = parseInt(settingsDatasetId)
     return {
       targetIndices: [specificIndex],
@@ -160,14 +153,23 @@ export function useGroupedSettingsTarget() {
     }
   }
 
-  // "All" is selected - target all datasets in the active group
+  if (chartMode === 'single') {
+    return {
+      targetIndices: [activeDatasetIndex],
+      primaryIndex: activeDatasetIndex,
+      isAllDatasets: true,
+      isSingleDataset: chartData.datasets.length === 1,
+    }
+  }
+
+  // Grouped mode with "all" selected
   const groupIndices = chartData.datasets
     .map((ds: any, i: number) => ({ ds, i }))
-    .filter(({ ds }: any) => ds.groupId === activeGroupId)
+    .filter(({ ds }: any) => !activeGroupId || ds.groupId === activeGroupId)
     .map(({ i }: any) => i)
 
   return {
-    targetIndices: groupIndices,
+    targetIndices: groupIndices.length > 0 ? groupIndices : chartData.datasets.map((_, i) => i),
     primaryIndex: groupIndices[0] ?? 0,
     isAllDatasets: true,
     isSingleDataset: false,

@@ -81,6 +81,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     // ─── General tab state ───
     const [datasetsDropdownOpen, setDatasetsDropdownOpen] = useState(true)
     const [showAddDatasetModal, setShowAddDatasetModal] = useState(false)
+    const [isEditModeModal, setIsEditModeModal] = useState(false)
 
     // ─── Colors tab state ───
     const [colorOpacity, setColorOpacity] = useState(100)
@@ -169,51 +170,6 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
         }
     };
 
-    const handleConvertToGrouped = () => {
-        const currentState = useChartStore.getState();
-
-        // Derive group name from chart title or first dataset name
-        const chartTitle = currentState.chartConfig?.plugins?.title?.text;
-        const firstDataset = currentState.chartData?.datasets?.[0];
-        const groupName = (typeof chartTitle === 'string' && chartTitle && chartTitle !== 'My Chart')
-            ? chartTitle
-            : firstDataset?.sourceTitle || firstDataset?.label || 'Group 0';
-
-        // Determine category from chart type
-        const isCoordinate = ['scatter', 'bubble'].includes(chartType);
-        const category = isCoordinate ? 'coordinate' as const : 'categorical' as const;
-
-        // Create the group via GroupService
-        const groupId = addGroup({
-            name: groupName,
-            category,
-            uniformityMode: 'uniform',
-            baseChartType: chartType,
-            chartConfig: currentState.chartConfig ? JSON.parse(JSON.stringify(currentState.chartConfig)) : undefined,
-            sourceId: useChatStore.getState().backendConversationId || undefined,
-            sourceTitle: groupName,
-        });
-
-        // Migrate all existing datasets into the new group
-        const updatedDatasets = currentState.chartData.datasets.map((ds: any) => ({
-            ...ds,
-            groupId: groupId,
-            mode: 'grouped',
-        }));
-
-        // Update the store: switch mode, update datasets, mirror to groupedModeData, and clear singleModeData
-        const newChartData = { ...currentState.chartData, datasets: updatedDatasets };
-        useChartStore.setState({
-            chartMode: 'grouped',
-            chartData: newChartData,
-            groupedModeData: newChartData,
-            singleModeData: { labels: [], datasets: [] }, // Clear single mode data since it's migrated
-        });
-
-        if (!hasJSON) setHasJSON(true);
-        toast.success(`Converted to grouped chart "${groupName}"`);
-    };
-
     const handleActiveGroupChange = (groupId: string) => {
         setActiveGroup(groupId);
         const group = groups.find(g => g.id === groupId);
@@ -230,10 +186,6 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
 
         if (chartMode === 'single') {
             const dataset = chartData.datasets[index];
-            if (dataset && (dataset as any).chartType) {
-                setChartType((dataset as any).chartType);
-            }
-
             const sourceId = (dataset as any)?.sourceId;
             if (sourceId) {
                 useChatStore.getState().setBackendConversationId(sourceId);
@@ -252,6 +204,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     };
 
     const handleOpenAddDatasetModal = () => {
+        setIsEditModeModal(false);
         setShowAddDatasetModal(true);
     };
 
@@ -259,63 +212,12 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
         const dataset = filteredDatasets[datasetIndex]
         if (!dataset) return
 
-        const datasetChartType = (dataset as any).chartType || chartType
-        const isCoordinateChart = datasetChartType === 'scatter' || datasetChartType === 'bubble'
-
-        setEditingChartType(datasetChartType)
-
-        const currentSliceLabels = dataset.sliceLabels || chartData.labels || []
-
-        const rows: { label: string; value: number; color: string; imageUrl: string | null; x?: number; y?: number; r?: number }[] = dataset.data.map((val, i) => {
-            const rawColor = Array.isArray(dataset.backgroundColor)
-                ? (dataset.backgroundColor[i] as string)
-                : (dataset.backgroundColor as string) || '#3b82f6'
-
-            if (isCoordinateChart && typeof val === 'object' && val !== null) {
-                const point = val as { x: number; y: number; r?: number }
-                return {
-                    label: String(currentSliceLabels[i] || `Point ${i + 1}`),
-                    value: 0,
-                    color: rgbaToHex(rawColor),
-                    imageUrl: dataset.pointImages?.[i] || null,
-                    x: point.x ?? 0,
-                    y: point.y ?? 0,
-                    r: point.r ?? (datasetChartType === 'bubble' ? 10 : undefined),
-                }
-            } else {
-                return {
-                    label: String(currentSliceLabels[i] || `Slice ${i + 1}`),
-                    value: typeof val === 'number' ? val : (Array.isArray(val) ? ((val[1] - val[0]) as number) : (val as any)?.y ?? 0),
-                    color: rgbaToHex(rawColor),
-                    imageUrl: dataset.pointImages?.[i] || null,
-                }
-            }
-        })
-
-        setFullEditRows(rows)
-        setEditingDatasetIndex(datasetIndex)
-        setEditingDatasetName(dataset.label || dataset.sourceTitle || `Dataset ${datasetIndex + 1}`)
-
-        const isSingleColorMode = (dataset as any).datasetColorMode === 'single' ||
-            (typeof dataset.backgroundColor === 'string')
-        const currentColorMode = isSingleColorMode ? 'dataset' : 'slice'
-
-        setEditingColorMode(currentColorMode)
-
-        if (currentColorMode === 'dataset') {
-            const singleColor = typeof dataset.backgroundColor === 'string'
-                ? dataset.backgroundColor
-                : (Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor[0] : '#3b82f6')
-            setEditingDatasetColor(rgbaToHex(singleColor))
-        } else {
-            const firstColor = Array.isArray(dataset.backgroundColor)
-                ? dataset.backgroundColor[0]
-                : dataset.backgroundColor || '#3b82f6'
-            setEditingDatasetColor(rgbaToHex(firstColor))
+        const actualIndex = chartData.datasets.indexOf(dataset)
+        if (actualIndex !== -1) {
+            setActiveDatasetIndex(actualIndex)
         }
-
-        setPreservedSliceColors(rows.map(row => row.color))
-        setShowFullEditModal(true)
+        setIsEditModeModal(true)
+        setShowAddDatasetModal(true)
     }
 
     const handleDeleteClick = (datasetIndex: number) => {
@@ -357,9 +259,6 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                 } else if (chartMode === 'single') {
                     const newActiveDataset = remainingDatasets[newActiveIndex];
                     if (newActiveDataset) {
-                        const newType = newActiveDataset.chartType || (newActiveDataset as any).type || 'bar';
-                        setChartType(newType);
-
                         const sourceId = (newActiveDataset as any)?.sourceId;
                         if (sourceId) {
                             useChatStore.getState().setBackendConversationId(sourceId);
@@ -405,17 +304,6 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
     }
 
     // ─── Effects ───
-
-    // Listen for openAddDatasetModal event from chart preview empty state
-    useEffect(() => {
-        const handleOpenAddDatasetModalEvent = () => {
-            setShowAddDatasetModal(true);
-        };
-        window.addEventListener('openAddDatasetModal', handleOpenAddDatasetModalEvent);
-        return () => {
-            window.removeEventListener('openAddDatasetModal', handleOpenAddDatasetModalEvent);
-        };
-    }, []);
 
     // Auto-switch to uniform mode for incompatible chart types in grouped mode
     useEffect(() => {
@@ -564,10 +452,11 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                         filteredDatasets={filteredDatasets}
                         datasetsDropdownOpen={datasetsDropdownOpen}
                         showAddDatasetModal={showAddDatasetModal}
+                        isEditModeModal={isEditModeModal}
                         setDatasetsDropdownOpen={setDatasetsDropdownOpen}
                         setShowAddDatasetModal={setShowAddDatasetModal}
+                        setIsEditModeModal={setIsEditModeModal}
                         handleChartModeChange={handleChartModeChange}
-                        handleConvertToGrouped={handleConvertToGrouped}
 
                         handleActiveGroupChange={handleActiveGroupChange}
                         handleActiveDatasetChange={handleActiveDatasetChange}

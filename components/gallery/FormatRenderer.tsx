@@ -35,6 +35,271 @@ import { FormatZoneToolbar } from "@/components/format/FormatZoneToolbar"
 import { ChartGenerator } from "@/lib/chart_generator"
 import { getPatternCSS } from "@/lib/utils"
 import { getProxiedImageUrl } from "@/lib/utils/image-proxy-utils"
+import { Maximize2, X, Move } from "lucide-react"
+
+// ========================================
+// COLLISION-AWARE RESIZE HELPERS
+// ========================================
+
+interface Rect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+interface Obstacle {
+  id: string
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/** Checks if two rectangles overlap with strict positive intersection area */
+function checkRectOverlap(r1: Rect, r2: Rect): boolean {
+  return (
+    r1.x < r2.x + r2.width &&
+    r1.x + r1.width > r2.x &&
+    r1.y < r2.y + r2.height &&
+    r1.y + r1.height > r2.y
+  )
+}
+
+/**
+ * Clamps a proposed zone resize against canvas bounds and all obstacle zones.
+ * Guarantees that zones never overlay / penetrate one another.
+ */
+function clampResizeWithCollisions(
+  proposed: Rect,
+  handle: string,
+  startRect: Rect,
+  canvasWidth: number,
+  canvasHeight: number,
+  obstacles: Obstacle[],
+  minWidth = 40,
+  minHeight = 30
+): Rect {
+  let { x, y, width, height } = proposed
+
+  // Clamp right edge if 'e' is active
+  if (handle.includes('e')) {
+    let maxRight = canvasWidth
+    for (const b of obstacles) {
+      const yOverlap = Math.max(y, b.y) < Math.min(y + height, b.y + b.height)
+      if (yOverlap && b.x >= startRect.x) {
+        maxRight = Math.min(maxRight, b.x)
+      }
+    }
+    const right = Math.min(x + width, maxRight)
+    width = Math.max(minWidth, right - x)
+  }
+
+  // Clamp bottom edge if 's' is active
+  if (handle.includes('s')) {
+    let maxBottom = canvasHeight
+    for (const b of obstacles) {
+      const xOverlap = Math.max(x, b.x) < Math.min(x + width, b.x + b.width)
+      if (xOverlap && b.y >= startRect.y) {
+        maxBottom = Math.min(maxBottom, b.y)
+      }
+    }
+    const bottom = Math.min(y + height, maxBottom)
+    height = Math.max(minHeight, bottom - y)
+  }
+
+  // Clamp left edge if 'w' is active
+  if (handle.includes('w')) {
+    const fixedRight = startRect.x + startRect.width
+    let minLeft = 0
+    for (const b of obstacles) {
+      const yOverlap = Math.max(y, b.y) < Math.min(y + height, b.y + b.height)
+      if (yOverlap && b.x + b.width <= fixedRight) {
+        minLeft = Math.max(minLeft, b.x + b.width)
+      }
+    }
+    x = Math.max(minLeft, Math.min(x, fixedRight - minWidth))
+    width = fixedRight - x
+  }
+
+  // Clamp top edge if 'n' is active
+  if (handle.includes('n')) {
+    const fixedBottom = startRect.y + startRect.height
+    let minTop = 0
+    for (const b of obstacles) {
+      const xOverlap = Math.max(x, b.x) < Math.min(x + width, b.x + b.width)
+      if (xOverlap && b.y + b.height <= fixedBottom) {
+        minTop = Math.max(minTop, b.y + b.height)
+      }
+    }
+    y = Math.max(minTop, Math.min(y, fixedBottom - minHeight))
+    height = fixedBottom - y
+  }
+
+  const result: Rect = {
+    x: Math.round(x),
+    y: Math.round(y),
+    width: Math.round(width),
+    height: Math.round(height)
+  }
+
+  // Safety pass: verify clamped result against all obstacles
+  for (const b of obstacles) {
+    if (checkRectOverlap(result, b)) {
+      return startRect
+    }
+  }
+
+  return result
+}
+
+/**
+ * Clamps a proposed zone move (x, y) against canvas bounds and all obstacle zones.
+ * Guarantees that zones never overlay / overlap one another.
+ * Allows smooth sliding along obstacle edges within available free spaces.
+ */
+function clampMoveWithCollisions(
+  proposedX: number,
+  proposedY: number,
+  width: number,
+  height: number,
+  startRect: Rect,
+  canvasWidth: number,
+  canvasHeight: number,
+  obstacles: Obstacle[]
+): Rect {
+  const maxX = Math.max(0, canvasWidth - width)
+  const maxY = Math.max(0, canvasHeight - height)
+
+  const targetX = Math.max(0, Math.min(maxX, proposedX))
+  const targetY = Math.max(0, Math.min(maxY, proposedY))
+
+  const totalDx = targetX - startRect.x
+  const totalDy = targetY - startRect.y
+
+  if (totalDx === 0 && totalDy === 0) {
+    return startRect
+  }
+
+  // Pre-calculate any obstacles that were already intersecting at startRect
+  // to allow moving apart if a template had existing overlap
+  const initialOverlaps = new Set(
+    obstacles.filter(b => checkRectOverlap(startRect, b)).map(b => b.id)
+  )
+
+  const isCollisionFree = (candidate: Rect) => {
+    for (const b of obstacles) {
+      if (checkRectOverlap(candidate, b)) {
+        if (!initialOverlaps.has(b.id)) {
+          return false
+        }
+      }
+    }
+    return true
+  }
+
+  // Continuous collision detection via distance-based sub-steps (max 2px per step)
+  const dist = Math.max(Math.abs(totalDx), Math.abs(totalDy))
+  const steps = Math.min(200, Math.max(1, Math.ceil(dist / 2)))
+
+  let currentX = startRect.x
+  let currentY = startRect.y
+
+  for (let i = 1; i <= steps; i++) {
+    const fraction = i / steps
+    const stepTargetX = Math.max(0, Math.min(maxX, startRect.x + totalDx * fraction))
+    const stepTargetY = Math.max(0, Math.min(maxY, startRect.y + totalDy * fraction))
+
+    // 1. Try moving along X
+    if (stepTargetX !== currentX) {
+      const candidateX: Rect = { x: stepTargetX, y: currentY, width, height }
+      if (isCollisionFree(candidateX)) {
+        currentX = stepTargetX
+      } else {
+        // Find the closest obstacle boundary that blocks X and snap flush
+        let flushX = totalDx > 0 ? -Infinity : Infinity
+        for (const b of obstacles) {
+          if (initialOverlaps.has(b.id)) continue
+          if (checkRectOverlap(candidateX, b)) {
+            if (totalDx > 0) {
+              const snap = b.x - width
+              if (snap >= currentX) {
+                flushX = Math.max(flushX, snap)
+              }
+            } else if (totalDx < 0) {
+              const snap = b.x + b.width
+              if (snap <= currentX) {
+                flushX = Math.min(flushX, snap)
+              }
+            }
+          }
+        }
+        if (Number.isFinite(flushX) && flushX !== currentX) {
+          const testFlush: Rect = { x: flushX, y: currentY, width, height }
+          if (isCollisionFree(testFlush)) {
+            currentX = flushX
+          }
+        }
+      }
+    }
+
+    // 2. Try moving along Y (independent axis sliding)
+    if (stepTargetY !== currentY) {
+      const candidateY: Rect = { x: currentX, y: stepTargetY, width, height }
+      if (isCollisionFree(candidateY)) {
+        currentY = stepTargetY
+      } else {
+        // Find the closest obstacle boundary that blocks Y and snap flush
+        let flushY = totalDy > 0 ? -Infinity : Infinity
+        for (const b of obstacles) {
+          if (initialOverlaps.has(b.id)) continue
+          if (checkRectOverlap(candidateY, b)) {
+            if (totalDy > 0) {
+              const snap = b.y - height
+              if (snap >= currentY) {
+                flushY = Math.max(flushY, snap)
+              }
+            } else if (totalDy < 0) {
+              const snap = b.y + b.height
+              if (snap <= currentY) {
+                flushY = Math.min(flushY, snap)
+              }
+            }
+          }
+        }
+        if (Number.isFinite(flushY) && flushY !== currentY) {
+          const testFlush: Rect = { x: currentX, y: flushY, width, height }
+          if (isCollisionFree(testFlush)) {
+            currentY = flushY
+          }
+        }
+      }
+    }
+  }
+
+  const result: Rect = {
+    x: Math.round(currentX),
+    y: Math.round(currentY),
+    width: Math.round(width),
+    height: Math.round(height),
+  }
+
+  if (isCollisionFree(result)) {
+    return result
+  }
+
+  const floorResult: Rect = {
+    x: Math.floor(currentX),
+    y: Math.floor(currentY),
+    width: Math.round(width),
+    height: Math.round(height),
+  }
+  if (isCollisionFree(floorResult)) {
+    return floorResult
+  }
+
+  return startRect
+}
 
 // ========================================
 // MAIN RENDERER
@@ -70,11 +335,30 @@ export function FormatRenderer({
 }: FormatRendererProps) {
   const { skeleton, renderedZones, colorPalette } = rendered
   const { width, height } = skeleton.dimensions
-  const { selectedZoneId, setSelectedZoneId, setEditingZoneId } = useFormatGalleryStore()
+  const {
+    selectedZoneId,
+    setSelectedZoneId,
+    setEditingZoneId,
+    isResizeMode,
+    setResizeMode
+  } = useFormatGalleryStore()
   const { setSelectedShapeId, drawingMode } = useDecorationStore()
 
   const scaledW = width * scale
   const scaledH = height * scale
+
+  // Positioned obstacles for collision detection (all visible non-background zones with positions)
+  const allObstacles = useMemo(() => {
+    return renderedZones
+      .filter(rz => rz.zone.position && rz.zone.type !== 'background' && (rz.zone as any).visible !== false)
+      .map(rz => ({
+        id: rz.zone.id,
+        x: rz.zone.position!.x,
+        y: rz.zone.position!.y,
+        width: rz.zone.position!.width,
+        height: rz.zone.position!.height,
+      }))
+  }, [renderedZones])
 
   // Click on background to deselect
   const handleBgClick = useCallback((e: React.MouseEvent) => {
@@ -92,12 +376,36 @@ export function FormatRenderer({
         width: scaledW,
         height: scaledH,
         fontSize: `${Math.max(scale * 100, 30)}%`,
-        pointerEvents: (panMode || drawingMode === 'marquee-select') ? 'none' : 'auto',
+        pointerEvents: (panMode || (drawingMode as any) === 'marquee-select') ? 'none' : 'auto',
       }}
       onClick={handleBgClick}
     >
+      {/* Clean Minimized Resize & Move Mode Canvas Indicator */}
+      {interactive && isResizeMode && (
+        <div
+          data-export-ignore="true"
+          className="absolute top-2.5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 px-2.5 py-1 bg-gray-900/80 text-white text-[11px] rounded-full shadow-md backdrop-blur-sm pointer-events-auto select-none border border-white/10"
+        >
+          <Maximize2 className="h-3 w-3 text-blue-400" />
+          <span className="font-medium">Resize &amp; Move</span>
+          <span className="text-gray-400 text-[10px] hidden sm:inline">• Drag zone to move, edges to resize</span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              setResizeMode(false)
+            }}
+            className="ml-1 p-0.5 rounded-full hover:bg-white/20 text-gray-300 hover:text-white transition-colors"
+            title="Exit Resize Mode"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      )}
+
       {/* Render zones in order (background first, then content, then decorations) */}
       {renderedZones
+        .filter(rz => (rz.zone as any).visible !== false)
         .sort((a, b) => zoneOrder(a.zone.type) - zoneOrder(b.zone.type))
         .map((rz, idx) => (
           <ZoneView
@@ -111,11 +419,12 @@ export function FormatRenderer({
             forceRealChart={forceRealChart}
             zoomLevel={zoomLevel}
             renderLocalCanvas={renderLocalCanvas}
+            allObstacles={allObstacles}
           />
         ))}
 
-      {/* Floating toolbar for selected text/stat zone */}
-      {interactive && selectedZoneId && (() => {
+      {/* Floating toolbar for selected text/stat zone (hidden in resize mode) */}
+      {interactive && !isResizeMode && selectedZoneId && (() => {
         const selZone = renderedZones.find(rz => rz.zone.id === selectedZoneId)
         if (!selZone) return null
         const { zone } = selZone
@@ -162,9 +471,21 @@ interface ZoneViewProps {
   forceRealChart?: boolean
   zoomLevel?: number
   renderLocalCanvas?: boolean
+  allObstacles?: Obstacle[]
 }
 
-function ZoneView({ renderedZone, scale, palette, canvasWidth, canvasHeight, interactive, forceRealChart, zoomLevel, renderLocalCanvas }: ZoneViewProps) {
+function ZoneView({
+  renderedZone,
+  scale,
+  palette,
+  canvasWidth,
+  canvasHeight,
+  interactive,
+  forceRealChart,
+  zoomLevel,
+  renderLocalCanvas,
+  allObstacles = []
+}: ZoneViewProps) {
   const { zone } = renderedZone
 
   // Background zones don't need position — they fill the canvas
@@ -179,8 +500,11 @@ function ZoneView({ renderedZone, scale, palette, canvasWidth, canvasHeight, int
   // Background helper
   const getZoneBackgroundStyle = (): React.CSSProperties => {
     const zStyle: any = (zone as any).style || {}
+    const isTrans = zStyle.bgType === 'transparent' || zStyle.backgroundColor === 'transparent' || zStyle.bgColor === 'transparent'
+    if (isTrans) return { backgroundColor: 'transparent' }
+
     const bgType = zStyle.bgType || (zStyle.backgroundColor || zStyle.bgColor ? 'color' : 'transparent')
-    if (bgType === 'transparent') return {}
+    if (bgType === 'transparent') return { backgroundColor: 'transparent' }
 
     const opacity = (zStyle.bgOpacity ?? 100) / 100
     const hexToRgba = (hex: string, op: number) => {
@@ -260,7 +584,18 @@ function ZoneView({ renderedZone, scale, palette, canvasWidth, canvasHeight, int
   // Interactive wrapper
   if (interactive && zone.id) {
     return (
-      <InteractiveZoneWrapper zoneId={zone.id} zoneType={zone.type} style={style} scale={scale}>
+      <InteractiveZoneWrapper
+        zoneId={zone.id}
+        zoneType={zone.type}
+        zoneRole={(zone as any).role}
+        zonePosition={pos}
+        style={style}
+        scale={scale}
+        zoomLevel={zoomLevel || scale || 1}
+        canvasWidth={canvasWidth}
+        canvasHeight={canvasHeight}
+        allObstacles={allObstacles}
+      >
         {content}
       </InteractiveZoneWrapper>
     )
@@ -273,24 +608,36 @@ function ZoneView({ renderedZone, scale, palette, canvasWidth, canvasHeight, int
 // INTERACTIVE ZONE WRAPPER
 // ========================================
 
-
 function InteractiveZoneWrapper({
   zoneId,
   zoneType,
+  zoneRole,
+  zonePosition,
   style,
   scale,
+  zoomLevel,
+  canvasWidth,
+  canvasHeight,
+  allObstacles,
   children
 }: {
   zoneId: string
   zoneType: string
+  zoneRole?: string
+  zonePosition?: { x: number; y: number; width: number; height: number }
   style: React.CSSProperties
   scale: number
+  zoomLevel: number
+  canvasWidth: number
+  canvasHeight: number
+  allObstacles: Obstacle[]
   children: React.ReactNode
 }) {
   const {
     hoveredZoneId, setHoveredZoneId,
     selectedZoneId, setSelectedZoneId,
-    editingZoneId, setEditingZoneId
+    editingZoneId, setEditingZoneId,
+    isResizeMode, updateZonePosition
   } = useFormatGalleryStore()
 
   const isHovered = hoveredZoneId === zoneId
@@ -298,52 +645,330 @@ function InteractiveZoneWrapper({
   const isEditing = editingZoneId === zoneId
   const isEditable = zoneType === 'text' || zoneType === 'stat'
 
+  // Resizing state
+  const [activeHandle, setActiveHandle] = useState<string | null>(null)
+  const [currentRect, setCurrentRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
+  const dragRef = useRef<{
+    startClientX: number
+    startClientY: number
+    startRect: { x: number; y: number; width: number; height: number }
+    handle: string
+  } | null>(null)
+  const latestRectRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null)
+  const latestMousePosRef = useRef<{ clientX: number; clientY: number } | null>(null)
+  const rafIdRef = useRef<number | null>(null)
+
+  // Keep currentRect in sync with incoming zonePosition when not actively dragging
+  useEffect(() => {
+    if (!dragRef.current && zonePosition) {
+      setCurrentRect(zonePosition)
+      latestRectRef.current = zonePosition
+    }
+  }, [zonePosition])
+
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
-    // When editing, do NOTHING — let the contentEditable handle clicks naturally
     if (isEditing) return
     setSelectedZoneId(zoneId)
   }, [zoneId, isEditing, setSelectedZoneId])
 
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
-    // When already editing, do NOTHING
-    if (isEditing) return
+    if (isEditing || isResizeMode) return
     if (isEditable) {
       setEditingZoneId(zoneId)
     }
-  }, [zoneId, isEditing, isEditable, setEditingZoneId])
+  }, [zoneId, isEditing, isResizeMode, isEditable, setEditingZoneId])
 
-  // Build border style for hover/select
-  let borderOverlay: React.CSSProperties | null = null
-  if (isSelected) {
-    borderOverlay = {
-      border: '2px solid #3b82f6',
-      boxShadow: '0 0 0 1px rgba(59, 130, 246, 0.3)',
+  // Start dragging / moving the zone across free space
+  const handleStartMove = useCallback((e: React.MouseEvent) => {
+    if (!zonePosition) return
+    if (!isResizeMode || isEditing) return
+    if (e.button !== 0) return // Only primary mouse button
+
+    e.stopPropagation()
+    e.preventDefault()
+
+    setSelectedZoneId(zoneId)
+    setActiveHandle('move')
+    const baseRect = currentRect || zonePosition
+    latestRectRef.current = { ...baseRect }
+    dragRef.current = {
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      startRect: { ...baseRect },
+      handle: 'move',
     }
-  } else if (isHovered) {
-    borderOverlay = {
-      border: '2px dashed #f59e0b',
-      opacity: 0.85,
+
+    document.body.style.cursor = 'grabbing'
+    document.body.style.userSelect = 'none'
+  }, [zonePosition, isResizeMode, isEditing, zoneId, currentRect, setSelectedZoneId])
+
+  // Start resize from handle or side
+  const handleStartResize = useCallback((e: React.MouseEvent, handle: string) => {
+    if (!zonePosition) return
+    e.stopPropagation()
+    e.preventDefault()
+
+    setSelectedZoneId(zoneId)
+    setActiveHandle(handle)
+    const baseRect = currentRect || zonePosition
+    latestRectRef.current = { ...baseRect }
+    dragRef.current = {
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      startRect: { ...baseRect },
+      handle,
+    }
+
+    const cursor = (handle === 'n' || handle === 's') ? 'ns-resize' :
+                   (handle === 'e' || handle === 'w') ? 'ew-resize' :
+                   (handle === 'nw' || handle === 'se') ? 'nwse-resize' : 'nesw-resize'
+    document.body.style.cursor = cursor
+    document.body.style.userSelect = 'none'
+  }, [zoneId, zonePosition, currentRect, setSelectedZoneId])
+
+  // Mouse move and mouse up listeners while actively resizing or moving
+  useEffect(() => {
+    if (!activeHandle) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      latestMousePosRef.current = { clientX: e.clientX, clientY: e.clientY }
+
+      // Throttle coordinate recalculation to the screen's refresh cycle (rAF)
+      if (rafIdRef.current === null) {
+        rafIdRef.current = requestAnimationFrame(() => {
+          rafIdRef.current = null
+          const mouse = latestMousePosRef.current
+          const drag = dragRef.current
+          if (!mouse || !drag) return
+
+          const effectiveZoom = zoomLevel || scale || 1
+          const dx = (mouse.clientX - drag.startClientX) / effectiveZoom
+          const dy = (mouse.clientY - drag.startClientY) / effectiveZoom
+
+          const otherObstacles = allObstacles.filter(o => o.id !== zoneId)
+
+          // Handle zone translation (drag to move)
+          if (drag.handle === 'move') {
+            const proposedX = drag.startRect.x + dx
+            const proposedY = drag.startRect.y + dy
+
+            const clamped = clampMoveWithCollisions(
+              proposedX,
+              proposedY,
+              drag.startRect.width,
+              drag.startRect.height,
+              drag.startRect,
+              canvasWidth,
+              canvasHeight,
+              otherObstacles
+            )
+
+            latestRectRef.current = clamped
+            setCurrentRect(clamped)
+            return
+          }
+
+          // Handle zone resizing
+          let proposedX = drag.startRect.x
+          let proposedY = drag.startRect.y
+          let proposedW = drag.startRect.width
+          let proposedH = drag.startRect.height
+
+          if (drag.handle.includes('e')) {
+            proposedW = drag.startRect.width + dx
+          }
+          if (drag.handle.includes('s')) {
+            proposedH = drag.startRect.height + dy
+          }
+          if (drag.handle.includes('w')) {
+            proposedX = drag.startRect.x + dx
+            proposedW = drag.startRect.width - dx
+          }
+          if (drag.handle.includes('n')) {
+            proposedY = drag.startRect.y + dy
+            proposedH = drag.startRect.height - dy
+          }
+
+          const minW = zoneType === 'chart' ? 120 : 40
+          const minH = zoneType === 'chart' ? 80 : 30
+
+          const clamped = clampResizeWithCollisions(
+            { x: proposedX, y: proposedY, width: proposedW, height: proposedH },
+            drag.handle,
+            drag.startRect,
+            canvasWidth,
+            canvasHeight,
+            otherObstacles,
+            minW,
+            minH
+          )
+
+          latestRectRef.current = clamped
+          setCurrentRect(clamped)
+        })
+      }
+    }
+
+    const handleMouseUp = () => {
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current)
+        rafIdRef.current = null
+      }
+
+      const mouse = latestMousePosRef.current
+      const drag = dragRef.current
+      let finalRect = latestRectRef.current
+
+      // Calculate final exact position if mouse moved since last rAF frame
+      if (mouse && drag) {
+        const effectiveZoom = zoomLevel || scale || 1
+        const dx = (mouse.clientX - drag.startClientX) / effectiveZoom
+        const dy = (mouse.clientY - drag.startClientY) / effectiveZoom
+        const otherObstacles = allObstacles.filter(o => o.id !== zoneId)
+
+        if (drag.handle === 'move') {
+          finalRect = clampMoveWithCollisions(
+            drag.startRect.x + dx,
+            drag.startRect.y + dy,
+            drag.startRect.width,
+            drag.startRect.height,
+            drag.startRect,
+            canvasWidth,
+            canvasHeight,
+            otherObstacles
+          )
+        } else {
+          let proposedX = drag.startRect.x
+          let proposedY = drag.startRect.y
+          let proposedW = drag.startRect.width
+          let proposedH = drag.startRect.height
+
+          if (drag.handle.includes('e')) proposedW = drag.startRect.width + dx
+          if (drag.handle.includes('s')) proposedH = drag.startRect.height + dy
+          if (drag.handle.includes('w')) {
+            proposedX = drag.startRect.x + dx
+            proposedW = drag.startRect.width - dx
+          }
+          if (drag.handle.includes('n')) {
+            proposedY = drag.startRect.y + dy
+            proposedH = drag.startRect.height - dy
+          }
+
+          const minW = zoneType === 'chart' ? 120 : 40
+          const minH = zoneType === 'chart' ? 80 : 30
+
+          finalRect = clampResizeWithCollisions(
+            { x: proposedX, y: proposedY, width: proposedW, height: proposedH },
+            drag.handle,
+            drag.startRect,
+            canvasWidth,
+            canvasHeight,
+            otherObstacles,
+            minW,
+            minH
+          )
+        }
+      }
+
+      // Single commit to global store and persistent storage on release
+      if (finalRect && drag) {
+        setCurrentRect(finalRect)
+        updateZonePosition(zoneId, finalRect)
+      }
+
+      dragRef.current = null
+      latestMousePosRef.current = null
+      setActiveHandle(null)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current)
+        rafIdRef.current = null
+      }
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+  }, [activeHandle, zoomLevel, scale, allObstacles, zoneId, zoneType, canvasWidth, canvasHeight, updateZonePosition])
+
+  // Compute active position if dragging or rect is updated
+  const displayRect = currentRect || zonePosition
+  const activeStyle: React.CSSProperties = displayRect ? {
+    ...style,
+    left: displayRect.x * scale,
+    top: displayRect.y * scale,
+    width: displayRect.width * scale,
+    height: displayRect.height * scale,
+    willChange: activeHandle ? 'left, top, width, height' : undefined,
+  } : style
+
+  // Border and overlay
+  let borderOverlay: React.CSSProperties | null = null
+  if (isResizeMode) {
+    if (isSelected) {
+      borderOverlay = {
+        border: '2px solid #2563eb',
+        boxShadow: '0 0 0 2px rgba(37, 99, 235, 0.25)',
+      }
+    } else if (isHovered) {
+      borderOverlay = {
+        border: '2px dashed #60a5fa',
+        backgroundColor: 'rgba(59, 130, 246, 0.04)',
+      }
+    }
+  } else {
+    if (isSelected) {
+      borderOverlay = {
+        border: '2px solid #3b82f6',
+        boxShadow: '0 0 0 1px rgba(59, 130, 246, 0.3)',
+      }
+    } else if (isHovered) {
+      borderOverlay = {
+        border: '2px dashed #f59e0b',
+        opacity: 0.85,
+      }
     }
   }
+
+  const zoneDisplayName = zoneRole || zoneType
 
   return (
     <div
       data-zone-wrapper={zoneId}
       style={{
-        ...style,
+        ...activeStyle,
         overflow: 'visible',
-        cursor: isEditing ? 'text' : 'pointer',
-        zIndex: isSelected ? 30 : isHovered ? 25 : undefined,
+        cursor: isEditing
+          ? 'text'
+          : isResizeMode
+          ? (activeHandle === 'move' ? 'grabbing' : isSelected ? 'grab' : 'pointer')
+          : 'pointer',
+        zIndex: isSelected ? 40 : isHovered ? 30 : undefined,
       }}
       onMouseEnter={() => setHoveredZoneId(zoneId)}
       onMouseLeave={() => setHoveredZoneId(null)}
+      onMouseDown={isResizeMode && !isEditing ? handleStartMove : undefined}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
     >
       {/* Content */}
-      <div style={{ width: '100%', height: '100%', overflow: 'hidden', position: 'relative' }}>
+      <div
+        style={{
+          width: '100%',
+          height: '100%',
+          overflow: 'hidden',
+          position: 'relative',
+          pointerEvents: isResizeMode ? 'none' : undefined,
+        }}
+      >
         {children}
       </div>
 
@@ -362,8 +987,8 @@ function InteractiveZoneWrapper({
         />
       )}
 
-      {/* Zone type label badge on hover/select */}
-      {(isHovered || isSelected) && !isEditing && (
+      {/* Standard Zone type label badge (when NOT in resize mode) */}
+      {!isResizeMode && (isHovered || isSelected) && !isEditing && (
         <div
           className="format-zone-type-badge"
           data-export-ignore="true"
@@ -385,7 +1010,101 @@ function InteractiveZoneWrapper({
             textTransform: 'uppercase',
           }}
         >
-          {zoneType}
+          {zoneDisplayName}
+        </div>
+      )}
+
+      {/* ═══ RESIZE MODE CONTROLS & SIDE HANDLES ═══ */}
+      {isResizeMode && isSelected && displayRect && (
+        <div data-export-ignore="true" className="select-none">
+          {/* Live Dimension & Move Handle */}
+          <div
+            className="absolute left-0 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-md flex items-center gap-1.5 whitespace-nowrap z-50 uppercase tracking-wide border border-blue-400 cursor-grab active:cursor-grabbing transition-colors pointer-events-auto select-none"
+            style={{
+              // If zone is near top canvas edge, flip badge inside
+              top: displayRect.y < 26 ? 2 : -26,
+              left: displayRect.y < 26 ? 2 : 0,
+            }}
+            onMouseDown={handleStartMove}
+            title="Click and drag to move zone within free space"
+          >
+            <Move className="h-2.5 w-2.5 text-blue-200" />
+            <span>{zoneDisplayName}</span>
+            <span className="text-blue-300">•</span>
+            <span>{Math.round(displayRect.width)} × {Math.round(displayRect.height)} px</span>
+          </div>
+
+          {/* Side Grab Strips (full edge proximity) */}
+          <div
+            className="absolute -top-1.5 left-2 right-2 h-3 cursor-ns-resize z-30"
+            onMouseDown={(e) => handleStartResize(e, 'n')}
+          />
+          <div
+            className="absolute -bottom-1.5 left-2 right-2 h-3 cursor-ns-resize z-30"
+            onMouseDown={(e) => handleStartResize(e, 's')}
+          />
+          <div
+            className="absolute -left-1.5 top-2 bottom-2 w-3 cursor-ew-resize z-30"
+            onMouseDown={(e) => handleStartResize(e, 'w')}
+          />
+          <div
+            className="absolute -right-1.5 top-2 bottom-2 w-3 cursor-ew-resize z-30"
+            onMouseDown={(e) => handleStartResize(e, 'e')}
+          />
+
+          {/* 1. TOP SIDE PILL HANDLE */}
+          <div
+            className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-9 h-2.5 bg-white border-2 border-blue-600 rounded-full shadow-md flex items-center justify-center cursor-ns-resize z-40 hover:bg-blue-50 hover:scale-110 active:bg-blue-600 transition-all"
+            onMouseDown={(e) => handleStartResize(e, 'n')}
+            title="Drag side to resize height"
+          >
+            <div className="w-3.5 h-0.5 bg-blue-500 rounded-full" />
+          </div>
+
+          {/* 2. BOTTOM SIDE PILL HANDLE */}
+          <div
+            className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-9 h-2.5 bg-white border-2 border-blue-600 rounded-full shadow-md flex items-center justify-center cursor-ns-resize z-40 hover:bg-blue-50 hover:scale-110 active:bg-blue-600 transition-all"
+            onMouseDown={(e) => handleStartResize(e, 's')}
+            title="Drag side to resize height"
+          >
+            <div className="w-3.5 h-0.5 bg-blue-500 rounded-full" />
+          </div>
+
+          {/* 3. LEFT SIDE PILL HANDLE */}
+          <div
+            className="absolute -left-1.5 top-1/2 -translate-y-1/2 h-9 w-2.5 bg-white border-2 border-blue-600 rounded-full shadow-md flex items-center justify-center cursor-ew-resize z-40 hover:bg-blue-50 hover:scale-110 active:bg-blue-600 transition-all"
+            onMouseDown={(e) => handleStartResize(e, 'w')}
+            title="Drag side to resize width"
+          >
+            <div className="h-3.5 w-0.5 bg-blue-500 rounded-full" />
+          </div>
+
+          {/* 4. RIGHT SIDE PILL HANDLE */}
+          <div
+            className="absolute -right-1.5 top-1/2 -translate-y-1/2 h-9 w-2.5 bg-white border-2 border-blue-600 rounded-full shadow-md flex items-center justify-center cursor-ew-resize z-40 hover:bg-blue-50 hover:scale-110 active:bg-blue-600 transition-all"
+            onMouseDown={(e) => handleStartResize(e, 'e')}
+            title="Drag side to resize width"
+          >
+            <div className="h-3.5 w-0.5 bg-blue-500 rounded-full" />
+          </div>
+
+          {/* CORNER HANDLES */}
+          <div
+            className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-blue-600 rounded-xs shadow cursor-nwse-resize z-40 hover:bg-blue-100"
+            onMouseDown={(e) => handleStartResize(e, 'nw')}
+          />
+          <div
+            className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-blue-600 rounded-xs shadow cursor-nesw-resize z-40 hover:bg-blue-100"
+            onMouseDown={(e) => handleStartResize(e, 'ne')}
+          />
+          <div
+            className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-blue-600 rounded-xs shadow cursor-nesw-resize z-40 hover:bg-blue-100"
+            onMouseDown={(e) => handleStartResize(e, 'sw')}
+          />
+          <div
+            className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-blue-600 rounded-xs shadow cursor-nwse-resize z-40 hover:bg-blue-100"
+            onMouseDown={(e) => handleStartResize(e, 'se')}
+          />
         </div>
       )}
     </div>
@@ -929,8 +1648,8 @@ function BackgroundZoneView({ renderedZone, scale, canvasWidth }: {
             width: '100%',
             height: '100%',
             objectFit: (zone.style.imageFit as any) || 'cover',
-            opacity: zone.style.imageOpacity !== undefined ? zone.style.imageOpacity / 100 : (zone.style.opacity !== undefined ? zone.style.opacity : 1),
-            filter: (zone.style.imageBlur || zone.style.blur) ? `blur(${zone.style.imageBlur || zone.style.blur}px)` : undefined,
+            opacity: (zone.style as any)?.imageOpacity !== undefined ? (zone.style as any).imageOpacity / 100 : ((zone.style as any)?.opacity !== undefined ? (zone.style as any).opacity : 1),
+            filter: ((zone.style as any)?.imageBlur || (zone.style as any)?.blur) ? `blur(${(zone.style as any).imageBlur || (zone.style as any).blur}px)` : undefined,
           }}
         />
         {zone.style.overlay && (
@@ -1095,6 +1814,14 @@ function ImageZoneContent({ renderedZone, scale, zoneWidth }: {
   const reqWidth = Math.round(zoneWidth * scale)
   const imageUrl = rawUrl ? getProxiedImageUrl(rawUrl, { width: reqWidth, format: 'webp' }) : ''
 
+  const isTransparent = (zone.style as any)?.bgType === 'transparent' ||
+    zone.style?.backgroundColor === 'transparent' ||
+    (zone.style as any)?.bgColor === 'transparent'
+
+  const bgColor = isTransparent
+    ? 'transparent'
+    : (zone.style?.backgroundColor || (zone.style as any)?.bgColor || 'transparent')
+
   if (!imageUrl) {
     return (
       <div
@@ -1105,9 +1832,9 @@ function ImageZoneContent({ renderedZone, scale, zoneWidth }: {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: zone.style?.backgroundColor || '#1e293b',
+          backgroundColor: isTransparent ? 'transparent' : (zone.style?.backgroundColor || '#1e293b'),
           borderRadius: zone.style?.borderRadius ? `${zone.style.borderRadius * scale}px` : undefined,
-          border: `${1 * scale}px dashed rgba(255, 255, 255, 0.1)`,
+          border: `${1 * scale}px dashed rgba(255, 255, 255, 0.2)`,
         }}
       >
         <span style={{ fontSize: `${14 * scale}px`, opacity: 0.4 }}>🖼️</span>
@@ -1115,12 +1842,12 @@ function ImageZoneContent({ renderedZone, scale, zoneWidth }: {
     )
   }
 
-  const opacity = zone.style?.imageOpacity !== undefined
-    ? zone.style.imageOpacity / 100
-    : zone.style?.opacity !== undefined
-      ? (zone.style.opacity > 1 ? zone.style.opacity / 100 : zone.style.opacity)
+  const opacity = (zone.style as any)?.imageOpacity !== undefined
+    ? (zone.style as any).imageOpacity / 100
+    : (zone.style as any)?.opacity !== undefined
+      ? ((zone.style as any).opacity > 1 ? (zone.style as any).opacity / 100 : (zone.style as any).opacity)
       : 1
-  const blurVal = zone.style?.imageBlur || zone.style?.blur || 0
+  const blurVal = (zone.style as any)?.imageBlur || (zone.style as any)?.blur || 0
 
   return (
     <div
@@ -1129,7 +1856,7 @@ function ImageZoneContent({ renderedZone, scale, zoneWidth }: {
         height: '100%',
         overflow: 'hidden',
         borderRadius: zone.style?.borderRadius ? `${zone.style.borderRadius * scale}px` : undefined,
-        backgroundColor: zone.style?.backgroundColor || 'transparent',
+        backgroundColor: bgColor,
       }}
     >
       <img

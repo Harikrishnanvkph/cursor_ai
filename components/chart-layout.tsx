@@ -22,6 +22,7 @@ import { DimensionMismatchDialog } from "@/components/dialogs/dimension-mismatch
 import { SaveChartDialog } from "@/components/ui/save-chart-dialog"
 import { SaveModeConflictDialog } from "@/components/dialogs/save-mode-conflict-dialog"
 import { useHistoryStore } from "@/lib/history-store"
+import { getEffectiveChartTitle } from "@/lib/hooks/use-chart-rename"
 import { ClearChartDialog } from "@/components/dialogs/clear-chart-dialog"
 import { FormatGallery } from "@/components/gallery/FormatGallery"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
@@ -258,20 +259,16 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
   const proceedToSaveDialog = () => {
     // Get the existing backend ID to check if this is an update
     const existingBackendId = useChatStore.getState().backendConversationId
+    const effectiveTitle = getEffectiveChartTitle()
+    const conversations = useHistoryStore.getState().conversations
+    const existingConversation = existingBackendId ? conversations.find(c => c.id === existingBackendId) : null
 
-    if (existingBackendId) {
-      // If updating, fetch the current title from history store (in case it was renamed from board)
-      const conversations = useHistoryStore.getState().conversations
-      const existingConversation = conversations.find(c => c.id === existingBackendId)
-      if (existingConversation) {
-        setCurrentChartName(existingConversation.title)
-      }
-      setShowSaveChartDialog(true)
-    } else {
-      // NEW: Use simple "Untitled" for new local charts
-      setCurrentChartName("Untitled")
-      setShowSaveChartDialog(true)
-    }
+    const defaultName = (effectiveTitle && effectiveTitle !== "No Chart Available" && effectiveTitle !== "Untitled Chart")
+      ? effectiveTitle
+      : (existingConversation?.title || "Untitled")
+
+    setCurrentChartName(defaultName)
+    setShowSaveChartDialog(true)
   }
 
   // Save chart to backend (actual save logic)

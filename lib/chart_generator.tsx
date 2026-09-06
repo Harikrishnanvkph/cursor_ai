@@ -41,6 +41,7 @@ import exportPlugin from "@/lib/export-plugin"
 import { customLabelPlugin } from "@/lib/custom-label-plugin"
 import { enhancedTitlePlugin } from "@/lib/enhanced-title-plugin"
 import { watermarkPlugin } from "@/lib/plugins/watermark-plugin"
+import { zeroLineHighlightPlugin } from "@/lib/plugins/zero-line-plugin"
 import { pie3dPlugin } from "@/lib/plugins/3d-pie-plugin"
 import { bar3dPlugin } from "@/lib/plugins/3d-bar-plugin"
 import { slicePatternPlugin } from "@/lib/plugins/slice-pattern-plugin"
@@ -829,11 +830,27 @@ export const ChartGenerator = memo(function ChartGenerator({
     if (chartType === 'waterfall') {
       const wfConfig = (chartConfig.plugins as any)?.waterfall || {};
       const positiveColor = wfConfig.positiveColor || '#10b981';
+      const positiveBorderColor = wfConfig.positiveBorderColor || darkenColor(positiveColor, 20);
+
       const negativeColor = wfConfig.negativeColor || '#ef4444';
-      const totalColor = wfConfig.totalColor || '#3b82f6';
+      const negativeBorderColor = wfConfig.negativeBorderColor || darkenColor(negativeColor, 20);
+
+      const startColor = wfConfig.startColor || wfConfig.totalColor || '#3b82f6';
+      const startBorderColor = wfConfig.startBorderColor || wfConfig.totalBorderColor || darkenColor(startColor, 20);
+
+      const endColor = wfConfig.endColor || wfConfig.totalColor || '#3b82f6';
+      const endBorderColor = wfConfig.endBorderColor || wfConfig.totalBorderColor || darkenColor(endColor, 20);
+
+      const subtotalColor = wfConfig.subtotalColor || wfConfig.totalColor || '#3b82f6';
+      const subtotalBorderColor = wfConfig.subtotalBorderColor || wfConfig.totalBorderColor || darkenColor(subtotalColor, 20);
+
       const showTotal = wfConfig.showTotal !== false;
       const totalLabel = wfConfig.totalLabel || 'Total';
-      const treatLastAsTotal = showTotal ? false : (wfConfig.treatLastAsTotal !== false);
+      const treatFirstAsTotal = wfConfig.treatFirstAsTotal !== false;
+      const lastLabelStr = Array.isArray(chartData.labels) ? String(chartData.labels[chartData.labels.length - 1] || '').toLowerCase() : '';
+      const isLastLabelTotalKeyword = ['total', 'net', 'ending', 'final', 'balance'].some(k => lastLabelStr.includes(k));
+      const autoTreatLastAsTotal = wfConfig.treatLastAsTotal === true || (wfConfig.treatLastAsTotal !== false && isLastLabelTotalKeyword);
+      const showVirtualTotal = wfConfig.showTotal !== false && !autoTreatLastAsTotal;
 
       const totalIndicesSet = new Set<number>();
       if (wfConfig.totalIndices && typeof wfConfig.totalIndices === 'string') {
@@ -853,48 +870,63 @@ export const ChartGenerator = memo(function ChartGenerator({
 
       originalData.forEach((val: any, idx: number) => {
         const numVal = typeof val === 'number' ? val : 0;
+        const labelStr = Array.isArray(chartData.labels) ? String(chartData.labels[idx] || '').toLowerCase() : '';
+        const isSubtotalKeyword = labelStr.includes('subtotal') || labelStr.includes('sub-total') || labelStr.includes('gross profit') || labelStr.includes('ebitda');
+
         let isTotal = false;
-        if (treatLastAsTotal && idx === originalData.length - 1) {
+        if (treatFirstAsTotal && idx === 0) {
           isTotal = true;
-        } else if (totalIndicesSet.has(idx)) {
+        } else if (autoTreatLastAsTotal && idx === originalData.length - 1) {
+          isTotal = true;
+        } else if (totalIndicesSet.has(idx) || isSubtotalKeyword) {
           isTotal = true;
         }
 
         let start = 0;
         let end = 0;
         let color = positiveColor;
+        let borderCol = positiveBorderColor;
 
         if (isTotal) {
-          start = 0;
-          end = cumulative;
-          color = totalColor;
+          if (idx === 0) {
+            start = 0;
+            end = numVal;
+            cumulative = numVal;
+            color = startColor;
+            borderCol = startBorderColor;
+          } else if (autoTreatLastAsTotal && idx === originalData.length - 1) {
+            start = 0;
+            end = numVal !== 0 ? numVal : cumulative;
+            color = endColor;
+            borderCol = endBorderColor;
+          } else {
+            start = 0;
+            end = cumulative;
+            color = subtotalColor;
+            borderCol = subtotalBorderColor;
+          }
         } else {
           start = cumulative;
           end = cumulative + numVal;
           cumulative = end;
-          color = numVal >= 0 ? positiveColor : negativeColor;
+          if (numVal >= 0) {
+            color = positiveColor;
+            borderCol = positiveBorderColor;
+          } else {
+            color = negativeColor;
+            borderCol = negativeBorderColor;
+          }
         }
 
         transformedData.push([start, end]);
         bgColors.push(color);
-
-        const borderColor = (typeof ds.borderColor === 'string') 
-          ? ds.borderColor 
-          : (ds.borderColor === 'auto' || !ds.borderColor) 
-            ? darkenColor(color, 20) 
-            : (Array.isArray(ds.borderColor) && ds.borderColor[idx] ? ds.borderColor[idx] : color);
-        borderColors.push(borderColor);
+        borderColors.push(borderCol);
       });
 
-      if (showTotal) {
+      if (showVirtualTotal) {
         transformedData.push([0, cumulative]);
-        bgColors.push(totalColor);
-        const totalBorderColor = (typeof ds.borderColor === 'string') 
-          ? ds.borderColor 
-          : (ds.borderColor === 'auto' || !ds.borderColor) 
-            ? darkenColor(totalColor, 20) 
-            : (Array.isArray(ds.borderColor) && ds.borderColor[originalData.length] ? ds.borderColor[originalData.length] : totalColor);
-        borderColors.push(totalBorderColor);
+        bgColors.push(endColor);
+        borderColors.push(endBorderColor);
         if (i === 0) {
           filteredLabels.push(totalLabel);
         }
@@ -962,17 +994,26 @@ export const ChartGenerator = memo(function ChartGenerator({
       numValue = rawValue.y;
     }
 
-    if (numValue === null) {
+    if (numValue === null || isNaN(numValue)) {
       return String(rawValue);
     }
 
-    // Smart auto-detect decimal places based on value magnitude and precision
-    // When user hasn't explicitly set decimals, intelligently preserve precision
+    const val = numValue;
 
+    // Determine sign prefix (placed BEFORE any prefix/currency symbol!)
+    let signPrefix = '';
+    if (val > 0 && config.showPlusSign) {
+      signPrefix = '+';
+    } else if (val < 0 && config.showNegativeSign !== false) {
+      signPrefix = '-';
+    }
+
+    // Work with absolute magnitude for formatting numbers
+    const absVal = Math.abs(val);
 
     // Apply decimal places
-    const decimals = getSmartDecimals(numValue, config.decimals);
-    let formatted = numValue.toFixed(decimals);
+    const decimals = getSmartDecimals(absVal, config.decimals);
+    let formatted = absVal.toFixed(decimals);
 
     // Apply thousands separator
     const thousandsSep = config.thousandsSeparator ?? ',';
@@ -987,8 +1028,7 @@ export const ChartGenerator = memo(function ChartGenerator({
     }
 
     // Apply abbreviation for large numbers
-    if (config.abbreviateLargeNumbers && Math.abs(numValue) >= 1000) {
-      const absVal = Math.abs(numValue);
+    if (config.abbreviateLargeNumbers && absVal >= 1000) {
       let abbrev = '';
       let divisor = 1;
 
@@ -997,41 +1037,36 @@ export const ChartGenerator = memo(function ChartGenerator({
       else if (absVal >= 1e6) { abbrev = 'M'; divisor = 1e6; }
       else if (absVal >= 1e3) { abbrev = 'K'; divisor = 1e3; }
 
-      formatted = (numValue / divisor).toFixed(decimals > 0 ? Math.min(decimals, 2) : 1) + abbrev;
+      formatted = (absVal / divisor).toFixed(decimals > 0 ? Math.min(decimals, 2) : 1) + abbrev;
     }
 
     // Apply number format
     const numberFormat = config.numberFormat || 'default';
+    let currencySymbol = '';
     switch (numberFormat) {
       case 'currency':
-        const currencySymbol = config.currencySymbol || '$';
-        formatted = currencySymbol + formatted;
+        currencySymbol = config.currencySymbol || '$';
         break;
       case 'percent':
         formatted = formatted + '%';
         break;
       case 'scientific':
-        formatted = numValue.toExponential(decimals);
+        formatted = val.toExponential(decimals);
         break;
       case 'compact':
         if (!config.abbreviateLargeNumbers) {
-          const absVal = Math.abs(numValue);
-          if (absVal >= 1e9) formatted = (numValue / 1e9).toFixed(1) + 'B';
-          else if (absVal >= 1e6) formatted = (numValue / 1e6).toFixed(1) + 'M';
-          else if (absVal >= 1e3) formatted = (numValue / 1e3).toFixed(1) + 'K';
+          if (absVal >= 1e9) formatted = (absVal / 1e9).toFixed(1) + 'B';
+          else if (absVal >= 1e6) formatted = (absVal / 1e6).toFixed(1) + 'M';
+          else if (absVal >= 1e3) formatted = (absVal / 1e3).toFixed(1) + 'K';
         }
         break;
     }
 
-    // Apply plus/minus signs
-    if (numValue > 0 && config.showPlusSign) {
-      formatted = '+' + formatted;
-    }
-    if (numValue < 0 && config.showNegativeSign !== false) {
-      // Already has minus, but ensure it's there
-    }
+    const prefix = config.prefix || '';
+    const suffix = config.suffix || '';
 
-    return formatted;
+    // Standard assembly: sign BEFORE prefix & currency symbol!
+    return signPrefix + prefix + currencySymbol + formatted + suffix;
   };
 
   // Apply custom formatter function if provided
@@ -1122,6 +1157,7 @@ export const ChartGenerator = memo(function ChartGenerator({
       if (customLabelsConfig.display !== true) return { text: '' };
 
       let text = '';
+      let usedFormatLabelValue = false;
 
       if (isVirtualTotalBar) {
         if (customLabelsConfig.labelContent === 'label') {
@@ -1133,6 +1169,7 @@ export const ChartGenerator = memo(function ChartGenerator({
         } else {
           // Default: format the value
           text = formatLabelValue(value, customLabelsConfig);
+          usedFormatLabelValue = true;
         }
       } else if (customLabelsConfig.labelContent === 'label') {
         // For both single and grouped modes, use sliceLabels from the dataset if available
@@ -1152,7 +1189,11 @@ export const ChartGenerator = memo(function ChartGenerator({
         if (typeof value === 'number') val = value;
         else if (value && typeof value === 'object' && 'y' in value && typeof value.y === 'number') val = value.y;
         const pct = (val / total) * 100;
-        text = pct.toFixed(customLabelsConfig.decimals ?? 1) + '%';
+        let signPrefix = '';
+        if (val > 0 && customLabelsConfig.showPlusSign) signPrefix = '+';
+        else if (val < 0 && customLabelsConfig.showNegativeSign !== false) signPrefix = '-';
+        text = signPrefix + (customLabelsConfig.prefix || '') + Math.abs(pct).toFixed(customLabelsConfig.decimals ?? 1) + '%' + (customLabelsConfig.suffix || '');
+        usedFormatLabelValue = true;
       } else if (customLabelsConfig.labelContent === 'index') {
         text = String(originalPointIdx + 1);
       } else if (customLabelsConfig.labelContent === 'dataset') {
@@ -1160,6 +1201,7 @@ export const ChartGenerator = memo(function ChartGenerator({
       } else {
         // Default: format the value
         text = formatLabelValue(value, customLabelsConfig);
+        usedFormatLabelValue = true;
       }
 
       // Apply custom formatter
@@ -1174,9 +1216,11 @@ export const ChartGenerator = memo(function ChartGenerator({
       const conditionalBgColor = condResult.backgroundColor;
       const conditionalBorderColor = condResult.borderColor;
 
-      // Apply prefix and suffix
-      if (customLabelsConfig.prefix) text = customLabelsConfig.prefix + text;
-      if (customLabelsConfig.suffix) text = text + customLabelsConfig.suffix;
+      // Apply prefix and suffix only if formatLabelValue did not already apply them
+      if (!usedFormatLabelValue) {
+        if (customLabelsConfig.prefix) text = customLabelsConfig.prefix + text;
+        if (customLabelsConfig.suffix) text = text + customLabelsConfig.suffix;
+      }
 
       // Build dynamic font string with conditional overrides
       const fontSize = conditionalFontSize || customLabelsConfig.fontSize || 14;
@@ -1335,14 +1379,27 @@ export const ChartGenerator = memo(function ChartGenerator({
     }
     if (background.type === "color" || background.type === undefined) {
       const color = background.color || "#ffffff";
-      const opacity = background.opacity || 100;
+      const opacity = typeof background.opacity === 'number' ? background.opacity : 100;
+      let bgStyleColor = color;
+      if (opacity < 100) {
+        let clean = color.replace('#', '');
+        if (clean.length === 3) clean = clean.split('').map((c: string) => c + c).join('');
+        if (clean.length === 6) {
+          const r = parseInt(clean.substring(0, 2), 16) || 0;
+          const g = parseInt(clean.substring(2, 4), 16) || 0;
+          const b = parseInt(clean.substring(4, 6), 16) || 0;
+          bgStyleColor = `rgba(${r}, ${g}, ${b}, ${opacity / 100})`;
+        } else {
+          bgStyleColor = `${color}${Math.round(opacity * 2.55).toString(16).padStart(2, '0')}`;
+        }
+      }
       return (
         <div
           style={{
             position: 'absolute',
             inset: 0,
             zIndex: 0,
-            backgroundColor: `${color}${Math.round(opacity * 2.55).toString(16).padStart(2, '0')}`,
+            backgroundColor: bgStyleColor,
             pointerEvents: 'none',
           }}
         />
@@ -1399,6 +1456,14 @@ export const ChartGenerator = memo(function ChartGenerator({
   // Build baseOptions first
   const baseOptions = {
     ...(chartConfig as any),
+    plugins: {
+      ...((chartConfig as any)?.plugins || {}),
+      waterfall: {
+        enabled: chartType === 'waterfall',
+        showConnectors: true,
+        ...((chartConfig as any)?.plugins?.waterfall || {}),
+      },
+    },
     indexAxis: needsHorizontal ? 'y' : ((chartConfig as any)?.indexAxis || 'x'),
     // Explicitly override scales: for pie/doughnut, force empty object to avoid axes
     // For radar/polarArea, use ONLY the r scale configuration (not x/y from previous chart types)
@@ -1458,32 +1523,6 @@ export const ChartGenerator = memo(function ChartGenerator({
     return undefined;
   };
 
-  // Helper functions for zero line highlighting on value axes
-  const getZeroLineColor = (scaleBase: any, highlightZeroLine: boolean) => {
-    const defaultColor = scaleBase?.grid?.color || 'rgba(0,0,0,0.06)';
-    const defaultDraw = scaleBase?.grid?.drawOnChartArea !== false;
-    if (!highlightZeroLine) return defaultColor;
-    return (context: any) => {
-      if (context.tick?.value === 0) {
-        return '#475569'; // sleek dark graphite color
-      }
-      if (!defaultDraw) {
-        return 'transparent'; // Mask out non-zero grid lines since they shouldn't be drawn
-      }
-      return typeof defaultColor === 'function' ? defaultColor(context) : defaultColor;
-    };
-  };
-
-  const getZeroLineWidth = (scaleBase: any, highlightZeroLine: boolean) => {
-    const defaultWidth = scaleBase?.grid?.lineWidth ?? 1;
-    if (!highlightZeroLine) return defaultWidth;
-    return (context: any) => {
-      if (context.tick?.value === 0) {
-        return 2; // thicker line
-      }
-      return typeof defaultWidth === 'function' ? defaultWidth(context) : defaultWidth;
-    };
-  };
 
   // Check if any slice value is below zero
   const hasNegativeValues = filteredDatasetsPatched.some((ds: any) => 
@@ -1499,17 +1538,25 @@ export const ChartGenerator = memo(function ChartGenerator({
     })
   );
 
+  // Compute Zero Line Highlight plugin config
+  // Determines which axis is the "value" axis and whether highlighting is active
+  const zeroLineAxis = needsHorizontal ? 'x' : 'y';
+  const zeroLineValueScale = needsHorizontal ? (optionsScales?.x || {}) : (optionsScales?.y || {});
+  const highlightZeroLine = zeroLineValueScale.highlightZeroLine === true ||
+    (zeroLineValueScale.highlightZeroLine === undefined && hasNegativeValues);
+  const zeroLineHighlightConfig = {
+    enabled: highlightZeroLine && !isCircularType && !isRadialType,
+    axis: zeroLineAxis,
+    color: zeroLineValueScale.zeroLineColor || '#1e293b',
+    lineWidth: 2.5,
+  };
+
   if (chartType === 'stackedBar') {
     const xBase = { ...(optionsScales?.x || {}) };
     const yBase = { ...(optionsScales?.y || {}) };
     const sugMax = computeGraceSuggestedMax(yBase);
     // Strip native grace to prevent double-application
     delete yBase.grace;
-
-    const highlightXZero = xBase.highlightZeroLine === true || 
-      (xBase.highlightZeroLine === undefined && hasNegativeValues && needsHorizontal);
-    const highlightYZero = yBase.highlightZeroLine === true || 
-      (yBase.highlightZeroLine === undefined && hasNegativeValues && !needsHorizontal);
 
     appliedOptions = {
       ...baseOptions,
@@ -1519,9 +1566,9 @@ export const ChartGenerator = memo(function ChartGenerator({
           stacked: true,
           grid: {
             ...(xBase.grid || {}),
-            color: getZeroLineColor(xBase, highlightXZero),
-            lineWidth: getZeroLineWidth(xBase, highlightXZero),
-            drawOnChartArea: highlightXZero ? true : (xBase.grid?.drawOnChartArea !== false),
+            borderDash: xBase.grid?.borderDash || xBase.border?.dash || [],
+            borderDashOffset: xBase.grid?.borderDashOffset ?? xBase.border?.dashOffset ?? 0,
+            drawOnChartArea: xBase.grid?.drawOnChartArea !== false,
           }
         },
         y: {
@@ -1530,9 +1577,9 @@ export const ChartGenerator = memo(function ChartGenerator({
           ...(sugMax !== undefined ? { suggestedMax: sugMax } : {}),
           grid: {
             ...(yBase.grid || {}),
-            color: getZeroLineColor(yBase, highlightYZero),
-            lineWidth: getZeroLineWidth(yBase, highlightYZero),
-            drawOnChartArea: highlightYZero ? true : (yBase.grid?.drawOnChartArea !== false),
+            borderDash: yBase.grid?.borderDash || yBase.border?.dash || [],
+            borderDashOffset: yBase.grid?.borderDashOffset ?? yBase.border?.dashOffset ?? 0,
+            drawOnChartArea: yBase.grid?.drawOnChartArea !== false,
           },
         },
       },
@@ -1544,11 +1591,6 @@ export const ChartGenerator = memo(function ChartGenerator({
     // Strip native grace to prevent double-application
     delete yBase.grace;
 
-    const highlightXZero = xBase.highlightZeroLine === true || 
-      (xBase.highlightZeroLine === undefined && hasNegativeValues && needsHorizontal);
-    const highlightYZero = yBase.highlightZeroLine === true || 
-      (yBase.highlightZeroLine === undefined && hasNegativeValues && !needsHorizontal);
-
     // For other Cartesian charts, explicit stacked: false
     appliedOptions = {
       ...baseOptions,
@@ -1558,9 +1600,9 @@ export const ChartGenerator = memo(function ChartGenerator({
           stacked: false,
           grid: {
             ...(xBase.grid || {}),
-            color: getZeroLineColor(xBase, highlightXZero),
-            lineWidth: getZeroLineWidth(xBase, highlightXZero),
-            drawOnChartArea: highlightXZero ? true : (xBase.grid?.drawOnChartArea !== false),
+            borderDash: xBase.grid?.borderDash || xBase.border?.dash || [],
+            borderDashOffset: xBase.grid?.borderDashOffset ?? xBase.border?.dashOffset ?? 0,
+            drawOnChartArea: xBase.grid?.drawOnChartArea !== false,
           }
         },
         y: {
@@ -1569,24 +1611,12 @@ export const ChartGenerator = memo(function ChartGenerator({
           ...(sugMax !== undefined ? { suggestedMax: sugMax } : {}),
           grid: {
             ...(yBase.grid || {}),
-            color: getZeroLineColor(yBase, highlightYZero),
-            lineWidth: getZeroLineWidth(yBase, highlightYZero),
-            drawOnChartArea: highlightYZero ? true : (yBase.grid?.drawOnChartArea !== false),
+            borderDash: yBase.grid?.borderDash || yBase.border?.dash || [],
+            borderDashOffset: yBase.grid?.borderDashOffset ?? yBase.border?.dashOffset ?? 0,
+            drawOnChartArea: yBase.grid?.drawOnChartArea !== false,
           },
           ticks: {
             ...(yBase.ticks || {}),
-            // Inject smart decimals for Y-axis ticks to prevent "identical" labels on small scales
-            callback: function (this: any, value: any, index: number, ticks: any[]) {
-              if (this && this.type === 'category') {
-                return this.getLabelForValue ? this.getLabelForValue(value) : value;
-              }
-              if (typeof value !== 'number') return value;
-              // If user has a custom callback string from AI, parseCallbacks already handled it
-              // We only inject our smart logic if no custom callback is explicitly provided
-              if (optionsScales?.y?.ticks?.callback) return value;
-              const decimals = getSmartDecimals(value);
-              return value.toFixed(decimals);
-            }
           }
         },
       },
@@ -1654,6 +1684,55 @@ export const ChartGenerator = memo(function ChartGenerator({
 
   // Apply the parsing to the options
   appliedOptions = parseCallbacks(appliedOptions);
+
+  // ── Universal Scale Tick Prefix & Suffix and Formatting ─────────────────────
+  if (appliedOptions.scales && typeof appliedOptions.scales === 'object') {
+    Object.keys(appliedOptions.scales).forEach((axisKey) => {
+      const scale = appliedOptions.scales[axisKey];
+      if (!scale || typeof scale !== 'object') return;
+
+      const prefix = typeof scale.ticks?.prefix === 'string' ? scale.ticks.prefix : '';
+      const suffix = typeof scale.ticks?.suffix === 'string' ? scale.ticks.suffix : '';
+      const hasPrefixOrSuffix = Boolean(prefix || suffix);
+      const originalCallback = scale.ticks?.callback;
+      const isValueAxis = (needsHorizontal ? axisKey === 'x' : axisKey === 'y') || scale.type === 'linear' || scale.type === 'logarithmic';
+
+      if (hasPrefixOrSuffix || isValueAxis) {
+        scale.ticks = {
+          ...(scale.ticks || {}),
+          callback: function (this: any, value: any, index: number, ticks: any[]) {
+            let label: any;
+
+            if (typeof originalCallback === 'function') {
+              label = originalCallback.call(this, value, index, ticks);
+            } else if (this && this.type === 'category') {
+              label = this.getLabelForValue ? this.getLabelForValue(value) : value;
+            } else if (typeof value === 'number') {
+              const decimals = getSmartDecimals(value);
+              label = value.toFixed(decimals);
+            } else if (this && typeof this.getLabelForValue === 'function') {
+              label = this.getLabelForValue(value);
+            } else {
+              label = value;
+            }
+
+            if (label !== undefined && label !== null && hasPrefixOrSuffix) {
+              if (Array.isArray(label)) {
+                return label.map((l: any, i: number) => {
+                  const p = i === 0 ? prefix : '';
+                  const s = i === label.length - 1 ? suffix : '';
+                  return `${p}${l}${s}`;
+                });
+              }
+              return `${prefix}${label}${suffix}`;
+            }
+
+            return label;
+          },
+        };
+      }
+    });
+  }
 
   // In readOnly mode (tile preview), force-disable tooltips, animations, and responsive
   // (responsive: false because CSS transform: scale() causes ResizeObserver to report
@@ -1902,6 +1981,9 @@ export const ChartGenerator = memo(function ChartGenerator({
     chartBorderStyles.border = `${chartConfig.borderWidth}px solid ${chartConfig.borderColor || '#000000'}`;
     chartBorderStyles.borderRadius = `${(chartConfig as any).chartBorderRadius || 0}px`;
     chartBorderStyles.boxSizing = 'border-box';
+    if ((chartConfig as any).chartBorderRadius) {
+      chartBorderStyles.overflow = 'hidden';
+    }
   }
 
   // Hydration gate: Don't render the chart until the store has finished hydrating.
@@ -1999,6 +2081,7 @@ export const ChartGenerator = memo(function ChartGenerator({
                     },
                     plugins: ({
                       ...appliedOptions.plugins,
+                      zeroLineHighlight: zeroLineHighlightConfig,
                       pie3d: (chartType === 'pie3d' || chartType === 'doughnut3d')
                         ? { ...((appliedOptions.plugins as any)?.pie3d || {}), enabled: true }
                         : (appliedOptions.plugins as any)?.pie3d,
@@ -2209,7 +2292,7 @@ export const ChartGenerator = memo(function ChartGenerator({
                       },
                     } as any),
                   }}
-                  plugins={[watermarkPlugin]}
+                  plugins={[watermarkPlugin, zeroLineHighlightPlugin]}
                 />
                 </ChartErrorBoundary>
               </ResizableChartArea>
@@ -2278,6 +2361,7 @@ export const ChartGenerator = memo(function ChartGenerator({
                     },
                     plugins: ({
                       ...appliedOptions.plugins,
+                      zeroLineHighlight: zeroLineHighlightConfig,
                       pie3d: (chartType === 'pie3d' || chartType === 'doughnut3d')
                         ? { ...((appliedOptions.plugins as any)?.pie3d || {}), enabled: true }
                         : (appliedOptions.plugins as any)?.pie3d,
@@ -2486,7 +2570,7 @@ export const ChartGenerator = memo(function ChartGenerator({
                       },
                     } as any),
                   }}
-                  plugins={[watermarkPlugin]}
+                  plugins={[watermarkPlugin, zeroLineHighlightPlugin]}
                 />
                 </ChartErrorBoundary>
               </div>

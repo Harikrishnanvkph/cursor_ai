@@ -12,6 +12,16 @@ const dragState = {
     isHovering: false,
 }
 
+// Helper to safely trigger chart updates without runtime layout exceptions
+function safeChartUpdate(chart: any, mode: string = 'none') {
+    if (!chart || chart.isDestroyed || !chart.ctx || !chart.canvas) return;
+    try {
+        chart.update(mode);
+    } catch (err) {
+        console.warn('[UniversalImagePlugin] Suppressed chart.update layout error on unmounted/destroyed instance:', err);
+    }
+}
+
 // Universal image plugin for all chart types
 
 // Helper to calculate callout position dynamically without mutating state
@@ -139,7 +149,7 @@ export const universalImagePlugin = {
                                 chart._updateScheduled = true;
                                 setTimeout(() => {
                                     chart._updateScheduled = false;
-                                    chart.update('none');
+                                    safeChartUpdate(chart, 'none');
                                 }, 16);
                             }
                         };
@@ -151,7 +161,7 @@ export const universalImagePlugin = {
                                 chart._updateScheduled = true;
                                 setTimeout(() => {
                                     chart._updateScheduled = false;
-                                    chart.update('none');
+                                    safeChartUpdate(chart, 'none');
                                 }, 16);
                             }
                         };
@@ -297,7 +307,7 @@ export const universalImagePlugin = {
                     config.calloutY = y - dragState.dragOffsetY
 
                     // Redraw chart
-                    chart.update("none")
+                    safeChartUpdate(chart, "none")
                 }
                 event.preventDefault()
             } else {
@@ -423,7 +433,7 @@ export const universalImagePlugin = {
                     config.calloutY = y - dragState.dragOffsetY
 
                     // Redraw chart
-                    chart.update("none")
+                    safeChartUpdate(chart, "none")
                 }
                 event.preventDefault()
             }

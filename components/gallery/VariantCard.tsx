@@ -3,6 +3,7 @@
 import React from "react"
 import type { FormatBlueprintRow, RenderedFormat } from "@/lib/format-types"
 import { FormatRenderer } from "./FormatRenderer"
+import { getStandardAspectRatio } from "@/lib/utils/dimension-utils"
 
 // Zone type → color mapping for skeleton-only preview (when no rendered content)
 const ZONE_COLORS: Record<string, { bg: string; border: string }> = {
@@ -154,9 +155,9 @@ export function VariantCard({ format, onSelect, isSelected, renderedVariant }: V
       <div className="p-3 flex flex-col gap-1.5 flex-1">
         <div className="flex items-center justify-between gap-2">
           <h4 className="text-sm font-semibold text-gray-800 truncate flex-1">{format.name}</h4>
-          {dims.aspect && (
+          {(dims.aspect || (dims.width && dims.height)) && (
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 font-medium flex-shrink-0">
-              {dims.aspect}
+              {getStandardAspectRatio(dims.width, dims.height, dims.aspect)}
             </span>
           )}
         </div>

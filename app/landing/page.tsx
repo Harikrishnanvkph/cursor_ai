@@ -27,6 +27,7 @@ import { SaveChartDialog } from "@/components/ui/save-chart-dialog"
 
 import { clearStoreData } from "@/lib/utils"
 import { ResponsiveAnimationsPanel } from "@/components/panels/responsive-animations-panel";
+import { ModeChangeConfirmDialog } from "@/components/dialogs/mode-change-confirm-dialog"
 import { Chart } from "react-chartjs-2"
 import { toast } from "sonner"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
@@ -108,7 +109,17 @@ function LandingPageContent() {
   } = useChatStore()
 
   const { addConversation, loadConversationsFromBackend, restoreConversation } = useHistoryStore()
-  const { generateMode, editorMode, currentTemplate, templateInBackground, syncTemplatesFromCloud } = useTemplateStore()
+  const { 
+    generateMode, 
+    editorMode, 
+    currentTemplate, 
+    templateInBackground, 
+    syncTemplatesFromCloud,
+    showModeChangeConfirm,
+    setModeChangeConfirm,
+    confirmModeChange,
+    cancelModeChange
+  } = useTemplateStore()
   const { isGalleryOpen, openGallery, selectedFormatId, contentPackage, formats, userFormats, selectedFormatSnapshot } = useFormatGalleryStore()
   
   const renderedFormat = useMemo(() => {
@@ -1760,6 +1771,14 @@ function LandingPageContent() {
         isSaving={isSaving}
         onSave={handleSaveChart}
         onCancel={() => setShowSaveChartDialog(false)}
+      />
+
+      {/* Mode Change Confirmation Dialog */}
+      <ModeChangeConfirmDialog
+        open={showModeChangeConfirm}
+        onOpenChange={setModeChangeConfirm}
+        onConfirm={confirmModeChange}
+        onCancel={cancelModeChange}
       />
     </>
   )

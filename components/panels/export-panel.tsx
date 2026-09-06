@@ -13,6 +13,7 @@ import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { useTemplateStore } from "@/lib/template-store"
 import { downloadChartAsHTML, type HTMLExportOptions, filterChartDataForExport } from "@/lib/html-exporter"
 import { downloadTemplateExport, type TemplateExportOptions } from "@/lib/template-export"
+import { useDecorationStore } from "@/lib/stores/decoration-store"
 import { templateList } from "@/lib/html-templates"
 import { type DimensionUnit, convertFromPixels, convertToPixels } from "@/lib/utils/dimension-utils"
 import { FileImage, FileText, FileCode, Settings, Layers, Share2, Link as LinkIcon } from "lucide-react"
@@ -364,6 +365,10 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
   }
 
   const handleExportImage = async () => {
+    // Clear decoration selection before export so selection handles don't appear
+    useDecorationStore.getState().setSelectedShapeId(null);
+    useDecorationStore.getState().setSelectedShapeIds([]);
+
     if (exportMode === "template" && currentTemplate) {
       const chartInstance = globalChartRef?.current
       if (!chartInstance) {

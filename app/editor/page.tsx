@@ -19,7 +19,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { STANDARD_CHART_TYPES, THREE_D_CHART_TYPES } from "@/lib/chart-types"
 import { useChartExport } from "@/lib/hooks/use-chart-export"
-import { useChartRename } from "@/lib/hooks/use-chart-rename"
+import { useChartRename, getEffectiveChartTitle } from "@/lib/hooks/use-chart-rename"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import { useChatStore } from "@/lib/chat-store"
 import { useEditorSidebarContext } from "@/components/editor/editor-sidebar-context"
@@ -38,6 +38,8 @@ import { EditorWelcomeScreen } from "@/components/editor-welcome-screen"
 import { DimensionMismatchDialog } from "@/components/dialogs/dimension-mismatch-dialog"
 import { SaveModeConflictDialog } from "@/components/dialogs/save-mode-conflict-dialog"
 import { ChartSetupDialog, type ChartDimensions } from "@/components/dialogs/chart-setup-dialog"
+import { DatasetService } from "@/lib/services/dataset-service"
+import { GroupService } from "@/lib/services/group-service"
 import { ModeChangeConfirmDialog } from "@/components/dialogs/mode-change-confirm-dialog"
 import { applyPresetToChart } from "@/lib/chart-style-engine"
 import type { PresetCategory } from "@/lib/chart-style-types"
@@ -400,10 +402,26 @@ function EditorPageContent() {
   const [isSharingLink, setIsSharingLink] = useState(false)
   const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false)
   const [showSetupDialog, setShowSetupDialog] = useState(false)
+  const [plusModalType, setPlusModalType] = useState<'single' | 'grouped' | null>(null)
   const [showSaveChartDialog, setShowSaveChartDialog] = useState(false)
   const [showClearDialog, setShowClearDialog] = useState(false)
   const [showModeConflictDialog, setShowModeConflictDialog] = useState(false)
   const [currentChartName, setCurrentChartName] = useState<string>("")
+
+  useEffect(() => {
+    const handleOpenAddDataset = () => {
+      setPlusModalType('single');
+    };
+    const handleOpenNewGroup = () => {
+      setPlusModalType('grouped');
+    };
+    window.addEventListener('openAddDatasetModal', handleOpenAddDataset);
+    window.addEventListener('openNewGroupModal', handleOpenNewGroup);
+    return () => {
+      window.removeEventListener('openAddDatasetModal', handleOpenAddDataset);
+      window.removeEventListener('openNewGroupModal', handleOpenNewGroup);
+    };
+  }, []);
 
   const handleCopyShareLink = async () => {
     if (!currentSnapshotId) {
@@ -658,20 +676,16 @@ function EditorPageContent() {
   const proceedToSaveDialog = () => {
     // Get the existing backend ID to check if this is an update
     const existingBackendId = useChatStore.getState().backendConversationId
+    const effectiveTitle = getEffectiveChartTitle()
+    const conversations = useHistoryStore.getState().conversations
+    const existingConversation = existingBackendId ? conversations.find(c => c.id === existingBackendId) : null
 
-    if (existingBackendId) {
-      // If updating, fetch the current title from history store (in case it was renamed from board)
-      const conversations = useHistoryStore.getState().conversations
-      const existingConversation = conversations.find(c => c.id === existingBackendId)
-      if (existingConversation) {
-        setCurrentChartName(existingConversation.title)
-      }
-      setShowSaveChartDialog(true)
-    } else {
-      // NEW: Use simple "Untitled" for new local charts
-      setCurrentChartName("Untitled")
-      setShowSaveChartDialog(true)
-    }
+    const defaultName = (effectiveTitle && effectiveTitle !== "No Chart Available" && effectiveTitle !== "Untitled Chart")
+      ? effectiveTitle
+      : (existingConversation?.title || "Untitled")
+
+    setCurrentChartName(defaultName)
+    setShowSaveChartDialog(true)
   }
 
   // Open save dialog instead of saving directly
@@ -1889,8 +1903,74 @@ function EditorPageContent() {
             </Button>
           </div>
 
-          {/* Action Buttons: Share, Save, Cancel, History - Below collapse button */}
+          {/* Action Buttons: +, Save, Cancel, Share, History - Below collapse button */}
           <div className="flex flex-col items-center gap-2 px-1">
+            {/* 1. Plus (+) Button */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!hasJSON}
+                  className="h-8 w-8 p-0 border-blue-200 text-blue-600 bg-blue-50 hover:bg-blue-100 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={!hasJSON ? "Create a chart first to add datasets/groups" : "Add Single or Grouped Chart"}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" side="right" className="w-44 z-50 bg-white border border-slate-200 shadow-md rounded-md p-1">
+                <DropdownMenuItem
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('openAddDatasetModal'));
+                  }}
+                  className="flex items-center gap-2 px-2.5 py-2 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md text-slate-700"
+                >
+                  <BarChart2 className="h-4 w-4 text-blue-600" />
+                  <div className="flex flex-col">
+                    <span className="font-semibold">Single Chart</span>
+                    <span className="text-[10px] text-slate-400">Add dataset to chart</span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('openNewGroupModal'));
+                  }}
+                  className="flex items-center gap-2 px-2.5 py-2 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md text-slate-700"
+                >
+                  <Layers className="h-4 w-4 text-purple-600" />
+                  <div className="flex flex-col">
+                    <span className="font-semibold">Grouped Chart</span>
+                    <span className="text-[10px] text-slate-400">Create a new group</span>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* 2. Save Button */}
+            <Button
+              size="sm"
+              variant="default"
+              onClick={handleSaveClick}
+              disabled={!hasJSON || isSaving}
+              className="h-8 w-8 p-0 bg-green-600 hover:bg-green-700 text-white"
+              title="Save chart to online database"
+            >
+              {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+            </Button>
+
+            {/* 3. Cancel Button */}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleCancel}
+              disabled={!hasJSON}
+              className="h-8 w-8 p-0 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+              title="Clear chart and start new"
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+
+            {/* 4. Share Button */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -1918,26 +1998,8 @@ function EditorPageContent() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button
-              size="sm"
-              variant="default"
-              onClick={handleSaveClick}
-              disabled={!hasJSON || isSaving}
-              className="h-8 w-8 p-0 bg-green-600 hover:bg-green-700 text-white"
-              title="Save chart to online database"
-            >
-              {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleCancel}
-              disabled={!hasJSON}
-              className="h-8 w-8 p-0 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
-              title="Clear chart and start new"
-            >
-              <X className="h-3.5 w-3.5" />
-            </Button>
+
+            {/* 5. History Dropdown */}
             <HistoryDropdown variant="compact" className="h-8 w-8 p-0" />
           </div>
 
@@ -2018,7 +2080,107 @@ function EditorPageContent() {
       <ChartSetupDialog
         open={showSetupDialog}
         onClose={() => setShowSetupDialog(false)}
-        onConfirm={handleDimensionsConfirmed}
+        onConfirm={(dims, datasets, newChartType, newUniformityMode, groupName) => {
+          handleDimensionsConfirmed(dims, datasets, newChartType, newUniformityMode, groupName);
+          if (useTemplateStore.getState().editorMode === 'template') {
+            useTemplateStore.getState().setEditorMode('chart');
+          }
+        }}
+      />
+
+      {/* Plus Button Dialog for Single/Grouped Charts */}
+      <ChartSetupDialog
+        open={plusModalType !== null}
+        onClose={() => setPlusModalType(null)}
+        title={plusModalType === 'grouped' ? "Create New Group" : "Set Dimensions & Add Data"}
+        datasetType={plusModalType === 'grouped' ? 'grouped' : 'single'}
+        isCustom={true}
+        startAtStep={1}
+        step2Title={plusModalType === 'grouped' ? "Add Data" : "Add Data"}
+        confirmButtonText={plusModalType === 'grouped' ? "Create Group" : undefined}
+        onConfirm={(dims, datasets, newChartType, newUniformityMode, groupName) => {
+          const isGrouped = plusModalType === 'grouped';
+          setPlusModalType(null);
+
+          const updatedConfig = chartConfig ? JSON.parse(JSON.stringify(chartConfig)) : {};
+          if (dims.isResponsive) {
+            updatedConfig.responsive = true;
+            updatedConfig.manualDimensions = false;
+            updatedConfig.dynamicDimension = false;
+          } else {
+            updatedConfig.responsive = false;
+            updatedConfig.manualDimensions = true;
+            updatedConfig.dynamicDimension = false;
+            updatedConfig.width = `${dims.width}px`;
+            updatedConfig.height = `${dims.height}px`;
+          }
+
+          if (newUniformityMode) {
+            updatedConfig.visualSettings = {
+              ...updatedConfig.visualSettings,
+              uniformityMode: newUniformityMode
+            };
+          }
+
+          if (isGrouped) {
+            const { id: newGroupId, newState: groupState } = GroupService.addGroup({
+              name: groupName || `Group ${(useChartStore.getState().groups || []).length + 1}`,
+              category: null,
+              uniformityMode: newUniformityMode || 'uniform',
+              baseChartType: newChartType as any,
+              chartConfig: updatedConfig
+            }, { groups: useChartStore.getState().groups || [] });
+            useChartStore.setState(groupState);
+
+            if (datasets && datasets.length > 0) {
+              const store = useChartStore.getState();
+              const currentData = store.chartData;
+              const newGroupDatasets = datasets.map(dataset => ({
+                ...dataset,
+                groupId: newGroupId,
+                mode: 'grouped',
+                chartConfig: updatedConfig
+              }));
+              const newChartData = {
+                ...currentData,
+                datasets: [...currentData.datasets, ...newGroupDatasets]
+              };
+              useChartStore.setState({
+                chartData: newChartData,
+                groupedModeData: newChartData,
+                chartType: newChartType as any
+              });
+            }
+
+            useChartStore.getState().updateChartConfig(updatedConfig);
+            if (useChartStore.getState().chartMode !== 'grouped') {
+              useChartStore.getState().setChartMode('grouped');
+            }
+            useChartStore.getState().setActiveGroupId(newGroupId);
+            toast.success(`Created group "${groupName || `Group ${(useChartStore.getState().groups || []).length + 1}`}"`);
+          } else {
+            // Ensure mode is updated to 'single' if user was in 'grouped' mode
+            const chartStore = useChartStore.getState();
+            if (chartStore.chartMode !== 'single') {
+              chartStore.setChartMode('single');
+            }
+
+            if (datasets && datasets.length > 0) {
+              datasets.forEach(dataset => {
+                const currentState = useChartStore.getState();
+                const newState = DatasetService.addDataset({ ...dataset, chartConfig: updatedConfig, mode: 'single' }, currentState as any);
+                useChartStore.setState(newState);
+              });
+            }
+            useChartStore.getState().updateChartConfig(updatedConfig);
+            toast.success(`Single chart created successfully.`);
+          }
+
+          if (useTemplateStore.getState().editorMode === 'template') {
+            useTemplateStore.getState().setEditorMode('chart');
+          }
+          setActiveTab('datasets_slices');
+        }}
       />
 
       {/* Mode Change Confirmation Dialog */}

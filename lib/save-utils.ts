@@ -9,6 +9,7 @@ import { dataService } from './data-service';
 import { useChartStore, prepareChartDataForSave } from './chart-store';
 import { useChatStore } from './chat-store';
 import { useTemplateStore } from './template-store';
+import { useHistoryStore } from './history-store';
 import { clearCurrentChart } from './storage-utils';
 import { toast } from 'sonner';
 import { DatasetService } from './services/dataset-service';
@@ -139,7 +140,9 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
         return result;
     }
 
-    const { hasJSON, chartType, chartData, chartConfig, chartMode, activeDatasetIndex, activeGroupId, groups } = useChartStore.getState();
+    const store = useChartStore.getState();
+    const { hasJSON, chartType, chartData, chartMode, activeDatasetIndex, activeGroupId, groups } = store;
+    const activeConfig = store.getActiveChartConfig();
 
     if (!hasJSON) {
         const result: SaveChartResult = {
@@ -169,6 +172,7 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
             // Update conversation title if name changed
             if (chartName) {
                 await dataService.updateConversation(existingBackendId, { title: chartName });
+                useHistoryStore.getState().updateConversation(existingBackendId, { title: chartName });
             }
         } else {
             // Create new conversation
@@ -194,8 +198,8 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
             useChatStore.getState().setBackendConversationId(conversationId);
         }
 
-        // Normalize config
-        const normalizedConfig = normalizeChartConfig(chartConfig);
+        // Normalize config using the active configuration (dataset/group specific)
+        const normalizedConfig = normalizeChartConfig(activeConfig);
 
 
         // Process and upload any decoration images loaded via blob URLs
@@ -412,9 +416,6 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
         toast.success(isUpdate ? 'Chart updated successfully!' : 'Chart saved successfully!');
         console.log(`✅ Chart ${isUpdate ? 'updated' : 'saved'} to backend:`, conversationId);
 
-        // Clear localStorage
-        clearCurrentChart();
-
         // Clear localStorage history to prevent duplicates
         if (typeof window !== 'undefined') {
             const userId = localStorage.getItem('user-id') || 'anonymous';
@@ -487,35 +488,18 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
             }
         }
 
-        // CRITICAL: Also update chatStore.currentChartState with the saved title
-        // This ensures both stores stay in sync, preventing title reset on navigation
-        const currentSnapshot = useChatStore.getState().currentChartState;
-        if (currentSnapshot) {
-            const updatedDatasets = currentSnapshot.chartData.datasets.map((ds: any, i: number) => {
-                if (chartMode === 'single' && i === activeDatasetIndex) {
-                    return {
-                        ...ds,
-                        sourceId: isUpdate ? ds.sourceId : conversationId,
-                        sourceTitle: savedTitle
-                    };
-                } else if (chartMode === 'grouped' && ds.groupId === activeGroupId) {
-                    return {
-                        ...ds,
-                        sourceId: isUpdate ? ds.sourceId : conversationId,
-                        sourceTitle: savedTitle
-                    };
-                }
-                return ds;
-            });
+        // Keep chartTitle in sync in the store
+        useChartStore.getState().setChartTitle(savedTitle);
 
-            useChatStore.getState().updateChartState({
-                ...currentSnapshot,
-                chartData: {
-                    ...currentSnapshot.chartData,
-                    datasets: updatedDatasets
-                }
-            });
-        }
+        // CRITICAL: Always sync chatStore.currentChartState with the live chart store
+        // This ensures both stores stay in sync, preventing stale state overwrite on save/navigation
+        const liveChartStore = useChartStore.getState();
+        const liveActiveConfig = liveChartStore.getActiveChartConfig();
+        useChatStore.getState().updateChartState({
+            chartType: liveChartStore.chartType,
+            chartData: liveChartStore.chartData,
+            chartConfig: liveActiveConfig
+        });
 
         const result: SaveChartResult = {
             success: true,

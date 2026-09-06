@@ -7,6 +7,7 @@ import { FormatRenderer } from "./FormatRenderer"
 import { Button } from "@/components/ui/button"
 import { LayoutGrid, Download, X, AlertTriangle } from "lucide-react"
 import { domToPng } from "modern-screenshot"
+import { getStandardAspectRatio } from "@/lib/utils/dimension-utils"
 
 export function FullSizeFormatView() {
   const { formats, contentPackage, selectedFormatId, openGallery, clearSelection, contextualImageUrl } = useFormatGalleryStore()
@@ -121,9 +122,13 @@ export function FullSizeFormatView() {
           <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700">
             {renderedFormat.skeleton.dimensions.width}x{renderedFormat.skeleton.dimensions.height}
           </span>
-          {renderedFormat.skeleton.dimensions.aspect && (
+          {(renderedFormat.skeleton.dimensions.aspect || (renderedFormat.skeleton.dimensions.width && renderedFormat.skeleton.dimensions.height)) && (
             <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-100 text-indigo-700">
-              {renderedFormat.skeleton.dimensions.aspect}
+              {getStandardAspectRatio(
+                renderedFormat.skeleton.dimensions.width,
+                renderedFormat.skeleton.dimensions.height,
+                renderedFormat.skeleton.dimensions.aspect
+              )}
             </span>
           )}
         </div>

@@ -174,164 +174,249 @@ export const useHistoryStore = create<HistoryStore>()(
         }
 
         // Restore chat messages
-        const { setMessages, updateChartState, setBackendConversationId } = useChatStore.getState();
-        setMessages(conv.messages);
+        const chatStore = useChatStore.getState();
+        chatStore.setMessages(conv.messages);
 
         // Set backend conversation ID so Save button knows to update instead of create
-        setBackendConversationId(conv.id);
-
-        // Restore chart snapshot
-        const { setFullChart, setHasJSON, setCurrentSnapshotId } = useChartStore.getState();
-        const { setCurrentTemplate, setEditorMode } = useTemplateStore.getState();
+        chatStore.setBackendConversationId(conv.id);
 
         if (conv.snapshot) {
-          // Get snapshot ID from the snapshot object (already fetched above)
+          const chartStore = useChartStore.getState();
+          const templateStore = useTemplateStore.getState();
           const snapshotId = conv.snapshot.id;
 
-          if (snapshotId) {
-            setCurrentSnapshotId(snapshotId);
+          // Helper for template & format restoration
+          const restoreTemplateOrFormat = () => {
+            const chartConfig = conv.snapshot?.chartConfig as any;
+            if (chartConfig?.formatData) {
+              const { formatId, contentPackage, contextualImageUrl, formatSnapshot } = chartConfig.formatData;
+              const store = useFormatGalleryStore.getState();
+              
+              // Use saved formatSnapshot if present; otherwise fall back to lookup from loaded formats
+              const restoredSnapshot = formatSnapshot || [...store.formats, ...store.userFormats].find(f => f.id === formatId) || null;
+
+              useFormatGalleryStore.setState({
+                selectedFormatId: formatId,
+                selectedChartType: conv.snapshot!.chartType,
+                selectedFormatSnapshot: restoredSnapshot,
+                contentPackage: contentPackage || store.contentPackage,
+                contextualImageUrl: contextualImageUrl || store.contextualImageUrl,
+                isGalleryOpen: false,
+              });
+              
+              templateStore.clearAllTemplateState(); // Clear standard templates
+              templateStore.setEditorMode('template'); // Set to template mode for format rendering
+              templateStore.setGenerateMode('format'); // Set to format mode so Browse Formats button remains
+              templateStore.setTemplateSavedToCloud(true);
+              return;
+            }
+
+            if (conv.snapshot?.template_structure || conv.snapshot?.is_template_mode) {
+              if (conv.snapshot.template_structure) {
+                const cloudTemplate = {
+                  ...conv.snapshot.template_structure,
+                  id: 'current-cloud-template',
+                  name: 'Current Cloud Template',
+                  description: 'Original template structure from backend snapshot',
+                  isCustom: false,
+                  isCloudTemplate: true
+                };
+
+                if (conv.snapshot.template_content) {
+                  const template = conv.snapshot.template_structure;
+                  const content = conv.snapshot.template_content;
+
+                  const updatedTextAreas = template.textAreas.map((area: any) => {
+                    const areaContent = content[area.type];
+                    if (areaContent !== undefined) {
+                      if (Array.isArray(areaContent)) {
+                        const sameTypeAreas = template.textAreas.filter((ta: any) => ta.type === area.type);
+                        const index = sameTypeAreas.indexOf(area);
+                        return {
+                          ...area,
+                          content: areaContent[index] || areaContent[0] || area.content
+                        };
+                      } else {
+                        return { ...area, content: areaContent };
+                      }
+                    }
+                    return area;
+                  });
+
+                  cloudTemplate.textAreas = updatedTextAreas;
+                }
+
+                templateStore.setOriginalCloudTemplateContent(cloudTemplate);
+                templateStore.setCurrentTemplate(cloudTemplate);
+                templateStore.setEditorMode('template');
+                templateStore.setGenerateMode('template');
+                templateStore.setTemplateSavedToCloud(true);
+                templateStore.clearUnusedContents();
+                
+                const formatStore = useFormatGalleryStore.getState();
+                formatStore.setSelectedFormat(null, conv.snapshot.chartType || 'bar');
+                formatStore.setContentPackage(null);
+                formatStore.setContextualImageUrl(null);
+              }
+            } else {
+              // Chart-only: park existing template safely in background without clearing user edits
+              templateStore.parkTemplateInBackground();
+              
+              const formatStore = useFormatGalleryStore.getState();
+              formatStore.setSelectedFormat(null, 'bar');
+              formatStore.setContentPackage(null);
+              formatStore.setContextualImageUrl(null);
+            }
+          };
+
+          // Helper for decorations & cloud dimensions
+          const restoreDecorationsAndDims = () => {
+            const chartConfig = conv.snapshot?.chartConfig as any;
+            const isTemplateMode = !!(conv.snapshot?.template_structure || conv.snapshot?.is_template_mode || chartConfig?.formatData);
+            const targetMode = isTemplateMode ? 'template' : 'chart';
+
+            const decorationsToLoad = chartConfig?.decorationShapes || conv.snapshot?.template_structure?.decorations || [];
+            if (decorationsToLoad.length > 0) {
+              useDecorationStore.getState().setShapes(decorationsToLoad, targetMode);
+            } else {
+              useDecorationStore.getState().clearShapes?.();
+            }
+
+            if (chartConfig) {
+              const width = chartConfig.width ? String(chartConfig.width) : '800';
+              const height = chartConfig.height ? String(chartConfig.height) : '600';
+
+              chartStore.setOriginalCloudDimensions({
+                width: width.includes('px') ? width : (width.includes('%') ? width : `${width}px`),
+                height: height.includes('px') ? height : (height.includes('%') ? height : `${height}px`)
+              });
+            }
+          };
+
+          // 1. Determine target chart mode (single vs grouped)
+          const targetChartMode: 'single' | 'grouped' = conv.chart_mode || ((conv.snapshot.chartData?.datasets?.length || 0) > 1 ? 'grouped' : 'single');
+          if (chartStore.chartMode !== targetChartMode) {
+            chartStore.setChartMode(targetChartMode);
           }
 
-          // Pass snapshot ID and chart name to setFullChart so it can be stored
-          // NOTE: Do NOT use replaceMode: true here! History loading should APPEND datasets
-          // so users can load multiple charts and switch between them in the dropdown
-          setFullChart({ ...conv.snapshot, id: snapshotId || undefined, name: conv.title, conversationId: conv.id });
-          setHasJSON(true);
+          const currentStore = useChartStore.getState();
 
-          // Clear undo/redo history so the newly restored cloud/history chart is the starting baseline
+          // 2. Check if this cloud chart is already loaded in the workspace
+          let existingDatasetIndex = -1;
+          let existingGroupId: string | null = null;
+
+          if (targetChartMode === 'single' && currentStore.chartData?.datasets) {
+            existingDatasetIndex = currentStore.chartData.datasets.findIndex(
+              (ds: any) => ds.sourceId === conv.id
+            );
+          } else if (targetChartMode === 'grouped' && currentStore.groups) {
+            const matchingGroup = currentStore.groups.find(
+              (g: any) => g.sourceId === conv.id || g.id === conv.id
+            );
+            if (matchingGroup) {
+              existingGroupId = matchingGroup.id;
+            }
+          }
+
+          const isAlreadyActive = chatStore.backendConversationId === conv.id;
+          if (existingDatasetIndex === -1 && existingGroupId === null && isAlreadyActive) {
+            if (targetChartMode === 'single') {
+              existingDatasetIndex = currentStore.activeDatasetIndex;
+            } else {
+              existingGroupId = currentStore.activeGroupId;
+            }
+          }
+
+          const isExistingInWorkspace = existingDatasetIndex !== -1 || existingGroupId !== null;
+
+          if (isExistingInWorkspace) {
+            // Already present in workspace: switch active tab directly without appending duplicates
+            if (existingDatasetIndex !== -1) {
+              if (existingDatasetIndex !== currentStore.activeDatasetIndex) {
+                currentStore.setActiveDatasetIndex(existingDatasetIndex);
+              }
+              // Refresh dataset in-place with latest cloud snapshot
+              const snapDs = conv.snapshot.chartData?.datasets?.[0];
+              if (snapDs) {
+                const refreshedDatasets = currentStore.chartData.datasets.map((ds: any, idx: number) => {
+                  if (idx === existingDatasetIndex) {
+                    return {
+                      ...ds,
+                      ...snapDs,
+                      sourceId: conv.id,
+                      sourceTitle: conv.title,
+                      chartConfig: conv.snapshot!.chartConfig ? JSON.parse(JSON.stringify(conv.snapshot!.chartConfig)) : ds.chartConfig,
+                      sliceLabels: conv.snapshot!.chartData?.labels ? [...conv.snapshot!.chartData.labels] : ds.sliceLabels
+                    };
+                  }
+                  return ds;
+                });
+                const updatedChartData = {
+                  ...currentStore.chartData,
+                  labels: conv.snapshot.chartData?.labels ? [...conv.snapshot.chartData.labels] : currentStore.chartData.labels,
+                  datasets: refreshedDatasets
+                };
+                useChartStore.setState({
+                  chartData: updatedChartData,
+                  chartConfig: conv.snapshot.chartConfig ? JSON.parse(JSON.stringify(conv.snapshot.chartConfig)) : currentStore.chartConfig,
+                  chartType: conv.snapshot.chartType || currentStore.chartType,
+                  chartTitle: conv.title || currentStore.chartTitle,
+                  singleModeData: currentStore.chartMode === 'single' ? updatedChartData : currentStore.singleModeData
+                });
+              }
+            } else if (existingGroupId) {
+              if (existingGroupId !== currentStore.activeGroupId) {
+                currentStore.setActiveGroupId(existingGroupId);
+              }
+              useChartStore.setState({
+                chartConfig: conv.snapshot.chartConfig ? JSON.parse(JSON.stringify(conv.snapshot.chartConfig)) : currentStore.chartConfig,
+                chartType: conv.snapshot.chartType || currentStore.chartType,
+                chartTitle: conv.title || currentStore.chartTitle
+              });
+            }
+
+            if (snapshotId) {
+              currentStore.setCurrentSnapshotId(snapshotId);
+            }
+            currentStore.setHasJSON(true);
+            try { (useChartStore as any).temporal?.getState()?.clear(); } catch (e) {}
+
+            chatStore.updateChartState({
+              chartType: conv.snapshot.chartType,
+              chartData: conv.snapshot.chartData,
+              chartConfig: conv.snapshot.chartConfig
+            });
+
+            restoreDecorationsAndDims();
+            restoreTemplateOrFormat();
+            return;
+          }
+
+          // 3. Not in workspace: check if current workspace is just the initial starter sample
+          const datasets = currentStore.chartData?.datasets || [];
+          const isStarterSample = datasets.length <= 1 && !currentStore.hasJSON && (!datasets[0]?.sourceId || datasets[0]?.label === 'Sample Dataset');
+
+          currentStore.setFullChart({
+            ...conv.snapshot,
+            id: snapshotId || undefined,
+            name: conv.title,
+            conversationId: conv.id,
+            replaceMode: isStarterSample
+          });
+          currentStore.setHasJSON(true);
+          if (snapshotId) {
+            currentStore.setCurrentSnapshotId(snapshotId);
+          }
           try { (useChartStore as any).temporal?.getState()?.clear(); } catch (e) {}
 
-          // CRITICAL: Also update chatStore.currentChartState so landing page sees correct chart
-          // Without this, navigating from editor to landing after loading from history
-          // would show the old chart instead of the newly loaded one
-          updateChartState({
+          chatStore.updateChartState({
             chartType: conv.snapshot.chartType,
             chartData: conv.snapshot.chartData,
             chartConfig: conv.snapshot.chartConfig
           });
 
-          const chartConfig = conv.snapshot.chartConfig as any;
-          
-          // Restore decorations with correct mode (template vs chart) to prevent race condition during load
-          const isTemplateMode = !!(conv.snapshot.template_structure || conv.snapshot.is_template_mode || chartConfig?.formatData);
-          const targetMode = isTemplateMode ? 'template' : 'chart';
-
-          const decorationsToLoad = chartConfig?.decorationShapes || conv.snapshot.template_structure?.decorations || [];
-          if (decorationsToLoad.length > 0) {
-            useDecorationStore.getState().setShapes(decorationsToLoad, targetMode);
-          } else {
-            useDecorationStore.getState().clearShapes?.();
-          }
-
-          // Update original cloud dimensions for the loaded chart.
-          // This captures the dimensions native to the snapshot being loaded.
-          if (chartConfig) {
-            const { setOriginalCloudDimensions } = useChartStore.getState();
-            
-            // Try to use the chart's actual bounds, fallback to default sizes if fully responsive/null
-            const width = chartConfig.width ? String(chartConfig.width) : '800';
-            const height = chartConfig.height ? String(chartConfig.height) : '600';
-
-            setOriginalCloudDimensions({
-              width: width.includes('px') ? width : (width.includes('%') ? width : `${width}px`),
-              height: height.includes('px') ? height : (height.includes('%') ? height : `${height}px`)
-            });
-          }
-
-          // Restore format mode if snapshot has format data
-          if (chartConfig?.formatData) {
-            const { formatId, contentPackage, contextualImageUrl, formatSnapshot } = chartConfig.formatData;
-            const store = useFormatGalleryStore.getState();
-            
-            // Use saved formatSnapshot if present; otherwise fall back to lookup from loaded formats
-            const restoredSnapshot = formatSnapshot || [...store.formats, ...store.userFormats].find(f => f.id === formatId) || null;
-
-            useFormatGalleryStore.setState({
-              selectedFormatId: formatId,
-              selectedChartType: conv.snapshot.chartType,
-              selectedFormatSnapshot: restoredSnapshot,
-              contentPackage: contentPackage || store.contentPackage,
-              contextualImageUrl: contextualImageUrl || store.contextualImageUrl,
-              isGalleryOpen: false,
-            });
-            
-            const templateStore = useTemplateStore.getState();
-            templateStore.clearAllTemplateState(); // Clear standard templates
-            templateStore.setEditorMode('template'); // Set to template mode for format rendering
-            templateStore.setGenerateMode('format'); // Set to format mode so Browse Formats button remains
-            templateStore.setTemplateSavedToCloud(true);
-            
-            console.log('📊 Restored infographic format:', formatId, restoredSnapshot ? '(with custom snapshot)' : '');
-            return; // We're done restoring
-          }
-
-          // Restore template mode if snapshot has template data
-          if (conv.snapshot.template_structure || conv.snapshot.is_template_mode) {
-            if (conv.snapshot.template_structure) {
-              // Create Current Cloud Template structure
-              const cloudTemplate = {
-                ...conv.snapshot.template_structure,
-                id: 'current-cloud-template',
-                name: 'Current Cloud Template',
-                description: 'Original template structure from backend snapshot',
-                isCustom: false,
-                isCloudTemplate: true
-              }
-
-              // Restore text area content if available
-              if (conv.snapshot.template_content) {
-                const template = conv.snapshot.template_structure;
-                const content = conv.snapshot.template_content;
-
-                // Update text areas with saved content
-                const updatedTextAreas = template.textAreas.map((area: any) => {
-                  const areaContent = content[area.type];
-                  if (areaContent !== undefined) {
-                    // Handle multiple areas of same type (array) or single content
-                    if (Array.isArray(areaContent)) {
-                      // Find index of this area among areas of same type
-                      const sameTypeAreas = template.textAreas.filter((ta: any) => ta.type === area.type);
-                      const index = sameTypeAreas.indexOf(area);
-                      return {
-                        ...area,
-                        content: areaContent[index] || areaContent[0] || area.content
-                      };
-                    } else {
-                      return { ...area, content: areaContent };
-                    }
-                  }
-                  return area;
-                });
-
-                cloudTemplate.textAreas = updatedTextAreas;
-              }
-
-              // Store as original cloud template content for content transfer
-              const templateStore = useTemplateStore.getState()
-              templateStore.setOriginalCloudTemplateContent(cloudTemplate)
-              templateStore.setCurrentTemplate(cloudTemplate)
-              templateStore.setEditorMode('template');
-              templateStore.setGenerateMode('template'); // Explicitly mark as template, not format
-              templateStore.setTemplateSavedToCloud(true); // Mark template as saved to cloud
-              templateStore.clearUnusedContents()
-              
-              // Clear any leftover format state so save won't confuse template with format
-              const formatStore = useFormatGalleryStore.getState();
-              formatStore.setSelectedFormat(null, conv.snapshot.chartType || 'bar');
-              formatStore.setContentPackage(null);
-              formatStore.setContextualImageUrl(null);
-            }
-          } else {
-            // No template/format data - explicitly clear ALL template state and set chart mode
-            console.log('📊 Loading chart-only conversation - clearing all template/format state')
-            const templateStore = useTemplateStore.getState()
-            templateStore.clearAllTemplateState() // This clears templateInBackground, currentTemplate, editorMode to 'chart', etc.
-            
-            const formatStore = useFormatGalleryStore.getState();
-            formatStore.setSelectedFormat(null, 'bar'); // Clear formats too
-            formatStore.setContentPackage(null); // Clear AI generated format content
-            formatStore.setContextualImageUrl(null);
-          }
+          restoreDecorationsAndDims();
+          restoreTemplateOrFormat();
         }
       },
       clearAllConversations: async () => {

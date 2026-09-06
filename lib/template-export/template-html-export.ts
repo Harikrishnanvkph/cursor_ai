@@ -607,8 +607,22 @@ export const exportTemplateAsHTML = async (
         }
         
         /* Paragraph and other text styles */
-        .text-area.html-content p {
-            margin: 0.5em 0;
+        .text-area.html-content p,
+        .text-area.html-content h1,
+        .text-area.html-content h2,
+        .text-area.html-content h3,
+        .text-area.html-content h4,
+        .text-area.html-content h5,
+        .text-area.html-content h6 {
+            margin: 0 !important;
+            padding: 0 !important;
+            text-align: inherit;
+            line-height: inherit;
+            font-family: inherit;
+        }
+
+        .text-area.html-content p:empty {
+            height: 1em;
         }
 
         .text-area.html-content mark {

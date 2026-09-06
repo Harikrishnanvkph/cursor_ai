@@ -225,13 +225,6 @@ export const exportTemplateAsImage = async (
             // For plain text, use canvas text rendering
             drawPlainText(ctx, textArea.content, x, y, width, height, style, padding)
         }
-
-        // DEBUG: Draw red border around the text area bounding box
-        ctx.save()
-        ctx.strokeStyle = 'red'
-        ctx.lineWidth = 2
-        ctx.strokeRect(x, y, width, height)
-        ctx.restore()
     }
 
     // Convert to data URL with high quality

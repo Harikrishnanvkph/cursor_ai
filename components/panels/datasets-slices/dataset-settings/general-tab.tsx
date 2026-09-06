@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -27,6 +27,8 @@ import {
 } from "lucide-react"
 import { ChartSetupDialog, type ChartDimensions } from "@/components/dialogs/chart-setup-dialog"
 import { useChatStore } from "@/lib/chat-store"
+import { useTemplateStore } from "@/lib/template-store"
+import { getEffectiveChartTitle, saveChartTitle } from "@/lib/hooks/use-chart-rename"
 import { toast } from "sonner"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
@@ -36,7 +38,7 @@ import {
     CarouselNext,
     CarouselPrevious,
 } from "@/components/ui/carousel"
-import { useRef } from "react"
+
 
 interface GeneralTabProps {
     chartMode: string
@@ -50,11 +52,12 @@ interface GeneralTabProps {
     filteredDatasets: ExtendedChartDataset[]
     datasetsDropdownOpen: boolean
     showAddDatasetModal: boolean
+    isEditModeModal?: boolean
     setDatasetsDropdownOpen: (open: boolean) => void
     setShowAddDatasetModal: (open: boolean) => void
+    setIsEditModeModal?: (edit: boolean) => void
     handleChartModeChange: (mode: 'single' | 'grouped') => void
 
-    handleConvertToGrouped: () => void
     handleActiveGroupChange: (groupId: string) => void
     handleActiveDatasetChange: (index: number) => void
     handleOpenAddDatasetModal: () => void
@@ -80,10 +83,11 @@ export function GeneralTab({
     filteredDatasets,
     datasetsDropdownOpen,
     showAddDatasetModal,
+    isEditModeModal = false,
     setDatasetsDropdownOpen,
     setShowAddDatasetModal,
+    setIsEditModeModal,
     handleChartModeChange,
-    handleConvertToGrouped,
 
     handleActiveGroupChange,
     handleActiveDatasetChange,
@@ -131,6 +135,30 @@ export function GeneralTab({
             : (activeDs.label || activeDs.sourceTitle || `Dataset ${activeFilteredIndex + 1}`))
         : 'None';
 
+    const memoizedDimensions = useMemo(() => ({
+        width: parseFloat(chartConfig?.width || '800'),
+        height: parseFloat(chartConfig?.height || '600'),
+        isResponsive: !!chartConfig?.responsive
+    }), [chartConfig?.width, chartConfig?.height, chartConfig?.responsive]);
+
+    const memoizedExistingDatasets = useMemo(() => {
+        if (!isEditModeModal && (isCreatingNewGroup || chartMode !== 'grouped')) {
+            return undefined;
+        }
+        if (isEditModeModal && chartMode === 'single') {
+            const currentTarget = chartData.datasets[activeDatasetIndex] || filteredDatasets[0];
+            if (!currentTarget) return undefined;
+            return [{
+                ...currentTarget,
+                sliceLabels: currentTarget.sliceLabels || chartData.labels || []
+            }];
+        }
+        return filteredDatasets.map(ds => ({
+            ...ds,
+            sliceLabels: ds.sliceLabels || chartData.labels || []
+        }));
+    }, [isEditModeModal, isCreatingNewGroup, chartMode, filteredDatasets, activeDatasetIndex, chartData.datasets, chartData.labels]);
+
     return (
         <div className="space-y-4">
             {/* Chart Mode Section */}
@@ -159,29 +187,6 @@ export function GeneralTab({
                     </label>
                 </div>
             </div>
-
-            {/* Convert to Grouped Chart - Only visible in Single Mode */}
-            {chartMode === 'single' && filteredDatasets.length > 0 && (
-                <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <div
-                                className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-md px-3 py-2 cursor-pointer hover:bg-blue-100 hover:border-blue-300 transition-all group"
-                                onClick={() => handleConvertToGrouped()}
-                            >
-                                <Info className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                                <span className="font-medium text-xs text-blue-700 flex-1">Convert to Grouped Chart</span>
-                                <ChevronRight className="h-4 w-4 text-blue-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
-                            </div>
-                        </TooltipTrigger>
-                        <TooltipContent side="left" sideOffset={15} className="bg-slate-800 text-white border-slate-700 px-3 py-2 z-[150] max-w-[200px] shadow-xl">
-                            <p className="text-[11px] font-medium leading-relaxed">
-                                Convert to grouped mode to visualize and compare multiple data series on the same chart.
-                            </p>
-                        </TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
-            )}
 
             {/* Groups Section - Only for Grouped Mode */}
             {chartMode === 'grouped' && (
@@ -261,35 +266,25 @@ export function GeneralTab({
             )}
 
 
-            <div className="space-y-0">
-                {/* Datasets Header with Count and Actions */}
-                <div
-                    className="flex items-center justify-between py-2 px-2 border-b rounded-t hover:bg-gray-50 transition-colors group"
-                >
-                    <div
-                        className="flex items-center gap-2 flex-1 cursor-pointer"
-                        onClick={() => setDatasetsDropdownOpen(!datasetsDropdownOpen)}
-                    >
-                        <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                        <h3 className="text-xs font-semibold text-gray-900">Datasets</h3>
-                        <span className="bg-gray-100 text-gray-600 text-[10px] font-medium px-1.5 py-0.5 rounded-full border border-gray-200">
+            {/* Datasets List Section */}
+            <div className="space-y-2">
+                <div className="flex items-center justify-between bg-blue-50/70 p-2.5 rounded-t-lg border border-blue-100">
+                    <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                        <Label className="text-xs font-semibold text-gray-800 tracking-wide">Datasets</Label>
+                        <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-bold">
                             {filteredDatasets.length}
                         </span>
                     </div>
-
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                         <Button
-                            size="sm"
                             variant="outline"
-                            onClick={(e) => {
-                                e.stopPropagation()
-                                setIsCreatingNewGroup(false)
-                                handleOpenAddDatasetModal()
-                            }}
-                            className="h-6 px-2 text-xs bg-white border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800 hover:border-blue-300 shadow-sm transition-all"
+                            size="sm"
+                            onClick={handleOpenAddDatasetModal}
+                            className="h-7 text-xs border-blue-200 text-blue-600 hover:bg-blue-100/50 bg-white font-medium shadow-2xs transition-all active:scale-95"
                         >
-                            {chartMode === 'grouped' ? <Pencil className="h-3 w-3 mr-1" /> : <Plus className="h-3 w-3 mr-1" />}
-                            {chartMode === 'grouped' ? 'Edit' : 'Add'}
+                            <Plus className="h-3.5 w-3.5 mr-1 text-blue-600" />
+                            Add
                         </Button>
 
                         <div
@@ -317,16 +312,17 @@ export function GeneralTab({
                 {datasetsDropdownOpen && (
                     <div className="bg-blue-50/50 rounded-b-lg p-3 space-y-2 border-x border-b border-blue-100">
                         {filteredDatasets.length > 0 && (
-                            <div className="flex items-center gap-1.5 px-1 pb-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                            <div className="flex items-center gap-1.5 px-1 pb-1">
                                 <span className="text-[10px] text-gray-500 font-medium">Selected :</span>
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         handleFocusActiveDataset();
                                     }}
-                                    className="text-[10px] text-blue-600 font-bold hover:underline cursor-pointer transition-all active:scale-95"
+                                    className="text-[10px] font-semibold text-blue-600 hover:text-blue-800 bg-white px-2 py-0.5 rounded border border-blue-200 shadow-xs cursor-pointer flex items-center gap-1"
                                 >
-                                    {activeDatasetName}
+                                    <span>{activeDatasetName}</span>
+                                    <span className="text-[9px] text-blue-400">↵</span>
                                 </button>
                             </div>
                         )}
@@ -340,7 +336,6 @@ export function GeneralTab({
                                 filteredDatasets.map((dataset, datasetIndex) => (
                                     <div
                                         key={datasetIndex}
-                                        ref={datasetIndex === activeDatasetIndex ? null : null}
                                         data-active={chartData.datasets.indexOf(dataset) === activeDatasetIndex}
                                         onClick={() => {
                                             const actualIndex = chartData.datasets.indexOf(dataset);
@@ -448,31 +443,34 @@ export function GeneralTab({
                     </div>
                 )}
             </div>
-            {/* Enhanced Chart Setup Modal for adding datasets */}
+            {/* Enhanced Chart Setup Modal for adding/editing datasets */}
             <ChartSetupDialog
                 open={showAddDatasetModal}
                 onClose={() => {
                     setShowAddDatasetModal(false)
-                    setIsCreatingNewGroup(false)
+                    setTimeout(() => {
+                        setIsCreatingNewGroup(false)
+                        if (setIsEditModeModal) setIsEditModeModal(false)
+                    }, 300)
                 }}
-                initialDimensions={{
-                    width: parseFloat(chartConfig?.width || '800'),
-                    height: parseFloat(chartConfig?.height || '600'),
-                    isResponsive: !!chartConfig?.responsive
-                }}
-                initialGroupName={isCreatingNewGroup ? `Group ${groups.length + 1}` : (chartMode === 'grouped' ? groups.find(g => g.id === activeGroupId)?.name : (chartConfig?.plugins?.title?.text || `Chart 1`))}
-                onConfirm={(dims, datasets, newChartType, newUniformityMode, groupName) => {
+                initialDimensions={memoizedDimensions}
+                onConfirm={async (dims, datasets, newChartType, newUniformityMode, groupName) => {
+                    const store = useChartStore.getState();
+                    const currentData = store.chartData;
+
                     const updatedConfig = chartConfig ? JSON.parse(JSON.stringify(chartConfig)) : {}
-                    if (dims.isResponsive) {
-                        updatedConfig.responsive = true
-                        updatedConfig.manualDimensions = false
-                        updatedConfig.dynamicDimension = false
-                    } else {
-                        updatedConfig.responsive = false
-                        updatedConfig.manualDimensions = true
-                        updatedConfig.dynamicDimension = false
-                        updatedConfig.width = `${dims.width}px`
-                        updatedConfig.height = `${dims.height}px`
+                    if (!isEditModeModal && (isCreatingNewGroup || chartMode === 'single')) {
+                        if (dims.isResponsive) {
+                            updatedConfig.responsive = true
+                            updatedConfig.manualDimensions = false
+                            updatedConfig.dynamicDimension = false
+                        } else {
+                            updatedConfig.responsive = false
+                            updatedConfig.manualDimensions = true
+                            updatedConfig.dynamicDimension = false
+                            updatedConfig.width = `${dims.width}px`
+                            updatedConfig.height = `${dims.height}px`
+                        }
                     }
 
                     if (newUniformityMode && chartMode === 'grouped') {
@@ -480,6 +478,73 @@ export function GeneralTab({
                             ...updatedConfig.visualSettings,
                             uniformityMode: newUniformityMode
                         }
+                    }
+
+                    if (isEditModeModal) {
+                        if (datasets && datasets.length > 0) {
+                            if (chartMode === 'grouped' && activeGroupId) {
+                                const otherDatasets = currentData.datasets.filter((d: any) => d.groupId !== activeGroupId);
+                                const updatedGroupDatasets = datasets.map(dataset => ({
+                                    ...dataset,
+                                    groupId: activeGroupId,
+                                    mode: 'grouped',
+                                }));
+                                const newChartData = {
+                                    ...currentData,
+                                    datasets: [...otherDatasets, ...updatedGroupDatasets]
+                                };
+                                useChartStore.setState({
+                                    chartData: newChartData,
+                                    groupedModeData: newChartData,
+                                    ...(newChartType ? { chartType: newChartType as any } : {})
+                                });
+                                useChatStore.getState().updateChartState({
+                                    chartType: newChartType || store.chartType,
+                                    chartData: newChartData,
+                                    chartConfig: useChartStore.getState().getActiveChartConfig()
+                                });
+                                if (groupName && activeGroupId) {
+                                    updateGroup(activeGroupId, { name: groupName });
+                                    await saveChartTitle(groupName);
+                                }
+                            } else {
+                                const firstDataset = datasets[0];
+                                const targetIdx = (activeDatasetIndex >= 0 && activeDatasetIndex < currentData.datasets.length) ? activeDatasetIndex : 0;
+                                const existingTarget = currentData.datasets[targetIdx] || {};
+                                const updatedDatasets = [...currentData.datasets];
+                                updatedDatasets[targetIdx] = {
+                                    ...existingTarget,
+                                    ...firstDataset,
+                                    label: firstDataset.name || firstDataset.label || existingTarget.label,
+                                    chartType: newChartType || firstDataset.type || firstDataset.chartType || existingTarget.chartType,
+                                    sliceLabels: firstDataset.sliceLabels || existingTarget.sliceLabels || currentData.labels,
+                                };
+                                const newChartData = {
+                                    ...currentData,
+                                    labels: firstDataset.sliceLabels || existingTarget.sliceLabels || currentData.labels,
+                                    datasets: updatedDatasets,
+                                };
+                                useChartStore.setState({
+                                    chartData: newChartData,
+                                    singleModeData: newChartData,
+                                    ...(newChartType && targetIdx === activeDatasetIndex ? { chartType: newChartType as any } : {})
+                                });
+                                useChatStore.getState().updateChartState({
+                                    chartType: newChartType || store.chartType,
+                                    chartData: newChartData,
+                                    chartConfig: useChartStore.getState().getActiveChartConfig()
+                                });
+                                if (groupName) {
+                                    await saveChartTitle(groupName);
+                                }
+                            }
+                            toast.success(`Chart updated successfully.`);
+                        }
+                        setShowAddDatasetModal(false);
+                        setTimeout(() => {
+                            if (setIsEditModeModal) setIsEditModeModal(false);
+                        }, 300);
+                        return;
                     }
 
                     if (isCreatingNewGroup) {
@@ -511,8 +576,13 @@ export function GeneralTab({
                             });
                         }
 
-                        // Immediately update global chart config so the UI re-renders with new dimensions
                         updateChartConfig(updatedConfig);
+
+                        const chartStore = useChartStore.getState();
+                        if (chartStore.chartMode !== 'grouped') {
+                            chartStore.setChartMode('grouped');
+                        }
+                        chartStore.setActiveGroupId(newGroupId);
 
                         useChatStore.getState().setBackendConversationId(null);
                         toast.success(`Created group "${groupName || `Group ${groups.length + 1}`}"`);
@@ -525,7 +595,6 @@ export function GeneralTab({
                             }
                             updateGroup(activeGroupId, updates);
 
-                            // Immediately update global chart config so the UI re-renders with new dimensions
                             updateChartConfig(updatedConfig);
                         } else if (chartMode === 'single' && groupName) {
                             updatedConfig.plugins = updatedConfig.plugins || {};
@@ -536,7 +605,6 @@ export function GeneralTab({
                             };
                             useChartStore.getState().setChartTitle(groupName);
                         } else if (chartMode === 'single') {
-                            // Update global config for single mode as well
                             updateChartConfig(updatedConfig);
                         }
 
@@ -570,17 +638,25 @@ export function GeneralTab({
                     }
 
                     setShowAddDatasetModal(false)
-                    setIsCreatingNewGroup(false)
+                    setTimeout(() => {
+                        setIsCreatingNewGroup(false)
+                        if (setIsEditModeModal) setIsEditModeModal(false)
+                    }, 300)
+                    if (useTemplateStore.getState().editorMode === 'template') {
+                        useTemplateStore.getState().setEditorMode('chart')
+                    }
                 }}
-                title={isCreatingNewGroup ? "Create New Group" : (chartMode === 'grouped' ? "Edit Group Datasets" : "Set Dimensions & Add Data")}
-                datasetType={chartMode as 'single' | 'grouped'}
+                title={isEditModeModal ? "Edit Dataset" : (isCreatingNewGroup ? "Create New Group" : (chartMode === 'grouped' ? "Edit Group Datasets" : "Set Dimensions & Add Data"))}
+                datasetType={isCreatingNewGroup ? 'grouped' : (chartMode as 'single' | 'grouped')}
                 isCustom={true}
-                startAtStep={isCreatingNewGroup || chartMode === 'single' ? 1 : 2}
-                step2Title={isCreatingNewGroup ? "Add Data" : (chartMode === 'grouped' ? "Edit" : "Add Data")}
-                hideBackButton={!isCreatingNewGroup && chartMode === 'grouped'}
-                initialExistingDatasets={!isCreatingNewGroup && chartMode === 'grouped' ? filteredDatasets : undefined}
+                startAtStep={isEditModeModal ? 2 : (isCreatingNewGroup || chartMode === 'single' ? 1 : 2)}
+                step2Title={isEditModeModal ? "Edit Dataset" : (isCreatingNewGroup ? "Add Data" : (chartMode === 'grouped' ? "Edit" : "Add Data"))}
+                hideBackButton={isEditModeModal || (!isCreatingNewGroup && chartMode === 'grouped')}
+                initialExistingDatasets={memoizedExistingDatasets}
+                initialActiveDatasetIndex={chartMode === 'grouped' ? Math.max(0, filteredDatasets.findIndex(ds => chartData.datasets.indexOf(ds) === activeDatasetIndex)) : 0}
+                initialGroupName={isCreatingNewGroup ? `Group ${groups.length + 1}` : (chartMode === 'grouped' ? groups.find(g => g.id === activeGroupId)?.name : (getEffectiveChartTitle() || chartConfig?.plugins?.title?.text || `Chart 1`))}
                 initialUniformityMode={!isCreatingNewGroup && chartMode === 'grouped' ? (chartConfig?.visualSettings?.uniformityMode || 'uniform') : undefined}
-                confirmButtonText={isCreatingNewGroup ? "Create Group" : (chartMode === 'grouped' ? "Update Chart" : undefined)}
+                confirmButtonText={isEditModeModal ? "Update Chart" : (isCreatingNewGroup ? "Create Group" : (chartMode === 'grouped' ? "Update Chart" : undefined))}
             />
         </div>
     )

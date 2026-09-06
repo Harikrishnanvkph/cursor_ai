@@ -121,6 +121,7 @@ export type ChatMessage = {
 };
 
 export type ChartSnapshot = {
+  id?: string;
   chartType: SupportedChartType;
   chartData: ExtendedChartData;
   template_structure?: any; // Optional: full template layout structure
@@ -204,6 +205,7 @@ interface ChatStore {
   clearMessages: () => void;
   startNewConversation: (keepChartData?: boolean) => void;
   continueConversation: (input: string) => Promise<void>;
+  updateChartState: (snapshot: ChartSnapshot) => void;
 }
 
 // Default initial message (fallback)

@@ -338,12 +338,143 @@ const exportPlugin = {
               }
             });
 
-            // Serialize SVG to a data URL
+            // Convert external <image> hrefs to base64 data URIs to prevent canvas tainting.
+            // When an SVG contains cross-origin images and is rendered onto a canvas,
+            // the canvas becomes "tainted" and toDataURL() throws a SecurityError.
+            const imageElements = svgClone.querySelectorAll('image');
+            await Promise.all(Array.from(imageElements).map(async (imgEl) => {
+              const href = imgEl.getAttribute('href') || imgEl.getAttributeNS('http://www.w3.org/1999/xlink', 'href');
+              if (href && !href.startsWith('data:')) {
+                try {
+                  // Fetch through CORS proxy to get a readable response
+                  const proxiedUrl = getProxiedImageUrl(href);
+                  const response = await fetch(proxiedUrl, { mode: 'cors' });
+                  const blob = await response.blob();
+                  const dataUri = await new Promise<string>((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.readAsDataURL(blob);
+                  });
+                  imgEl.setAttribute('href', dataUri);
+                  // Also clear xlink:href if present
+                  imgEl.removeAttributeNS('http://www.w3.org/1999/xlink', 'href');
+                } catch (imgError) {
+                  console.warn('Failed to inline image for export, removing element:', imgError);
+                  imgEl.remove();
+                }
+              }
+            }));
+
+            // Handle <foreignObject> elements in two passes:
+            // 1. deco-svg: Extract inner SVG and insert as native SVG element in clone
+            // 2. text: Collect info from live DOM, draw directly on canvas AFTER SVG composite
+            //
+            // foreignObject content is STRIPPED when SVG is rendered via <img> on canvas.
+            // For text, we draw on canvas directly (with proper word-wrapping via measureText).
+            // For deco-svg, we convert to native SVG which renders fine.
+
+            interface TextDecoInfo {
+              text: string;
+              x: number; y: number;
+              width: number; height: number;
+              fontSize: number;
+              fontFamily: string;
+              fontWeight: string;
+              fontStyle: string;
+              textDecoration: string;
+              textAlign: string;
+              color: string;
+              lineHeight: number;
+              rotation: number;
+              rotCx: number; rotCy: number;
+            }
+
+            const textDecos: TextDecoInfo[] = [];
+            const svgReplacements: SVGElement[] = [];
+            const liveForeignObjects = decorationSvg.querySelectorAll('foreignObject');
+
+            liveForeignObjects.forEach((liveFo) => {
+              const foX = parseFloat(liveFo.getAttribute('x') || '0');
+              const foY = parseFloat(liveFo.getAttribute('y') || '0');
+              const foW = parseFloat(liveFo.getAttribute('width') || '0');
+              const foH = parseFloat(liveFo.getAttribute('height') || '0');
+
+              const liveDiv = liveFo.querySelector('div');
+              const liveSvg = liveDiv?.querySelector('svg') || liveFo.querySelector('svg');
+
+              if (liveSvg) {
+                // deco-svg: Extract and insert as native SVG
+                const parentG = liveFo.closest('g');
+                const parentTransform = parentG?.getAttribute('transform') || null;
+
+                const nestedSvg = liveSvg.cloneNode(true) as SVGSVGElement;
+                nestedSvg.setAttribute('x', String(foX));
+                nestedSvg.setAttribute('y', String(foY));
+                if (!nestedSvg.getAttribute('viewBox')) {
+                  const origW = nestedSvg.getAttribute('width') || String(foW);
+                  const origH = nestedSvg.getAttribute('height') || String(foH);
+                  nestedSvg.setAttribute('viewBox', `0 0 ${parseFloat(origW)} ${parseFloat(origH)}`);
+                }
+                nestedSvg.setAttribute('width', String(foW));
+                nestedSvg.setAttribute('height', String(foH));
+                nestedSvg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+                // Wrap in <g> with parent transform if present
+                if (parentTransform) {
+                  const gWrap = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                  gWrap.setAttribute('transform', parentTransform);
+                  gWrap.appendChild(nestedSvg);
+                  svgReplacements.push(gWrap);
+                } else {
+                  svgReplacements.push(nestedSvg);
+                }
+              } else if (liveDiv) {
+                // Text: collect info for canvas drawing later
+                // Use innerText to preserve line breaks from block-level HTML elements
+                const textContent = (liveDiv as HTMLElement).innerText || liveDiv.textContent || '';
+                if (textContent.trim()) {
+                  const computed = window.getComputedStyle(liveDiv);
+                  const fSize = parseFloat(computed.fontSize) || 14;
+                  const lhRaw = computed.lineHeight;
+                  const lh = lhRaw === 'normal' ? fSize * 1.4 : parseFloat(lhRaw);
+
+                  // Parse parent group rotation
+                  let rotation = 0, rotCx = 0, rotCy = 0;
+                  const parentG = liveFo.closest('g');
+                  const tAttr = parentG?.getAttribute('transform');
+                  if (tAttr) {
+                    const m = tAttr.match(/rotate\(([\d.-]+)\s+([\d.-]+)\s+([\d.-]+)\)/);
+                    if (m) { rotation = parseFloat(m[1]); rotCx = parseFloat(m[2]); rotCy = parseFloat(m[3]); }
+                  }
+
+                  textDecos.push({
+                    text: textContent,
+                    x: foX, y: foY, width: foW, height: foH,
+                    fontSize: fSize,
+                    fontFamily: computed.fontFamily || 'Arial, sans-serif',
+                    fontWeight: computed.fontWeight || 'normal',
+                    fontStyle: computed.fontStyle || 'normal',
+                    textDecoration: computed.textDecorationLine || 'none',
+                    textAlign: computed.textAlign || 'left',
+                    color: computed.color || '#000000',
+                    lineHeight: lh,
+                    rotation, rotCx, rotCy,
+                  });
+                }
+              }
+            });
+
+            // Remove ALL foreignObjects from clone to prevent taint
+            svgClone.querySelectorAll('foreignObject').forEach(fo => fo.remove());
+
+            // Append SVG replacements (deco-svg shapes)
+            svgReplacements.forEach(el => svgClone.appendChild(el));
+
+            // Serialize SVG to a data URL and composite onto canvas
             const svgData = new XMLSerializer().serializeToString(svgClone);
             const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
             const svgUrl = URL.createObjectURL(svgBlob);
 
-            // Render SVG to image and composite
             await new Promise<void>((resolve) => {
               const img = new Image();
               img.onload = () => {
@@ -354,10 +485,175 @@ const exportPlugin = {
               img.onerror = () => {
                 console.warn('Failed to render decoration SVG overlay for export');
                 URL.revokeObjectURL(svgUrl);
-                resolve(); // Don't block export if decoration rendering fails
+                resolve();
               };
               img.src = svgUrl;
             });
+
+            // Draw text decorations directly on canvas with proper word wrapping.
+            // This runs AFTER the SVG overlay so text appears on top of shapes.
+            if (textDecos.length > 0) {
+              // Compute viewBox → canvas scale factors
+              const vb = decorationSvg.getAttribute('viewBox');
+              let sx = 1, sy = 1;
+              if (vb) {
+                const parts = vb.split(/[\s,]+/).map(Number);
+                if (parts.length === 4 && parts[2] && parts[3]) {
+                  sx = tempCanvas.width / parts[2];
+                  sy = tempCanvas.height / parts[3];
+                }
+              }
+
+              // Helper: wrap text matching CSS word-break:break-word behavior.
+              // Returns array of visual lines after wrapping.
+              const wrapTextLines = (
+                ctx: CanvasRenderingContext2D,
+                text: string,
+                maxWidth: number
+              ): string[] => {
+                const result: string[] = [];
+                const paragraphs = text.split('\n');
+
+                for (const para of paragraphs) {
+                  if (!para) { result.push(''); continue; }
+
+                  let remaining = para;
+                  while (remaining.length > 0) {
+                    // If entire remaining text fits, push and done
+                    if (ctx.measureText(remaining).width <= maxWidth) {
+                      result.push(remaining);
+                      break;
+                    }
+
+                    // Find the best break point (last space that keeps line within maxWidth)
+                    let breakAt = -1;
+                    let lastSpace = -1;
+
+                    for (let i = 0; i < remaining.length; i++) {
+                      if (remaining[i] === ' ') lastSpace = i;
+                      const sub = remaining.substring(0, i + 1);
+                      if (ctx.measureText(sub).width > maxWidth) {
+                        // This character exceeds maxWidth
+                        if (lastSpace > 0) {
+                          // Break at the last space that fit
+                          breakAt = lastSpace;
+                        } else {
+                          // No space found — break mid-word (word-break: break-word)
+                          breakAt = Math.max(1, i);
+                        }
+                        break;
+                      }
+                    }
+
+                    if (breakAt <= 0) {
+                      // Entire text fits (shouldn't reach here, but safety)
+                      result.push(remaining);
+                      break;
+                    }
+
+                    result.push(remaining.substring(0, breakAt));
+                    remaining = remaining.substring(breakAt);
+                    // Skip the space at the break point if we broke at a space
+                    if (remaining.startsWith(' ')) remaining = remaining.substring(1);
+                  }
+                }
+
+                return result;
+              };
+
+              textDecos.forEach(td => {
+                tempCtx.save();
+
+                // Apply rotation transform if present
+                if (td.rotation) {
+                  const cx = td.rotCx * sx;
+                  const cy = td.rotCy * sy;
+                  tempCtx.translate(cx, cy);
+                  tempCtx.rotate((td.rotation * Math.PI) / 180);
+                  tempCtx.translate(-cx, -cy);
+                }
+
+                // Use uniform scale for text to avoid stretching
+                const scale = sx; // sx ≈ sy for same-aspect-ratio charts
+                const px = td.x * sx;
+                const py = td.y * sy;
+                const maxW = td.width * sx;
+                const fSize = td.fontSize * scale;
+                const lh = td.lineHeight * scale;
+
+                tempCtx.font = `${td.fontStyle} ${td.fontWeight} ${fSize}px ${td.fontFamily}`;
+                tempCtx.fillStyle = td.color;
+                tempCtx.textBaseline = 'top';
+                tempCtx.textAlign = 'left'; // We handle alignment manually for accurate measurement
+
+                // Clip to the foreignObject bounds (matching CSS overflow:hidden)
+                tempCtx.beginPath();
+                tempCtx.rect(px, py, maxW, td.height * sy);
+                tempCtx.clip();
+
+                // Wrap text with character-level breaking (matching CSS word-break: break-word)
+                const lines = wrapTextLines(tempCtx, td.text, maxW);
+
+                // Draw each line
+                // CSS half-leading: text is vertically centered within its line box.
+                // Add (lineHeight - fontSize) / 2 to match the gap CSS adds above the first line.
+                const halfLeading = (lh - fSize) / 2;
+                let currentY = py + halfLeading;
+                const hasUnderline = td.textDecoration.includes('underline');
+                const hasStrikethrough = td.textDecoration.includes('line-through');
+
+                for (const line of lines) {
+                  if (!line && line !== '') continue;
+
+                  // Calculate X position based on alignment
+                  let drawX = px;
+                  if (td.textAlign === 'center') {
+                    const lineW = tempCtx.measureText(line).width;
+                    drawX = px + (maxW - lineW) / 2;
+                  } else if (td.textAlign === 'right') {
+                    const lineW = tempCtx.measureText(line).width;
+                    drawX = px + maxW - lineW;
+                  }
+
+                  // Draw text
+                  if (line) {
+                    tempCtx.fillText(line, drawX, currentY);
+
+                    // Draw underline
+                    if (hasUnderline) {
+                      const lineW = tempCtx.measureText(line).width;
+                      const underlineY = currentY + fSize * 1.05;
+                      tempCtx.save();
+                      tempCtx.strokeStyle = td.color;
+                      tempCtx.lineWidth = Math.max(1, fSize / 16);
+                      tempCtx.beginPath();
+                      tempCtx.moveTo(drawX, underlineY);
+                      tempCtx.lineTo(drawX + lineW, underlineY);
+                      tempCtx.stroke();
+                      tempCtx.restore();
+                    }
+
+                    // Draw strikethrough
+                    if (hasStrikethrough) {
+                      const lineW = tempCtx.measureText(line).width;
+                      const strikeY = currentY + fSize * 0.55;
+                      tempCtx.save();
+                      tempCtx.strokeStyle = td.color;
+                      tempCtx.lineWidth = Math.max(1, fSize / 16);
+                      tempCtx.beginPath();
+                      tempCtx.moveTo(drawX, strikeY);
+                      tempCtx.lineTo(drawX + lineW, strikeY);
+                      tempCtx.stroke();
+                      tempCtx.restore();
+                    }
+                  }
+
+                  currentY += lh;
+                }
+
+                tempCtx.restore();
+              });
+            }
           }
         } catch (decorationError) {
           console.warn('Could not composite decoration shapes:', decorationError);

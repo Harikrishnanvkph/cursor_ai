@@ -237,7 +237,8 @@ export function createZone(
         style: {
           imageFit: 'cover',
           borderRadius: 8,
-          backgroundColor: '#1e293b',
+          bgType: 'transparent',
+          backgroundColor: 'transparent',
         } as ImageZoneStyle,
         placeholder: subConfig?.placeholder || 'contextual',
       } as any

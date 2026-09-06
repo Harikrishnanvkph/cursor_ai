@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react"
 import { useChartStore } from "@/lib/chart-store"
 import { useTemplateStore } from "@/lib/template-store"
+import { useDecorationStore } from "@/lib/stores/decoration-store"
 import { downloadChartAsHTML, filterChartDataForExport } from "@/lib/html-exporter"
 import {
     useChartConfig,
@@ -30,6 +31,10 @@ export function useChartExport(options?: {
     const getGlobalChartRef = () => useChartStore.getState().globalChartRef;
 
     const handleExport = useCallback(() => {
+        // Clear decoration selection before export so selection handles don't appear
+        useDecorationStore.getState().setSelectedShapeId(null);
+        useDecorationStore.getState().setSelectedShapeIds([]);
+
         if (!getGlobalChartRef()?.current) {
             console.error('Chart ref is not available');
             return;
@@ -118,6 +123,10 @@ export function useChartExport(options?: {
     }, [chartConfig, chartType, showImages, showLabels, fillArea, showBorder]);
 
     const handleExportJPEG = useCallback(() => {
+        // Clear decoration selection before export so selection handles don't appear
+        useDecorationStore.getState().setSelectedShapeId(null);
+        useDecorationStore.getState().setSelectedShapeIds([]);
+
         if (!getGlobalChartRef()?.current) return;
         const chartInstance = getGlobalChartRef()?.current;
         const bgConfig = getBackgroundConfig(chartConfig);

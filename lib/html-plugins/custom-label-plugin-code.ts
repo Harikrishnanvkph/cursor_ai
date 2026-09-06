@@ -112,60 +112,154 @@ const customLabelPlugin = {
               const outerRadius = element.outerRadius ?? Math.min(cArea.width, cArea.height) / 2;
               const r = outerRadius + offset;
               x = centerX + Math.cos(midAngle) * r;
-              y = transformY(centerY + Math.sin(midAngle) * r);
             } else {
-              x = element.x ?? 0;
-              y = Math.min(element.y ?? 0, element.base ?? 0) - offset;
+              const topLimit = (chart.chartArea?.top || 0) + 30;
+              const elemY = element.y ?? 0;
+              const elemX = element.x ?? 0;
+              const xShift = (pointIdx % 2 === 0 ? 1 : -1) * (offset * 0.6);
+              x = elemX + xShift;
+              y = elemY - offset < topLimit ? elemY + offset : elemY - offset;
             }
           }
         }
         
         if (x == null || y == null) {
+          // Measure exact text bounds to detect boundary overflow
+          ctx.save();
+          ctx.font = label.font || 'bold 14px Arial';
+          const textWidth = ctx.measureText(label.text || '').width;
+          const textHeight = parseInt(label.font || '14', 10) || 14;
+          ctx.restore();
+
+          const rightLimit = (chart.chartArea?.right || chart.width || 800) - 6;
+          const topLimit = (chart.chartArea?.top || 0) + 6;
+          const bottomLimit = (chart.chartArea?.bottom || chart.height || 600) - 6;
+
           // Anchor-based logic for center, top, bottom
-          if (chartType === 'bar' || chartType === 'horizontalBar') {
-            const isHorizontal = (chart.options.indexAxis === 'y');
+          if (chartType === 'bar' || chartType === 'horizontalBar' || chartType === 'bar3d' || chartType === 'horizontalBar3d') {
+            const isHorizontal = (chart.options.indexAxis === 'y') || chartType === 'horizontalBar' || chartType === 'horizontalBar3d';
+            const gap = 4;
             if (isHorizontal) {
+              const isFunnel = !!chart.options.plugins?.funnel?.enabled;
+              const leftEdge = Math.min(element.x ?? 0, element.base ?? 0);
+              const rightEdge = Math.max(element.x ?? 0, element.base ?? 0);
+              
               if (anchor === 'center') {
-                x = ((element.x ?? 0) + (element.base ?? 0)) / 2;
+                x = (leftEdge + rightEdge) / 2;
                 y = element.y ?? 0;
+                label.align = 'center';
+                label.textBaseline = 'middle';
               } else if (anchor === 'top') {
-                x = (element.x ?? 0) + 8;
+                const endEdge = isFunnel ? leftEdge : rightEdge;
+                if (label.shape && label.shape !== 'none') {
+                  const shapeW = shapeSize ?? 32;
+                  if (endEdge + shapeW + gap > rightLimit) {
+                    x = endEdge - shapeW / 2 - gap;
+                  } else {
+                    x = endEdge + shapeW / 2 + gap;
+                  }
+                  label.align = 'center';
+                } else {
+                  if (endEdge + textWidth + gap > rightLimit) {
+                    // Adjust internally inside the bar slice when space outside is insufficient
+                    x = Math.max(leftEdge + 6, endEdge - gap - 4);
+                    label.align = 'right';
+                  } else {
+                    x = endEdge + gap;
+                    label.align = 'left';
+                  }
+                }
                 y = element.y ?? 0;
+                label.textBaseline = 'middle';
               } else if (anchor === 'bottom') {
-                const barStart = Math.min(element.x ?? 0, element.base ?? 0);
-                x = barStart + 8;
+                const startEdge = isFunnel ? rightEdge : leftEdge;
+                x = startEdge + gap;
                 y = element.y ?? 0;
+                label.align = 'left';
+                label.textBaseline = 'middle';
               }
             } else {
+              const barTop = Math.min(element.y ?? 0, element.base ?? 0);
+              const barBottom = Math.max(element.y ?? 0, element.base ?? 0);
               if (anchor === 'center') {
                 x = element.x ?? 0;
-                y = ((element.y ?? 0) + (element.base ?? 0)) / 2;
+                y = (barTop + barBottom) / 2;
+                label.align = 'center';
+                label.textBaseline = 'middle';
               } else if (anchor === 'top') {
                 x = element.x ?? 0;
-                const barTop = Math.min(element.y ?? 0, element.base ?? 0);
-                y = barTop - 8;
+                if (label.shape && label.shape !== 'none') {
+                  const shapeH = shapeSize ?? 32;
+                  if (barTop - shapeH - gap < topLimit) {
+                    y = barTop + shapeH / 2 + gap;
+                  } else {
+                    y = barTop - shapeH / 2 - gap;
+                  }
+                  label.textBaseline = 'middle';
+                } else {
+                  if (barTop - textHeight - gap < topLimit) {
+                    // Adjust internally inside the bar slice top when top space is insufficient
+                    y = barTop + gap + 2;
+                    label.textBaseline = 'top';
+                  } else {
+                    y = barTop - gap;
+                    label.textBaseline = 'bottom';
+                  }
+                }
+                label.align = 'center';
               } else if (anchor === 'bottom') {
                 x = element.x ?? 0;
-                const barBottom = Math.max(element.y ?? 0, element.base ?? 0);
-                y = barBottom - 8;
+                y = barBottom - gap;
+                label.align = 'center';
+                label.textBaseline = 'bottom';
               }
             }
-          } else if (chartType === 'line' || chartType === 'area' || chartType === 'scatter' || chartType === 'bubble') {
+          } else if (chartType === 'line' || chartType === 'area' || chartType === 'scatter' || chartType === 'bubble' || chartType === 'radar') {
             x = element.x ?? 0;
-            if (anchor === 'center') {
-              y = element.y ?? 0;
-            } else if (anchor === 'top') {
-              y = (element.y ?? 0) - 12;
-            } else if (anchor === 'bottom') {
-              y = (element.y ?? 0) + 12;
+            const radius = getElementRadius(element);
+            const gap = 3;
+
+            if (label.shape && label.shape !== 'none') {
+              const halfH = (shapeSize ?? 32) / 2;
+              if (anchor === 'center') {
+                y = element.y ?? 0;
+              } else if (anchor === 'top') {
+                y = (element.y ?? 0) - radius - halfH - gap;
+              } else if (anchor === 'bottom') {
+                y = (element.y ?? 0) + radius + halfH + gap;
+              }
+              label.textBaseline = 'middle';
+            } else {
+              if (anchor === 'center') {
+                y = element.y ?? 0;
+                label.textBaseline = 'middle';
+              } else if (anchor === 'top') {
+                const targetY = (element.y ?? 0) - radius - gap;
+                if (targetY - textHeight < topLimit) {
+                  y = (element.y ?? 0) + radius + gap;
+                  label.textBaseline = 'top';
+                } else {
+                  y = targetY;
+                  label.textBaseline = 'bottom';
+                }
+              } else if (anchor === 'bottom') {
+                const targetY = (element.y ?? 0) + radius + gap;
+                if (targetY + textHeight > bottomLimit) {
+                  y = (element.y ?? 0) - radius - gap;
+                  label.textBaseline = 'bottom';
+                } else {
+                  y = targetY;
+                  label.textBaseline = 'top';
+                }
+              }
             }
           } else if (chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea') {
-            const chartArea = chart.chartArea;
-            const centerX = element.x ?? (chartArea.left + chartArea.width / 2);
-            const centerY = element.y ?? (chartArea.top + chartArea.height / 2);
+            const cArea = chart.chartArea;
+            const centerX = element.x ?? (cArea.left + cArea.width / 2);
+            const centerY = element.y ?? (cArea.top + cArea.height / 2);
             const midAngle = getMidAngle(chart, datasetIdx, pointIdx, element);
             const innerRadius = element.innerRadius ?? 0;
-            const outerRadius = element.outerRadius ?? Math.min(chartArea.width, chartArea.height) / 2;
+            const outerRadius = element.outerRadius ?? Math.min(cArea.width, cArea.height) / 2;
             if (anchor === 'center') {
               const r = innerRadius + (outerRadius - innerRadius) * 0.5;
               x = centerX + Math.cos(midAngle) * r;
@@ -178,15 +272,6 @@ const customLabelPlugin = {
               const r = innerRadius + (outerRadius - innerRadius) * 0.2;
               x = centerX + Math.cos(midAngle) * r;
               y = transformY(centerY + Math.sin(midAngle) * r);
-            }
-          } else if (chartType === 'radar') {
-            x = element.x ?? 0;
-            if (anchor === 'center') {
-              y = element.y ?? 0;
-            } else if (anchor === 'top') {
-              y = (element.y ?? 0) - 12;
-            } else if (anchor === 'bottom') {
-              y = (element.y ?? 0) + 12;
             }
           } else {
             x = element.x ?? 0;
@@ -375,8 +460,8 @@ const customLabelPlugin = {
         ctx.save();
         ctx.font = label.font || 'bold 14px Arial';
         ctx.fillStyle = label.color || '#222';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
+        ctx.textAlign = label.align || 'center';
+        ctx.textBaseline = label.textBaseline || 'middle';
         ctx.fillText(label.text, x, y);
         ctx.restore();
       });
@@ -385,6 +470,14 @@ const customLabelPlugin = {
 };
 
 // Helper functions
+function getElementRadius(element) {
+  if (!element) return 6;
+  if (typeof element.options?.radius === 'number' && element.options.radius > 0) return element.options.radius;
+  if (typeof element.options?.pointRadius === 'number' && element.options.pointRadius > 0) return element.options.pointRadius;
+  if (typeof element.size === 'number' && element.size > 0) return element.size / 2;
+  if (typeof element.radius === 'number' && element.radius > 0) return element.radius;
+  return 6;
+}
 function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -539,7 +632,7 @@ customLabelPlugin.afterInit = function(chart) {
     const y = e.clientY - rect.top;
     if (dragging && dragKey) {
       window.labelDragState[dragKey] = { x: x - offsetX, y: y - offsetY };
-      chart.update('none');
+      if (chart && !chart.isDestroyed && chart.ctx) { try { chart.update('none'); } catch(e){} }
     } else {
       // Hover effect
       const hit = getLabelAt(x, y);
@@ -586,7 +679,7 @@ customLabelPlugin.afterInit = function(chart) {
     const y = touch.clientY - rect.top;
     if (dragging && dragKey) {
       window.labelDragState[dragKey] = { x: x - offsetX, y: y - offsetY };
-      chart.update('none');
+      if (chart && !chart.isDestroyed && chart.ctx) { try { chart.update('none'); } catch(e){} }
       e.preventDefault();
     }
   }

@@ -168,7 +168,7 @@ const universalImagePlugin = {
         config.calloutY = y - window.imageDragState.dragOffsetY;
 
         // Redraw chart
-        chart.update("none");
+        if (chart && !chart.isDestroyed && chart.ctx) { try { chart.update("none"); } catch(e){} }
         event.preventDefault();
       } else {
         // Check if hovering over a callout
@@ -305,7 +305,7 @@ const universalImagePlugin = {
         config.calloutY = y - window.imageDragState.dragOffsetY;
 
         // Redraw chart
-        chart.update("none");
+        if (chart && !chart.isDestroyed && chart.ctx) { try { chart.update("none"); } catch(e){} }
         event.preventDefault();
       }
     };

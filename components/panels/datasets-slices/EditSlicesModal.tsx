@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, X, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, X, AlertTriangle, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface EditSlicesModalProps {
@@ -27,6 +27,12 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
   const [values, setValues] = useState<any[][]>([]);
   const [originalSliceCount, setOriginalSliceCount] = useState<number>(0);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
+
+  // Drag and drop state for rows
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [dropPosition, setDropPosition] = useState<'top' | 'bottom' | null>(null);
+  const [draggableIndex, setDraggableIndex] = useState<number | null>(null);
 
   // Filter datasets based on mode and selected group
   const getFilteredDatasets = (groupId: string) => {
@@ -187,16 +193,100 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
     setValues(newValues);
   };
 
-  const handleAddSlice = () => {
-    const newLabel = isCurrentGroupCoordinateChart ? `Point ${sliceLabels.length + 1}` : `Slice ${sliceLabels.length + 1}`;
-    setSliceLabels([...sliceLabels, newLabel]);
+  const handleReorderSlice = (fromIndex: number, toIndex: number, position: 'top' | 'bottom') => {
+    if (fromIndex === toIndex) return;
+
+    let targetIndex = position === 'bottom' ? toIndex + 1 : toIndex;
+    if (fromIndex < targetIndex) {
+      targetIndex -= 1;
+    }
+    targetIndex = Math.max(0, Math.min(sliceLabels.length - 1, targetIndex));
+    if (fromIndex === targetIndex) return;
+
+    setSliceLabels(prev => {
+      const copy = [...prev];
+      const [moved] = copy.splice(fromIndex, 1);
+      copy.splice(targetIndex, 0, moved);
+      return copy;
+    });
+
+    setValues(prev => {
+      const copy = [...prev];
+      const [moved] = copy.splice(fromIndex, 1);
+      copy.splice(targetIndex, 0, moved);
+      return copy;
+    });
+  };
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    try {
+      e.dataTransfer.setData('text/plain', String(index));
+    } catch (err) {}
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+
+    if (draggedIndex === null || draggedIndex === index) {
+      setDragOverIndex(null);
+      setDropPosition(null);
+      return;
+    }
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midpoint = rect.top + rect.height / 2;
+    const pos = e.clientY < midpoint ? 'top' : 'bottom';
+
+    setDragOverIndex(index);
+    setDropPosition(pos);
+  };
+
+  const handleDrop = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex !== null && dropPosition !== null) {
+      handleReorderSlice(draggedIndex, index, dropPosition);
+    }
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+    setDropPosition(null);
+    setDraggableIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+    setDropPosition(null);
+    setDraggableIndex(null);
+  };
+
+  const handleAddSlice = (insertAtIndex?: number) => {
+    const totalCount = sliceLabels.length + 1;
+    const newLabel = isCurrentGroupCoordinateChart ? `Point ${totalCount}` : `Slice ${totalCount}`;
 
     const newRow = datasets.map(() =>
       isCurrentGroupCoordinateChart
         ? { x: 0, y: 0, r: currentGroupChartType === 'bubble' ? 10 : undefined }
         : ""
     );
-    setValues([...values, newRow]);
+
+    if (typeof insertAtIndex === 'number' && insertAtIndex >= 0 && insertAtIndex <= sliceLabels.length) {
+      setSliceLabels(prev => {
+        const copy = [...prev];
+        copy.splice(insertAtIndex, 0, newLabel);
+        return copy;
+      });
+      setValues(prev => {
+        const copy = [...prev];
+        copy.splice(insertAtIndex, 0, newRow);
+        return copy;
+      });
+    } else {
+      setSliceLabels(prev => [...prev, newLabel]);
+      setValues(prev => [...prev, newRow]);
+    }
   };
 
   const handleRemoveSlice = (idx: number) => {
@@ -238,6 +328,8 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
       return (
         <div className="flex items-center gap-1.5">
           <Input
+            draggable={false}
+            onDragStart={e => e.stopPropagation()}
             type="number"
             value={val?.x ?? 0}
             onChange={e => handleValueChange(rowIdx, originalColIdx, 'x', e.target.value)}
@@ -245,6 +337,8 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
             placeholder="X"
           />
           <Input
+            draggable={false}
+            onDragStart={e => e.stopPropagation()}
             type="number"
             value={val?.y ?? 0}
             onChange={e => handleValueChange(rowIdx, originalColIdx, 'y', e.target.value)}
@@ -253,6 +347,8 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
           />
           {currentGroupChartType === 'bubble' && (
             <Input
+              draggable={false}
+              onDragStart={e => e.stopPropagation()}
               type="number"
               value={val?.r ?? 10}
               onChange={e => handleValueChange(rowIdx, originalColIdx, 'r', e.target.value)}
@@ -266,6 +362,8 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
 
     return (
       <Input
+        draggable={false}
+        onDragStart={e => e.stopPropagation()}
         type="number"
         value={val ?? ""}
         onChange={e => handleValueChange(rowIdx, originalColIdx, null, e.target.value)}
@@ -279,9 +377,9 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
   const numFilteredDatasets = filteredDatasets.length;
 
   // Grid layout must account for visible columns only
-  const gridTemplateColumns = `40px 160px repeat(${numFilteredDatasets}, ${columnWidth}) 40px`;
+  const gridTemplateColumns = `44px 160px repeat(${numFilteredDatasets}, ${columnWidth}) 60px`;
   // Min width calculation
-  const minWidth = 40 + 160 + (numFilteredDatasets * (isCurrentGroupCoordinateChart ? 220 : 140)) + 40;
+  const minWidth = 44 + 160 + (numFilteredDatasets * (isCurrentGroupCoordinateChart ? 220 : 140)) + 60;
 
   return (
     <>
@@ -362,7 +460,7 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
                 className="sticky top-0 z-10 grid gap-3 items-center px-4 py-2 bg-gray-50 border-b text-[11px] font-medium text-gray-500 uppercase tracking-wider"
                 style={{ gridTemplateColumns, minWidth: '100%' }}
               >
-                <div className="text-center">#</div>
+                <div className="text-center font-semibold">#</div>
                 <div>{isCurrentGroupCoordinateChart ? 'Point Name' : 'Slice Name'}</div>
                 {filteredDatasets.map((ds: any, i: number) => (
                   <div key={i} className="truncate px-1" title={chartMode === 'single' ? (ds.sourceTitle || ds.label) : (ds.label || ds.sourceTitle)}>
@@ -377,49 +475,85 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
 
               {/* Data Rows */}
               <div className="p-4 space-y-1.5 ">
-                {sliceLabels.map((label, rowIdx) => (
-                  <div
-                    key={rowIdx}
-                    className="grid gap-3 items-start py-2 px-0 border-b border-gray-100 last:border-0 hover:bg-gray-50/50 transition-colors rounded-sm"
-                    style={{ gridTemplateColumns, minWidth: '100%' }}
-                  >
-                    {/* Row Number */}
-                    <div className="flex items-center justify-center h-8 text-xs text-gray-400 font-mono">
-                      {rowIdx + 1}
-                    </div>
+                {sliceLabels.map((label, rowIdx) => {
+                  const isDragging = draggedIndex === rowIdx;
+                  const isDropTop = dragOverIndex === rowIdx && dropPosition === 'top';
+                  const isDropBottom = dragOverIndex === rowIdx && dropPosition === 'bottom';
 
-                    {/* Slice/Point Name */}
-                    <div className="pt-0.5">
-                      <Input
-                        value={label}
-                        onChange={e => handleLabelChange(rowIdx, e.target.value)}
-                        className="h-8 text-xs font-medium"
-                        placeholder={isCurrentGroupCoordinateChart ? "Point Name" : "Slice Name"}
-                      />
-                    </div>
-
-                    {/* Dataset Values - Map FILTERED datasets */}
-                    {filteredDatasets.map((ds: any, i: number) => (
-                      <div key={i} className="pt-0.5">
-                        {/* Use originalIndex to access values array which stores ALL data */}
-                        {renderDatasetInputs(rowIdx, ds.originalIndex, values[rowIdx]?.[ds.originalIndex])}
+                  return (
+                    <div
+                      key={rowIdx}
+                      draggable={draggableIndex === rowIdx}
+                      onDragStart={(e) => handleDragStart(e, rowIdx)}
+                      onDragOver={(e) => handleDragOver(e, rowIdx)}
+                      onDrop={(e) => handleDrop(e, rowIdx)}
+                      onDragEnd={handleDragEnd}
+                      className={cn(
+                        "relative grid gap-3 items-center py-1.5 px-0 border-b border-gray-100 last:border-0 hover:bg-gray-50/70 transition-colors rounded-sm group",
+                        isDragging ? "opacity-35 bg-blue-50/50" : "",
+                        isDropTop && "before:absolute before:top-0 before:left-0 before:right-0 before:h-0.5 before:bg-blue-500 before:rounded-full before:z-10",
+                        isDropBottom && "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-blue-500 after:rounded-full after:z-10"
+                      )}
+                      style={{ gridTemplateColumns, minWidth: '100%' }}
+                    >
+                      {/* Row Drag Handle */}
+                      <div className="flex items-center justify-center h-8 text-xs text-gray-400 font-mono">
+                        <button
+                          type="button"
+                          onMouseEnter={() => setDraggableIndex(rowIdx)}
+                          onMouseLeave={() => setDraggableIndex(null)}
+                          className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-600 p-1 rounded transition-colors"
+                          title="Drag to reorder"
+                        >
+                          <GripVertical className="w-3.5 h-3.5" />
+                        </button>
                       </div>
-                    ))}
 
-                    {/* Delete Button */}
-                    <div className="flex justify-center pt-0.5">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleRemoveSlice(rowIdx)}
-                        disabled={sliceLabels.length <= 1}
-                        className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full"
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
+                      {/* Slice/Point Name */}
+                      <div className="pt-0.5">
+                        <Input
+                          draggable={false}
+                          onDragStart={e => e.stopPropagation()}
+                          value={label}
+                          onChange={e => handleLabelChange(rowIdx, e.target.value)}
+                          className="h-8 text-xs font-medium"
+                          placeholder={isCurrentGroupCoordinateChart ? "Point Name" : "Slice Name"}
+                        />
+                      </div>
+
+                      {/* Dataset Values - Map FILTERED datasets */}
+                      {filteredDatasets.map((ds: any, i: number) => (
+                        <div key={i} className="pt-0.5">
+                          {/* Use originalIndex to access values array which stores ALL data */}
+                          {renderDatasetInputs(rowIdx, ds.originalIndex, values[rowIdx]?.[ds.originalIndex])}
+                        </div>
+                      ))}
+
+                      {/* Row Actions: Insert below & Delete */}
+                      <div className="flex items-center justify-center pt-0.5 gap-0.5">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleAddSlice(rowIdx + 1)}
+                          className="h-7 w-7 text-gray-300 opacity-0 group-hover:opacity-100 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all"
+                          title="Insert slice below"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemoveSlice(rowIdx)}
+                          disabled={sliceLabels.length <= 1}
+                          className="h-7 w-7 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                          title="Remove slice"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -429,7 +563,7 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
             <div className="flex-1 flex justify-start">
               <Button
                 variant="outline"
-                onClick={handleAddSlice}
+                onClick={() => handleAddSlice()}
                 className="gap-2 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300"
               >
                 <Plus className="w-4 h-4" />

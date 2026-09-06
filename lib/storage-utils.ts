@@ -375,14 +375,13 @@ export async function saveChartToBackend(): Promise<boolean> {
       return false;
     }
 
-    // Get current chart data from localStorage
-    const chartData = getUserStorageValue<{ state?: { chartType?: string; chartData?: unknown; chartConfig?: Record<string, unknown> } } | null>('chart-store-with-sync', null);
-    if (!chartData || !chartData.state) {
+    // Get current chart data from useChartStore
+    const { useChartStore } = await import('./chart-store');
+    const { chartType, chartData: chartDataValue, chartConfig } = useChartStore.getState();
+    if (!chartType || !chartDataValue) {
       console.log('No chart data to save');
       return false;
     }
-
-    const { chartType, chartData: chartDataValue, chartConfig } = chartData.state;
 
     if (!chartType) {
       console.log('No chart type found');

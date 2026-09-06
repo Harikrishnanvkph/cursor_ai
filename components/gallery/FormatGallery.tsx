@@ -13,6 +13,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
+import { getStandardAspectRatio } from "@/lib/utils/dimension-utils"
 
 const FORMAT_PAGE_SIZE = 8
 
@@ -183,7 +184,10 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
       result = result.filter(f => f.category === filters.category)
     }
     if (filters.dimension) {
-      result = result.filter(f => f.dimensions.aspect === filters.dimension)
+      result = result.filter(f => {
+        const stdAspect = getStandardAspectRatio(f.dimensions?.width, f.dimensions?.height, f.dimensions?.aspect)
+        return stdAspect === filters.dimension || f.dimensions?.aspect === filters.dimension
+      })
     }
     if (searchQuery) {
       const q = searchQuery.toLowerCase()

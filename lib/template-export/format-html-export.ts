@@ -7,7 +7,7 @@ import { generateDecorationsSVGAsync, generateDecorationsCSS } from "./decoratio
 import { getPatternCSS } from "@/lib/utils"
 import { useChartStore } from "@/lib/chart-store"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
-import { fetchImageAsBase64, embedImagesInHtmlString, generateGoogleFontLinks } from "@/lib/utils/html-export-utils"
+import { fetchImageAsBase64, embedImagesInHtmlString, generateGoogleFontLinks, extractFontFamiliesFromHtml } from "@/lib/utils/html-export-utils"
 
 // ═══════════════════════════════════════════════════════
 // Format → HTML Export
@@ -117,7 +117,16 @@ export async function exportFormatAsHTML(
     )
 
     // ── Collect custom fonts ─────────────────────────────
-    const fontFamilies = processedRenderedZones.map(rz => (rz.zone as any).style?.fontFamily || (rz.zone as any).style?.valueFontFamily)
+    const fontFamilies: string[] = []
+    for (const rz of processedRenderedZones) {
+        const f1 = (rz.zone as any).style?.fontFamily
+        const f2 = (rz.zone as any).style?.valueFontFamily
+        if (f1) fontFamilies.push(f1)
+        if (f2) fontFamilies.push(f2)
+        if (rz.resolvedContent) {
+            fontFamilies.push(...extractFontFamiliesFromHtml(rz.resolvedContent))
+        }
+    }
     const googleFontLinks = generateGoogleFontLinks(fontFamilies)
 
     // ── Sort zones by rendering order ──────────────────
@@ -156,6 +165,9 @@ export async function exportFormatAsHTML(
             min-height: 100vh;
             padding: 40px;
             margin: 0;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
         }
 
         .format-container {
@@ -171,6 +183,9 @@ export async function exportFormatAsHTML(
             border-radius: 0px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
             flex-shrink: 0;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
         }
         
         .format-zone {
@@ -182,6 +197,7 @@ export async function exportFormatAsHTML(
             word-break: break-word;
             box-sizing: border-box;
             z-index: 30;
+            -webkit-font-smoothing: antialiased;
         }
         
         .format-zone-text p,
@@ -191,9 +207,15 @@ export async function exportFormatAsHTML(
         .format-zone-text h4,
         .format-zone-text h5,
         .format-zone-text h6 {
-            margin: 0;
-            padding: 0;
+            margin: 0 !important;
+            padding: 0 !important;
             text-align: inherit;
+            line-height: inherit;
+            font-family: inherit;
+        }
+        
+        .format-zone-text p:empty {
+            height: 1em;
         }
         
         .format-zone-text img {

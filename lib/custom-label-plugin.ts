@@ -1,5 +1,14 @@
 import { Chart, Plugin } from 'chart.js';
 
+function safeChartUpdate(chart: any, mode: string = 'none') {
+  if (!chart || chart.isDestroyed || !chart.ctx || !chart.canvas) return;
+  try {
+    chart.update(mode);
+  } catch (err) {
+    console.warn('[CustomLabelPlugin] Suppressed chart.update layout error:', err);
+  }
+}
+
 export type LabelAnchor = 'center' | 'top' | 'bottom' | 'callout';
 export type LabelShape = 'rectangle' | 'circle' | 'star' | 'none';
 
@@ -7,6 +16,8 @@ export interface CustomLabel {
   text: string;
   anchor?: LabelAnchor;
   shape?: LabelShape;
+  textBaseline?: CanvasTextBaseline;
+  align?: CanvasTextAlign;
   x?: number; // absolute x (overrides anchor)
   y?: number; // absolute y (overrides anchor)
   color?: string;
@@ -103,6 +114,91 @@ function getMidAngle(chart: any, datasetIdx: number, pointIdx: number, element: 
   return (startAngle + endAngle) / 2;
 }
 
+function getElementRadius(element: any): number {
+  if (!element) return 6;
+  if (typeof element.options?.radius === 'number' && element.options.radius > 0) {
+    return element.options.radius;
+  }
+  if (typeof element.options?.pointRadius === 'number' && element.options.pointRadius > 0) {
+    return element.options.pointRadius;
+  }
+  if (typeof element.size === 'number' && element.size > 0) {
+    return element.size / 2;
+  }
+  if (typeof element.radius === 'number' && element.radius > 0) {
+    return element.radius;
+  }
+  return 6;
+}
+
+function getLabelFontSize(label: any): number {
+  if (typeof label?.font === 'string') {
+    const match = label.font.match(/(\d+)px/);
+    if (match && match[1]) return parseInt(match[1], 10);
+  }
+  return 14;
+}
+
+// Unified callout position calculator so visual rendering and hit-testing match 100%
+function getCalloutDefaultPos(
+  chart: any,
+  meta: any,
+  element: any,
+  datasetIdx: number,
+  pointIdx: number,
+  label: any,
+  shapeSize: number,
+  transformY: (y: number) => number
+): { x: number; y: number } {
+  const globalType = (chart.config as any).type as string;
+  const chartType = meta?.type || globalType;
+  const offset = label.calloutOffset || shapeSize * 1.5;
+  const topLimit = (chart.chartArea?.top || 0) + 25;
+
+  if (chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea') {
+    const chartArea = chart.chartArea;
+    const centerX = element.x ?? (chartArea.left + chartArea.width / 2);
+    const centerY = element.y ?? (chartArea.top + chartArea.height / 2);
+    const midAngle = getMidAngle(chart, datasetIdx, pointIdx, element);
+    const outerRadius = element.outerRadius ?? Math.min(chartArea.width, chartArea.height) / 2;
+    const r = outerRadius + offset;
+    return {
+      x: centerX + Math.cos(midAngle) * r,
+      y: transformY(centerY + Math.sin(midAngle) * r)
+    };
+  } else if (chartType === 'bar' || chartType === 'horizontalBar' || chartType === 'bar3d' || chartType === 'horizontalBar3d') {
+    const isHorizontal = (chart.options.indexAxis === 'y') || chartType === 'horizontalBar' || chartType === 'horizontalBar3d';
+    if (isHorizontal) {
+      const rightEdge = Math.max(element.x ?? 0, element.base ?? 0);
+      const elemY = element.y ?? 0;
+      return {
+        x: rightEdge + offset,
+        y: elemY - offset < topLimit ? elemY + offset : elemY - offset
+      };
+    } else {
+      const barTop = Math.min(element.y ?? 0, element.base ?? 0);
+      return {
+        x: (element.x ?? 0) + offset,
+        y: barTop - offset < topLimit ? barTop + offset : barTop - offset
+      };
+    }
+  } else if (chartType === 'line' || chartType === 'area' || chartType === 'scatter' || chartType === 'bubble' || chartType === 'radar') {
+    const elemY = element.y ?? 0;
+    const elemX = element.x ?? 0;
+    const radius = getElementRadius(element);
+    const xShift = (pointIdx % 2 === 0 ? 1 : -1) * (offset * 0.6);
+    const targetY = elemY - radius;
+    return {
+      x: elemX + xShift,
+      y: targetY - offset < topLimit ? targetY + offset : targetY - offset
+    };
+  }
+  return {
+    x: (element.x ?? 0) + offset,
+    y: (element.y ?? 0) - offset
+  };
+}
+
 export const customLabelPlugin: Plugin = {
   id: 'customLabels',
   afterDraw(chart) {
@@ -164,148 +260,175 @@ export const customLabelPlugin: Plugin = {
             y = dragState[dragKey].y;
             isDraggedPosition = true;
           } else if (x == null || y == null) {
-            // Default callout position per chart type
-            const ct = (chart.config as any).type as string;
-            const offset = label.calloutOffset || shapeSize * 1.5;
-            if (ct === 'pie' || ct === 'doughnut' || ct === 'polarArea') {
-              const chartArea = chart.chartArea;
-              const centerX = element.x ?? (chartArea.left + chartArea.width / 2);
-              const centerY = element.y ?? (chartArea.top + chartArea.height / 2);
-              const midAngle = getMidAngle(chart, datasetIdx, pointIdx, element);
-              const outerRadius = element.outerRadius ?? Math.min(chartArea.width, chartArea.height) / 2;
-              const r = outerRadius + offset;
-              x = centerX + Math.cos(midAngle) * r;
-              y = transformY(centerY + Math.sin(midAngle) * r);
-            } else {
-              x = (element.x ?? 0) + offset;
-              y = Math.min(element.y ?? 0, element.base ?? 0) - offset;
-            }
+            const defaultPos = getCalloutDefaultPos(chart, meta, element, datasetIdx, pointIdx, label, shapeSize, transformY);
+            x = defaultPos.x;
+            y = defaultPos.y;
           }
         }
         // If not absolute, calculate based on anchor
         if (x == null || y == null) {
-          // Use dataset type if available (for mixed charts), otherwise global type
-          const globalType = (chart.config as any).type as string;
-          const chartType = meta.type || globalType;
+          if (anchor === 'callout') {
+            const defaultPos = getCalloutDefaultPos(chart, meta, element, datasetIdx, pointIdx, label, shapeSize, transformY);
+            x = defaultPos.x;
+            y = defaultPos.y;
+          } else {
+            // Measure exact text bounds to detect boundary overflow
+            ctx.save();
+            ctx.font = label.font || 'bold 14px Arial';
+            const textWidth = ctx.measureText(label.text || '').width;
+            const textHeight = getLabelFontSize(label);
+            ctx.restore();
 
-          if (chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea') {
-            // Pie/doughnut
-            const chartArea = chart.chartArea;
-            const centerX = element.x ?? (chartArea.left + chartArea.width / 2);
-            const centerY = element.y ?? (chartArea.top + chartArea.height / 2);
-            const midAngle = getMidAngle(chart, datasetIdx, pointIdx, element);
-            const innerRadius = element.innerRadius ?? 0;
-            const outerRadius = element.outerRadius ?? Math.min(chartArea.width, chartArea.height) / 2;
-            if (anchor === 'center') {
-              const r = innerRadius + (outerRadius - innerRadius) * 0.5;
-              x = centerX + Math.cos(midAngle) * r;
-              y = transformY(centerY + Math.sin(midAngle) * r);
-            } else if (anchor === 'top') {
-              const r = outerRadius + shapeSize * 0.7;
-              x = centerX + Math.cos(midAngle) * r;
-              y = transformY(centerY + Math.sin(midAngle) * r);
-            } else if (anchor === 'bottom') {
-              const r = innerRadius + (outerRadius - innerRadius) * 0.2;
-              x = centerX + Math.cos(midAngle) * r;
-              y = transformY(centerY + Math.sin(midAngle) * r);
-            } else if (anchor === 'callout') {
-              const offset = label.calloutOffset || shapeSize * 1.5;
-              const r = outerRadius + offset;
-              x = centerX + Math.cos(midAngle) * r;
-              y = transformY(centerY + Math.sin(midAngle) * r);
-            }
-          } else if (chartType === 'bar' || chartType === 'horizontalBar') {
-            const isHorizontal = (chart.options.indexAxis === 'y');
-            if (isHorizontal) {
-              const isFunnel = !!(chart.options.plugins as any)?.funnel?.enabled;
-              const leftEdge = Math.min(element.x ?? 0, element.base ?? 0);
-              const rightEdge = Math.max(element.x ?? 0, element.base ?? 0);
-              
+            const rightLimit = (chart.chartArea?.right || chart.width || 800) - 6;
+            const topLimit = (chart.chartArea?.top || 0) + 6;
+            const bottomLimit = (chart.chartArea?.bottom || chart.height || 600) - 6;
+
+            if (chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea') {
+              // Pie/doughnut
+              const chartArea = chart.chartArea;
+              const centerX = element.x ?? (chartArea.left + chartArea.width / 2);
+              const centerY = element.y ?? (chartArea.top + chartArea.height / 2);
+              const midAngle = getMidAngle(chart, datasetIdx, pointIdx, element);
+              const innerRadius = element.innerRadius ?? 0;
+              const outerRadius = element.outerRadius ?? Math.min(chartArea.width, chartArea.height) / 2;
               if (anchor === 'center') {
-                // Center of the bar
-                x = (leftEdge + rightEdge) / 2;
-                y = element.y ?? 0;
+                const r = innerRadius + (outerRadius - innerRadius) * 0.5;
+                x = centerX + Math.cos(midAngle) * r;
+                y = transformY(centerY + Math.sin(midAngle) * r);
               } else if (anchor === 'top') {
-                if (isFunnel) {
-                  // Funnel: Top is the left end inside the area. We align 'left' later.
-                  x = leftEdge + 8;
-                } else {
-                  // Normal: Right end of the bar (outside)
-                  x = rightEdge + 8;
-                }
-                y = element.y ?? 0;
+                const r = outerRadius + shapeSize * 0.7;
+                x = centerX + Math.cos(midAngle) * r;
+                y = transformY(centerY + Math.sin(midAngle) * r);
               } else if (anchor === 'bottom') {
-                if (isFunnel) {
-                  // Funnel: Bottom is the right end inside the area. We align 'right' later.
-                  x = rightEdge - 8;
-                } else {
-                  // Normal: Inside the left end of the bar
-                  x = leftEdge + 8;
-                }
-                y = element.y ?? 0;
-              } else if (anchor === 'callout') {
-                const offset = label.calloutOffset || shapeSize * 1.5;
-                if (isFunnel) {
-                  x = rightEdge + offset;
+                const r = innerRadius + (outerRadius - innerRadius) * 0.2;
+                x = centerX + Math.cos(midAngle) * r;
+                y = transformY(centerY + Math.sin(midAngle) * r);
+              }
+            } else if (chartType === 'bar' || chartType === 'horizontalBar' || chartType === 'bar3d' || chartType === 'horizontalBar3d') {
+              const isHorizontal = (chart.options.indexAxis === 'y') || chartType === 'horizontalBar' || chartType === 'horizontalBar3d';
+              const gap = 4;
+              if (isHorizontal) {
+                const isFunnel = !!(chart.options.plugins as any)?.funnel?.enabled;
+                const leftEdge = Math.min(element.x ?? 0, element.base ?? 0);
+                const rightEdge = Math.max(element.x ?? 0, element.base ?? 0);
+                
+                if (anchor === 'center') {
+                  x = (leftEdge + rightEdge) / 2;
                   y = element.y ?? 0;
-                } else {
-                  x = rightEdge + offset;
-                  y = (element.y ?? 0) - offset;
+                  label.align = 'center';
+                  label.textBaseline = 'middle';
+                } else if (anchor === 'top') {
+                  const endEdge = isFunnel ? leftEdge : rightEdge;
+                  if (label.shape && label.shape !== 'none') {
+                    const shapeW = opts.shapeSize ?? 32;
+                    if (endEdge + shapeW + gap > rightLimit) {
+                      x = endEdge - shapeW / 2 - gap;
+                    } else {
+                      x = endEdge + shapeW / 2 + gap;
+                    }
+                    label.align = 'center';
+                  } else {
+                    if (endEdge + textWidth + gap > rightLimit) {
+                      // Adjust internally inside the bar slice when space outside is insufficient
+                      x = Math.max(leftEdge + 6, endEdge - gap - 4);
+                      label.align = 'right';
+                    } else {
+                      x = endEdge + gap;
+                      label.align = 'left';
+                    }
+                  }
+                  y = element.y ?? 0;
+                  label.textBaseline = 'middle';
+                } else if (anchor === 'bottom') {
+                  const startEdge = isFunnel ? rightEdge : leftEdge;
+                  x = startEdge + gap;
+                  y = element.y ?? 0;
+                  label.align = 'left';
+                  label.textBaseline = 'middle';
+                }
+              } else {
+                const barTop = Math.min(element.y ?? 0, element.base ?? 0);
+                const barBottom = Math.max(element.y ?? 0, element.base ?? 0);
+                if (anchor === 'center') {
+                  x = element.x ?? 0;
+                  y = (barTop + barBottom) / 2;
+                  label.align = 'center';
+                  label.textBaseline = 'middle';
+                } else if (anchor === 'top') {
+                  x = element.x ?? 0;
+                  if (label.shape && label.shape !== 'none') {
+                    const shapeH = opts.shapeSize ?? 32;
+                    if (barTop - shapeH - gap < topLimit) {
+                      y = barTop + shapeH / 2 + gap;
+                    } else {
+                      y = barTop - shapeH / 2 - gap;
+                    }
+                    label.textBaseline = 'middle';
+                  } else {
+                    if (barTop - textHeight - gap < topLimit) {
+                      // Adjust internally inside the bar slice top when top space is insufficient
+                      y = barTop + gap + 2;
+                      label.textBaseline = 'top';
+                    } else {
+                      y = barTop - gap;
+                      label.textBaseline = 'bottom';
+                    }
+                  }
+                  label.align = 'center';
+                } else if (anchor === 'bottom') {
+                  x = element.x ?? 0;
+                  y = barBottom - gap;
+                  label.align = 'center';
+                  label.textBaseline = 'bottom';
+                }
+              }
+            } else if (chartType === 'line' || chartType === 'area' || chartType === 'scatter' || chartType === 'bubble' || chartType === 'radar') {
+              // Line, area, scatter, bubble, radar
+              x = element.x ?? 0;
+              const radius = getElementRadius(element);
+              const gap = 3;
+
+              if (label.shape && label.shape !== 'none') {
+                const halfH = (opts.shapeSize ?? 32) / 2;
+                if (anchor === 'center') {
+                  y = element.y ?? 0;
+                } else if (anchor === 'top') {
+                  y = (element.y ?? 0) - radius - halfH - gap;
+                } else if (anchor === 'bottom') {
+                  y = (element.y ?? 0) + radius + halfH + gap;
+                }
+                label.textBaseline = 'middle';
+              } else {
+                if (anchor === 'center') {
+                  y = element.y ?? 0;
+                  label.textBaseline = 'middle';
+                } else if (anchor === 'top') {
+                  const targetY = (element.y ?? 0) - radius - gap;
+                  if (targetY - textHeight < topLimit) {
+                    // Auto adjust below bubble if top boundary overflows
+                    y = (element.y ?? 0) + radius + gap;
+                    label.textBaseline = 'top';
+                  } else {
+                    y = targetY;
+                    label.textBaseline = 'bottom';
+                  }
+                } else if (anchor === 'bottom') {
+                  const targetY = (element.y ?? 0) + radius + gap;
+                  if (targetY + textHeight > bottomLimit) {
+                    // Auto adjust above bubble if bottom boundary overflows
+                    y = (element.y ?? 0) - radius - gap;
+                    label.textBaseline = 'bottom';
+                  } else {
+                    y = targetY;
+                    label.textBaseline = 'top';
+                  }
                 }
               }
             } else {
-              if (anchor === 'center') {
-                x = element.x ?? 0;
-                // Center of the bar: halfway between top (element.y) and base (element.base)
-                y = ((element.y ?? 0) + (element.base ?? 0)) / 2;
-              } else if (anchor === 'top') {
-                x = element.x ?? 0;
-                // Visually top of the vertical bar
-                const barTop = Math.min(element.y ?? 0, element.base ?? 0);
-                y = barTop - 8;
-              } else if (anchor === 'bottom') {
-                x = element.x ?? 0;
-                // Visually bottom of the vertical bar
-                const barBottom = Math.max(element.y ?? 0, element.base ?? 0);
-                y = barBottom - 8;
-              } else if (anchor === 'callout') {
-                const offset = label.calloutOffset || shapeSize * 1.5;
-                x = (element.x ?? 0) + offset;
-                y = Math.min(element.y ?? 0, element.base ?? 0) - offset;
-              }
-            }
-          } else if (chartType === 'line' || chartType === 'area' || chartType === 'scatter' || chartType === 'bubble') {
-            // Line, area, scatter, bubble
-            x = element.x ?? 0;
-            if (anchor === 'center') {
+              // Fallback
+              x = element.x ?? 0;
               y = element.y ?? 0;
-            } else if (anchor === 'top') {
-              y = (element.y ?? 0) - 12;
-            } else if (anchor === 'bottom') {
-              y = (element.y ?? 0) + 12;
-            } else if (anchor === 'callout') {
-              const offset = label.calloutOffset || shapeSize * 1.5;
-              x = (element.x ?? 0) + offset;
-              y = (element.y ?? 0) - offset;
             }
-          } else if (chartType === 'radar') {
-            // Radar chart
-            x = element.x ?? 0;
-            if (anchor === 'center') {
-              y = element.y ?? 0;
-            } else if (anchor === 'top') {
-              y = (element.y ?? 0) - 12;
-            } else if (anchor === 'bottom') {
-              y = (element.y ?? 0) + 12;
-            } else if (anchor === 'callout') {
-              const offset = label.calloutOffset || shapeSize * 1.5;
-              x = (element.x ?? 0) + offset;
-              y = (element.y ?? 0) - offset;
-            }
-          } else {
-            // Fallback
-            x = element.x ?? 0;
-            y = element.y ?? 0;
           }
         }
 
@@ -516,7 +639,7 @@ export const customLabelPlugin: Plugin = {
         ctx.font = label.font || 'bold 14px Arial';
         ctx.fillStyle = label.color || '#222';
         
-        let align: CanvasTextAlign = 'center';
+        let align: CanvasTextAlign = label.align || 'center';
         const isFunnelCheck = !!(chart.options.plugins as any)?.funnel?.enabled;
         const isHoriz = (chart.options.indexAxis === 'y');
         if (isFunnelCheck && isHoriz && !label.x) { // Only if not absolutely dragged
@@ -524,11 +647,23 @@ export const customLabelPlugin: Plugin = {
           if (label.anchor === 'bottom') align = 'right';
         }
         ctx.textAlign = align;
-        ctx.textBaseline = 'middle';
+        ctx.textBaseline = label.textBaseline || 'middle';
         ctx.fillText(label.text, x ?? 0, y ?? 0);
         ctx.restore();
       });
     });
+  },
+  beforeUpdate(chart) {
+    // Reset drag state if chart type or orientation changes so labels recalculate naturally
+    const currentTypeKey = `${(chart.config as any).type}_${chart.options.indexAxis || 'x'}`;
+    const lastTypeKey = (chart as any)._lastChartTypeKey;
+    if (lastTypeKey && lastTypeKey !== currentTypeKey) {
+      const dragState = dragStateMap.get(chart);
+      if (dragState) {
+        Object.keys(dragState).forEach(k => delete dragState[k]);
+      }
+    }
+    (chart as any)._lastChartTypeKey = currentTypeKey;
   },
   afterInit(chart) {
     // Setup drag for callout labels
@@ -554,6 +689,8 @@ export const customLabelPlugin: Plugin = {
       const opts: CustomLabelPluginOptions | undefined = (chart.options.plugins as any)?.customLabels;
       if (!opts || !opts.labels) return null;
       const shapeSize = opts.shapeSize ?? 32;
+      const ctx = chart.ctx;
+
       for (let datasetIdx = 0; datasetIdx < opts.labels.length; ++datasetIdx) {
         const arr = opts.labels[datasetIdx];
         for (let pointIdx = 0; pointIdx < arr.length; ++pointIdx) {
@@ -566,29 +703,29 @@ export const customLabelPlugin: Plugin = {
             ly = dragState[key].y;
           } else {
             const meta = chart.getDatasetMeta(datasetIdx);
+            if (!meta || !meta.data || !meta.data[pointIdx]) continue;
             const element: any = meta.data[pointIdx];
-            const offset = label.calloutOffset || shapeSize * 1.5;
-            const chartType = (chart.config as any).type as string;
-            if (chartType === 'pie' || chartType === 'doughnut' || chartType === 'polarArea') {
-              const chartArea = chart.chartArea;
-              const centerX = element.x ?? (chartArea.left + chartArea.width / 2);
-              const centerY = element.y ?? (chartArea.top + chartArea.height / 2);
-              const midAngle = getMidAngle(chart, datasetIdx, pointIdx, element);
-              const outerRadius = element.outerRadius ?? Math.min(chartArea.width, chartArea.height) / 2;
-              const r = outerRadius + offset;
-              lx = centerX + Math.cos(midAngle) * r;
-              ly = transformY(centerY + Math.sin(midAngle) * r);
-            } else {
-              lx = (element.x ?? 0) + offset;
-              ly = (element.y ?? 0) - offset;
-            }
-            // Apply the same boundary clamping as rendering so hit-test matches visual position
-            const clamped = clampToCanvas(chart, lx, ly, label);
-            lx = clamped.x;
-            ly = clamped.y;
+            const defaultPos = getCalloutDefaultPos(chart, meta, element, datasetIdx, pointIdx, label, shapeSize, transformY);
+            lx = defaultPos.x;
+            ly = defaultPos.y;
           }
-          // Hit test (circle)
-          if (Math.hypot(x - lx, y - ly) < shapeSize / 1.5) {
+          // Apply the same boundary clamping as rendering so hit-test matches visual position
+          const clamped = clampToCanvas(chart, lx, ly, label);
+          lx = clamped.x;
+          ly = clamped.y;
+
+          // Measure text bounding box for generous hit testing
+          ctx.save();
+          ctx.font = label.font || 'bold 14px Arial';
+          const textWidth = ctx.measureText(label.text || '').width;
+          const textHeight = parseInt(label.font || '14', 10) || 14;
+          ctx.restore();
+          const padding = label.padding ?? 6;
+          const halfW = Math.max(shapeSize / 1.5, (textWidth / 2) + padding + 8);
+          const halfH = Math.max(shapeSize / 1.5, (textHeight / 2) + padding + 8);
+
+          // Generous hit box test
+          if (x >= lx - halfW && x <= lx + halfW && y >= ly - halfH && y <= ly + halfH) {
             return { datasetIdx, pointIdx, lx, ly, key };
           }
         }
@@ -619,7 +756,7 @@ export const customLabelPlugin: Plugin = {
       const y = (e.clientY - rect.top) * scaleY;
       if (dragging && dragKey) {
         dragState[dragKey] = { x: x - offsetX, y: y - offsetY };
-        chart.update('none');
+        safeChartUpdate(chart, 'none');
       } else {
         // Hover effect
         const hit = getLabelAt(x, y);
@@ -669,7 +806,7 @@ export const customLabelPlugin: Plugin = {
       const y = (touch.clientY - rect.top) * scaleY;
       if (dragging && dragKey) {
         dragState[dragKey] = { x: x - offsetX, y: y - offsetY };
-        chart.update('none');
+        safeChartUpdate(chart, 'none');
         e.preventDefault();
       }
     }

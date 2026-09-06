@@ -38,9 +38,9 @@ export function LabelsPanel({ mode = 'labels' }: LabelsPanelProps) {
     const isSingleMode = chartMode === 'single';
     const applyToAll = isAllDatasets;
 
-    // Slice-level targeting (single mode only)
+    // Slice-level targeting
     const { settingsSliceIndex } = useUIStore()
-    const isSliceMode = isSingleMode && settingsSliceIndex !== null
+    const isSliceMode = settingsSliceIndex !== null
     const activeDatasetIndex = useChartStore(s => s.activeDatasetIndex)
 
     // Helper to update customLabelsConfig in chartConfig
@@ -167,9 +167,6 @@ export function LabelsPanel({ mode = 'labels' }: LabelsPanelProps) {
 
     return (
         <div className="space-y-4">
-            {/* Slice Filter for single mode */}
-            {isSingleMode && <SliceSettingsFilter />}
-
             {mode === 'styling' ? (
                 /* ==================== STYLING TAB CONTENT ==================== */
                 <StylingTab

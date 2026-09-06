@@ -171,19 +171,19 @@ function applyStyleToggle(state: any, toggleFn: keyof typeof ChartStyleService) 
     }
   }
 
-  // 4. If it updated chartConfig, route it per-chart
+  // 4. If it updated chartConfig, route it per-chart (deep clone to prevent shared references)
   if (result.chartConfig) {
     updates.chartConfig = result.chartConfig; // update mirror
 
     if (state.chartMode === 'single') {
       const newDatasets = (result.chartData || state.chartData).datasets.map((ds: any, i: number) =>
-        i === state.activeDatasetIndex ? { ...ds, chartConfig: result.chartConfig } : ds
+        i === state.activeDatasetIndex ? { ...ds, chartConfig: JSON.parse(JSON.stringify(result.chartConfig)) } : ds
       );
       updates.chartData = { ...(result.chartData || state.chartData), datasets: newDatasets };
       updates.singleModeData = updates.chartData;
     } else {
       updates.groups = state.groups.map((g: any) =>
-        g.id === state.activeGroupId ? { ...g, chartConfig: result.chartConfig } : g
+        g.id === state.activeGroupId ? { ...g, chartConfig: JSON.parse(JSON.stringify(result.chartConfig)) } : g
       );
     }
   }
@@ -271,18 +271,24 @@ export const useChartStore = create<ChartStore>()(
       // Write config to the active chart (dataset or group) AND the global mirror
       updateChartConfig: (config) => set((state) => {
         if (state.chartMode === 'single') {
+          const clonedConfig = JSON.parse(JSON.stringify(config));
           const newDatasets = state.chartData.datasets.map((ds, i) =>
-            i === state.activeDatasetIndex ? { ...ds, chartConfig: config } : ds
+            i === state.activeDatasetIndex ? { ...ds, chartConfig: clonedConfig } : ds
           );
           const newChartData = { ...state.chartData, datasets: newDatasets };
           const modeUpdate = { singleModeData: newChartData };
           return { chartConfig: config, chartData: newChartData, ...modeUpdate };
         } else {
-          // Grouped mode: write to the active group's chartConfig
+          // Grouped mode: write to the active group's chartConfig AND sync datasets belonging to this group
+          // IMPORTANT: Each entity gets its own independent deep clone to prevent shared references
           const newGroups = state.groups.map(g =>
-            g.id === state.activeGroupId ? { ...g, chartConfig: config } : g
+            g.id === state.activeGroupId ? { ...g, chartConfig: JSON.parse(JSON.stringify(config)) } : g
           );
-          return { chartConfig: config, groups: newGroups };
+          const newDatasets = state.chartData.datasets.map((ds: any) =>
+            ds.groupId === state.activeGroupId ? { ...ds, chartConfig: JSON.parse(JSON.stringify(config)) } : ds
+          );
+          const newChartData = { ...state.chartData, datasets: newDatasets };
+          return { chartConfig: config, groups: newGroups, chartData: newChartData, groupedModeData: newChartData };
         }
       }),
       updateDataset: (index: number, updates: Partial<ExtendedChartDataset> & { addPoint?: boolean; removePoint?: boolean; randomizeColors?: boolean }) => set((state) => {
@@ -334,7 +340,7 @@ export const useChartStore = create<ChartStore>()(
             if (datasets.length > 0) {
               const activeDs = datasets[targetActiveDatasetIndex];
               if (activeDs) {
-                if (activeDs.sourceTitle && activeDs.sourceTitle !== "Untitled" && activeDs.sourceTitle !== "Untitled Chart") {
+                if (activeDs.sourceTitle) {
                   nextChartTitle = activeDs.sourceTitle;
                 }
               }
@@ -349,7 +355,7 @@ export const useChartStore = create<ChartStore>()(
             const groups = state.groups || [];
             const activeGroup = groups.find(g => g.id === activeGroupId);
             if (activeGroup) {
-              if (activeGroup.name && activeGroup.name !== "Untitled" && activeGroup.name !== "Untitled Chart") {
+              if (activeGroup.name) {
                 nextChartTitle = activeGroup.name;
               }
             } else {
@@ -370,35 +376,62 @@ export const useChartStore = create<ChartStore>()(
         const dataset = state.chartData.datasets[index];
         if (!dataset) return { activeDatasetIndex: index };
 
-        const newType = dataset.chartType || (dataset.type as SupportedChartType) || 'bar';
+        // 1. Commit outgoing dataset's active chartConfig and sliceLabels
+        const outgoingIndex = state.activeDatasetIndex;
+        const commitDatasets = state.chartData.datasets.map((ds, i) => {
+          if (i === outgoingIndex && i !== index) {
+            return {
+              ...ds,
+              chartConfig: state.chartConfig ? JSON.parse(JSON.stringify(state.chartConfig)) : ds.chartConfig,
+              sliceLabels: state.chartData.labels && state.chartData.labels.length > 0 ? [...state.chartData.labels] : ds.sliceLabels
+            };
+          }
+          return ds;
+        });
 
-        // Use the dataset's own chartConfig if it has one, otherwise generate default for the type
-        const typeChanged = state.chartType !== newType;
-        const newConfig = dataset.chartConfig
-          ? JSON.parse(JSON.stringify(dataset.chartConfig))
-          : (typeChanged ? (() => {
+        const targetDataset = commitDatasets[index] || dataset;
+        const newType = targetDataset.chartType || (targetDataset.type as SupportedChartType) || 'bar';
+
+        // 2. Resolve incoming dataset's isolated chartConfig
+        const newConfig = targetDataset.chartConfig
+          ? JSON.parse(JSON.stringify(targetDataset.chartConfig))
+          : (() => {
               const freshConfig = JSON.parse(JSON.stringify(getDefaultConfigForType(newType)));
               const keysToPreserve = ['manualDimensions', 'dynamicDimension', 'responsive', 'width', 'height'];
               keysToPreserve.forEach(key => {
                 if (state.chartConfig && key in state.chartConfig) {
-                  freshConfig[key] = state.chartConfig[key];
+                  freshConfig[key] = (state.chartConfig as any)[key];
                 }
               });
               freshConfig.decorationShapes = [];
               return freshConfig;
-            })() : { ...state.chartConfig, decorationShapes: [] });
+            })();
 
-        // Update the dataset's own chartConfig in the datasets array so it's not undefined
-        const newDatasets = state.chartData.datasets.map((ds, i) =>
-          i === index ? { ...ds, chartConfig: newConfig } : ds
+        // 3. Resolve incoming dataset's labels
+        const newLabels = (targetDataset.sliceLabels && targetDataset.sliceLabels.length > 0)
+          ? [...targetDataset.sliceLabels]
+          : (targetDataset.data ? targetDataset.data.map((_: any, i: number) => `Label ${i + 1}`) : state.chartData.labels);
+
+        // 4. Update the dataset's own chartConfig and sliceLabels in the datasets array
+        const finalDatasets = commitDatasets.map((ds, i) =>
+          i === index ? { ...ds, chartConfig: newConfig, sliceLabels: newLabels } : ds
         );
-        const newChartData = { ...state.chartData, datasets: newDatasets };
+        const newChartData = { ...state.chartData, labels: newLabels, datasets: finalDatasets };
+
+        // 5. Sync backendConversationId with incoming dataset's sourceId
+        if (typeof window !== 'undefined') {
+          import('./chat-store').then(({ useChatStore }) => {
+            useChatStore.getState().setBackendConversationId(targetDataset.sourceId || null);
+          }).catch(() => {});
+        }
 
         return {
           activeDatasetIndex: index,
           chartType: newType,
           chartConfig: newConfig,
           chartData: newChartData,
+          chartTitle: targetDataset.sourceTitle || state.chartTitle,
+          currentSnapshotId: targetDataset.sourceId ? state.currentSnapshotId : null,
           ...(state.chartMode === 'single' ? { singleModeData: newChartData } : { groupedModeData: newChartData })
         };
       }),
@@ -568,15 +601,16 @@ export const useChartStore = create<ChartStore>()(
         singleModeData: state.singleModeData,
         groupedModeData: state.groupedModeData,
         uniformityMode: state.uniformityMode,
+        groups: state.groups,
+        activeGroupId: state.activeGroupId,
+        chartTitle: state.chartTitle,
         legendFilter: state.legendFilter,
         fillArea: state.fillArea,
         showBorder: state.showBorder,
+        showLabels: state.showLabels,
+        showImages: state.showImages,
         hasJSON: state.hasJSON,
-
-
         originalCloudDimensions: state.originalCloudDimensions,
-        // Group management state
-        activeGroupId: state.activeGroupId,
       }),
     }
   ),

@@ -425,6 +425,39 @@ export async function generateChartHTMLForTemplate(options: HTMLExportOptions = 
         }
     }
     
+    // Dynamic Axis Tick Prefix & Suffix
+    if (enhancedConfig.scales) {
+        Object.keys(enhancedConfig.scales).forEach(function(axisKey) {
+            const scale = enhancedConfig.scales[axisKey];
+            if (scale && scale.ticks) {
+                const prefix = typeof scale.ticks.prefix === 'string' ? scale.ticks.prefix : '';
+                const suffix = typeof scale.ticks.suffix === 'string' ? scale.ticks.suffix : '';
+                if (prefix || suffix) {
+                    const origCallback = scale.ticks.callback;
+                    scale.ticks.callback = function(value, index, ticks) {
+                        let label;
+                        if (typeof origCallback === 'function') {
+                            label = origCallback.call(this, value, index, ticks);
+                        } else if (this && typeof this.getLabelForValue === 'function') {
+                            label = this.getLabelForValue(value);
+                        } else {
+                            label = value;
+                        }
+                        if (label !== undefined && label !== null) {
+                            if (Array.isArray(label)) {
+                                return label.map(function(l, i) {
+                                    return (i === 0 ? prefix : '') + l + (i === label.length - 1 ? suffix : '');
+                                });
+                            }
+                            return prefix + label + suffix;
+                        }
+                        return label;
+                    };
+                }
+            }
+        });
+    }
+
     function initChart() {
         const canvasEl = document.getElementById('chartCanvas');
         if (canvasEl) {

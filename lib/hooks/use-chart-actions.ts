@@ -115,6 +115,7 @@ export const useChartActions = () => {
     // Chart Operations
     const setChartType = (type: SupportedChartType) => {
         const currentState = useChartStore.getState()
+        if (currentState.chartType === type) return
 
         // Use service to calculate new state
         const newState = ChartTypeService.applyChartTypeChange(
@@ -141,16 +142,16 @@ export const useChartActions = () => {
         };
 
         if (currentState.chartMode === 'single') {
-            // Single mode: write config into the active dataset's chartConfig
+            // Single mode: write config into the active dataset's chartConfig (deep clone to avoid shared reference)
             const newDatasets = newState.chartData.datasets.map((ds: any, i: number) =>
-                i === currentState.activeDatasetIndex ? { ...ds, chartConfig: newState.chartConfig } : ds
+                i === currentState.activeDatasetIndex ? { ...ds, chartConfig: JSON.parse(JSON.stringify(newState.chartConfig)) } : ds
             );
             finalState.chartData = { ...newState.chartData, datasets: newDatasets };
             finalState.singleModeData = finalState.chartData;
         } else {
-            // Grouped mode: write config into the active group's chartConfig
+            // Grouped mode: write config into the active group's chartConfig (deep clone for each)
             finalState.groups = currentState.groups.map((g: any) =>
-                g.id === currentState.activeGroupId ? { ...g, chartConfig: newState.chartConfig } : g
+                g.id === currentState.activeGroupId ? { ...g, chartConfig: JSON.parse(JSON.stringify(newState.chartConfig)) } : g
             );
             finalState.chartData = newState.chartData;
             finalState.groupedModeData = newState.chartData;
@@ -268,8 +269,11 @@ export const useChartActions = () => {
         const currentState = useChartStore.getState()
         const newState = GroupService.setActiveGroup(id, {
             groups: currentState.groups,
+            activeGroupId: currentState.activeGroupId,
             chartType: currentState.chartType,
-            chartConfig: currentState.chartConfig
+            chartConfig: currentState.chartConfig,
+            chartData: currentState.chartData,
+            groupedModeData: currentState.groupedModeData
         })
         useChartStore.setState(newState)
     }

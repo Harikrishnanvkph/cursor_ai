@@ -344,15 +344,13 @@ const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, isMobile, ch
 
 
     return (
-        <div className={`flex items-center gap-0.5 border border-slate-200 rounded-md p-0.5 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] ${disabled ? 'opacity-40 pointer-events-none select-none' : ''}`}>
-            <div className="flex items-center">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className={`${isMobile ? 'text-[10px] px-1' : 'text-xs px-1.5'} h-6 text-slate-700 font-semibold select-none w-[68px] justify-start gap-2 hover:bg-slate-100 flex-shrink-0 transition-colors`}>
-                            <Search className="h-3 w-3 text-slate-500 shrink-0" />
-                            <span className="tabular-nums">{currentZoomPct}%</span>
-                        </Button>
-                    </DropdownMenuTrigger>
+        <div className={`flex items-center gap-0.5 ${disabled ? 'opacity-40 pointer-events-none select-none' : ''}`}>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600" title={`Zoom (${currentZoomPct}%)`}>
+                        <Search className="h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="w-52 p-2">
                         <DropdownMenuItem onClick={() => { zoomPan.setZoom(1); zoomPan.setPanOffset({ x: 0, y: 0 }); }} className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100">
                             <span className="flex-1">100% (Fit to View)</span>
@@ -417,9 +415,8 @@ const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, isMobile, ch
                         </div>
                     </DropdownMenuContent>
                 </DropdownMenu>
-            </div>
 
-            <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
+                <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
 
             <Button variant="ghost" size="sm" onClick={() => zoomPan.setPanMode(!zoomPan.panMode)} className={`h-7 w-7 p-0 text-slate-600 transition-colors ${zoomPan.panMode ? 'bg-slate-200 shadow-inner' : 'hover:bg-slate-100'}`} title={zoomPan.panMode ? "Disable Pan Mode" : "Enable Pan Mode"}>
                 <Hand className="h-4 w-4" />
@@ -550,32 +547,31 @@ export const ChartPreviewToolbar = memo(({
     const disabled = !hasData;
 
     return (
-        <div className={`${isMobile ? '' : 'mb-1'} flex-shrink-0`}>
-            <div className="flex items-center justify-between flex-wrap gap-1 px-1">
-                <div className="min-w-0 flex-1">
+        <div className={`${isMobile ? '' : 'mb-1.5'} flex-shrink-0 px-1`}>
+            {rename?.chartTitle && (
+                <div className="mb-1 min-w-0">
                     <TitleSection rename={rename} />
-                    <div className="flex items-center gap-2 mt-0.5">
-                        <ModeAndTypeSection
-                            editorMode={editorMode} setEditorMode={setEditorMode}
-                            chartType={chartType} onChartTypeChange={onChartTypeChange}
-                            isResponsive={isResponsive} chartContainerRef={chartContainerRef}
-                            chartWidth={chartWidth} chartHeight={chartHeight}
-                            isMobile={false}
-                            disabled={disabled}
-                        />
-                    </div>
                 </div>
-                <div className="flex gap-1 flex-shrink-0 ml-4">
-                    <ControlsSection
-                        zoomPan={zoomPan} exports={exports}
-                        handleFullscreen={handleFullscreen}
-                        isMobile={false}
-                        chartContainerRef={chartContainerRef}
-                        chartWidth={chartWidth}
-                        chartHeight={chartHeight}
-                        disabled={disabled}
-                    />
-                </div>
+            )}
+            <div className="flex items-center gap-1 flex-wrap min-w-0">
+                <ModeAndTypeSection
+                    editorMode={editorMode} setEditorMode={setEditorMode}
+                    chartType={chartType} onChartTypeChange={onChartTypeChange}
+                    isResponsive={isResponsive} chartContainerRef={chartContainerRef}
+                    chartWidth={chartWidth} chartHeight={chartHeight}
+                    isMobile={false}
+                    disabled={disabled}
+                />
+                <div className="w-[1px] h-3.5 bg-gray-200 mx-0.5" />
+                <ControlsSection
+                    zoomPan={zoomPan} exports={exports}
+                    handleFullscreen={handleFullscreen}
+                    isMobile={false}
+                    chartContainerRef={chartContainerRef}
+                    chartWidth={chartWidth}
+                    chartHeight={chartHeight}
+                    disabled={disabled}
+                />
             </div>
         </div>
     );

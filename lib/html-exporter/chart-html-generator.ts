@@ -157,11 +157,28 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
     if (chartType === 'waterfall' && Array.isArray(processedChartData.datasets)) {
         const wfConfig = (chartConfig.plugins as any)?.waterfall || {};
         const positiveColor = wfConfig.positiveColor || '#10b981';
+        const positiveBorderColor = wfConfig.positiveBorderColor || darkenColor(positiveColor, 20);
+
         const negativeColor = wfConfig.negativeColor || '#ef4444';
-        const totalColor = wfConfig.totalColor || '#3b82f6';
+        const negativeBorderColor = wfConfig.negativeBorderColor || darkenColor(negativeColor, 20);
+
+        const startColor = wfConfig.startColor || wfConfig.totalColor || '#3b82f6';
+        const startBorderColor = wfConfig.startBorderColor || wfConfig.totalBorderColor || darkenColor(startColor, 20);
+
+        const endColor = wfConfig.endColor || wfConfig.totalColor || '#3b82f6';
+        const endBorderColor = wfConfig.endBorderColor || wfConfig.totalBorderColor || darkenColor(endColor, 20);
+
+        const subtotalColor = wfConfig.subtotalColor || wfConfig.totalColor || '#3b82f6';
+        const subtotalBorderColor = wfConfig.subtotalBorderColor || wfConfig.totalBorderColor || darkenColor(subtotalColor, 20);
+
         const showTotal = wfConfig.showTotal !== false;
         const totalLabel = wfConfig.totalLabel || 'Total';
-        const treatLastAsTotal = showTotal ? false : (wfConfig.treatLastAsTotal !== false);
+        const treatFirstAsTotal = wfConfig.treatFirstAsTotal !== false;
+        const lastLabelStr = Array.isArray(processedChartData.labels) ? String(processedChartData.labels[processedChartData.labels.length - 1] || '').toLowerCase() : '';
+        const isLastLabelTotalKeyword = ['total', 'net', 'ending', 'final', 'balance'].some(k => lastLabelStr.includes(k));
+        const autoTreatLastAsTotal = wfConfig.treatLastAsTotal === true || (wfConfig.treatLastAsTotal !== false && isLastLabelTotalKeyword);
+        const showVirtualTotal = wfConfig.showTotal !== false && !autoTreatLastAsTotal;
+
         const totalIndicesSet = new Set<number>();
         if (wfConfig.totalIndices && typeof wfConfig.totalIndices === 'string') {
             wfConfig.totalIndices.split(',').forEach((s: string) => {
@@ -177,40 +194,53 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
             const borderColors: string[] = [];
             originalData.forEach((val: any, idx: number) => {
                 const numVal = typeof val === 'number' ? val : 0;
+                const labelStr = Array.isArray(processedChartData.labels) ? String(processedChartData.labels[idx] || '').toLowerCase() : '';
+                const isSubtotalKeyword = labelStr.includes('subtotal') || labelStr.includes('sub-total') || labelStr.includes('gross profit') || labelStr.includes('ebitda');
+
                 let isTotal = false;
-                if (treatLastAsTotal && idx === originalData.length - 1) isTotal = true;
-                else if (totalIndicesSet.has(idx)) isTotal = true;
-                let start = 0, end = 0, color = positiveColor;
+                if (treatFirstAsTotal && idx === 0) isTotal = true;
+                else if (autoTreatLastAsTotal && idx === originalData.length - 1) isTotal = true;
+                else if (totalIndicesSet.has(idx) || isSubtotalKeyword) isTotal = true;
+                let start = 0, end = 0, color = positiveColor, borderCol = positiveBorderColor;
                 if (isTotal) {
-                    start = 0;
-                    end = cumulative;
-                    color = totalColor;
+                    if (idx === 0) {
+                        start = 0;
+                        end = numVal;
+                        cumulative = numVal;
+                        color = startColor;
+                        borderCol = startBorderColor;
+                    } else if (autoTreatLastAsTotal && idx === originalData.length - 1) {
+                        start = 0;
+                        end = numVal !== 0 ? numVal : cumulative;
+                        color = endColor;
+                        borderCol = endBorderColor;
+                    } else {
+                        start = 0;
+                        end = cumulative;
+                        color = subtotalColor;
+                        borderCol = subtotalBorderColor;
+                    }
                 } else {
                     start = cumulative;
                     end = cumulative + numVal;
                     cumulative = end;
-                    color = numVal >= 0 ? positiveColor : negativeColor;
+                    if (numVal >= 0) {
+                        color = positiveColor;
+                        borderCol = positiveBorderColor;
+                    } else {
+                        color = negativeColor;
+                        borderCol = negativeBorderColor;
+                    }
                 }
                 transformedData.push([start, end]);
                 bgColors.push(color);
-
-                const borderColor = (typeof ds.borderColor === 'string')
-                    ? ds.borderColor
-                    : (ds.borderColor === 'auto' || !ds.borderColor)
-                        ? darkenColor(color, 20)
-                        : (Array.isArray(ds.borderColor) && ds.borderColor[idx] ? ds.borderColor[idx] : color);
-                borderColors.push(borderColor);
+                borderColors.push(borderCol);
             });
 
-            if (showTotal) {
+            if (showVirtualTotal) {
                 transformedData.push([0, cumulative]);
-                bgColors.push(totalColor);
-                const totalBorderColor = (typeof ds.borderColor === 'string')
-                    ? ds.borderColor
-                    : (ds.borderColor === 'auto' || !ds.borderColor)
-                        ? darkenColor(totalColor, 20)
-                        : (Array.isArray(ds.borderColor) && ds.borderColor[originalData.length] ? ds.borderColor[originalData.length] : totalColor);
-                borderColors.push(totalBorderColor);
+                bgColors.push(endColor);
+                borderColors.push(endBorderColor);
                 if (datasetIdx === 0) {
                     if (Array.isArray(processedChartData.labels)) {
                         processedChartData.labels.push(totalLabel);
@@ -764,6 +794,36 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
             }
         }
         
+        // Dynamic Axis Tick Prefix & Suffix
+        if (enhancedConfig.scales) {
+            Object.keys(enhancedConfig.scales).forEach(function(axisKey) {
+                const scale = enhancedConfig.scales[axisKey];
+                if (scale && scale.ticks) {
+                    const prefix = typeof scale.ticks.prefix === 'string' ? scale.ticks.prefix : '';
+                    const suffix = typeof scale.ticks.suffix === 'string' ? scale.ticks.suffix : '';
+                    if (prefix || suffix) {
+                        const origCallback = scale.ticks.callback;
+                        scale.ticks.callback = function(value, index, ticks) {
+                            let label;
+                            if (typeof origCallback === 'function') {
+                                label = origCallback.call(this, value, index, ticks);
+                            } else if (this && typeof this.getLabelForValue === 'function') {
+                                label = this.getLabelForValue(value);
+                            } else {
+                                label = value;
+                            }
+                            if (Array.isArray(label)) {
+                                return label.map(function(l, i) {
+                                    return (i === 0 ? prefix : '') + l + (i === label.length - 1 ? suffix : '');
+                                });
+                            }
+                            return prefix + label + suffix;
+                        };
+                    }
+                }
+            });
+        }
+
         // Initialize chart when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
             const ctx = document.getElementById('chartCanvas').getContext('2d');

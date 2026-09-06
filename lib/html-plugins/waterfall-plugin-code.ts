@@ -3,15 +3,15 @@ export function generateWaterfallPluginCode(): string {
 const waterfallPlugin = {
     id: 'waterfall',
     defaults: {
-        enabled: false,
+        enabled: true,
         showConnectors: true,
         connectorColor: 'rgba(0,0,0,0.35)',
         connectorWidth: 1.5,
         connectorStyle: 'dashed',
     },
     afterDatasetsDraw(chart, _args, pluginOptions) {
-        if (!pluginOptions || !pluginOptions.enabled) return;
-        if (!pluginOptions.showConnectors) return;
+        if (pluginOptions?.enabled === false) return;
+        if (pluginOptions?.showConnectors === false) return;
         const meta = chart.getDatasetMeta(0);
         if (!meta || !meta.data || meta.data.length <= 1) return;
         const ctx = chart.ctx;

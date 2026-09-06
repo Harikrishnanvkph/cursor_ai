@@ -1622,7 +1622,7 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
                 : (['checkmark', 'crossmark', 'dot'].includes(mode) ? 'none' : globalShapeSettings.fillColor),
         fillOpacity: (isTextbox || isAutoTextbox) ? 100 : globalShapeSettings.fillOpacity,
         strokeColor: (isTextbox || isAutoTextbox) ? 'transparent' : isDecoImage ? '#cbd5e1' : isDecoSvg ? '#a5b4fc' : (['dot'].includes(mode) ? 'rgba(59, 130, 246, 0.3)' : globalShapeSettings.strokeColor),
-        strokeWidth: (isTextbox || isAutoTextbox) ? 0 : isDecoImage || isDecoSvg ? 1 : globalShapeSettings.strokeWidth,
+        strokeWidth: (isTextbox || isAutoTextbox || isDecoImage) ? 0 : isDecoSvg ? 1 : globalShapeSettings.strokeWidth,
         strokeStyle: (isTextbox || isAutoTextbox) ? 'solid' : isDecoImage || isDecoSvg ? 'solid' : globalShapeSettings.strokeStyle,
         strokeDashPattern: (isTextbox || isAutoTextbox) || isDecoImage || isDecoSvg ? undefined : globalShapeSettings.strokeDashPattern,
         visible: true, locked: false, zIndex: shapes.length + 1,
@@ -2106,7 +2106,7 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
         const msCy = msb.y + msb.height / 2
         const effectiveZoom = zoom < 1.0 ? Math.max(0.01, Math.sqrt(zoom)) : zoom
         return (
-          <g key={`multisel-${sid}`}>
+          <g key={`multisel-${sid}`} data-export-ignore="true">
             <rect
               x={msb.x - 3 / effectiveZoom} y={msb.y - 3 / effectiveZoom}
               width={msb.width + 6 / effectiveZoom} height={msb.height + 6 / effectiveZoom}
@@ -2175,7 +2175,7 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
         const toolbarXPosition = xScreen / zoom
 
         return (
-          <g style={{ pointerEvents: 'auto' }}>
+          <g style={{ pointerEvents: 'auto' }} data-export-ignore="true">
             {/* ── Elements outside rotation ────────────────── */}
             {/* Toolbar — stays horizontal, correctly positioned outside bounds, invisible during drag/rotate. */}
             {!dragState && (

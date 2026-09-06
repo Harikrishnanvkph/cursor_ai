@@ -225,23 +225,35 @@ export function generateCustomLabelsFromConfig(chartConfig: any, chartData: any,
             return String(rawValue);
         }
 
-        // At this point numValue is guaranteed non-null (null case returns above)
-        const val = numValue as number;
+        if (numValue === null || isNaN(numValue)) {
+            return String(rawValue);
+        }
 
-        // Smart auto-detect decimal places based on value magnitude and precision
+        const val = numValue;
+
+        // Determine sign prefix (placed BEFORE any prefix/currency symbol!)
+        let signPrefix = '';
+        if (val > 0 && config.showPlusSign) {
+            signPrefix = '+';
+        } else if (val < 0 && config.showNegativeSign !== false) {
+            signPrefix = '-';
+        }
+
+        // Work with absolute magnitude for formatting numbers
+        const absVal = Math.abs(val);
+
         const getSmartDecimals = (value: number, explicitDecimals?: number): number => {
             if (explicitDecimals !== undefined && explicitDecimals !== null) return explicitDecimals;
-            const absVal = Math.abs(value);
             const valueStr = String(value);
             const dotIndex = valueStr.indexOf('.');
             const valuePrecision = dotIndex >= 0 ? valueStr.length - dotIndex - 1 : 0;
-            if (absVal < 10) return Math.min(valuePrecision, 2);
-            if (absVal < 1000) return Math.min(valuePrecision, 1);
+            if (value < 10) return Math.min(valuePrecision, 2);
+            if (value < 1000) return Math.min(valuePrecision, 1);
             return 0;
         };
 
-        const decimals = getSmartDecimals(val, config.decimals);
-        let formatted = val.toFixed(decimals);
+        const decimals = getSmartDecimals(absVal, config.decimals);
+        let formatted = absVal.toFixed(decimals);
 
         const thousandsSep = config.thousandsSeparator ?? ',';
         const decimalSep = config.decimalSeparator ?? '.';
@@ -254,8 +266,7 @@ export function generateCustomLabelsFromConfig(chartConfig: any, chartData: any,
             formatted = formatted.replace('.', decimalSep);
         }
 
-        if (config.abbreviateLargeNumbers && Math.abs(val) >= 1000) {
-            const absVal = Math.abs(val);
+        if (config.abbreviateLargeNumbers && absVal >= 1000) {
             let abbrev = '';
             let divisor = 1;
 
@@ -264,13 +275,14 @@ export function generateCustomLabelsFromConfig(chartConfig: any, chartData: any,
             else if (absVal >= 1e6) { abbrev = 'M'; divisor = 1e6; }
             else if (absVal >= 1e3) { abbrev = 'K'; divisor = 1e3; }
 
-            formatted = (val / divisor).toFixed(decimals > 0 ? Math.min(decimals, 2) : 1) + abbrev;
+            formatted = (absVal / divisor).toFixed(decimals > 0 ? Math.min(decimals, 2) : 1) + abbrev;
         }
 
         const numberFormat = config.numberFormat || 'default';
+        let currencySymbol = '';
         switch (numberFormat) {
             case 'currency':
-                formatted = (config.currencySymbol || '$') + formatted;
+                currencySymbol = config.currencySymbol || '$';
                 break;
             case 'percent':
                 formatted = formatted + '%';
@@ -280,19 +292,18 @@ export function generateCustomLabelsFromConfig(chartConfig: any, chartData: any,
                 break;
             case 'compact':
                 if (!config.abbreviateLargeNumbers) {
-                    const absVal = Math.abs(val);
-                    if (absVal >= 1e9) formatted = (val / 1e9).toFixed(1) + 'B';
-                    else if (absVal >= 1e6) formatted = (val / 1e6).toFixed(1) + 'M';
-                    else if (absVal >= 1e3) formatted = (val / 1e3).toFixed(1) + 'K';
+                    if (absVal >= 1e9) formatted = (absVal / 1e9).toFixed(1) + 'B';
+                    else if (absVal >= 1e6) formatted = (absVal / 1e6).toFixed(1) + 'M';
+                    else if (absVal >= 1e3) formatted = (absVal / 1e3).toFixed(1) + 'K';
                 }
                 break;
         }
 
-        if (val > 0 && config.showPlusSign) {
-            formatted = '+' + formatted;
-        }
+        const prefix = config.prefix || '';
+        const suffix = config.suffix || '';
 
-        return formatted;
+        // Standard assembly: sign BEFORE prefix & currency symbol!
+        return signPrefix + prefix + currencySymbol + formatted + suffix;
     };
 
     // Apply custom formatter function if provided
@@ -356,38 +367,8 @@ export function generateCustomLabelsFromConfig(chartConfig: any, chartData: any,
         return { text };
     };
 
-    // Filter datasets based on legend filter
-    const filteredDatasets = chartData.datasets.filter((_: any, index: number) =>
-        legendFilter.datasets[index] !== false
-    );
-
-    // ── Intelligent Font Scaling ───────────────────────────────────────────────
-    // Compute scaled fonts using the actual export dimensions and data count.
-    // force=true here — the exported image/HTML must have correct font sizes
-    // regardless of any leftover live-preview values stored in the config.
-    if (processedChartData) {
-        const chartType = (chartConfig?.type) || 'bar';
-        const exportDataCount =
-            Array.isArray(processedChartData.labels)
-                ? processedChartData.labels.length
-                : (processedChartData.datasets?.[0]?.data?.length ?? 8);
-        const fontScaledConfig = buildExportConfig(
-            chartConfig,
-            options.width ?? 800,
-            options.height ?? 600,
-            exportDataCount,
-            chartType
-        );
-        Object.assign(chartConfig, fontScaledConfig);
-    }
-
-    return filteredDatasets.map((ds: any, datasetIdx: number) => {
-        const baseConfig = { ...globalCustomLabelsConfig, ...(ds.customLabelsConfig || {}) };
-        
-        if (baseConfig.display !== true) {
-            return ds.data.map(() => ({ text: '' }));
-        }
-
+    const customLabels = chartData.datasets.map((ds: any, datasetIdx: number) => {
+        let baseConfig = { ...globalCustomLabelsConfig, ...(ds.customLabelsConfig || {}) };
         return ds.data.map((value: any, pointIdx: number) => {
             // Merge per-slice label overrides if they exist (highest priority)
             const sliceOverride = ds.sliceLabelOverrides?.[pointIdx];
@@ -395,9 +376,11 @@ export function generateCustomLabelsFromConfig(chartConfig: any, chartData: any,
                 ? { ...baseConfig, ...sliceOverride }
                 : baseConfig;
 
-            let text = '';
+            if (customLabelsConfig.display !== true) return { text: '' };
 
-            // Label content logic
+            let text = '';
+            let usedFormatLabelValue = false;
+
             if (customLabelsConfig.labelContent === 'label') {
                 text = String(chartData.labels?.[pointIdx] ?? value);
             } else if (customLabelsConfig.labelContent === 'percentage') {
@@ -410,7 +393,11 @@ export function generateCustomLabelsFromConfig(chartConfig: any, chartData: any,
                 if (typeof value === 'number') val = value;
                 else if (value && typeof value === 'object' && 'y' in value && typeof value.y === 'number') val = value.y;
                 const pct = (val / total) * 100;
-                text = pct.toFixed(customLabelsConfig.decimals ?? 1) + '%';
+                let signPrefix = '';
+                if (val > 0 && customLabelsConfig.showPlusSign) signPrefix = '+';
+                else if (val < 0 && customLabelsConfig.showNegativeSign !== false) signPrefix = '-';
+                text = signPrefix + (customLabelsConfig.prefix || '') + Math.abs(pct).toFixed(customLabelsConfig.decimals ?? 1) + '%' + (customLabelsConfig.suffix || '');
+                usedFormatLabelValue = true;
             } else if (customLabelsConfig.labelContent === 'index') {
                 text = String(pointIdx + 1);
             } else if (customLabelsConfig.labelContent === 'dataset') {
@@ -418,6 +405,7 @@ export function generateCustomLabelsFromConfig(chartConfig: any, chartData: any,
             } else {
                 // Default: format the value
                 text = formatLabelValue(value, customLabelsConfig);
+                usedFormatLabelValue = true;
             }
 
             // Apply custom formatter
@@ -432,9 +420,11 @@ export function generateCustomLabelsFromConfig(chartConfig: any, chartData: any,
             const conditionalBgColor = condResult.backgroundColor;
             const conditionalBorderColor = condResult.borderColor;
 
-            // Prefix/suffix
-            if (customLabelsConfig.prefix) text = customLabelsConfig.prefix + text;
-            if (customLabelsConfig.suffix) text = text + customLabelsConfig.suffix;
+            // Prefix/suffix only if formatLabelValue did not already apply them
+            if (!usedFormatLabelValue) {
+                if (customLabelsConfig.prefix) text = customLabelsConfig.prefix + text;
+                if (customLabelsConfig.suffix) text = text + customLabelsConfig.suffix;
+            }
 
             // Build dynamic font string with conditional overrides
             const fontSize = conditionalFontSize || customLabelsConfig.fontSize || 14;

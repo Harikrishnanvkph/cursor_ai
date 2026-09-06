@@ -117,6 +117,45 @@ export function injectCustomJS(htmlContent: string, customJS: string): string {
 }
 
 /**
+ * Generate script to post-process scale tick prefix and suffix in standalone HTML
+ */
+function getScaleTickScriptSnippet(optionsVarName: string): string {
+  return `
+        if (${optionsVarName} && ${optionsVarName}.scales) {
+            Object.keys(${optionsVarName}.scales).forEach(function(axisKey) {
+                const scale = ${optionsVarName}.scales[axisKey];
+                if (scale && scale.ticks) {
+                    const prefix = typeof scale.ticks.prefix === 'string' ? scale.ticks.prefix : '';
+                    const suffix = typeof scale.ticks.suffix === 'string' ? scale.ticks.suffix : '';
+                    if (prefix || suffix) {
+                        const origCallback = scale.ticks.callback;
+                        scale.ticks.callback = function(value, index, ticks) {
+                            let label;
+                            if (typeof origCallback === 'function') {
+                                label = origCallback.call(this, value, index, ticks);
+                            } else if (this && typeof this.getLabelForValue === 'function') {
+                                label = this.getLabelForValue(value);
+                            } else {
+                                label = value;
+                            }
+                            if (label !== undefined && label !== null) {
+                                if (Array.isArray(label)) {
+                                    return label.map(function(l, i) {
+                                        return (i === 0 ? prefix : '') + l + (i === label.length - 1 ? suffix : '');
+                                    });
+                                }
+                                return prefix + label + suffix;
+                            }
+                            return label;
+                        };
+                    }
+                }
+            });
+        }
+  `;
+}
+
+/**
  * Create a self-contained HTML file with embedded resources
  */
 export function createSelfContainedHTML(options: HTMLExportOptions): string {
@@ -181,10 +220,12 @@ export function createSelfContainedHTML(options: HTMLExportOptions): string {
         
         loadChartJS().then(() => {
             const ctx = document.getElementById('chart').getContext('2d');
+            const chartOptions = ${JSON.stringify(chartConfig)};
+            ${getScaleTickScriptSnippet('chartOptions')}
             new Chart(ctx, {
                 type: '${chartTypeMapping[chartType as SupportedChartType] || chartType}',
                 data: ${JSON.stringify(chartData)},
-                options: ${JSON.stringify(chartConfig)}
+                options: chartOptions
             });
         }).catch(() => {
             document.getElementById('error').style.display = 'block';
@@ -281,6 +322,7 @@ export function generateHTMLWithEmbeddedData(options: HTMLExportOptions): string
         // Initialize chart
         document.addEventListener('DOMContentLoaded', function() {
             const ctx = document.getElementById('chart').getContext('2d');
+            ${getScaleTickScriptSnippet('embeddedData.chartConfig')}
             new Chart(ctx, {
                 type: embeddedData.chartType,
                 data: embeddedData.chartData,
@@ -404,25 +446,27 @@ export function createResponsiveHTML(options: HTMLExportOptions): string {
     
     <script>
         const ctx = document.getElementById('chart').getContext('2d');
+        const chartOptions = {
+            ...${JSON.stringify(chartConfig)},
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                ...${JSON.stringify(chartConfig.plugins || {})},
+                legend: {
+                    display: ${options.includeLegend !== false},
+                    position: 'top'
+                },
+                tooltip: {
+                    enabled: ${options.includeTooltips !== false}
+                }
+            }
+        };
+        ${getScaleTickScriptSnippet('chartOptions')}
         
         const chart = new Chart(ctx, {
             type: '${chartTypeMapping[chartType as SupportedChartType] || chartType}',
             data: ${JSON.stringify(chartData)},
-            options: {
-                ...${JSON.stringify(chartConfig)},
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    ...${JSON.stringify(chartConfig.plugins || {})},
-                    legend: {
-                        display: ${options.includeLegend !== false},
-                        position: 'top'
-                    },
-                    tooltip: {
-                        enabled: ${options.includeTooltips !== false}
-                    }
-                }
-            }
+            options: chartOptions
         });
         
         // Handle window resize

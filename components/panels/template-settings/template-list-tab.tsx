@@ -12,6 +12,7 @@ import { Pencil, Trash2, Cloud, LayoutTemplate, Database, FileText, ChevronUp, C
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import type { FormatBlueprintRow } from "@/lib/format-types"
 import { dataService } from "@/lib/data-service"
+import { toast } from "sonner"
 
 // Zone type → color mapping for skeleton-only format preview
 const ZONE_COLORS: Record<string, { bg: string; border: string }> = {
@@ -45,8 +46,6 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
         setGenerateMode
     } = useTemplateStore()
 
-    const { formats, selectedFormatId, setSelectedFormat } = useFormatGalleryStore()
-
     const { updateChartConfig } = useChartActions()
     const router = useRouter()
 
@@ -54,68 +53,81 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
     const [pendingDeleteId, setPendingDeleteId] = React.useState<string | null>(null)
     const [isUnusedContentsExpanded, setIsUnusedContentsExpanded] = React.useState(true)
 
+    const [confirmFormatOpen, setConfirmFormatOpen] = React.useState(false)
+    const [pendingDeleteFormatId, setPendingDeleteFormatId] = React.useState<string | null>(null)
+
     const askDelete = (e: React.MouseEvent, id: string) => {
         e.stopPropagation()
         setPendingDeleteId(id)
         setConfirmOpen(true)
     }
 
-    // Fetch formats when the component mounts if they don't exist
-    const { setFormats, contentPackage, setContentPackage, setLoadingFormats } = useFormatGalleryStore()
-    const { userFormats, setUserFormats, isLoadingUserFormats, setLoadingUserFormats } = useFormatGalleryStore()
+    const askDeleteFormat = (e: React.MouseEvent, id: string) => {
+        e.stopPropagation()
+        setPendingDeleteFormatId(id)
+        setConfirmFormatOpen(true)
+    }
+
+    const cancelDeleteFormat = () => {
+        setConfirmFormatOpen(false)
+        setPendingDeleteFormatId(null)
+    }
+
+    const confirmDeleteFormat = async () => {
+        if (pendingDeleteFormatId) {
+            try {
+                const { deleteFormat } = useFormatGalleryStore.getState()
+                const res = await deleteFormat(pendingDeleteFormatId)
+                if (res.success) {
+                    toast.success("Format deleted successfully")
+                } else {
+                    toast.error(res.error || "Failed to delete format")
+                }
+            } catch (error: any) {
+                console.error('Error deleting format:', error)
+                toast.error(error.message || "Failed to delete format")
+            }
+        }
+        setConfirmFormatOpen(false)
+        setPendingDeleteFormatId(null)
+    }
+
+    // Format gallery store bindings
+    const {
+        formats,
+        selectedFormatId,
+        setSelectedFormat,
+        contentPackage,
+        setContentPackage,
+        userFormats,
+        isLoadingUserFormats,
+        loadFormats
+    } = useFormatGalleryStore()
     const { chartData, chartType, chartConfig } = useChartStore()
 
     // Sub-view toggle for formats: 'global' or 'mine'
     const [formatView, setFormatView] = React.useState<'global' | 'mine'>('global')
 
-    // Fetch official formats on mount (only if empty)
+    // Always ensure fresh pristine blueprints when viewing formats tab
+    React.useEffect(() => {
+        if (subTab === 'formats') {
+            loadFormats(true)
+        }
+    }, [subTab, loadFormats])
+
+    // Initial load if formats are empty
     React.useEffect(() => {
         if (formats.length === 0) {
-            const loadFormats = async () => {
-                setLoadingFormats(true)
-                try {
-                    const res = await dataService.getOfficialFormats()
-                    if (!res.error && res.data) {
-                        setFormats(res.data)
-                    }
-                } catch (err) {
-                    console.error('Failed to load official formats:', err)
-                } finally {
-                    setLoadingFormats(false)
-                }
-            }
             loadFormats()
         }
-    }, [formats.length, setFormats, setLoadingFormats])
-
-    // Fetch user formats lazily when user switches to "My Formats"
-    const userFormatsLoaded = React.useRef(false)
-    React.useEffect(() => {
-        if (formatView === 'mine' && !userFormatsLoaded.current) {
-            userFormatsLoaded.current = true
-            const loadUserFormats = async () => {
-                setLoadingUserFormats(true)
-                try {
-                    const res = await dataService.getUserFormats()
-                    if (!res.error && res.data) {
-                        setUserFormats(res.data)
-                    }
-                } catch (err) {
-                    console.error('Failed to load user formats:', err)
-                } finally {
-                    setLoadingUserFormats(false)
-                }
-            }
-            loadUserFormats()
-        }
-    }, [formatView, setUserFormats, setLoadingUserFormats])
+    }, [formats.length, loadFormats])
 
     React.useEffect(() => {
         // Reconstruct content package if this is an actual format chart or preparing to be one
         if (!contentPackage && chartData?.datasets?.length > 0) {
             import('@/lib/variant-engine').then(({ extractContentFromChartData }) => {
                 try {
-                    const pkg = extractContentFromChartData(chartType, chartData, chartConfig)
+                    const pkg = extractContentFromChartData(chartType, chartData as any, chartConfig)
                     if (pkg) setContentPackage(pkg)
                 } catch (e) {
                     console.error('Failed to extract content package:', e)
@@ -414,7 +426,14 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
                                                                     <Pencil className="h-3 w-3" />
                                                                 </Button>
                                                             </Link>
-                                                            <Button size="icon" variant="ghost" className="h-6 w-6 text-red-400 hover:text-red-600" title="Delete" onClick={(e: any) => { e.stopPropagation(); /* TODO: delete user format */ }}>
+                                                            <Button
+                                                                size="icon"
+                                                                variant="ghost"
+                                                                className="h-6 w-6 text-red-400 hover:text-red-600 hover:bg-red-50"
+                                                                title="Delete"
+                                                                type="button"
+                                                                onClick={(e: any) => askDeleteFormat(e, format.id)}
+                                                            >
                                                                 <Trash2 className="h-3 w-3" />
                                                             </Button>
                                                         </div>
@@ -439,6 +458,17 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
                             </div>
                         )
                     })()}
+
+                    <ConfirmDialog
+                        open={confirmFormatOpen}
+                        title="Delete custom format?"
+                        description="This will permanently remove your custom format. This action cannot be undone."
+                        confirmText="Delete"
+                        cancelText="Cancel"
+                        variant="destructive"
+                        onConfirm={confirmDeleteFormat}
+                        onCancel={cancelDeleteFormat}
+                    />
 
                     {/* Create button — only in My Formats view */}
                     {mode === 'editor' && formatView === 'mine' && (
@@ -626,6 +656,7 @@ export function TemplateListTab({ currentCloudTemplate, mode = 'editor' }: Templ
                         description="This will permanently remove the custom template."
                         confirmText="Delete"
                         cancelText="Cancel"
+                        variant="destructive"
                         onConfirm={confirmDelete}
                         onCancel={cancelDelete}
                     />

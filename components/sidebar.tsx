@@ -60,7 +60,7 @@ const TEMPLATE_TABS = [
   { id: "tpl_chart_zone", label: "Chart Zone", icon: BarChart3 },
   { id: "tpl_decorations", label: "Decorations", icon: Component },
   { id: "tpl_background", label: "Background", icon: Palette },
-  { id: "tpl_format_zones", label: "Format Zones", icon: LayoutGrid },
+  { id: "tpl_format_zones", label: "Selected Template", icon: LayoutGrid },
 ]
 
 // Export for use in editor/page.tsx
@@ -146,41 +146,51 @@ export function Sidebar({ activeTab, onTabChange, onToggleLeftSidebar, isLeftSid
             // Chart mode header (original)
             <>
               {((chartMode === 'single' && datasets.length === 0) || (chartMode === 'grouped' && groups.length === 0)) ? (
-                <div className="h-8 flex items-center px-3 bg-gray-50 border border-gray-100 rounded-lg shadow-sm">
+                <div className="h-9 flex items-center px-3 bg-gray-50 border border-gray-100 rounded-lg shadow-sm">
                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Chart Editor</span>
                 </div>
               ) : chartMode === 'single' ? (
-                <Select
-                  value={activeDatasetIndex.toString()}
-                  onValueChange={(val) => setActiveDatasetIndex(parseInt(val))}
-                >
-                  <SelectTrigger className="h-8 text-xs bg-gray-50 border-gray-200 hover:bg-gray-100 transition-colors">
-                    <SelectValue placeholder="Select dataset" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {datasets.map((ds: any, i) => (
-                      <SelectItem key={i} value={i.toString()}>
-                        {ds.sourceTitle || ds.label || `Dataset ${i + 1}`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="relative">
+                  <label className="absolute -top-2 left-2.5 px-1 text-[10px] font-medium bg-white text-gray-500 z-10 leading-none select-none pointer-events-none">
+                    Datasets
+                  </label>
+                  <Select
+                    value={activeDatasetIndex.toString()}
+                    onValueChange={(val) => setActiveDatasetIndex(parseInt(val))}
+                  >
+                    <SelectTrigger className="h-9 text-xs bg-white border-gray-200 hover:bg-gray-50/60 transition-colors shadow-none rounded-md">
+                      <SelectValue placeholder="Select dataset" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {datasets.map((ds: any, i) => (
+                        <SelectItem key={i} value={i.toString()}>
+                          {ds.sourceTitle || ds.label || `Dataset ${i + 1}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               ) : (
-                <Select
-                  value={activeGroupId}
-                  onValueChange={setActiveGroupId}
-                >
-                  <SelectTrigger className="h-8 text-xs bg-gray-50 border-gray-200 hover:bg-gray-100 transition-colors">
-                    <SelectValue placeholder="Select group" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {groups.map((group) => (
-                      <SelectItem key={group.id} value={group.id}>
-                        {group.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="relative">
+                  <label className="absolute -top-2 left-2.5 px-1 text-[10px] font-medium bg-white text-gray-500 z-10 leading-none select-none pointer-events-none">
+                    Groups
+                  </label>
+                  <Select
+                    value={activeGroupId}
+                    onValueChange={setActiveGroupId}
+                  >
+                    <SelectTrigger className="h-9 text-xs bg-white border-gray-200 hover:bg-gray-50/60 transition-colors shadow-none rounded-md">
+                      <SelectValue placeholder="Select group" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {groups.map((group) => (
+                        <SelectItem key={group.id} value={group.id}>
+                          {group.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               )}
             </>
           )}
@@ -191,7 +201,7 @@ export function Sidebar({ activeTab, onTabChange, onToggleLeftSidebar, isLeftSid
             variant="ghost"
             size="sm"
             onClick={onToggleLeftSidebar}
-            className="h-8 w-8 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg flex-shrink-0"
+            className="h-9 w-9 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg flex-shrink-0"
             title={isLeftSidebarCollapsed ? "Expand Left Sidebar" : "Collapse Left Sidebar"}
           >
             <PanelLeft className="h-4 w-4 text-slate-500 hover:text-slate-700 transition-colors" />

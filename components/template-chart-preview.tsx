@@ -147,7 +147,7 @@ export function TemplateChartPreview({
   const activeConversationTitle = useHistoryStore(s => {
     if (!backendConversationId) return null;
     const conv = s.conversations.find(c => c.id === backendConversationId);
-    return (conv?.title && conv.title !== "Untitled" && conv.title !== "Untitled Chart") ? conv.title : null;
+    return conv?.title || null;
   });
 
   // Derive title logic
@@ -157,7 +157,7 @@ export function TemplateChartPreview({
     if (chartMode === 'grouped' && activeGroupId && groups) {
       const activeGroup = groups.find(g => g.id === activeGroupId);
       const title = activeGroup?.name || activeGroup?.sourceTitle;
-      if (title && title !== "Untitled" && title !== "Untitled Chart") {
+      if (title) {
         displayTitle = title;
       } else {
         displayTitle = globalTitle || "Untitled Chart";
@@ -165,7 +165,7 @@ export function TemplateChartPreview({
     } else if (chartMode === 'single' && chartData.datasets.length > 0) {
       const activeDs = chartData.datasets[activeDatasetIndex];
       const title = activeDs?.sourceTitle;
-      if (title && title !== "Untitled" && title !== "Untitled Chart") {
+      if (title) {
         displayTitle = title;
       } else {
         displayTitle = globalTitle || "Untitled Chart";
@@ -1381,252 +1381,243 @@ export function TemplateChartPreview({
 
       {/* Template Controls */}
       {!readOnly && !isMobile && (
-        <div className="flex-shrink-0 mb-1">
-          <div className="flex items-center justify-between flex-wrap gap-1 px-1">
-            {/* Left: title + chart info */}
-            <div className="min-w-0 flex-1">
-              {chartTitle && (
-                <div className="flex items-center gap-1.5 mb-0 min-w-0">
-                  {canEditTitle && (
-                    <button onClick={handleStartRename} className="p-0.5 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0" title="Rename">
-                      <Pencil className="h-3 w-3" />
-                    </button>
-                  )}
-                  <div className="flex items-center gap-1 flex-1 min-w-0">
-                    {isRenaming && canEditTitle ? (
-                      <>
-                        <input
-                          ref={renameInputRef}
-                          type="text"
-                          value={renameValue}
-                          onChange={(e) => setRenameValue(e.target.value)}
-                          onKeyDown={handleRenameKeyDown}
-                          onBlur={() => setIsRenaming(false)}
-                          className="flex-1 min-w-0 font-semibold text-gray-900 text-sm bg-transparent border-b-2 border-blue-400 outline-none w-full text-ellipsis overflow-hidden whitespace-nowrap px-0 pb-0.5 focus:border-blue-500"
-                          disabled={isSavingRename}
-                        />
-                        <button onMouseDown={(e) => e.preventDefault()} onClick={handleSaveRename} disabled={isSavingRename} className="p-0.5 hover:bg-green-50 rounded text-green-600 flex-shrink-0" title="Save">
-                          {isSavingRename ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                        </button>
-                      </>
-                    ) : (
-                      <h4 className="font-semibold text-gray-900 text-sm truncate border-b-2 border-transparent" title={chartTitle}>{chartTitle}</h4>
-                    )}
-                  </div>
-                </div>
+        <div className="flex-shrink-0 mb-1.5 px-1">
+          {chartTitle && (
+            <div className="flex items-center gap-1.5 mb-1 min-w-0">
+              {canEditTitle && (
+                <button onClick={handleStartRename} className="p-0.5 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0" title="Rename">
+                  <Pencil className="h-3 w-3" />
+                </button>
               )}
-
-              {/* Toggle and Dimensions row */}
-              <div className="flex items-center gap-1 mt-0.5">
-                {/* Chart/Template Mode Toggle */}
-                <div className="flex items-center gap-0 bg-gray-100 rounded-full p-[2px] border border-gray-200">
-                  <button
-                    onClick={() => setEditorMode('chart')}
-                    className={`px-2 py-0.5 text-[10px] min-w-[50px] font-medium rounded-full transition-all ${editorMode === 'chart'
-                      ? 'bg-blue-500 text-white shadow-sm'
-                      : 'bg-transparent text-gray-500 hover:text-gray-700'
-                      }`}
-                  >
-                    Chart
-                  </button>
-                  <button
-                    onClick={() => setEditorMode('template')}
-                    className={`px-2 py-0.5 text-[10px] min-w-[50px] font-medium rounded-full transition-all ${editorMode === 'template'
-                      ? 'bg-blue-500 text-white shadow-sm'
-                      : 'bg-transparent text-gray-500 hover:text-gray-700'
-                      }`}
-                  >
-                    Template
-                  </button>
-                </div>
-                {/* Compact Chart Type Selector */}
-                <Select value={chartType} onValueChange={handleChartTypeChange}>
-                  <SelectTrigger className="h-6 w-9 lg:w-[90px] text-[10px] px-1 lg:px-2 py-0 border-gray-200 bg-white shadow-none">
-                    <ChartColumn className="h-3.5 w-3.5 lg:hidden text-slate-600 shrink-0 stroke-[2.5]" />
-                    <div className="hidden lg:block truncate"><SelectValue placeholder="Type" /></div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="bar" className="text-xs">Bar</SelectItem>
-                    <SelectItem value="horizontalBar" className="text-xs">H. Bar</SelectItem>
-                    <SelectItem value="stackedBar" className="text-xs">Stacked</SelectItem>
-                    <SelectItem value="line" className="text-xs">Line</SelectItem>
-                    <SelectItem value="area" className="text-xs">Area</SelectItem>
-                    <SelectItem value="pie" className="text-xs">Pie</SelectItem>
-                    <SelectItem value="pie3d" className="text-xs">3D Pie</SelectItem>
-                    <SelectItem value="doughnut3d" className="text-xs">3D Doughnut</SelectItem>
-                    <SelectItem value="bar3d" className="text-xs">3D Bar</SelectItem>
-                    <SelectItem value="horizontalBar3d" className="text-xs">3D Horizontal Bar</SelectItem>
-                    <SelectItem value="doughnut3d" className="text-xs">3D Doughnut</SelectItem>
-                    <SelectItem value="radar" className="text-xs">Radar</SelectItem>
-                    <SelectItem value="polarArea" className="text-xs">Polar</SelectItem>
-                    <SelectItem value="scatter" className="text-xs">Scatter</SelectItem>
-                    <SelectItem value="bubble" className="text-xs">Bubble</SelectItem>
-                    <SelectItem value="funnel" className="text-xs">Funnel</SelectItem>
-                    <SelectItem value="gauge" className="text-xs">Gauge</SelectItem>
-                  </SelectContent>
-                </Select>
-                {renderedFormat ? (
-                  <TooltipProvider delayDuration={0}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="flex items-center justify-center p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded cursor-help transition-colors">
-                          <RulerDimensionLine className="w-4 h-4" />
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" sideOffset={5} className="z-[100] text-xs font-medium">
-                        {renderedFormat.skeleton.dimensions.width} × {renderedFormat.skeleton.dimensions.height}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                ) : template ? (
-                  <TooltipProvider delayDuration={0}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="flex items-center justify-center p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded cursor-help transition-colors">
-                          <RulerDimensionLine className="w-4 h-4" />
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" sideOffset={5} className="z-[100] text-xs font-medium">
-                        {template.width} × {template.height}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                ) : null}
-                <div className="w-[1px] h-3.5 bg-gray-200 mx-1 lg:mx-1.5" />
-                <ChartBgColorPicker />
+              <div className="flex items-center gap-1 flex-1 min-w-0">
+                {isRenaming && canEditTitle ? (
+                  <>
+                    <input
+                      ref={renameInputRef}
+                      type="text"
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onKeyDown={handleRenameKeyDown}
+                      onBlur={() => setIsRenaming(false)}
+                      className="flex-1 min-w-0 font-semibold text-gray-900 text-sm bg-transparent border-b-2 border-blue-400 outline-none w-full text-ellipsis overflow-hidden whitespace-nowrap px-0 pb-0.5 focus:border-blue-500"
+                      disabled={isSavingRename}
+                    />
+                    <button onMouseDown={(e) => e.preventDefault()} onClick={handleSaveRename} disabled={isSavingRename} className="p-0.5 hover:bg-green-50 rounded text-green-600 flex-shrink-0" title="Save">
+                      {isSavingRename ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                    </button>
+                  </>
+                ) : (
+                  <h4 className="font-semibold text-gray-900 text-sm truncate border-b-2 border-transparent" title={chartTitle}>{chartTitle}</h4>
+                )}
               </div>
             </div>
+          )}
 
-            {/* Right: action buttons */}
-            <div className="flex gap-1 flex-shrink-0 ml-4">
-              <div className="flex items-center gap-0.5 border border-slate-200 rounded-md p-0.5 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-                <div className="flex items-center">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="text-xs px-1.5 h-6 text-slate-700 font-semibold select-none w-[68px] justify-start gap-2 hover:bg-slate-100 flex-shrink-0 transition-colors">
-                        <Search className="h-3 w-3 text-slate-500 shrink-0" />
-                        <span className="tabular-nums">{currentZoomPct}%</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-52 p-2">
-                      <DropdownMenuItem onClick={handleResetZoom} className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100">
-                        <span className="flex-1">100% (Fit to View)</span>
-                      </DropdownMenuItem>
+          <div className="flex items-center gap-1 flex-wrap min-w-0">
+            {/* Chart/Template Mode Toggle */}
+            <div className="flex items-center gap-0 bg-gray-100 rounded-full p-[2px] border border-gray-200">
+              <button
+                onClick={() => setEditorMode('chart')}
+                className={`px-2 py-0.5 text-[10px] min-w-[50px] font-medium rounded-full transition-all ${editorMode === 'chart'
+                  ? 'bg-blue-500 text-white shadow-sm'
+                  : 'bg-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+              >
+                Chart
+              </button>
+              <button
+                onClick={() => setEditorMode('template')}
+                className={`px-2 py-0.5 text-[10px] min-w-[50px] font-medium rounded-full transition-all ${editorMode === 'template'
+                  ? 'bg-blue-500 text-white shadow-sm'
+                  : 'bg-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+              >
+                Template
+              </button>
+            </div>
+            {/* Compact Chart Type Selector */}
+            <Select value={chartType} onValueChange={handleChartTypeChange}>
+              <SelectTrigger className="h-6 w-9 lg:w-[90px] text-[10px] px-1 lg:px-2 py-0 border-gray-200 bg-white shadow-none">
+                <ChartColumn className="h-3.5 w-3.5 lg:hidden text-slate-600 shrink-0 stroke-[2.5]" />
+                <div className="hidden lg:block truncate"><SelectValue placeholder="Type" /></div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="bar" className="text-xs">Bar</SelectItem>
+                <SelectItem value="horizontalBar" className="text-xs">H. Bar</SelectItem>
+                <SelectItem value="stackedBar" className="text-xs">Stacked</SelectItem>
+                <SelectItem value="line" className="text-xs">Line</SelectItem>
+                <SelectItem value="area" className="text-xs">Area</SelectItem>
+                <SelectItem value="pie" className="text-xs">Pie</SelectItem>
+                <SelectItem value="pie3d" className="text-xs">3D Pie</SelectItem>
+                <SelectItem value="doughnut3d" className="text-xs">3D Doughnut</SelectItem>
+                <SelectItem value="bar3d" className="text-xs">3D Bar</SelectItem>
+                <SelectItem value="horizontalBar3d" className="text-xs">3D Horizontal Bar</SelectItem>
+                <SelectItem value="doughnut3d" className="text-xs">3D Doughnut</SelectItem>
+                <SelectItem value="radar" className="text-xs">Radar</SelectItem>
+                <SelectItem value="polarArea" className="text-xs">Polar</SelectItem>
+                <SelectItem value="scatter" className="text-xs">Scatter</SelectItem>
+                <SelectItem value="bubble" className="text-xs">Bubble</SelectItem>
+                <SelectItem value="funnel" className="text-xs">Funnel</SelectItem>
+                <SelectItem value="gauge" className="text-xs">Gauge</SelectItem>
+              </SelectContent>
+            </Select>
+            {renderedFormat ? (
+              <TooltipProvider delayDuration={0}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center justify-center p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded cursor-help transition-colors">
+                      <RulerDimensionLine className="w-4 h-4" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" sideOffset={5} className="z-[100] text-xs font-medium">
+                    {renderedFormat.skeleton.dimensions.width} × {renderedFormat.skeleton.dimensions.height}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : template ? (
+              <TooltipProvider delayDuration={0}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center justify-center p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded cursor-help transition-colors">
+                      <RulerDimensionLine className="w-4 h-4" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" sideOffset={5} className="z-[100] text-xs font-medium">
+                    {template.width} × {template.height}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : null}
+            <div className="w-[1px] h-3.5 bg-gray-200 mx-1 lg:mx-1.5" />
+            <ChartBgColorPicker />
 
-                      <DropdownMenuItem onClick={() => {
-                          const applyFullDimension = () => {
-                            let baseScale = 1.0;
-                            if (renderedFormat) {
-                              const formatW = renderedFormat.skeleton.dimensions.width;
-                              const formatH = renderedFormat.skeleton.dimensions.height;
+            <div className="w-[1px] h-3.5 bg-gray-200 mx-0.5" />
+
+            {/* Action buttons */}
+            <div className="flex items-center gap-0.5">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600" title={`Zoom (${currentZoomPct}%)`}>
+                    <Search className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-52 p-2">
+                    <DropdownMenuItem onClick={handleResetZoom} className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100">
+                      <span className="flex-1">100% (Fit to View)</span>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem onClick={() => {
+                        const applyFullDimension = () => {
+                          let baseScale = 1.0;
+                          if (renderedFormat) {
+                            const formatW = renderedFormat.skeleton.dimensions.width;
+                            const formatH = renderedFormat.skeleton.dimensions.height;
+                            const containerWidth = containerRef.current?.clientWidth || 800;
+                            const containerHeight = containerRef.current?.clientHeight || 600;
+                            const padding = 40;
+                            const availableWidth = containerWidth - padding;
+                            const availableHeight = containerHeight - padding;
+                            const scaleX = availableWidth / formatW;
+                            const scaleY = availableHeight / formatH;
+                            baseScale = Math.min(scaleX, scaleY, 1);
+                          } else {
+                            const template = currentTemplate || templateInBackground;
+                            if (template) {
                               const containerWidth = containerRef.current?.clientWidth || 800;
                               const containerHeight = containerRef.current?.clientHeight || 600;
                               const padding = 40;
                               const availableWidth = containerWidth - padding;
                               const availableHeight = containerHeight - padding;
-                              const scaleX = availableWidth / formatW;
-                              const scaleY = availableHeight / formatH;
+                              const scaleX = availableWidth / template.width;
+                              const scaleY = availableHeight / template.height;
                               baseScale = Math.min(scaleX, scaleY, 1);
-                            } else {
-                              const template = currentTemplate || templateInBackground;
-                              if (template) {
-                                const containerWidth = containerRef.current?.clientWidth || 800;
-                                const containerHeight = containerRef.current?.clientHeight || 600;
-                                const padding = 40;
-                                const availableWidth = containerWidth - padding;
-                                const availableHeight = containerHeight - padding;
-                                const scaleX = availableWidth / template.width;
-                                const scaleY = availableHeight / template.height;
-                                baseScale = Math.min(scaleX, scaleY, 1);
-                              }
                             }
-                            setZoom(1.0 / baseScale);
-                            setPanOffset({ x: 0, y: 0 });
-                          };
-                          
-                          applyFullDimension();
-                          // Recalculate after the browser adds scrollbars to get the exact 1:1 scale
-                          setTimeout(applyFullDimension, 50);
-                      }} className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100">
-                        <span className="flex-1">Full Dimension</span>
+                          }
+                          setZoom(1.0 / baseScale);
+                          setPanOffset({ x: 0, y: 0 });
+                        };
+                        
+                        applyFullDimension();
+                        // Recalculate after the browser adds scrollbars to get the exact 1:1 scale
+                        setTimeout(applyFullDimension, 50);
+                    }} className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100">
+                      <span className="flex-1">Full Dimension</span>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuSeparator className="my-1" />
+
+                    <div className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                      <Slider
+                        min={0}
+                        max={ZOOM_VALUES.length - 1}
+                        step={1}
+                        value={[closestIndex]}
+                        onValueChange={handleSliderChange}
+                        className="cursor-pointer"
+                      />
+                    </div>
+
+                    <DropdownMenuSeparator className="my-1" />
+                    <div className="flex items-center justify-between gap-1 px-1">
+                      <DropdownMenuItem
+                        onSelect={(e) => { e.preventDefault(); handleZoomOut(); }}
+                        className="flex-1 flex items-center justify-center py-2 cursor-pointer focus:bg-slate-100"
+                        title="Zoom Out"
+                      >
+                        <ZoomOut className="h-4 w-4 text-slate-500" />
                       </DropdownMenuItem>
-
-                      <DropdownMenuSeparator className="my-1" />
-
-                      <div className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
-                        <Slider
-                          min={0}
-                          max={ZOOM_VALUES.length - 1}
-                          step={1}
-                          value={[closestIndex]}
-                          onValueChange={handleSliderChange}
-                          className="cursor-pointer"
-                        />
-                      </div>
-
-                      <DropdownMenuSeparator className="my-1" />
-                      <div className="flex items-center justify-between gap-1 px-1">
-                        <DropdownMenuItem
-                          onSelect={(e) => { e.preventDefault(); handleZoomOut(); }}
-                          className="flex-1 flex items-center justify-center py-2 cursor-pointer focus:bg-slate-100"
-                          title="Zoom Out"
-                        >
-                          <ZoomOut className="h-4 w-4 text-slate-500" />
-                        </DropdownMenuItem>
-                        <div className="w-[1px] h-4 bg-slate-200" />
-                        <DropdownMenuItem
-                          onSelect={(e) => { e.preventDefault(); handleZoomIn(); }}
-                          className="flex-1 flex items-center justify-center py-2 cursor-pointer focus:bg-slate-100"
-                          title="Zoom In"
-                        >
-                          <ZoomIn className="h-4 w-4 text-slate-500" />
-                        </DropdownMenuItem>
-                      </div>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-
-                <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
-
-                <Button variant="ghost" size="sm" onClick={() => setPanMode(!panMode)} className={`h-7 w-7 p-0 transition-colors text-slate-600 ${panMode ? 'bg-slate-200 shadow-inner' : 'hover:bg-slate-100'}`} title={panMode ? "Disable Pan Mode" : "Enable Pan Mode"}>
-                  <Hand className="h-4 w-4" />
-                </Button>
-
-                <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-600 hover:bg-slate-100" title="Actions"><Ellipsis className="h-4 w-4" /></Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setShowGuides(!showGuides)}>
-                      {showGuides ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-                      <span>{showGuides ? "Hide Guides" : "Show Guides"}</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleFullscreen}>
-                      <Maximize2 className="h-4 w-4 mr-2" />
-                      <span>Fullscreen</span>
-                    </DropdownMenuItem>
+                      <div className="w-[1px] h-4 bg-slate-200" />
+                      <DropdownMenuItem
+                        onSelect={(e) => { e.preventDefault(); handleZoomIn(); }}
+                        className="flex-1 flex items-center justify-center py-2 cursor-pointer focus:bg-slate-100"
+                        title="Zoom In"
+                      >
+                        <ZoomIn className="h-4 w-4 text-slate-500" />
+                      </DropdownMenuItem>
+                    </div>
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-                <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
+              <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
 
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-600 hover:bg-slate-100" title="Export"><Download className="h-4 w-4" /></Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleExport('png')}><FileImage className="h-4 w-4 mr-2" /> Image (PNG)</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleExport('jpeg')}><FileImage className="h-4 w-4 mr-2" /> Image (JPEG)</DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleExport('html')}><FileCode className="h-4 w-4 mr-2" /> HTML</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+              <Button variant="ghost" size="sm" onClick={() => setPanMode(!panMode)} className={`h-7 w-7 p-0 transition-colors text-slate-600 ${panMode ? 'bg-slate-200 shadow-inner' : 'hover:bg-slate-100'}`} title={panMode ? "Disable Pan Mode" : "Enable Pan Mode"}>
+                <Hand className="h-4 w-4" />
+              </Button>
 
-                <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
+              <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
 
-                <UndoRedoButtons variant="ghost" size="sm" showLabels={false} className="gap-0.5" buttonClassName="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600 hover:scale-100" />
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-600 hover:bg-slate-100" title="Actions"><Ellipsis className="h-4 w-4" /></Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setShowGuides(!showGuides)}>
+                    {showGuides ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                    <span>{showGuides ? "Hide Guides" : "Show Guides"}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleFullscreen}>
+                    <Maximize2 className="h-4 w-4 mr-2" />
+                    <span>Fullscreen</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-600 hover:bg-slate-100" title="Export"><Download className="h-4 w-4" /></Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleExport('png')}><FileImage className="h-4 w-4 mr-2" /> Image (PNG)</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExport('jpeg')}><FileImage className="h-4 w-4 mr-2" /> Image (JPEG)</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExport('html')}><FileCode className="h-4 w-4 mr-2" /> HTML</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
+
+              <UndoRedoButtons variant="ghost" size="sm" showLabels={false} className="gap-0.5" buttonClassName="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600 hover:scale-100" />
             </div>
           </div>
         </div>

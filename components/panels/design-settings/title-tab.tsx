@@ -273,17 +273,16 @@ export function TitleTab({ chartConfig, handleConfigUpdate }: TitleTabProps) {
                                 <Label className="text-xs font-medium">Text Color</Label>
                                 <div className="flex items-center gap-2">
                                     <div
-                                        className="w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform"
+                                        className="relative w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform overflow-hidden flex-shrink-0"
                                         style={{ backgroundColor: chartConfig.plugins?.subtitle?.color || "#666666" }}
-                                        onClick={() => document.getElementById('subtitle-color-picker')?.click()}
-                                    />
-                                    <input
-                                        id="subtitle-color-picker"
-                                        type="color"
-                                        value={chartConfig.plugins?.subtitle?.color || "#666666"}
-                                        onChange={(e) => handleConfigUpdate("plugins.subtitle.color", e.target.value)}
-                                        className="sr-only"
-                                    />
+                                    >
+                                        <input
+                                            type="color"
+                                            value={chartConfig.plugins?.subtitle?.color || "#666666"}
+                                            onChange={(e) => handleConfigUpdate("plugins.subtitle.color", e.target.value)}
+                                            className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
+                                        />
+                                    </div>
                                     <Input
                                         value={chartConfig.plugins?.subtitle?.color || "#666666"}
                                         onChange={(e) => handleConfigUpdate("plugins.subtitle.color", e.target.value)}

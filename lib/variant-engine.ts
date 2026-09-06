@@ -437,6 +437,8 @@ function renderTextZone(zone: TextZone, content: LLMContentPackage): RenderedZon
   let text = ''
   if (zone.id && (content as any)[zone.id] !== undefined) {
     text = String((content as any)[zone.id])
+  } else if ((zone as any).content) {
+    text = String((zone as any).content)
   } else {
     switch (zone.role) {
       case 'title':

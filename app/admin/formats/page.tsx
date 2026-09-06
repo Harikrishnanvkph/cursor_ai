@@ -13,6 +13,7 @@ import {
   Maximize2, BarChart3, Type, Hash, Image, Shapes
 } from "lucide-react"
 import { toast } from "sonner"
+import { getStandardAspectRatio } from "@/lib/utils/dimension-utils"
 
 // Zone type → color mapping for skeleton preview
 const ZONE_COLORS: Record<string, { bg: string; border: string; label: string }> = {
@@ -343,7 +344,7 @@ function FormatCard({
                 {dims.width}×{dims.height}
               </span>
               <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-800 text-gray-500 border border-gray-700">
-                {dims.aspect}
+                {getStandardAspectRatio(dims?.width, dims?.height, dims?.aspect)}
               </span>
             </div>
           </div>

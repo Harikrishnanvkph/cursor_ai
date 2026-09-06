@@ -38,7 +38,7 @@ export function GeneralTab({ axis, config, updateConfig, updateNestedConfig }: G
         { label: 'Dash-Dot', value: '[5,2,2,2]' },
     ]
 
-    const currentDash = config?.border?.dash || []
+    const currentDash = config?.grid?.borderDash || config?.border?.dash || []
     const currentDashStr = JSON.stringify(currentDash)
     const currentDashLabel = lineDashOptions.find(opt => opt.value === currentDashStr)?.label || 'Custom'
 
@@ -108,18 +108,8 @@ export function GeneralTab({ axis, config, updateConfig, updateNestedConfig }: G
                             <div className="ml-auto flex items-center gap-2">
                                 <div onClick={(e) => e.stopPropagation()}>
                                     <Switch
-                                        checked={!!config?.title?.display}
-                                        onCheckedChange={(checked) => {
-                                            updateConfig('title.display', checked)
-                                            if (checked && !config?.title?.text) {
-                                                updateConfig('title.text', `${axis.toUpperCase()}-Axis`)
-                                            }
-                                            if (checked) {
-                                                setTimeout(() => {
-                                                    titleInputRef.current?.focus()
-                                                }, 100)
-                                            }
-                                        }}
+                                        checked={config?.title?.display !== false}
+                                        onCheckedChange={(checked) => updateConfig('title.display', checked)}
                                         className="data-[state=checked]:bg-blue-600"
                                     />
                                 </div>
@@ -140,156 +130,91 @@ export function GeneralTab({ axis, config, updateConfig, updateNestedConfig }: G
                             </div>
                         </div>
 
-                        {/* Dropdown Content */}
+                        {/* Title Options */}
                         {titleDropdownOpen && (
                             <div className="bg-blue-50 rounded-b-lg p-3 space-y-3 relative overflow-hidden max-h-96 overflow-y-auto border-x border-b border-blue-100">
-                                {/* Title Text Input */}
                                 <div className="space-y-1">
-                                    <Label className="text-xs font-medium">Text</Label>
+                                    <Label className="text-xs font-medium text-gray-700">Text</Label>
                                     <Input
                                         ref={titleInputRef}
                                         value={config?.title?.text || ''}
                                         onChange={(e) => updateConfig('title.text', e.target.value)}
-                                        onFocus={(e) => {
-                                            if (!config?.title?.text) {
-                                                updateConfig('title.text', `${axis.toUpperCase()}-Axis`)
-                                            }
-                                        }}
-                                        placeholder={`${axis.toUpperCase()}-Axis`}
-                                        className="h-8 text-xs"
+                                        placeholder={`Enter ${axis.toUpperCase()}-axis title`}
+                                        className="h-8 text-xs bg-white"
                                     />
                                 </div>
 
-                                {/* Color */}
-                                <div className="space-y-1">
-                                    <div className="flex items-center justify-between">
-                                        <Label className="text-xs font-medium">Color</Label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="flex flex-col items-start gap-1">
+                                        <Label className="text-xs font-medium text-gray-700">Color</Label>
                                         <div className="flex items-center gap-2">
                                             <div
                                                 className="w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform"
-                                                style={{ backgroundColor: config?.title?.color || '#666666' }}
+                                                style={{ backgroundColor: config?.title?.color || '#374151' }}
                                                 onClick={() => document.getElementById(`title-color-${axis}`)?.click()}
                                             />
                                             <input
                                                 id={`title-color-${axis}`}
                                                 type="color"
-                                                value={config?.title?.color || '#666666'}
+                                                value={config?.title?.color || '#374151'}
                                                 onChange={(e) => updateConfig('title.color', e.target.value)}
                                                 className="sr-only"
                                             />
                                             <Input
-                                                value={config?.title?.color || '#666666'}
+                                                value={config?.title?.color || '#374151'}
                                                 onChange={(e) => updateConfig('title.color', e.target.value)}
-                                                className="w-24 h-8 text-xs font-mono uppercase"
-                                                placeholder="#666666"
+                                                className="w-20 h-8 text-xs font-mono uppercase bg-white"
+                                                placeholder="#374151"
                                             />
                                         </div>
                                     </div>
-                                </div>
 
-                                {/* Font Settings */}
-                                <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-1">
-                                        <Label className="text-xs font-medium">Font Size</Label>
+                                        <Label className="text-xs font-medium text-gray-700">Font Size</Label>
                                         <Input
                                             type="number"
                                             value={config?.title?.font?.size || ''}
-                                            onChange={(e) => updateNestedConfig('title.font', 'size', e.target.value ? Number(e.target.value) : undefined)}
+                                            onChange={(e) => updateConfig('title.font.size', e.target.value ? Number(e.target.value) : undefined)}
                                             placeholder="12"
-                                            className="h-8 text-xs pr-1"
+                                            className="h-8 text-xs bg-white"
                                             min={8}
-                                            max={24}
-                                            step={1}
+                                            max={36}
                                         />
-                                    </div>
-
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-medium">Weight</Label>
-                                        <Select
-                                            value={config?.title?.font?.weight || '400'}
-                                            onValueChange={(value) => updateNestedConfig('title.font', 'weight', value)}
-                                        >
-                                            <SelectTrigger className="h-8 text-xs">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="400">Normal</SelectItem>
-                                                <SelectItem value="600">Bold</SelectItem>
-                                                <SelectItem value="900">Bolder</SelectItem>
-                                            </SelectContent>
-                                        </Select>
                                     </div>
                                 </div>
 
-                                {/* Font Style and Family */}
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-1">
-                                        <Label className="text-xs font-medium">Style</Label>
+                                        <Label className="text-xs font-medium text-gray-700">Font Weight</Label>
                                         <Select
-                                            value={config?.title?.font?.style || 'normal'}
-                                            onValueChange={(value) => updateNestedConfig('title.font', 'style', value)}
+                                            value={config?.title?.font?.weight || 'normal'}
+                                            onValueChange={(value) => updateConfig('title.font.weight', value)}
                                         >
-                                            <SelectTrigger className="h-8 text-xs">
-                                                <SelectValue />
+                                            <SelectTrigger className="h-8 text-xs bg-white">
+                                                <SelectValue placeholder="Select weight" />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="normal">Normal</SelectItem>
-                                                <SelectItem value="italic">Italic</SelectItem>
+                                                <SelectItem value="bold">Bold</SelectItem>
+                                                <SelectItem value="500">Medium</SelectItem>
+                                                <SelectItem value="600">Semi Bold</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
 
                                     <div className="space-y-1">
-                                        <Label className="text-xs font-medium">Font Family</Label>
-                                        <Select
-                                            value={config?.title?.font?.family || 'Arial'}
-                                            onValueChange={(value) => updateNestedConfig('title.font', 'family', value)}
-                                        >
-                                            <SelectTrigger className="h-8 text-xs">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="Arial">Arial</SelectItem>
-                                                <SelectItem value="Times New Roman">Times New Roman</SelectItem>
-                                                <SelectItem value="Georgia">Georgia</SelectItem>
-                                                <SelectItem value="Verdana">Verdana</SelectItem>
-                                                <SelectItem value="Courier New">Courier New</SelectItem>
-                                                <SelectItem value="system-ui">System UI</SelectItem>
-                                                <SelectItem value="monospace">Monospace</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-
-                                {/* Padding and Alignment */}
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-medium">Padding</Label>
-                                        <Input
-                                            type="number"
-                                            value={config?.title?.padding || ''}
-                                            onChange={(e) => updateConfig('title.padding', e.target.value ? Number(e.target.value) : undefined)}
-                                            placeholder="0"
-                                            className="h-8 text-xs"
-                                            min={0}
-                                            max={20}
-                                            step={1}
-                                        />
-                                    </div>
-
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-medium">Alignment</Label>
+                                        <Label className="text-xs font-medium text-gray-700">Align</Label>
                                         <Select
                                             value={config?.title?.align || 'center'}
                                             onValueChange={(value) => updateConfig('title.align', value)}
                                         >
-                                            <SelectTrigger className="h-8 text-xs">
-                                                <SelectValue />
+                                            <SelectTrigger className="h-8 text-xs bg-white">
+                                                <SelectValue placeholder="Select align" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="start">Left</SelectItem>
+                                                <SelectItem value="start">Start</SelectItem>
                                                 <SelectItem value="center">Center</SelectItem>
-                                                <SelectItem value="end">Right</SelectItem>
+                                                <SelectItem value="end">End</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
@@ -331,82 +256,107 @@ export function GeneralTab({ axis, config, updateConfig, updateNestedConfig }: G
                             </div>
                         </div>
 
-                        {/* Dropdown Content */}
+                        {/* Label Options */}
                         {labelAppearanceDropdownOpen && (
                             <div className="bg-blue-50 rounded-b-lg p-3 space-y-3 relative overflow-hidden max-h-96 overflow-y-auto border-x border-b border-blue-100">
-                                {/* Color */}
-                                <div className="space-y-1">
-                                    <div className="flex items-center justify-between">
-                                        <Label className="text-xs font-medium">Color</Label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="flex flex-col items-start gap-1">
+                                        <Label className="text-xs font-medium text-gray-700">Color</Label>
                                         <div className="flex items-center gap-2">
                                             <div
                                                 className="w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform"
-                                                style={{ backgroundColor: config?.ticks?.color || '#666666' }}
+                                                style={{ backgroundColor: config?.ticks?.color || '#6b7280' }}
                                                 onClick={() => document.getElementById(`tick-color-${axis}`)?.click()}
                                             />
                                             <input
                                                 id={`tick-color-${axis}`}
                                                 type="color"
-                                                value={config?.ticks?.color || '#666666'}
+                                                value={config?.ticks?.color || '#6b7280'}
                                                 onChange={(e) => updateConfig('ticks.color', e.target.value)}
                                                 className="sr-only"
                                             />
                                             <Input
-                                                value={config?.ticks?.color || '#666666'}
+                                                value={config?.ticks?.color || '#6b7280'}
                                                 onChange={(e) => updateConfig('ticks.color', e.target.value)}
-                                                className="w-24 h-8 text-xs font-mono uppercase"
-                                                placeholder="#666666"
+                                                className="w-20 h-8 text-xs font-mono uppercase bg-white"
+                                                placeholder="#6b7280"
                                             />
                                         </div>
                                     </div>
-                                </div>
 
-                                {/* Font Settings */}
-                                <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-1">
-                                        <Label className="text-xs font-medium">Font Size</Label>
+                                        <Label className="text-xs font-medium text-gray-700">Font Size</Label>
                                         <Input
                                             type="number"
                                             value={config?.ticks?.font?.size || ''}
-                                            onChange={(e) => updateNestedConfig('ticks.font', 'size', e.target.value ? Number(e.target.value) : undefined)}
+                                            onChange={(e) => updateConfig('ticks.font.size', e.target.value ? Number(e.target.value) : undefined)}
                                             placeholder="12"
-                                            className="h-8 text-xs"
+                                            className="h-8 text-xs bg-white"
                                             min={8}
                                             max={24}
-                                            step={1}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-medium text-gray-700">Font Weight</Label>
+                                        <Select
+                                            value={config?.ticks?.font?.weight || 'normal'}
+                                            onValueChange={(value) => updateConfig('ticks.font.weight', value)}
+                                        >
+                                            <SelectTrigger className="h-8 text-xs bg-white">
+                                                <SelectValue placeholder="Select weight" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="normal">Normal</SelectItem>
+                                                <SelectItem value="bold">Bold</SelectItem>
+                                                <SelectItem value="500">Medium</SelectItem>
+                                                <SelectItem value="600">Semi Bold</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-medium text-gray-700">Rotation</Label>
+                                        <Input
+                                            type="number"
+                                            value={config?.ticks?.maxRotation || ''}
+                                            onChange={(e) => {
+                                                const value = e.target.value ? Number(e.target.value) : undefined
+                                                updateConfig('ticks.maxRotation', value)
+                                                updateConfig('ticks.minRotation', value)
+                                            }}
+                                            placeholder="0"
+                                            className="h-8 text-xs bg-white"
+                                            min={-90}
+                                            max={90}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-medium text-gray-700">Prefix</Label>
+                                        <Input
+                                            type="text"
+                                            value={config?.ticks?.prefix ?? ''}
+                                            onChange={(e) => updateConfig('ticks.prefix', e.target.value)}
+                                            placeholder="e.g. $, #"
+                                            className="h-8 text-xs bg-white"
                                         />
                                     </div>
 
                                     <div className="space-y-1">
-                                        <Label className="text-xs font-medium">Align</Label>
-                                        <Select
-                                            value={config?.ticks?.align || 'center'}
-                                            onValueChange={(value) => updateConfig('ticks.align', value)}
-                                        >
-                                            <SelectTrigger className="h-8 text-xs">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="start">Start</SelectItem>
-                                                <SelectItem value="center">Center</SelectItem>
-                                                <SelectItem value="end">End</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                                        <Label className="text-xs font-medium text-gray-700">Suffix</Label>
+                                        <Input
+                                            type="text"
+                                            value={config?.ticks?.suffix ?? ''}
+                                            onChange={(e) => updateConfig('ticks.suffix', e.target.value)}
+                                            placeholder="e.g. %, USD, k"
+                                            className="h-8 text-xs bg-white"
+                                        />
                                     </div>
-                                </div>
-
-                                <div className="space-y-1">
-                                    <Label className="text-xs font-medium">Rotation</Label>
-                                    <Input
-                                        type="number"
-                                        value={config?.ticks?.minRotation || ''}
-                                        onChange={(e) => updateConfig('ticks.minRotation', e.target.value ? Number(e.target.value) : undefined)}
-                                        placeholder="0°"
-                                        className="h-8 text-xs"
-                                        min={0}
-                                        max={90}
-                                        step={5}
-                                    />
                                 </div>
                             </div>
                         )}
@@ -468,7 +418,7 @@ export function GeneralTab({ axis, config, updateConfig, updateNestedConfig }: G
                                             <Input
                                                 value={config?.grid?.color || '#e5e7eb'}
                                                 onChange={(e) => updateConfig('grid.color', e.target.value)}
-                                                className="w-20 h-8 text-xs font-mono uppercase"
+                                                className="w-20 h-8 text-xs font-mono uppercase bg-white"
                                                 placeholder="#e5e7eb"
                                             />
                                         </div>
@@ -489,10 +439,10 @@ export function GeneralTab({ axis, config, updateConfig, updateNestedConfig }: G
                                         <Label className="text-xs font-medium">Line Width</Label>
                                         <Input
                                             type="number"
-                                            value={config?.grid?.lineWidth || ''}
+                                            value={config?.grid?.lineWidth ?? ''}
                                             onChange={(e) => updateConfig('grid.lineWidth', e.target.value ? Number(e.target.value) : undefined)}
                                             placeholder="1"
-                                            className="h-8 text-xs"
+                                            className="h-8 text-xs bg-white"
                                             min={0}
                                             max={5}
                                             step={0.1}
@@ -503,9 +453,13 @@ export function GeneralTab({ axis, config, updateConfig, updateNestedConfig }: G
                                         <Label className="text-xs font-medium">Line Style</Label>
                                         <Select
                                             value={currentDashStr}
-                                            onValueChange={(value) => updateConfig('border.dash', JSON.parse(value))}
+                                            onValueChange={(value) => {
+                                                const parsed = JSON.parse(value)
+                                                updateConfig('grid.borderDash', parsed)
+                                                updateConfig('border.dash', parsed)
+                                            }}
                                         >
-                                            <SelectTrigger className="h-8 text-xs">
+                                            <SelectTrigger className="h-8 text-xs bg-white">
                                                 <SelectValue placeholder="Select style">
                                                     {currentDashLabel}
                                                 </SelectValue>
@@ -529,14 +483,15 @@ export function GeneralTab({ axis, config, updateConfig, updateNestedConfig }: G
                                             <Label className="text-xs text-gray-600">Dash Length</Label>
                                             <Input
                                                 type="number"
-                                                value={(config?.border?.dash && config?.border?.dash[0]) || ''}
+                                                value={(currentDash && currentDash[0]) || ''}
                                                 onChange={(e) => {
                                                     const value = e.target.value ? Number(e.target.value) : 0
-                                                    const currentDashList = config?.border?.dash || [0, 0]
-                                                    updateConfig('border.dash', [value, currentDashList[1] || value])
+                                                    const newDash = [value, currentDash[1] || value]
+                                                    updateConfig('grid.borderDash', newDash)
+                                                    updateConfig('border.dash', newDash)
                                                 }}
                                                 placeholder="0"
-                                                className="h-8 text-xs"
+                                                className="h-8 text-xs bg-white"
                                                 min={0}
                                                 max={20}
                                                 step={1}
@@ -547,14 +502,15 @@ export function GeneralTab({ axis, config, updateConfig, updateNestedConfig }: G
                                             <Label className="text-xs text-gray-600">Gap Length</Label>
                                             <Input
                                                 type="number"
-                                                value={(config?.border?.dash && config?.border?.dash[1]) || ''}
+                                                value={(currentDash && currentDash[1]) || ''}
                                                 onChange={(e) => {
                                                     const value = e.target.value ? Number(e.target.value) : 0
-                                                    const currentDashList = config?.border?.dash || [0, 0]
-                                                    updateConfig('border.dash', [currentDashList[0] || value, value])
+                                                    const newDash = [currentDash[0] || value, value]
+                                                    updateConfig('grid.borderDash', newDash)
+                                                    updateConfig('border.dash', newDash)
                                                 }}
                                                 placeholder="0"
-                                                className="h-8 text-xs"
+                                                className="h-8 text-xs bg-white"
                                                 min={0}
                                                 max={20}
                                                 step={1}
@@ -565,10 +521,14 @@ export function GeneralTab({ axis, config, updateConfig, updateNestedConfig }: G
                                             <Label className="text-xs text-gray-600">Dash Offset</Label>
                                             <Input
                                                 type="number"
-                                                value={config?.border?.dashOffset || ''}
-                                                onChange={(e) => updateConfig('border.dashOffset', e.target.value ? Number(e.target.value) : undefined)}
+                                                value={config?.grid?.borderDashOffset ?? config?.border?.dashOffset ?? ''}
+                                                onChange={(e) => {
+                                                    const value = e.target.value ? Number(e.target.value) : 0
+                                                    updateConfig('grid.borderDashOffset', value)
+                                                    updateConfig('border.dashOffset', value)
+                                                }}
                                                 placeholder="0"
-                                                className="h-8 text-xs"
+                                                className="h-8 text-xs bg-white"
                                                 min={0}
                                                 max={20}
                                                 step={1}

@@ -151,6 +151,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
           chartType: 'bar',
           chartData: sampleData,
           chartConfig: config,
+          name: 'Untitled Chart',
           replaceMode: true
         })
         setHasJSON(true)
@@ -212,6 +213,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
             chartType: 'bar',
             chartData: sampleData,
             chartConfig: config,
+            name: 'Untitled Chart',
             replaceMode: true
           })
           setHasJSON(true)

@@ -53,31 +53,47 @@ export function BackgroundTab({ chartConfig, handleConfigUpdate }: BackgroundTab
 
                     {/* Color background control */}
                     {((chartConfig as any)?.background?.type === undefined || (chartConfig as any)?.background?.type === "color") && (
-                        <div>
-                            <Label className="text-xs font-medium">Background Color</Label>
-                            <div className="flex items-center gap-2 h-8">
-                                <div
-                                    className="w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform"
-                                    style={{ backgroundColor: ((chartConfig as any)?.background?.color as string) || "#ffffff" }}
-                                    onClick={() => {
-                                        const input = document.getElementById('bg-color-picker');
-                                        if (input) input.click();
-                                    }}
-                                />
-                                <input
-                                    id="bg-color-picker"
-                                    type="color"
-                                    value={((chartConfig as any)?.background?.color as string) || "#ffffff"}
-                                    onChange={(e) => handleConfigUpdate("background.color", e.target.value)}
-                                    className="absolute opacity-0 w-0 h-0"
-                                />
-                                <Input
-                                    value={((chartConfig as any)?.background?.color as string) || "#ffffff"}
-                                    onChange={(e) => handleConfigUpdate("background.color", e.target.value)}
-                                    className="h-8 text-xs flex-1"
-                                />
+                        <>
+                            <div>
+                                <Label className="text-xs font-medium">Background Color</Label>
+                                <div className="flex items-center gap-2 h-8">
+                                    <div
+                                        className="w-6 h-6 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform"
+                                        style={{ backgroundColor: ((chartConfig as any)?.background?.color as string) || "#ffffff" }}
+                                        onClick={() => {
+                                            const input = document.getElementById('bg-color-picker');
+                                            if (input) input.click();
+                                        }}
+                                    />
+                                    <input
+                                        id="bg-color-picker"
+                                        type="color"
+                                        value={((chartConfig as any)?.background?.color as string) || "#ffffff"}
+                                        onChange={(e) => handleConfigUpdate("background.color", e.target.value)}
+                                        className="absolute opacity-0 w-0 h-0"
+                                    />
+                                    <Input
+                                        value={((chartConfig as any)?.background?.color as string) || "#ffffff"}
+                                        onChange={(e) => handleConfigUpdate("background.color", e.target.value)}
+                                        className="h-8 text-xs flex-1"
+                                    />
+                                </div>
                             </div>
-                        </div>
+                            <div className="col-span-2">
+                                <Label className="text-xs font-medium">Background Opacity</Label>
+                                <div className="flex items-center gap-2">
+                                    <Slider
+                                        value={[typeof (chartConfig as any)?.background?.opacity === 'number' ? (chartConfig as any)?.background?.opacity : 100]}
+                                        onValueChange={([value]) => handleConfigUpdate("background.opacity", value)}
+                                        max={100}
+                                        min={0}
+                                        step={1}
+                                        className="flex-1"
+                                    />
+                                    <span className="text-xs w-8 text-right text-gray-500">{typeof (chartConfig as any)?.background?.opacity === 'number' ? (chartConfig as any)?.background?.opacity : 100}%</span>
+                                </div>
+                            </div>
+                        </>
                     )}
 
                     {/* Upload Image Button (visible when type is image) */}

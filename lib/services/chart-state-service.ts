@@ -37,82 +37,103 @@ export class ChartStateService {
         mode: ChartMode,
         state: ChartState
     ): Partial<ChartState> {
-        // NOTE: Clearing backendConversationId is handled by the store action
-        // that calls this service. This service stays purely functional.
+        let updatedSingleModeData = { ...state.singleModeData };
+        let updatedGroupedModeData = { ...state.groupedModeData };
+        let updatedGroups = [...(state.groups || [DEFAULT_GROUP])];
 
-        // Save current mode's data before switching
-        const currentModeData = state.chartData;
+        // 1. Commit outgoing mode state
+        if (state.chartMode === 'single') {
+            const outgoingIdx = state.activeDatasetIndex;
+            const currentConfig = state.chartConfig;
+            const currentLabels = state.chartData.labels;
 
-        // Persist single mode index if currently in single mode
-        const lastSingleIndex = state.chartMode === 'single'
-            ? state.activeDatasetIndex
-            : state.lastSingleModeActiveIndex;
+            const committedDatasets = (state.chartData.datasets || []).map((ds, i) => {
+                if (i === outgoingIdx) {
+                    return {
+                        ...ds,
+                        chartConfig: currentConfig ? JSON.parse(JSON.stringify(currentConfig)) : ds.chartConfig,
+                        sliceLabels: currentLabels && currentLabels.length > 0 ? [...currentLabels] : ds.sliceLabels
+                    };
+                }
+                return ds;
+            });
 
-        // Define backup updates
-        const backupUpdates = state.chartMode === 'single'
-            ? { singleModeData: currentModeData, lastSingleModeActiveIndex: lastSingleIndex }
-            : { groupedModeData: currentModeData };
-
-        // Get the data for the target mode (either saved data or default)
-        let targetModeData: ExtendedChartData;
-        if (mode === 'single') {
-            targetModeData = state.singleModeData;
+            updatedSingleModeData = {
+                ...state.chartData,
+                datasets: committedDatasets
+            };
         } else {
-            targetModeData = state.groupedModeData;
-        }
-
-        // Determine new active dataset index
-        let newActiveDatasetIndex = 0;
-        if (mode === 'single') {
-            // Restore last active index if valid
-            if (lastSingleIndex !== undefined && targetModeData.datasets.length > lastSingleIndex) {
-                newActiveDatasetIndex = lastSingleIndex;
+            // Outgoing was grouped mode: commit config to active group
+            const currentConfig = state.chartConfig;
+            if (currentConfig && state.activeGroupId) {
+                updatedGroups = updatedGroups.map(g =>
+                    g.id === state.activeGroupId
+                        ? { ...g, chartConfig: JSON.parse(JSON.stringify(currentConfig)) }
+                        : g
+                );
             }
+            updatedGroupedModeData = { ...state.chartData };
         }
 
-        // Infer Chart Type
-        let newChartType = state.chartType;
+        // 2. Resolve incoming mode state
+        let targetModeData: ExtendedChartData;
+        let newActiveDatasetIndex = 0;
+        let newChartType: SupportedChartType = 'bar';
+        let newConfig: ExtendedChartOptions;
+        let newActiveGroupId = state.activeGroupId;
 
-        if (mode === 'grouped') {
-            // In Grouped Mode, we MUST prioritize the active group's chart type
-            const activeGroup = state.groups.find(g => g.id === state.activeGroupId);
+        if (mode === 'single') {
+            targetModeData = JSON.parse(JSON.stringify(updatedSingleModeData));
+            const lastSingleIndex = state.lastSingleModeActiveIndex ?? state.activeDatasetIndex ?? 0;
+            if (targetModeData.datasets && targetModeData.datasets.length > lastSingleIndex) {
+                newActiveDatasetIndex = lastSingleIndex;
+            } else {
+                newActiveDatasetIndex = 0;
+            }
+
+            const activeDs = targetModeData.datasets?.[newActiveDatasetIndex];
+            newChartType = activeDs?.chartType || (activeDs?.type as SupportedChartType) || 'bar';
+
+            newConfig = activeDs?.chartConfig
+                ? JSON.parse(JSON.stringify(activeDs.chartConfig))
+                : (() => {
+                    const fresh = JSON.parse(JSON.stringify(getDefaultConfigForType(newChartType)));
+                    fresh.decorationShapes = [];
+                    return fresh;
+                })();
+
+            const resolvedLabels = (activeDs?.sliceLabels && activeDs.sliceLabels.length > 0)
+                ? [...activeDs.sliceLabels]
+                : (targetModeData.labels || []);
+            targetModeData.labels = resolvedLabels;
+        } else {
+            // Switching to grouped mode
+            targetModeData = JSON.parse(JSON.stringify(updatedGroupedModeData));
+            const activeGroup = updatedGroups.find(g => g.id === state.activeGroupId) || updatedGroups[0];
+            newActiveGroupId = activeGroup?.id || 'default';
 
             if (activeGroup && activeGroup.baseChartType) {
-                // 1. Prefer Active Group's base type
                 newChartType = activeGroup.baseChartType;
-            } else if (activeGroup && targetModeData.datasets) {
-                // 2. If no base type, look for datasets in this specific group
-                const groupDatasets = targetModeData.datasets.filter(d => d.groupId === state.activeGroupId);
+            } else if (targetModeData.datasets) {
+                const groupDatasets = targetModeData.datasets.filter(d => d.groupId === newActiveGroupId);
                 if (groupDatasets.length > 0 && groupDatasets[0].chartType) {
                     newChartType = groupDatasets[0].chartType;
-                } else if (targetModeData.datasets.length > 0) {
-                    // 3. Fallback to first dataset in list
-                    newChartType = targetModeData.datasets[0].chartType || 'bar';
                 }
             }
-        } else {
-            // Single Mode: Use the restored active dataset's type
-            if (targetModeData.datasets && targetModeData.datasets.length > 0) {
-                newChartType = targetModeData.datasets[newActiveDatasetIndex].chartType || 'bar';
-            } else {
-                newChartType = 'bar';
-            }
-        }
 
-        // Resolve the config for the target mode
-        let newConfig = state.chartConfig;
-        if (mode === 'single') {
-            // Use the active dataset's config if available
-            const activeDs = targetModeData.datasets?.[newActiveDatasetIndex];
-            if (activeDs?.chartConfig) {
-                newConfig = activeDs.chartConfig;
-            }
-        } else {
-            // Use the active group's config if available
-            const activeGroup = state.groups.find(g => g.id === state.activeGroupId);
-            if (activeGroup?.chartConfig) {
-                newConfig = activeGroup.chartConfig;
-            }
+            newConfig = activeGroup?.chartConfig
+                ? JSON.parse(JSON.stringify(activeGroup.chartConfig))
+                : (() => {
+                    const fresh = JSON.parse(JSON.stringify(getDefaultConfigForType(newChartType)));
+                    fresh.decorationShapes = [];
+                    return fresh;
+                })();
+
+            const groupDatasets = (targetModeData.datasets || []).filter(d => d.groupId === newActiveGroupId);
+            const resolvedLabels = (groupDatasets.length > 0 && groupDatasets[0].sliceLabels && groupDatasets[0].sliceLabels.length > 0)
+                ? [...groupDatasets[0].sliceLabels]
+                : (targetModeData.labels || []);
+            targetModeData.labels = resolvedLabels;
         }
 
         return {
@@ -120,11 +141,13 @@ export class ChartStateService {
             chartData: targetModeData,
             chartType: newChartType,
             chartConfig: newConfig,
+            groups: updatedGroups,
+            activeGroupId: newActiveGroupId,
             activeDatasetIndex: newActiveDatasetIndex,
-            // Update the mode-specific storage
-            ...backupUpdates,
-            ...(mode === 'single' ? { singleModeData: targetModeData } : { groupedModeData: targetModeData }),
-        } as Partial<ChartState>;
+            singleModeData: mode === 'single' ? targetModeData : updatedSingleModeData,
+            groupedModeData: mode === 'grouped' ? targetModeData : updatedGroupedModeData,
+            lastSingleModeActiveIndex: mode === 'single' ? newActiveDatasetIndex : state.lastSingleModeActiveIndex
+        };
     }
 
     static resetChart(): Partial<ChartState> {
@@ -193,7 +216,7 @@ export class ChartStateService {
                 // Backfill per-dataset chartConfig from top-level config if not present
                 chartConfig: ds.chartConfig || JSON.parse(JSON.stringify(chartConfig)),
                 // Assign source title if provided
-                sourceTitle: (name && name !== "Untitled" && name !== "Untitled Chart") ? name : (ds.sourceTitle || "Untitled Chart"),
+                sourceTitle: (name !== undefined && name !== null && name.trim() !== "") ? name : (ds.sourceTitle || "Untitled Chart"),
                 // Assign source ID if provided
                 sourceId: ds.sourceId || conversationId || id,
                 // Ensure the dataset owns its labels so they aren't lost
@@ -232,13 +255,14 @@ export class ChartStateService {
             const firstDatasetChartType = processedDatasets[0]?.chartType || chartType;
             const category = coordinateTypes.includes(firstDatasetChartType) ? 'coordinate' : 'categorical';
 
-            const displayName = name || `Loaded: ${chartType || 'Chart'}`;
+            const displayName = (name !== undefined && name !== null && name.trim() !== '') ? name : (chartType ? `${chartType.charAt(0).toUpperCase() + chartType.slice(1)} Group` : 'Group');
+            const savedUniformity = (chartConfig as any)?.visualSettings?.uniformityMode || 'uniform';
             const tempGroup: ChartGroup = {
                 id: tempGroupId,
                 name: displayName,
                 category,
-                uniformityMode: 'uniform',
-                baseChartType: chartType as SupportedChartType,
+                uniformityMode: savedUniformity,
+                baseChartType: (chartConfig as any)?.baseChartType || firstDatasetChartType || (chartType as SupportedChartType),
                 isDefault: false,
                 createdAt: Date.now(),
                 sourceId: conversationId || id,
@@ -274,14 +298,21 @@ export class ChartStateService {
         } else if (datasetCount > 0 && !replaceMode) {
             let existingDatasets = [...state.chartData.datasets];
             
-            // CRITICAL FIX: Before appending, save the CURRENT shared labels into the outgoing 
-            // active dataset's sliceLabels so that it doesn't lose its labels when we switch
+            // CRITICAL FIX: Before appending, save the CURRENT active config AND shared labels
+            // into the outgoing active dataset so they aren't lost when we switch
             if (state.chartMode === 'single' && state.activeDatasetIndex >= 0 && state.activeDatasetIndex < existingDatasets.length) {
+                const commitUpdates: any = {};
                 if (state.chartData.labels && state.chartData.labels.length > 0) {
-                     existingDatasets[state.activeDatasetIndex] = {
-                         ...existingDatasets[state.activeDatasetIndex],
-                         sliceLabels: [...state.chartData.labels]
-                     };
+                    commitUpdates.sliceLabels = [...state.chartData.labels];
+                }
+                if (state.chartConfig) {
+                    commitUpdates.chartConfig = JSON.parse(JSON.stringify(state.chartConfig));
+                }
+                if (Object.keys(commitUpdates).length > 0) {
+                    existingDatasets[state.activeDatasetIndex] = {
+                        ...existingDatasets[state.activeDatasetIndex],
+                        ...commitUpdates
+                    };
                 }
             }
             processedDatasets = [...existingDatasets, ...processedDatasets];
@@ -334,9 +365,9 @@ export class ChartStateService {
             }
         }
 
-        // Keep the new configuration and title for the active chart
-        const finalConfig = isAppending ? state.chartConfig : (chartConfig || state.chartConfig);
-        const finalTitle = isAppending ? state.chartTitle : (name || state.chartTitle);
+        // The newly loaded chart becomes the active chart, so its active config and title are the incoming ones
+        const finalConfig = chartConfig ? JSON.parse(JSON.stringify(chartConfig)) : state.chartConfig;
+        const finalTitle = (name !== undefined && name !== null && name.trim() !== '') ? name : (state.chartTitle || "Untitled Chart");
 
         return {
             chartType,

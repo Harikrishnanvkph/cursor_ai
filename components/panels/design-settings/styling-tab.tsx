@@ -57,11 +57,10 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
     const { targetIndices: getTargetDatasetIndicesArray, primaryIndex } = useGroupedSettingsTarget()
     const getTargetDatasetIndices = () => getTargetDatasetIndicesArray
 
-    // Slice-level targeting (single mode only)
+    // Slice-level targeting
     const chartMode = useChartStore(s => s.chartMode)
     const { settingsSliceIndex } = useUIStore()
-    const isSingleMode = chartMode === 'single'
-    const isSliceMode = isSingleMode && settingsSliceIndex !== null
+    const isSliceMode = settingsSliceIndex !== null
 
     // Safely get a reference to the primary dataset we are editing to read its current values
     const primaryDataset = chartData.datasets[primaryIndex] || chartData.datasets[0] || {};
@@ -1462,65 +1461,242 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
 
                     {/* Colors Segment */}
                     <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-4">
-                        <p className="text-xs font-semibold text-gray-700 tracking-wide uppercase">Series Colors</p>
+                        <p className="text-xs font-semibold text-gray-700 tracking-wide uppercase">Series Fill & Border Colors</p>
 
-                        {/* Positive Color */}
-                        <div className="space-y-1.5">
-                            <Label className="text-xs font-medium text-gray-600">Increase Color (Positive)</Label>
-                            <div className="flex items-center gap-2">
-                                <div className="relative w-8 h-8 rounded-md border border-gray-300 cursor-pointer hover:scale-105 transition-transform overflow-hidden flex-shrink-0" style={{ backgroundColor: (chartConfig.plugins as any)?.waterfall?.positiveColor || '#10b981' }}>
-                                    <input
-                                        type="color"
-                                        value={(chartConfig.plugins as any)?.waterfall?.positiveColor || '#10b981'}
-                                        onChange={(e) => handleConfigUpdate('plugins.waterfall.positiveColor', e.target.value)}
-                                        className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
-                                    />
+                        {/* Increase Color (Positive) */}
+                        <div className="space-y-1.5 p-2 bg-white rounded-md border border-gray-200">
+                            <Label className="text-[11px] font-semibold text-emerald-700 block">
+                                Increase (Positive)
+                            </Label>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <span className="text-[10px] text-gray-500 font-medium block mb-1">Slice Color</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="relative w-6 h-6 rounded border border-gray-300 overflow-hidden flex-shrink-0" style={{ backgroundColor: (chartConfig.plugins as any)?.waterfall?.positiveColor || '#10b981' }}>
+                                            <input
+                                                type="color"
+                                                value={(chartConfig.plugins as any)?.waterfall?.positiveColor || '#10b981'}
+                                                onChange={(e) => handleConfigUpdate('plugins.waterfall.positiveColor', e.target.value)}
+                                                className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
+                                            />
+                                        </div>
+                                        <Input
+                                            value={(chartConfig.plugins as any)?.waterfall?.positiveColor || '#10b981'}
+                                            onChange={(e) => handleConfigUpdate('plugins.waterfall.positiveColor', e.target.value)}
+                                            className="h-7 text-[11px] font-mono px-1.5"
+                                        />
+                                    </div>
                                 </div>
-                                <Input
-                                    value={(chartConfig.plugins as any)?.waterfall?.positiveColor || '#10b981'}
-                                    onChange={(e) => handleConfigUpdate('plugins.waterfall.positiveColor', e.target.value)}
-                                    className="h-9 text-xs font-mono flex-1"
-                                />
+                                <div>
+                                    <span className="text-[10px] text-gray-500 font-medium block mb-1">Border Color</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="relative w-6 h-6 rounded border border-gray-300 overflow-hidden flex-shrink-0" style={{ backgroundColor: (chartConfig.plugins as any)?.waterfall?.positiveBorderColor || '#059669' }}>
+                                            <input
+                                                type="color"
+                                                value={(chartConfig.plugins as any)?.waterfall?.positiveBorderColor || '#059669'}
+                                                onChange={(e) => handleConfigUpdate('plugins.waterfall.positiveBorderColor', e.target.value)}
+                                                className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
+                                            />
+                                        </div>
+                                        <Input
+                                            value={(chartConfig.plugins as any)?.waterfall?.positiveBorderColor || '#059669'}
+                                            onChange={(e) => handleConfigUpdate('plugins.waterfall.positiveBorderColor', e.target.value)}
+                                            className="h-7 text-[11px] font-mono px-1.5"
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Negative Color */}
-                        <div className="space-y-1.5">
-                            <Label className="text-xs font-medium text-gray-600">Decrease Color (Negative)</Label>
-                            <div className="flex items-center gap-2">
-                                <div className="relative w-8 h-8 rounded-md border border-gray-300 cursor-pointer hover:scale-105 transition-transform overflow-hidden flex-shrink-0" style={{ backgroundColor: (chartConfig.plugins as any)?.waterfall?.negativeColor || '#ef4444' }}>
-                                    <input
-                                        type="color"
-                                        value={(chartConfig.plugins as any)?.waterfall?.negativeColor || '#ef4444'}
-                                        onChange={(e) => handleConfigUpdate('plugins.waterfall.negativeColor', e.target.value)}
-                                        className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
-                                    />
+                        {/* Decrease Color (Negative) */}
+                        <div className="space-y-1.5 p-2 bg-white rounded-md border border-gray-200">
+                            <Label className="text-[11px] font-semibold text-rose-700 block">
+                                Decrease (Negative)
+                            </Label>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <span className="text-[10px] text-gray-500 font-medium block mb-1">Slice Color</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="relative w-6 h-6 rounded border border-gray-300 overflow-hidden flex-shrink-0" style={{ backgroundColor: (chartConfig.plugins as any)?.waterfall?.negativeColor || '#ef4444' }}>
+                                            <input
+                                                type="color"
+                                                value={(chartConfig.plugins as any)?.waterfall?.negativeColor || '#ef4444'}
+                                                onChange={(e) => handleConfigUpdate('plugins.waterfall.negativeColor', e.target.value)}
+                                                className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
+                                            />
+                                        </div>
+                                        <Input
+                                            value={(chartConfig.plugins as any)?.waterfall?.negativeColor || '#ef4444'}
+                                            onChange={(e) => handleConfigUpdate('plugins.waterfall.negativeColor', e.target.value)}
+                                            className="h-7 text-[11px] font-mono px-1.5"
+                                        />
+                                    </div>
                                 </div>
-                                <Input
-                                    value={(chartConfig.plugins as any)?.waterfall?.negativeColor || '#ef4444'}
-                                    onChange={(e) => handleConfigUpdate('plugins.waterfall.negativeColor', e.target.value)}
-                                    className="h-9 text-xs font-mono flex-1"
-                                />
+                                <div>
+                                    <span className="text-[10px] text-gray-500 font-medium block mb-1">Border Color</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="relative w-6 h-6 rounded border border-gray-300 overflow-hidden flex-shrink-0" style={{ backgroundColor: (chartConfig.plugins as any)?.waterfall?.negativeBorderColor || '#dc2626' }}>
+                                            <input
+                                                type="color"
+                                                value={(chartConfig.plugins as any)?.waterfall?.negativeBorderColor || '#dc2626'}
+                                                onChange={(e) => handleConfigUpdate('plugins.waterfall.negativeBorderColor', e.target.value)}
+                                                className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
+                                            />
+                                        </div>
+                                        <Input
+                                            value={(chartConfig.plugins as any)?.waterfall?.negativeBorderColor || '#dc2626'}
+                                            onChange={(e) => handleConfigUpdate('plugins.waterfall.negativeBorderColor', e.target.value)}
+                                            className="h-7 text-[11px] font-mono px-1.5"
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Total Color */}
-                        <div className="space-y-1.5">
-                            <Label className="text-xs font-medium text-gray-600">Total / Subtotal Color</Label>
-                            <div className="flex items-center gap-2">
-                                <div className="relative w-8 h-8 rounded-md border border-gray-300 cursor-pointer hover:scale-105 transition-transform overflow-hidden flex-shrink-0" style={{ backgroundColor: (chartConfig.plugins as any)?.waterfall?.totalColor || '#3b82f6' }}>
-                                    <input
-                                        type="color"
-                                        value={(chartConfig.plugins as any)?.waterfall?.totalColor || '#3b82f6'}
-                                        onChange={(e) => handleConfigUpdate('plugins.waterfall.totalColor', e.target.value)}
-                                        className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
-                                    />
+                        {/* Start Point Color */}
+                        <div className="space-y-1.5 p-2 bg-white rounded-md border border-gray-200">
+                            <Label className="text-[11px] font-semibold text-blue-700 block">
+                                Start Point
+                            </Label>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <span className="text-[10px] text-gray-500 font-medium block mb-1">Slice Color</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="relative w-6 h-6 rounded border border-gray-300 overflow-hidden flex-shrink-0" style={{ backgroundColor: (chartConfig.plugins as any)?.waterfall?.startColor || '#3b82f6' }}>
+                                            <input
+                                                type="color"
+                                                value={(chartConfig.plugins as any)?.waterfall?.startColor || '#3b82f6'}
+                                                onChange={(e) => handleConfigUpdate('plugins.waterfall.startColor', e.target.value)}
+                                                className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
+                                            />
+                                        </div>
+                                        <Input
+                                            value={(chartConfig.plugins as any)?.waterfall?.startColor || '#3b82f6'}
+                                            onChange={(e) => handleConfigUpdate('plugins.waterfall.startColor', e.target.value)}
+                                            className="h-7 text-[11px] font-mono px-1.5"
+                                        />
+                                    </div>
                                 </div>
-                                <Input
-                                    value={(chartConfig.plugins as any)?.waterfall?.totalColor || '#3b82f6'}
-                                    onChange={(e) => handleConfigUpdate('plugins.waterfall.totalColor', e.target.value)}
-                                    className="h-9 text-xs font-mono flex-1"
-                                />
+                                <div>
+                                    <span className="text-[10px] text-gray-500 font-medium block mb-1">Border Color</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="relative w-6 h-6 rounded border border-gray-300 overflow-hidden flex-shrink-0" style={{ backgroundColor: (chartConfig.plugins as any)?.waterfall?.startBorderColor || '#1d4ed8' }}>
+                                            <input
+                                                type="color"
+                                                value={(chartConfig.plugins as any)?.waterfall?.startBorderColor || '#1d4ed8'}
+                                                onChange={(e) => handleConfigUpdate('plugins.waterfall.startBorderColor', e.target.value)}
+                                                className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
+                                            />
+                                        </div>
+                                        <Input
+                                            value={(chartConfig.plugins as any)?.waterfall?.startBorderColor || '#1d4ed8'}
+                                            onChange={(e) => handleConfigUpdate('plugins.waterfall.startBorderColor', e.target.value)}
+                                            className="h-7 text-[11px] font-mono px-1.5"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* End Total Color */}
+                        <div className="space-y-1.5 p-2 bg-white rounded-md border border-gray-200">
+                            <Label className="text-[11px] font-semibold text-blue-700 block">
+                                End Total
+                            </Label>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <span className="text-[10px] text-gray-500 font-medium block mb-1">Slice Color</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="relative w-6 h-6 rounded border border-gray-300 overflow-hidden flex-shrink-0" style={{ backgroundColor: (chartConfig.plugins as any)?.waterfall?.endColor || (chartConfig.plugins as any)?.waterfall?.totalColor || '#3b82f6' }}>
+                                            <input
+                                                type="color"
+                                                value={(chartConfig.plugins as any)?.waterfall?.endColor || (chartConfig.plugins as any)?.waterfall?.totalColor || '#3b82f6'}
+                                                onChange={(e) => {
+                                                    handleConfigUpdate('plugins.waterfall.endColor', e.target.value);
+                                                    handleConfigUpdate('plugins.waterfall.totalColor', e.target.value);
+                                                }}
+                                                className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
+                                            />
+                                        </div>
+                                        <Input
+                                            value={(chartConfig.plugins as any)?.waterfall?.endColor || (chartConfig.plugins as any)?.waterfall?.totalColor || '#3b82f6'}
+                                            onChange={(e) => {
+                                                handleConfigUpdate('plugins.waterfall.endColor', e.target.value);
+                                                handleConfigUpdate('plugins.waterfall.totalColor', e.target.value);
+                                            }}
+                                            className="h-7 text-[11px] font-mono px-1.5"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <span className="text-[10px] text-gray-500 font-medium block mb-1">Border Color</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="relative w-6 h-6 rounded border border-gray-300 overflow-hidden flex-shrink-0" style={{ backgroundColor: (chartConfig.plugins as any)?.waterfall?.endBorderColor || (chartConfig.plugins as any)?.waterfall?.totalBorderColor || '#1d4ed8' }}>
+                                            <input
+                                                type="color"
+                                                value={(chartConfig.plugins as any)?.waterfall?.endBorderColor || (chartConfig.plugins as any)?.waterfall?.totalBorderColor || '#1d4ed8'}
+                                                onChange={(e) => {
+                                                    handleConfigUpdate('plugins.waterfall.endBorderColor', e.target.value);
+                                                    handleConfigUpdate('plugins.waterfall.totalBorderColor', e.target.value);
+                                                }}
+                                                className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
+                                            />
+                                        </div>
+                                        <Input
+                                            value={(chartConfig.plugins as any)?.waterfall?.endBorderColor || (chartConfig.plugins as any)?.waterfall?.totalBorderColor || '#1d4ed8'}
+                                            onChange={(e) => {
+                                                handleConfigUpdate('plugins.waterfall.endBorderColor', e.target.value);
+                                                handleConfigUpdate('plugins.waterfall.totalBorderColor', e.target.value);
+                                            }}
+                                            className="h-7 text-[11px] font-mono px-1.5"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Subtotal Color */}
+                        <div className="space-y-1.5 p-2 bg-white rounded-md border border-gray-200">
+                            <Label className="text-[11px] font-semibold text-blue-700 block">
+                                Subtotal
+                            </Label>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <span className="text-[10px] text-gray-500 font-medium block mb-1">Slice Color</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="relative w-6 h-6 rounded border border-gray-300 overflow-hidden flex-shrink-0" style={{ backgroundColor: (chartConfig.plugins as any)?.waterfall?.subtotalColor || '#3b82f6' }}>
+                                            <input
+                                                type="color"
+                                                value={(chartConfig.plugins as any)?.waterfall?.subtotalColor || '#3b82f6'}
+                                                onChange={(e) => handleConfigUpdate('plugins.waterfall.subtotalColor', e.target.value)}
+                                                className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
+                                            />
+                                        </div>
+                                        <Input
+                                            value={(chartConfig.plugins as any)?.waterfall?.subtotalColor || '#3b82f6'}
+                                            onChange={(e) => handleConfigUpdate('plugins.waterfall.subtotalColor', e.target.value)}
+                                            className="h-7 text-[11px] font-mono px-1.5"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <span className="text-[10px] text-gray-500 font-medium block mb-1">Border Color</span>
+                                    <div className="flex items-center gap-2">
+                                        <div className="relative w-6 h-6 rounded border border-gray-300 overflow-hidden flex-shrink-0" style={{ backgroundColor: (chartConfig.plugins as any)?.waterfall?.subtotalBorderColor || '#1d4ed8' }}>
+                                            <input
+                                                type="color"
+                                                value={(chartConfig.plugins as any)?.waterfall?.subtotalBorderColor || '#1d4ed8'}
+                                                onChange={(e) => handleConfigUpdate('plugins.waterfall.subtotalBorderColor', e.target.value)}
+                                                className="absolute -inset-2 w-[200%] h-[200%] opacity-0 cursor-pointer"
+                                            />
+                                        </div>
+                                        <Input
+                                            value={(chartConfig.plugins as any)?.waterfall?.subtotalBorderColor || '#1d4ed8'}
+                                            onChange={(e) => handleConfigUpdate('plugins.waterfall.subtotalBorderColor', e.target.value)}
+                                            className="h-7 text-[11px] font-mono px-1.5"
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

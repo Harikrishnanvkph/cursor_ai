@@ -126,9 +126,25 @@ export async function embedImagesInHtmlString(htmlString: string): Promise<strin
 
 const SYSTEM_FONTS = new Set([
     'arial', 'helvetica', 'sans-serif', 'serif', 'monospace', 'cursive', 'fantasy',
-    'system-ui', '-apple-system', 'blinkmacsystemfont', 'segoe ui', 'roboto',
+    'system-ui', '-apple-system', 'blinkmacsystemfont', 'segoe ui',
     'times new roman', 'georgia', 'courier new', 'trebuchet ms', 'verdana', 'tahoma'
 ]);
+
+/**
+ * Scans HTML string to extract font families declared in inline styles.
+ */
+export function extractFontFamiliesFromHtml(html: string): string[] {
+    if (!html) return [];
+    const fonts: string[] = [];
+    const regex = /font-family:\s*([^;"]+)/gi;
+    let match;
+    while ((match = regex.exec(html)) !== null) {
+        if (match[1]) {
+            fonts.push(match[1].trim());
+        }
+    }
+    return fonts;
+}
 
 /**
  * Generates Google Fonts stylesheet links for any custom fonts used in templates or text areas.

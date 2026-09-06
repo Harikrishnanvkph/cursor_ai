@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useChartStore } from "@/lib/chart-store";
 import { useChartActions } from "@/lib/hooks/use-chart-actions";
 import { useTemplateStore } from "@/lib/template-store";
+import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store";
 import React, { useState, useEffect, useRef } from "react";
 import { Eye, EyeOff, ArrowUpNarrowWide, ArrowDownWideNarrow, ArrowUpAZ, ArrowDownZA, ArrowUpDown, Trophy, TrendingUp, TrendingDown, BarChart3, Percent, Hash, X, Divide, Undo2 } from "lucide-react";
 import { toast } from "sonner";
@@ -674,60 +675,86 @@ export function ResponsiveAnimationsPanel() {
                 </div>
               </div>
 
-              {/* Template Dimensions - Only shown when a template with chartArea exists */}
+              {/* Template Dimensions & Original Chart Dimensions */}
               {(() => {
                 const templateStore = useTemplateStore.getState();
+                const formatStore = useFormatGalleryStore.getState();
                 const { originalCloudDimensions } = useChartStore.getState();
 
-                const templateWithDimensions = templateStore.currentTemplate || templateStore.templateInBackground;
-                const hasTemplateDimensions = templateWithDimensions?.chartArea?.width && templateWithDimensions?.chartArea?.height;
-                const isTemplateConversation = templateStore.templateSavedToCloud || templateStore.editorMode === 'template';
-                const hasOriginalDimensions = originalCloudDimensions !== null;
+                let templateWidth: number | undefined = undefined;
+                let templateHeight: number | undefined = undefined;
 
-                // For template conversations, show Template Dimension
-                if (isTemplateConversation && hasTemplateDimensions) {
-                  return (
-                    <div className="flex items-start space-x-3 p-2 rounded-md hover:bg-blue-50 transition-colors">
-                      <input
-                        type="radio"
-                        id="template-dimension-mode-anim"
-                        name="chart-mode-anim"
-                        checked={(chartConfig as any).templateDimensions === true}
-                        onChange={() => {
-                          const template = useTemplateStore.getState().currentTemplate || useTemplateStore.getState().templateInBackground;
-                          if (template?.chartArea) {
-                            updateChartConfig({
-                              ...chartConfig,
-                              templateDimensions: true,
-                              originalDimensions: false,
-                              manualDimensions: true,
-                              responsive: false,
-                              dynamicDimension: false,
-                              width: `${template.chartArea.width}px`,
-                              height: `${template.chartArea.height}px`
-                            });
-                          }
-                        }}
-                        className="mt-1 text-blue-600 focus:ring-blue-500"
-                      />
-                      <div className="flex flex-col">
-                        <Label htmlFor="template-dimension-mode-anim" className="text-sm font-medium cursor-pointer text-blue-700">
-                          Template Dimensions {(chartConfig as any).templateDimensions === true ? '(Active)' : ''}
-                        </Label>
-                        <span className="text-xs text-gray-500">
-                          {templateWithDimensions?.chartArea?.width} × {templateWithDimensions?.chartArea?.height} px
-                        </span>
-                      </div>
-                    </div>
-                  );
+                // 1. Resolve format layout chart zone size
+                const selectedFormatId = formatStore.selectedFormatId;
+                if (selectedFormatId) {
+                  const format = formatStore.selectedFormatSnapshot
+                    || [...formatStore.formats, ...(formatStore.userFormats || [])].find(f => f.id === selectedFormatId);
+                  if (format) {
+                    const zones = format.skeleton?.zones || (format as any).zones || [];
+                    const chartZone = zones.find((z: any) => z.type === 'chart' || z.role === 'chart' || (z.id && String(z.id).startsWith('chart')));
+                    if (chartZone?.position?.width && chartZone?.position?.height) {
+                      templateWidth = chartZone.position.width;
+                      templateHeight = chartZone.position.height;
+                    }
+                  }
                 }
 
-                // For chart-only conversations loaded from cloud, show Original Dimension
-                if (hasOriginalDimensions) {
-                  const widthNum = parseInt(originalCloudDimensions.width);
-                  const heightNum = parseInt(originalCloudDimensions.height);
+                // 2. Resolve template layout chart zone size
+                const templateWithDimensions = templateStore.currentTemplate || templateStore.templateInBackground;
+                if (!templateWidth && templateWithDimensions?.chartArea) {
+                  templateWidth = templateWithDimensions.chartArea.width;
+                  templateHeight = templateWithDimensions.chartArea.height;
+                }
 
-                  return (
+                const hasTemplateDimensions = !!(templateWidth && templateHeight);
+
+                // Resolve original chart dimensions (from cloud, backup, or default 800x600)
+                const origWidth = originalCloudDimensions?.width 
+                  || (templateStore.chartDimensionBackup?.width ? `${templateStore.chartDimensionBackup.width}` : '800px');
+                const origHeight = originalCloudDimensions?.height 
+                  || (templateStore.chartDimensionBackup?.height ? `${templateStore.chartDimensionBackup.height}` : '600px');
+                
+                const origWNum = parseInt(origWidth, 10) || 800;
+                const origHNum = parseInt(origHeight, 10) || 600;
+
+                return (
+                  <>
+                    {/* 1. Template Dimensions */}
+                    {hasTemplateDimensions && (
+                      <div className="flex items-start space-x-3 p-2 rounded-md hover:bg-blue-50 transition-colors">
+                        <input
+                          type="radio"
+                          id="template-dimension-mode-anim"
+                          name="chart-mode-anim"
+                          checked={(chartConfig as any).templateDimensions === true}
+                          onChange={() => {
+                            if (templateWidth && templateHeight) {
+                              updateChartConfig({
+                                ...chartConfig,
+                                templateDimensions: true,
+                                originalDimensions: false,
+                                manualDimensions: true,
+                                responsive: false,
+                                dynamicDimension: false,
+                                width: `${templateWidth}px`,
+                                height: `${templateHeight}px`
+                              });
+                            }
+                          }}
+                          className="mt-1 text-blue-600 focus:ring-blue-500"
+                        />
+                        <div className="flex flex-col">
+                          <Label htmlFor="template-dimension-mode-anim" className="text-sm font-medium cursor-pointer text-blue-700">
+                            Template Dimensions {(chartConfig as any).templateDimensions === true ? '(Active)' : ''}
+                          </Label>
+                          <span className="text-xs text-gray-500">
+                            {templateWidth} × {templateHeight} px
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 2. Original Chart Dimensions (neglecting template dimensions) */}
                     <div className="flex items-start space-x-3 p-2 rounded-md hover:bg-blue-50 transition-colors">
                       <input
                         type="radio"
@@ -735,35 +762,30 @@ export function ResponsiveAnimationsPanel() {
                         name="chart-mode-anim"
                         checked={(chartConfig as any).originalDimensions === true}
                         onChange={() => {
-                          const { originalCloudDimensions } = useChartStore.getState();
-                          if (originalCloudDimensions) {
-                            updateChartConfig({
-                              ...chartConfig,
-                              originalDimensions: true,
-                              templateDimensions: false,
-                              manualDimensions: true,
-                              responsive: false,
-                              dynamicDimension: false,
-                              width: originalCloudDimensions.width,
-                              height: originalCloudDimensions.height
-                            });
-                          }
+                          updateChartConfig({
+                            ...chartConfig,
+                            originalDimensions: true,
+                            templateDimensions: false,
+                            manualDimensions: true,
+                            responsive: false,
+                            dynamicDimension: false,
+                            width: `${origWNum}px`,
+                            height: `${origHNum}px`
+                          });
                         }}
                         className="mt-1 text-blue-600 focus:ring-blue-500"
                       />
                       <div className="flex flex-col">
                         <Label htmlFor="original-dimension-mode-anim" className="text-sm font-medium cursor-pointer text-blue-700">
-                          Original Dimensions {(chartConfig as any).originalDimensions === true ? '(Active)' : ''}
+                          Original Chart Dimensions {(chartConfig as any).originalDimensions === true ? '(Active)' : ''}
                         </Label>
                         <span className="text-xs text-gray-500">
-                          {widthNum} × {heightNum} px
+                          {origWNum} × {origHNum} px
                         </span>
                       </div>
                     </div>
-                  );
-                }
-
-                return null;
+                  </>
+                );
               })()}
             </div>
             {/* Padding Controls */}

@@ -15,8 +15,9 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { createExpiringStorage } from '@/lib/storage-utils'
-import type { FormatCategory, FormatBlueprintRow, GalleryFilters } from '@/lib/format-types'
+import type { FormatCategory, FormatBlueprintRow, GalleryFilters, ZoneType } from '@/lib/format-types'
 import { dataService } from '@/lib/data-service'
+import { createZone } from '@/components/format-builder/format-builder-utils'
 
 interface FormatGalleryStore {
   // Gallery Mode
@@ -72,6 +73,20 @@ interface FormatGalleryStore {
   /** Update a specific zone's style in the selected format skeleton.
    *  Updates BOTH the in-memory formats[] AND the persisted snapshot. */
   updateZoneStyle: (zoneId: string, styleUpdates: Record<string, any>) => void
+  /** Whether direct canvas zone resize mode is enabled */
+  isResizeMode: boolean
+  setResizeMode: (enabled: boolean) => void
+  /** Update a specific zone's position (x, y, width, height) in the selected format skeleton.
+   *  Updates BOTH the in-memory formats[] AND the persisted snapshot. */
+  updateZonePosition: (zoneId: string, position: { x: number; y: number; width: number; height: number }) => void
+  /** Reset all zone positions for the selected format back to original defaults */
+  resetFormatPositions: () => void
+  /** Toggle visibility of a specific zone in the selected format working copy */
+  toggleZoneVisibility: (zoneId: string) => void
+  /** Delete a specific zone from the selected format working copy (chart zone is protected) */
+  deleteZone: (zoneId: string) => void
+  /** Add a new zone to the selected format working copy */
+  addZone: (type: ZoneType, subConfig?: Record<string, any>) => void
 
   // AI Generation Notes
   /** Format-specific notes provided by the user for generation. formatId -> zoneId -> noteText */
@@ -82,6 +97,7 @@ interface FormatGalleryStore {
   // Caching metadata & actions
   lastFetchedAt: string | null
   loadFormats: (force?: boolean) => Promise<void>
+  deleteFormat: (id: string) => Promise<{ success: boolean; error?: string }>
 
   // Reset all gallery state
   resetGallery: () => void
@@ -97,6 +113,20 @@ function applyZoneStyleToFormat(
   const zones = (skeleton.zones || []).map((z: any) => {
     if (z.id !== zoneId) return z
     return { ...z, style: { ...z.style, ...styleUpdates } }
+  })
+  return { ...format, skeleton: { ...skeleton, zones } }
+}
+
+/** Apply zone position updates to a format blueprint, returning a new copy */
+function applyZonePositionToFormat(
+  format: FormatBlueprintRow,
+  zoneId: string,
+  positionUpdates: { x: number; y: number; width: number; height: number }
+): FormatBlueprintRow {
+  const skeleton = { ...(format.skeleton as any) }
+  const zones = (skeleton.zones || []).map((z: any) => {
+    if (z.id !== zoneId) return z
+    return { ...z, position: { ...z.position, ...positionUpdates } }
   })
   return { ...format, skeleton: { ...skeleton, zones } }
 }
@@ -134,10 +164,13 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
     selectedChartType: null,
     selectedFormatSnapshot: null,
     setSelectedFormat: (formatId, chartType) => set((state) => {
-      // When selecting a format, take a snapshot of the original blueprint
+      // When selecting a format, create an isolated deep clone of the blueprint
       let snapshot: FormatBlueprintRow | null = null
       if (formatId) {
-        snapshot = [...state.formats, ...state.userFormats].find(f => f.id === formatId) || null
+        const found = [...state.formats, ...state.userFormats].find(f => f.id === formatId)
+        if (found) {
+          snapshot = JSON.parse(JSON.stringify(found))
+        }
       }
       return {
         selectedFormatId: formatId,
@@ -169,24 +202,105 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
     updateZoneStyle: (zoneId, styleUpdates) => set((state) => {
       if (!state.selectedFormatId) return state
 
-      // Update the in-memory formats[] for immediate rendering
-      const formats = state.formats.map(f => {
-        if (f.id !== state.selectedFormatId) return f
-        return applyZoneStyleToFormat(f, zoneId, styleUpdates)
+      // If snapshot doesn't exist yet, derive it cleanly from pristine catalog
+      const current = state.selectedFormatSnapshot || [...state.formats, ...state.userFormats].find(f => f.id === state.selectedFormatId)
+      if (!current) return state
+
+      // Update ONLY the active working copy (selectedFormatSnapshot)
+      // Master blueprints in formats[] and userFormats[] remain completely untouched!
+      const updatedSnapshot = applyZoneStyleToFormat(current, zoneId, styleUpdates)
+
+      return { selectedFormatSnapshot: updatedSnapshot }
+    }),
+
+    // Direct Canvas Zone Resizing
+    isResizeMode: false,
+    setResizeMode: (enabled) => set({ isResizeMode: enabled }),
+    updateZonePosition: (zoneId, positionUpdates) => set((state) => {
+      if (!state.selectedFormatId) return state
+
+      // If snapshot doesn't exist yet, derive it cleanly from pristine catalog
+      const current = state.selectedFormatSnapshot || [...state.formats, ...state.userFormats].find(f => f.id === state.selectedFormatId)
+      if (!current) return state
+
+      // Update ONLY the active working copy (selectedFormatSnapshot)
+      // Master blueprints in formats[] and userFormats[] remain completely untouched!
+      const updatedSnapshot = applyZonePositionToFormat(current, zoneId, positionUpdates)
+
+      return { selectedFormatSnapshot: updatedSnapshot }
+    }),
+    resetFormatPositions: () => set((state) => {
+      if (!state.selectedFormatId) return state
+      // Find pristine original from loaded formats or userFormats
+      const original = [...state.formats, ...state.userFormats].find(f => f.id === state.selectedFormatId)
+      if (!original) return state
+
+      return {
+        selectedFormatSnapshot: JSON.parse(JSON.stringify(original)),
+        selectedZoneId: null
+      }
+    }),
+
+    // Zone CRUD on Selected Format Working Copy
+    toggleZoneVisibility: (zoneId) => set((state) => {
+      if (!state.selectedFormatId) return state
+      const current = state.selectedFormatSnapshot || [...state.formats, ...state.userFormats].find(f => f.id === state.selectedFormatId)
+      if (!current) return state
+
+      const skeleton = { ...(current.skeleton as any) }
+      const zones = (skeleton.zones || []).map((z: any) => {
+        if (z.id !== zoneId) return z
+        const currentVis = z.visible !== false
+        return { ...z, visible: !currentVis }
       })
 
-      // Also update userFormats if the selected format is a user format
-      const userFormats = state.userFormats.map(f => {
-        if (f.id !== state.selectedFormatId) return f
-        return applyZoneStyleToFormat(f, zoneId, styleUpdates)
+      return {
+        selectedFormatSnapshot: { ...current, skeleton: { ...skeleton, zones } }
+      }
+    }),
+
+    deleteZone: (zoneId) => set((state) => {
+      if (!state.selectedFormatId) return state
+      const current = state.selectedFormatSnapshot || [...state.formats, ...state.userFormats].find(f => f.id === state.selectedFormatId)
+      if (!current) return state
+
+      const skeleton = { ...(current.skeleton as any) }
+      // Protect chart zone from deletion
+      const zones = (skeleton.zones || []).filter((z: any) => {
+        if (z.id === zoneId && z.type === 'chart') return true
+        return z.id !== zoneId
       })
 
-      // Update the persisted snapshot so edits survive refresh
-      const updatedSnapshot = state.selectedFormatSnapshot
-        ? applyZoneStyleToFormat(state.selectedFormatSnapshot, zoneId, styleUpdates)
-        : null
+      return {
+        selectedFormatSnapshot: { ...current, skeleton: { ...skeleton, zones } },
+        selectedZoneId: state.selectedZoneId === zoneId ? null : state.selectedZoneId
+      }
+    }),
 
-      return { formats, userFormats, selectedFormatSnapshot: updatedSnapshot }
+    addZone: (type, subConfig) => set((state) => {
+      if (!state.selectedFormatId) return state
+      const current = state.selectedFormatSnapshot || [...state.formats, ...state.userFormats].find(f => f.id === state.selectedFormatId)
+      if (!current) return state
+
+      const dims = current.dimensions || { width: 1200, height: 800 }
+      const skeleton = { ...(current.skeleton as any) }
+      const palette = skeleton.colorPalette || {
+        primary: '#3b82f6',
+        secondary: '#10b981',
+        accent: '#f59e0b',
+        background: '#ffffff',
+        text: '#1e293b'
+      }
+
+      const newZone = createZone(type, dims as any, palette, subConfig)
+      newZone.visible = true
+
+      const zones = [...(skeleton.zones || []), newZone]
+      return {
+        selectedFormatSnapshot: { ...current, skeleton: { ...skeleton, zones } },
+        selectedZoneId: newZone.id,
+        isResizeMode: true
+      }
     }),
 
     // AI Generation Notes
@@ -252,6 +366,43 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
       }
     },
 
+    deleteFormat: async (id: string) => {
+      try {
+        const res = await dataService.deleteFormat(id)
+        if (res.error) {
+          return { success: false, error: res.error }
+        }
+
+        const state = get()
+        const updatedUserFormats = state.userFormats.filter(f => f.id !== id)
+        const updatedFormats = state.formats.filter(f => f.id !== id)
+        const isSelected = state.selectedFormatId === id
+
+        set({
+          userFormats: updatedUserFormats,
+          formats: updatedFormats,
+          ...(isSelected ? {
+            selectedFormatId: null,
+            selectedChartType: null,
+            selectedFormatSnapshot: null,
+          } : {})
+        })
+
+        if (isSelected) {
+          try {
+            const { useTemplateStore } = await import('@/lib/template-store')
+            useTemplateStore.getState().setEditorMode('chart')
+            useTemplateStore.getState().setGenerateMode('chart')
+          } catch (e) {}
+        }
+
+        return { success: true }
+      } catch (err: any) {
+        console.error('Failed to delete format:', err)
+        return { success: false, error: err.message || 'Failed to delete format' }
+      }
+    },
+
     // Reset
     resetGallery: () => set({
       isGalleryOpen: false,
@@ -273,14 +424,14 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
     name: 'format-gallery-store',
     storage: createExpiringStorage('format-gallery-store'),
     // Persist format selection AND the modified snapshot so edits survive refresh.
+    // Formats catalog is intentionally NOT persisted here, ensuring pristine official blueprints are always loaded fresh.
     partialize: (state) => ({
       selectedFormatId: state.selectedFormatId,
       selectedChartType: state.selectedChartType,
       contentPackage: state.contentPackage,
       contextualImageUrl: state.contextualImageUrl,
       selectedFormatSnapshot: state.selectedFormatSnapshot,
-      formats: state.formats,
-      userFormats: state.userFormats,
+      formatZoneNotes: state.formatZoneNotes,
       lastFetchedAt: state.lastFetchedAt,
     }),
   }

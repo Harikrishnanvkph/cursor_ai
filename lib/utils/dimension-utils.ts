@@ -229,3 +229,44 @@ export function getChartIcon(chartName: string): React.ReactNode {
             return React.createElement(ChartColumnBig, { className: "h-4 w-4 mr-1" });
     }
 }
+
+/**
+ * Format / standardize aspect ratio label from width, height, or existing aspect string.
+ * @example getStandardAspectRatio(1080, 1920) → "9:16"
+ * @example getStandardAspectRatio(1920, 1080) → "16:9"
+ * @example getStandardAspectRatio(1080, 1080) → "1:1"
+ */
+export function getStandardAspectRatio(width?: number, height?: number, existingAspect?: string): string {
+    const standardRatios = ['1:1', '4:5', '9:16', '16:9', '3:2', '2:3', '4:3', '3:4', '1.91:1'];
+    if (existingAspect && standardRatios.includes(existingAspect.trim())) {
+        return existingAspect.trim();
+    }
+
+    if (!width || !height || width <= 0 || height <= 0) {
+        return existingAspect || '1:1';
+    }
+
+    const ratio = width / height;
+
+    if (Math.abs(ratio - 1.0) < 0.02) return '1:1';
+    if (Math.abs(ratio - (4 / 5)) < 0.02) return '4:5';
+    if (Math.abs(ratio - (9 / 16)) < 0.02) return '9:16';
+    if (Math.abs(ratio - (16 / 9)) < 0.02) return '16:9';
+    if (Math.abs(ratio - (3 / 2)) < 0.02) return '3:2';
+    if (Math.abs(ratio - (2 / 3)) < 0.02) return '2:3';
+    if (Math.abs(ratio - (4 / 3)) < 0.02) return '4:3';
+    if (Math.abs(ratio - (3 / 4)) < 0.02) return '3:4';
+    if (Math.abs(ratio - 1.91) < 0.05) return '1.91:1';
+
+    const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
+    const divisor = gcd(Math.round(width), Math.round(height));
+    const simpleW = Math.round(width) / divisor;
+    const simpleH = Math.round(height) / divisor;
+
+    if (simpleW <= 20 && simpleH <= 20) {
+        return `${simpleW}:${simpleH}`;
+    }
+
+    return `${+ratio.toFixed(2)}:1`;
+}
+

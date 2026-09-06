@@ -1,4 +1,4 @@
-import { ChartGroup, SupportedChartType, ExtendedChartData } from '../chart-defaults';
+import { ChartGroup, SupportedChartType, ExtendedChartData, getDefaultConfigForType } from '../chart-defaults';
 
 export const GroupService = {
     addGroup: (
@@ -24,7 +24,7 @@ export const GroupService = {
         currentState: {
             groups: ChartGroup[];
         }
-    ) => {
+    ): { groups: ChartGroup[] } => {
         return {
             groups: currentState.groups.map(g => g.id === id ? { ...g, ...updates } : g)
         };
@@ -36,9 +36,10 @@ export const GroupService = {
             groups: ChartGroup[];
             activeGroupId: string;
             chartType: SupportedChartType;
-            groupedModeData: ExtendedChartData;
+            chartData?: ExtendedChartData;
+            groupedModeData?: ExtendedChartData;
         }
-    ) => {
+    ): { groups: ChartGroup[]; activeGroupId: string; chartType: SupportedChartType } | null => {
         if (id === 'default') return null; // Cannot delete default group
 
         const newGroups = currentState.groups.filter(g => g.id !== id);
@@ -47,16 +48,14 @@ export const GroupService = {
 
         // If active group is deleted, switch to default or first available
         if (currentState.activeGroupId === id) {
-            newActiveId = newGroups[0]?.id || 'default';
-
-            // Sync chart type with the new active group
-            const newActiveGroup = newGroups.find(g => g.id === newActiveId);
-            if (newActiveGroup) {
-                if (newActiveGroup.baseChartType) {
-                    newChartType = newActiveGroup.baseChartType;
-                } else if (currentState.groupedModeData.datasets) {
-                    // If no base type, check for datasets in this specific group
-                    const groupDatasets = currentState.groupedModeData.datasets.filter(d => d.groupId === newActiveId);
+            newActiveId = newGroups.length > 0 ? newGroups[0].id : 'default';
+            const activeGroup = newGroups.find(g => g.id === newActiveId);
+            if (activeGroup && activeGroup.baseChartType) {
+                newChartType = activeGroup.baseChartType;
+            } else {
+                const allDatasets = currentState.chartData?.datasets || currentState.groupedModeData?.datasets || [];
+                if (allDatasets.length > 0) {
+                    const groupDatasets = allDatasets.filter(ds => ds.groupId === newActiveId);
                     if (groupDatasets.length > 0 && groupDatasets[0].chartType) {
                         newChartType = groupDatasets[0].chartType;
                     }
@@ -75,34 +74,73 @@ export const GroupService = {
         id: string,
         currentState: {
             groups: ChartGroup[];
+            activeGroupId: string;
             chartType: SupportedChartType;
             chartConfig?: any;
+            chartData?: ExtendedChartData;
+            groupedModeData?: ExtendedChartData;
+            chartTitle?: string | null;
         }
     ) => {
-        const group = currentState.groups.find(g => g.id === id);
+        const outgoingGroupId = currentState.activeGroupId;
+        const currentConfig = currentState.chartConfig;
+
+        // 1. Commit outgoing group's chartConfig
+        let updatedGroups = currentState.groups.map(g => {
+            if (g.id === outgoingGroupId && g.id !== id && currentConfig) {
+                return { ...g, chartConfig: JSON.parse(JSON.stringify(currentConfig)) };
+            }
+            return g;
+        });
+
+        // 2. Resolve incoming group and its isolated config
+        const incomingGroup = updatedGroups.find(g => g.id === id);
         let newChartType = currentState.chartType;
 
-        if (group && group.baseChartType) {
-            newChartType = group.baseChartType;
+        if (incomingGroup && incomingGroup.baseChartType) {
+            newChartType = incomingGroup.baseChartType;
         }
 
-        // Resolve active group's chartConfig (clone current but clear decorationShapes if group has no config)
-        const currentConfig = currentState.chartConfig || {};
-        const newConfig = group?.chartConfig
-            ? JSON.parse(JSON.stringify(group.chartConfig))
-            : { ...currentConfig, decorationShapes: [] };
+        const newConfig = incomingGroup?.chartConfig
+            ? JSON.parse(JSON.stringify(incomingGroup.chartConfig))
+            : (() => {
+                const freshConfig = JSON.parse(JSON.stringify(getDefaultConfigForType(newChartType)));
+                freshConfig.decorationShapes = [];
+                return freshConfig;
+            })();
 
-        // Update the group's own chartConfig in the groups array so it's not undefined
-        const updatedGroups = currentState.groups.map(g =>
+        // 3. Update incoming group in groups array
+        updatedGroups = updatedGroups.map(g =>
             g.id === id ? { ...g, chartConfig: newConfig } : g
         );
+
+        // 4. Resolve labels for incoming group's datasets
+        const allDatasets = currentState.chartData?.datasets || currentState.groupedModeData?.datasets || [];
+        const groupDatasets = allDatasets.filter(ds => ds.groupId === id);
+        const newLabels = (groupDatasets.length > 0 && groupDatasets[0].sliceLabels && groupDatasets[0].sliceLabels.length > 0)
+            ? [...groupDatasets[0].sliceLabels]
+            : (currentState.chartData?.labels || []);
+
+        // 5. Sync backendConversationId with incoming group's sourceId
+        if (typeof window !== 'undefined') {
+            import('../chat-store').then(({ useChatStore }) => {
+                useChatStore.getState().setBackendConversationId(incomingGroup?.sourceId || null);
+            }).catch(() => {});
+        }
 
         const result: any = {
             activeGroupId: id,
             chartType: newChartType,
             chartConfig: newConfig,
-            groups: updatedGroups
+            groups: updatedGroups,
+            chartTitle: incomingGroup?.name || incomingGroup?.sourceTitle || currentState.chartTitle,
         };
+
+        if (currentState.chartData) {
+            const newChartData = { ...currentState.chartData, labels: newLabels };
+            result.chartData = newChartData;
+            result.groupedModeData = newChartData;
+        }
 
         return result;
     }
