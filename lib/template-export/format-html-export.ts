@@ -200,22 +200,41 @@ export async function exportFormatAsHTML(
             -webkit-font-smoothing: antialiased;
         }
         
-        .format-zone-text p,
-        .format-zone-text h1,
-        .format-zone-text h2,
-        .format-zone-text h3,
-        .format-zone-text h4,
-        .format-zone-text h5,
-        .format-zone-text h6 {
-            margin: 0 !important;
-            padding: 0 !important;
+        .format-zone-text p {
+            margin: 0.5em 0;
             text-align: inherit;
             line-height: inherit;
             font-family: inherit;
         }
         
-        .format-zone-text p:empty {
-            height: 1em;
+        .format-zone-text > p:first-child,
+        .format-zone-text > h1:first-child,
+        .format-zone-text > h2:first-child,
+        .format-zone-text > h3:first-child,
+        .format-zone-text > h4:first-child,
+        .format-zone-text > ul:first-child,
+        .format-zone-text > ol:first-child {
+            margin-top: 0 !important;
+        }
+        
+        .format-zone-text > p:last-child,
+        .format-zone-text > h1:last-child,
+        .format-zone-text > h2:last-child,
+        .format-zone-text > h3:last-child,
+        .format-zone-text > h4:last-child,
+        .format-zone-text > ul:last-child,
+        .format-zone-text > ol:last-child {
+            margin-bottom: 0 !important;
+        }
+        
+        .format-zone-text h1 { font-size: 2em; font-weight: bold; margin: 0.5em 0; text-align: inherit; }
+        .format-zone-text h2 { font-size: 1.5em; font-weight: bold; margin: 0.5em 0; text-align: inherit; }
+        .format-zone-text h3 { font-size: 1.17em; font-weight: bold; margin: 0.5em 0; text-align: inherit; }
+        .format-zone-text h4 { font-size: 1em; font-weight: bold; margin: 0.5em 0; text-align: inherit; }
+        
+        .format-zone-text p:empty,
+        .format-zone-text p:has(br:only-child) {
+            min-height: 1em;
         }
         
         .format-zone-text img {
@@ -324,6 +343,16 @@ function renderBackgroundZoneHTML(rz: RenderedZone): string {
     // Image background
     if (rawBgUrl) {
         const fit = zStyle.imageFit || 'cover'
+        const isBaseTrans = zStyle.baseColorType === 'transparent' ||
+            zStyle.baseColor === 'transparent' ||
+            zStyle.backgroundColor === 'transparent'
+        const baseColor = isBaseTrans ? 'transparent' : (zStyle.baseColor || zStyle.backgroundColor || '#ffffff')
+
+        const containerStyle = [...style]
+        if (baseColor && baseColor !== 'transparent') {
+            containerStyle.push(`background-color:${baseColor}`)
+        }
+
         let imgStyle = `width:100%;height:100%;object-fit:${fit}`
         if (opacity < 1) {
             imgStyle += `;opacity:${opacity}`
@@ -331,7 +360,7 @@ function renderBackgroundZoneHTML(rz: RenderedZone): string {
         if (zStyle.imageBlur || zStyle.blur) {
             imgStyle += `;filter:blur(${zStyle.imageBlur || zStyle.blur}px)`
         }
-        let imgHtml = `<div style="${style.join(';')}">`
+        let imgHtml = `<div style="${containerStyle.join(';')}">`
         imgHtml += `<img src="${rawBgUrl}" alt="" style="${imgStyle}"/>`
         if (zStyle.overlay) {
             imgHtml += `<div style="position:absolute;inset:0;background-color:${zStyle.overlay}"></div>`
@@ -384,18 +413,8 @@ function renderTextZoneHTML(rz: RenderedZone): string {
     let text = rz.resolvedContent || ''
     if (!text) return ''
 
-    // Normalize paragraph/heading styles so inner tags inherit text-align and zero-margin
-    const safeText = text
-        .replace(/<p([^>]*)>/gi, '<p$1 style="margin:0;padding:0;text-align:inherit;">')
-        .replace(/<h1([^>]*)>/gi, '<h1$1 style="margin:0;padding:0;text-align:inherit;">')
-        .replace(/<h2([^>]*)>/gi, '<h2$1 style="margin:0;padding:0;text-align:inherit;">')
-        .replace(/<h3([^>]*)>/gi, '<h3$1 style="margin:0;padding:0;text-align:inherit;">')
-        .replace(/<h4([^>]*)>/gi, '<h4$1 style="margin:0;padding:0;text-align:inherit;">')
-        .replace(/<h5([^>]*)>/gi, '<h5$1 style="margin:0;padding:0;text-align:inherit;">')
-        .replace(/<h6([^>]*)>/gi, '<h6$1 style="margin:0;padding:0;text-align:inherit;">')
-
     const fontSize = zone.style.fontSize || 14
-    const lineHeightVal = zone.style.lineHeight || 1.3
+    const lineHeightVal = zone.style.lineHeight || 1.6
     const lineHeightPx = Math.round(lineHeightVal * fontSize)
 
     const style = [
@@ -420,7 +439,7 @@ function renderTextZoneHTML(rz: RenderedZone): string {
         'z-index:30'
     ].filter(Boolean).join(';')
 
-    return `<div class="format-zone format-zone-text" style="${style}">${safeText}</div>`
+    return `<div class="format-zone format-zone-text html-content-area" style="${style}">${text}</div>`
 }
 
 function renderStatZoneHTML(rz: RenderedZone): string {

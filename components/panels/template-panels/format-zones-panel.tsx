@@ -769,7 +769,7 @@ export function FormatZonesPanel() {
                     fontSize: richEditorZone.style.fontSize,
                     fontFamily: richEditorZone.style.fontFamily,
                     color: richEditorZone.style.color,
-                    lineHeight: richEditorZone.style.lineHeight,
+                    lineHeight: richEditorZone.style.lineHeight || 1.6,
                     letterSpacing: richEditorZone.style.letterSpacing
                   } : undefined}
                   fitToView={editorFitToView}
@@ -833,7 +833,7 @@ export function FormatZonesPanel() {
                     textAlign: (zStyle.textAlign as any) || 'left',
                     lineHeight: zStyle.lineHeight || 1.6,
                     letterSpacing: zStyle.letterSpacing ? `${zStyle.letterSpacing}px` : 'normal',
-                    padding: '8px',
+                    padding: '4px',
                     wordBreak: 'break-word' as const,
                   }
 
@@ -895,6 +895,14 @@ function BackgroundZoneEditor({
   const style = zone.style || {}
   const rawUrl = style.imageUrl || style.bgImageUrl || zone.imageUrl || zone.url || ''
   const displayUrl = unwrapProxiedImageUrl(rawUrl)
+
+  const isBaseTransparent = style.baseColorType === 'transparent' ||
+    style.baseColor === 'transparent' ||
+    style.backgroundColor === 'transparent'
+
+  const currentBaseColor = (style.baseColor && style.baseColor !== 'transparent')
+    ? style.baseColor
+    : (style.backgroundColor && style.backgroundColor !== 'transparent' ? style.backgroundColor : '#ffffff')
 
   const currentMode = rawUrl || style.type === 'image'
     ? 'image'
@@ -1092,13 +1100,24 @@ function BackgroundZoneEditor({
             <div className="space-y-1">
               <Label className="text-[10px] text-gray-500">Preview</Label>
               <div
-                className="h-20 rounded-md border border-gray-200 bg-cover bg-center relative overflow-hidden shadow-inner"
+                className="h-20 rounded-md border border-gray-200 relative overflow-hidden shadow-inner"
                 style={{
-                  backgroundImage: `url(${displayUrl})`,
-                  opacity: style.imageOpacity !== undefined ? style.imageOpacity / 100 : 1,
-                  filter: style.imageBlur ? `blur(${style.imageBlur}px)` : 'none',
+                  backgroundColor: isBaseTransparent ? 'transparent' : currentBaseColor,
+                  backgroundImage: isBaseTransparent ? `linear-gradient(45deg, #f1f5f9 25%, transparent 25%), linear-gradient(-45deg, #f1f5f9 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f1f5f9 75%), linear-gradient(-45deg, transparent 75%, #f1f5f9 75%)` : undefined,
+                  backgroundSize: isBaseTransparent ? '12px 12px' : undefined,
+                  backgroundPosition: isBaseTransparent ? '0 0, 0 6px, 6px -6px, -6px 0px' : undefined,
                 }}
-              />
+              >
+                <div
+                  className="w-full h-full bg-cover bg-center"
+                  style={{
+                    backgroundImage: `url(${displayUrl})`,
+                    backgroundSize: style.imageFit === 'fill' ? '100% 100%' : (style.imageFit || 'cover'),
+                    opacity: style.imageOpacity !== undefined ? style.imageOpacity / 100 : 1,
+                    filter: style.imageBlur ? `blur(${style.imageBlur}px)` : 'none',
+                  }}
+                />
+              </div>
             </div>
           )}
 
@@ -1164,6 +1183,96 @@ function BackgroundZoneEditor({
                 className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600 mt-2"
               />
             </div>
+          </div>
+
+          {/* Background Base Color: Color or Transparent */}
+          <div className="space-y-1.5 pt-2 border-t border-gray-100">
+            <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+              Background Base Color
+            </Label>
+
+            {/* Two-option segmented toggle */}
+            <div className="grid grid-cols-2 gap-1 bg-gray-100 p-0.5 rounded-md text-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  onUpdateStyle({
+                    baseColorType: 'color',
+                    baseColor: currentBaseColor,
+                    backgroundColor: currentBaseColor,
+                  })
+                }}
+                className={`py-1 text-[11px] font-medium rounded transition-all flex items-center justify-center gap-1.5 ${
+                  !isBaseTransparent
+                    ? 'bg-white text-gray-800 shadow-xs font-semibold'
+                    : 'text-gray-500 hover:text-gray-800'
+                }`}
+              >
+                <span>Color</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onUpdateStyle({
+                    baseColorType: 'transparent',
+                    baseColor: 'transparent',
+                    backgroundColor: 'transparent',
+                  })
+                }}
+                className={`py-1 text-[11px] font-medium rounded transition-all flex items-center justify-center gap-1.5 ${
+                  isBaseTransparent
+                    ? 'bg-white text-gray-800 shadow-xs font-semibold'
+                    : 'text-gray-500 hover:text-gray-800'
+                }`}
+              >
+                <span>Transparent</span>
+              </button>
+            </div>
+
+            {/* Color picker shown when 'Color' is active */}
+            {!isBaseTransparent && (
+              <div className="space-y-1.5 pt-1">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={currentBaseColor}
+                    onChange={(e) => {
+                      onUpdateStyle({
+                        baseColorType: 'color',
+                        baseColor: e.target.value,
+                        backgroundColor: e.target.value,
+                      })
+                    }}
+                    className="w-7 h-7 rounded border border-gray-200 cursor-pointer p-0 bg-transparent shrink-0"
+                  />
+                  <Input
+                    value={currentBaseColor}
+                    onChange={(e) => {
+                      onUpdateStyle({
+                        baseColorType: 'color',
+                        baseColor: e.target.value,
+                        backgroundColor: e.target.value,
+                      })
+                    }}
+                    placeholder="#ffffff"
+                    className="h-7 text-[11px] font-mono"
+                  />
+                </div>
+                {/* Preset Palette */}
+                <div className="flex flex-wrap gap-1 pt-0.5">
+                  {['#ffffff', '#f8fafc', '#f1f5f9', '#0f172a', '#1e293b', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'].map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => onUpdateStyle({ baseColorType: 'color', baseColor: c, backgroundColor: c })}
+                      className="w-4 h-4 rounded-full border border-gray-300 shadow-2xs hover:scale-110 transition-transform"
+                      style={{ backgroundColor: c }}
+                      title={c}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

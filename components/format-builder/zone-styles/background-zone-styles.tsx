@@ -132,6 +132,59 @@ export function BackgroundZoneStyles({ showContentControls = true }: { showConte
               className="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
             />
           </div>
+
+          {/* Background Base Color */}
+          <div className="space-y-1.5 pt-2 border-t border-gray-800">
+            <label className="text-[10px] text-gray-500 font-medium block">Background Base Color</label>
+            <div className="grid grid-cols-2 gap-1 bg-gray-800 p-0.5 rounded text-[10px]">
+              <button
+                type="button"
+                onClick={() => update({
+                  baseColorType: 'color',
+                  baseColor: (s.baseColor && s.baseColor !== 'transparent') ? s.baseColor : (s.backgroundColor && s.backgroundColor !== 'transparent' ? s.backgroundColor : '#ffffff'),
+                  backgroundColor: (s.baseColor && s.baseColor !== 'transparent') ? s.baseColor : (s.backgroundColor && s.backgroundColor !== 'transparent' ? s.backgroundColor : '#ffffff'),
+                })}
+                className={`py-1 text-[10px] font-medium rounded transition-all flex items-center justify-center ${
+                  s.baseColorType !== 'transparent' && s.baseColor !== 'transparent' && s.backgroundColor !== 'transparent'
+                    ? 'bg-gray-700 text-white font-semibold'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                Color
+              </button>
+              <button
+                type="button"
+                onClick={() => update({
+                  baseColorType: 'transparent',
+                  baseColor: 'transparent',
+                  backgroundColor: 'transparent',
+                })}
+                className={`py-1 text-[10px] font-medium rounded transition-all flex items-center justify-center ${
+                  s.baseColorType === 'transparent' || s.baseColor === 'transparent' || s.backgroundColor === 'transparent'
+                    ? 'bg-gray-700 text-white font-semibold'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                Transparent
+              </button>
+            </div>
+
+            {s.baseColorType !== 'transparent' && s.baseColor !== 'transparent' && s.backgroundColor !== 'transparent' && (
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="color"
+                  value={(s.baseColor && s.baseColor !== 'transparent') ? s.baseColor : (s.backgroundColor && s.backgroundColor !== 'transparent' ? s.backgroundColor : '#ffffff')}
+                  onChange={e => update({ baseColorType: 'color', baseColor: e.target.value, backgroundColor: e.target.value })}
+                  className="w-6 h-6 rounded border border-gray-700 cursor-pointer bg-transparent shrink-0"
+                />
+                <Input
+                  value={(s.baseColor && s.baseColor !== 'transparent') ? s.baseColor : (s.backgroundColor && s.backgroundColor !== 'transparent' ? s.backgroundColor : '#ffffff')}
+                  onChange={e => update({ baseColorType: 'color', baseColor: e.target.value, backgroundColor: e.target.value })}
+                  className="h-6 text-[10px] bg-gray-900 border-gray-700 text-white font-mono"
+                />
+              </div>
+            )}
+          </div>
         </>
       )}
 

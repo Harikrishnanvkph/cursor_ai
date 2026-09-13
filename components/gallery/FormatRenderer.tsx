@@ -1206,13 +1206,6 @@ function TextZoneContent({ renderedZone, scale, interactive }: {
 
   // Check if content has HTML tags (lists, etc.)
   const hasHtml = /<[a-z][\s\S]*>/i.test(text)
-  
-  // Natively force margin 0 via inline styles to completely bypass html2canvas CSS parsing bugs
-  const safeText = text
-    .replace(/<p([^>]*)>/gi, '<p$1 style="margin:0;padding:0;">')
-    .replace(/<h1([^>]*)>/gi, '<h1$1 style="margin:0;padding:0;">')
-    .replace(/<h2([^>]*)>/gi, '<h2$1 style="margin:0;padding:0;">')
-    .replace(/<h3([^>]*)>/gi, '<h3$1 style="margin:0;padding:0;">')
 
   const textStyle: React.CSSProperties = {
     width: '100%',
@@ -1225,7 +1218,7 @@ function TextZoneContent({ renderedZone, scale, interactive }: {
     fontWeight: zone.style.fontWeight || '400',
     color: zone.style.color || '#1a1a2e',
     textAlign: zone.style.textAlign || 'left',
-    lineHeight: `${(zone.style.lineHeight || 1.3) * (zone.style.fontSize * scale)}px`,
+    lineHeight: zone.style.lineHeight || 1.6,
     letterSpacing: zone.style.letterSpacing ? `${zone.style.letterSpacing}px` : undefined,
     fontStyle: zone.style.fontStyle || 'normal',
     textTransform: zone.style.textTransform || 'none',
@@ -1237,42 +1230,23 @@ function TextZoneContent({ renderedZone, scale, interactive }: {
   }
 
   return (
-    <>
-      {/* Inline styles for lists inside this zone */}
-      <style>{`
-        /* Crucial: html2canvas sometimes misses Tailwind's preflight reset, causing massive vertical offsets */
-        .format-text-zone p,
-        .format-text-zone h1,
-        .format-text-zone h2,
-        .format-text-zone h3,
-        .format-text-zone h4,
-        .format-text-zone h5,
-        .format-text-zone h6 { 
-          margin: 0 !important; 
-          padding: 0 !important;
+    <div
+      ref={textRef}
+      className="format-text-zone html-content-area"
+      style={textStyle}
+      contentEditable={isEditing}
+      suppressContentEditableWarning
+      onInput={isEditing ? handleInput : undefined}
+      onKeyDown={isEditing ? (e) => {
+        if (e.key === 'Escape') {
+          e.preventDefault()
+          saveAndExit()
         }
-        .format-text-zone ul { list-style-type: disc; padding-left: ${16 * scale}px; margin: ${2 * scale}px 0; }
-        .format-text-zone ol { list-style-type: decimal; padding-left: ${16 * scale}px; margin: ${2 * scale}px 0; }
-        .format-text-zone li { margin-bottom: ${1 * scale}px; }
-      `}</style>
-      <div
-        ref={textRef}
-        className="format-text-zone"
-        style={textStyle}
-        contentEditable={isEditing}
-        suppressContentEditableWarning
-        onInput={isEditing ? handleInput : undefined}
-        onKeyDown={isEditing ? (e) => {
-          if (e.key === 'Escape') {
-            e.preventDefault()
-            saveAndExit()
-          }
-        } : undefined}
-        {...(!isEditing && hasHtml ? { dangerouslySetInnerHTML: { __html: sanitizeHTML(safeText) } } : {})}
-      >
-        {isEditing ? undefined : (!hasHtml ? text : undefined)}
-      </div>
-    </>
+      } : undefined}
+      {...(!isEditing && hasHtml ? { dangerouslySetInnerHTML: { __html: sanitizeHTML(text) } } : {})}
+    >
+      {isEditing ? undefined : (!hasHtml ? text : undefined)}
+    </div>
   )
 }
 
@@ -1638,8 +1612,17 @@ function BackgroundZoneView({ renderedZone, scale, canvasWidth }: {
   if (isImageBg && rawBgUrl) {
     const imageWidth = canvasWidth ? Math.round(canvasWidth * scale) : undefined
     const imageUrl = getProxiedImageUrl(rawBgUrl, imageWidth ? { width: imageWidth, format: 'webp' } : undefined)
+    
+    const isBaseTrans = (zone.style as any)?.baseColorType === 'transparent' ||
+      (zone.style as any)?.baseColor === 'transparent' ||
+      (zone.style as any)?.backgroundColor === 'transparent'
+    
+    const baseColor = isBaseTrans
+      ? 'transparent'
+      : ((zone.style as any)?.baseColor || (zone.style as any)?.backgroundColor || '#ffffff')
+
     return (
-      <div style={bgStyle}>
+      <div style={{ ...bgStyle, backgroundColor: baseColor }}>
         <img
           src={imageUrl}
           alt=""

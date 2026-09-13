@@ -803,7 +803,7 @@ export const useTemplateStore = create<TemplateStore>()(
         return 'template-store-anonymous';
       })(),
       storage: typeof window !== 'undefined' ? createExpiringStorage('template-store') : undefined,
-      version: 3,
+      version: 4,
       migrate: (persistedState: any, version: number) => {
         let state = persistedState || {};
         // Initial structure -> v1
@@ -836,6 +836,16 @@ export const useTemplateStore = create<TemplateStore>()(
           state = {
             ...state,
             templates: migratedTemplates
+          }
+        }
+        // v3 -> v4: remove template-3 (Compact Layout) from user caches
+        if (version <= 3) {
+          const migratedTemplates = (state.templates || []).filter((t: any) => t.id !== 'template-3' && t.id !== 'template-4')
+          const currentTemplate = state.currentTemplate?.id === 'template-3' ? null : state.currentTemplate
+          state = {
+            ...state,
+            templates: migratedTemplates,
+            currentTemplate
           }
         }
         return state

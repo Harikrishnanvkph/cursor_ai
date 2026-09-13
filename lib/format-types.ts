@@ -93,6 +93,10 @@ export interface BackgroundZoneStyle {
   patternType?: string;        // e.g., 'dots', 'lines', 'mesh', 'grid'
   patternColor?: string;
   patternOpacity?: number;
+  // Base color behind image/content
+  baseColorType?: 'color' | 'transparent';
+  baseColor?: string;
+  backgroundColor?: string;
 }
 
 /** Decoration zone styling (legacy — decoration zones are deprecated in builder, use FormatDecoration instead) */

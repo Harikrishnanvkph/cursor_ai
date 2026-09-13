@@ -428,51 +428,46 @@ function AdvancedControlsCard() {
 
   return (
     <div className="w-full flex flex-col items-center text-center font-sans p-2">
-      {/* Top Header Text */}
-      <div className="max-w-md mx-auto mb-3">
+      {/* Top Header Text - Fixed Height for exact cross-column alignment */}
+      <div className="h-8 flex items-center justify-center max-w-md mx-auto mb-3">
         <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
           Flexible Display Modes
         </h3>
       </div>
 
-      {/* Connected Segmented Pill Switcher [ Chart | Template ] */}
-      <div className="inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 shadow-2xs mb-4 shrink-0 select-none">
+      {/* Connected Segmented Pill Switcher [ Chart | Template ] - Zero-jiggle geometry */}
+      <div className="h-10 inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs mb-4 shrink-0 select-none">
         <button
           onClick={() => setActiveTab("chart")}
-          className={`px-5 py-1.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${activeTab === "chart"
-            ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700"
-            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+          className={`h-8 px-5 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border ${activeTab === "chart"
+            ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
+            : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
         >
           Chart
         </button>
         <button
           onClick={() => setActiveTab("template")}
-          className={`px-5 py-1.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${activeTab === "template"
-            ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700"
-            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+          className={`h-8 px-5 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border ${activeTab === "template"
+            ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
+            : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
         >
           Template
         </button>
       </div>
 
-      {/* Main Preview Box directly below the pill control (Compact Original Size) */}
-      <div className="w-full max-w-md h-[240px] bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3 shadow-lg flex items-center justify-center relative overflow-hidden group">
-        <div className="w-full h-full flex items-center justify-center p-1">
-          {activeTab === "chart" ? (
+      {/* Main Preview Box - Outer line removed! Smooth fixed-frame display */}
+      <div className="w-full max-w-md h-[240px] flex items-center justify-center relative overflow-hidden">
+        <div className="w-full max-w-[280px] h-[210px] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex items-center justify-center p-2.5 relative overflow-hidden group transition-all duration-300">
+          <div className="w-full h-full flex items-center justify-center">
             <img
-              src="/smartphone-chart.png"
-              alt="Standalone Chart View"
-              className="w-full h-auto max-h-[200px] object-contain rounded-lg shadow-md animate-in fade-in zoom-in-95 duration-250"
+              key={activeTab}
+              src={activeTab === "chart" ? "/smartphone-chart.png" : "/smartphone-template.png"}
+              alt={activeTab === "chart" ? "Standalone Chart View" : "Infographic Template View"}
+              className="w-full h-full object-contain rounded-lg animate-in fade-in duration-200"
             />
-          ) : (
-            <img
-              src="/smartphone-template.png"
-              alt="Infographic Template View"
-              className="w-full h-auto max-h-[200px] object-contain rounded-lg shadow-md animate-in fade-in zoom-in-95 duration-250"
-            />
-          )}
+          </div>
         </div>
       </div>
     </div>
@@ -591,7 +586,7 @@ function EditorOptionsCard() {
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveMenu(item.id)}
+                onClick={() => setActiveMenu(item.id as any)}
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg text-left text-xs font-medium font-sans antialiased transition-all duration-200 ${isSelected
                   ? "bg-white/20 text-white border border-white/20 shadow-lg scale-[1.01]"
                   : "text-white/70 hover:text-white hover:bg-white/5 border border-transparent"
@@ -611,71 +606,104 @@ function EditorOptionsCard() {
   )
 }
 
-function AspectResizerCard() {
-  const [aspectRatio, setAspectRatio] = useState<"16:9" | "9:16" | "1:1" | "4:3">("16:9")
+function UnlimitedFreeEditorCard() {
+  const [activeTab, setActiveTab] = useState<"unlimited" | "tools" | "free">("unlimited")
 
-  const aspectConfig = {
-    "16:9": { label: "16:9", desc: "Landscape Presentation", width: "w-44", height: "h-24", dim: "1200x675" },
-    "9:16": { label: "9:16", desc: "Mobile Story Canvas", width: "w-24", height: "h-40", dim: "1080x1920" },
-    "1:1": { label: "1:1", desc: "Square Social Tile", width: "w-32", height: "h-32", dim: "1080x1080" },
-    "4:3": { label: "4:3", desc: "Classic Document Print", width: "w-38", height: "h-28", dim: "800x600" }
+  const infoConfig = {
+    unlimited: {
+      title: "Unlimited Canvas Edits",
+      desc: "Customize, restyle, and refine your charts without session lockouts or edit quotas. Enjoy unrestricted dataset updates and infinite revisions.",
+      icon: Zap,
+      accentColor: "text-emerald-600 dark:text-emerald-400",
+      iconBg: "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400",
+      detail: "∞ Uncapped Editing Sessions & Free Projects"
+    },
+    tools: {
+      title: "Complete Visual Studio",
+      desc: "Access all 17+ chart types, multi-zone infographic templates, spreadsheet grids, custom dual-axis scales, and vector shapes with zero locked tools.",
+      icon: Sliders,
+      accentColor: "text-blue-600 dark:text-blue-400",
+      iconBg: "bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400",
+      detail: "All 17+ Chart Types & Infographic Zones Included"
+    },
+    free: {
+      title: "Zero Paywalls & Watermarks",
+      desc: "Export clean, presentation-ready visualizations without forced watermarks or surprise upgrade gates. 100% free to design, download, and present.",
+      icon: CheckCircle2,
+      accentColor: "text-violet-600 dark:text-violet-400",
+      iconBg: "bg-violet-500/10 border-violet-500/20 text-violet-600 dark:text-violet-400",
+      detail: "No Watermarks • No Paywalls • No Card Required"
+    }
   }
+
+  const activeData = infoConfig[activeTab]
+  const IconComp = activeData.icon
 
   return (
     <div className="w-full flex flex-col items-center text-center font-sans p-2">
-      {/* Top Header Title */}
-      <div className="max-w-md mx-auto mb-3">
+      {/* Top Header Title - Fixed Height for exact cross-column alignment */}
+      <div className="h-8 flex items-center justify-center max-w-md mx-auto mb-3">
         <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-          Fluid Resizing &amp; Aspect Locks
+          Unlimited Free Usage
         </h3>
       </div>
 
-      {/* Connected Segmented Pill Switcher [ 16:9 | 9:16 | 1:1 | 4:3 ] */}
-      <div className="inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 shadow-2xs mb-4 shrink-0 select-none">
-        {(["16:9", "9:16", "1:1", "4:3"] as const).map((ratio) => {
-          const isSelected = aspectRatio === ratio
-          return (
-            <button
-              key={ratio}
-              onClick={() => setAspectRatio(ratio)}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${isSelected
-                ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                }`}
-            >
-              {ratio}
-            </button>
-          )
-        })}
+      {/* Connected Segmented Pill Switcher [ Unlimited Edits | Full Toolkit | Zero Paywalls ] - Zero-jiggle geometry */}
+      <div className="h-10 inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs mb-4 shrink-0 select-none">
+        <button
+          onClick={() => setActiveTab("unlimited")}
+          className={`h-8 px-3.5 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border ${activeTab === "unlimited"
+            ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
+            : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+        >
+          Unlimited Edits
+        </button>
+        <button
+          onClick={() => setActiveTab("tools")}
+          className={`h-8 px-3.5 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border ${activeTab === "tools"
+            ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
+            : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+        >
+          Full Toolkit
+        </button>
+        <button
+          onClick={() => setActiveTab("free")}
+          className={`h-8 px-3.5 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border ${activeTab === "free"
+            ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
+            : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+        >
+          Zero Paywalls
+        </button>
       </div>
 
-      {/* Main Preview Box Directly Below */}
-      <div className="w-full max-w-md h-[240px] bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3 shadow-lg flex items-center justify-center relative overflow-hidden group">
-        <div
-          className={`bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl flex flex-col justify-between p-2 shadow-md transition-all duration-300 ease-out ${aspectConfig[aspectRatio].width} ${aspectConfig[aspectRatio].height}`}
-        >
-          {/* Header readout */}
-          <div className="flex justify-between items-center text-[8px] font-mono text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 pb-1">
-            <span>{aspectConfig[aspectRatio].label} ASPECT</span>
-            <span className="font-semibold text-slate-700 dark:text-slate-300">{aspectConfig[aspectRatio].dim}</span>
-          </div>
+      {/* Main Preview Box Directly Below - Fixed Height */}
+      <div className="w-full max-w-md h-[240px] flex items-center justify-center relative">
+        <div className="w-full h-[210px] bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col justify-between text-center relative overflow-hidden transition-all duration-300">
+          <div key={activeTab} className="w-full h-full flex flex-col justify-between animate-in fade-in duration-200">
+            {/* Clean top header: Icon pill + concise single-line title */}
+            <div className="flex items-center justify-center gap-2.5 pt-0.5">
+              <div className={`p-1.5 rounded-lg border ${activeData.iconBg}`}>
+                <IconComp className="w-4.5 h-4.5" />
+              </div>
+              <span className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">
+                {activeData.title}
+              </span>
+            </div>
 
-          {/* Bar Chart Simulation Graphic */}
-          <div className="flex-1 flex gap-1 items-end py-2 px-1 justify-around">
-            <div className="w-2.5 bg-teal-500 rounded-t h-[40%]" />
-            <div className="w-2.5 bg-indigo-500 rounded-t h-[65%]" />
-            <div className="w-2.5 bg-teal-500 rounded-t h-[50%]" />
-            {aspectRatio !== "9:16" && (
-              <>
-                <div className="w-2.5 bg-indigo-600 rounded-t h-[85%]" />
-                <div className="w-2.5 bg-teal-500 rounded-t h-[60%]" />
-              </>
-            )}
-          </div>
+            {/* Airy descriptive paragraph */}
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium px-3 my-auto max-w-sm mx-auto">
+              {activeData.desc}
+            </p>
 
-          {/* Bottom Label */}
-          <div className="text-center text-[8px] font-mono text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-700 pt-0.5">
-            {aspectConfig[aspectRatio].desc}
+            {/* Bottom Highlight Monospace Badge */}
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 shadow-2xs">
+              <span className={`text-[10.5px] font-mono font-semibold block ${activeData.accentColor}`}>
+                {activeData.detail}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -689,82 +717,98 @@ function CloudExportShareCard() {
   const infoConfig = {
     save: {
       title: "Cloud Sync & Storage",
-      desc: "Save charts securely to Supabase cloud storage for instant retrieval anytime.",
+      desc: "Save charts securely to Supabase cloud storage for instant retrieval anytime across your devices.",
       icon: Cloud,
+      accentColor: "text-teal-600 dark:text-teal-400",
+      iconBg: "bg-teal-500/10 border-teal-500/20 text-teal-600 dark:text-teal-400",
       detail: "Synced across all devices & team workspaces"
     },
     export: {
       title: "High-Res Export",
-      desc: "Export high-resolution PNG, SVG vector graphics, or interactive HTML embeds.",
+      desc: "Export high-resolution PNG, SVG vector graphics, or interactive HTML embeds in pristine fidelity.",
       icon: Download,
+      accentColor: "text-indigo-600 dark:text-indigo-400",
+      iconBg: "bg-indigo-500/10 border-indigo-500/20 text-indigo-600 dark:text-indigo-400",
       detail: "Supports 4K PNG, Vector SVG & Standalone HTML"
     },
     share: {
       title: "Instant Live Share",
-      desc: "Generate public share links or embed interactive live charts anywhere with single click.",
+      desc: "Generate public share links or embed interactive live charts anywhere with a single click.",
       icon: Share2,
+      accentColor: "text-sky-600 dark:text-sky-400",
+      iconBg: "bg-sky-500/10 border-sky-500/20 text-sky-600 dark:text-sky-400",
       detail: "Public web link & iframe embed code ready"
     }
   }
 
   const activeData = infoConfig[activeTab]
+  const IconComp = activeData.icon
 
   return (
     <div className="w-full flex flex-col items-center text-center font-sans p-2">
-      {/* Top Header Title */}
-      <div className="max-w-md mx-auto mb-3">
+      {/* Top Header Title - Fixed Height for exact cross-column alignment */}
+      <div className="h-8 flex items-center justify-center max-w-md mx-auto mb-3">
         <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
           Save, Share &amp; Export
         </h3>
       </div>
 
-      {/* Connected Segmented Pill Switcher [ Save | Export | Share ] */}
-      <div className="inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 shadow-2xs mb-4 shrink-0 select-none">
+      {/* Connected Segmented Pill Switcher [ Save | Export | Share ] - Zero-jiggle geometry */}
+      <div className="h-10 inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs mb-4 shrink-0 select-none">
         <button
           onClick={() => setActiveTab("save")}
-          className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${activeTab === "save"
-            ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700"
-            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+          className={`h-8 px-4 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border ${activeTab === "save"
+            ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
+            : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
         >
           Save
         </button>
         <button
           onClick={() => setActiveTab("export")}
-          className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${activeTab === "export"
-            ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700"
-            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+          className={`h-8 px-4 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border ${activeTab === "export"
+            ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
+            : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
         >
           Export
         </button>
         <button
           onClick={() => setActiveTab("share")}
-          className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${activeTab === "share"
-            ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700"
-            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+          className={`h-8 px-4 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border ${activeTab === "share"
+            ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
+            : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
         >
           Share
         </button>
       </div>
 
-      {/* Main Preview Box Directly Below */}
-      <div className="w-full max-w-md h-[240px] bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-lg flex items-center justify-center relative overflow-hidden group">
-        <div className="w-full h-full flex flex-col justify-between p-2 text-center animate-in fade-in zoom-in-95 duration-200">
-          <div className="flex items-center justify-center gap-2 text-indigo-600 dark:text-indigo-400 mt-1">
-            <activeData.icon className="w-6 h-6 shrink-0" />
-            <span className="text-sm font-bold text-slate-900 dark:text-white">{activeData.title}</span>
-          </div>
+      {/* Main Preview Box Directly Below - Fixed Height */}
+      <div className="w-full max-w-md h-[240px] flex items-center justify-center relative">
+        <div className="w-full h-[210px] bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col justify-between text-center relative overflow-hidden transition-all duration-300">
+          <div key={activeTab} className="w-full h-full flex flex-col justify-between animate-in fade-in duration-200">
+            {/* Clean top header: Icon pill + concise single-line title */}
+            <div className="flex items-center justify-center gap-2.5 pt-0.5">
+              <div className={`p-1.5 rounded-lg border ${activeData.iconBg}`}>
+                <IconComp className="w-4.5 h-4.5" />
+              </div>
+              <span className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">
+                {activeData.title}
+              </span>
+            </div>
 
-          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium my-2 px-2">
-            {activeData.desc}
-          </p>
+            {/* Airy descriptive paragraph */}
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium px-3 my-auto max-w-sm mx-auto">
+              {activeData.desc}
+            </p>
 
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 shadow-2xs">
-            <span className="text-[10.5px] font-mono font-semibold text-teal-600 dark:text-teal-400 block">
-              {activeData.detail}
-            </span>
+            {/* Bottom Highlight Monospace Badge */}
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 shadow-2xs">
+              <span className={`text-[10.5px] font-mono font-semibold block ${activeData.accentColor}`}>
+                {activeData.detail}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -1725,109 +1769,15 @@ function ChartsShowcaseSection() {
   )
 }
 
-// ── TEMPLATE PREVIEW HELPER ──────────────────────────────────
-function TemplatePreviewRenderer({ templateId }: { templateId: string }) {
-  if (templateId === "infographic-pro") {
-    return (
-      <div className="w-full h-full bg-white dark:bg-slate-950 rounded-xl p-3 sm:p-4 border border-slate-200 dark:border-slate-800 flex flex-col justify-between shadow-xs transition-all">
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-teal-500" />
-            <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200">2026 Infographic Report</span>
-          </div>
-          <span className="text-[9px] px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-300 font-mono font-semibold">Pro Preset</span>
-        </div>
-        <div className="grid grid-cols-3 gap-2 my-2">
-          <div className="bg-slate-50 dark:bg-slate-900 p-2 rounded-lg border border-slate-100 dark:border-slate-800 text-center">
-            <div className="text-[9px] text-slate-500">Revenue</div>
-            <div className="text-xs font-extrabold text-teal-600 dark:text-teal-400">$84.2K</div>
-          </div>
-          <div className="bg-slate-50 dark:bg-slate-900 p-2 rounded-lg border border-slate-100 dark:border-slate-800 text-center">
-            <div className="text-[9px] text-slate-500">Growth</div>
-            <div className="text-xs font-extrabold text-indigo-600 dark:text-indigo-400">+42%</div>
-          </div>
-          <div className="bg-slate-50 dark:bg-slate-900 p-2 rounded-lg border border-slate-100 dark:border-slate-800 text-center">
-            <div className="text-[9px] text-slate-500">Accuracy</div>
-            <div className="text-xs font-extrabold text-purple-600 dark:text-purple-400">99.4%</div>
-          </div>
-        </div>
-        <div className="flex-1 bg-slate-50 dark:bg-slate-900 rounded-lg p-2 flex items-end justify-between gap-1.5 border border-slate-100 dark:border-slate-800">
-          <div className="w-1/5 bg-teal-500 rounded-t h-[40%]" />
-          <div className="w-1/5 bg-teal-500 rounded-t h-[75%]" />
-          <div className="w-1/5 bg-teal-500 rounded-t h-[55%]" />
-          <div className="w-1/5 bg-teal-500 rounded-t h-[90%]" />
-          <div className="w-1/5 bg-teal-600 rounded-t h-[65%]" />
-        </div>
-      </div>
-    )
-  }
-
-  if (templateId === "executive-report") {
-    return (
-      <div className="w-full h-full bg-slate-900 text-white rounded-xl p-3 sm:p-4 border border-slate-800 flex flex-col justify-between shadow-xs transition-all">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-          <span className="text-[11px] font-bold text-slate-200">Executive Briefing</span>
-          <span className="text-[9px] px-2 py-0.5 rounded-full bg-indigo-900 text-indigo-200 font-mono font-semibold">16:9 Landscape</span>
-        </div>
-        <div className="flex gap-3 my-2 items-center flex-1">
-          <div className="w-1/2 space-y-2">
-            <div className="h-2 w-3/4 bg-slate-700 rounded" />
-            <div className="h-2 w-full bg-slate-800 rounded" />
-            <div className="h-2 w-5/6 bg-slate-800 rounded" />
-            <div className="h-6 w-full bg-indigo-600/30 rounded border border-indigo-500/40 mt-3 flex items-center px-2 text-[9px] text-indigo-300">
-              AI Summary Zone Active
-            </div>
-          </div>
-          <div className="w-1/2 h-full bg-slate-800/80 rounded-lg p-2 flex items-center justify-center">
-            <svg viewBox="0 0 100 60" className="w-full h-full">
-              <path d="M 10 50 Q 30 10 50 35 T 90 15" fill="none" stroke="#818cf8" strokeWidth="3" />
-              <circle cx="90" cy="15" r="4" fill="#818cf8" />
-            </svg>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (templateId === "dark-minimal") {
-    return (
-      <div className="w-full h-full bg-slate-950 text-white rounded-xl p-3 sm:p-4 border border-purple-900/40 flex flex-col justify-between shadow-xs transition-all">
-        <div className="flex items-center justify-between border-b border-purple-900/30 pb-2">
-          <span className="text-[11px] font-bold text-purple-300">Neon Glass Minimal</span>
-          <span className="text-[9px] px-2 py-0.5 rounded-full bg-purple-950 text-purple-300 border border-purple-800 font-mono font-semibold">Dark Mode</span>
-        </div>
-        <div className="flex-1 my-2 bg-purple-950/20 rounded-lg p-3 border border-purple-800/30 flex flex-col justify-between">
-          <div className="flex justify-between items-center text-[10px] text-purple-200">
-            <span>Performance Index</span>
-            <span className="text-purple-400 font-bold">98.5</span>
-          </div>
-          <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden my-2">
-            <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 w-[85%]" />
-          </div>
-          <div className="text-[9px] text-slate-400">Tailored AI Insights Zone Included</div>
-        </div>
-      </div>
-    )
-  }
-
+// ── TEMPLATE RENDERER HELPER ────────────────────────────────
+function TemplateRenderer({ slide }: { slide: { src: string; title: string } }) {
   return (
-    <div className="w-full h-full bg-emerald-950/20 dark:bg-emerald-950/40 text-slate-800 dark:text-emerald-100 rounded-xl p-3 sm:p-4 border border-emerald-500/30 flex flex-col justify-between shadow-xs transition-all">
-      <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2">
-        <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300">AI Storyboard Poster</span>
-        <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 font-mono font-semibold">Custom Zones</span>
-      </div>
-      <div className="grid grid-cols-2 gap-2 my-2 flex-1">
-        <div className="bg-white dark:bg-slate-900 p-2 rounded-lg border border-emerald-500/20 flex flex-col justify-between">
-          <div className="text-[9px] font-bold text-emerald-600">Chart Zone A</div>
-          <div className="h-1.5 bg-emerald-200 dark:bg-emerald-800 rounded w-3/4" />
-          <div className="h-1.5 bg-emerald-300 dark:bg-emerald-700 rounded w-1/2" />
-        </div>
-        <div className="bg-white dark:bg-slate-900 p-2 rounded-lg border border-emerald-500/20 flex flex-col justify-between">
-          <div className="text-[9px] font-bold text-emerald-600">Text Zone B</div>
-          <div className="h-1.5 bg-emerald-200 dark:bg-emerald-800 rounded w-full" />
-          <div className="h-1.5 bg-emerald-300 dark:bg-emerald-700 rounded w-4/5" />
-        </div>
-      </div>
+    <div className="w-full h-full flex items-center justify-center p-1">
+      <img
+        src={slide.src}
+        alt={slide.title}
+        className="w-full h-full object-contain rounded-lg shadow-sm transition-all duration-300"
+      />
     </div>
   )
 }
@@ -1835,67 +1785,163 @@ function TemplatePreviewRenderer({ templateId }: { templateId: string }) {
 // ── TEMPLATES SHOWCASE SECTION ───────────────────────────────
 function TemplatesShowcaseSection() {
   const [activeTemplateIdx, setActiveTemplateIdx] = useState(0)
+  const sectionRef = useRef<HTMLDivElement>(null)
+  const [isInViewport, setIsInViewport] = useState(false)
+  const [isTabActive, setIsTabActive] = useState(true)
+  const [isHovered, setIsHovered] = useState(false)
 
-  const templates = [
-    { id: "infographic-pro", title: "Infographic Pro" },
-    { id: "executive-report", title: "Executive Report" },
-    { id: "dark-minimal", title: "Dark Minimal Glass" },
-    { id: "ai-storyboard", title: "AI Storyboard Poster" },
+  // 5 template images in the exact order requested
+  const templateSlides = [
+    {
+      id: "olympic-medals-2024",
+      title: "Top 10 Nations at Paris 2024",
+      src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/Templates/top-10-nations-at-paris-2024.png",
+    },
+    {
+      id: "co2-levels-2026",
+      title: "Global Atmospheric CO2 Levels in 2026",
+      src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/Templates/global-atmospheric-co2-levels-in-2026.png",
+    },
+    {
+      id: "silicon-titans-2026",
+      title: "Silicon Titans: Top 5 Chip Makers by Market Cap (2026)",
+      src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/Templates/silicon-titans-top-5-chip-makers-2026.png",
+    },
+    {
+      id: "youtube-channels-subscribers",
+      title: "Top 10 YouTube Channels by Subscribers",
+      src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/Templates/top-10-youtube-channels-by-subscribers.png",
+    },
+    {
+      id: "fifa-world-ranking-2026",
+      title: "FIFA 2026 Men World Ranking : Top 10 Teams",
+      src: "https://gucycejpglknqvdnysao.supabase.co/storage/v1/object/public/app%20asset/home%20page/Templates/fifa-2026-men-world-ranking-top-10.jpg",
+    },
   ]
 
   const handlePrev = () => {
-    setActiveTemplateIdx((prev) => (prev - 1 + templates.length) % templates.length)
+    setActiveTemplateIdx((prev) => (prev - 1 + templateSlides.length) % templateSlides.length)
   }
 
   const handleNext = () => {
-    setActiveTemplateIdx((prev) => (prev + 1) % templates.length)
+    setActiveTemplateIdx((prev) => (prev + 1) % templateSlides.length)
   }
 
+  // Track viewport intersection
+  useEffect(() => {
+    const el = sectionRef.current
+    if (!el) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsInViewport(entry.isIntersecting)
+      },
+      { threshold: 0.2 }
+    )
+
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  // Track page visibility & window focus
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsTabActive(!document.hidden)
+    }
+
+    const handleFocus = () => setIsTabActive(true)
+    const handleBlur = () => setIsTabActive(false)
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+    window.addEventListener("focus", handleFocus)
+    window.addEventListener("blur", handleBlur)
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
+      window.removeEventListener("focus", handleFocus)
+      window.removeEventListener("blur", handleBlur)
+    }
+  }, [])
+
+  // Auto-slide to next template every 3 seconds only when visible in viewport, tab active, and not hovered
+  useEffect(() => {
+    if (templateSlides.length <= 1 || !isInViewport || !isTabActive || isHovered) return
+
+    const interval = setInterval(() => {
+      setActiveTemplateIdx((prev) => (prev + 1) % templateSlides.length)
+    }, 3000)
+
+    return () => clearInterval(interval)
+  }, [templateSlides.length, isInViewport, isTabActive, isHovered])
+
   return (
-    <div className="mt-20 sm:mt-24 pt-6 font-sans">
+    <div ref={sectionRef} className="mt-24 pt-6 font-sans">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
 
-        {/* Left Side: Fixed-Size Preview Box (Matching Previous Section Box Size) */}
-        <div className="lg:col-span-6 flex flex-col items-start w-full">
-          <div className="w-full max-w-lg h-[330px] bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 sm:p-6 shadow-lg flex items-center justify-center relative overflow-hidden group">
-
-            {/* Template Graphic Renderer */}
-            <div className="w-full h-full flex flex-col justify-between overflow-hidden">
-              <TemplatePreviewRenderer templateId={templates[activeTemplateIdx].id} />
+        {/* Left Side: Floating Card Box with Strict Fixed Size (520px x 340px) Matching Charts UI */}
+        <div className="lg:col-span-6 flex flex-col items-center lg:items-start justify-center w-full">
+          <div
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            className="w-full max-w-[520px] h-[340px] shrink-0 bg-transparent flex items-center justify-center relative group"
+          >
+            {/* Pure Template Renderer View */}
+            <div className="w-full h-full flex items-center justify-center">
+              <TemplateRenderer slide={templateSlides[activeTemplateIdx]} />
             </div>
 
-            {/* Left Floating Chevron Button */}
-            <button
-              onClick={handlePrev}
-              aria-label="Previous template"
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-8.5 h-8.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 hover:scale-105 transition-all shadow-md cursor-pointer z-10"
-            >
-              <ChevronLeft className="w-4.5 h-4.5" />
-            </button>
+            {/* Left Floating Arrow Button */}
+            {templateSlides.length > 1 && (
+              <button
+                onClick={handlePrev}
+                aria-label="Previous template"
+                className="absolute left-0 top-1/2 -translate-y-1/2 w-8.5 h-8.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 hover:scale-105 transition-all shadow-md cursor-pointer z-10"
+              >
+                <ChevronLeft className="w-4.5 h-4.5" />
+              </button>
+            )}
 
-            {/* Right Floating Chevron Button */}
-            <button
-              onClick={handleNext}
-              aria-label="Next template"
-              className="absolute right-3 top-1/2 -translate-y-1/2 w-8.5 h-8.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 hover:scale-105 transition-all shadow-md cursor-pointer z-10"
-            >
-              <ChevronRight className="w-4.5 h-4.5" />
-            </button>
+            {/* Right Floating Arrow Button */}
+            {templateSlides.length > 1 && (
+              <button
+                onClick={handleNext}
+                aria-label="Next template"
+                className="absolute right-0 top-1/2 -translate-y-1/2 w-8.5 h-8.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 hover:scale-105 transition-all shadow-md cursor-pointer z-10"
+              >
+                <ChevronRight className="w-4.5 h-4.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Dots Indicator */}
+          <div className="flex items-center justify-center gap-1.5 w-full max-w-[520px] pt-3">
+            {templateSlides.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => setActiveTemplateIdx(idx)}
+                aria-label={`Go to template ${idx + 1}`}
+                className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                  activeTemplateIdx === idx
+                    ? "w-6 bg-teal-600 dark:bg-teal-400"
+                    : "w-1.5 bg-slate-300 dark:bg-slate-700 hover:bg-slate-400 dark:hover:bg-slate-600"
+                }`}
+              />
+            ))}
           </div>
         </div>
 
-        {/* Right Side: Text & Bullet Points (Matching Wireframe Image 1:1) */}
+        {/* Right Side: Text & Bullet Points */}
         <div className="lg:col-span-6 space-y-4 max-w-full overflow-hidden">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight break-words">
+            <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight break-words">
               Templates
             </h2>
-            <p className="mt-2 text-slate-600 dark:text-slate-400 text-sm sm:text-base leading-relaxed max-w-md break-words font-normal">
+            <p className="mt-2 text-slate-600 dark:text-slate-400 text-sm leading-relaxed max-w-md break-words font-normal">
               Create publication-ready, pro infographic chart templates with intelligent layouts in a single click
             </p>
           </div>
 
-          <ul className="space-y-3 text-xs sm:text-sm text-slate-700 dark:text-slate-300 font-medium list-disc list-inside marker:text-slate-800 dark:marker:text-slate-200 break-words">
+          <ul className="space-y-2.5 text-sm text-slate-700 dark:text-slate-300 font-medium list-disc list-inside marker:text-slate-800 dark:marker:text-slate-200 break-words">
             <li>Explore templates across a variety of themes and aspect ratios.</li>
             <li>Design Customized High Quality Templates with dedicated Tools</li>
             <li>Design eye-catching graphics inside templates with Decoration tools</li>
@@ -2010,14 +2056,14 @@ export default function HomeNewPage() {
 
           {/* Standalone duplicate boxes completely below the sections */}
           <div className="mt-24 pt-16 font-sans">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto items-start">
-              <div className="flex">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto items-stretch">
+              <div className="w-full flex justify-center">
                 <AdvancedControlsCard />
               </div>
-              <div className="flex">
-                <AspectResizerCard />
+              <div className="w-full flex justify-center">
+                <UnlimitedFreeEditorCard />
               </div>
-              <div className="flex">
+              <div className="w-full flex justify-center">
                 <CloudExportShareCard />
               </div>
             </div>
