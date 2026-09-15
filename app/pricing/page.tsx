@@ -2,7 +2,9 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
+import { useAuth } from "@/components/auth/AuthProvider"
 import { SiteHeader } from "@/components/site-header"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -24,75 +26,91 @@ import {
 } from "lucide-react"
 
 export default function PricingPage() {
+  const { user, upgradeToPro } = useAuth()
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly")
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null)
+  const [isUpgrading, setIsUpgrading] = useState(false)
+
+  const isProUser = user?.subscription_tier === "pro"
 
   const toggleFaq = (index: number) => {
     setOpenFaqIndex(openFaqIndex === index ? null : index)
   };
 
+  const handleProClick = async () => {
+    if (!user) {
+      window.location.href = "/signin"
+      return
+    }
+    if (isProUser) return
+
+    setIsUpgrading(true)
+    try {
+      await upgradeToPro()
+    } finally {
+      setIsUpgrading(false)
+    }
+  }
+
   const plans = [
     {
-      name: "Starter",
-      description: "Perfect for students, individuals, and exploring visual AI creation.",
+      id: "free",
+      name: "Free",
+      description: "Essential AI charting and complete, unrestricted access to our Advanced Editor.",
       price: {
         monthly: 0,
         yearly: 0,
       },
       features: [
-        "Up to 5 saved active charts",
-        "Standard visual editor access",
-        "AI prompt generation (Gemini 2.5 Flash)",
-        "Download responsive HTML packages",
+        "Complete Access to Advanced Editor page/tool",
+        "10 AI credits per month",
+        "Maximum 10 cloud saving",
         "Crisp client-side PNG exports",
         "Standard formatting templates",
+        "Full vector canvas & decoration tools",
       ],
       unsupportedFeatures: [
-        "Vector SVG exports",
-        "Waterfall, Funnel & Gauge plugins",
-        "Isometric 3D rendering modes",
-        "Universal Image Point plugin",
-        "TipTap custom surrounding layouts",
-        "Extended Zundo history (50 stacks)",
-        "Priority developer support",
+        "50 AI credits per month",
+        "30 cloud saved charts",
+        "High-fidelity Vector SVG exports",
+        "Priority AI Prompt Pipeline",
       ],
-      cta: "Get Started Free",
-      ctaLink: "/landing",
+      cta: user ? (isProUser ? "Included in Pro" : "Current Plan") : "Get Started Free",
+      ctaLink: user ? "/editor" : "/signin",
       badge: "Free Forever",
       popular: false,
       gradient: "from-slate-500 to-slate-600",
     },
     {
-      name: "Professional",
-      description: "Best for data analysts, professional designers, and high-impact teams.",
+      id: "pro",
+      name: "Pro",
+      description: "Best for data analysts, professional designers, and creators who need higher capacity.",
       price: {
-        monthly: 19,
-        yearly: 15,
+        monthly: 5,
+        yearly: 4,
       },
       features: [
-        "Unlimited saved active charts",
-        "Ultra-fast AI prompt (Gemini Pro & DeepSeek R1)",
-        "High-fidelity Vector SVG exports",
+        "Complete Access to Advanced Editor page/tool",
+        "50 AI credits per month",
+        "Maximum 30 cloud saving",
+        "High-fidelity Vector SVG & 4K PNG exports",
         "Tiptap rich text surrounding HTML layouts",
-        "Waterfall, Funnel, Gauge & Gauge plugins",
-        "Universal Image Point icon rendering",
-        "Full Isometric 3D rendering modes",
-        "Extended Zundo undo/redo history (50 entries)",
-        "Automated Supabase database sync snapshots",
-        "Priority dedicated client support",
+        "Multi-Zone Infographic Templates & Custom Presets",
+        "Priority AI prompt processing pipeline",
+        "Automated Supabase database sync",
       ],
       unsupportedFeatures: [
         "Custom branded rendering plugins",
         "Enterprise SSO & SAML integrations",
-        "Custom API data stream connectors",
       ],
-      cta: "Go Professional",
+      cta: isProUser ? "Current Plan" : "Upgrade to Pro",
       ctaLink: "/signin",
       badge: "Most Popular",
       popular: true,
       gradient: "from-indigo-500 via-purple-500 to-indigo-600",
     },
     {
+      id: "enterprise",
       name: "Enterprise",
       description: "Tailored visual assets, robust team workspaces, and custom integrations.",
       price: {
@@ -100,18 +118,16 @@ export default function PricingPage() {
         yearly: "Custom",
       },
       features: [
+        "Everything in Pro Plan",
         "Unlimited saved active charts & drafts",
         "Custom team workspaces & permissions",
         "Enterprise SSO, SAML & Okta authentication",
-        "Priority dedicated API developer pipelines",
-        "Custom branded rendering visual plugins",
-        "1-on-1 visual design onboarding sessions",
-        "99.9% uptime SLA commitments",
         "Dedicated account developer specialist",
+        "99.9% uptime SLA commitments",
       ],
       unsupportedFeatures: [],
       cta: "Contact Sales",
-      ctaLink: "mailto:sales@aichartor.com",
+      ctaLink: "mailto:sales@chartography.in",
       badge: "Custom Scale",
       popular: false,
       gradient: "from-cyan-500 to-blue-600",
@@ -132,8 +148,8 @@ export default function PricingPage() {
       answer: "Every time you save your progress, AIChartor automatically uploads your immutable configurations to our Supabase databases. In the Professional plan, you can easily browse historic version snapshots, compare alterations, and restore any previous workspace state in one click.",
     },
     {
-      question: "Is there a limit on AI prompt generation?",
-      answer: "Starter accounts get baseline access to Gemini 2.5 Flash. Professional users enjoy high-speed, multi-step conversational edits powered by Gemini 2.5 Pro and DeepSeek R1 for deep reasoning, allowing much more complex dataset formatting without limitations.",
+      question: "Is there a limit on AI prompt generation and cloud saves?",
+      answer: "Free plan users receive 10 AI credits per month and up to 10 cloud chart saves, with complete access to the Advanced Editor. Pro plan users ($5/month) receive 50 AI credits per month, up to 30 cloud chart saves, high-resolution vector/4K exports, and priority processing.",
     },
     {
       question: "What visual plugins are included in the Pro tier?",
@@ -268,7 +284,7 @@ export default function PricingPage() {
                       
                       {annualPretext ? (
                         <p className="text-xs text-indigo-600 dark:text-indigo-400 font-medium mt-2">
-                          Billed annually (${plan.price.yearly * 12}/yr)
+                          Billed annually (${Number(plan.price.yearly) * 12}/yr)
                         </p>
                       ) : (
                         <p className="text-xs text-transparent select-none mt-2">
@@ -307,20 +323,35 @@ export default function PricingPage() {
 
                   {/* Bottom CTA Block */}
                   <div className="p-8 sm:p-10 pt-0">
-                    <Button
-                      asChild
-                      className={`w-full py-6 text-sm font-semibold rounded-2xl border transition-all duration-300 transform hover:-translate-y-0.5 group ${
-                        plan.popular
-                          ? "bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 hover:from-indigo-600 hover:via-purple-600 hover:to-indigo-700 border-transparent text-white shadow-lg shadow-indigo-500/20"
-                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200"
-                      }`}
-                    >
-                      <Link href={plan.ctaLink}>
-                        {plan.popular ? <Zap className="w-4 h-4 mr-2 text-indigo-200 group-hover:scale-110 transition-transform" /> : null}
-                        {plan.cta}
-                        <ArrowRight className="w-4 h-4 ml-2 opacity-60 group-hover:translate-x-1 group-hover:opacity-100 transition-all" />
-                      </Link>
-                    </Button>
+                    {plan.id === "pro" ? (
+                      <Button
+                        onClick={handleProClick}
+                        disabled={isProUser || isUpgrading}
+                        className={`w-full py-6 text-sm font-semibold rounded-2xl border transition-all duration-300 transform hover:-translate-y-0.5 group cursor-pointer ${
+                          isProUser
+                            ? "bg-emerald-600/20 text-emerald-400 border-emerald-500/30 cursor-default shadow-none"
+                            : "bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 hover:from-indigo-600 hover:via-purple-600 hover:to-indigo-700 border-transparent text-white shadow-lg shadow-indigo-500/20"
+                        }`}
+                      >
+                        <Zap className="w-4 h-4 mr-2 text-indigo-200 group-hover:scale-110 transition-transform" />
+                        {isUpgrading ? "Upgrading..." : (isProUser ? "Current Plan" : plan.cta)}
+                        {!isProUser && <ArrowRight className="w-4 h-4 ml-2 opacity-60 group-hover:translate-x-1 group-hover:opacity-100 transition-all" />}
+                      </Button>
+                    ) : (
+                      <Button
+                        asChild
+                        className={`w-full py-6 text-sm font-semibold rounded-2xl border transition-all duration-300 transform hover:-translate-y-0.5 group ${
+                          plan.popular
+                            ? "bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 hover:from-indigo-600 hover:via-purple-600 hover:to-indigo-700 border-transparent text-white shadow-lg shadow-indigo-500/20"
+                            : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200"
+                        }`}
+                      >
+                        <Link href={plan.ctaLink}>
+                          {plan.cta}
+                          <ArrowRight className="w-4 h-4 ml-2 opacity-60 group-hover:translate-x-1 group-hover:opacity-100 transition-all" />
+                        </Link>
+                      </Button>
+                    )}
                   </div>
                 </div>
               )
@@ -486,10 +517,13 @@ export default function PricingPage() {
             <div className="text-slate-500 dark:text-slate-400 text-sm transition-colors font-light">
               © {new Date().getFullYear()} Chartography.in. All rights reserved.
             </div>
-            <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
-              <div className="w-2 h-2 bg-emerald-400 rounded-full mr-2 animate-pulse"></div>
-              All systems operational
-            </Badge>
+            <div className="flex items-center gap-3">
+              <ThemeToggle className="h-8 w-8 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800 shadow-sm transition-colors" />
+              <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                <div className="w-2 h-2 bg-emerald-400 rounded-full mr-2 animate-pulse"></div>
+                All systems operational
+              </Badge>
+            </div>
           </div>
         </div>
       </footer>

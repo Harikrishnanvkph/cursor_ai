@@ -20,12 +20,14 @@ import { useChartRename } from "@/lib/hooks/use-chart-rename"
 
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/components/auth/AuthProvider"
+import { useSubscriptionQuota } from "@/lib/hooks/use-subscription-quota"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import { UndoRedoButtons } from "@/components/ui/undo-redo-buttons"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
-import { SaveChartDialog } from "@/components/ui/save-chart-dialog"
-
 import { clearStoreData } from "@/lib/utils"
+import { SaveChartDialog } from "@/components/ui/save-chart-dialog"
+import { UpgradeProDialog } from "@/components/dialogs/upgrade-pro-dialog"
+import { Zap } from "lucide-react"
 import { ResponsiveAnimationsPanel } from "@/components/panels/responsive-animations-panel";
 import { ModeChangeConfirmDialog } from "@/components/dialogs/mode-change-confirm-dialog"
 import { Chart } from "react-chartjs-2"
@@ -46,6 +48,9 @@ export default function LandingPage() {
 function LandingPageContent() {
   const { user, signOut } = useAuth()
   const router = useRouter()
+  const [isUpgradeOpen, setIsUpgradeOpen] = useState(false)
+
+  const { isPro, aiCreditsLimit, aiCreditsRemaining } = useSubscriptionQuota()
 
   // Helpers for Canva-style mobile metadata in ellipsis menu
   const parseDim = (val: any): number | null => {
@@ -294,7 +299,7 @@ function LandingPageContent() {
     } else {
       const chartTitleFromConfig = activeConfig?.plugins?.title?.text;
       if (chartTitleFromConfig) {
-        defaultName = chartTitleFromConfig;
+        defaultName = Array.isArray(chartTitleFromConfig) ? chartTitleFromConfig.join(' ') : String(chartTitleFromConfig);
       }
     }
     
@@ -406,6 +411,13 @@ function LandingPageContent() {
     if (e) e.preventDefault()
     if (!input.trim() || isProcessing || isChatDisabled) return
 
+    // Guard: Check AI credits
+    if (user && aiCreditsRemaining <= 0) {
+      setIsUpgradeOpen(true)
+      toast.error(`You have reached your monthly limit of ${aiCreditsLimit} AI credits. Upgrade to Pro for 50 credits/month!`)
+      return
+    }
+
     const userInput = input.trim()
     setInput("")
 
@@ -416,6 +428,9 @@ function LandingPageContent() {
     try {
       await continueConversation(userInput)
     } catch (err: any) {
+      if (err?.code === 'AI_CREDITS_EXHAUSTED' || err?.message?.toLowerCase().includes('credit')) {
+        setIsUpgradeOpen(true)
+      }
       setInput(userInput)
       toast.error(err.message || "Failed to process request")
 
@@ -435,7 +450,7 @@ function LandingPageContent() {
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
     }, 100)
-  }, [input, isProcessing, continueConversation, isChatDisabled, setInput, textareaRef])
+  }, [input, isProcessing, continueConversation, isChatDisabled, setInput, textareaRef, user, aiCreditsRemaining, aiCreditsLimit])
 
   const handleTemplateClick = useCallback(() => {
     // Write to local state (used by tablet/mobile layouts)
@@ -860,35 +875,55 @@ function LandingPageContent() {
                       className="p-3 border-b border-gray-200 bg-white flex flex-col gap-2 flex-shrink-0"
                     >
                       <div className="flex items-center justify-between px-1">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button type="button" className="text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors flex items-center gap-1.5 py-1 px-2.5 bg-white hover:bg-slate-50 border border-slate-200/60 rounded-xl shadow-xs">
-                              <Bot className="w-3.5 h-3.5 text-indigo-500" />
-                              <span>
-                                {selectedModel === 'gemini-search'
-                                  ? 'Gemini Realtime'
-                                  : selectedModel === 'deepseek-search'
-                                  ? 'Deepseek Realtime'
-                                  : 'DeepSeek Chat'}
-                              </span>
-                              <ChevronDown className="w-3 h-3 text-slate-400 ml-0.5" />
+                        <div className="flex items-center gap-1.5">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button type="button" className="text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors flex items-center gap-1.5 py-1 px-2.5 bg-white hover:bg-slate-50 border border-slate-200/60 rounded-xl shadow-xs">
+                                <Bot className="w-3.5 h-3.5 text-indigo-500" />
+                                <span>
+                                  {selectedModel === 'gemini-search'
+                                    ? 'Gemini Realtime'
+                                    : selectedModel === 'deepseek-search'
+                                    ? 'Deepseek Realtime'
+                                    : 'DeepSeek Chat'}
+                                </span>
+                                <ChevronDown className="w-3 h-3 text-slate-400 ml-0.5" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-48 bg-white border border-slate-200 shadow-md rounded-xl p-1 z-50">
+                              <DropdownMenuItem onClick={() => setSelectedModel('deepseek')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 rounded-lg text-slate-700">
+                                <Brain className="w-3.5 h-3.5 text-blue-500" />
+                                <span>DeepSeek Chat</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setSelectedModel('deepseek-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 rounded-lg text-slate-700">
+                                <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+                                <span>Deepseek Realtime</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setSelectedModel('gemini-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 rounded-lg text-slate-700">
+                                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                                <span>Gemini Realtime</span>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+
+                          {user && (
+                            <button
+                              type="button"
+                              onClick={() => setIsUpgradeOpen(true)}
+                              className={`flex items-center gap-1 py-1 px-2 rounded-xl text-xs font-semibold transition-all border shadow-xs cursor-pointer ${
+                                aiCreditsRemaining <= 0
+                                  ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
+                                  : aiCreditsRemaining <= 2
+                                  ? 'bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100'
+                                  : 'bg-indigo-50/70 text-indigo-700 border-indigo-200/60 hover:bg-indigo-100/80'
+                              }`}
+                              title="Remaining monthly AI credits. Click to view subscription plans."
+                            >
+                              <Zap className="w-3 h-3 text-current" />
+                              <span>{aiCreditsRemaining}/{aiCreditsLimit}</span>
                             </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start" className="w-48 bg-white border border-slate-200 shadow-md rounded-xl p-1 z-50">
-                            <DropdownMenuItem onClick={() => setSelectedModel('deepseek')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 rounded-lg text-slate-700">
-                              <Brain className="w-3.5 h-3.5 text-blue-500" />
-                              <span>DeepSeek Chat</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setSelectedModel('deepseek-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 rounded-lg text-slate-700">
-                              <Sparkles className="w-3.5 h-3.5 text-blue-500" />
-                              <span>Deepseek Realtime</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setSelectedModel('gemini-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 rounded-lg text-slate-700">
-                              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                              <span>Gemini Realtime</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                          )}
+                        </div>
 
                         {/* Image Toggle */}
                         <div className="flex items-center gap-2 select-none">
@@ -971,6 +1006,13 @@ function LandingPageContent() {
             </div>
           </div>
         )}
+        <UpgradeProDialog 
+          open={isUpgradeOpen} 
+          onOpenChange={setIsUpgradeOpen} 
+          featureHighlight="ai" 
+          title="Need More AI Credits?"
+          description={`You have ${aiCreditsRemaining} AI credits remaining of your monthly ${aiCreditsLimit} limit. Upgrade to Pro for 50 credits/month.`}
+        />
       </div>
     )
   }
@@ -1417,35 +1459,55 @@ function LandingPageContent() {
                 className="p-3 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md flex flex-col gap-2 flex-shrink-0 shadow-sm"
               >
                 <div className="flex items-center justify-between px-1">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button type="button" className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors flex items-center gap-1.5 py-1 px-2.5 bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-xs">
-                        <Bot className="w-3.5 h-3.5 text-indigo-500" />
-                        <span>
-                          {selectedModel === 'gemini-search'
-                            ? 'Gemini Realtime'
-                            : selectedModel === 'deepseek-search'
-                            ? 'Deepseek Realtime'
-                            : 'DeepSeek Chat'}
-                        </span>
-                        <ChevronDown className="w-3 h-3 text-slate-400 ml-0.5" />
+                  <div className="flex items-center gap-1.5">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button type="button" className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors flex items-center gap-1.5 py-1 px-2.5 bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-xs">
+                          <Bot className="w-3.5 h-3.5 text-indigo-500" />
+                          <span>
+                            {selectedModel === 'gemini-search'
+                              ? 'Gemini Realtime'
+                              : selectedModel === 'deepseek-search'
+                              ? 'Deepseek Realtime'
+                              : 'DeepSeek Chat'}
+                          </span>
+                          <ChevronDown className="w-3 h-3 text-slate-400 ml-0.5" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md rounded-xl p-1 z-50">
+                        <DropdownMenuItem onClick={() => setSelectedModel('deepseek')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-slate-700 dark:text-slate-200">
+                          <Brain className="w-3.5 h-3.5 text-blue-500" />
+                          <span>DeepSeek Chat</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setSelectedModel('deepseek-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-slate-700 dark:text-slate-200">
+                          <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+                          <span>Deepseek Realtime</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setSelectedModel('gemini-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-slate-700 dark:text-slate-200">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                          <span>Gemini Realtime</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {user && (
+                      <button
+                        type="button"
+                        onClick={() => setIsUpgradeOpen(true)}
+                        className={`flex items-center gap-1 py-1 px-2 rounded-xl text-xs font-semibold transition-all border shadow-xs cursor-pointer ${
+                          aiCreditsRemaining <= 0
+                            ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
+                            : aiCreditsRemaining <= 2
+                            ? 'bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100'
+                            : 'bg-indigo-50/70 text-indigo-700 border-indigo-200/60 hover:bg-indigo-100/80 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800/60'
+                        }`}
+                        title="Remaining monthly AI credits. Click to view subscription plans."
+                      >
+                        <Zap className="w-3 h-3 text-current" />
+                        <span>{aiCreditsRemaining}/{aiCreditsLimit}</span>
                       </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md rounded-xl p-1 z-50">
-                      <DropdownMenuItem onClick={() => setSelectedModel('deepseek')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-slate-700 dark:text-slate-200">
-                        <Brain className="w-3.5 h-3.5 text-blue-500" />
-                        <span>DeepSeek Chat</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setSelectedModel('deepseek-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-slate-700 dark:text-slate-200">
-                        <Sparkles className="w-3.5 h-3.5 text-blue-500" />
-                        <span>Deepseek Realtime</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setSelectedModel('gemini-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-slate-700 dark:text-slate-200">
-                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                        <span>Gemini Realtime</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                    )}
+                  </div>
 
                   {/* Image Toggle */}
                   <div className="flex items-center gap-2 select-none">
@@ -1717,6 +1779,15 @@ function LandingPageContent() {
           onSave={handleSaveChart}
           onCancel={() => setShowSaveChartDialog(false)}
         />
+
+        {/* Upgrade Pro Dialog for Mobile Viewport */}
+        <UpgradeProDialog
+          open={isUpgradeOpen}
+          onOpenChange={setIsUpgradeOpen}
+          featureHighlight="ai"
+          title="Need More AI Credits?"
+          description={`You have ${aiCreditsRemaining} AI credits remaining of your monthly ${aiCreditsLimit} limit. Upgrade to Pro for 50 credits/month.`}
+        />
       </div>
     )
   }
@@ -1779,6 +1850,15 @@ function LandingPageContent() {
         onOpenChange={setModeChangeConfirm}
         onConfirm={confirmModeChange}
         onCancel={cancelModeChange}
+      />
+
+      {/* Upgrade Pro Dialog for Desktop Viewport */}
+      <UpgradeProDialog
+        open={isUpgradeOpen}
+        onOpenChange={setIsUpgradeOpen}
+        featureHighlight="ai"
+        title="Need More AI Credits?"
+        description={`You have ${aiCreditsRemaining} AI credits remaining of your monthly ${aiCreditsLimit} limit. Upgrade to Pro for 50 credits/month.`}
       />
     </>
   )

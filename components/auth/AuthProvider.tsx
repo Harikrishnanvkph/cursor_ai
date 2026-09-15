@@ -17,6 +17,8 @@ type AuthContextValue = {
   signInWithGoogle: () => void
   signInAsGuest: () => void
   refresh: () => Promise<void>
+  upgradeToPro: () => Promise<boolean>
+  downgradeToFree: () => Promise<boolean>
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -80,6 +82,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch {}
     refresh()
+  }, [refresh])
+
+  useEffect(() => {
+    const handleAuthRefresh = () => {
+      refresh()
+    }
+    window.addEventListener('auth:refresh', handleAuthRefresh)
+    return () => {
+      window.removeEventListener('auth:refresh', handleAuthRefresh)
+    }
   }, [refresh])
 
   useEffect(() => {
@@ -371,8 +383,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [router])
 
+  const upgradeToPro = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await authApi.upgradeToPro()
+      if (res && res.success) {
+        toast.success("Successfully upgraded to Pro! You now have 50 monthly AI credits and 30 cloud saves.")
+        await refresh()
+        return true
+      }
+      toast.error(res?.message || "Failed to upgrade subscription")
+      return false
+    } catch (err: any) {
+      toast.error(err.message || "Failed to upgrade subscription")
+      return false
+    } finally {
+      setLoading(false)
+    }
+  }, [refresh])
+
+  const downgradeToFree = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await authApi.downgradeToFree()
+      if (res && res.success) {
+        toast.info("Subscription set to Free plan.")
+        // Warn if user now has more charts than the Free plan allows
+        if (res.subscription?.over_limit_charts) {
+          toast.warning(
+            `You have ${res.subscription.over_limit_charts} more chart(s) than your Free plan allows (max 10). ` +
+            `Your existing charts are safe, but you won't be able to save new ones until you delete some.`,
+            { duration: 8000 }
+          )
+        }
+        await refresh()
+        return true
+      }
+      return false
+    } catch (err: any) {
+      toast.error(err.message || "Failed to change subscription")
+      return false
+    } finally {
+      setLoading(false)
+    }
+  }, [refresh])
+
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, signInWithGoogle, signInAsGuest, refresh }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, signInWithGoogle, signInAsGuest, refresh, upgradeToPro, downgradeToFree }}>
       {children}
     </AuthContext.Provider>
   )

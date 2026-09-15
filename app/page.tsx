@@ -1,6 +1,7 @@
 import React, { Suspense } from "react"
 import Link from "next/link"
 import { SiteHeader } from "@/components/site-header"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { HeroAuthCta } from "@/components/home/hero-auth-cta"
@@ -454,10 +455,13 @@ export default function HomePage() {
                 <div className="text-slate-500 dark:text-slate-400 text-sm transition-colors">
                   © {new Date().getFullYear()} Chartography.in. All rights reserved.
                 </div>
-                <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
-                  <div className="w-2 h-2 bg-emerald-400 rounded-full mr-2 animate-pulse"></div>
-                  All systems operational
-                </Badge>
+                <div className="flex items-center gap-3">
+                  <ThemeToggle className="h-8 w-8 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800 shadow-sm transition-colors" />
+                  <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                    <div className="w-2 h-2 bg-emerald-400 rounded-full mr-2 animate-pulse"></div>
+                    All systems operational
+                  </Badge>
+                </div>
               </div>
             </div>
           </footer>

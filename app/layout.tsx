@@ -7,9 +7,9 @@ import ConsoleSilencer from '@/components/ConsoleSilencer'
 import { ThemeProvider } from '@/components/theme-provider'
 
 export const metadata: Metadata = {
-  title: 'Chartography',
-  description: 'Created by Hari',
-  generator: 'v0',
+  title: 'AI Chartor — AI-Powered Charts & Infographic Studio',
+  description: 'Create interactive charts and infographics with natural language AI and our powerful Advanced Editor canvas.',
+  metadataBase: new URL('https://aichartor.com'),
   icons: {
     icon: '/favicon.png',
   },

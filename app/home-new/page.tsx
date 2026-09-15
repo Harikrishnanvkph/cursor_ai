@@ -1,8 +1,11 @@
 "use client"
 
 import React, { useState, useEffect, useRef } from "react"
+import Link from "next/link"
+import { useAuth } from "@/components/auth/AuthProvider"
 import { useTheme } from "next-themes"
 import { SiteHeader } from "@/components/site-header"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { Sparkles, Sliders, LayoutDashboard, ArrowRight, Layers, PanelLeft, Share2, Settings, Palette, AlertTriangle, CheckCircle2, RefreshCw, Maximize2, Database, Layout, Grid, MessageSquare, MousePointer2, Pencil, Minus, ArrowLeftRight, Square, Circle, Triangle, Star, Hexagon, Heart, Cloud, Plus, Type, Lock, Copy, Trash2, MoreHorizontal, BarChart2, PieChart, FolderOpen, Save, TrendingUp, ChevronLeft, ChevronRight, AlignLeft, CircleDot, Target, Box, Filter, Gauge, LayoutGrid, Activity, Download, Check, Zap, ChevronDown } from "lucide-react"
 
 // Gemini-style four-pointed star icon
@@ -30,28 +33,28 @@ const SUBTITLES: Record<string, string> = {
 }// ── AI CHAT BENTO ──────────────────────────────────────────
 function AiChatBento() {
   return (
-    /* Fixed-height container so percentage heights work correctly */
+    /* Responsive container: natural height on mobile/tablet, fixed height on desktop */
     <div className="flex flex-col lg:flex-row gap-4 lg:h-[600px]">
 
       {/* ── LEFT COLUMN — W:35% ── */}
       <div className="flex flex-col gap-4 lg:w-[35%]">
 
         {/* Card 1 — H:35% — Pull Realtime Data */}
-        <div className="lg:flex-[35] rounded-2xl bg-slate-950 border border-slate-800 p-6 flex flex-col justify-between overflow-hidden relative min-h-[180px]">
+        <div className="lg:flex-[35] rounded-2xl bg-slate-950 border border-slate-800 p-5 sm:p-6 flex flex-col justify-between overflow-hidden relative min-h-[170px] sm:min-h-[180px]">
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-transparent pointer-events-none" />
 
-          <div className="relative z-10 max-w-[60%]">
+          <div className="relative z-10 max-w-[65%] sm:max-w-[60%]">
             <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-indigo-400 tracking-wider uppercase bg-indigo-500/10 px-2 py-0.5 rounded">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Live Connect
             </span>
-            <h2 className="mt-2 text-xl font-semibold text-slate-100 leading-snug  tracking-wide">
+            <h2 className="mt-2 text-lg xs:text-xl font-semibold text-slate-100 leading-snug tracking-wide">
               Pull Realtime Data<br />on any topic
             </h2>
           </div>
 
           {/* Realtime clock chart illustration positioned on the right */}
-          <div className="absolute right-2 bottom-2 w-[160px] h-[160px] z-10 flex items-center justify-center pointer-events-none">
+          <div className="absolute right-1 sm:right-2 bottom-1 sm:bottom-2 w-[110px] h-[110px] xs:w-[130px] xs:h-[130px] sm:w-[150px] sm:h-[150px] lg:w-[160px] lg:h-[160px] z-10 flex items-center justify-center pointer-events-none">
             <img
               src="/realtime-clock-chart.png"
               alt="Realtime clock chart"
@@ -61,10 +64,10 @@ function AiChatBento() {
         </div>
 
         {/* Card 2 — H:65% — NLP Chat */}
-        <div className="lg:flex-[65] rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 flex flex-col gap-4 overflow-hidden min-h-[220px]">
+        <div className="lg:flex-[65] rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-6 flex flex-col gap-4 overflow-hidden min-h-[220px]">
           <div>
             <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 tracking-wider uppercase bg-indigo-100 dark:bg-indigo-950/40 px-2 py-0.5 rounded">Conversational</span>
-            <p className="mt-2 text-lg font-semibold text-slate-800 dark:text-slate-200 leading-snug">
+            <p className="mt-2 text-base sm:text-lg font-semibold text-slate-800 dark:text-slate-200 leading-snug">
               Experience Natural Language Prompt to Create and Modify chart as you go
             </p>
           </div>
@@ -72,18 +75,18 @@ function AiChatBento() {
           {/* Chat bubbles container */}
           <div className="flex flex-col gap-3 mt-1">
             {/* AI greeting */}
-            <div className="self-start flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-600 dark:text-slate-300 shadow-sm max-w-[85%]">
+            <div className="self-start flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-600 dark:text-slate-300 shadow-sm max-w-[90%] sm:max-w-[85%] md:max-w-[75%] lg:max-w-[85%]">
               <GeminiIcon className="w-3 h-3 text-indigo-500 shrink-0" />
               <span>How can I help you?</span>
             </div>
 
             {/* User message */}
-            <div className="self-end bg-indigo-600 rounded-xl px-3.5 py-2 text-xs text-white max-w-[85%] shadow-sm shadow-indigo-500/10">
+            <div className="self-end bg-indigo-600 rounded-xl px-3.5 py-2 text-xs text-white max-w-[90%] sm:max-w-[85%] md:max-w-[75%] lg:max-w-[85%] shadow-sm shadow-indigo-500/10">
               Give me top 10 Billionaires
             </div>
 
             {/* AI response */}
-            <div className="self-start flex gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl p-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-[85%] shadow-sm">
+            <div className="self-start flex gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl p-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-[90%] sm:max-w-[85%] md:max-w-[75%] lg:max-w-[85%] shadow-sm">
               <GeminiIcon className="w-3 h-3 text-indigo-500 shrink-0 mt-0.5" />
               <span>
                 Here is the top 10 richest people in the world, based on Bloomberg data. Elon Musk leads with $619 billion...
@@ -98,24 +101,24 @@ function AiChatBento() {
       <div className="flex flex-col gap-4 lg:flex-1">
 
         {/* Card 3 — H:65% — Prompt to Create */}
-        <div className="lg:flex-[65] rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 pt-5 pb-5 px-5 sm:pt-5 sm:pb-5 sm:px-6 flex flex-col overflow-hidden min-h-[320px]">
+        <div className="lg:flex-[65] rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-5 md:p-6 flex flex-col overflow-hidden min-h-[340px] sm:min-h-[380px] md:min-h-[420px] lg:min-h-0">
 
           {/* Title */}
-          <h3 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-white leading-snug tracking-tight mb-3">
+          <h3 className="text-base xs:text-lg sm:text-xl font-semibold text-slate-900 dark:text-white leading-snug tracking-tight mb-3">
             Prompt To Create <span className='bg-clip-text font-bold text-transparent bg-gradient-to-b from-indigo-500 to-purple-500'>Stunning Charts, Infographic Templates</span>
           </h3>
 
           {/* Mosaic container with floating prompt bar */}
-          <div className="relative flex-1">
+          <div className="relative flex-1 min-h-[260px] xs:min-h-[290px] sm:min-h-[320px] lg:min-h-0">
 
             {/* Floating prompt bar — overlays on top of the mosaic */}
-            <div className="absolute top-[38%] left-[8%] right-[8%] z-30 flex items-center gap-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 shadow-xl shadow-slate-200/80 dark:shadow-slate-950/80">
+            <div className="absolute top-[38%] left-[4%] right-[4%] sm:left-[8%] sm:right-[8%] z-10 flex items-center gap-2 sm:gap-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 shadow-xl shadow-slate-200/80 dark:shadow-slate-950/80">
               <Sparkles className="w-4 h-4 text-indigo-500 shrink-0 animate-pulse" />
-              <span className="flex-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-mono truncate">
+              <span className="flex-1 text-[11px] xs:text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-mono truncate">
                 Show top 10 highest-grossing Hollywood films...
               </span>
-              <button className="shrink-0 w-8 h-8 rounded-lg bg-indigo-600 hover:bg-indigo-700 flex items-center justify-center transition-colors shadow-md shadow-indigo-500/20">
-                <ArrowRight className="w-4 h-4 text-white" />
+              <button className="shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-indigo-600 hover:bg-indigo-700 flex items-center justify-center transition-colors shadow-md shadow-indigo-500/20">
+                <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
               </button>
             </div>
 
@@ -192,19 +195,18 @@ function AiChatBento() {
           </div>
         </div>
 
-        <div className="lg:flex-[35] rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 flex flex-row justify-between items-center overflow-hidden min-h-[120px]">
+        <div className="lg:flex-[35] rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 overflow-hidden min-h-[120px]">
           <div className="flex-none">
-            {/* <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 tracking-wider uppercase bg-indigo-100 dark:bg-indigo-950/40 px-2 py-0.5 rounded">Endpoints</span> */}
-            <h3 className="mt-2 text-xl font-semibold text-slate-900 dark:text-white leading-snug">
-              Generate Images<br />For Endpoints<br />Increase Productivity
+            <h3 className="mt-1 sm:mt-2 text-lg xs:text-xl font-semibold text-slate-900 dark:text-white leading-snug">
+              Generate Images<br className="hidden xs:inline" /> For Endpoints<br className="hidden xs:inline" /> Increase Productivity
             </h3>
           </div>
           {/* GPU export share line chart illustration */}
-          <div className="flex-1 max-w-[330px] flex items-center justify-end ml-auto">
+          <div className="w-full sm:flex-1 sm:max-w-[330px] flex items-center justify-end sm:ml-auto">
             <img
               src="/gpu-export-share.png"
               alt="GPU Export Share"
-              className="w-full h-auto object-contain dark:brightness-105"
+              className="max-h-[140px] sm:max-h-none w-auto sm:w-full h-auto object-contain dark:brightness-105"
             />
           </div>
         </div>
@@ -225,7 +227,7 @@ function DecorateDesignCard() {
   const isDark = mounted ? (resolvedTheme === "dark" || theme === "dark") : false
 
   return (
-    <div className={`rounded-2xl border p-6 md:p-8 flex flex-col md:flex-row gap-6 justify-between items-stretch min-h-[340px] overflow-hidden relative w-full text-left transition-colors duration-300 ${isDark
+    <div className={`rounded-2xl border p-5 sm:p-6 md:p-8 flex flex-col md:flex-row gap-6 justify-between items-stretch min-h-[340px] overflow-hidden relative w-full text-left transition-colors duration-300 ${isDark
       ? "bg-slate-900 border-slate-800 text-white shadow-none"
       : "bg-slate-50 border-slate-200 text-slate-900 shadow-none"
       }`}>
@@ -234,9 +236,9 @@ function DecorateDesignCard() {
       )}
 
       {/* Left column: Context details & Visual HTML Previews */}
-      <div className="flex-1 z-10 flex flex-col justify-between max-w-md">
+      <div className="flex-1 z-10 flex flex-col justify-between max-w-full md:max-w-md">
         <div>
-          <h3 className={`text-xl font-semibold leading-snug ${isDark ? "text-white" : "text-slate-900"}`}>
+          <h3 className={`text-lg sm:text-xl font-semibold leading-snug ${isDark ? "text-white" : "text-slate-900"}`}>
             Add Visual Depth with Shapes &amp; Overlays
           </h3>
         </div>
@@ -250,9 +252,9 @@ function DecorateDesignCard() {
         {/* Floating Visual Context Elements directly under Title */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-1.5 flex-1">
           {/* 1st Floating Graphic: Text Callout Overlay */}
-          <div className="relative py-6 px-4 flex flex-col items-center justify-center min-h-[220px] h-full overflow-hidden">
+          <div className="relative py-4 sm:py-6 px-3 sm:px-4 flex flex-col items-center justify-center min-h-[200px] sm:min-h-[220px] h-full overflow-hidden">
             {/* Floating 2-row toolbar preview */}
-            <div className="flex flex-col items-center gap-1.5 mb-4 scale-[1.05] transform-gpu">
+            <div className="flex flex-col items-center gap-1.5 mb-4 scale-[0.95] xs:scale-100 sm:scale-[1.05] transform-gpu">
               <div className="flex items-center gap-1.5 bg-white text-slate-800 px-2.5 py-1 rounded-xl text-[10px] font-semibold shadow-md border border-slate-200">
                 <span className="text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md font-bold">Edit</span>
                 <span className="font-bold">B</span>
@@ -291,7 +293,7 @@ function DecorateDesignCard() {
           </div>
 
           {/* 2nd Floating Graphic: Image & Diagram Overlay with Free Dragging */}
-          <div className="relative p-4 min-h-[220px] h-full overflow-hidden flex flex-col justify-end">
+          <div className="relative p-3 sm:p-4 min-h-[200px] sm:min-h-[220px] h-full overflow-hidden flex flex-col justify-end">
             {/* Simple background bar chart series */}
             <div className="flex items-end justify-between gap-2 h-28 w-full px-2 opacity-50">
               <div className="w-full bg-sky-400/80 rounded-t h-[60%]" />
@@ -302,7 +304,7 @@ function DecorateDesignCard() {
             </div>
 
             {/* Overlaid Diagram Graphic with dashed selection border */}
-            <div className={`absolute top-4 right-4 w-32 h-24 border-2 border-dashed bg-white rounded-lg p-1 flex flex-col items-center justify-center shadow-2xl ${isDark ? "border-indigo-400" : "border-indigo-500"
+            <div className={`absolute top-5 right-4 sm:right-5 w-28 sm:w-32 h-22 sm:h-24 border-2 border-dashed bg-white rounded-lg p-1 flex flex-col items-center justify-center shadow-2xl ${isDark ? "border-indigo-400" : "border-indigo-500"
               }`}>
               {/* Mini action bar above image */}
               <div className="absolute -top-4 right-1 bg-white text-slate-700 px-1.5 py-0.5 rounded text-[8px] flex items-center gap-1 shadow-md border border-slate-200 z-10">
@@ -329,7 +331,7 @@ function DecorateDesignCard() {
       </div>
 
       {/* Right column: Shapes Toolbar Preview */}
-      <div className="flex flex-col gap-2 shrink-0 w-full sm:w-[260px] justify-center">
+      <div className="flex flex-col gap-2 shrink-0 w-full sm:w-[260px] self-center md:self-auto justify-center">
         <div className={`text-[11px] font-bold tracking-wider uppercase font-mono px-1 ${isDark ? "text-indigo-300" : "text-indigo-700"
           }`}>
           Vector Shape Tools
@@ -429,17 +431,17 @@ function AdvancedControlsCard() {
   return (
     <div className="w-full flex flex-col items-center text-center font-sans p-2">
       {/* Top Header Text - Fixed Height for exact cross-column alignment */}
-      <div className="h-8 flex items-center justify-center max-w-md mx-auto mb-3">
-        <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+      <div className="min-h-8 flex items-center justify-center max-w-md mx-auto mb-2 sm:mb-3">
+        <h3 className="text-lg xs:text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
           Flexible Display Modes
         </h3>
       </div>
 
       {/* Connected Segmented Pill Switcher [ Chart | Template ] - Zero-jiggle geometry */}
-      <div className="h-10 inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs mb-4 shrink-0 select-none">
+      <div className="h-9 sm:h-10 inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs mb-4 shrink-0 select-none">
         <button
           onClick={() => setActiveTab("chart")}
-          className={`h-8 px-5 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border ${activeTab === "chart"
+          className={`h-7 sm:h-8 px-4 sm:px-5 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border ${activeTab === "chart"
             ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
             : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
@@ -448,7 +450,7 @@ function AdvancedControlsCard() {
         </button>
         <button
           onClick={() => setActiveTab("template")}
-          className={`h-8 px-5 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border ${activeTab === "template"
+          className={`h-7 sm:h-8 px-4 sm:px-5 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border ${activeTab === "template"
             ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
             : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
@@ -458,8 +460,8 @@ function AdvancedControlsCard() {
       </div>
 
       {/* Main Preview Box - Outer line removed! Smooth fixed-frame display */}
-      <div className="w-full max-w-md h-[240px] flex items-center justify-center relative overflow-hidden">
-        <div className="w-full max-w-[280px] h-[210px] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex items-center justify-center p-2.5 relative overflow-hidden group transition-all duration-300">
+      <div className="w-full max-w-md h-[210px] sm:h-[240px] flex items-center justify-center relative overflow-hidden">
+        <div className="w-full max-w-[260px] sm:max-w-[280px] h-[190px] sm:h-[210px] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex items-center justify-center p-2.5 relative overflow-hidden group transition-all duration-300">
           <div className="w-full h-full flex items-center justify-center">
             <img
               key={activeTab}
@@ -553,19 +555,19 @@ function EditorOptionsCard() {
   const activeItem = menuItems.find(item => item.id === activeMenu) || menuItems[0]
 
   return (
-    <div className="rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 p-6 md:p-8 flex flex-col sm:flex-row gap-6 justify-between items-stretch min-h-[340px] overflow-hidden relative w-full text-left">
+    <div className="rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 p-5 sm:p-6 md:p-8 flex flex-col sm:flex-row gap-5 sm:gap-6 justify-between items-stretch min-h-[340px] overflow-hidden relative w-full text-left">
       <div className="absolute inset-0 bg-white/5 pointer-events-none" />
 
       {/* Left side: Context details */}
-      <div className="flex-1 z-10 flex flex-col justify-between max-w-sm">
+      <div className="flex-1 z-10 flex flex-col justify-between max-w-full sm:max-w-sm">
         <div>
-          <h3 className="text-xl font-semibold text-white leading-snug">
+          <h3 className="text-lg sm:text-xl font-semibold text-white leading-snug">
             Effortlessly Configure Charts &amp; Templates with Complete Control
           </h3>
         </div>
 
         {/* Dynamic Detail Card describing selected option */}
-        <div className="mt-6 bg-white/10 border border-white/15 rounded-xl p-4 transition-all duration-300 min-h-[85px] flex flex-col justify-center">
+        <div className="mt-5 sm:mt-6 bg-white/10 border border-white/15 rounded-xl p-3.5 sm:p-4 transition-all duration-300 min-h-[85px] flex flex-col justify-center">
           <div className="flex items-center gap-2 mb-1.5">
             <activeItem.icon className="w-4 h-4 text-white" />
             <span className="text-xs font-bold text-white font-sans antialiased">{activeItem.label} Tools</span>
@@ -577,7 +579,7 @@ function EditorOptionsCard() {
       </div>
 
       {/* Right side: Glassy Text UI Navigation */}
-      <div className="w-full sm:w-[240px] bg-slate-950/20 backdrop-blur-md rounded-xl border border-white/10 flex flex-col shrink-0 p-3.5 relative overflow-hidden transition-all duration-300">
+      <div className="w-full sm:w-[220px] md:w-[240px] bg-slate-950/20 backdrop-blur-md rounded-xl border border-white/10 flex flex-col shrink-0 p-3 sm:p-3.5 relative overflow-hidden transition-all duration-300">
         {/* Navigation list */}
         <div className="flex-1 flex flex-col gap-1">
           {menuItems.map((item) => {
@@ -642,17 +644,17 @@ function UnlimitedFreeEditorCard() {
   return (
     <div className="w-full flex flex-col items-center text-center font-sans p-2">
       {/* Top Header Title - Fixed Height for exact cross-column alignment */}
-      <div className="h-8 flex items-center justify-center max-w-md mx-auto mb-3">
-        <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+      <div className="min-h-8 flex items-center justify-center max-w-md mx-auto mb-2 sm:mb-3">
+        <h3 className="text-lg xs:text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
           Unlimited Free Usage
         </h3>
       </div>
 
       {/* Connected Segmented Pill Switcher [ Unlimited Edits | Full Toolkit | Zero Paywalls ] - Zero-jiggle geometry */}
-      <div className="h-10 inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs mb-4 shrink-0 select-none">
+      <div className="h-9 sm:h-10 inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs mb-4 shrink-0 select-none max-w-full overflow-x-auto">
         <button
           onClick={() => setActiveTab("unlimited")}
-          className={`h-8 px-3.5 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border ${activeTab === "unlimited"
+          className={`h-7 sm:h-8 px-2.5 xs:px-3 sm:px-3.5 rounded-full text-[11px] sm:text-xs font-semibold transition-all duration-150 cursor-pointer select-none border whitespace-nowrap ${activeTab === "unlimited"
             ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
             : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
@@ -661,7 +663,7 @@ function UnlimitedFreeEditorCard() {
         </button>
         <button
           onClick={() => setActiveTab("tools")}
-          className={`h-8 px-3.5 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border ${activeTab === "tools"
+          className={`h-7 sm:h-8 px-2.5 xs:px-3 sm:px-3.5 rounded-full text-[11px] sm:text-xs font-semibold transition-all duration-150 cursor-pointer select-none border whitespace-nowrap ${activeTab === "tools"
             ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
             : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
@@ -670,7 +672,7 @@ function UnlimitedFreeEditorCard() {
         </button>
         <button
           onClick={() => setActiveTab("free")}
-          className={`h-8 px-3.5 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border ${activeTab === "free"
+          className={`h-7 sm:h-8 px-2.5 xs:px-3 sm:px-3.5 rounded-full text-[11px] sm:text-xs font-semibold transition-all duration-150 cursor-pointer select-none border whitespace-nowrap ${activeTab === "free"
             ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
             : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
@@ -680,27 +682,27 @@ function UnlimitedFreeEditorCard() {
       </div>
 
       {/* Main Preview Box Directly Below - Fixed Height */}
-      <div className="w-full max-w-md h-[240px] flex items-center justify-center relative">
-        <div className="w-full h-[210px] bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col justify-between text-center relative overflow-hidden transition-all duration-300">
+      <div className="w-full max-w-md h-[210px] sm:h-[240px] flex items-center justify-center relative">
+        <div className="w-full h-[190px] sm:h-[210px] bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col justify-between text-center relative overflow-hidden transition-all duration-300">
           <div key={activeTab} className="w-full h-full flex flex-col justify-between animate-in fade-in duration-200">
             {/* Clean top header: Icon pill + concise single-line title */}
-            <div className="flex items-center justify-center gap-2.5 pt-0.5">
-              <div className={`p-1.5 rounded-lg border ${activeData.iconBg}`}>
-                <IconComp className="w-4.5 h-4.5" />
+            <div className="flex items-center justify-center gap-2 sm:gap-2.5 pt-0.5">
+              <div className={`p-1 sm:p-1.5 rounded-lg border ${activeData.iconBg}`}>
+                <IconComp className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
               </div>
-              <span className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">
+              <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white tracking-tight">
                 {activeData.title}
               </span>
             </div>
 
             {/* Airy descriptive paragraph */}
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium px-3 my-auto max-w-sm mx-auto">
+            <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium px-2 sm:px-3 my-auto max-w-sm mx-auto">
               {activeData.desc}
             </p>
 
             {/* Bottom Highlight Monospace Badge */}
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 shadow-2xs">
-              <span className={`text-[10.5px] font-mono font-semibold block ${activeData.accentColor}`}>
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2 sm:p-2.5 shadow-2xs">
+              <span className={`text-[9.5px] xs:text-[10px] sm:text-[10.5px] font-mono font-semibold block ${activeData.accentColor}`}>
                 {activeData.detail}
               </span>
             </div>
@@ -747,17 +749,17 @@ function CloudExportShareCard() {
   return (
     <div className="w-full flex flex-col items-center text-center font-sans p-2">
       {/* Top Header Title - Fixed Height for exact cross-column alignment */}
-      <div className="h-8 flex items-center justify-center max-w-md mx-auto mb-3">
-        <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+      <div className="min-h-8 flex items-center justify-center max-w-md mx-auto mb-2 sm:mb-3">
+        <h3 className="text-lg xs:text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
           Save, Share &amp; Export
         </h3>
       </div>
 
       {/* Connected Segmented Pill Switcher [ Save | Export | Share ] - Zero-jiggle geometry */}
-      <div className="h-10 inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs mb-4 shrink-0 select-none">
+      <div className="h-9 sm:h-10 inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs mb-4 shrink-0 select-none max-w-full overflow-x-auto">
         <button
           onClick={() => setActiveTab("save")}
-          className={`h-8 px-4 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border ${activeTab === "save"
+          className={`h-7 sm:h-8 px-3.5 sm:px-4 rounded-full text-[11px] sm:text-xs font-semibold transition-all duration-150 cursor-pointer select-none border whitespace-nowrap ${activeTab === "save"
             ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
             : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
@@ -766,7 +768,7 @@ function CloudExportShareCard() {
         </button>
         <button
           onClick={() => setActiveTab("export")}
-          className={`h-8 px-4 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border ${activeTab === "export"
+          className={`h-7 sm:h-8 px-3.5 sm:px-4 rounded-full text-[11px] sm:text-xs font-semibold transition-all duration-150 cursor-pointer select-none border whitespace-nowrap ${activeTab === "export"
             ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
             : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
@@ -775,7 +777,7 @@ function CloudExportShareCard() {
         </button>
         <button
           onClick={() => setActiveTab("share")}
-          className={`h-8 px-4 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none border ${activeTab === "share"
+          className={`h-7 sm:h-8 px-3.5 sm:px-4 rounded-full text-[11px] sm:text-xs font-semibold transition-all duration-150 cursor-pointer select-none border whitespace-nowrap ${activeTab === "share"
             ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-700"
             : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
@@ -785,27 +787,27 @@ function CloudExportShareCard() {
       </div>
 
       {/* Main Preview Box Directly Below - Fixed Height */}
-      <div className="w-full max-w-md h-[240px] flex items-center justify-center relative">
-        <div className="w-full h-[210px] bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col justify-between text-center relative overflow-hidden transition-all duration-300">
+      <div className="w-full max-w-md h-[210px] sm:h-[240px] flex items-center justify-center relative">
+        <div className="w-full h-[190px] sm:h-[210px] bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col justify-between text-center relative overflow-hidden transition-all duration-300">
           <div key={activeTab} className="w-full h-full flex flex-col justify-between animate-in fade-in duration-200">
             {/* Clean top header: Icon pill + concise single-line title */}
-            <div className="flex items-center justify-center gap-2.5 pt-0.5">
-              <div className={`p-1.5 rounded-lg border ${activeData.iconBg}`}>
-                <IconComp className="w-4.5 h-4.5" />
+            <div className="flex items-center justify-center gap-2 sm:gap-2.5 pt-0.5">
+              <div className={`p-1 sm:p-1.5 rounded-lg border ${activeData.iconBg}`}>
+                <IconComp className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
               </div>
-              <span className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">
+              <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white tracking-tight">
                 {activeData.title}
               </span>
             </div>
 
             {/* Airy descriptive paragraph */}
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium px-3 my-auto max-w-sm mx-auto">
+            <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium px-2 sm:px-3 my-auto max-w-sm mx-auto">
               {activeData.desc}
             </p>
 
             {/* Bottom Highlight Monospace Badge */}
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 shadow-2xs">
-              <span className={`text-[10.5px] font-mono font-semibold block ${activeData.accentColor}`}>
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2 sm:p-2.5 shadow-2xs">
+              <span className={`text-[9.5px] xs:text-[10px] sm:text-[10.5px] font-mono font-semibold block ${activeData.accentColor}`}>
                 {activeData.detail}
               </span>
             </div>
@@ -818,67 +820,72 @@ function CloudExportShareCard() {
 
 // ── PRICING SECTION ─────────────────────────────────────────
 function PricingSection() {
+  const { user, upgradeToPro } = useAuth()
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("yearly")
+  const [isUpgrading, setIsUpgrading] = useState(false)
+
+  const isProUser = user?.subscription_tier === "pro"
+
+  const handleProClick = async () => {
+    if (!user) {
+      window.location.href = "/signin"
+      return
+    }
+    if (isProUser) return
+
+    setIsUpgrading(true)
+    try {
+      await upgradeToPro()
+    } finally {
+      setIsUpgrading(false)
+    }
+  }
 
   const plans = [
     {
+      id: "free",
       name: "Free",
-      badge: "Starter",
-      description: "Essential AI charting tools for quick standalone visuals.",
+      badge: "Free Forever",
+      description: "Essential AI charting tools with complete, unlimited access to our Advanced Editor.",
       monthlyPrice: 0,
       yearlyPrice: 0,
       features: [
-        "10 AI Chart Generation Credits / mo",
-        "5 Core Chart Types (Bar, Line, Pie, Donut)",
-        "Standard PNG Export",
-        "Basic Canvas Customization",
-        "Community Templates Gallery",
+        "Complete Access to Advanced Editor page/tool",
+        "10 AI credits per month",
+        "Maximum 10 cloud saving",
+        "Standard PNG & Web Export",
+        "Community Templates & Design Presets",
       ],
-      cta: "Get Started Free",
+      cta: user ? (isProUser ? "Included in Pro" : "Current Plan") : "Get Started Free",
+      isCurrent: !isProUser && !!user,
       isPopular: false,
     },
     {
+      id: "pro",
       name: "Pro",
       badge: "Most Popular",
-      description: "Full infographic studio & power tools for pros & creators.",
-      monthlyPrice: 19,
-      yearlyPrice: 15,
+      description: "Supercharged AI generation, 3x cloud saves, and priority speed for pros and creators.",
+      monthlyPrice: 5,
+      yearlyPrice: 4,
       features: [
-        "Unlimited AI Generation Prompts",
-        "All 17+ Studio Chart Types (3D, Gauge, Funnel)",
-        "Infographic Templates & Multi-Zone Layouts",
-        "Vector Decoration Tools & Callout Shapes",
+        "Complete Access to Advanced Editor page/tool",
+        "50 AI credits per month",
+        "Maximum 30 cloud saving",
         "High-Res 4K PNG, SVG & Live HTML Export",
-        "Supabase Cloud Storage & Project History",
-        "Custom Canvas Aspect Ratios (16:9, 9:16, 1:1, 4:3)",
+        "Multi-Zone Templates & Custom Presets",
+        "Priority AI Prompt Processing",
       ],
-      cta: "Start 14-Day Free Trial",
+      cta: isProUser ? "Current Plan" : "Upgrade to Pro",
+      isCurrent: isProUser,
       isPopular: true,
-    },
-    {
-      name: "Enterprise",
-      badge: "Teams & Agencies",
-      description: "Advanced team collaboration & dedicated AI processing.",
-      monthlyPrice: 49,
-      yearlyPrice: 39,
-      features: [
-        "Everything in Pro Plan",
-        "Unlimited Team Workspaces & Sharing",
-        "Custom Brand Watermarks & Palette Presets",
-        "High-Priority AI Pipeline & Dedicated Compute",
-        "24/7 Priority Support & Onboarding",
-        "Custom Export Webhooks & API Access",
-      ],
-      cta: "Contact Sales",
-      isPopular: false,
     },
   ]
 
   return (
-    <div className="mt-24 pt-12 font-sans max-w-7xl mx-auto">
+    <div className="mt-20 sm:mt-24 pt-8 sm:pt-12 font-sans max-w-7xl mx-auto px-2 sm:px-4">
       {/* Header */}
-      <div className="text-center max-w-2xl mx-auto mb-10">
-        <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white tracking-tight">
+      <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
+        <h2 className="text-2xl sm:text-4xl font-bold text-slate-900 dark:text-white tracking-tight">
           Simple, Transparent Pricing
         </h2>
         <p className="mt-3 text-sm sm:text-base text-slate-600 dark:text-slate-400 font-normal leading-relaxed">
@@ -886,10 +893,10 @@ function PricingSection() {
         </p>
 
         {/* Billing Switcher */}
-        <div className="mt-6 inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 shadow-2xs select-none">
+        <div className="mt-6 inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 shadow-2xs select-none max-w-full">
           <button
             onClick={() => setBillingCycle("monthly")}
-            className={`px-5 py-2 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${billingCycle === "monthly"
+            className={`px-4 sm:px-5 py-2 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${billingCycle === "monthly"
               ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700"
               : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
               }`}
@@ -898,7 +905,7 @@ function PricingSection() {
           </button>
           <button
             onClick={() => setBillingCycle("yearly")}
-            className={`flex items-center gap-1.5 px-5 py-2 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${billingCycle === "yearly"
+            className={`flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer ${billingCycle === "yearly"
               ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700"
               : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
               }`}
@@ -911,15 +918,15 @@ function PricingSection() {
         </div>
       </div>
 
-      {/* Pricing Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
+      {/* Pricing Cards Grid (Max-4xl centered 2-card layout) */}
+      <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 items-stretch">
         {plans.map((plan) => {
           const price = billingCycle === "yearly" ? plan.yearlyPrice : plan.monthlyPrice
           return (
             <div
               key={plan.name}
               className={`rounded-2xl p-6 sm:p-8 flex flex-col justify-between relative transition-all duration-300 ${plan.isPopular
-                ? "bg-slate-900 text-white dark:bg-slate-900/90 border-2 border-indigo-500 shadow-2xl shadow-indigo-500/10 scale-102"
+                ? "bg-slate-900 text-white dark:bg-slate-900/90 border-2 border-indigo-500 shadow-2xl shadow-indigo-500/10 md:scale-102"
                 : "bg-white dark:bg-slate-900/60 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 shadow-md"
                 }`}
             >
@@ -963,14 +970,30 @@ function PricingSection() {
               </div>
 
               <div className="mt-8 pt-4">
-                <button
-                  className={`w-full py-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${plan.isPopular
-                    ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 active:scale-98"
-                    : "bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 active:scale-98"
+                {plan.id === "free" ? (
+                  <Link
+                    href={user ? "/editor" : "/signin"}
+                    className={`block text-center w-full py-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
+                      plan.isCurrent
+                        ? "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 cursor-default"
+                        : "bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 active:scale-98"
                     }`}
-                >
-                  {plan.cta}
-                </button>
+                  >
+                    {plan.cta}
+                  </Link>
+                ) : (
+                  <button
+                    onClick={handleProClick}
+                    disabled={isProUser || isUpgrading}
+                    className={`w-full py-3 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
+                      isProUser
+                        ? "bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 cursor-default"
+                        : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 active:scale-98 cursor-pointer"
+                    }`}
+                  >
+                    {isUpgrading ? "Upgrading..." : plan.cta}
+                  </button>
+                )}
               </div>
             </div>
           )
@@ -1019,11 +1042,11 @@ function SiteFooter() {
     <footer className="mt-28 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/60 font-sans text-slate-600 dark:text-slate-400 text-xs antialiased">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
 
-        {/* Main Grid: Stacked on Mobile/Tablet, 4 Columns on Desktop */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 lg:gap-12">
+        {/* Main Grid: Stacked on Mobile, 4 Columns on Tablet & Desktop */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 lg:gap-12">
 
-          {/* Brand & Mission (Spans 2 columns on lg screens) */}
-          <div className="lg:col-span-2 space-y-4 text-left">
+          {/* Brand & Mission (Spans 2 columns on md/lg screens) */}
+          <div className="md:col-span-2 space-y-4 text-left">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-md">
                 <GeminiIcon className="w-4 h-4" />
@@ -1038,22 +1061,22 @@ function SiteFooter() {
             </p>
           </div>
 
-          {/* Mobile & Tablet Accordion / Desktop Column Views */}
+          {/* Mobile Accordion / Tablet & Desktop Open Column Views */}
           {sections.map((sec) => {
             const isOpen = openSections[sec.id]
             return (
-              <div key={sec.id} className="border-b lg:border-b-0 border-slate-200 dark:border-slate-800 pb-4 lg:pb-0">
-                {/* Mobile / Tablet Accordion Header */}
+              <div key={sec.id} className="border-b md:border-b-0 border-slate-200 dark:border-slate-800 pb-4 md:pb-0">
+                {/* Mobile Accordion Header */}
                 <button
                   onClick={() => toggleSection(sec.id)}
-                  className="w-full flex items-center justify-between py-2 lg:py-0 lg:cursor-default text-left font-bold text-xs uppercase tracking-wider text-slate-900 dark:text-white"
+                  className="w-full flex items-center justify-between py-2 md:py-0 md:cursor-default text-left font-bold text-xs uppercase tracking-wider text-slate-900 dark:text-white"
                 >
                   <span>{sec.title}</span>
-                  <ChevronDown className={`w-4 h-4 lg:hidden transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                  <ChevronDown className={`w-4 h-4 md:hidden transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
                 </button>
 
-                {/* Content Links: Collapsible on Mobile/Tablet (<lg), Always Open on Desktop (lg:) */}
-                <ul className={`mt-3 space-y-2 font-medium transition-all duration-200 overflow-hidden ${isOpen ? "block max-h-96 opacity-100" : "hidden lg:block max-h-96 lg:opacity-100"}`}>
+                {/* Content Links: Collapsible on Mobile (<md), Always Open on Tablet & Desktop (md:) */}
+                <ul className={`mt-3 space-y-2 font-medium transition-all duration-200 overflow-hidden ${isOpen ? "block max-h-96 opacity-100" : "hidden md:block max-h-96 md:opacity-100"}`}>
                   {sec.links.map((link, idx) => (
                     <li key={idx}>
                       <a
@@ -1075,9 +1098,13 @@ function SiteFooter() {
 
         </div>
 
-        {/* Bottom copyright bar */}
-        <div className="mt-12 lg:mt-16 pt-8 border-t border-slate-200/80 dark:border-slate-800/80 flex items-center justify-center font-medium text-slate-500 dark:text-slate-400 text-center">
+        {/* Bottom copyright & theme bar */}
+        <div className="mt-12 lg:mt-16 pt-8 border-t border-slate-200/80 dark:border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 font-medium text-slate-500 dark:text-slate-400 text-center sm:text-left">
           <p>© {new Date().getFullYear()} Chartography. All rights reserved.</p>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Theme</span>
+            <ThemeToggle className="h-8 w-8 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800 shadow-sm transition-colors" />
+          </div>
         </div>
 
       </div>
@@ -1243,19 +1270,23 @@ function EditorBento() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 
-      {/* Card 1: Decorate Design - Shapes & Overlays (lg:col-span-2) */}
-      <div className="lg:col-span-2 flex">
+      {/* Card 1: Decorate Design - Shapes & Overlays (md:col-span-2 lg:col-span-2) */}
+      <div className="md:col-span-2 lg:col-span-2 flex">
         <DecorateDesignCard />
       </div>
 
       {/* Card 2: Editor Workspace Hub (col-span-1) */}
-      <EditorWorkspaceHubCard />
+      <div className="col-span-1 md:col-span-1 flex">
+        <EditorWorkspaceHubCard />
+      </div>
 
       {/* Card 3: Cloud & Controls Hub (col-span-1) */}
-      <CloudControlsHubCard />
+      <div className="col-span-1 md:col-span-1 flex">
+        <CloudControlsHubCard />
+      </div>
 
-      {/* Card 4: Aspect Ratio & Viewport Resizer (lg:col-span-2) */}
-      <div className="lg:col-span-2 flex">
+      {/* Card 4: Aspect Ratio & Viewport Resizer (md:col-span-2 lg:col-span-2) */}
+      <div className="md:col-span-2 lg:col-span-2 flex">
         <EditorOptionsCard />
       </div>
 
@@ -1269,11 +1300,11 @@ function BoardBento() {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
 
       {/* Left Tile: Canvas (2/3 width, full height) */}
-      <div className="lg:col-span-2 rounded-2xl bg-gradient-to-br from-sky-600 to-teal-600 p-7 flex flex-col justify-between min-h-[360px] overflow-hidden relative">
+      <div className="lg:col-span-2 rounded-2xl bg-gradient-to-br from-sky-600 to-teal-600 p-5 sm:p-6 md:p-7 flex flex-col justify-between min-h-[360px] overflow-hidden relative">
         <div className="absolute -right-10 -bottom-10 w-64 h-64 rounded-full bg-white/5 pointer-events-none" />
         <div>
           <LayoutDashboard className="w-6 h-6 text-sky-200 mb-3" />
-          <h3 className="text-xl md:text-2xl font-semibold text-white leading-snug whitespace-nowrap overflow-hidden text-ellipsis">
+          <h3 className="text-xl md:text-2xl font-semibold text-white leading-snug whitespace-normal break-words">
             One Interface to View all your creations and Assets
           </h3>
           <p className="mt-2 text-sky-100 text-xs md:text-sm leading-relaxed max-w-xl">
@@ -1286,7 +1317,7 @@ function BoardBento() {
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover/dash:animate-[shimmer_2s_infinite] pointer-events-none" />
 
           {/* Top Bar Navigation Mockup */}
-          <div className="flex items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-slate-200/80 text-slate-800">
+          <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-slate-200/80 text-slate-800">
             {/* Header Title + Tabs */}
             <div className="flex items-center gap-2">
               <div className="w-2.5 h-2.5 rounded-sm bg-gradient-to-br from-violet-600 to-indigo-600 shadow-xs animate-pulse" />
@@ -1308,23 +1339,23 @@ function BoardBento() {
           </div>
 
           {/* Main Dashboard Layout Grid: 2 Left Cards + Right Sidebar */}
-          <div className="grid grid-cols-12 gap-2">
-            {/* Left Content Area (8 Cols) - 2 Charts Grid */}
-            <div className="col-span-8 space-y-2">
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+            {/* Left Content Area (8 Cols on sm+) - 2 Charts Grid */}
+            <div className="col-span-1 sm:col-span-8 space-y-2">
               {/* Filter / Search Bar Row */}
               <div className="flex items-center justify-between gap-1.5 bg-white p-1.5 rounded-lg border border-slate-200/80 shadow-2xs">
                 <div className="flex items-center gap-1.5 text-slate-400 text-[9px] flex-1 px-1">
                   <span>🔍</span>
-                  <span className="text-slate-400 font-medium">Search charts...</span>
+                  <span className="text-slate-400 font-medium truncate">Search charts...</span>
                 </div>
-                <div className="flex items-center gap-1 text-[8px] font-semibold text-slate-600">
+                <div className="flex items-center gap-1 text-[8px] font-semibold text-slate-600 shrink-0">
                   <span className="px-1.5 py-0.5 bg-slate-100 rounded border border-slate-200">Type</span>
                   <span className="px-1.5 py-0.5 bg-slate-100 rounded border border-slate-200">Sort</span>
                 </div>
               </div>
 
               {/* 2 Chart Tiles Grid (Simple Clean Charts) */}
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 xs:grid-cols-2 gap-2">
                 {/* Tile 1: Product Score Simple Bar Chart */}
                 <div className="bg-white rounded-xl border border-slate-200/90 p-2 shadow-2xs flex flex-col justify-between relative overflow-hidden group/tile1 hover:border-slate-300 transition-colors">
                   <div className="text-[9.5px] font-bold text-slate-800 tracking-tight">Product Score</div>
@@ -1375,8 +1406,8 @@ function BoardBento() {
               </div>
             </div>
 
-            {/* Right Sidebar Area (4 Cols) - About + Chart Types */}
-            <div className="col-span-4 space-y-2">
+            {/* Right Sidebar Area (4 Cols on sm+) - About + Chart Types */}
+            <div className="col-span-1 sm:col-span-4 space-y-2">
               {/* About Single Charts Card */}
               <div className="bg-white rounded-xl border border-slate-200/90 p-2 shadow-2xs space-y-1.5">
                 <div className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">About Single Charts</div>
@@ -1410,7 +1441,7 @@ function BoardBento() {
       {/* Right Column: 2 Stacked Cards (1/3 width, Height Ratio 2:1) */}
       <div className="lg:col-span-1 flex flex-col gap-4">
         {/* Top Right Card: Share, Preview, Download & Navigate (Height Ratio 2) */}
-        <div className="flex-[2] rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 flex flex-col justify-between overflow-hidden min-h-[220px]">
+        <div className="flex-[2] rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-6 flex flex-col justify-between overflow-hidden min-h-[220px]">
           <div>
             <div className="flex items-center justify-between mb-2">
               <Share2 className="w-5 h-5 text-teal-600 dark:text-teal-400" />
@@ -1420,7 +1451,7 @@ function BoardBento() {
               </div>
             </div>
 
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white leading-snug">
+            <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white leading-snug">
               Share, Preview, Download &amp; Navigate
             </h3>
             <p className="mt-1.5 text-slate-500 dark:text-slate-400 text-xs leading-relaxed">
@@ -1428,7 +1459,7 @@ function BoardBento() {
             </p>
 
             {/* Quick Action Badges */}
-            <div className="grid grid-cols-2 gap-2 mt-4 text-[10.5px] font-semibold">
+            <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 mt-4 text-[10.5px] font-semibold">
               <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 shadow-2xs">
                 <Share2 className="w-3.5 h-3.5 text-teal-500 shrink-0" />
                 <span className="truncate">Share &amp; Embed</span>
@@ -1540,6 +1571,215 @@ function ChartRenderer({ type, mode }: { type: string; mode: "single" | "grouped
         alt={currentSlide.title}
         className="w-full h-full object-contain rounded-lg shadow-sm transition-all duration-300"
       />
+    </div>
+  )
+}
+
+// ── AUTO SCROLLING CHART TYPES TICKER (INFINITE LOOP & DRAGGABLE) ──
+function AutoScrollingChartTypes({
+  supportedChartTypes,
+}: {
+  supportedChartTypes: Array<{ id: string; label: string; icon: any }>
+}) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const isHoveredRef = useRef(false)
+  const isDraggingRef = useRef(false)
+  const isPageVisibleRef = useRef(true)
+  const isInViewRef = useRef(true)
+  const startXRef = useRef(0)
+  const scrollLeftRef = useRef(0)
+
+  // Pre-computed 3x array for seamless infinite conveyor belt
+  const items = React.useMemo(() => [
+    ...supportedChartTypes,
+    ...supportedChartTypes,
+    ...supportedChartTypes,
+  ], [supportedChartTypes])
+
+  // Center scroll position on mount so left/right dragging work immediately
+  useEffect(() => {
+    const el = containerRef.current
+    if (el && el.scrollWidth > 0 && el.scrollLeft === 0) {
+      el.scrollLeft = el.scrollWidth / 3
+    }
+  }, [])
+
+  // Optimized Delta-Time Animation Loop (runs once, zero re-renders on hover/drag)
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+
+    // Pause when the chart ticker is scrolled out of viewport
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        isInViewRef.current = entry.isIntersecting
+      },
+      { threshold: 0 }
+    )
+    observer.observe(el)
+
+    // Track tab visibility to pause when inactive
+    const handleVisibility = () => {
+      isPageVisibleRef.current = !document.hidden
+    }
+    document.addEventListener("visibilitychange", handleVisibility)
+
+    const pixelsPerSecond = 45 // Constant speed across 60Hz, 120Hz & 144Hz displays
+    let lastTime = performance.now()
+    let animId: number
+
+    const step = (currentTime: number) => {
+      const delta = (currentTime - lastTime) / 1000
+      lastTime = currentTime
+
+      // Guard against frame jumps after tab switch
+      if (delta > 0 && delta < 0.2) {
+        const setWidth = el.scrollWidth / 3
+        if (setWidth > 0) {
+          if (!isHoveredRef.current && !isDraggingRef.current && isPageVisibleRef.current && isInViewRef.current) {
+            el.scrollLeft += pixelsPerSecond * delta
+          }
+          // Seamless infinite wrap in both directions
+          if (el.scrollLeft >= setWidth * 2) {
+            el.scrollLeft -= setWidth
+          } else if (el.scrollLeft <= 0) {
+            el.scrollLeft += setWidth
+          }
+        }
+      }
+
+      animId = requestAnimationFrame(step)
+    }
+
+    animId = requestAnimationFrame(step)
+
+    return () => {
+      cancelAnimationFrame(animId)
+      observer.disconnect()
+      document.removeEventListener("visibilitychange", handleVisibility)
+    }
+  }, [])
+
+  // Window-level drag listeners (active only during drag)
+  useEffect(() => {
+    if (!isDragging) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const el = containerRef.current
+      if (!el) return
+      const walk = (e.pageX - el.offsetLeft - startXRef.current) * 1.2
+      el.scrollLeft = scrollLeftRef.current - walk
+
+      const setWidth = el.scrollWidth / 3
+      if (setWidth > 0) {
+        if (el.scrollLeft >= setWidth * 2) {
+          el.scrollLeft -= setWidth
+          scrollLeftRef.current -= setWidth
+        } else if (el.scrollLeft <= 0) {
+          el.scrollLeft += setWidth
+          scrollLeftRef.current += setWidth
+        }
+      }
+    }
+
+    const handleMouseUp = () => {
+      setIsDragging(false)
+      isDraggingRef.current = false
+    }
+
+    window.addEventListener("mousemove", handleMouseMove)
+    window.addEventListener("mouseup", handleMouseUp)
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove)
+      window.removeEventListener("mouseup", handleMouseUp)
+    }
+  }, [isDragging])
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    const el = containerRef.current
+    if (!el) return
+    e.preventDefault()
+    setIsDragging(true)
+    isDraggingRef.current = true
+    startXRef.current = e.pageX - el.offsetLeft
+    scrollLeftRef.current = el.scrollLeft
+  }
+
+  // Mobile / Tablet Touch handlers
+  const touchStartXRef = useRef(0)
+  const touchScrollLeftRef = useRef(0)
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const el = containerRef.current
+    if (!el) return
+    isHoveredRef.current = true
+    touchStartXRef.current = e.touches[0].pageX - el.offsetLeft
+    touchScrollLeftRef.current = el.scrollLeft
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const el = containerRef.current
+    if (!el) return
+    const walk = (e.touches[0].pageX - el.offsetLeft - touchStartXRef.current) * 1.2
+    el.scrollLeft = touchScrollLeftRef.current - walk
+
+    const setWidth = el.scrollWidth / 3
+    if (setWidth > 0) {
+      if (el.scrollLeft >= setWidth * 2) {
+        el.scrollLeft -= setWidth
+        touchScrollLeftRef.current -= setWidth
+      } else if (el.scrollLeft <= 0) {
+        el.scrollLeft += setWidth
+        touchScrollLeftRef.current += setWidth
+      }
+    }
+  }
+
+  const handleTouchEnd = () => {
+    isHoveredRef.current = false
+  }
+
+  return (
+    <div className="relative w-full overflow-hidden select-none py-1">
+      {/* Edge gradient fade masks */}
+      <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white dark:from-slate-950 to-transparent z-10" />
+      <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white dark:from-slate-950 to-transparent z-10" />
+
+      {/* Auto-scrolling, draggable conveyor */}
+      <div
+        ref={containerRef}
+        onMouseEnter={() => { isHoveredRef.current = true }}
+        onMouseLeave={() => { isHoveredRef.current = false }}
+        onMouseDown={handleMouseDown}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        className={`flex items-center gap-2 overflow-x-auto no-scrollbar scrollbar-none py-1 px-1 select-none transform-gpu ${
+          isDragging ? "cursor-grabbing" : "cursor-grab"
+        }`}
+        style={{
+          scrollbarWidth: "none",
+          msOverflowStyle: "none",
+          WebkitOverflowScrolling: "touch",
+        }}
+      >
+        {items.map((c, index) => {
+          const Icon = c.icon
+          return (
+            <div
+              key={`${c.id}-${index}`}
+              title={c.label}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 select-none transition-colors shadow-2xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 ${
+                isDragging ? "cursor-grabbing" : "cursor-grab"
+              }`}
+            >
+              <Icon className="w-4 h-4 shrink-0 text-slate-600 dark:text-slate-400" />
+              <span className="whitespace-nowrap">{c.label}</span>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -1658,82 +1898,86 @@ function ChartsShowcaseSection() {
   }, [exampleTypes, isInViewport, isTabActive, isHovered])
 
   return (
-    <div ref={sectionRef} className="mt-24 pt-6 font-sans">
+    <div ref={sectionRef} className="mt-16 sm:mt-24 pt-6 font-sans">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
 
         {/* Left Side (Vertically centered to match reference image) */}
-        <div className="lg:col-span-6 space-y-5">
+        <div className="lg:col-span-6 space-y-4 sm:space-y-5">
           <div>
-            <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
+            <span className="inline-flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200/70 dark:border-indigo-800/70 px-2.5 py-0.5 rounded-full">
+              <Sparkles className="w-3 h-3 text-indigo-500 shrink-0" />
+              <span>Visual Studio</span>
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight mt-2.5">
               Charts
             </h2>
-            <p className="mt-2 text-slate-600 dark:text-slate-400 text-sm leading-relaxed max-w-md">
+            <p className="mt-2 text-slate-600 dark:text-slate-400 text-sm leading-relaxed max-w-md font-normal">
               Create publication-ready single and grouped chart visualizations tailored to your dataset in seconds.
             </p>
           </div>
 
-          <ul className="space-y-2.5 text-sm text-slate-700 dark:text-slate-300 font-medium list-disc list-inside marker:text-slate-800 dark:marker:text-slate-200">
-            <li>Get Realtime Data.</li>
-            <li>Choose from different chart Preset/Theme as per Your wish.</li>
-            <li>Supports Grouped Dataset for Professional Presentations.</li>
-            <li>Supports 17+ Chart types to choose as per your need.</li>
-          </ul>
-
-          {/* Bottom Row: Horizontal icon tags */}
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pt-1 pb-0.5">
-            {supportedChartTypes.map((c) => {
-              const Icon = c.icon
-              return (
-                <div
-                  key={c.id}
-                  title={c.label}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 shrink-0 select-none hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors shadow-2xs"
-                >
-                  <Icon className="w-4 h-4 shrink-0 text-slate-600 dark:text-slate-400" />
-                  <span>{c.label}</span>
+          {/* Clean feature point items */}
+          <div className="space-y-2.5 pt-1">
+            {[
+              "Get Realtime Data with one-click live fetch.",
+              "Choose from different chart Preset/Theme as per your wish.",
+              "Supports Grouped Dataset for Professional Presentations.",
+              "Supports 17+ Chart types to choose as per your need.",
+            ].map((text, idx) => (
+              <div key={idx} className="flex items-center gap-2.5 text-sm text-slate-700 dark:text-slate-300 font-medium">
+                <div className="w-4 h-4 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 text-slate-600 dark:text-slate-400">
+                  <Check className="w-2.5 h-2.5" />
                 </div>
-              )
-            })}
+                <span>{text}</span>
+              </div>
+            ))}
           </div>
+
+          {/* Bottom Row: Horizontal auto-scrolling loop tags */}
+          <AutoScrollingChartTypes supportedChartTypes={supportedChartTypes} />
         </div>
 
-        {/* Right Side: Clean Light Floating Preview Container */}
-        <div className="lg:col-span-6 flex flex-col items-end justify-between">
-          {/* Top Radio Switch */}
-          <div className="flex items-center gap-3 mb-3">
-            <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-700 dark:text-slate-300">
-              <input
-                type="radio"
-                name="chart-mode-clean"
-                checked={mode === "single"}
-                onChange={() => {
+        {/* Right Side: Clean Floating Preview Container */}
+        <div className="lg:col-span-6 flex flex-col items-center lg:items-end justify-between w-full">
+          {/* Top Segmented Pill Switcher */}
+          <div className="flex items-center justify-center lg:justify-end mb-3 w-full">
+            <div className="inline-flex items-center p-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-2xs select-none">
+              <button
+                type="button"
+                onClick={() => {
                   setMode("single")
                   setSelectedType("bar")
                 }}
-                className="w-3.5 h-3.5 text-teal-600 focus:ring-teal-500"
-              />
-              Single
-            </label>
-            <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-700 dark:text-slate-300">
-              <input
-                type="radio"
-                name="chart-mode-clean"
-                checked={mode === "grouped"}
-                onChange={() => {
+                className={`px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                  mode === "single"
+                    ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-200/80 dark:border-slate-700"
+                    : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                Single
+              </button>
+              <button
+                type="button"
+                onClick={() => {
                   setMode("grouped")
                   setSelectedType("august-visa")
                 }}
-                className="w-3.5 h-3.5 text-teal-600 focus:ring-teal-500"
-              />
-              Grouped
-            </label>
+                className={`px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                  mode === "grouped"
+                    ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-200/80 dark:border-slate-700"
+                    : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                Grouped
+              </button>
+            </div>
           </div>
 
-          {/* Floating Card Box with Strict Fixed Size (520px x 340px) for Carousel */}
+          {/* Floating Card Box with Responsive Height for Carousel */}
           <div
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
-            className="w-full max-w-[520px] h-[340px] shrink-0 bg-transparent flex items-center justify-center relative group"
+            className="w-full max-w-[520px] h-[260px] xs:h-[290px] sm:h-[320px] md:h-[340px] shrink-0 bg-transparent flex items-center justify-center relative group"
           >
             {/* Pure Chart Renderer View */}
             <div className="w-full h-full flex items-center justify-center">
@@ -1745,9 +1989,9 @@ function ChartsShowcaseSection() {
               <button
                 onClick={handlePrev}
                 aria-label="Previous chart"
-                className="absolute left-0 top-1/2 -translate-y-1/2 w-8.5 h-8.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 hover:scale-105 transition-all shadow-md cursor-pointer z-10"
+                className="absolute left-0 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 hover:scale-105 transition-all shadow-md cursor-pointer z-10"
               >
-                <ChevronLeft className="w-4.5 h-4.5" />
+                <ChevronLeft className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
               </button>
             )}
 
@@ -1756,9 +2000,9 @@ function ChartsShowcaseSection() {
               <button
                 onClick={handleNext}
                 aria-label="Next chart"
-                className="absolute right-0 top-1/2 -translate-y-1/2 w-8.5 h-8.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 hover:scale-105 transition-all shadow-md cursor-pointer z-10"
+                className="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 hover:scale-105 transition-all shadow-md cursor-pointer z-10"
               >
-                <ChevronRight className="w-4.5 h-4.5" />
+                <ChevronRight className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
               </button>
             )}
           </div>
@@ -1875,15 +2119,15 @@ function TemplatesShowcaseSection() {
   }, [templateSlides.length, isInViewport, isTabActive, isHovered])
 
   return (
-    <div ref={sectionRef} className="mt-24 pt-6 font-sans">
+    <div ref={sectionRef} className="mt-16 sm:mt-24 pt-6 font-sans">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
 
-        {/* Left Side: Floating Card Box with Strict Fixed Size (520px x 340px) Matching Charts UI */}
-        <div className="lg:col-span-6 flex flex-col items-center lg:items-start justify-center w-full">
+        {/* Carousel Preview (order-2 on mobile/tablet so text is read first, order-1 on desktop) */}
+        <div className="lg:col-span-6 flex flex-col items-center lg:items-start justify-center w-full order-2 lg:order-1">
           <div
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
-            className="w-full max-w-[520px] h-[340px] shrink-0 bg-transparent flex items-center justify-center relative group"
+            className="w-full max-w-[520px] h-[260px] xs:h-[290px] sm:h-[320px] md:h-[340px] shrink-0 bg-transparent flex items-center justify-center relative group"
           >
             {/* Pure Template Renderer View */}
             <div className="w-full h-full flex items-center justify-center">
@@ -1895,9 +2139,9 @@ function TemplatesShowcaseSection() {
               <button
                 onClick={handlePrev}
                 aria-label="Previous template"
-                className="absolute left-0 top-1/2 -translate-y-1/2 w-8.5 h-8.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 hover:scale-105 transition-all shadow-md cursor-pointer z-10"
+                className="absolute left-0 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 hover:scale-105 transition-all shadow-md cursor-pointer z-10"
               >
-                <ChevronLeft className="w-4.5 h-4.5" />
+                <ChevronLeft className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
               </button>
             )}
 
@@ -1906,9 +2150,9 @@ function TemplatesShowcaseSection() {
               <button
                 onClick={handleNext}
                 aria-label="Next template"
-                className="absolute right-0 top-1/2 -translate-y-1/2 w-8.5 h-8.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 hover:scale-105 transition-all shadow-md cursor-pointer z-10"
+                className="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 hover:scale-105 transition-all shadow-md cursor-pointer z-10"
               >
-                <ChevronRight className="w-4.5 h-4.5" />
+                <ChevronRight className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
               </button>
             )}
           </div>
@@ -1930,23 +2174,37 @@ function TemplatesShowcaseSection() {
           </div>
         </div>
 
-        {/* Right Side: Text & Bullet Points */}
-        <div className="lg:col-span-6 space-y-4 max-w-full overflow-hidden">
+        {/* Text & Feature Points (order-1 on mobile/tablet, order-2 on desktop) */}
+        <div className="lg:col-span-6 space-y-4 max-w-full overflow-hidden order-1 lg:order-2">
           <div>
-            <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight break-words">
+            <span className="inline-flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/50 border border-teal-200/70 dark:border-teal-800/70 px-2.5 py-0.5 rounded-full">
+              <Layout className="w-3 h-3 text-teal-500 shrink-0" />
+              <span>Infographic Zones</span>
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight break-words mt-2.5">
               Templates
             </h2>
             <p className="mt-2 text-slate-600 dark:text-slate-400 text-sm leading-relaxed max-w-md break-words font-normal">
-              Create publication-ready, pro infographic chart templates with intelligent layouts in a single click
+              Create publication-ready, pro infographic chart templates with intelligent layouts in a single click.
             </p>
           </div>
 
-          <ul className="space-y-2.5 text-sm text-slate-700 dark:text-slate-300 font-medium list-disc list-inside marker:text-slate-800 dark:marker:text-slate-200 break-words">
-            <li>Explore templates across a variety of themes and aspect ratios.</li>
-            <li>Design Customized High Quality Templates with dedicated Tools</li>
-            <li>Design eye-catching graphics inside templates with Decoration tools</li>
-            <li>Get Tailored AI response from created Templates Zones</li>
-          </ul>
+          {/* Clean feature point items */}
+          <div className="space-y-2.5 pt-1">
+            {[
+              "Explore templates across a variety of themes and aspect ratios.",
+              "Design Customized High Quality Templates with dedicated Tools.",
+              "Design eye-catching graphics inside templates with Decoration tools.",
+              "Get Tailored AI response from created Templates Zones.",
+            ].map((text, idx) => (
+              <div key={idx} className="flex items-center gap-2.5 text-sm text-slate-700 dark:text-slate-300 font-medium">
+                <div className="w-4 h-4 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 text-slate-600 dark:text-slate-400">
+                  <Check className="w-2.5 h-2.5" />
+                </div>
+                <span>{text}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
       </div>
@@ -1957,9 +2215,82 @@ function TemplatesShowcaseSection() {
 // ── MAIN PAGE ──────────────────────────────────────────────
 export default function HomeNewPage() {
   const [activeTab, setActiveTab] = useState("ai-chat")
+  const isManualScrollingRef = useRef(false)
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  const handleTabClick = (id: string) => {
+    setActiveTab(id)
+    isManualScrollingRef.current = true
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current)
+    }
+
+    const el = document.getElementById(`showcase-${id}`)
+    if (el) {
+      const isMobile = typeof window !== "undefined" && window.innerWidth < 640
+      const headerOffset = isMobile ? 75 : 85
+      const elementPosition = el.getBoundingClientRect().top
+      const offsetPosition = elementPosition + window.pageYOffset - headerOffset
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth"
+      })
+    }
+
+    scrollTimeoutRef.current = setTimeout(() => {
+      isManualScrollingRef.current = false
+    }, 1000)
+  }
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (isManualScrollingRef.current) return
+
+      const isMobile = window.innerWidth < 640
+      const threshold = isMobile ? 80 : 95
+      const sections = ["ai-chat", "editor", "board"]
+      let currentActive = "ai-chat"
+
+      for (const id of sections) {
+        const el = document.getElementById(`showcase-${id}`)
+        if (el) {
+          const rect = el.getBoundingClientRect()
+          if (rect.top <= threshold + 40) {
+            currentActive = id
+          }
+        }
+      }
+
+      setActiveTab(prev => (prev !== currentActive ? currentActive : prev))
+    }
+
+    const handleUserInteraction = () => {
+      isManualScrollingRef.current = false
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current)
+      }
+    }
+
+    window.addEventListener("scroll", handleScroll, { passive: true })
+    window.addEventListener("wheel", handleUserInteraction, { passive: true })
+    window.addEventListener("touchstart", handleUserInteraction, { passive: true })
+    window.addEventListener("scrollend", handleUserInteraction, { passive: true })
+    handleScroll()
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll)
+      window.removeEventListener("wheel", handleUserInteraction)
+      window.removeEventListener("touchstart", handleUserInteraction)
+      window.removeEventListener("scrollend", handleUserInteraction)
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current)
+      }
+    }
+  }, [])
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300 relative overflow-hidden">
+    <div className="min-h-screen bg-white dark:bg-slate-950 transition-colors duration-300 relative overflow-x-clip">
 
       {/* Background glows */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
@@ -1979,73 +2310,108 @@ export default function HomeNewPage() {
       <main className="relative z-10">
 
         {/* ── HERO ── */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 sm:pt-28 pb-16">
-          <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 lg:gap-10 items-center mt-4 lg:mt-6">
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12 lg:pt-16 pb-20 sm:pb-28 lg:pb-32">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-8 lg:gap-10 items-center mt-2 sm:mt-4 lg:mt-6">
 
-            <div className="lg:col-span-4 space-y-5 text-left">
-              <h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-tight text-slate-900 dark:text-white">
+            <div className="md:col-span-1 lg:col-span-4 space-y-4 sm:space-y-5 text-left">
+              <h1 className="text-3xl xs:text-4xl sm:text-5xl font-bold tracking-tight leading-tight text-slate-900 dark:text-white">
                 Generate &amp; Style <br />
                 <span className="bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">
                   Charts with AI
                 </span>
               </h1>
-              <p className="text-base text-slate-600 dark:text-slate-400 leading-relaxed font-light max-w-md">
+              <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed font-light max-w-md">
                 Chartography.in merges powerful conversational AI generation with a pixel-perfect design editor. Describe your data story in plain English, apply professional templates, and fine-tune styling to match your brand.
               </p>
             </div>
 
-            <div className="lg:col-span-3 relative h-[380px] lg:h-[420px]">
-              <div className="absolute top-10 right-0 z-10 w-[90%] rounded-2xl overflow-hidden shadow-2xl border border-slate-200/40 dark:border-slate-700/40 group">
-                <img src="/chart-preview.png" alt="AI Generated Chart" className="w-full h-auto object-cover group-hover:scale-[1.012] transition-transform duration-500 ease-out" />
-              </div>
-              <div className="absolute top-0 left-0 z-20 w-[82%] bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl px-3.5 py-2.5 flex items-center gap-2.5">
+            <div className="md:col-span-1 lg:col-span-3 relative w-full pt-6 sm:pt-8 max-w-lg mx-auto lg:max-w-none">
+              <div className="absolute top-0 left-0 z-20 w-[92%] xs:w-[88%] sm:w-[82%] bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl px-2.5 sm:px-3.5 py-2 sm:py-2.5 flex items-center gap-2 sm:gap-2.5">
                 <Sparkles className="w-4 h-4 text-indigo-500 shrink-0" />
-                <span className="flex-1 text-sm text-slate-500 dark:text-slate-400 font-mono truncate">Show top 10 highest-grossing Hollywood films...</span>
-                <button className="shrink-0 w-7 h-7 rounded-lg bg-indigo-600 hover:bg-indigo-700 flex items-center justify-center transition-colors duration-200 shadow-md shadow-indigo-500/30">
-                  <ArrowRight className="w-3.5 h-3.5 text-white" />
+                <span className="flex-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-mono truncate">Show top 10 highest-grossing Hollywood films...</span>
+                <button className="shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-indigo-600 hover:bg-indigo-700 flex items-center justify-center transition-colors duration-200 shadow-md shadow-indigo-500/30">
+                  <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
                 </button>
+              </div>
+              <div className="ml-auto w-[90%] rounded-2xl overflow-hidden shadow-2xl border border-slate-200/40 dark:border-slate-700/40 group relative z-10">
+                <img src="/chart-preview.png" alt="AI Generated Chart" className="w-full h-auto block object-cover group-hover:scale-[1.012] transition-transform duration-500 ease-out" />
               </div>
             </div>
           </div>
         </section>
 
         {/* ── FEATURES SECTION ── */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 sm:mt-12 lg:mt-16 pb-20 sm:pb-24">
 
           {/* Heading */}
-          <div className="text-center mb-8">
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 dark:text-white">
+          <div className="text-center mb-6 sm:mb-8">
+            <h2 className="text-2xl sm:text-4xl font-bold tracking-tight text-slate-900 dark:text-white">
               One platform for your entire charting workflow
             </h2>
-            <p className="mt-3 text-slate-500 dark:text-slate-400 text-base font-light transition-all duration-200">
-              {SUBTITLES[activeTab]}
-            </p>
-          </div>
-
-          {/* Tab bar */}
-          <div className="flex justify-center mb-8 overflow-x-auto pb-1">
-            <div className="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl p-1.5 border border-slate-200 dark:border-slate-700 shadow-sm shrink-0">
-              {TABS.map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  onClick={() => setActiveTab(id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap ${activeTab === id
-                    ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm border border-slate-200/60 dark:border-slate-600"
-                    : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                    }`}
-                >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  {label}
-                </button>
-              ))}
+            <div className="h-6 sm:h-7 flex items-center justify-center mt-2 sm:mt-3">
+              <p className="text-slate-500 dark:text-slate-400 text-sm sm:text-base font-light transition-opacity duration-150">
+                {SUBTITLES[activeTab]}
+              </p>
             </div>
           </div>
 
-          {/* Bento grid per tab content */}
-          <div key={activeTab} className="mt-12 animate-in fade-in duration-300">
-            {activeTab === "ai-chat" && <AiChatBento />}
-            {activeTab === "editor" && <EditorBento />}
-            {activeTab === "board" && <BoardBento />}
+          {/* ── STICKY SHOWCASE WRAPPER (Bar sticks while user scrolls through all 3 showcases) ── */}
+          <div className="relative">
+
+            {/* Sticky Navigation Bar with solid opaque background to completely prevent content overlap */}
+            <div className="sticky top-0 z-40 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 sm:py-4 bg-white dark:bg-slate-950 mb-8 sm:mb-12 transition-colors">
+              <div className="flex justify-center">
+                <div className="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-2xl p-1 sm:p-1.5 border border-slate-200 dark:border-slate-700 shadow-sm shrink-0">
+                  {TABS.map(({ id, label, icon: Icon }) => {
+                    const isActive = activeTab === id
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => handleTabClick(id)}
+                        className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-medium border transition-colors duration-150 whitespace-nowrap select-none cursor-pointer ${
+                          isActive
+                            ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs border-slate-200/80 dark:border-slate-600"
+                            : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                        }`}
+                      >
+                        <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                        <span>{label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Feature Showcases Stacked One Below Another */}
+            <div className="relative z-10 isolate space-y-20 sm:space-y-28 lg:space-y-36">
+              {/* 1. AI Chart Showcase (No title as requested: "Except for AI Chat") */}
+              <div id="showcase-ai-chat" className="scroll-mt-24 sm:scroll-mt-28">
+                <AiChatBento />
+              </div>
+
+              {/* 2. Advanced Editor Showcase — Title on the Left End */}
+              <div id="showcase-editor" className="scroll-mt-24 sm:scroll-mt-28">
+                <div className="text-left mb-4 sm:mb-6">
+                  <h3 className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 dark:text-white">
+                    Advanced Editor
+                  </h3>
+                </div>
+                <EditorBento />
+              </div>
+
+              {/* 3. Board Showcase — Title on the Right End */}
+              <div id="showcase-board" className="scroll-mt-24 sm:scroll-mt-28">
+                <div className="text-right mb-4 sm:mb-6">
+                  <h3 className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 dark:text-white">
+                    Board
+                  </h3>
+                </div>
+                <BoardBento />
+              </div>
+            </div>
+
           </div>
 
           {/* New Charts Showcase Section */}
@@ -2055,8 +2421,8 @@ export default function HomeNewPage() {
           <TemplatesShowcaseSection />
 
           {/* Standalone duplicate boxes completely below the sections */}
-          <div className="mt-24 pt-16 font-sans">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto items-stretch">
+          <div className="mt-16 sm:mt-24 pt-8 sm:pt-16 font-sans">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 max-w-7xl mx-auto items-stretch">
               <div className="w-full flex justify-center">
                 <AdvancedControlsCard />
               </div>

@@ -7,6 +7,13 @@ export type AuthUser = {
   provider_id?: string
   user_metadata?: Record<string, any>
   is_admin?: boolean
+  subscription_tier?: 'free' | 'pro' | 'enterprise'
+  ai_credits_used?: number
+  ai_credits_limit?: number
+  ai_credits_remaining?: number
+  cloud_charts_limit?: number
+  saved_charts_count?: number
+  credits_reset_at?: string
 }
 
 const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000'
@@ -247,6 +254,30 @@ export const authApi = {
 
     // Fallback - this shouldn't happen but satisfies TypeScript
     return null
+  },
+  upgradeToPro: async () => {
+    const response = await request<{ success: boolean; message: string; subscription: any } | { error: string; message: string }>(`/auth/subscription/upgrade`, {
+      method: 'POST',
+      body: JSON.stringify({ tier: 'pro' })
+    })
+
+    if ('error' in response) {
+      throw new Error(response.message)
+    }
+
+    return response
+  },
+  downgradeToFree: async () => {
+    const response = await request<{ success: boolean; message: string; subscription: any } | { error: string; message: string }>(`/auth/subscription/downgrade`, {
+      method: 'POST',
+      body: JSON.stringify({ tier: 'free' })
+    })
+
+    if ('error' in response) {
+      throw new Error(response.message)
+    }
+
+    return response
   },
 }
 

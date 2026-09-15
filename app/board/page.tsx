@@ -12,9 +12,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 import { ChartPreviewModal } from "@/components/board/chart-preview-modal"
 import { ChartCard } from "@/components/board/chart-card"
-import { BoardStats } from "@/components/board/board-stats"
+import { BoardStats, TotalChartsBadge } from "@/components/board/board-stats"
 import { toast } from "sonner"
 import { dataService } from "@/lib/data-service"
 import {
@@ -292,7 +298,7 @@ function BoardPageContent() {
               <div className="flex items-center bg-slate-100 dark:bg-slate-800/80 rounded-lg p-0.5 border border-slate-200/60 dark:border-slate-700/60 mr-1 sm:mr-2 shrink-0">
                 <Button
                   onClick={() => setViewTab("charts")}
-                  className={`h-7 px-2.5 text-xs font-semibold rounded-md shadow-none transition-all gap-1.5 flex items-center justify-center shrink-0 ${
+                  className={`h-7 px-2 sm:px-2.5 text-xs font-semibold rounded-md shadow-none transition-all gap-1 sm:gap-1.5 flex items-center justify-center shrink-0 ${
                     viewTab === "charts"
                       ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 hover:bg-white dark:hover:bg-slate-700 shadow-sm"
                       : "bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 border-none hover:bg-transparent dark:hover:bg-transparent"
@@ -301,11 +307,11 @@ function BoardPageContent() {
                   size="sm"
                 >
                   <LayoutDashboard className="h-3.5 w-3.5" />
-                  <span>My Charts</span>
+                  <span><span className="hidden sm:inline">My </span>Charts</span>
                 </Button>
                 <Button
                   onClick={() => setViewTab("images")}
-                  className={`h-7 px-2.5 text-xs font-semibold rounded-md shadow-none transition-all gap-1.5 flex items-center justify-center shrink-0 ${
+                  className={`h-7 px-2 sm:px-2.5 text-xs font-semibold rounded-md shadow-none transition-all gap-1 sm:gap-1.5 flex items-center justify-center shrink-0 ${
                     viewTab === "images"
                       ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 hover:bg-white dark:hover:bg-slate-700 shadow-sm"
                       : "bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 border-none hover:bg-transparent dark:hover:bg-transparent"
@@ -314,7 +320,7 @@ function BoardPageContent() {
                   size="sm"
                 >
                   <ImageIcon className="h-3.5 w-3.5" />
-                  <span>My Images</span>
+                  <span><span className="hidden sm:inline">My </span>Images</span>
                 </Button>
               </div>
 
@@ -349,18 +355,18 @@ function BoardPageContent() {
               <button
                 onClick={() => {
                   setActiveTab("single")
-                  setShowMobileInfo(false)
                 }}
                 className={`flex items-center gap-1.5 py-3 px-2 border-b-2 font-medium text-xs transition-all whitespace-nowrap ${
-                  activeTab === "single" && !showMobileInfo
+                  activeTab === "single"
                     ? "border-violet-600 text-violet-700 dark:text-violet-400 dark:border-violet-500"
                     : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600"
                 }`}
               >
-                <BarChart2 className={`h-4 w-4 shrink-0 ${activeTab === "single" && !showMobileInfo ? "text-violet-500 dark:text-violet-400" : "text-slate-400 dark:text-slate-500"}`} />
-                <span className={`hidden mob:inline font-semibold text-[13px] ${activeTab === "single" && !showMobileInfo ? "text-violet-800 dark:text-violet-300" : "text-slate-700 dark:text-slate-300"}`}>Single Chart</span>
-                <span className={`ml-0.5 sm:ml-1.5 px-2 py-0.5 text-[11px] font-bold border rounded-full ${
-                  activeTab === "single" && !showMobileInfo
+                <BarChart2 className={`h-4 w-4 shrink-0 ${activeTab === "single" ? "text-violet-500 dark:text-violet-400" : "text-slate-400 dark:text-slate-500"}`} />
+                <span className={`inline sm:hidden font-semibold text-xs ${activeTab === "single" ? "text-violet-800 dark:text-violet-300" : "text-slate-700 dark:text-slate-300"}`}>Single</span>
+                <span className={`hidden sm:inline font-semibold text-[13px] ${activeTab === "single" ? "text-violet-800 dark:text-violet-300" : "text-slate-700 dark:text-slate-300"}`}>Single Chart</span>
+                <span className={`ml-0.5 sm:ml-1.5 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-bold border rounded-full ${
+                  activeTab === "single"
                     ? "bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800/60"
                     : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700"
                 }`}>
@@ -371,18 +377,18 @@ function BoardPageContent() {
               <button
                 onClick={() => {
                   setActiveTab("group")
-                  setShowMobileInfo(false)
                 }}
                 className={`flex items-center gap-1.5 py-3 px-2 border-b-2 font-medium text-xs transition-all whitespace-nowrap ${
-                  activeTab === "group" && !showMobileInfo
+                  activeTab === "group"
                     ? "border-violet-600 text-violet-700 dark:text-violet-400 dark:border-violet-500"
                     : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600"
                 }`}
               >
-                <Layers className={`h-4 w-4 shrink-0 ${activeTab === "group" && !showMobileInfo ? "text-violet-500 dark:text-violet-400" : "text-slate-400 dark:text-slate-500"}`} />
-                <span className={`hidden mob:inline font-semibold text-[13px] ${activeTab === "group" && !showMobileInfo ? "text-violet-800 dark:text-violet-300" : "text-slate-700 dark:text-slate-300"}`}>Group Chart</span>
-                <span className={`ml-0.5 sm:ml-1.5 px-2 py-0.5 text-[11px] font-bold border rounded-full ${
-                  activeTab === "group" && !showMobileInfo
+                <Layers className={`h-4 w-4 shrink-0 ${activeTab === "group" ? "text-violet-500 dark:text-violet-400" : "text-slate-400 dark:text-slate-500"}`} />
+                <span className={`inline sm:hidden font-semibold text-xs ${activeTab === "group" ? "text-violet-800 dark:text-violet-300" : "text-slate-700 dark:text-slate-300"}`}>Group</span>
+                <span className={`hidden sm:inline font-semibold text-[13px] ${activeTab === "group" ? "text-violet-800 dark:text-violet-300" : "text-slate-700 dark:text-slate-300"}`}>Group Chart</span>
+                <span className={`ml-0.5 sm:ml-1.5 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-bold border rounded-full ${
+                  activeTab === "group"
                     ? "bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800/60"
                     : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700"
                 }`}>
@@ -393,18 +399,17 @@ function BoardPageContent() {
               <button
                 onClick={() => {
                   setActiveTab("templates")
-                  setShowMobileInfo(false)
                 }}
                 className={`flex items-center gap-1.5 py-3 px-2 border-b-2 font-medium text-xs transition-all whitespace-nowrap ${
-                  activeTab === "templates" && !showMobileInfo
+                  activeTab === "templates"
                     ? "border-violet-600 text-violet-700 dark:text-violet-400 dark:border-violet-500"
                     : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600"
                 }`}
               >
-                <LayoutTemplate className={`h-4 w-4 shrink-0 ${activeTab === "templates" && !showMobileInfo ? "text-violet-500 dark:text-violet-400" : "text-slate-400 dark:text-slate-500"}`} />
-                <span className={`hidden mob:inline font-semibold text-[13px] ${activeTab === "templates" && !showMobileInfo ? "text-violet-800 dark:text-violet-300" : "text-slate-700 dark:text-slate-300"}`}>Templates</span>
-                <span className={`ml-0.5 sm:ml-1.5 px-2 py-0.5 text-[11px] font-bold border rounded-full ${
-                  activeTab === "templates" && !showMobileInfo
+                <LayoutTemplate className={`h-4 w-4 shrink-0 ${activeTab === "templates" ? "text-violet-500 dark:text-violet-400" : "text-slate-400 dark:text-slate-500"}`} />
+                <span className={`font-semibold text-xs sm:text-[13px] ${activeTab === "templates" ? "text-violet-800 dark:text-violet-300" : "text-slate-700 dark:text-slate-300"}`}>Templates</span>
+                <span className={`ml-0.5 sm:ml-1.5 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-bold border rounded-full ${
+                  activeTab === "templates"
                     ? "bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800/60"
                     : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700"
                 }`}>
@@ -413,19 +418,24 @@ function BoardPageContent() {
               </button>
             </nav>
 
-            {/* Info Toggle Icon Button (mobile/tablet only) */}
-            <button
-              onClick={() => setShowMobileInfo(!showMobileInfo)}
-              className={`lg:hidden flex items-center gap-1.5 py-3 px-2 border-b-2 font-medium text-xs transition-all whitespace-nowrap ${
-                showMobileInfo
-                  ? "border-violet-600 text-violet-700 dark:text-violet-400 dark:border-violet-500"
-                  : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600"
-              }`}
-              title="Show Analytics & Help"
-            >
-              <Info className={`h-4 w-4 ${showMobileInfo ? "text-violet-500 dark:text-violet-400" : "text-slate-400 dark:text-slate-500"}`} />
-              <span className={`hidden sm:inline font-semibold text-[13px] ${showMobileInfo ? "text-violet-800 dark:text-violet-300" : "text-slate-700 dark:text-slate-300"}`}>Analytics & Help</span>
-            </button>
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0 py-1.5">
+              {/* Total Charts Counter */}
+              <TotalChartsBadge totalCount={conversations.length} />
+
+              {/* Info Toggle Icon Button (mobile/tablet only) */}
+              <button
+                onClick={() => setShowMobileInfo(!showMobileInfo)}
+                className={`lg:hidden flex items-center gap-1.5 py-1.5 px-2 border border-slate-200 dark:border-slate-700 rounded-lg font-medium text-xs transition-all whitespace-nowrap ${
+                  showMobileInfo
+                    ? "bg-violet-50 border-violet-300 text-violet-700 dark:bg-violet-950/50 dark:border-violet-800 dark:text-violet-300"
+                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
+                }`}
+                title="Show Analytics & Help"
+              >
+                <Info className={`h-4 w-4 ${showMobileInfo ? "text-violet-500 dark:text-violet-400" : "text-slate-400 dark:text-slate-500"}`} />
+                <span className={`hidden sm:inline font-semibold text-[13px] ${showMobileInfo ? "text-violet-800 dark:text-violet-300" : "text-slate-700 dark:text-slate-300"}`}>Analytics & Help</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -437,54 +447,46 @@ function BoardPageContent() {
           {(activeTab === "single" || activeTab === "group" || activeTab === "templates") && (
           <div className="flex flex-col lg:flex-row gap-6 items-start w-full">
             {/* Left Column (Search + Filters + Charts List) */}
-            <div className={`flex-1 min-w-0 w-full space-y-5 ${showMobileInfo ? "hidden lg:block" : "block"}`}>
+            <div className="flex-1 min-w-0 w-full space-y-5">
+              {/* Storage Quota Banner */}
+              <BoardStats allConversations={conversations} />
+
               {/* Search and Filters Card */}
               <Card className="border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 shadow-sm rounded-xl">
                 <CardContent className="p-3 sm:p-4">
-                  <div className="flex items-center gap-3 w-full">
-                    {/* Enhanced Search Input: Visible on screens >= 376px OR when expanded on Small Mobile */}
-                    <div className={`relative group flex-1 ${isSearchExpanded ? "flex" : "hidden xs:flex"}`}>
-                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500 group-focus-within:text-violet-500 transition-colors hidden mob:block" />
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full">
+                    {/* Search Input: Full width on mobile, flex-1 on tablet/desktop */}
+                    <div className="relative group flex-1 w-full">
+                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500 group-focus-within:text-violet-500 transition-colors" />
                       <Input
                         ref={searchInputRef}
                         type="text"
                         placeholder="Search your charts..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        onBlur={() => setTimeout(() => setIsSearchExpanded(false), 200)}
-                        className="pl-3.5 mob:pl-10 pr-8 py-2 text-sm border-slate-200 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-100 dark:placeholder-slate-500 rounded-lg focus-visible:ring-1 focus-visible:ring-violet-500 focus-visible:border-violet-500 bg-slate-50/50 hover:bg-white dark:hover:bg-slate-800 transition-all shadow-none w-full"
+                        className="pl-10 pr-8 py-2 text-sm border-slate-200 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-100 dark:placeholder-slate-500 rounded-lg focus-visible:ring-1 focus-visible:ring-violet-500 focus-visible:border-violet-500 bg-slate-50/50 hover:bg-white dark:hover:bg-slate-800 transition-all shadow-none w-full"
                       />
                       {searchQuery && (
                         <button
                           onClick={() => setSearchQuery("")}
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
                         >
                           <X className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
                         </button>
                       )}
                     </div>
 
-                    {/* Filter Controls Row: Hidden when search is expanded on Small Mobile (< 376px) */}
-                    <div className={`items-center justify-between xs:justify-start gap-1.5 xs:gap-2 flex-1 xs:flex-none shrink-0 ${isSearchExpanded ? "hidden xs:flex" : "flex"}`}>
-                      {/* Search Icon Button: Collapsed mode, visible only on Small Mobile (< 376px) */}
-                      <Button
-                        variant="outline"
-                        onClick={() => setIsSearchExpanded(true)}
-                        className="h-9 w-9 p-0 bg-white dark:bg-slate-800 dark:border-slate-700 hover:bg-violet-50 dark:hover:bg-violet-950/30 hover:text-violet-700 hover:border-violet-200 rounded-lg xs:hidden shadow-none shrink-0 flex items-center justify-center"
-                        title="Search"
-                      >
-                        <Search className="h-4 w-4 text-slate-400 dark:text-slate-500" />
-                      </Button>
-
+                    {/* Filter Controls: Full row on mobile with generous spacing and touch targets */}
+                    <div className="flex items-center justify-between sm:justify-start gap-1.5 sm:gap-2 shrink-0">
                       {/* Type Filter */}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="outline" className="h-9 w-9 p-0 mob:w-auto mob:px-2.5 sm:mob:px-3 bg-white dark:bg-slate-800 dark:border-slate-700 hover:bg-violet-50 dark:hover:bg-violet-950/30 hover:text-violet-700 hover:border-violet-200 dark:hover:border-violet-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 shadow-none transition-all gap-1.5 flex items-center justify-center">
+                          <Button variant="outline" className="h-9 px-2.5 sm:px-3 bg-white dark:bg-slate-800 dark:border-slate-700 hover:bg-violet-50 dark:hover:bg-violet-950/30 hover:text-violet-700 hover:border-violet-200 dark:hover:border-violet-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 shadow-none transition-all gap-1.5 flex items-center justify-center flex-1 sm:flex-none">
                             <Filter className={`h-3.5 w-3.5 ${filterType !== "all" ? "text-violet-600 dark:text-violet-400" : "text-slate-400 dark:text-slate-500"}`} />
-                            <span className="hidden md:inline">
+                            <span>
                               {filterType === "all" ? "Type" : filterType.charAt(0).toUpperCase() + filterType.slice(1)}
                             </span>
-                            <ChevronDown className="h-3 w-3 text-slate-400 dark:text-slate-500 hidden mob:block" />
+                            <ChevronDown className="h-3 w-3 text-slate-400 dark:text-slate-500" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48 max-h-[280px] overflow-y-auto">
@@ -508,12 +510,12 @@ function BoardPageContent() {
                       {/* Sort */}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="outline" className="h-9 w-9 p-0 mob:w-auto mob:px-2.5 sm:mob:px-3 bg-white dark:bg-slate-800 dark:border-slate-700 hover:bg-violet-50 dark:hover:bg-violet-950/30 hover:text-violet-700 hover:border-violet-200 dark:hover:border-violet-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 shadow-none transition-all gap-1.5 flex items-center justify-center">
+                          <Button variant="outline" className="h-9 px-2.5 sm:px-3 bg-white dark:bg-slate-800 dark:border-slate-700 hover:bg-violet-50 dark:hover:bg-violet-950/30 hover:text-violet-700 hover:border-violet-200 dark:hover:border-violet-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 shadow-none transition-all gap-1.5 flex items-center justify-center flex-1 sm:flex-none">
                             {sortBy === "oldest" ? <SortAsc className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" /> : <SortDesc className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />}
-                            <span className="hidden md:inline">
-                              Sort: {sortBy === "newest" ? "Newest" : sortBy === "oldest" ? "Oldest" : "Name"}
+                            <span className="hidden xs:inline sm:hidden md:inline">
+                              {sortBy === "newest" ? "Newest" : sortBy === "oldest" ? "Oldest" : "Name"}
                             </span>
-                            <ChevronDown className="h-3 w-3 text-slate-400 dark:text-slate-500 hidden mob:block" />
+                            <ChevronDown className="h-3 w-3 text-slate-400 dark:text-slate-500" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-40">
@@ -532,8 +534,8 @@ function BoardPageContent() {
                         </DropdownMenuContent>
                       </DropdownMenu>
 
-                      {/* View Mode Toggle Segment (Desktop/Large Mobile) */}
-                      <div className="hidden mob:flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg p-1 border border-slate-200 dark:border-slate-700 shrink-0">
+                      {/* View Mode Toggle Segment */}
+                      <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg p-1 border border-slate-200 dark:border-slate-700 shrink-0">
                         <button
                           onClick={() => setViewMode("grid")}
                           className={`p-1.5 rounded transition-all ${viewMode === "grid"
@@ -556,31 +558,12 @@ function BoardPageContent() {
                         </button>
                       </div>
 
-                      {/* View Mode Toggle Dropdown (Mobile-only: visible below 426px) */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild className="flex mob:hidden">
-                          <Button variant="outline" className="h-9 w-9 p-0 bg-white hover:bg-violet-50/50 hover:text-violet-700 hover:border-violet-200 rounded-lg text-xs font-semibold text-zinc-700 shadow-none transition-all flex items-center justify-center shrink-0">
-                            {viewMode === "grid" ? <Grid3x3 className="h-3.5 w-3.5 text-violet-600" /> : <List className="h-3.5 w-3.5 text-violet-600" />}
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-36">
-                          <DropdownMenuItem onClick={() => setViewMode("grid")} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-2 cursor-pointer">
-                            <Grid3x3 className="h-4 w-4 mr-2 text-zinc-400" />
-                            Grid View
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setViewMode("list")} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-2 cursor-pointer">
-                            <List className="h-4 w-4 mr-2 text-zinc-400" />
-                            List View
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-
                       {/* Refresh */}
                       <Button
                         onClick={handleRefresh}
                         disabled={isRefreshing}
                         variant="outline"
-                        className="h-9 w-9 p-0 mob:w-auto mob:px-2.5 sm:mob:px-3 bg-white dark:bg-slate-800 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 border-slate-200 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 shadow-none flex items-center justify-center shrink-0"
+                        className="h-9 px-2.5 sm:px-3 bg-white dark:bg-slate-800 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 border-slate-200 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 shadow-none flex items-center justify-center shrink-0"
                       >
                         <RefreshCw className={`h-3.5 w-3.5 text-slate-400 dark:text-slate-500 ${isRefreshing ? "animate-spin" : ""}`} />
                         <span className="hidden md:inline">Refresh</span>
@@ -776,94 +759,102 @@ function BoardPageContent() {
               )}
             </div>
 
-            {/* Mobile Info Area: Visible only on screens < lg when showMobileInfo is true */}
-            {showMobileInfo && (
-              <div className="w-full space-y-4 lg:hidden">
-                {/* About / Summary Panel */}
-                <Card className="border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 shadow-sm rounded-xl">
-                  <CardHeader className="py-3 px-3 sm:px-4 border-b border-slate-100 dark:border-slate-800">
-                    <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                      <LayoutDashboard className="h-3.5 w-3.5 text-violet-500 dark:text-violet-400" />
-                      {activeTab === 'templates' ? 'About Templates' : activeTab === 'group' ? 'About Grouped Charts' : 'About Single Charts'}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-3 sm:p-4 space-y-2.5">
-                    <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
-                      <span className="flex items-center gap-2">
-                        <BarChart2 className="h-4 w-4 text-violet-500 dark:text-violet-400" />
-                        Total Created
-                      </span>
-                      <span className="font-bold text-slate-900 dark:text-slate-100">{quickStats.total} {activeTab === 'templates' ? 'templates' : 'charts'}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
-                      <span className="flex items-center gap-2">
-                        <TrendingUp className="h-4 w-4 text-violet-500 dark:text-violet-400" />
-                        Active this week
-                      </span>
-                      <span className="font-bold text-slate-900 dark:text-slate-100">{quickStats.thisWeek} {activeTab === 'templates' ? 'templates' : 'charts'}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
-                      <span className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-violet-500 dark:text-violet-400" />
-                        Weekly Average
-                      </span>
-                      <span className="font-bold text-slate-900 dark:text-slate-100">{quickStats.avgPerWeek} avg</span>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Chart Types Distribution Panel */}
-                {typeDistribution.length > 0 && (
+            {/* Mobile & Tablet Analytics & Help Slide-over Sheet */}
+            <Sheet open={showMobileInfo} onOpenChange={setShowMobileInfo}>
+              <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto p-4 sm:p-6 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800">
+                <SheetHeader className="mb-4 text-left">
+                  <SheetTitle className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                    <Info className="h-4 w-4 text-violet-500" />
+                    Analytics & Quick Help
+                  </SheetTitle>
+                </SheetHeader>
+                <div className="space-y-4 pb-6">
+                  {/* About / Summary Panel */}
                   <Card className="border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 shadow-sm rounded-xl">
                     <CardHeader className="py-3 px-3 sm:px-4 border-b border-slate-100 dark:border-slate-800">
-                      <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                        {activeTab === 'templates' ? 'Template Chart Types' : 'Chart Types'}
+                      <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                        <LayoutDashboard className="h-3.5 w-3.5 text-violet-500 dark:text-violet-400" />
+                        {activeTab === 'templates' ? 'About Templates' : activeTab === 'group' ? 'About Grouped Charts' : 'About Single Charts'}
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="p-3 sm:p-4">
-                      {/* Language bar visual */}
-                      <div className="h-2 w-full rounded-full overflow-hidden flex bg-slate-100 dark:bg-slate-800 mb-4 border border-slate-200 dark:border-slate-700">
-                        {typeDistribution.map((item, idx) => (
-                          <div
-                             key={idx}
-                             className={item.color}
-                             style={{ width: `${item.percentage}%` }}
-                             title={`${item.type}: ${item.percentage}%`}
-                          />
-                        ))}
+                    <CardContent className="p-3 sm:p-4 space-y-2.5">
+                      <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
+                        <span className="flex items-center gap-2">
+                          <BarChart2 className="h-4 w-4 text-violet-500 dark:text-violet-400" />
+                          Total Created
+                        </span>
+                        <span className="font-bold text-slate-900 dark:text-slate-100">{quickStats.total} {activeTab === 'templates' ? 'templates' : 'charts'}</span>
                       </div>
-                      {/* Language dot descriptions */}
-                      <div className="grid grid-cols-2 gap-x-2 gap-y-2 xs:gap-x-4 xs:gap-y-2.5">
-                        {typeDistribution.map((item, idx) => (
-                          <div key={idx} className="flex items-center gap-1.5 text-[11px] xs:text-xs">
-                            <span className={`w-2.5 h-2.5 rounded-full ${item.color} flex-shrink-0`} />
-                            <span className="font-medium text-slate-700 dark:text-slate-300 capitalize truncate">{item.type}</span>
-                            <span className="text-slate-400 dark:text-slate-500 text-[10px] ml-auto">{item.percentage}%</span>
-                          </div>
-                        ))}
+                      <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
+                        <span className="flex items-center gap-2">
+                          <TrendingUp className="h-4 w-4 text-violet-500 dark:text-violet-400" />
+                          Active this week
+                        </span>
+                        <span className="font-bold text-slate-900 dark:text-slate-100">{quickStats.thisWeek} {activeTab === 'templates' ? 'templates' : 'charts'}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
+                        <span className="flex items-center gap-2">
+                          <Clock className="h-4 w-4 text-violet-500 dark:text-violet-400" />
+                          Weekly Average
+                        </span>
+                        <span className="font-bold text-slate-900 dark:text-slate-100">{quickStats.avgPerWeek} avg</span>
                       </div>
                     </CardContent>
                   </Card>
-                )}
 
-                {/* Tips Panel */}
-                <Card className="border border-violet-100 dark:border-violet-900/40 bg-gradient-to-br from-white to-violet-50/30 dark:from-slate-900 dark:to-violet-950/20 shadow-sm rounded-xl">
-                  <CardHeader className="py-3 px-3 sm:px-4 border-b border-violet-100/60 dark:border-violet-900/40">
-                    <CardTitle className="text-xs font-bold uppercase tracking-wider text-violet-700 dark:text-violet-400 flex items-center gap-2">
-                      <Sparkles className="h-3.5 w-3.5 text-violet-500 dark:text-violet-400" />
-                      Quick Help
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-3 sm:p-4">
-                    <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-2.5 list-disc pl-4 leading-relaxed">
-                      <li>Use the <strong className="text-violet-700 dark:text-violet-400 font-semibold">Create with AI</strong> button to draft a new chart in natural language.</li>
-                      <li>Toggle the <strong className="text-violet-700 dark:text-violet-400 font-semibold">Advanced Editor</strong> to precisely align grids, customize legends, or export canvas data.</li>
-                      <li>Share links are fully public and require no authentication to view.</li>
-                    </ul>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
+                  {/* Chart Types Distribution Panel */}
+                  {typeDistribution.length > 0 && (
+                    <Card className="border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 shadow-sm rounded-xl">
+                      <CardHeader className="py-3 px-3 sm:px-4 border-b border-slate-100 dark:border-slate-800">
+                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          {activeTab === 'templates' ? 'Template Chart Types' : 'Chart Types'}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-3 sm:p-4">
+                        {/* Language bar visual */}
+                        <div className="h-2 w-full rounded-full overflow-hidden flex bg-slate-100 dark:bg-slate-800 mb-4 border border-slate-200 dark:border-slate-700">
+                          {typeDistribution.map((item, idx) => (
+                            <div
+                              key={idx}
+                              className={item.color}
+                              style={{ width: `${item.percentage}%` }}
+                              title={`${item.type}: ${item.percentage}%`}
+                            />
+                          ))}
+                        </div>
+                        {/* Language dot descriptions */}
+                        <div className="grid grid-cols-2 gap-x-2 gap-y-2 xs:gap-x-4 xs:gap-y-2.5">
+                          {typeDistribution.map((item, idx) => (
+                            <div key={idx} className="flex items-center gap-1.5 text-[11px] xs:text-xs">
+                              <span className={`w-2.5 h-2.5 rounded-full ${item.color} flex-shrink-0`} />
+                              <span className="font-medium text-slate-700 dark:text-slate-300 capitalize truncate">{item.type}</span>
+                              <span className="text-slate-400 dark:text-slate-500 text-[10px] ml-auto">{item.percentage}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Tips Panel */}
+                  <Card className="border border-violet-100 dark:border-violet-900/40 bg-gradient-to-br from-white to-violet-50/30 dark:from-slate-900 dark:to-violet-950/20 shadow-sm rounded-xl">
+                    <CardHeader className="py-3 px-3 sm:px-4 border-b border-violet-100/60 dark:border-violet-900/40">
+                      <CardTitle className="text-xs font-bold uppercase tracking-wider text-violet-700 dark:text-violet-400 flex items-center gap-2">
+                        <Sparkles className="h-3.5 w-3.5 text-violet-500 dark:text-violet-400" />
+                        Quick Help
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-3 sm:p-4">
+                      <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-2.5 list-disc pl-4 leading-relaxed">
+                        <li>Use the <strong className="text-violet-700 dark:text-violet-400 font-semibold">Create with AI</strong> button to draft a new chart in natural language.</li>
+                        <li>Toggle the <strong className="text-violet-700 dark:text-violet-400 font-semibold">Advanced Editor</strong> to precisely align grids, customize legends, or export canvas data.</li>
+                        <li>Share links are fully public and require no authentication to view.</li>
+                      </ul>
+                    </CardContent>
+                  </Card>
+                </div>
+              </SheetContent>
+            </Sheet>
 
             {/* Right Column (Sidebar Analytics) */}
             <div className="w-full lg:w-80 flex-shrink-0 space-y-4 lg:sticky lg:top-24 hidden lg:block">

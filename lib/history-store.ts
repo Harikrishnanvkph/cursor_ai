@@ -76,51 +76,52 @@ export const useHistoryStore = create<HistoryStore>()(
         // Try to find conversation in local store first
         let conv = get().conversations.find((c) => c.id === id);
 
-        // If found locally but snapshot doesn't have ID, fetch from backend to get snapshot ID
-        if (conv && conv.snapshot && !conv.snapshot.id) {
-          try {
-            const snapshotResponse = await dataService.getCurrentChartSnapshot(id);
-            if (snapshotResponse.data?.id) {
-              conv.snapshot.id = snapshotResponse.data.id;
-            }
-          } catch (error) {
-            console.warn('Could not fetch snapshot ID from backend:', error);
-          }
-        }
+        // Check if we need to fetch from backend:
+        // - Not found locally, OR
+        // - Found but missing chart data (lazy-loaded lightweight stub from loadConversationsFromBackend)
+        const needsFetch = !conv || !conv.snapshot || !conv.snapshot.chartData;
 
-        // If not found locally, OR if found but has no details (lazy load case), fetch from backend
-        // We check for absence of snapshot or absence of chartData in snapshot as indication of "list-only" data
-        const isIncomplete = conv && (!conv.snapshot || (conv.snapshot && !conv.snapshot.chartData));
-
-        if (!conv || isIncomplete) {
-          console.log(`Conversation ${isIncomplete ? 'incomplete' : 'not found'} locally, fetching details from backend...`);
+        if (needsFetch) {
+          console.log(`Conversation ${conv ? 'incomplete' : 'not found'} locally, fetching from backend...`);
           try {
+            // Single API call — getConversation returns chat_messages(*) and chart_snapshots(*)
+            // via Supabase relational join, eliminating 3 redundant sequential requests
             const response = await dataService.getConversation(id);
             if (response.data) {
-              // Fetch messages
-              const messagesResponse = await dataService.getMessages(id);
-              // Fetch current snapshot
-              const snapshotResponse = await dataService.getCurrentChartSnapshot(id);
+              const convData = response.data;
+
+              // Extract messages from the relational join, sorted by created_at ascending
+              const rawMessages = (convData.chat_messages || [])
+                .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+              // Extract the current snapshot from the embedded chart_snapshots array
+              const currentSnapshot = (convData.chart_snapshots || [])
+                .find((s: any) => s.is_current === true) || null;
 
               // Transform messages to frontend format with proper ChatMessage structure
-              const transformedMessages = (messagesResponse.data || []).map((msg: any) => ({
+              const transformedMessages = rawMessages.map((msg: any) => ({
                 role: msg.role,
                 content: msg.content,
                 timestamp: new Date(msg.created_at).getTime(),
                 action: msg.action,
                 changes: msg.changes,
-                // Link chart snapshot if this message has one
-                chartSnapshot: msg.chart_snapshots ? {
-                  chartType: msg.chart_snapshots.chart_type,
-                  chartData: msg.chart_snapshots.chart_data,
-                  chartConfig: msg.chart_snapshots.chart_config
-                } : undefined
+                // Link chart snapshot if this message has one (cross-reference by chart_snapshot_id)
+                chartSnapshot: msg.chart_snapshot_id && convData.chart_snapshots
+                  ? (() => {
+                      const snap = convData.chart_snapshots.find((s: any) => s.id === msg.chart_snapshot_id);
+                      return snap ? {
+                        chartType: snap.chart_type,
+                        chartData: snap.chart_data,
+                        chartConfig: snap.chart_config
+                      } : undefined;
+                    })()
+                  : undefined
               }));
 
               // Infer chart mode from snapshot if not provided by backend response
               let inferredChartMode: 'single' | 'grouped' = 'single';
-              if (snapshotResponse.data && snapshotResponse.data.chart_data) {
-                const datasets = snapshotResponse.data.chart_data.datasets || [];
+              if (currentSnapshot && currentSnapshot.chart_data) {
+                const datasets = currentSnapshot.chart_data.datasets || [];
                 if (datasets.some((ds: any) => ds.mode === 'grouped')) {
                   inferredChartMode = 'grouped';
                 } else if (datasets.some((ds: any) => ds.mode === 'single')) {
@@ -132,21 +133,21 @@ export const useHistoryStore = create<HistoryStore>()(
 
               // Transform to frontend format
               conv = {
-                id: response.data.id,
-                title: response.data.title,
+                id: convData.id,
+                title: convData.title,
                 messages: transformedMessages,
-                snapshot: snapshotResponse.data ? {
-                  id: snapshotResponse.data.id, // Include snapshot ID for updates
-                  chartType: snapshotResponse.data.chart_type,
-                  chartData: snapshotResponse.data.chart_data,
-                  chartConfig: snapshotResponse.data.chart_config,
-                  template_structure: snapshotResponse.data.template_structure, // Map template fields
-                  template_content: snapshotResponse.data.template_content,     // Map template fields
-                  is_template_mode: snapshotResponse.data.is_template_mode      // Map template fields
+                snapshot: currentSnapshot ? {
+                  id: currentSnapshot.id,
+                  chartType: currentSnapshot.chart_type,
+                  chartData: currentSnapshot.chart_data,
+                  chartConfig: currentSnapshot.chart_config,
+                  template_structure: currentSnapshot.template_structure,
+                  template_content: currentSnapshot.template_content,
+                  is_template_mode: currentSnapshot.is_template_mode
                 } : null,
-                timestamp: new Date(response.data.created_at).getTime(),
-                is_template_mode: response.data.is_template_mode ?? snapshotResponse.data?.is_template_mode ?? false,
-                chart_mode: response.data.chart_mode ?? conv?.chart_mode ?? inferredChartMode
+                timestamp: new Date(convData.created_at).getTime(),
+                is_template_mode: currentSnapshot?.is_template_mode ?? false,
+                chart_mode: conv?.chart_mode ?? inferredChartMode
               };
 
               // Add to local store for future access

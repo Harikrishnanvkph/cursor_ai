@@ -397,17 +397,25 @@ export const useChatStore = create<ChatStore>()(
           if (!response.ok) {
             // Get detailed error information from backend
             let errorMessage = "Failed to process request";
+            let errorCode: string | undefined = undefined;
             try {
               const errorData = await response.json();
               errorMessage = errorData.details || errorData.error || errorMessage;
+              errorCode = errorData.code;
             } catch {
               // If can't parse error response, use status text
               errorMessage = `Request failed: ${response.status} ${response.statusText}`;
             }
-            throw new Error(errorMessage);
+            const err: any = new Error(errorMessage);
+            err.code = errorCode;
+            err.status = response.status;
+            throw err;
           }
 
           const result = await response.json();
+          if (result.subscription && typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('auth:refresh'));
+          }
           console.log('Frontend - Received result:', {
             hasChartType: !!result.chartType,
             hasChartData: !!result.chartData,
@@ -733,7 +741,10 @@ export const useChatStore = create<ChatStore>()(
             isProcessing: false
           });
 
-          throw new Error(errorMessage);
+          const finalError: any = new Error(errorMessage);
+          if (error?.code) finalError.code = error.code;
+          if (error?.status) finalError.status = error.status;
+          throw finalError;
         } finally {
           clearTimeout(timeoutId);
           if (currentRequestController === controller) {

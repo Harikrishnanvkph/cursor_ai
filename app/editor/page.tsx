@@ -2080,8 +2080,8 @@ function EditorPageContent() {
       <ChartSetupDialog
         open={showSetupDialog}
         onClose={() => setShowSetupDialog(false)}
-        onConfirm={(dims, datasets, newChartType, newUniformityMode, groupName) => {
-          handleDimensionsConfirmed(dims, datasets, newChartType, newUniformityMode, groupName);
+        onConfirm={(dims) => {
+          handleDimensionsConfirmed(dims);
           if (useTemplateStore.getState().editorMode === 'template') {
             useTemplateStore.getState().setEditorMode('chart');
           }

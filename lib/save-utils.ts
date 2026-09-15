@@ -35,6 +35,7 @@ export interface SaveChartResult {
     snapshotId?: string;
     isUpdate: boolean;
     error?: string;
+    code?: string;
 }
 
 /**
@@ -184,12 +185,32 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
             );
 
             if (response.error || !response.data) {
+                const isLimitError = response.code === 'CLOUD_SAVE_LIMIT_REACHED' || response.error?.toLowerCase().includes('limit');
+                const errorMessage = isLimitError
+                    ? `Cloud save limit reached. Upgrade to Pro for up to 30 saves, or delete existing charts in your Board.`
+                    : (response.error || 'Failed to create conversation');
+
                 const result: SaveChartResult = {
                     success: false,
                     isUpdate: false,
-                    error: 'Failed to create conversation'
+                    error: errorMessage,
+                    code: response.code
                 };
-                toast.error(result.error);
+                if (isLimitError) {
+                    toast.error(errorMessage, {
+                        duration: 8000,
+                        action: {
+                            label: 'Upgrade ($5/mo)',
+                            onClick: () => {
+                                if (typeof window !== 'undefined') {
+                                    window.location.href = '/pricing';
+                                }
+                            }
+                        }
+                    });
+                } else {
+                    toast.error(errorMessage);
+                }
                 onSaveComplete?.(result);
                 return result;
             }

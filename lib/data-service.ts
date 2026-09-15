@@ -6,6 +6,8 @@ interface ApiResponse<T> {
   error?: string;
   message?: string;
   status?: number;
+  code?: string;
+  errorData?: any;
 }
 
 class DataService {
@@ -26,8 +28,8 @@ class DataService {
     const url = `${this.baseUrl}${endpoint}`;
     const cacheKey = `${options.method || 'GET'}:${url}`;
 
-    // Check cache first
-    if (useCache && options.method === 'GET') {
+    // Check cache first (method is undefined for implicit GET requests)
+    if (useCache && (!options.method || options.method === 'GET')) {
       const cached = this.cache.get(cacheKey);
       if (cached && Date.now() - cached.timestamp < cached.ttl) {
         return { data: cached.data };
@@ -71,14 +73,16 @@ class DataService {
 
         const err = new Error(errorMessage);
         (err as any).status = response.status;
+        (err as any).code = errorData.code;
+        (err as any).errorData = errorData;
         (err as any).alreadyLogged = true;
         throw err;
       }
 
       const data = await response.json();
 
-      // Cache successful GET requests
-      if (useCache && options.method === 'GET') {
+      // Cache successful GET requests (method is undefined for implicit GET)
+      if (useCache && (!options.method || options.method === 'GET')) {
         // Evict oldest entry if cache is full
         if (this.cache.size >= this.MAX_CACHE_SIZE) {
           const oldestKey = this.cache.keys().next().value;
@@ -116,7 +120,9 @@ class DataService {
       return {
         error: errorMessage,
         message: 'Request failed',
-        status: error?.status
+        status: error?.status,
+        code: error?.code,
+        errorData: error?.errorData
       };
     }
   }
@@ -126,10 +132,14 @@ class DataService {
   // =============================================
 
   async createConversation(title: string, description?: string): Promise<ApiResponse<any>> {
-    return this.request('/api/data/conversations', {
+    const res = await this.request('/api/data/conversations', {
       method: 'POST',
       body: JSON.stringify({ title, description }),
     }, false);
+    if (res.data && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('auth:refresh'));
+    }
+    return res;
   }
 
   async getConversations(limit = 50): Promise<ApiResponse<any[]>> {
@@ -148,15 +158,23 @@ class DataService {
   }
 
   async deleteConversation(id: string): Promise<ApiResponse<void>> {
-    return this.request(`/api/data/conversations/${id}`, {
+    const res = await this.request<void>(`/api/data/conversations/${id}`, {
       method: 'DELETE',
     }, false);
+    if (!res.error && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('auth:refresh'));
+    }
+    return res;
   }
 
   async deleteAllConversations(): Promise<ApiResponse<void>> {
-    return this.request('/api/data/conversations', {
+    const res = await this.request<void>('/api/data/conversations', {
       method: 'DELETE',
     }, false);
+    if (!res.error && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('auth:refresh'));
+    }
+    return res;
   }
 
   // =============================================

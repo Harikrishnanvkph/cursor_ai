@@ -1,11 +1,11 @@
 "use client"
 
-import React, { useRef, useCallback, useEffect } from "react"
+import React, { useRef, useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   ArrowUp, BarChart2, SquarePen, Edit3,
   MessageSquare, Sparkles, ChevronLeft, ChevronRight, ChevronDown,
-  Info, LayoutDashboard, Bot, Brain, ExternalLink, ImageIcon
+  Info, LayoutDashboard, Bot, Brain, ExternalLink, ImageIcon, Zap
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -16,6 +16,8 @@ import {
 import { useChartStore } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
 import { useTemplateStore } from "@/lib/template-store"
+import { useSubscriptionQuota } from "@/lib/hooks/use-subscription-quota"
+import { UpgradeProDialog } from "@/components/dialogs/upgrade-pro-dialog"
 import { chartTemplate } from "./prompt_template"
 import { useSidebarContext } from "./sidebar-context"
 import { toast } from "sonner"
@@ -27,6 +29,9 @@ interface LandingSidebarProps {
 
 export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingSidebarProps) {
   const router = useRouter()
+  const { user, isPro, aiCreditsLimit, aiCreditsRemaining } = useSubscriptionQuota()
+  const [isUpgradeOpen, setIsUpgradeOpen] = useState(false)
+
   const { hasJSON } = useChartStore()
   const {
     messages,
@@ -55,6 +60,13 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
     if (e) e.preventDefault()
     if (!input.trim() || isProcessing || isChatDisabled) return
 
+    // Guard: Check AI credits
+    if (user && aiCreditsRemaining <= 0) {
+      setIsUpgradeOpen(true)
+      toast.error(`You have reached your monthly limit of ${aiCreditsLimit} AI credits. Upgrade to Pro for 50 credits/month!`)
+      return
+    }
+
     const userInput = input.trim()
     setInput("")
 
@@ -65,6 +77,9 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
     try {
       await continueConversation(userInput)
     } catch (err: any) {
+      if (err?.code === 'AI_CREDITS_EXHAUSTED' || err?.message?.toLowerCase().includes('credit')) {
+        setIsUpgradeOpen(true)
+      }
       setInput(userInput)
       toast.error(err.message || "Failed to process request")
 
@@ -84,7 +99,7 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
     }, 100)
-  }, [input, isProcessing, continueConversation, isChatDisabled, setInput, textareaRef])
+  }, [input, isProcessing, continueConversation, isChatDisabled, setInput, textareaRef, user, aiCreditsRemaining, aiCreditsLimit])
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value)
@@ -191,35 +206,56 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
             className="p-4 border-t border-slate-200/80 bg-transparent flex flex-col gap-2 flex-shrink-0"
           >
             <div className="flex items-center justify-between px-1">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button type="button" className="text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors flex items-center gap-1.5 py-1 px-2.5 bg-white hover:bg-slate-50 border border-slate-200/60 rounded-xl shadow-xs">
-                    <Bot className="w-3.5 h-3.5 text-indigo-500" />
-                    <span>
-                      {selectedModel === 'gemini-search'
-                        ? 'Gemini Realtime'
-                        : selectedModel === 'deepseek-search'
-                        ? 'Deepseek Realtime'
-                        : 'DeepSeek Chat'}
-                    </span>
-                    <ChevronDown className="w-3 h-3 text-slate-400 ml-0.5" />
+              <div className="flex items-center gap-1.5">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button type="button" className="text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors flex items-center gap-1.5 py-1 px-2.5 bg-white hover:bg-slate-50 border border-slate-200/60 rounded-xl shadow-xs">
+                      <Bot className="w-3.5 h-3.5 text-indigo-500" />
+                      <span>
+                        {selectedModel === 'gemini-search'
+                          ? 'Gemini Realtime'
+                          : selectedModel === 'deepseek-search'
+                          ? 'Deepseek Realtime'
+                          : 'DeepSeek Chat'}
+                      </span>
+                      <ChevronDown className="w-3 h-3 text-slate-400 ml-0.5" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-48 bg-white border border-slate-200 shadow-md rounded-xl p-1 z-50">
+                    <DropdownMenuItem onClick={() => setSelectedModel('deepseek')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 rounded-lg text-slate-700">
+                      <Brain className="w-3.5 h-3.5 text-blue-500" />
+                      <span>DeepSeek Chat</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSelectedModel('deepseek-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 rounded-lg text-slate-700">
+                      <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+                      <span>Deepseek Realtime</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSelectedModel('gemini-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 rounded-lg text-slate-700">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Gemini Realtime</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* AI Credit Pill */}
+                {user && (
+                  <button
+                    type="button"
+                    onClick={() => setIsUpgradeOpen(true)}
+                    className={`flex items-center gap-1 py-1 px-2 rounded-xl text-xs font-semibold transition-all border shadow-xs cursor-pointer ${
+                      aiCreditsRemaining <= 0
+                        ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
+                        : aiCreditsRemaining <= 2
+                        ? 'bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100'
+                        : 'bg-indigo-50/70 text-indigo-700 border-indigo-200/60 hover:bg-indigo-100/80'
+                    }`}
+                    title="Remaining monthly AI credits. Click to view subscription plans."
+                  >
+                    <Zap className="w-3 h-3 text-current" />
+                    <span>{aiCreditsRemaining}/{aiCreditsLimit}</span>
                   </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-48 bg-white border border-slate-200 shadow-md rounded-xl p-1 z-50">
-                  <DropdownMenuItem onClick={() => setSelectedModel('deepseek')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 rounded-lg text-slate-700">
-                    <Brain className="w-3.5 h-3.5 text-blue-500" />
-                    <span>DeepSeek Chat</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSelectedModel('deepseek-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 rounded-lg text-slate-700">
-                    <Sparkles className="w-3.5 h-3.5 text-blue-500" />
-                    <span>Deepseek Realtime</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSelectedModel('gemini-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 rounded-lg text-slate-700">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Gemini Realtime</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                )}
+              </div>
 
               {/* Image Toggle */}
               <div className="flex items-center gap-2 select-none">
@@ -408,6 +444,13 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
           </div>
         </div>
       )}
+      <UpgradeProDialog 
+        open={isUpgradeOpen} 
+        onOpenChange={setIsUpgradeOpen} 
+        featureHighlight="ai" 
+        title="Need More AI Credits?"
+        description={`You have ${aiCreditsRemaining} AI credits remaining of your monthly ${aiCreditsLimit} limit. Upgrade to Pro for 50 credits/month.`}
+      />
     </aside>
   )
 }

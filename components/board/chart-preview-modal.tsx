@@ -400,8 +400,8 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
   const badgeInfo = getBadgeInfo()
 
   const isResponsive = false
-  const chartWidth = parseDimension(liveConversation.snapshot?.chartConfig?.width, 800)
-  const chartHeight = parseDimension(liveConversation.snapshot?.chartConfig?.height, 600)
+  const chartWidth = parseDimension((liveConversation.snapshot?.chartConfig as any)?.width, 800)
+  const chartHeight = parseDimension((liveConversation.snapshot?.chartConfig as any)?.height, 600)
 
   let scale = 1
   if (!isResponsive && containerSize.width > 0 && containerSize.height > 0) {
@@ -413,14 +413,14 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="w-[95vw] max-w-[95vw] h-[95vh] flex flex-col gap-0 p-0 [&>button:last-child]:hidden bg-slate-50 dark:bg-slate-950 dark:border-slate-800">
+      <DialogContent className="w-full h-full sm:w-[95vw] sm:max-w-[95vw] sm:h-[95vh] sm:rounded-2xl rounded-none flex flex-col gap-0 p-0 [&>button:last-child]:hidden bg-slate-50 dark:bg-slate-950 dark:border-slate-800">
         {/* Header */}
-        <DialogHeader className="px-4 py-2.5 border-b border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="space-y-1">
-              <DialogTitle className="text-lg font-bold text-zinc-950 dark:text-slate-100 flex items-center gap-2">
-                <span className="truncate max-w-[320px] sm:max-w-[450px]">{liveConversation.title}</span>
-                <Badge className={`rounded-full shadow-none border ${badgeInfo.className} text-[10px] font-semibold px-2 py-0.5 flex items-center justify-center h-5 lowercase gap-1`}>
+        <DialogHeader className="px-3 sm:px-4 py-2 sm:py-2.5 border-b border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900 shadow-sm shrink-0">
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="text-base sm:text-lg font-bold text-zinc-950 dark:text-slate-100 flex items-center gap-2">
+                <span className="truncate max-w-[150px] xs:max-w-[220px] sm:max-w-[450px]">{liveConversation.title}</span>
+                <Badge className={`rounded-full shadow-none border ${badgeInfo.className} text-[10px] font-semibold px-2 py-0.5 flex items-center justify-center h-5 lowercase gap-1 shrink-0`}>
                   {badgeInfo.icon}
                   {badgeInfo.label}
                 </Badge>
@@ -428,16 +428,16 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
             </div>
 
             {/* Actions Bar */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-9 w-9 text-zinc-500 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/30 border border-transparent hover:border-violet-100 rounded-lg transition-all"
+                    className="h-8.5 w-8.5 sm:h-9 sm:w-9 text-zinc-500 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/30 border border-transparent hover:border-violet-100 rounded-lg transition-all"
                     title="Share Options"
                   >
-                    <Share2 className="h-4.5 w-4.5" />
+                    <Share2 className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent align="end" className="w-56 p-3 z-[9999] dark:bg-slate-900 dark:border-slate-700">
@@ -500,10 +500,10 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-9 w-9 text-zinc-500 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/30 border border-transparent hover:border-violet-100 rounded-lg transition-all"
+                    className="h-8.5 w-8.5 sm:h-9 sm:w-9 text-zinc-500 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/30 border border-transparent hover:border-violet-100 rounded-lg transition-all"
                     title="Export Options"
                   >
-                    <Download className="h-4.5 w-4.5" />
+                    <Download className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
@@ -518,7 +518,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <div className="w-[1px] h-5 bg-zinc-200 mx-1"></div>
+              <div className="w-[1px] h-5 bg-zinc-200 dark:bg-slate-700 mx-0.5 sm:mx-1"></div>
 
                <Button
                 onClick={() => {
@@ -528,14 +528,15 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
                 disabled={isEditingWithAI || isOpeningAdvanced}
                 variant="outline"
                 size="sm"
-                className="h-9 gap-1.5 text-xs font-semibold border-zinc-200 dark:border-slate-700 dark:text-slate-200 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 dark:hover:bg-violet-950/30 dark:hover:border-violet-500/50 rounded-lg transition-all shadow-none"
+                className="h-8.5 sm:h-9 px-2 sm:px-3 gap-1 sm:gap-1.5 text-xs font-semibold border-zinc-200 dark:border-slate-700 dark:text-slate-200 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 dark:hover:bg-violet-950/30 dark:hover:border-violet-500/50 rounded-lg transition-all shadow-none"
               >
                 {isEditingWithAI ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-500" />
                 ) : (
                   <Sparkles className="h-3.5 w-3.5 text-violet-500" />
                 )}
-                Edit with AI
+                <span className="hidden sm:inline">Edit with AI</span>
+                <span className="sm:hidden">AI</span>
               </Button>
 
               <Button
@@ -546,25 +547,26 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
                 disabled={isEditingWithAI || isOpeningAdvanced}
                 variant="outline"
                 size="sm"
-                className="h-9 gap-1.5 text-xs font-semibold border-zinc-200 dark:border-slate-700 dark:text-slate-200 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 dark:hover:bg-violet-950/30 dark:hover:border-violet-500/50 rounded-lg transition-all shadow-none"
+                className="h-8.5 sm:h-9 px-2 sm:px-3 gap-1 sm:gap-1.5 text-xs font-semibold border-zinc-200 dark:border-slate-700 dark:text-slate-200 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 dark:hover:bg-violet-950/30 dark:hover:border-violet-500/50 rounded-lg transition-all shadow-none"
               >
                 {isOpeningAdvanced ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-500" />
                 ) : (
                   <PencilRuler className="h-3.5 w-3.5 text-violet-500" />
                 )}
-                Advanced Editor
+                <span className="hidden sm:inline">Advanced Editor</span>
+                <span className="sm:hidden">Editor</span>
               </Button>
 
-              <div className="w-[1px] h-5 bg-zinc-200 mx-1"></div>
+              <div className="w-[1px] h-5 bg-zinc-200 dark:bg-slate-700 mx-0.5 sm:mx-1"></div>
 
               <DialogClose asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 text-zinc-500 hover:text-zinc-950 hover:bg-zinc-150 rounded-lg transition-all"
+                  className="h-8.5 w-8.5 sm:h-9 sm:w-9 text-zinc-500 hover:text-zinc-950 hover:bg-zinc-150 rounded-lg transition-all"
                 >
-                  <X className="h-4.5 w-4.5" />
+                  <X className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
                 </Button>
               </DialogClose>
             </div>
@@ -607,7 +609,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
                   <TemplateChartPreview readOnly zoomPan={zoomPan} />
                 ) : (
                   <ChartPreviewCanvas
-                    chartContainerRef={containerRef}
+                    chartContainerRef={containerRef as any}
                     chartConfig={liveConversation.snapshot?.chartConfig}
                     zoomPan={zoomPan}
                   />
@@ -640,7 +642,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 text-xs px-2 text-violet-600 hover:text-violet-750 font-semibold select-none w-[76px] justify-start gap-1.5 hover:bg-violet-50/50 rounded transition-colors"
+                        className="h-8 sm:h-7 text-xs px-2 text-violet-600 hover:text-violet-750 font-semibold select-none w-[76px] justify-start gap-1.5 hover:bg-violet-50/50 rounded transition-colors"
                         title="Zoom Options"
                       >
                         <Search className="h-3.5 w-3.5 text-violet-500 shrink-0" />
@@ -727,7 +729,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
                     variant="ghost"
                     size="sm"
                     onClick={() => zoomPan.setPanMode(!zoomPan.panMode)}
-                    className={`h-7 w-7 p-0 transition-all rounded ${
+                    className={`h-8 w-8 sm:h-7 sm:w-7 p-0 transition-all rounded ${
                       zoomPan.panMode
                         ? "bg-violet-600 text-white hover:bg-violet-700 dark:bg-violet-700 hover:text-white shadow-sm"
                         : "hover:bg-slate-100 text-slate-600"
