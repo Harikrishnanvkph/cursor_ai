@@ -19,6 +19,11 @@ body {
   .writing-vertical-rl {
     writing-mode: vertical-rl;
   }
+  @media (max-width: 450px) {
+    .hide-below-450 {
+      display: none !important;
+    }
+  }
 
   @keyframes float-slow {
     0%, 100% { transform: translateY(0px) translateX(0px); }

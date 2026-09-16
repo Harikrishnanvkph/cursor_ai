@@ -25,6 +25,7 @@ import { toast } from "sonner"
 import { dataService } from "@/lib/data-service"
 import {
   BarChart2,
+  BarChart3,
   TrendingUp,
   Sparkles,
   MessageSquare,
@@ -166,6 +167,10 @@ function BoardPageContent() {
     return conversations.filter(c => !c.is_template_mode)
   }, [conversations, activeTab])
 
+  const singleCount = useMemo(() => conversations.filter(c => !c.is_template_mode && c.chart_mode !== 'grouped').length, [conversations])
+  const groupCount = useMemo(() => conversations.filter(c => !c.is_template_mode && c.chart_mode === 'grouped').length, [conversations])
+  const templateCount = useMemo(() => conversations.filter(c => c.is_template_mode).length, [conversations])
+
   const typeDistribution = useMemo(() => {
     const typeCount: Record<string, number> = {}
     let total = 0
@@ -284,60 +289,138 @@ function BoardPageContent() {
 
       {/* Modern Header */}
       <header className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
-        <div className="max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="max-w-[1600px] mx-auto px-2.5 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14">
             {/* Logo and Title */}
-            <div className="flex items-center gap-3">
-              <Image src="/logo.png" alt="Logo" width={28} height={28} className="rounded-lg" />
-              <h1 className="text-base font-bold text-slate-900 dark:text-slate-100 tracking-tight">Dashboard</h1>
+            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+              <Image src="/logo.png" alt="Logo" width={26} height={26} className="rounded-lg shrink-0" />
+              <h1 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 tracking-tight xs450:hidden hide-below-450">
+                Dashboard
+              </h1>
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              {/* Segmented control view switcher for My Charts vs My Images */}
-              <div className="flex items-center bg-slate-100 dark:bg-slate-800/80 rounded-lg p-0.5 border border-slate-200/60 dark:border-slate-700/60 mr-1 sm:mr-2 shrink-0">
-                <Button
-                  onClick={() => setViewTab("charts")}
-                  className={`h-7 px-2 sm:px-2.5 text-xs font-semibold rounded-md shadow-none transition-all gap-1 sm:gap-1.5 flex items-center justify-center shrink-0 ${
-                    viewTab === "charts"
-                      ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 hover:bg-white dark:hover:bg-slate-700 shadow-sm"
-                      : "bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 border-none hover:bg-transparent dark:hover:bg-transparent"
-                  }`}
-                  variant="ghost"
-                  size="sm"
-                >
-                  <LayoutDashboard className="h-3.5 w-3.5" />
-                  <span><span className="hidden sm:inline">My </span>Charts</span>
-                </Button>
-                <Button
-                  onClick={() => setViewTab("images")}
-                  className={`h-7 px-2 sm:px-2.5 text-xs font-semibold rounded-md shadow-none transition-all gap-1 sm:gap-1.5 flex items-center justify-center shrink-0 ${
-                    viewTab === "images"
-                      ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 hover:bg-white dark:hover:bg-slate-700 shadow-sm"
-                      : "bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 border-none hover:bg-transparent dark:hover:bg-transparent"
-                  }`}
-                  variant="ghost"
-                  size="sm"
-                >
-                  <ImageIcon className="h-3.5 w-3.5" />
-                  <span><span className="hidden sm:inline">My </span>Images</span>
-                </Button>
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              {/* Single dropdown for My Charts vs My Images */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-2.5 sm:px-3 text-xs font-semibold rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50/90 dark:bg-slate-800/90 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 shadow-none transition-all gap-1.5 flex items-center justify-center shrink-0"
+                  >
+                    {viewTab === "charts" ? (
+                      <>
+                        <BarChart3 className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+                        <span>My Charts</span>
+                      </>
+                    ) : (
+                      <>
+                        <ImageIcon className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+                        <span>My Images</span>
+                      </>
+                    )}
+                    <ChevronDown className="h-3 w-3 text-slate-400 dark:text-slate-500 shrink-0 ml-0.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40 p-1 z-50">
+                  <DropdownMenuItem
+                    onClick={() => setViewTab("charts")}
+                    className={`text-xs font-medium gap-2 cursor-pointer rounded-md ${
+                      viewTab === "charts"
+                        ? "bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300 font-semibold"
+                        : "text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    <BarChart3 className="h-3.5 w-3.5 text-violet-500 shrink-0" />
+                    <span className="flex-1">My Charts</span>
+                    {viewTab === "charts" && <Check className="h-3.5 w-3.5 text-violet-600 shrink-0" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setViewTab("images")}
+                    className={`text-xs font-medium gap-2 cursor-pointer rounded-md ${
+                      viewTab === "images"
+                        ? "bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300 font-semibold"
+                        : "text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    <ImageIcon className="h-3.5 w-3.5 text-violet-500 shrink-0" />
+                    <span className="flex-1">My Images</span>
+                    {viewTab === "images" && <Check className="h-3.5 w-3.5 text-violet-600 shrink-0" />}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Mobile (<640px): Unified Create Dropdown */}
+              <div className="sm:hidden">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      size="sm"
+                      className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-semibold text-xs h-8 px-2.5 rounded-lg gap-1.5 flex items-center justify-center shadow-sm shadow-violet-500/20 transition-all active:scale-95 shrink-0"
+                    >
+                      <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                      <span>Create</span>
+                      <ChevronDown className="h-3 w-3 opacity-75 shrink-0" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-52 p-1.5 z-50">
+                    <DropdownMenuItem asChild>
+                      <Link href="/landing" className="flex items-center gap-2.5 p-2 rounded-lg cursor-pointer">
+                        <div className="w-7 h-7 rounded-md bg-violet-100 dark:bg-violet-950/60 flex items-center justify-center text-violet-600 dark:text-violet-400 shrink-0">
+                          <Sparkles className="h-3.5 w-3.5" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-xs text-slate-900 dark:text-slate-100">Create with AI</p>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400">Generate from natural language</p>
+                        </div>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="my-1" />
+                    <DropdownMenuItem asChild>
+                      <Link href="/editor" className="flex items-center gap-2.5 p-2 rounded-lg cursor-pointer">
+                        <div className="w-7 h-7 rounded-md bg-indigo-100 dark:bg-indigo-950/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+                          <Edit3 className="h-3.5 w-3.5" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-xs text-slate-900 dark:text-slate-100">
+                            <span className="hidden md:inline">Advanced Editor</span>
+                            <span className="md:hidden">Editor</span>
+                          </p>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400">Canvas & layout designer</p>
+                        </div>
+                      </Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
 
-              <Link href="/landing">
-                <Button className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-semibold text-xs h-8 rounded-lg px-2.5 sm:px-3 gap-1.5 flex items-center justify-center shadow-sm shadow-violet-500/20 transition-all hover:shadow-md hover:shadow-violet-500/30 hover:-translate-y-px">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  <span className="hidden md:inline">Create with AI</span>
-                </Button>
-              </Link>
-              <Link href="/editor">
-                <Button variant="outline" className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 text-slate-700 dark:text-slate-300 font-semibold text-xs h-8 rounded-lg px-2.5 sm:px-3 gap-1.5 flex items-center justify-center shadow-none transition-all">
-                  <Edit3 className="h-3.5 w-3.5" />
-                  <span className="hidden md:inline">Advanced Editor</span>
-                </Button>
-              </Link>
-              <div className="w-[1px] h-5 bg-slate-200 dark:bg-slate-700 mx-0.5 sm:mx-1"></div>
-              <SimpleProfileDropdown size="sm" />
+              {/* Desktop (>=640px): Dedicated Buttons */}
+              <div className="hidden sm:flex items-center gap-2">
+                <Link href="/landing">
+                  <Button 
+                    className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-semibold text-xs h-8 px-3 rounded-lg gap-1.5 flex items-center justify-center shadow-sm shadow-violet-500/20 transition-all hover:shadow-md hover:shadow-violet-500/30 hover:-translate-y-px"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    <span>Create with AI</span>
+                  </Button>
+                </Link>
+                <Link href="/editor">
+                  <Button 
+                    variant="outline" 
+                    className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 text-slate-700 dark:text-slate-300 font-semibold text-xs h-8 px-3 rounded-lg gap-1.5 flex items-center justify-center shadow-none transition-all"
+                  >
+                    <Edit3 className="h-3.5 w-3.5" />
+                    <span className="hidden md:inline">Advanced Editor</span>
+                    <span className="md:hidden">Editor</span>
+                  </Button>
+                </Link>
+              </div>
+
+              <div className="w-[1px] h-4 sm:h-5 bg-slate-200 dark:bg-slate-700 mx-0.5 sm:mx-1 shrink-0"></div>
+              <div className="shrink-0">
+                <SimpleProfileDropdown size="sm" />
+              </div>
             </div>
           </div>
         </div>
@@ -345,10 +428,100 @@ function BoardPageContent() {
 
       {/* Secondary Sub-header (Tabs) */}
       <div className={viewTab === "charts" ? "bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800" : "hidden"}>
-        <div className="max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between gap-4">
+        <div className="max-w-[1600px] mx-auto px-2.5 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between gap-1.5 sm:gap-4">
+            {/* Mobile Tab Dropdown (below 361px) */}
+            <div className="xs:hidden py-1 min-w-0">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-2.5 text-xs font-semibold rounded-lg border-violet-200 dark:border-violet-800/60 bg-violet-50/70 dark:bg-violet-950/40 text-violet-800 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-900/50 shadow-none gap-1.5 flex items-center justify-center shrink-0"
+                  >
+                    {activeTab === "single" && (
+                      <>
+                        <BarChart2 className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+                        <span className="truncate">Single Chart</span>
+                        <span className="ml-1 px-1.5 py-0.2 text-[10px] font-bold rounded-full bg-violet-200/70 dark:bg-violet-900/60 text-violet-800 dark:text-violet-200">
+                          {singleCount}
+                        </span>
+                      </>
+                    )}
+                    {activeTab === "group" && (
+                      <>
+                        <Layers className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+                        <span className="truncate">Group Chart</span>
+                        <span className="ml-1 px-1.5 py-0.2 text-[10px] font-bold rounded-full bg-violet-200/70 dark:bg-violet-900/60 text-violet-800 dark:text-violet-200">
+                          {groupCount}
+                        </span>
+                      </>
+                    )}
+                    {activeTab === "templates" && (
+                      <>
+                        <LayoutTemplate className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+                        <span className="truncate">Templates</span>
+                        <span className="ml-1 px-1.5 py-0.2 text-[10px] font-bold rounded-full bg-violet-200/70 dark:bg-violet-900/60 text-violet-800 dark:text-violet-200">
+                          {templateCount}
+                        </span>
+                      </>
+                    )}
+                    <ChevronDown className="h-3 w-3 opacity-60 ml-0.5 shrink-0" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-44 z-50 p-1">
+                  <DropdownMenuItem
+                    onClick={() => setActiveTab("single")}
+                    className={`text-xs py-2 cursor-pointer gap-2 rounded-md ${
+                      activeTab === "single"
+                        ? "bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300 font-semibold"
+                        : "text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    <BarChart2 className="h-3.5 w-3.5 text-violet-500 shrink-0" />
+                    <span className="flex-1">Single Chart</span>
+                    <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                      {singleCount}
+                    </span>
+                    {activeTab === "single" && <Check className="h-3.5 w-3.5 text-violet-600 shrink-0" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setActiveTab("group")}
+                    className={`text-xs py-2 cursor-pointer gap-2 rounded-md ${
+                      activeTab === "group"
+                        ? "bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300 font-semibold"
+                        : "text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    <Layers className="h-3.5 w-3.5 text-violet-500 shrink-0" />
+                    <span className="flex-1">Group Chart</span>
+                    <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                      {groupCount}
+                    </span>
+                    {activeTab === "group" && <Check className="h-3.5 w-3.5 text-violet-600 shrink-0" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setActiveTab("templates")}
+                    className={`text-xs py-2 cursor-pointer gap-2 rounded-md ${
+                      activeTab === "templates"
+                        ? "bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300 font-semibold"
+                        : "text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    <LayoutTemplate className="h-3.5 w-3.5 text-violet-500 shrink-0" />
+                    <span className="flex-1">Templates</span>
+                    <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                      {templateCount}
+                    </span>
+                    {activeTab === "templates" && <Check className="h-3.5 w-3.5 text-violet-600 shrink-0" />}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* Standard Tabs Navigation (>= 361px) */}
             <nav 
-              className="flex space-x-1 sm:space-x-2 -mb-px overflow-x-auto flex-1" 
+              className="hidden xs:flex space-x-1 sm:space-x-2 -mb-px overflow-x-auto flex-1 min-w-0" 
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
               aria-label="Tabs"
             >
@@ -356,13 +529,13 @@ function BoardPageContent() {
                 onClick={() => {
                   setActiveTab("single")
                 }}
-                className={`flex items-center gap-1.5 py-3 px-2 border-b-2 font-medium text-xs transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1 sm:gap-1.5 py-2.5 sm:py-3 px-1.5 sm:px-2 border-b-2 font-medium text-xs transition-all whitespace-nowrap shrink-0 ${
                   activeTab === "single"
                     ? "border-violet-600 text-violet-700 dark:text-violet-400 dark:border-violet-500"
                     : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600"
                 }`}
               >
-                <BarChart2 className={`h-4 w-4 shrink-0 ${activeTab === "single" ? "text-violet-500 dark:text-violet-400" : "text-slate-400 dark:text-slate-500"}`} />
+                <BarChart2 className={`h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 ${activeTab === "single" ? "text-violet-500 dark:text-violet-400" : "text-slate-400 dark:text-slate-500"}`} />
                 <span className={`inline sm:hidden font-semibold text-xs ${activeTab === "single" ? "text-violet-800 dark:text-violet-300" : "text-slate-700 dark:text-slate-300"}`}>Single</span>
                 <span className={`hidden sm:inline font-semibold text-[13px] ${activeTab === "single" ? "text-violet-800 dark:text-violet-300" : "text-slate-700 dark:text-slate-300"}`}>Single Chart</span>
                 <span className={`ml-0.5 sm:ml-1.5 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-bold border rounded-full ${
@@ -370,7 +543,7 @@ function BoardPageContent() {
                     ? "bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800/60"
                     : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700"
                 }`}>
-                  {conversations.filter(c => !c.is_template_mode && c.chart_mode !== 'grouped').length}
+                  {singleCount}
                 </span>
               </button>
 
@@ -378,13 +551,13 @@ function BoardPageContent() {
                 onClick={() => {
                   setActiveTab("group")
                 }}
-                className={`flex items-center gap-1.5 py-3 px-2 border-b-2 font-medium text-xs transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1 sm:gap-1.5 py-2.5 sm:py-3 px-1.5 sm:px-2 border-b-2 font-medium text-xs transition-all whitespace-nowrap shrink-0 ${
                   activeTab === "group"
                     ? "border-violet-600 text-violet-700 dark:text-violet-400 dark:border-violet-500"
                     : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600"
                 }`}
               >
-                <Layers className={`h-4 w-4 shrink-0 ${activeTab === "group" ? "text-violet-500 dark:text-violet-400" : "text-slate-400 dark:text-slate-500"}`} />
+                <Layers className={`h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 ${activeTab === "group" ? "text-violet-500 dark:text-violet-400" : "text-slate-400 dark:text-slate-500"}`} />
                 <span className={`inline sm:hidden font-semibold text-xs ${activeTab === "group" ? "text-violet-800 dark:text-violet-300" : "text-slate-700 dark:text-slate-300"}`}>Group</span>
                 <span className={`hidden sm:inline font-semibold text-[13px] ${activeTab === "group" ? "text-violet-800 dark:text-violet-300" : "text-slate-700 dark:text-slate-300"}`}>Group Chart</span>
                 <span className={`ml-0.5 sm:ml-1.5 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-bold border rounded-full ${
@@ -392,7 +565,7 @@ function BoardPageContent() {
                     ? "bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800/60"
                     : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700"
                 }`}>
-                  {conversations.filter(c => !c.is_template_mode && c.chart_mode === 'grouped').length}
+                  {groupCount}
                 </span>
               </button>
 
@@ -400,40 +573,40 @@ function BoardPageContent() {
                 onClick={() => {
                   setActiveTab("templates")
                 }}
-                className={`flex items-center gap-1.5 py-3 px-2 border-b-2 font-medium text-xs transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1 sm:gap-1.5 py-2.5 sm:py-3 px-1.5 sm:px-2 border-b-2 font-medium text-xs transition-all whitespace-nowrap shrink-0 ${
                   activeTab === "templates"
                     ? "border-violet-600 text-violet-700 dark:text-violet-400 dark:border-violet-500"
                     : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-600"
                 }`}
               >
-                <LayoutTemplate className={`h-4 w-4 shrink-0 ${activeTab === "templates" ? "text-violet-500 dark:text-violet-400" : "text-slate-400 dark:text-slate-500"}`} />
+                <LayoutTemplate className={`h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 ${activeTab === "templates" ? "text-violet-500 dark:text-violet-400" : "text-slate-400 dark:text-slate-500"}`} />
                 <span className={`font-semibold text-xs sm:text-[13px] ${activeTab === "templates" ? "text-violet-800 dark:text-violet-300" : "text-slate-700 dark:text-slate-300"}`}>Templates</span>
                 <span className={`ml-0.5 sm:ml-1.5 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-bold border rounded-full ${
                   activeTab === "templates"
                     ? "bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800/60"
                     : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700"
                 }`}>
-                  {conversations.filter(c => c.is_template_mode).length}
+                  {templateCount}
                 </span>
               </button>
             </nav>
 
-            <div className="flex items-center gap-2 sm:gap-3 shrink-0 py-1.5">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 py-1 sm:py-1.5">
               {/* Total Charts Counter */}
               <TotalChartsBadge totalCount={conversations.length} />
 
               {/* Info Toggle Icon Button (mobile/tablet only) */}
               <button
                 onClick={() => setShowMobileInfo(!showMobileInfo)}
-                className={`lg:hidden flex items-center gap-1.5 py-1.5 px-2 border border-slate-200 dark:border-slate-700 rounded-lg font-medium text-xs transition-all whitespace-nowrap ${
+                className={`lg:hidden flex items-center justify-center h-7 w-7 sm:h-8 sm:w-auto sm:px-2 border border-slate-200 dark:border-slate-700 rounded-lg font-medium text-xs transition-all whitespace-nowrap shrink-0 ${
                   showMobileInfo
                     ? "bg-violet-50 border-violet-300 text-violet-700 dark:bg-violet-950/50 dark:border-violet-800 dark:text-violet-300"
                     : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
                 }`}
-                title="Show Analytics & Help"
+                title="Analytics"
               >
-                <Info className={`h-4 w-4 ${showMobileInfo ? "text-violet-500 dark:text-violet-400" : "text-slate-400 dark:text-slate-500"}`} />
-                <span className={`hidden sm:inline font-semibold text-[13px] ${showMobileInfo ? "text-violet-800 dark:text-violet-300" : "text-slate-700 dark:text-slate-300"}`}>Analytics & Help</span>
+                <Info className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${showMobileInfo ? "text-violet-500 dark:text-violet-400" : "text-slate-400 dark:text-slate-500"}`} />
+                <span className={`hidden sm:inline font-semibold text-[13px] ml-1.5 ${showMobileInfo ? "text-violet-800 dark:text-violet-300" : "text-slate-700 dark:text-slate-300"}`}>Analytics</span>
               </button>
             </div>
           </div>
@@ -451,161 +624,159 @@ function BoardPageContent() {
               {/* Storage Quota Banner */}
               <BoardStats allConversations={conversations} />
 
-              {/* Search and Filters Card */}
-              <Card className="border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 shadow-sm rounded-xl">
-                <CardContent className="p-3 sm:p-4">
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full">
-                    {/* Search Input: Full width on mobile, flex-1 on tablet/desktop */}
-                    <div className="relative group flex-1 w-full">
-                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500 group-focus-within:text-violet-500 transition-colors" />
-                      <Input
-                        ref={searchInputRef}
-                        type="text"
-                        placeholder="Search your charts..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 pr-8 py-2 text-sm border-slate-200 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-100 dark:placeholder-slate-500 rounded-lg focus-visible:ring-1 focus-visible:ring-violet-500 focus-visible:border-violet-500 bg-slate-50/50 hover:bg-white dark:hover:bg-slate-800 transition-all shadow-none w-full"
-                      />
-                      {searchQuery && (
-                        <button
-                          onClick={() => setSearchQuery("")}
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
-                        >
-                          <X className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Filter Controls: Full row on mobile with generous spacing and touch targets */}
-                    <div className="flex items-center justify-between sm:justify-start gap-1.5 sm:gap-2 shrink-0">
-                      {/* Type Filter */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" className="h-9 px-2.5 sm:px-3 bg-white dark:bg-slate-800 dark:border-slate-700 hover:bg-violet-50 dark:hover:bg-violet-950/30 hover:text-violet-700 hover:border-violet-200 dark:hover:border-violet-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 shadow-none transition-all gap-1.5 flex items-center justify-center flex-1 sm:flex-none">
-                            <Filter className={`h-3.5 w-3.5 ${filterType !== "all" ? "text-violet-600 dark:text-violet-400" : "text-slate-400 dark:text-slate-500"}`} />
-                            <span>
-                              {filterType === "all" ? "Type" : filterType.charAt(0).toUpperCase() + filterType.slice(1)}
-                            </span>
-                            <ChevronDown className="h-3 w-3 text-slate-400 dark:text-slate-500" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48 max-h-[280px] overflow-y-auto">
-                          <DropdownMenuItem onClick={() => setFilterType("all")} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-2 cursor-pointer">
-                            <Folder className="h-4 w-4 mr-2 text-zinc-400" />
-                            All Types
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          {chartTypes.map(type => {
-                            const IconComponent = getChartTypeIcon(type)
-                            return (
-                              <DropdownMenuItem key={type} onClick={() => setFilterType(type)} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-2 cursor-pointer">
-                                <IconComponent className="h-4 w-4 mr-2 text-zinc-400" />
-                                {type.charAt(0).toUpperCase() + type.slice(1)}
-                              </DropdownMenuItem>
-                            )
-                          })}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-
-                      {/* Sort */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" className="h-9 px-2.5 sm:px-3 bg-white dark:bg-slate-800 dark:border-slate-700 hover:bg-violet-50 dark:hover:bg-violet-950/30 hover:text-violet-700 hover:border-violet-200 dark:hover:border-violet-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 shadow-none transition-all gap-1.5 flex items-center justify-center flex-1 sm:flex-none">
-                            {sortBy === "oldest" ? <SortAsc className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" /> : <SortDesc className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />}
-                            <span className="hidden xs:inline sm:hidden md:inline">
-                              {sortBy === "newest" ? "Newest" : sortBy === "oldest" ? "Oldest" : "Name"}
-                            </span>
-                            <ChevronDown className="h-3 w-3 text-slate-400 dark:text-slate-500" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-40">
-                          <DropdownMenuItem onClick={() => setSortBy("newest")} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-2 cursor-pointer">
-                            <Clock className="h-4 w-4 mr-2 text-zinc-400" />
-                            Newest First
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setSortBy("oldest")} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-2 cursor-pointer">
-                            <Calendar className="h-4 w-4 mr-2 text-zinc-400" />
-                            Oldest First
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setSortBy("name")} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-2 cursor-pointer">
-                            <Settings2 className="h-4 w-4 mr-2 text-zinc-400" />
-                            Alphabetical
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-
-                      {/* View Mode Toggle Segment */}
-                      <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg p-1 border border-slate-200 dark:border-slate-700 shrink-0">
-                        <button
-                          onClick={() => setViewMode("grid")}
-                          className={`p-1.5 rounded transition-all ${viewMode === "grid"
-                              ? "bg-white dark:bg-slate-700 text-violet-700 dark:text-violet-400 shadow-sm border border-slate-200/50 dark:border-slate-600/50"
-                              : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50"
-                            }`}
-                          title="Grid View"
-                        >
-                          <Grid3x3 className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setViewMode("list")}
-                          className={`p-1.5 rounded transition-all ${viewMode === "list"
-                              ? "bg-white dark:bg-slate-700 text-violet-700 dark:text-violet-400 shadow-sm border border-slate-200/50 dark:border-slate-600/50"
-                              : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50"
-                            }`}
-                          title="List View"
-                        >
-                          <List className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-
-                      {/* Refresh */}
-                      <Button
-                        onClick={handleRefresh}
-                        disabled={isRefreshing}
-                        variant="outline"
-                        className="h-9 px-2.5 sm:px-3 bg-white dark:bg-slate-800 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 border-slate-200 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 shadow-none flex items-center justify-center shrink-0"
+              {/* Search and Filters Toolbar */}
+              <div className="w-full">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full">
+                  {/* Search Input: Full width on mobile, flex-1 on tablet/desktop */}
+                  <div className="relative group flex-1 w-full">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500 group-focus-within:text-violet-500 transition-colors" />
+                    <Input
+                      ref={searchInputRef}
+                      type="text"
+                      placeholder="Search your charts..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10 pr-8 py-2 text-sm border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-500 rounded-lg focus-visible:ring-1 focus-visible:ring-violet-500 focus-visible:border-violet-500 hover:border-slate-300 dark:hover:border-slate-600 transition-all shadow-none w-full"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery("")}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
                       >
-                        <RefreshCw className={`h-3.5 w-3.5 text-slate-400 dark:text-slate-500 ${isRefreshing ? "animate-spin" : ""}`} />
-                        <span className="hidden md:inline">Refresh</span>
-                      </Button>
-                    </div>
+                        <X className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+                      </button>
+                    )}
                   </div>
 
-                  {/* Active Filters Display */}
-                  {(searchQuery || filterType !== "all") && (
-                    <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-                      <span className="text-[10px] xs:text-xs text-slate-500 dark:text-slate-400">Active filters:</span>
-                      {searchQuery && (
-                        <Badge variant="secondary" className="gap-1 rounded-full bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800/60 shadow-none text-[11px] font-semibold py-0.5 px-2">
-                          Search: &ldquo;{searchQuery}&rdquo;
-                          <button onClick={() => setSearchQuery("")} className="ml-1 hover:bg-violet-100 dark:hover:bg-violet-900/50 rounded-full p-0.5 transition-colors">
-                            <X className="h-3.5 w-3.5 text-violet-400 dark:text-violet-500" />
-                          </button>
-                        </Badge>
-                      )}
-                      {filterType !== "all" && (
-                        <Badge variant="secondary" className="gap-1 rounded-full bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800/60 shadow-none text-[11px] font-semibold py-0.5 px-2">
-                          Type: {filterType}
-                          <button onClick={() => setFilterType("all")} className="ml-1 hover:bg-violet-100 dark:hover:bg-violet-900/50 rounded-full p-0.5 transition-colors">
-                            <X className="h-3.5 w-3.5 text-violet-400 dark:text-violet-500" />
-                          </button>
-                        </Badge>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setSearchQuery("")
-                          setFilterType("all")
-                        }}
-                        className="text-xs h-6 px-2 text-violet-600 dark:text-violet-400 hover:text-violet-700 hover:bg-violet-50/50 dark:hover:bg-violet-950/30"
+                  {/* Filter Controls: Full row on mobile with generous spacing and touch targets */}
+                  <div className="flex items-center justify-between sm:justify-start gap-1.5 sm:gap-2 shrink-0">
+                    {/* Type Filter */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="h-9 px-2.5 sm:px-3 bg-white dark:bg-slate-800 dark:border-slate-700 hover:bg-violet-50 dark:hover:bg-violet-950/30 hover:text-violet-700 hover:border-violet-200 dark:hover:border-violet-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 shadow-none transition-all gap-1.5 flex items-center justify-center flex-1 sm:flex-none">
+                          <Filter className={`h-3.5 w-3.5 ${filterType !== "all" ? "text-violet-600 dark:text-violet-400" : "text-slate-400 dark:text-slate-500"}`} />
+                          <span>
+                            {filterType === "all" ? "Type" : filterType.charAt(0).toUpperCase() + filterType.slice(1)}
+                          </span>
+                          <ChevronDown className="h-3 w-3 text-slate-400 dark:text-slate-500" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48 max-h-[280px] overflow-y-auto">
+                        <DropdownMenuItem onClick={() => setFilterType("all")} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-2 cursor-pointer">
+                          <Folder className="h-4 w-4 mr-2 text-zinc-400" />
+                          All Types
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        {chartTypes.map(type => {
+                          const IconComponent = getChartTypeIcon(type)
+                          return (
+                            <DropdownMenuItem key={type} onClick={() => setFilterType(type)} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-2 cursor-pointer">
+                              <IconComponent className="h-4 w-4 mr-2 text-zinc-400" />
+                              {type.charAt(0).toUpperCase() + type.slice(1)}
+                            </DropdownMenuItem>
+                          )
+                        })}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {/* Sort */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="h-9 px-2.5 sm:px-3 bg-white dark:bg-slate-800 dark:border-slate-700 hover:bg-violet-50 dark:hover:bg-violet-950/30 hover:text-violet-700 hover:border-violet-200 dark:hover:border-violet-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 shadow-none transition-all gap-1.5 flex items-center justify-center flex-1 sm:flex-none">
+                          {sortBy === "oldest" ? <SortAsc className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" /> : <SortDesc className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />}
+                          <span className="hidden xs:inline sm:hidden md:inline">
+                            {sortBy === "newest" ? "Newest" : sortBy === "oldest" ? "Oldest" : "Name"}
+                          </span>
+                          <ChevronDown className="h-3 w-3 text-slate-400 dark:text-slate-500" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-40">
+                        <DropdownMenuItem onClick={() => setSortBy("newest")} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-2 cursor-pointer">
+                          <Clock className="h-4 w-4 mr-2 text-zinc-400" />
+                          Newest First
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setSortBy("oldest")} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-2 cursor-pointer">
+                          <Calendar className="h-4 w-4 mr-2 text-zinc-400" />
+                          Oldest First
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setSortBy("name")} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-2 cursor-pointer">
+                          <Settings2 className="h-4 w-4 mr-2 text-zinc-400" />
+                          Alphabetical
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {/* View Mode Toggle Segment */}
+                    <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg p-1 border border-slate-200 dark:border-slate-700 shrink-0">
+                      <button
+                        onClick={() => setViewMode("grid")}
+                        className={`p-1.5 rounded transition-all ${viewMode === "grid"
+                            ? "bg-white dark:bg-slate-700 text-violet-700 dark:text-violet-400 shadow-sm border border-slate-200/50 dark:border-slate-600/50"
+                            : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                          }`}
+                        title="Grid View"
                       >
-                        Clear all
-                      </Button>
+                        <Grid3x3 className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => setViewMode("list")}
+                        className={`p-1.5 rounded transition-all ${viewMode === "list"
+                            ? "bg-white dark:bg-slate-700 text-violet-700 dark:text-violet-400 shadow-sm border border-slate-200/50 dark:border-slate-600/50"
+                            : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                          }`}
+                        title="List View"
+                      >
+                        <List className="h-3.5 w-3.5" />
+                      </button>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+
+                    {/* Refresh */}
+                    <Button
+                      onClick={handleRefresh}
+                      disabled={isRefreshing}
+                      variant="outline"
+                      className="h-9 px-2.5 sm:px-3 bg-white dark:bg-slate-800 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 border-slate-200 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 shadow-none flex items-center justify-center shrink-0"
+                    >
+                      <RefreshCw className={`h-3.5 w-3.5 text-slate-400 dark:text-slate-500 ${isRefreshing ? "animate-spin" : ""}`} />
+                      <span className="hidden md:inline">Refresh</span>
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Active Filters Display */}
+                {(searchQuery || filterType !== "all") && (
+                  <div className="flex flex-wrap items-center gap-2 mt-2.5">
+                    <span className="text-[10px] xs:text-xs text-slate-500 dark:text-slate-400">Active filters:</span>
+                    {searchQuery && (
+                      <Badge variant="secondary" className="gap-1 rounded-full bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800/60 shadow-none text-[11px] font-semibold py-0.5 px-2">
+                        Search: &ldquo;{searchQuery}&rdquo;
+                        <button onClick={() => setSearchQuery("")} className="ml-1 hover:bg-violet-100 dark:hover:bg-violet-900/50 rounded-full p-0.5 transition-colors">
+                          <X className="h-3.5 w-3.5 text-violet-400 dark:text-violet-500" />
+                        </button>
+                      </Badge>
+                    )}
+                    {filterType !== "all" && (
+                      <Badge variant="secondary" className="gap-1 rounded-full bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800/60 shadow-none text-[11px] font-semibold py-0.5 px-2">
+                        Type: {filterType}
+                        <button onClick={() => setFilterType("all")} className="ml-1 hover:bg-violet-100 dark:hover:bg-violet-900/50 rounded-full p-0.5 transition-colors">
+                          <X className="h-3.5 w-3.5 text-violet-400 dark:text-violet-500" />
+                        </button>
+                      </Badge>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSearchQuery("")
+                        setFilterType("all")
+                      }}
+                      className="text-xs h-6 px-2 text-violet-600 dark:text-violet-400 hover:text-violet-700 hover:bg-violet-50/50 dark:hover:bg-violet-950/30"
+                    >
+                      Clear all
+                    </Button>
+                  </div>
+                )}
+              </div>
 
               {/* Enhanced Charts Grid/List */}
               {filteredConversations.length === 0 ? (

@@ -919,40 +919,41 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
           </div>
         </div>
 
-        {/* Row 1: Title */}
-        <h3
-          onClick={() => onPreview(conversation)}
-          className="text-base font-semibold text-slate-900 dark:text-slate-100 truncate leading-tight group-hover:text-violet-700 dark:group-hover:text-violet-400 transition-colors cursor-pointer"
-        >
-          {conversation.title}
-        </h3>
-
-        {/* Row 2: Badge + Date + Action Buttons */}
-        <div className="flex items-center justify-between gap-2 pt-1.5">
-          {/* Left: Badge + Date */}
-          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-            <Badge className={`${getChartTypeColor(conversation.snapshot?.chartType || "")} border text-[11px] px-2 py-0.5 font-medium rounded-full shadow-none shrink-0`}>
-              {isTemplateMode ? (
-                <div className="flex items-center gap-1">
-                  <LayoutTemplate className="w-3 h-3" />
-                  Template
-                </div>
-              ) : (
-                conversation.snapshot?.chartType || "Unknown"
-              )}
-            </Badge>
-            <div className="flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500 shrink-0 min-w-0">
-              <div className="flex items-center gap-1 shrink-0">
-                <Calendar className="h-3 w-3" />
-                <span>{formatDate(conversation.timestamp)}</span>
+        {/* Row 1: Title & Badge */}
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          <h3
+            onClick={() => onPreview(conversation)}
+            className="text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100 truncate leading-tight group-hover:text-violet-700 dark:group-hover:text-violet-400 transition-colors cursor-pointer flex-1"
+            title={conversation.title}
+          >
+            {conversation.title}
+          </h3>
+          <Badge className={`${getChartTypeColor(conversation.snapshot?.chartType || "")} border text-[10px] sm:text-[11px] px-2 py-0.5 font-medium rounded-full shadow-none shrink-0`}>
+            {isTemplateMode ? (
+              <div className="flex items-center gap-1">
+                <LayoutTemplate className="w-3 h-3" />
+                Template
               </div>
-              {(snapshotData?.chartConfig || conversation.snapshot?.chartConfig) && (
-                <>
-                  <span className="text-gray-300 shrink-0">•</span>
-                  <span className="truncate" title={getDimensionText()}>{getDimensionText()}</span>
-                </>
-              )}
+            ) : (
+              conversation.snapshot?.chartType || "Unknown"
+            )}
+          </Badge>
+        </div>
+
+        {/* Row 2: Date + Dimensions & Action Buttons */}
+        <div className="flex items-center justify-between gap-1.5 sm:gap-2 pt-1 border-t border-slate-100/80 dark:border-slate-800/80">
+          {/* Left: Date + Dimensions */}
+          <div className="flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500 min-w-0 truncate">
+            <div className="flex items-center gap-1 shrink-0">
+              <Calendar className="h-3 w-3 shrink-0" />
+              <span className="truncate">{formatDate(conversation.timestamp)}</span>
             </div>
+            {(snapshotData?.chartConfig || conversation.snapshot?.chartConfig) && (
+              <>
+                <span className="text-slate-300 dark:text-slate-600 shrink-0 hidden xs:inline">•</span>
+                <span className="truncate hidden xs:inline text-slate-400" title={getDimensionText()}>{getDimensionText()}</span>
+              </>
+            )}
           </div>
 
           {/* Right: Icon Action Buttons */}
@@ -961,29 +962,29 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
             onClick={() => onEditInAdvanced(conversation)}
             variant="outline"
             size="sm"
-            className="h-9 w-9 p-0 border-slate-200 dark:border-slate-700 bg-white dark:bg-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-violet-700 dark:hover:text-violet-400 hover:border-violet-200 dark:hover:border-violet-700 transition-all shadow-none rounded-lg"
+            className="h-8 w-8 sm:h-8.5 sm:w-8.5 p-0 border-slate-200 dark:border-slate-700 bg-white dark:bg-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-violet-700 dark:hover:text-violet-400 hover:border-violet-200 dark:hover:border-violet-700 transition-all shadow-none rounded-lg"
             title="Edit in Editor"
           >
-            <Edit3 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+            <Edit3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </Button>
           <Button
             onClick={handleDownload}
             variant="outline"
             size="sm"
-            className="h-9 w-9 p-0 border-slate-200 dark:border-slate-700 bg-white dark:bg-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-violet-700 dark:hover:text-violet-400 hover:border-violet-200 dark:hover:border-violet-700 transition-all shadow-none rounded-lg"
+            className="h-8 w-8 sm:h-8.5 sm:w-8.5 p-0 border-slate-200 dark:border-slate-700 bg-white dark:bg-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-violet-700 dark:hover:text-violet-400 hover:border-violet-200 dark:hover:border-violet-700 transition-all shadow-none rounded-lg"
             title="Export PNG"
           >
-            <Download className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+            <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </Button>
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 w-9 p-0 border-slate-200 dark:border-slate-700 bg-white dark:bg-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-violet-700 dark:hover:text-violet-400 hover:border-violet-200 dark:hover:border-violet-700 transition-all shadow-none rounded-lg"
+                className="h-8 w-8 sm:h-8.5 sm:w-8.5 p-0 border-slate-200 dark:border-slate-700 bg-white dark:bg-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-violet-700 dark:hover:text-violet-400 hover:border-violet-200 dark:hover:border-violet-700 transition-all shadow-none rounded-lg"
                 title="Share"
               >
-                <Share2 className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+                <Share2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-56 p-3">
@@ -1042,21 +1043,34 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
           </Popover>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 w-8 p-0 border-slate-200 dark:border-slate-700 bg-white dark:bg-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-violet-700 dark:hover:text-violet-400 hover:border-violet-200 dark:hover:border-violet-700 transition-all shadow-none rounded-lg">
+              <Button variant="outline" size="sm" className="h-8 w-8 sm:h-8.5 sm:w-8.5 p-0 border-slate-200 dark:border-slate-700 bg-white dark:bg-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-violet-700 dark:hover:text-violet-400 hover:border-violet-200 dark:hover:border-violet-700 transition-all shadow-none rounded-lg">
                 <MoreVertical className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onClick={() => onPreview(conversation)} className="focus:bg-violet-50 focus:text-violet-700">
-                <Eye className="h-4 w-4 mr-2" />
+            <DropdownMenuContent align="end" className="w-48 z-50">
+              <DropdownMenuItem onClick={() => onPreview(conversation)} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-1.5 cursor-pointer">
+                <Eye className="h-4 w-4 mr-2 text-violet-500" />
                 Preview
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setShowRenameDialog(true)} className="focus:bg-violet-50 focus:text-violet-700">
-                <Pencil className="h-4 w-4 mr-2" />
+              <DropdownMenuItem onClick={() => onEditInAdvanced(conversation)} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-1.5 cursor-pointer">
+                <PencilRuler className="h-4 w-4 mr-2 text-indigo-500" />
+                Advanced Editor
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setShowRenameDialog(true)} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-1.5 cursor-pointer">
+                <Pencil className="h-4 w-4 mr-2 text-slate-500" />
                 Rename
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleDelete} className="text-red-650 focus:text-red-650 focus:bg-red-50">
+              <DropdownMenuSeparator className="my-1" />
+              <DropdownMenuItem onClick={handleDownload} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-1.5 cursor-pointer">
+                <Download className="h-4 w-4 mr-2 text-slate-500" />
+                Download PNG
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleShare} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-1.5 cursor-pointer">
+                <Share2 className="h-4 w-4 mr-2 text-slate-500" />
+                Share Link
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="my-1" />
+              <DropdownMenuItem onClick={handleDelete} className="text-red-650 focus:text-red-650 focus:bg-red-50 text-xs py-1.5 cursor-pointer">
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete
               </DropdownMenuItem>

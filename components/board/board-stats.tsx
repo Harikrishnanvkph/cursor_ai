@@ -24,18 +24,21 @@ export function TotalChartsBadge({
   totalCount: number
 }) {
   return (
-    <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-xl shadow-xs shrink-0">
-      <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white shadow-xs shrink-0">
+    <div 
+      className="flex items-center gap-1 sm:gap-2 px-1.5 sm:px-3 py-1 sm:py-1.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 rounded-lg sm:rounded-xl shadow-xs shrink-0"
+      title={`Total Charts: ${totalCount}`}
+    >
+      <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white shadow-xs shrink-0">
         <BarChart2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
       </div>
-      <div className="flex items-center gap-1.5 text-xs">
-        <span className="text-slate-600 dark:text-slate-300 font-semibold hidden sm:inline">
+      <div className="flex items-center gap-1 sm:gap-1.5 text-xs">
+        <span className="text-slate-600 dark:text-slate-300 font-semibold hidden md:inline">
           Total Charts
         </span>
-        <span className="text-slate-600 dark:text-slate-300 font-semibold sm:hidden">
+        <span className="text-slate-600 dark:text-slate-300 font-semibold xs450:hidden hide-below-450 md:hidden">
           Total
         </span>
-        <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800/60">
+        <span className="px-1.5 sm:px-2 py-0.2 sm:py-0.5 text-[11px] sm:text-xs font-bold rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800/60">
           {totalCount}
         </span>
       </div>
@@ -51,65 +54,88 @@ export function BoardStats({ allConversations = [] }: BoardStatsProps) {
   const { user, isPro, cloudChartsLimit: cloudLimit, savedChartsCount, aiCreditsLimit, aiCreditsRemaining } = useSubscriptionQuota()
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false)
 
+  const effectiveCloudLimit = cloudLimit || 30
+  const effectiveAiLimit = aiCreditsLimit || 50
   const savedCount = user ? savedChartsCount : allConversations.length
-  const storagePct = Math.min(100, Math.round((savedCount / cloudLimit) * 100))
+
+  const storagePct = Math.min(100, Math.round((savedCount / effectiveCloudLimit) * 100))
+  const creditsPct = Math.min(100, Math.round((aiCreditsRemaining / effectiveAiLimit) * 100))
 
   return (
     <div>
-      {/* ── Subscription & Cloud Storage Quota Banner ── */}
-      <div className="bg-gradient-to-r from-indigo-50/70 via-white to-purple-50/70 dark:from-slate-900 dark:via-slate-900/90 dark:to-indigo-950/30 rounded-2xl border border-indigo-100 dark:border-slate-800 p-3.5 sm:p-4 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-sm shrink-0">
-            <Cloud className="w-5 h-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                Cloud Storage Quota
-              </span>
-              <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                isPro 
-                  ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-xs' 
-                  : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-              }`}>
-                {isPro ? 'PRO PLAN' : 'FREE PLAN'}
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">
-              {savedCount} of {cloudLimit} charts saved in cloud &bull; {aiCreditsRemaining}/{aiCreditsLimit} AI credits left
-            </p>
-          </div>
+      {/* ── Simplified Plan & Quotas Overview ── */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3 sm:px-4 sm:py-3 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-6">
+        
+        {/* 1) The Plan User Is In */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className={`text-[11px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+            isPro 
+              ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-xs' 
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+          }`}>
+            {isPro ? 'Pro Plan' : 'Free Plan'}
+          </span>
+          {!isPro && (
+            <button
+              type="button"
+              onClick={() => setIsUpgradeOpen(true)}
+              className="text-xs font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-700 hover:underline cursor-pointer ml-1"
+            >
+              Upgrade
+            </button>
+          )}
         </div>
 
-        <div className="w-full sm:w-64 flex flex-col gap-1.5">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-600 dark:text-slate-300">
-            <span>Storage Used</span>
-            <span className={storagePct >= 90 ? 'text-rose-600 font-bold' : ''}>{savedCount} / {cloudLimit} ({storagePct}%)</span>
+        {/* 2) Slider: Number of Cloud Charts (e.g. 48/50) */}
+        <div className="flex-1 min-w-[160px] flex flex-col gap-1.5">
+          <div className="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
+            <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+              <Cloud className="w-3.5 h-3.5 text-violet-500 shrink-0" />
+              <span>Cloud Storage</span>
+            </span>
+            <span className={storagePct >= 100 ? 'text-rose-600 dark:text-rose-400 font-bold' : ''}>
+              {savedCount}/{effectiveCloudLimit}
+            </span>
           </div>
-          <div className="w-full h-2 rounded-full bg-slate-200/80 dark:bg-slate-800 overflow-hidden">
+          <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
             <div 
               className={`h-full rounded-full transition-all duration-500 ${
                 storagePct >= 100 
                   ? 'bg-rose-500' 
                   : storagePct >= 80 
                   ? 'bg-amber-500' 
-                  : 'bg-gradient-to-r from-indigo-500 to-purple-500'
+                  : 'bg-gradient-to-r from-violet-500 to-indigo-500'
               }`}
-              style={{ width: `${Math.max(storagePct, 2)}%` }}
+              style={{ width: `${Math.min(100, Math.max(storagePct, 2))}%` }}
             />
           </div>
         </div>
 
-        {!isPro && (
-          <button
-            type="button"
-            onClick={() => setIsUpgradeOpen(true)}
-            className="w-full sm:w-auto shrink-0 flex items-center justify-center gap-1.5 px-3.5 py-2.5 sm:py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-semibold shadow-sm transition-all active:scale-98 cursor-pointer"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            <span>Upgrade to Pro ($5/mo &bull; 30 saves)</span>
-          </button>
-        )}
+        {/* 3) Slider: AI Credits Available */}
+        <div className="flex-1 min-w-[160px] flex flex-col gap-1.5">
+          <div className="flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
+            <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <span>AI Credits</span>
+            </span>
+            <span className={creditsPct <= 10 ? 'text-rose-600 dark:text-rose-400 font-bold' : ''}>
+              {aiCreditsRemaining}/{effectiveAiLimit}
+            </span>
+          </div>
+          <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+            <div 
+              className={`h-full rounded-full transition-all duration-500 ${
+                creditsPct <= 10 
+                  ? 'bg-rose-500' 
+                  : creditsPct <= 30 
+                  ? 'bg-amber-500' 
+                  : 'bg-gradient-to-r from-amber-400 to-violet-500'
+              }`}
+              style={{ width: `${Math.min(100, Math.max(creditsPct, 2))}%` }}
+            />
+          </div>
+        </div>
+
       </div>
 
       <UpgradeProDialog 
@@ -117,7 +143,7 @@ export function BoardStats({ allConversations = [] }: BoardStatsProps) {
         onOpenChange={setIsUpgradeOpen} 
         featureHighlight="cloud" 
         title="Need More Cloud Storage?"
-        description={`You have saved ${savedCount} of your ${cloudLimit} charts on the Free plan. Upgrade to Pro to save up to 30 charts and get 50 AI credits/month.`}
+        description={`You have saved ${savedCount} of your ${effectiveCloudLimit} charts on the Free plan. Upgrade to Pro to save up to 30 charts and get 50 AI credits/month.`}
       />
     </div>
   )
