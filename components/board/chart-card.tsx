@@ -14,6 +14,7 @@ import { useHistoryStore } from "@/lib/history-store"
 import { dataService } from "@/lib/data-service"
 import { toast } from "sonner"
 import { getChartTypeBadgeClass, formatChartTypeName } from "@/lib/chart-type-meta"
+import { getBackgroundConfig } from "@/lib/utils/dimension-utils"
 import {
   Eye,
   Edit3,
@@ -308,71 +309,105 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
   }
 
   const handleDownload = async () => {
-    if (!conversation.snapshot) return
+    let activeSnapshot = snapshotData || conversation.snapshot
+    if (!activeSnapshot?.chartData) {
+      try {
+        const response = await dataService.getCurrentChartSnapshot(conversation.id)
+        if (response.data) {
+          activeSnapshot = {
+            chartType: response.data.chart_type,
+            chartData: response.data.chart_data,
+            chartConfig: response.data.chart_config,
+            is_template_mode: response.data.is_template_mode,
+            template_structure: response.data.template_structure,
+            template_content: response.data.template_content,
+          } as any
+        }
+      } catch (e) {
+        console.error("Failed to load snapshot for download", e)
+      }
+    }
+
+    if (!activeSnapshot?.chartData) {
+      onPreview(conversation)
+      toast.info("Opening chart preview for download...")
+      return
+    }
 
     try {
-      // Create a temporary canvas to render the chart
-      const canvas = document.createElement("canvas")
-      canvas.width = 1200
-      canvas.height = 800
+      const cleanTitle = (conversation.title || "chart").replace(/[^a-z0-9]/gi, "_")
 
-      const ctx = canvas.getContext("2d")
-      if (!ctx) {
-        toast.error("Failed to create canvas context")
+      // 1. Template or format mode: capture scaled wrapper DOM element at high resolution
+      if (isTemplateMode || isFormat) {
+        const target = (containerRef.current?.querySelector(".origin-top-left") ||
+                        containerRef.current?.querySelector(".shadow-\\[0_8px_30px_rgba\\(0\\,0\\,0\\,0\\.12\\)\\]") ||
+                        containerRef.current) as HTMLElement | null
+        if (target) {
+          const { domToPng } = await import("modern-screenshot")
+          const dataUrl = await domToPng(target, {
+            scale: 2,
+            style: {
+              transform: "none",
+              transformOrigin: "top left",
+            },
+          })
+          const link = document.createElement("a")
+          link.href = dataUrl
+          link.download = `${cleanTitle}.png`
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          toast.success("Chart downloaded successfully!")
+          return
+        }
+        // If not rendered in DOM (e.g. list view), open preview modal
+        onPreview(conversation)
+        toast.info("Opened chart preview for high-resolution download")
         return
       }
 
-      const resolvedType = chartTypeMapping[conversation.snapshot.chartType as SupportedChartType] || conversation.snapshot.chartType;
+      // 2. Standard or custom chart mode (Waterfall, Bar, Line, Pie, etc.):
+      const canvas = containerRef.current?.querySelector("canvas")
+      const chart = canvas ? ChartJS.getChart(canvas) : null
 
-      const mappedDatasets = (conversation.snapshot.chartData?.datasets || []).map((ds: any) => {
-        const mappedDs = { ...ds }
-        if (ds.type) {
-          mappedDs.type = chartTypeMapping[ds.type as SupportedChartType] || ds.type
-        }
-        if (ds.chartType) {
-          mappedDs.chartType = chartTypeMapping[ds.chartType as SupportedChartType] || ds.chartType
-        }
-        return mappedDs
-      })
-
-      const mappedChartData = {
-        ...conversation.snapshot.chartData,
-        datasets: mappedDatasets
+      if (chart && (chart as any).exportToImage) {
+        const bgConfig = getBackgroundConfig(activeSnapshot.chartConfig)
+        await (chart as any).exportToImage({
+          background: bgConfig,
+          fileName: `${cleanTitle}.png`,
+          fileNamePrefix: cleanTitle,
+          quality: 1.0,
+        })
+        toast.success("Chart downloaded successfully!")
+        return
       }
 
-      // Create chart instance
-      const chart = new ChartJS(ctx, {
-        type: resolvedType as any,
-        data: mappedChartData as any,
-        options: {
-          ...conversation.snapshot.chartConfig,
-          animation: false,
-          responsive: false,
-        },
-      })
-
-      // Wait for chart to render
-      await new Promise(resolve => setTimeout(resolve, 500))
-
-      // Convert to blob and download
-      canvas.toBlob((blob) => {
-        if (!blob) {
-          toast.error("Failed to generate image")
-          return
-        }
-
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement("a")
-        a.href = url
-        a.download = `${conversation.title.replace(/[^a-z0-9]/gi, '_')}.png`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
-
-        chart.destroy()
+      // 3. Fallback: capture DOM wrapper if canvas export unavailable
+      const target = (containerRef.current?.querySelector(".origin-top-left") ||
+                      containerRef.current?.querySelector(".shadow-\\[0_8px_30px_rgba\\(0\\,0\\,0\\,0\\.12\\)\\]") ||
+                      containerRef.current) as HTMLElement | null
+      if (target) {
+        const { domToPng } = await import("modern-screenshot")
+        const dataUrl = await domToPng(target, {
+          scale: 2,
+          style: {
+            transform: "none",
+            transformOrigin: "top left",
+          },
+        })
+        const link = document.createElement("a")
+        link.href = dataUrl
+        link.download = `${cleanTitle}.png`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
         toast.success("Chart downloaded successfully!")
-      })
+        return
+      }
+
+      // 4. If nothing in DOM (e.g. in list view or offscreen), open preview modal
+      onPreview(conversation)
+      toast.info("Opened chart preview for high-resolution download")
     } catch (error) {
       console.error("Download error:", error)
       toast.error("Failed to download chart")
@@ -856,7 +891,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
 
                   return (
                     <div
-                      className="relative origin-top-left shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-zinc-200 rounded-lg overflow-hidden bg-white"
+                      className="relative origin-top-left shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-zinc-200 rounded-lg overflow-hidden"
                       style={{
                         width: chartW,
                         height: chartH,
@@ -869,6 +904,27 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                         marginLeft: -(chartW * safeScale) / 2,
                       }}
                     >
+                      {/* Real Background Layer */}
+                      {(() => {
+                        const bg = getBackgroundConfig(snapshotData.chartConfig);
+                        if (bg.type === 'color' || bg.type === undefined) {
+                          return <div className="absolute inset-0" style={{ backgroundColor: bg.color || '#ffffff', opacity: (bg.opacity ?? 100) / 100 }} />;
+                        }
+                        if (bg.type === 'gradient') {
+                          const color1 = bg.gradientColor1 || bg.gradientStart || '#ffffff';
+                          const color2 = bg.gradientColor2 || bg.gradientEnd || '#000000';
+                          const direction = bg.gradientDirection || 'to right';
+                          const gradient = bg.gradientType === 'radial' 
+                            ? `radial-gradient(circle, ${color1}, ${color2})`
+                            : `linear-gradient(${direction}, ${color1}, ${color2})`;
+                          return <div className="absolute inset-0" style={{ backgroundImage: gradient, opacity: (bg.opacity ?? 100) / 100 }} />;
+                        }
+                        if (bg.type === 'image' && bg.imageUrl) {
+                          const size = bg.imageFit === 'fill' ? '100% 100%' : bg.imageFit === 'contain' ? 'contain' : 'cover';
+                          return <div className="absolute inset-0" style={{ backgroundImage: `url(${bg.imageUrl})`, backgroundSize: size, backgroundPosition: 'center', backgroundRepeat: 'no-repeat', opacity: (bg.opacity ?? 100) / 100 }} />;
+                        }
+                        return null;
+                      })()}
                       <ChartGenerator
                         readOnly
                         dataOverride={snapshotData.chartData}

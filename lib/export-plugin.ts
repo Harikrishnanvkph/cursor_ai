@@ -43,6 +43,11 @@ export interface ExportPluginOptions {
   fileNamePrefix?: string;
 
   /**
+   * Exact file name for the exported image (including extension)
+   */
+  fileName?: string;
+
+  /**
    * Image quality (0-1)
    * @default 1.0
    */
@@ -268,7 +273,7 @@ const exportPlugin = {
                 reject(error);
               };
 
-              img.src = getProxiedImageUrl(background.imageUrl);
+              img.src = getProxiedImageUrl(background.imageUrl!);
             });
           } catch (error) {
             console.error('Error processing background image:', error);
@@ -663,7 +668,7 @@ const exportPlugin = {
         // Create download link
         const url = tempCanvas.toDataURL('image/png', exportOptions.quality);
         const link = document.createElement('a');
-        link.download = `${exportOptions.fileNamePrefix}-${Date.now()}.png`;
+        link.download = exportOptions.fileName || `${exportOptions.fileNamePrefix}-${Date.now()}.png`;
         link.href = url;
 
         // Trigger download

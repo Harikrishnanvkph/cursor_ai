@@ -13,9 +13,10 @@ import { dataService } from "@/lib/data-service"
 import ChartGenerator from "@/lib/chart_generator"
 import { TemplateChartPreview } from "@/components/template-chart-preview"
 import { Chart as ChartJS } from "chart.js"
-import { toast } from "sonner"
-import { parseDimension } from "@/lib/utils/dimension-utils"
+import { parseDimension, getBackgroundConfig } from "@/lib/utils/dimension-utils"
+import { useDecorationStore } from "@/lib/stores/decoration-store"
 import { getChartTypeBadgeClass, formatChartTypeName } from "@/lib/chart-type-meta"
+import { toast } from "sonner"
 import {
   X,
   Download,
@@ -181,8 +182,18 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
           chartConfig: updatedConv.snapshot.chartConfig
         })
 
-        // Restore format mode if snapshot has format data
+        // Restore decoration shapes into decoration store so they are rendered and exported
         const chartConfig = updatedConv.snapshot.chartConfig as any;
+        const decorationsToLoad = chartConfig?.decorationShapes ||
+                                  chartConfig?.decorations ||
+                                  updatedConv.snapshot?.template_structure?.decorations || [];
+        if (decorationsToLoad.length > 0) {
+          useDecorationStore.getState().setShapes(decorationsToLoad, updatedConv.snapshot.is_template_mode ? 'template' : 'chart');
+        } else {
+          useDecorationStore.getState().clearShapes?.();
+        }
+
+        // Restore format mode if snapshot has format data
         if (chartConfig?.formatData) {
           const { formatId, contentPackage, contextualImageUrl, formatSnapshot } = chartConfig.formatData;
           const formatStore = useFormatGalleryStore.getState();
@@ -247,6 +258,9 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
     loadData();
 
     return () => {
+      useDecorationStore.getState().clearShapes?.();
+      useDecorationStore.getState().setSelectedShapeId(null);
+      useDecorationStore.getState().setSelectedShapeIds([]);
       if (isTemplateMode) {
         clearAllTemplateState()
         useFormatGalleryStore.getState().clearSelection()
@@ -261,53 +275,51 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
     }
 
     try {
-      const canvas = document.createElement("canvas")
-      canvas.width = 1920
-      canvas.height = 1080
-
-      const ctx = canvas.getContext("2d")
-      if (!ctx) {
-        toast.error("Failed to create canvas context")
+      // 1. Template / format mode: trigger template export with all zones and text areas
+      if (isTemplateMode) {
+        window.dispatchEvent(new CustomEvent('triggerTemplateExport', { detail: { format: 'png' } }))
         return
       }
 
-      const resolvedType = chartTypeMapping[liveConversation.snapshot.chartType as SupportedChartType] || liveConversation.snapshot.chartType;
-      const chart = new ChartJS(ctx, {
-        type: resolvedType as any,
-        data: {
-          ...liveConversation.snapshot.chartData,
-          datasets: (liveConversation.snapshot.chartData?.datasets || []).map((ds: any) => ({
-            ...ds,
-            type: ds.type ? (chartTypeMapping[ds.type as SupportedChartType] || ds.type) : undefined
-          }))
-        },
-        options: {
-          ...liveConversation.snapshot.chartConfig,
-          animation: false,
-          responsive: false,
-        },
-      })
+      // 2. Clear any decoration selections so selection rings don't appear in export
+      useDecorationStore.getState().setSelectedShapeId(null)
+      useDecorationStore.getState().setSelectedShapeIds([])
 
-      await new Promise(resolve => setTimeout(resolve, 500))
+      const cleanTitle = liveConversation.title.replace(/[^a-z0-9]/gi, '_') || 'chart'
+      const canvas = containerRef.current?.querySelector('canvas')
+      const chartInstance = useChartStore.getState().globalChartRef?.current || (canvas ? ChartJS.getChart(canvas) : null)
 
-      canvas.toBlob((blob) => {
-        if (!blob) {
-          toast.error("Failed to generate image")
-          return
-        }
+      // 3. Use the exact editor chartInstance.exportToImage (with background, canvas, and decoration SVG)
+      if (chartInstance?.exportToImage) {
+        const bgConfig = getBackgroundConfig(liveConversation.snapshot?.chartConfig)
+        chartInstance.exportToImage({
+          background: bgConfig,
+          fileName: `${cleanTitle}.png`,
+          fileNamePrefix: cleanTitle,
+          quality: 1.0
+        })
+        toast.success("Chart downloaded successfully!")
+        return
+      }
 
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement("a")
-        a.href = url
-        a.download = `${conversation.title.replace(/[^a-z0-9]/gi, '_')}.png`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
+      // 4. Fallback: capture rendered DOM container via modern-screenshot
+      const target = (containerRef.current?.querySelector('.relative.flex-shrink-0') ||
+                      containerRef.current?.querySelector('.shadow-\\[0_8px_30px_rgba\\(0\\,0\\,0\\,0\\.12\\)\\]') ||
+                      containerRef.current) as HTMLElement
+      if (target) {
+        const { domToPng } = await import('modern-screenshot')
+        const dataUrl = await domToPng(target, { scale: 2 })
+        const link = document.createElement('a')
+        link.href = dataUrl
+        link.download = `${cleanTitle}.png`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        toast.success("Chart downloaded successfully!")
+        return
+      }
 
-        chart.destroy()
-        toast.success("PNG downloaded successfully!")
-      })
+      toast.error("Failed to export chart image")
     } catch (error) {
       console.error("Download error:", error)
       toast.error("Failed to download PNG")
@@ -321,11 +333,24 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
     }
 
     try {
+      if (isTemplateMode) {
+        window.dispatchEvent(new CustomEvent('triggerTemplateExport', { detail: { format: 'html' } }))
+        return
+      }
+
       toast.loading("Preparing HTML export...", { id: "html-export" })
 
       const { downloadChartAsHTML } = await import("@/lib/html-exporter")
+      const chartConfig = liveConversation.snapshot?.chartConfig as any
+      const bgConfig = getBackgroundConfig(chartConfig)
+      const chartWidth = parseDimension(chartConfig?.width, 800)
+      const chartHeight = parseDimension(chartConfig?.height, 600)
+
       await downloadChartAsHTML({
         title: liveConversation.title,
+        width: chartWidth,
+        height: chartHeight,
+        backgroundColor: bgConfig.color || "#ffffff",
         fileName: `${liveConversation.title.replace(/[^a-z0-9]/gi, '_')}.html`
       })
 
