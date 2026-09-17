@@ -229,8 +229,16 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
 
         for (let i = 0; i < updatedShapes.length; i++) {
             const shape = updatedShapes[i];
-            if (shape.type === 'deco-image' && shape.imageUrl && shape.imageUrl.startsWith('blob:')) {
-                const file = decorationFileRegistry.get(shape.imageUrl);
+            if (shape.type === 'deco-image' && shape.imageUrl && (shape.imageUrl.startsWith('blob:') || shape.imageUrl.startsWith('data:'))) {
+                let file = decorationFileRegistry.get(shape.imageUrl);
+                
+                // Handle data: URLs (e.g., pasted images) - convert to File for upload
+                if (!file && shape.imageUrl.startsWith('data:')) {
+                    const response = await fetch(shape.imageUrl);
+                    const blob = await response.blob();
+                    file = new File([blob], `decoration-${shape.id}.png`, { type: blob.type });
+                }
+                
                 if (file) {
                     const base64 = await fileToBase64(file);
                     const res = await dataService.uploadImage(base64, file.name);

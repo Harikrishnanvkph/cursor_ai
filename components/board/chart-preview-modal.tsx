@@ -15,6 +15,7 @@ import { TemplateChartPreview } from "@/components/template-chart-preview"
 import { Chart as ChartJS } from "chart.js"
 import { toast } from "sonner"
 import { parseDimension } from "@/lib/utils/dimension-utils"
+import { getChartTypeBadgeClass, formatChartTypeName } from "@/lib/chart-type-meta"
 import {
   X,
   Download,
@@ -367,20 +368,6 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
     })
   }
 
-  const getChartTypeColor = (type: string) => {
-    const colors: Record<string, string> = {
-      bar: "bg-violet-50 text-violet-750 border-violet-100",
-      line: "bg-fuchsia-50 text-fuchsia-750 border-fuchsia-100",
-      pie: "bg-purple-50 text-purple-750 border-purple-100",
-      doughnut: "bg-pink-50 text-pink-750 border-pink-100",
-      radar: "bg-indigo-50 text-indigo-750 border-indigo-100",
-      polarArea: "bg-rose-50 text-rose-750 border-rose-100",
-      bubble: "bg-blue-50 text-blue-750 border-blue-100",
-      scatter: "bg-cyan-50 text-cyan-750 border-cyan-100",
-    }
-    return colors[type] || "bg-zinc-50 text-zinc-700 border-zinc-150"
-  }
-
   // Get badge info based on mode
   const getBadgeInfo = () => {
     if (isTemplateMode) {
@@ -390,9 +377,10 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
         icon: <LayoutTemplate className="h-3 w-3 mr-1" />
       }
     }
+    const chartType = liveConversation.snapshot?.chartType || ""
     return {
-      label: liveConversation.snapshot?.chartType || "Unknown",
-      className: getChartTypeColor(liveConversation.snapshot?.chartType || ""),
+      label: formatChartTypeName(chartType),
+      className: getChartTypeBadgeClass(chartType),
       icon: null
     }
   }

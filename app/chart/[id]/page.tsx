@@ -19,6 +19,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { embedImagesAsBase64 } from "@/lib/utils/html-export-utils"
 import { chartTypeMapping, type SupportedChartType } from "@/lib/chart-defaults"
+import { formatChartTypeName, getChartTypeBadgeClass } from "@/lib/chart-type-meta"
 
 interface ChartSnapshot {
   chart_type: string
@@ -51,17 +52,28 @@ export default function PublicChartPage() {
         setLoading(true)
         setError(null)
 
-        // Fetch conversation details
+        // Fetch conversation details (includes current snapshot)
         const convResponse = await dataService.getConversation(id)
         if (convResponse.error || !convResponse.data) {
           setError("Chart not found")
           return
         }
 
-        // Fetch current snapshot
-        const snapshotResponse = await dataService.getCurrentChartSnapshot(id)
-        if (snapshotResponse.error || !snapshotResponse.data) {
-          setError("Chart data not available")
+        // Extract current snapshot from conversation response
+        const snapshot = convResponse.data.chart_snapshots?.[0]
+        if (!snapshot) {
+          // Fallback: fetch snapshot separately if not included
+          const snapshotResponse = await dataService.getCurrentChartSnapshot(id)
+          if (snapshotResponse.error || !snapshotResponse.data) {
+            setError("Chart data not available")
+            return
+          }
+          setConversation({
+            id: convResponse.data.id,
+            title: convResponse.data.title,
+            created_at: convResponse.data.created_at,
+            snapshot: snapshotResponse.data
+          })
           return
         }
 
@@ -69,7 +81,7 @@ export default function PublicChartPage() {
           id: convResponse.data.id,
           title: convResponse.data.title,
           created_at: convResponse.data.created_at,
-          snapshot: snapshotResponse.data
+          snapshot
         })
       } catch (err) {
         console.error("Error loading chart:", err)
@@ -213,17 +225,7 @@ export default function PublicChartPage() {
   }
 
   const getChartTypeColor = (type: string) => {
-    const colors: Record<string, string> = {
-      bar:       "bg-blue-500/15 text-blue-300 border-blue-500/30",
-      line:      "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-      pie:       "bg-violet-500/15 text-violet-300 border-violet-500/30",
-      doughnut:  "bg-pink-500/15 text-pink-300 border-pink-500/30",
-      radar:     "bg-orange-500/15 text-orange-300 border-orange-500/30",
-      polarArea: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
-      bubble:    "bg-indigo-500/15 text-indigo-300 border-indigo-500/30",
-      scatter:   "bg-teal-500/15 text-teal-300 border-teal-500/30",
-    }
-    return colors[type] || "bg-slate-700/60 text-slate-300 border-slate-600/50"
+    return getChartTypeBadgeClass(type)
   }
 
   /* ─────────────── LOADING STATE ─────────────── */
@@ -363,9 +365,9 @@ export default function PublicChartPage() {
               {conversation.snapshot?.chart_type && (
                 <Badge
                   variant="outline"
-                  className={`text-xs font-medium border px-2 py-0.5 capitalize ${getChartTypeColor(conversation.snapshot.chart_type)}`}
+                  className={`text-xs font-medium border px-2 py-0.5 ${getChartTypeColor(conversation.snapshot.chart_type)}`}
                 >
-                  {conversation.snapshot.chart_type}
+                  {formatChartTypeName(conversation.snapshot.chart_type)}
                 </Badge>
               )}
               <span className="flex items-center gap-1.5 text-xs text-slate-500">

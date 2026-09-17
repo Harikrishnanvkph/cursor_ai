@@ -630,10 +630,12 @@ export const useChartStore = create<ChartStore>()(
       showImages: state.showImages,
       hasJSON: state.hasJSON,
     }),
-    limit: 50,
-    // Prevent duplicate snapshots when state hasn't actually changed
-    equality: (pastState, currentState) =>
-      JSON.stringify(pastState) === JSON.stringify(currentState),
+    limit: 25,
+    // Prevent duplicate snapshots when state hasn't actually changed (shallow is faster than JSON.stringify)
+    equality: (pastState, currentState) => {
+      const keys = Object.keys(pastState) as (keyof typeof pastState)[];
+      return keys.every(key => pastState[key] === currentState[key]);
+    },
   }
 )
 );

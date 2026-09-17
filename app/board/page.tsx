@@ -17,6 +17,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
+  SheetDescription,
 } from "@/components/ui/sheet"
 import { ChartPreviewModal } from "@/components/board/chart-preview-modal"
 import { ChartCard } from "@/components/board/chart-card"
@@ -60,8 +61,11 @@ import {
   Image as ImageIcon,
   Copy,
   Check,
-  Trash2
+  Trash2,
+  Menu,
+  SlidersHorizontal
 } from "lucide-react"
+import { getChartTypeDotColor, formatChartTypeName } from "@/lib/chart-type-meta"
 import Link from "next/link"
 import Image from "next/image"
 
@@ -107,6 +111,8 @@ function BoardPageContent() {
   const [isSearchExpanded, setIsSearchExpanded] = useState(false)
   const [showMobileInfo, setShowMobileInfo] = useState(false)
   const [viewTab, setViewTab] = useState<"charts" | "images">("charts")
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false)
   const searchInputRef = React.useRef<HTMLInputElement>(null)
 
   // Focus search input when expanded
@@ -136,22 +142,8 @@ function BoardPageContent() {
         types.add(conv.snapshot.chartType)
       }
     })
-    return Array.from(types)
+    return Array.from(types).sort((a, b) => formatChartTypeName(a).localeCompare(formatChartTypeName(b)))
   }, [conversations])
-
-  const getChartTypeDotColor = (type: string) => {
-    const colors: Record<string, string> = {
-      bar: "bg-[#3178c6]", // TS blue
-      line: "bg-[#2b7489]", // C++ teal
-      pie: "bg-[#563d7c]", // CSS purple
-      doughnut: "bg-[#e34c26]", // HTML red
-      radar: "bg-[#f1e05a]", // JS yellow
-      polarArea: "bg-[#89e051]", // Shell green
-      bubble: "bg-[#178600]", // C# green
-      scatter: "bg-[#3572A5]", // Python blue
-    }
-    return colors[type] || "bg-[#8b949e]"
-  }
 
   // Filter conversations by active tab
   const currentConversations = useMemo(() => {
@@ -185,12 +177,21 @@ function BoardPageContent() {
     return Object.entries(typeCount)
       .map(([type, count]) => ({
         type,
+        displayName: formatChartTypeName(type),
         count,
         percentage: total > 0 ? Math.round((count / total) * 100) : 0,
         color: getChartTypeDotColor(type)
       }))
       .sort((a, b) => b.count - a.count)
   }, [currentConversations])
+
+  const activeFiltersCount = useMemo(() => {
+    let count = 0
+    if (filterType !== "all") count++
+    if (sortBy !== "newest") count++
+    if (viewMode !== "grid") count++
+    return count
+  }, [filterType, sortBy, viewMode])
 
   const filteredConversations = useMemo(() => {
     let filtered = currentConversations.filter(conv => {
@@ -293,6 +294,16 @@ function BoardPageContent() {
           <div className="flex items-center justify-between h-14">
             {/* Logo and Title */}
             <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+              {/* Mobile Menu Icon (< 450px) */}
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen(true)}
+                className="show-below-450 p-1 -ml-1 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors items-center justify-center cursor-pointer"
+                aria-label="Open Navigation Menu"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+
               <Image src="/logo.png" alt="Logo" width={26} height={26} className="rounded-lg shrink-0" />
               <h1 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 tracking-tight xs450:hidden hide-below-450">
                 Dashboard
@@ -301,58 +312,60 @@ function BoardPageContent() {
 
             {/* Actions */}
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-              {/* Single dropdown for My Charts vs My Images */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 px-2.5 sm:px-3 text-xs font-semibold rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50/90 dark:bg-slate-800/90 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 shadow-none transition-all gap-1.5 flex items-center justify-center shrink-0"
-                  >
-                    {viewTab === "charts" ? (
-                      <>
-                        <BarChart3 className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
-                        <span>My Charts</span>
-                      </>
-                    ) : (
-                      <>
-                        <ImageIcon className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
-                        <span>My Images</span>
-                      </>
-                    )}
-                    <ChevronDown className="h-3 w-3 text-slate-400 dark:text-slate-500 shrink-0 ml-0.5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-40 p-1 z-50">
-                  <DropdownMenuItem
-                    onClick={() => setViewTab("charts")}
-                    className={`text-xs font-medium gap-2 cursor-pointer rounded-md ${
-                      viewTab === "charts"
-                        ? "bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300 font-semibold"
-                        : "text-slate-700 dark:text-slate-300"
-                    }`}
-                  >
-                    <BarChart3 className="h-3.5 w-3.5 text-violet-500 shrink-0" />
-                    <span className="flex-1">My Charts</span>
-                    {viewTab === "charts" && <Check className="h-3.5 w-3.5 text-violet-600 shrink-0" />}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setViewTab("images")}
-                    className={`text-xs font-medium gap-2 cursor-pointer rounded-md ${
-                      viewTab === "images"
-                        ? "bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300 font-semibold"
-                        : "text-slate-700 dark:text-slate-300"
-                    }`}
-                  >
-                    <ImageIcon className="h-3.5 w-3.5 text-violet-500 shrink-0" />
-                    <span className="flex-1">My Images</span>
-                    {viewTab === "images" && <Check className="h-3.5 w-3.5 text-violet-600 shrink-0" />}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {/* Single dropdown for My Charts vs My Images (hidden below 450px, available in mobile sidebar) */}
+              <div className="xs450:hidden hide-below-450">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 px-2.5 sm:px-3 text-xs font-semibold rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50/90 dark:bg-slate-800/90 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 shadow-none transition-all gap-1.5 flex items-center justify-center shrink-0"
+                    >
+                      {viewTab === "charts" ? (
+                        <>
+                          <BarChart3 className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+                          <span>My Charts</span>
+                        </>
+                      ) : (
+                        <>
+                          <ImageIcon className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400 shrink-0" />
+                          <span>My Images</span>
+                        </>
+                      )}
+                      <ChevronDown className="h-3 w-3 text-slate-400 dark:text-slate-500 shrink-0 ml-0.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-40 p-1 z-50">
+                    <DropdownMenuItem
+                      onClick={() => setViewTab("charts")}
+                      className={`text-xs font-medium gap-2 cursor-pointer rounded-md ${
+                        viewTab === "charts"
+                          ? "bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300 font-semibold"
+                          : "text-slate-700 dark:text-slate-300"
+                      }`}
+                    >
+                      <BarChart3 className="h-3.5 w-3.5 text-violet-500 shrink-0" />
+                      <span className="flex-1">My Charts</span>
+                      {viewTab === "charts" && <Check className="h-3.5 w-3.5 text-violet-600 shrink-0" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setViewTab("images")}
+                      className={`text-xs font-medium gap-2 cursor-pointer rounded-md ${
+                        viewTab === "images"
+                          ? "bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300 font-semibold"
+                          : "text-slate-700 dark:text-slate-300"
+                      }`}
+                    >
+                      <ImageIcon className="h-3.5 w-3.5 text-violet-500 shrink-0" />
+                      <span className="flex-1">My Images</span>
+                      {viewTab === "images" && <Check className="h-3.5 w-3.5 text-violet-600 shrink-0" />}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
 
-              {/* Mobile (<640px): Unified Create Dropdown */}
-              <div className="sm:hidden">
+              {/* Mobile (451px to 639px): Unified Create Dropdown (hidden below 450px, available in mobile sidebar) */}
+              <div className="xs450:hidden hide-below-450 sm:hidden">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button 
@@ -417,7 +430,7 @@ function BoardPageContent() {
                 </Link>
               </div>
 
-              <div className="w-[1px] h-4 sm:h-5 bg-slate-200 dark:bg-slate-700 mx-0.5 sm:mx-1 shrink-0"></div>
+              <div className="w-[1px] h-4 sm:h-5 bg-slate-200 dark:bg-slate-700 mx-0.5 sm:mx-1 shrink-0 xs450:hidden hide-below-450"></div>
               <div className="shrink-0">
                 <SimpleProfileDropdown size="sm" />
               </div>
@@ -425,6 +438,103 @@ function BoardPageContent() {
           </div>
         </div>
       </header>
+
+      {/* Mobile Navigation Sidebar Drawer (< 450px, Gmail mobile style) */}
+      <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+        <SheetContent side="left" className="w-[85vw] max-w-[360px] p-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col z-50">
+          {/* Header: App icon + aichartor.com */}
+          <div className="p-4 pr-12 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <Image src="/logo.png" alt="Logo" width={28} height={28} className="rounded-lg shrink-0" />
+              <SheetTitle className="text-base font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+                aichartor.com
+              </SheetTitle>
+            </div>
+            <SheetDescription className="sr-only">
+              Navigation menu and quick actions
+            </SheetDescription>
+          </div>
+
+          <div className="flex-1 overflow-y-auto py-3 px-3 space-y-4">
+            {/* Section 1: Options */}
+            <div>
+              <div className="px-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                Options
+              </div>
+              <div className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewTab("charts")
+                    setIsMobileMenuOpen(false)
+                  }}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    viewTab === "charts"
+                      ? "bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300 font-bold"
+                      : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  <BarChart3 className={`h-4 w-4 shrink-0 ${viewTab === "charts" ? "text-violet-600 dark:text-violet-400" : "text-slate-400 dark:text-slate-500"}`} />
+                  <span className="flex-1 text-left">My Charts</span>
+                  <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                    {conversations.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewTab("images")
+                    setIsMobileMenuOpen(false)
+                  }}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    viewTab === "images"
+                      ? "bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300 font-bold"
+                      : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  <ImageIcon className={`h-4 w-4 shrink-0 ${viewTab === "images" ? "text-violet-600 dark:text-violet-400" : "text-slate-400 dark:text-slate-500"}`} />
+                  <span className="flex-1 text-left">My Images</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="border-t border-slate-100 dark:border-slate-800 my-1" />
+
+            {/* Section 2: Pages */}
+            <div>
+              <div className="px-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                Pages
+              </div>
+              <div className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    router.push("/landing")
+                    setIsMobileMenuOpen(false)
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-violet-50 dark:hover:bg-violet-950/30 hover:text-violet-700 dark:hover:text-violet-300 transition-all cursor-pointer group"
+                >
+                  <Sparkles className="h-4 w-4 text-violet-500 dark:text-violet-400 shrink-0 group-hover:scale-110 transition-transform" />
+                  <span className="flex-1 text-left">AI Chart</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    router.push("/editor")
+                    setIsMobileMenuOpen(false)
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-violet-50 dark:hover:bg-violet-950/30 hover:text-violet-700 dark:hover:text-violet-300 transition-all cursor-pointer group"
+                >
+                  <Edit3 className="h-4 w-4 text-indigo-500 dark:text-indigo-400 shrink-0 group-hover:scale-110 transition-transform" />
+                  <span className="flex-1 text-left">Advanced Editor</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Secondary Sub-header (Tabs) */}
       <div className={viewTab === "charts" ? "bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800" : "hidden"}>
@@ -592,8 +702,10 @@ function BoardPageContent() {
             </nav>
 
             <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 py-1 sm:py-1.5">
-              {/* Total Charts Counter */}
-              <TotalChartsBadge totalCount={conversations.length} />
+              {/* Total Charts Counter (hidden below 1024px) */}
+              <div className="hidden lg:block">
+                <TotalChartsBadge totalCount={conversations.length} />
+              </div>
 
               {/* Info Toggle Icon Button (mobile/tablet only) */}
               <button
@@ -626,53 +738,80 @@ function BoardPageContent() {
 
               {/* Search and Filters Toolbar */}
               <div className="w-full">
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full">
-                  {/* Search Input: Full width on mobile, flex-1 on tablet/desktop */}
-                  <div className="relative group flex-1 w-full">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500 group-focus-within:text-violet-500 transition-colors" />
-                    <Input
-                      ref={searchInputRef}
-                      type="text"
-                      placeholder="Search your charts..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 pr-8 py-2 text-sm border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-500 rounded-lg focus-visible:ring-1 focus-visible:ring-violet-500 focus-visible:border-violet-500 hover:border-slate-300 dark:hover:border-slate-600 transition-all shadow-none w-full"
-                    />
-                    {searchQuery && (
-                      <button
-                        onClick={() => setSearchQuery("")}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
-                      >
-                        <X className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
-                      </button>
-                    )}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full">
+                  {/* Search Input & Mobile Consolidated Filter Trigger Button */}
+                  <div className="flex items-center gap-2 w-full flex-1 min-w-0">
+                    <div className="relative group flex-1 min-w-0">
+                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500 group-focus-within:text-violet-500 transition-colors" />
+                      <Input
+                        ref={searchInputRef}
+                        type="text"
+                        placeholder="Search your charts..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10 pr-8 py-2 text-sm border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-500 rounded-lg focus-visible:ring-1 focus-visible:ring-violet-500 focus-visible:border-violet-500 hover:border-slate-300 dark:hover:border-slate-600 transition-all shadow-none w-full"
+                      />
+                      {searchQuery && (
+                        <button
+                          onClick={() => setSearchQuery("")}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors cursor-pointer"
+                        >
+                          <X className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Consolidated Filter & Options Trigger Button (shown only <= 450px) */}
+                    <button
+                      type="button"
+                      onClick={() => setIsFilterSheetOpen(true)}
+                      className={`show-below-450 h-9 px-2.5 rounded-lg border text-xs font-semibold items-center justify-center gap-1.5 shrink-0 transition-all cursor-pointer relative shadow-none ${
+                        activeFiltersCount > 0
+                          ? "bg-violet-50 dark:bg-violet-950/50 border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300"
+                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      }`}
+                      aria-label="Filter and sort options"
+                      title="Filter and sort options"
+                    >
+                      <SlidersHorizontal className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                      {activeFiltersCount > 0 ? (
+                        <span className="w-4 h-4 rounded-full bg-violet-600 text-white text-[10px] font-bold flex items-center justify-center">
+                          {activeFiltersCount}
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Filter</span>
+                      )}
+                    </button>
                   </div>
 
-                  {/* Filter Controls: Full row on mobile with generous spacing and touch targets */}
-                  <div className="flex items-center justify-between sm:justify-start gap-1.5 sm:gap-2 shrink-0">
+                  {/* Filter Controls: Full row on desktop/tablet, hidden <= 450px */}
+                  <div className="flex items-center justify-between sm:justify-start gap-1.5 sm:gap-2 shrink-0 xs450:hidden hide-below-450">
                     {/* Type Filter */}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" className="h-9 px-2.5 sm:px-3 bg-white dark:bg-slate-800 dark:border-slate-700 hover:bg-violet-50 dark:hover:bg-violet-950/30 hover:text-violet-700 hover:border-violet-200 dark:hover:border-violet-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 shadow-none transition-all gap-1.5 flex items-center justify-center flex-1 sm:flex-none">
                           <Filter className={`h-3.5 w-3.5 ${filterType !== "all" ? "text-violet-600 dark:text-violet-400" : "text-slate-400 dark:text-slate-500"}`} />
                           <span>
-                            {filterType === "all" ? "Type" : filterType.charAt(0).toUpperCase() + filterType.slice(1)}
+                            {filterType === "all" ? "Type" : formatChartTypeName(filterType)}
                           </span>
                           <ChevronDown className="h-3 w-3 text-slate-400 dark:text-slate-500" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48 max-h-[280px] overflow-y-auto">
+                      <DropdownMenuContent align="end" className="w-52 max-h-[280px] overflow-y-auto">
                         <DropdownMenuItem onClick={() => setFilterType("all")} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-2 cursor-pointer">
                           <Folder className="h-4 w-4 mr-2 text-zinc-400" />
                           All Types
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         {chartTypes.map(type => {
-                          const IconComponent = getChartTypeIcon(type)
+                          const isSelected = filterType === type
                           return (
-                            <DropdownMenuItem key={type} onClick={() => setFilterType(type)} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-2 cursor-pointer">
-                              <IconComponent className="h-4 w-4 mr-2 text-zinc-400" />
-                              {type.charAt(0).toUpperCase() + type.slice(1)}
+                            <DropdownMenuItem key={type} onClick={() => setFilterType(type)} className="focus:bg-violet-50 focus:text-violet-700 text-xs py-2 cursor-pointer justify-between">
+                              <div className="flex items-center gap-2 truncate">
+                                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${getChartTypeDotColor(type)}`} />
+                                <span className="truncate">{formatChartTypeName(type)}</span>
+                              </div>
+                              {isSelected && <Check className="h-3.5 w-3.5 text-violet-600 shrink-0 ml-1" />}
                             </DropdownMenuItem>
                           )
                         })}
@@ -757,7 +896,7 @@ function BoardPageContent() {
                     )}
                     {filterType !== "all" && (
                       <Badge variant="secondary" className="gap-1 rounded-full bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800/60 shadow-none text-[11px] font-semibold py-0.5 px-2">
-                        Type: {filterType}
+                        Type: {formatChartTypeName(filterType)}
                         <button onClick={() => setFilterType("all")} className="ml-1 hover:bg-violet-100 dark:hover:bg-violet-900/50 rounded-full p-0.5 transition-colors">
                           <X className="h-3.5 w-3.5 text-violet-400 dark:text-violet-500" />
                         </button>
@@ -874,11 +1013,6 @@ function BoardPageContent() {
                           ? "Group Charts" 
                           : "Your Charts"}
                       </h2>
-                      <Badge className="bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-950/70 border border-violet-200 dark:border-violet-800/60 font-bold text-xs shadow-none rounded-full">
-                        {filteredConversations.length} {filteredConversations.length === 1 
-                          ? (activeTab === "templates" ? 'template' : 'chart') 
-                          : (activeTab === "templates" ? 'templates' : 'charts')}
-                      </Badge>
                     </div>
 
                     {filteredConversations.length !== currentConversations.length && (
@@ -938,8 +1072,50 @@ function BoardPageContent() {
                     <Info className="h-4 w-4 text-violet-500" />
                     Analytics & Quick Help
                   </SheetTitle>
+                  <SheetDescription className="sr-only">
+                    Analytics overview and quick tips
+                  </SheetDescription>
                 </SheetHeader>
                 <div className="space-y-4 pb-6">
+                  {/* Total Charts Overview Panel */}
+                  <Card className="border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 shadow-sm rounded-xl overflow-hidden">
+                    <CardContent className="p-3 sm:p-3.5 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white shadow-xs shrink-0">
+                            <BarChart2 className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
+                              Total Charts
+                            </span>
+                            <span className="text-lg font-extrabold text-slate-900 dark:text-slate-100 leading-none">
+                              {conversations.length}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/70 dark:border-blue-800/60">
+                          All Categories
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-center">
+                        <div className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400">Single</div>
+                          <div className="text-xs font-bold text-slate-900 dark:text-slate-100">{singleCount}</div>
+                        </div>
+                        <div className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400">Group</div>
+                          <div className="text-xs font-bold text-slate-900 dark:text-slate-100">{groupCount}</div>
+                        </div>
+                        <div className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400">Templates</div>
+                          <div className="text-xs font-bold text-slate-900 dark:text-slate-100">{templateCount}</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
                   {/* About / Summary Panel */}
                   <Card className="border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 shadow-sm rounded-xl">
                     <CardHeader className="py-3 px-3 sm:px-4 border-b border-slate-100 dark:border-slate-800">
@@ -976,32 +1152,51 @@ function BoardPageContent() {
                   {/* Chart Types Distribution Panel */}
                   {typeDistribution.length > 0 && (
                     <Card className="border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 shadow-sm rounded-xl">
-                      <CardHeader className="py-3 px-3 sm:px-4 border-b border-slate-100 dark:border-slate-800">
+                      <CardHeader className="py-3 px-3 sm:px-4 border-b border-slate-100 dark:border-slate-800 flex flex-row items-center justify-between space-y-0">
                         <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                           {activeTab === 'templates' ? 'Template Chart Types' : 'Chart Types'}
                         </CardTitle>
+                        <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+                          {typeDistribution.length} {typeDistribution.length === 1 ? 'type' : 'types'}
+                        </span>
                       </CardHeader>
                       <CardContent className="p-3 sm:p-4">
-                        {/* Language bar visual */}
+                        {/* Multi-color distribution bar */}
                         <div className="h-2 w-full rounded-full overflow-hidden flex bg-slate-100 dark:bg-slate-800 mb-4 border border-slate-200 dark:border-slate-700">
                           {typeDistribution.map((item, idx) => (
                             <div
                               key={idx}
                               className={item.color}
                               style={{ width: `${item.percentage}%` }}
-                              title={`${item.type}: ${item.percentage}%`}
+                              title={`${item.displayName}: ${item.percentage}% (${item.count})`}
                             />
                           ))}
                         </div>
-                        {/* Language dot descriptions */}
-                        <div className="grid grid-cols-2 gap-x-2 gap-y-2 xs:gap-x-4 xs:gap-y-2.5">
-                          {typeDistribution.map((item, idx) => (
-                            <div key={idx} className="flex items-center gap-1.5 text-[11px] xs:text-xs">
-                              <span className={`w-2.5 h-2.5 rounded-full ${item.color} flex-shrink-0`} />
-                              <span className="font-medium text-slate-700 dark:text-slate-300 capitalize truncate">{item.type}</span>
-                              <span className="text-slate-400 dark:text-slate-500 text-[10px] ml-auto">{item.percentage}%</span>
-                            </div>
-                          ))}
+                        {/* Arranged Chart Type items */}
+                        <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 xs:gap-x-3 xs:gap-y-2">
+                          {typeDistribution.map((item, idx) => {
+                            const isSelected = filterType === item.type
+                            return (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => {
+                                  setFilterType(isSelected ? "all" : item.type)
+                                  setShowMobileInfo(false)
+                                }}
+                                className={`flex items-center gap-1.5 text-[11px] xs:text-xs py-1 px-1.5 rounded-lg transition-all text-left cursor-pointer group ${
+                                  isSelected
+                                    ? "bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 font-semibold ring-1 ring-violet-300 dark:ring-violet-700"
+                                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/70"
+                                }`}
+                                title={`Click to filter by ${item.displayName}`}
+                              >
+                                <span className={`w-2.5 h-2.5 rounded-full ${item.color} flex-shrink-0 group-hover:scale-110 transition-transform`} />
+                                <span className="font-medium truncate flex-1">{item.displayName}</span>
+                                <span className="text-slate-400 dark:text-slate-500 text-[10px] ml-1 shrink-0 font-normal">{item.percentage}%</span>
+                              </button>
+                            )
+                          })}
                         </div>
                       </CardContent>
                     </Card>
@@ -1065,32 +1260,48 @@ function BoardPageContent() {
               {/* Chart Types Distribution Panel */}
               {typeDistribution.length > 0 && (
                 <Card className="border border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/80 shadow-sm rounded-xl">
-                  <CardHeader className="py-3 px-3 sm:px-4 border-b border-slate-100 dark:border-slate-800">
+                  <CardHeader className="py-3 px-3 sm:px-4 border-b border-slate-100 dark:border-slate-800 flex flex-row items-center justify-between space-y-0">
                     <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                       {activeTab === 'templates' ? 'Template Chart Types' : 'Chart Types'}
                     </CardTitle>
+                    <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+                      {typeDistribution.length} {typeDistribution.length === 1 ? 'type' : 'types'}
+                    </span>
                   </CardHeader>
                   <CardContent className="p-3 sm:p-4">
-                    {/* Language bar visual representation */}
-                    <div className="h-2.5 w-full rounded-full overflow-hidden flex bg-slate-100 dark:bg-slate-800 mb-4 border border-slate-200 dark:border-slate-700">
+                    {/* Multi-color distribution bar */}
+                    <div className="h-2 w-full rounded-full overflow-hidden flex bg-slate-100 dark:bg-slate-800 mb-4 border border-slate-200 dark:border-slate-700">
                       {typeDistribution.map((item, idx) => (
                         <div
                            key={idx}
                            className={item.color}
                            style={{ width: `${item.percentage}%` }}
-                           title={`${item.type}: ${item.percentage}%`}
+                           title={`${item.displayName}: ${item.percentage}% (${item.count})`}
                         />
                       ))}
                     </div>
-                    {/* Language dot descriptions */}
-                    <div className="grid grid-cols-2 gap-x-2 gap-y-2 xs:gap-x-4 xs:gap-y-2.5">
-                      {typeDistribution.map((item, idx) => (
-                        <div key={idx} className="flex items-center gap-1.5 text-[11px] xs:text-xs">
-                          <span className={`w-2.5 h-2.5 rounded-full ${item.color} flex-shrink-0`} />
-                          <span className="font-medium text-slate-700 dark:text-slate-300 capitalize truncate">{item.type}</span>
-                          <span className="text-slate-400 dark:text-slate-500 text-[10px] ml-auto">{item.percentage}%</span>
-                        </div>
-                      ))}
+                    {/* Arranged Chart Type items */}
+                    <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 xs:gap-x-3 xs:gap-y-2">
+                      {typeDistribution.map((item, idx) => {
+                        const isSelected = filterType === item.type
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setFilterType(isSelected ? "all" : item.type)}
+                            className={`flex items-center gap-1.5 text-[11px] xs:text-xs py-1 px-1.5 rounded-lg transition-all text-left cursor-pointer group ${
+                              isSelected
+                                ? "bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 font-semibold ring-1 ring-violet-300 dark:ring-violet-700"
+                                : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/70"
+                            }`}
+                            title={`Click to filter by ${item.displayName}`}
+                          >
+                            <span className={`w-2.5 h-2.5 rounded-full ${item.color} flex-shrink-0 group-hover:scale-110 transition-transform`} />
+                            <span className="font-medium truncate flex-1">{item.displayName}</span>
+                            <span className="text-slate-400 dark:text-slate-500 text-[10px] ml-1 shrink-0 font-normal">{item.percentage}%</span>
+                          </button>
+                        )
+                      })}
                     </div>
                   </CardContent>
                 </Card>
@@ -1121,6 +1332,189 @@ function BoardPageContent() {
           <MyImagesManager loadConversationsFromBackend={loadConversationsFromBackend} />
         )}
       </main>
+
+      {/* Mobile Consolidated Filter & Sort Bottom Sheet (<= 450px) */}
+      <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
+        <SheetContent side="bottom" className="rounded-t-2xl max-h-[85vh] overflow-y-auto p-4 sm:p-5 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
+          <SheetHeader className="text-left pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between">
+              <SheetTitle className="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                <SlidersHorizontal className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                Filter & Options
+              </SheetTitle>
+              {activeFiltersCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilterType("all")
+                    setSortBy("newest")
+                    setViewMode("grid")
+                  }}
+                  className="text-xs font-semibold text-violet-600 dark:text-violet-400 hover:underline"
+                >
+                  Reset All
+                </button>
+              )}
+            </div>
+            <SheetDescription className="sr-only">
+              Quick filters, sorting, and view layout settings
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="py-4 space-y-4">
+            {/* View Mode Layout */}
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-2">
+                View Layout
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("grid")}
+                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-semibold transition-all ${
+                    viewMode === "grid"
+                      ? "bg-violet-50 dark:bg-violet-950/50 border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300"
+                      : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+                  }`}
+                >
+                  <Grid3x3 className="h-4 w-4" />
+                  Grid View
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("list")}
+                  className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg border text-xs font-semibold transition-all ${
+                    viewMode === "list"
+                      ? "bg-violet-50 dark:bg-violet-950/50 border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300"
+                      : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+                  }`}
+                >
+                  <List className="h-4 w-4" />
+                  List View
+                </button>
+              </div>
+            </div>
+
+            {/* Sort Order */}
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-2">
+                Sort By
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSortBy("newest")}
+                  className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg border text-xs font-semibold transition-all ${
+                    sortBy === "newest"
+                      ? "bg-violet-50 dark:bg-violet-950/50 border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300"
+                      : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+                  }`}
+                >
+                  <Clock className="h-3.5 w-3.5" />
+                  Newest
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSortBy("oldest")}
+                  className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg border text-xs font-semibold transition-all ${
+                    sortBy === "oldest"
+                      ? "bg-violet-50 dark:bg-violet-950/50 border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300"
+                      : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+                  }`}
+                >
+                  <Calendar className="h-3.5 w-3.5" />
+                  Oldest
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSortBy("name")}
+                  className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg border text-xs font-semibold transition-all ${
+                    sortBy === "name"
+                      ? "bg-violet-50 dark:bg-violet-950/50 border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300"
+                      : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+                  }`}
+                >
+                  <Settings2 className="h-3.5 w-3.5" />
+                  Name
+                </button>
+              </div>
+            </div>
+
+            {/* Chart Type Filter */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Chart Type
+                </label>
+                {filterType !== "all" && (
+                  <span className="text-[11px] text-violet-600 dark:text-violet-400 font-medium">
+                    {formatChartTypeName(filterType)}
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto pr-1">
+                <button
+                  type="button"
+                  onClick={() => setFilterType("all")}
+                  className={`flex items-center justify-between py-1.5 px-2.5 rounded-lg border text-xs font-semibold transition-all ${
+                    filterType === "all"
+                      ? "bg-violet-50 dark:bg-violet-950/50 border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300"
+                      : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <Folder className="h-3.5 w-3.5 text-slate-400" />
+                    All Types
+                  </span>
+                  {filterType === "all" && <Check className="h-3.5 w-3.5 text-violet-600" />}
+                </button>
+                {chartTypes.map(type => {
+                  const isSelected = filterType === type
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setFilterType(isSelected ? "all" : type)}
+                      className={`flex items-center justify-between py-1.5 px-2.5 rounded-lg border text-xs font-semibold transition-all ${
+                        isSelected
+                          ? "bg-violet-50 dark:bg-violet-950/50 border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300"
+                          : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+                      }`}
+                    >
+                      <span className="flex items-center gap-2 truncate">
+                        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${getChartTypeDotColor(type)}`} />
+                        <span className="truncate">{formatChartTypeName(type)}</span>
+                      </span>
+                      {isSelected && <Check className="h-3.5 w-3.5 text-violet-600 shrink-0 ml-1" />}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Actions: Refresh & Apply */}
+            <div className="pt-2 flex items-center gap-2 border-t border-slate-100 dark:border-slate-800">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="h-10 px-3 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 rounded-lg flex items-center gap-1.5 shrink-0"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+                Refresh
+              </Button>
+              <Button
+                type="button"
+                onClick={() => setIsFilterSheetOpen(false)}
+                className="flex-1 h-10 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-xs font-semibold shadow-sm"
+              >
+                Apply & Close
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Enhanced Chart Preview Modal */}
       {selectedChart && (
