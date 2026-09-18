@@ -153,9 +153,10 @@ function LandingPageContent() {
   const lastSyncedChartStateRef = useRef<string | null>(null)
   const hasMountSyncedRef = useRef(false) // Track if initial mount sync has happened
 
-  // CRITICAL: Reset refs on every mount to handle navigation properly
+  // CRITICAL: Reset refs and scroll position on every mount to handle navigation properly
   // In Next.js App Router, refs persist across navigations - we must reset them
   useEffect(() => {
+    window.scrollTo(0, 0)
     hasMountSyncedRef.current = false
     lastSyncedChartStateRef.current = null
   }, []) // This runs on every mount
@@ -449,7 +450,7 @@ function LandingPageContent() {
     }
 
     setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })
     }, 100)
   }, [input, isProcessing, continueConversation, isChatDisabled, setInput, textareaRef, user, aiCreditsRemaining, aiCreditsLimit])
 
@@ -686,7 +687,7 @@ function LandingPageContent() {
   // Tablet Layout (577px - 1024px)
   if (isTablet) {
     return (
-      <div className="flex h-screen w-screen bg-gradient-to-b from-indigo-50/50 via-white to-slate-50 relative overflow-hidden">
+      <div className="fixed inset-0 w-full h-full bg-gradient-to-b from-indigo-50/50 via-white to-slate-50 flex overflow-hidden">
         <AnimatedBackground />
         {/* Header */}
         <header className="fixed top-0 left-0 right-0 z-40 h-16 bg-white border-b border-gray-200 shadow-sm">
@@ -1010,7 +1011,7 @@ function LandingPageContent() {
 
   if (isMobile) {
     return (
-      <div className="flex flex-col h-screen h-dvh w-screen bg-white dark:bg-slate-950 relative overflow-hidden font-sans">
+      <div className="fixed inset-0 w-full h-full bg-white dark:bg-slate-950 flex flex-col overflow-hidden font-sans">
         {/* Top Header (In-flow flex item - never covers content) */}
         <header className="w-full h-14 flex-shrink-0 z-40 bg-white dark:bg-slate-950 flex items-center justify-between px-3 xs:px-4 phab:px-5 relative">
           {/* Left: Sandwich Menu Icon */}

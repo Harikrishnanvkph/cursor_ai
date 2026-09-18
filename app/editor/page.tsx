@@ -1304,7 +1304,7 @@ function EditorPageContent() {
         </div>
         {/* Chart Preview */}
         <div className="flex-1 flex flex-col items-center justify-center p-2 pb-20 overflow-hidden">
-          <div className="w-full max-w-full flex-1 flex flex-col overflow-auto" style={{ maxHeight: 'calc(100vh - 120px)', height: '100%' }}>
+          <div className="w-full max-w-full flex-1 flex flex-col overflow-hidden" style={{ maxHeight: 'calc(100vh - 120px)', height: '100%' }}>
             {!storeHydrated ? (
               renderCenterAreaLoader()
             ) : hasJSON ? (

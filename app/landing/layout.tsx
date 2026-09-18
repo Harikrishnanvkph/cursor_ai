@@ -28,14 +28,18 @@ export default function LandingLayout({ children }: { children: React.ReactNode 
 
 function LandingLayoutInner({ children }: { children: React.ReactNode }) {
   const { leftSidebarOpen, setLeftSidebarOpen } = useSidebarContext()
-  const [isDesktop, setIsDesktop] = useState(true) // Optimistic: SSR assumes desktop for instant sidebar
+  const [isDesktop, setIsDesktop] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 1024
+    }
+    return false
+  })
 
   useEffect(() => {
-    const width = window.innerWidth
-    setIsDesktop(width > 1024)
-    const handleResize = () => setIsDesktop(window.innerWidth > 1024)
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
+    const check = () => setIsDesktop(window.innerWidth >= 1024)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
   }, [])
 
   // On tablet/mobile, the page handles its own layout (inline headers, bottom bars, etc.)

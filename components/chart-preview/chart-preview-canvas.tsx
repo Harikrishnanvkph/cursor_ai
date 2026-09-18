@@ -87,7 +87,7 @@ export const ChartPreviewCanvas = React.memo(({
                     width: '100%',
                     height: '100%',
                     top: 0, left: 0, right: 0, bottom: 0,
-                    touchAction: 'none'  // Prevent browser pinch-zoom on this area
+                    touchAction: panMode ? 'none' : 'manipulation'  // Prevent browser pinch-zoom on this area while allowing taps when panMode is off
                 }}
             >
                 {/* Background layer for dragging (only in pan mode) */}
@@ -180,7 +180,7 @@ export const ChartPreviewCanvas = React.memo(({
                 height: displayHeight,
                 margin: 'auto', // This centers it if the parent has flex
                 backgroundColor: 'transparent',
-                touchAction: 'none'  // Prevent browser pinch-zoom on this area
+                touchAction: panMode ? 'none' : 'manipulation'  // Prevent browser pinch-zoom on this area while allowing taps when panMode is off
             }}
         >
             {/* Background layer for dragging (only in pan mode) */}

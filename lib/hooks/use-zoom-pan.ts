@@ -25,6 +25,7 @@ export function useZoomPan() {
         // The live values synced from state
         currentZoom: 1,
         currentPanOffset: { x: 0, y: 0 },
+        panMode: false,
 
         // Captured snapshots at the moment of touchstart
         initialZoom: 1,
@@ -36,6 +37,11 @@ export function useZoomPan() {
         isPinching: false,
         isPanning: false,
     });
+
+    // Keep touchStateRef in sync with current zoom, panOffset, and panMode synchronously
+    touchStateRef.current.currentZoom = zoom;
+    touchStateRef.current.currentPanOffset = panOffset;
+    touchStateRef.current.panMode = panMode;
 
     const handleZoomIn = useCallback(() => {
         setZoom(prev => Math.min(prev + 0.1, 5));
@@ -103,9 +109,9 @@ export function useZoomPan() {
      * Attach pinch-to-zoom and single-finger pan touch handlers to a container element.
      * Call this inside a useEffect with the container ref.
      *
-     * - Two-finger pinch: zooms in/out
-     * - Two-finger drag: pans the canvas
-     * - Prevents the browser from zooming the entire page
+     * - Two-finger pinch: zooms in/out (always active)
+     * - Single-finger drag: pans the canvas ONLY when panMode is enabled (pan icon clicked)
+     * - When panMode is off: single-finger touch passes through naturally for chart interactions (tap slice, bar, tooltip, etc.)
      */
     const attachTouchHandlers = useCallback((container: HTMLElement | null) => {
         if (!container) return () => {};
@@ -121,15 +127,23 @@ export function useZoomPan() {
                 state.initialDistance = getTouchDistance(e.touches[0], e.touches[1]);
                 state.initialZoom = state.currentZoom;
             } else if (e.touches.length === 1) {
-                // Single-finger panning
-                e.preventDefault();
-                state.isPanning = true;
-                state.isPinching = false;
-                state.touchStartPos = {
-                    x: e.touches[0].clientX,
-                    y: e.touches[0].clientY,
-                };
-                state.initialPanOffset = { ...state.currentPanOffset };
+                if (state.panMode) {
+                    // Single-finger panning ONLY when panMode is explicitly active
+                    e.preventDefault();
+                    state.isPanning = true;
+                    state.isPinching = false;
+                    state.touchStartPos = {
+                        x: e.touches[0].clientX,
+                        y: e.touches[0].clientY,
+                    };
+                    state.initialPanOffset = { ...state.currentPanOffset };
+                    setIsDragging(true);
+                } else {
+                    // In normal mode: DO NOT preventDefault and DO NOT pan!
+                    // Allows clicks, taps, tooltips, and data selections to function smoothly
+                    state.isPanning = false;
+                    state.isPinching = false;
+                }
             }
         };
 
@@ -142,7 +156,7 @@ export function useZoomPan() {
                     const newZoom = Math.min(Math.max(state.initialZoom * scale, 0.1), 5);
                     setZoom(newZoom);
                 }
-            } else if (state.isPanning && e.touches.length === 1) {
+            } else if (state.isPanning && state.panMode && e.touches.length === 1) {
                 e.preventDefault();
                 const dx = e.touches[0].clientX - state.touchStartPos.x;
                 const dy = e.touches[0].clientY - state.touchStartPos.y;
@@ -159,10 +173,11 @@ export function useZoomPan() {
             }
             if (state.isPanning && e.touches.length === 0) {
                 state.isPanning = false;
+                setIsDragging(false);
             }
         };
 
-        // Use { passive: false } so we can call preventDefault() to block browser zoom
+        // Use { passive: false } so we can call preventDefault() when panning/pinching
         container.addEventListener('touchstart', handleTouchStart, { passive: false });
         container.addEventListener('touchmove', handleTouchMove, { passive: false });
         container.addEventListener('touchend', handleTouchEnd, { passive: false });
@@ -172,16 +187,7 @@ export function useZoomPan() {
             container.removeEventListener('touchmove', handleTouchMove);
             container.removeEventListener('touchend', handleTouchEnd);
         };
-    }, [setZoom, setPanOffset]);
-
-    // Keep touchStateRef in sync with current zoom and panOffset values
-    useEffect(() => {
-        touchStateRef.current.currentZoom = zoom;
-    }, [zoom]);
-
-    useEffect(() => {
-        touchStateRef.current.currentPanOffset = panOffset;
-    }, [panOffset]);
+    }, [setZoom, setPanOffset, setIsDragging]);
 
     return useMemo(() => ({
         zoom,

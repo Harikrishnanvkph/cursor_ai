@@ -97,7 +97,7 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
     }
 
     setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })
     }, 100)
   }, [input, isProcessing, continueConversation, isChatDisabled, setInput, textareaRef, user, aiCreditsRemaining, aiCreditsLimit])
 
@@ -144,9 +144,13 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
     setInput("")
   }, [startNewConversation])
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages arrive (avoid scrolling on initial mount)
+  const prevMessagesCountRef = useRef(messages.length)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    if (messages.length > 1 && messages.length > prevMessagesCountRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+    }
+    prevMessagesCountRef.current = messages.length
   }, [messages])
 
   return (

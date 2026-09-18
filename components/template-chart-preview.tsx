@@ -9,6 +9,7 @@ import { useChartStore } from "@/lib/chart-store"
 import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { useChatStore } from "@/lib/chat-store"
 import { useHistoryStore } from "@/lib/history-store"
+import { useZoomPan } from "@/lib/hooks/use-zoom-pan"
 
 import { Button } from "@/components/ui/button"
 import { UndoRedoButtons } from "@/components/ui/undo-redo-buttons"
@@ -186,13 +187,30 @@ export function TemplateChartPreview({
   const rightSidebarPanelRef = useRef<HTMLDivElement>(null)
   const exportCanvasRef = useRef<HTMLDivElement>(null)
 
-  const [localZoom, setLocalZoom] = useState(1)
-  const [localIsDragging, setLocalIsDragging] = useState(false)
-  const [localDragStart, setLocalDragStart] = useState({ x: 0, y: 0 })
-  const [localPanOffset, setLocalPanOffset] = useState({ x: 0, y: 0 })
   const [showGuides, setShowGuides] = useState(false)
   const effectiveShowGuides = !readOnly && showGuides
-  const [localPanMode, setLocalPanMode] = useState(false)
+
+  // Integrate external zoomPan if available, or fall back to internal hook
+  const internalZoomPan = useZoomPan()
+  const effectiveZoomPan = zoomPan || internalZoomPan
+
+  const zoom = effectiveZoomPan.zoom
+  const setZoom = effectiveZoomPan.setZoom
+  const isDragging = effectiveZoomPan.isDragging
+  const setIsDragging = effectiveZoomPan.setIsDragging
+  const dragStart = effectiveZoomPan.dragStart
+  const setDragStart = effectiveZoomPan.setDragStart
+  const panOffset = effectiveZoomPan.panOffset
+  const setPanOffset = effectiveZoomPan.setPanOffset
+  const panMode = effectiveZoomPan.panMode
+  const setPanMode = effectiveZoomPan.setPanMode
+
+  // Attach pinch-to-zoom and touch handlers for mobile
+  useEffect(() => {
+    if (!effectiveZoomPan.attachTouchHandlers) return
+    const el = containerRef.current
+    return effectiveZoomPan.attachTouchHandlers(el)
+  }, [effectiveZoomPan.attachTouchHandlers])
 
   // Stable container size tracking to prevent zoom/layout squeezing loops
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
@@ -216,18 +234,6 @@ export function TemplateChartPreview({
     observer.observe(el)
     return () => observer.disconnect()
   }, [])
-
-  // Integrate external zoomPan if available
-  const zoom = zoomPan ? zoomPan.zoom : localZoom
-  const setZoom = zoomPan ? zoomPan.setZoom : setLocalZoom
-  const isDragging = zoomPan ? zoomPan.isDragging : localIsDragging
-  const setIsDragging = zoomPan ? zoomPan.setIsDragging : setLocalIsDragging
-  const dragStart = zoomPan ? zoomPan.dragStart : localDragStart
-  const setDragStart = zoomPan ? zoomPan.setDragStart : setLocalDragStart
-  const panOffset = zoomPan ? zoomPan.panOffset : localPanOffset
-  const setPanOffset = zoomPan ? zoomPan.setPanOffset : setLocalPanOffset
-  const panMode = zoomPan ? zoomPan.panMode : localPanMode
-  const setPanMode = zoomPan ? zoomPan.setPanMode : setLocalPanMode
 
   // Fullscreen state
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -464,45 +470,14 @@ export function TemplateChartPreview({
 
 
   // Handle zoom controls
-  const handleZoomIn = zoomPan ? zoomPan.handleZoomIn : () => setZoom(prev => Math.min(prev + 0.1, 3))
-  const handleZoomOut = zoomPan ? zoomPan.handleZoomOut : () => setZoom(prev => Math.max(prev - 0.1, 0.1))
-  const handleResetZoom = zoomPan ? zoomPan.handleResetZoom : () => {
-    setZoom(1)
-    setPanOffset({ x: 0, y: 0 })
-  }
+  const handleZoomIn = effectiveZoomPan.handleZoomIn
+  const handleZoomOut = effectiveZoomPan.handleZoomOut
+  const handleResetZoom = effectiveZoomPan.handleResetZoom
 
   // Handle mouse/touch events for panning
-  const handleMouseDown = zoomPan ? zoomPan.handleMouseDown : (e: React.MouseEvent) => {
-    // Only allow panning when pan mode is active
-    if (!panMode) {
-      return
-    }
-
-    const target = e.target as HTMLElement
-
-    // When pan mode is active, allow dragging from anywhere including canvas
-    setIsDragging(true)
-    // Store the initial mouse position and current pan offset
-    setDragStart({
-      x: e.clientX - panOffset.x,
-      y: e.clientY - panOffset.y
-    })
-    e.preventDefault() // Prevent text selection while dragging
-    e.stopPropagation() // Prevent event bubbling
-  }
-
-  const handleMouseMove = zoomPan ? zoomPan.handleMouseMove : (e: React.MouseEvent) => {
-    if (isDragging) {
-      setPanOffset({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y
-      })
-    }
-  }
-
-  const handleMouseUp = zoomPan ? zoomPan.handleMouseUp : () => {
-    setIsDragging(false)
-  }
+  const handleMouseDown = effectiveZoomPan.handleMouseDown
+  const handleMouseMove = effectiveZoomPan.handleMouseMove
+  const handleMouseUp = effectiveZoomPan.handleMouseUp
 
   // Handle text area selection
   const handleTextAreaClick = (textAreaId: string) => {
@@ -1628,7 +1603,7 @@ export function TemplateChartPreview({
         <div
           ref={containerRef}
           className={`relative w-full h-full ${
-            readOnly ? 'overflow-hidden border-none shadow-none' : 'overflow-auto border rounded-lg shadow-sm'
+            readOnly ? 'overflow-hidden border-none shadow-none' : (isMobile || panMode ? 'overflow-hidden' : 'overflow-auto') + ' border rounded-lg shadow-sm'
           } flex items-center justify-center transition-colors${isFullscreen ? ' fixed inset-4 z-50 m-0' : ''}`}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
@@ -1636,6 +1611,7 @@ export function TemplateChartPreview({
           onMouseLeave={handleMouseUp}
           style={{
             cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'default',
+            touchAction: panMode ? 'none' : 'manipulation',
             backgroundColor: canvasBgType === 'transparent' ? 'transparent' : canvasBgColor,
             backgroundImage: canvasBgType === 'transparent' ? `linear-gradient(45deg, #f1f5f9 25%, transparent 25%), linear-gradient(-45deg, #f1f5f9 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f1f5f9 75%), linear-gradient(-45deg, transparent 75%, #f1f5f9 75%)` : undefined,
             backgroundSize: canvasBgType === 'transparent' ? '20px 20px' : undefined,

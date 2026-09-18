@@ -337,6 +337,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
           activeTab={activeTab}
           onTabChange={onTabChange}
           onNewChart={onNewChart}
+          zoomPan={zoomPan}
         />
         <ChartTransitionDialog
           open={transitions.scatterBubbleSetup.active && transitions.scatterBubbleSetup.targetType !== null && transitions.scatterBubbleSetup.direction !== null && editorMode === 'template'}
@@ -517,11 +518,11 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
         <CardContent className="p-0 flex-1 flex flex-col h-full w-full relative">
           <div
             ref={chartContainerRef}
-            className="relative w-full flex-1 overflow-auto flex items-center justify-center"
+            className={`relative w-full flex-1 ${isMobile || zoomPan.panMode ? 'overflow-hidden' : 'overflow-auto'} flex items-center justify-center`}
             style={{
               scrollbarWidth: 'thin',
               scrollbarColor: '#cbd5e1 #f1f5f9',
-              touchAction: 'none',  // Prevent browser pinch-zoom on this area
+              touchAction: zoomPan.panMode ? 'none' : 'manipulation',  // Prevent gesture conflict when panMode is on, allow interaction when panMode is off
               minHeight: '100%',
               height: '100%',
               backgroundColor: canvasBgType === 'transparent' ? 'transparent' : canvasBgColor,
