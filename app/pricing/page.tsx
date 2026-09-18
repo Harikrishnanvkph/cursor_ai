@@ -24,9 +24,13 @@ import {
   Clock,
   ChevronUp
 } from "lucide-react"
+import { useGeoLocation } from "@/hooks/useGeoLocation"
+import { RegionSelector } from "@/components/pricing/RegionSelector"
+import { initiateCheckout } from "@/lib/payment-client"
 
 export default function PricingPage() {
-  const { user, upgradeToPro } = useAuth()
+  const { user } = useAuth()
+  const { region, isIndia, gateway, currencySymbol, setRegion } = useGeoLocation()
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">("monthly")
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null)
   const [isUpgrading, setIsUpgrading] = useState(false)
@@ -46,8 +50,18 @@ export default function PricingPage() {
 
     setIsUpgrading(true)
     try {
-      await upgradeToPro()
-    } finally {
+      await initiateCheckout({
+        planTier: "pro",
+        billingCycle: billingPeriod,
+        regionOverride: region,
+        user,
+        onError: (err) => {
+          console.error("Payment error:", err)
+          setIsUpgrading(false)
+        },
+      })
+    } catch (err) {
+      console.error("Checkout initiation error:", err)
       setIsUpgrading(false)
     }
   }
@@ -86,8 +100,9 @@ export default function PricingPage() {
       name: "Pro",
       description: "Best for data analysts, professional designers, and creators who need higher capacity.",
       price: {
-        monthly: 5,
-        yearly: 4,
+        monthly: isIndia ? 399 : 5,
+        yearly: isIndia ? 332 : 4,
+        annualTotal: isIndia ? 3990 : 48,
       },
       features: [
         "Complete Access to Advanced Editor page/tool",
@@ -219,6 +234,14 @@ export default function PricingPage() {
               </Badge>
             </span>
           </div>
+
+          {/* Region / Payment Gateway Selector */}
+          <div className="pt-4 flex justify-center">
+            <RegionSelector
+              region={region}
+              onSelectRegion={setRegion}
+            />
+          </div>
         </div>
       </section>
 
@@ -228,10 +251,10 @@ export default function PricingPage() {
           <div className="grid lg:grid-cols-3 gap-8 items-stretch">
             {plans.map((plan, index) => {
               const displayPrice = typeof plan.price[billingPeriod] === "number" 
-                ? `$${plan.price[billingPeriod]}` 
+                ? (plan.price[billingPeriod] === 0 ? "Free" : `${currencySymbol}${plan.price[billingPeriod]}`) 
                 : plan.price[billingPeriod];
                 
-              const annualPretext = billingPeriod === "yearly" && typeof plan.price.yearly === "number";
+              const annualPretext = billingPeriod === "yearly" && typeof plan.price.yearly === "number" && plan.price.yearly > 0;
 
               return (
                 <div
@@ -275,7 +298,7 @@ export default function PricingPage() {
                         <span className="text-5xl font-extrabold tracking-tight">
                           {displayPrice}
                         </span>
-                        {typeof plan.price[billingPeriod] === "number" && (
+                        {typeof plan.price[billingPeriod] === "number" && plan.price[billingPeriod] > 0 && (
                           <span className="ml-1.5 text-lg font-medium text-slate-500 dark:text-slate-400">
                             /month
                           </span>
@@ -284,12 +307,18 @@ export default function PricingPage() {
                       
                       {annualPretext ? (
                         <p className="text-xs text-indigo-600 dark:text-indigo-400 font-medium mt-2">
-                          Billed annually (${Number(plan.price.yearly) * 12}/yr)
+                          Billed annually ({currencySymbol}{(plan.price as any).annualTotal || Number(plan.price.yearly) * 12}/yr)
                         </p>
                       ) : (
                         <p className="text-xs text-transparent select-none mt-2">
                           placeholder
                         </p>
+                      )}
+
+                      {plan.id === "pro" && (
+                        <div className="mt-2.5 text-[11px] font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                          <span>{isIndia ? "🇮🇳 Razorpay (UPI, Netbanking & Cards)" : "🌐 Dodo Payments (Global Cards & Apple Pay)"}</span>
+                        </div>
                       )}
                     </div>
 

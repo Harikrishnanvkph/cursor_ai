@@ -122,6 +122,20 @@ function BoardPageContent() {
     }
   }, [isSearchExpanded])
 
+  // Lock body scroll and handle Escape key for mobile menu
+  useEffect(() => {
+    if (!isMobileMenuOpen) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsMobileMenuOpen(false)
+    }
+    document.body.style.overflow = "hidden"
+    window.addEventListener("keydown", handleKeyDown)
+    return () => {
+      document.body.style.overflow = ""
+      window.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [isMobileMenuOpen])
+
   // Load conversations from backend on mount
   useEffect(() => {
     if (user) {
@@ -290,7 +304,7 @@ function BoardPageContent() {
 
       {/* Modern Header */}
       <header className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
-        <div className="max-w-[1600px] mx-auto px-2.5 sm:px-6 lg:px-8">
+        <div className="max-w-[1600px] mx-auto px-2 xs:px-2.5 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14">
             {/* Logo and Title */}
             <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
@@ -298,14 +312,14 @@ function BoardPageContent() {
               <button
                 type="button"
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="show-below-450 p-1 -ml-1 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors items-center justify-center cursor-pointer"
+                className="flex phab:hidden p-1 -ml-1 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg items-center justify-center cursor-pointer"
                 aria-label="Open Navigation Menu"
               >
                 <Menu className="h-5 w-5" />
               </button>
 
               <Image src="/logo.png" alt="Logo" width={26} height={26} className="rounded-lg shrink-0" />
-              <h1 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 tracking-tight xs450:hidden hide-below-450">
+              <h1 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 tracking-tight hidden phab:block">
                 Dashboard
               </h1>
             </div>
@@ -313,7 +327,7 @@ function BoardPageContent() {
             {/* Actions */}
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               {/* Single dropdown for My Charts vs My Images (hidden below 450px, available in mobile sidebar) */}
-              <div className="xs450:hidden hide-below-450">
+              <div className="hidden phab:block">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -365,7 +379,7 @@ function BoardPageContent() {
               </div>
 
               {/* Mobile (451px to 639px): Unified Create Dropdown (hidden below 450px, available in mobile sidebar) */}
-              <div className="xs450:hidden hide-below-450 sm:hidden">
+              <div className="hidden phab:flex sm:hidden">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button 
@@ -430,7 +444,7 @@ function BoardPageContent() {
                 </Link>
               </div>
 
-              <div className="w-[1px] h-4 sm:h-5 bg-slate-200 dark:bg-slate-700 mx-0.5 sm:mx-1 shrink-0 xs450:hidden hide-below-450"></div>
+              <div className="w-[1px] h-4 sm:h-5 bg-slate-200 dark:bg-slate-700 mx-0.5 sm:mx-1 shrink-0 hidden phab:block"></div>
               <div className="shrink-0">
                 <SimpleProfileDropdown size="sm" />
               </div>
@@ -439,20 +453,44 @@ function BoardPageContent() {
         </div>
       </header>
 
-      {/* Mobile Navigation Sidebar Drawer (< 450px, Gmail mobile style) */}
-      <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-        <SheetContent side="left" className="w-[85vw] max-w-[360px] p-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col z-50">
-          {/* Header: App icon + aichartor.com */}
-          <div className="p-4 pr-12 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+      {/* Mobile Navigation Sidebar Drawer (< 450px, Instant GPU-Accelerated) */}
+      <div
+        className={`fixed inset-0 z-50 phab:hidden transition-opacity duration-75 ${
+          isMobileMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+      >
+        {/* Backdrop overlay */}
+        <div
+          onClick={() => setIsMobileMenuOpen(false)}
+          className="absolute inset-0 bg-black/60"
+          aria-hidden="true"
+        />
+
+        {/* Sidebar Drawer Container */}
+        <aside
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation Menu"
+          className={`absolute inset-y-0 left-0 w-[85vw] max-w-[360px] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col shadow-2xl transform-gpu transition-transform duration-100 ease-out ${
+            isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          {/* Header: App icon + aichartor.com + Close Button */}
+          <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <Image src="/logo.png" alt="Logo" width={28} height={28} className="rounded-lg shrink-0" />
-              <SheetTitle className="text-base font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+              <span className="text-base font-bold text-slate-900 dark:text-slate-100 tracking-tight">
                 aichartor.com
-              </SheetTitle>
+              </span>
             </div>
-            <SheetDescription className="sr-only">
-              Navigation menu and quick actions
-            </SheetDescription>
+            <button
+              type="button"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              aria-label="Close Navigation Menu"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
 
           <div className="flex-1 overflow-y-auto py-3 px-3 space-y-4">
@@ -468,7 +506,7 @@ function BoardPageContent() {
                     setViewTab("charts")
                     setIsMobileMenuOpen(false)
                   }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold cursor-pointer ${
                     viewTab === "charts"
                       ? "bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300 font-bold"
                       : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
@@ -487,7 +525,7 @@ function BoardPageContent() {
                     setViewTab("images")
                     setIsMobileMenuOpen(false)
                   }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold cursor-pointer ${
                     viewTab === "images"
                       ? "bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300 font-bold"
                       : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
@@ -513,9 +551,9 @@ function BoardPageContent() {
                     router.push("/landing")
                     setIsMobileMenuOpen(false)
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-violet-50 dark:hover:bg-violet-950/30 hover:text-violet-700 dark:hover:text-violet-300 transition-all cursor-pointer group"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-violet-50 dark:hover:bg-violet-950/30 hover:text-violet-700 dark:hover:text-violet-300 cursor-pointer group"
                 >
-                  <Sparkles className="h-4 w-4 text-violet-500 dark:text-violet-400 shrink-0 group-hover:scale-110 transition-transform" />
+                  <Sparkles className="h-4 w-4 text-violet-500 dark:text-violet-400 shrink-0" />
                   <span className="flex-1 text-left">AI Chart</span>
                 </button>
 
@@ -525,16 +563,16 @@ function BoardPageContent() {
                     router.push("/editor")
                     setIsMobileMenuOpen(false)
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-violet-50 dark:hover:bg-violet-950/30 hover:text-violet-700 dark:hover:text-violet-300 transition-all cursor-pointer group"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-violet-50 dark:hover:bg-violet-950/30 hover:text-violet-700 dark:hover:text-violet-300 cursor-pointer group"
                 >
-                  <Edit3 className="h-4 w-4 text-indigo-500 dark:text-indigo-400 shrink-0 group-hover:scale-110 transition-transform" />
+                  <Edit3 className="h-4 w-4 text-indigo-500 dark:text-indigo-400 shrink-0" />
                   <span className="flex-1 text-left">Advanced Editor</span>
                 </button>
               </div>
             </div>
           </div>
-        </SheetContent>
-      </Sheet>
+        </aside>
+      </div>
 
       {/* Secondary Sub-header (Tabs) */}
       <div className={viewTab === "charts" ? "bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800" : "hidden"}>
@@ -765,7 +803,7 @@ function BoardPageContent() {
                     <button
                       type="button"
                       onClick={() => setIsFilterSheetOpen(true)}
-                      className={`show-below-450 h-9 px-2.5 rounded-lg border text-xs font-semibold items-center justify-center gap-1.5 shrink-0 transition-all cursor-pointer relative shadow-none ${
+                      className={`flex phab:hidden h-9 px-2.5 rounded-lg border text-xs font-semibold items-center justify-center gap-1.5 shrink-0 transition-all cursor-pointer relative shadow-none ${
                         activeFiltersCount > 0
                           ? "bg-violet-50 dark:bg-violet-950/50 border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300"
                           : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
@@ -785,7 +823,7 @@ function BoardPageContent() {
                   </div>
 
                   {/* Filter Controls: Full row on desktop/tablet, hidden <= 450px */}
-                  <div className="flex items-center justify-between sm:justify-start gap-1.5 sm:gap-2 shrink-0 xs450:hidden hide-below-450">
+                  <div className="flex items-center justify-between sm:justify-start gap-1.5 sm:gap-2 shrink-0 hidden phab:flex">
                     {/* Type Filter */}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

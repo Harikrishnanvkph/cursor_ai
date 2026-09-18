@@ -7,6 +7,9 @@ import { useTheme } from "next-themes"
 import { SiteHeader } from "@/components/site-header"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { Sparkles, Sliders, LayoutDashboard, ArrowRight, Layers, PanelLeft, Share2, Settings, Palette, AlertTriangle, CheckCircle2, RefreshCw, Maximize2, Database, Layout, Grid, MessageSquare, MousePointer2, Pencil, Minus, ArrowLeftRight, Square, Circle, Triangle, Star, Hexagon, Heart, Cloud, Plus, Type, Lock, Copy, Trash2, MoreHorizontal, BarChart2, PieChart, FolderOpen, Save, TrendingUp, ChevronLeft, ChevronRight, AlignLeft, CircleDot, Target, Box, Filter, Gauge, LayoutGrid, Activity, Download, Check, Zap, ChevronDown } from "lucide-react"
+import { useGeoLocation } from "@/hooks/useGeoLocation"
+import { RegionSelector } from "@/components/pricing/RegionSelector"
+import { initiateCheckout } from "@/lib/payment-client"
 
 // Gemini-style four-pointed star icon
 function GeminiIcon({ className }: { className?: string }) {
@@ -820,7 +823,8 @@ function CloudExportShareCard() {
 
 // ── PRICING SECTION ─────────────────────────────────────────
 function PricingSection() {
-  const { user, upgradeToPro } = useAuth()
+  const { user } = useAuth()
+  const { region, isIndia, currencySymbol, setRegion } = useGeoLocation()
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("yearly")
   const [isUpgrading, setIsUpgrading] = useState(false)
 
@@ -835,8 +839,18 @@ function PricingSection() {
 
     setIsUpgrading(true)
     try {
-      await upgradeToPro()
-    } finally {
+      await initiateCheckout({
+        planTier: "pro",
+        billingCycle,
+        regionOverride: region,
+        user,
+        onError: (err) => {
+          console.error("Payment error:", err)
+          setIsUpgrading(false)
+        },
+      })
+    } catch (err) {
+      console.error("Checkout initiation error:", err)
       setIsUpgrading(false)
     }
   }
@@ -865,8 +879,8 @@ function PricingSection() {
       name: "Pro",
       badge: "Most Popular",
       description: "Supercharged AI generation, 3x cloud saves, and priority speed for pros and creators.",
-      monthlyPrice: 5,
-      yearlyPrice: 4,
+      monthlyPrice: isIndia ? 399 : 5,
+      yearlyPrice: isIndia ? 332 : 4,
       features: [
         "Complete Access to Advanced Editor page/tool",
         "50 AI credits per month",
@@ -916,6 +930,15 @@ function PricingSection() {
             </span>
           </button>
         </div>
+
+        {/* Region Switcher */}
+        <div className="mt-4 flex justify-center">
+          <RegionSelector
+            variant="compact"
+            region={region}
+            onSelectRegion={setRegion}
+          />
+        </div>
       </div>
 
       {/* Pricing Cards Grid (Max-4xl centered 2-card layout) */}
@@ -951,11 +974,17 @@ function PricingSection() {
                 </p>
 
                 <div className="mt-6 flex items-baseline gap-1">
-                  <span className="text-4xl font-extrabold tracking-tight">${price}</span>
+                  <span className="text-4xl font-extrabold tracking-tight">{currencySymbol}{price}</span>
                   <span className={`text-xs font-medium ${plan.isPopular ? "text-slate-400" : "text-slate-500 dark:text-slate-400"}`}>
                     / month {billingCycle === "yearly" && price > 0 ? "(billed annually)" : ""}
                   </span>
                 </div>
+
+                {plan.id === "pro" && (
+                  <div className="mt-2 text-[11px] font-medium text-slate-400 flex items-center gap-1.5">
+                    <span>{isIndia ? "🇮🇳 Razorpay (UPI & Cards)" : "🌐 Dodo Payments (Global Cards)"}</span>
+                  </div>
+                )}
 
                 <ul className="mt-8 space-y-3">
                   {plan.features.map((feat, idx) => (

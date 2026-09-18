@@ -3,7 +3,7 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react"
 
 import { useRouter } from "next/navigation"
-import { Send, ArrowUp, BarChart2, Plus, SquarePen, Pencil, PencilRuler, RotateCcw, Edit3, MessageSquare, Sparkles, ArrowRight, X, ChevronLeft, ChevronRight, ChevronDown, PanelLeft, PanelRight, Settings, Brain, Bot, Info, LayoutDashboard, Layers, Menu, MoreVertical, Check, Palette, Cloud, Trash2, Download, FileImage, ImageIcon, FileCode, FileText, Maximize2, MessageCircleDashed, ChartColumnBig, Eye, Loader2, History, ToolCase, Share2, Copy, ExternalLink } from "lucide-react"
+import { Send, ArrowUp, BarChart2, Plus, SquarePen, Pencil, PencilRuler, RotateCcw, Edit3, MessageSquare, Sparkles, ArrowRight, X, ChevronLeft, ChevronRight, ChevronDown, PanelLeft, PanelRight, Settings, Brain, Bot, Info, LayoutDashboard, Layers, Menu, MoreVertical, Check, Palette, Cloud, Trash2, Download, FileImage, ImageIcon, FileCode, FileText, Maximize2, MessageCircleDashed, ChartColumnBig, Eye, Loader2, History, ToolCase, Share2, Copy, ExternalLink, PieChart, LineChart } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { STANDARD_CHART_TYPES, THREE_D_CHART_TYPES } from "@/lib/chart-types"
@@ -37,7 +37,7 @@ import { FormatGallery } from "@/components/gallery/FormatGallery"
 import { useChartStyleStore } from "@/lib/stores/chart-style-store"
 import { ChartStyleGalleryPage } from "@/components/chart-style-gallery/ChartStyleGalleryPage"
 import { useSidebarContext } from "@/components/landing/sidebar-context"
-import { useIsMobile576, useIsTablet } from "@/lib/hooks/use-screen-dimensions"
+import { useIsMobile, useIsTablet } from "@/lib/hooks/use-screen-dimensions"
 import { PromptTemplate, chartTemplate, ChatWindow } from "@/components/landing"
 import { ConfigSidebar } from "@/components/config-sidebar"
 
@@ -233,7 +233,7 @@ function LandingPageContent() {
 
   // Use shared SSR-safe screen dimension hooks (initialized with defaults, updated in useEffect)
   const isTablet = useIsTablet()
-  const isMobile = useIsMobile576()
+  const isMobile = useIsMobile()
 
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
 
@@ -273,9 +273,19 @@ function LandingPageContent() {
   // Mobile-specific states (reuse tablet sidebar logic but different positioning)
   const [mobileRightSidebarOpen, setMobileRightSidebarOpen] = useState(false)
   const [mobileRightSidebarContent, setMobileRightSidebarContent] = useState<'messages' | 'tools' | 'history' | null>(null)
-  const [mobileActiveTab, setMobileActiveTab] = useState<'chart' | 'chat' | 'design' | 'history'>('chart')
+  const [mobileActiveTab, setMobileActiveTab] = useState<'chart' | 'chat' | 'design' | 'history'>('chat')
   const [sandwichOpen, setSandwichOpen] = useState(false)
-  const [isUnder415, setIsUnder415] = useState(false)
+  const [isActionSheetOpen, setIsActionSheetOpen] = useState(false)
+
+  const userGreetingName = useMemo(() => {
+    if (!user) return ""
+    return (
+      (user.user_metadata?.full_name as string) ||
+      (user.user_metadata?.name as string) ||
+      user.email?.split("@")[0] ||
+      ""
+    )
+  }, [user])
 
   const [showSaveChartDialog, setShowSaveChartDialog] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -398,15 +408,6 @@ function LandingPageContent() {
     };
   }, []);
 
-  useEffect(() => {
-    const handleResize = () => {
-      setIsUnder415(window.innerWidth <= 415)
-    }
-    handleResize()
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
-
   const handleSend = useCallback(async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     if (!input.trim() || isProcessing || isChatDisabled) return
@@ -469,46 +470,32 @@ function LandingPageContent() {
   }, [sidebarContext])
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value)
+    const val = e.target.value
+    setInput(val)
 
-    // Optimized height update with debouncing
-    if (textareaRef.current) {
-      // Clear any existing timeout
-      if (textareaRef.current.dataset.resizeTimeout) {
-        clearTimeout(Number(textareaRef.current.dataset.resizeTimeout))
-      }
-
-      const updateHeight = () => {
-        if (textareaRef.current) {
-          if (e.target.value === "") {
-            textareaRef.current.style.height = "36px"
-            textareaRef.current.style.overflowY = "hidden"
-          } else {
-            textareaRef.current.style.height = "36px"
-            const maxHeight = 100
-            textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`
-            textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > maxHeight ? "auto" : "hidden"
-          }
-        }
-      }
-
-      // Debounce the height update to reduce performance impact
-      const timeoutId = setTimeout(updateHeight, 16) // ~60fps
-      textareaRef.current.dataset.resizeTimeout = timeoutId.toString()
+    // Smooth synchronous height update without async timers to prevent jumping
+    const el = e.target
+    if (!val) {
+      el.style.height = "36px"
+      el.style.overflowY = "hidden"
+    } else {
+      el.style.height = "auto"
+      const nextHeight = Math.min(Math.max(el.scrollHeight, 36), 110)
+      el.style.height = `${nextHeight}px`
+      el.style.overflowY = el.scrollHeight > 110 ? "auto" : "hidden"
     }
   }, [])
 
   // Handle paste events specifically to ensure proper height update
   const handlePaste = useCallback(() => {
-    // Single timeout for paste operations to reduce performance impact
-    setTimeout(() => {
+    requestAnimationFrame(() => {
       if (textareaRef.current) {
-        textareaRef.current.style.height = "36px"
-        const maxHeight = 80
-        textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`
-        textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > maxHeight ? "auto" : "hidden"
+        textareaRef.current.style.height = "auto"
+        const nextHeight = Math.min(Math.max(textareaRef.current.scrollHeight, 36), 110)
+        textareaRef.current.style.height = `${nextHeight}px`
+        textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > 110 ? "auto" : "hidden"
       }
-    }, 10)
+    })
   }, [])
 
   const handleNewConversation = useCallback(() => {
@@ -1019,64 +1006,75 @@ function LandingPageContent() {
 
   if (isMobile) {
     return (
-      <div className="flex flex-col h-screen w-screen bg-slate-50 dark:bg-slate-950 relative overflow-hidden font-sans">
-        <AnimatedBackground />
-
-        {/* Fixed Header */}
-        <header className="fixed top-0 left-0 right-0 z-40 h-12 xs:h-14 bg-white/85 dark:bg-slate-900/85 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 shadow-xs flex items-center justify-between px-3.5 xs:px-4">
-          {/* Left: Sandwich Menu Icon & Brand Logo */}
-          <div className="flex items-center gap-2 xs:gap-3 min-w-0">
+      <div className="flex flex-col h-screen w-screen bg-white dark:bg-slate-950 relative overflow-hidden font-sans">
+        {/* Fixed Header (Gemini / ChatGPT Style - borderless white) */}
+        <header className="fixed top-0 left-0 right-0 z-40 h-14 bg-white dark:bg-slate-950 flex items-center justify-between px-3 xs:px-4 phab:px-5">
+          {/* Left: Sandwich Menu Icon */}
+          <div className="flex items-center gap-1.5 xs:gap-2 min-w-0">
             <button 
               onClick={() => setSandwichOpen(true)}
-              className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all active:scale-90 flex-shrink-0"
+              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors flex-shrink-0 text-slate-700 dark:text-slate-300 cursor-pointer"
               title="Open Menu"
             >
-              <Menu className="w-5.5 h-5.5 text-slate-700 dark:text-slate-300" />
+              <Menu className="w-5 h-5" />
             </button>
-            <span className="text-slate-800 dark:text-slate-100 font-bold text-base xs:text-lg tracking-tight select-none">
-              Chartography<span className="text-indigo-600 dark:text-indigo-400">.in</span>
-            </span>
           </div>
 
-          {/* Right: Ellipsis Menu Icon with legacied options */}
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            {chartData?.datasets?.length > 0 && hasJSON && (
-              <>
-                {mobileActiveTab === 'chart' ? (
-                  <button
-                    onClick={() => setMobileActiveTab('chat')}
-                    className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all active:scale-90 flex-shrink-0"
-                    title="AI Copilot Chat"
-                  >
-                    <MessageCircleDashed className="w-5.5 h-5.5 text-slate-700 dark:text-slate-300" />
-                  </button>
-                ) : mobileActiveTab === 'chat' ? (
-                  <button
-                    onClick={() => setMobileActiveTab('chart')}
-                    className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all active:scale-90 flex-shrink-0"
-                    title="Active Preview"
-                  >
-                    <ChartColumnBig className="w-5.5 h-5.5 text-slate-700 dark:text-slate-300" />
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => setMobileActiveTab('chart')}
-                    className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all active:scale-90 flex-shrink-0"
-                    title="Active Preview"
-                  >
-                    <ChartColumnBig className="w-5.5 h-5.5 text-slate-700 dark:text-slate-300" />
-                  </button>
-                )}
+          {/* Center: Chart / Chat Segmented Pill Switcher (Bigger, Centered) */}
+          {chartData?.datasets?.length > 0 && hasJSON && (
+            <div className="absolute left-1/2 -translate-x-1/2 flex items-center p-1 bg-slate-100 dark:bg-slate-800/90 rounded-full border border-slate-200/80 dark:border-slate-700/80 shadow-xs z-10">
+              <button
+                onClick={() => setMobileActiveTab('chart')}
+                className={`px-3 phab:px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  mobileActiveTab === 'chart'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+                title="Chart Preview"
+              >
+                <ChartColumnBig className="w-4 h-4" />
+                <span className="hidden phab:inline">Chart</span>
+              </button>
+              <button
+                onClick={() => setMobileActiveTab('chat')}
+                className={`px-3 phab:px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  mobileActiveTab === 'chat'
+                    ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+                title="AI Chat"
+              >
+                <MessageCircleDashed className="w-4 h-4" />
+                <span className="hidden phab:inline">Chat</span>
+              </button>
+            </div>
+          )}
 
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button 
-                      className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all active:scale-90"
-                      title="More Options"
-                    >
-                      <MoreVertical className="w-5.5 h-5.5 text-slate-700 dark:text-slate-300" />
-                    </button>
-                  </DropdownMenuTrigger>
+          {/* Right: New Chat + More Options */}
+          <div className="flex items-center gap-1 xs:gap-1.5 flex-shrink-0">
+
+            {/* New Chat Button (Pencil Icon) */}
+            <button 
+              onClick={() => {
+                handleNewConversation()
+                setMobileActiveTab('chat')
+              }}
+              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-700 dark:text-slate-300 transition-colors flex-shrink-0 cursor-pointer"
+              title="New Chat"
+            >
+              <SquarePen className="w-5 h-5" />
+            </button>
+
+            {/* More Options Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button 
+                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-700 dark:text-slate-300 transition-colors flex-shrink-0 cursor-pointer"
+                  title="More Options"
+                >
+                  <MoreVertical className="w-5 h-5" />
+                </button>
+              </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-[270px] p-1.5 z-[100] bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-xl space-y-1">
                   {/* File Name & Metadata Section */}
                   <div className="px-2.5 py-2 border-b border-slate-100 dark:border-slate-800/60 mb-1 space-y-0.5" onClick={(e) => e.stopPropagation()}>
@@ -1407,15 +1405,13 @@ function LandingPageContent() {
                     <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
                     <span>Clear Workspace</span>
                   </DropdownMenuItem>
-                 </DropdownMenuContent>
-               </DropdownMenu>
-              </>
-            )}
+                </DropdownMenuContent>
+              </DropdownMenu>
           </div>
         </header>
 
         {/* Main Content Area - Positioned precisely between fixed header and bottom of screen */}
-        <main className="flex-1 mt-12 xs:mt-14 mb-0 pb-safe relative flex flex-col overflow-hidden w-full h-full bg-transparent">
+        <main className="flex-1 mt-14 mb-0 relative flex flex-col overflow-hidden w-full h-full bg-transparent">
           {/* Tab 1: Chart / Prompt */}
           {mobileActiveTab === 'chart' && (
             <div className="flex-1 p-3 flex flex-col relative w-full h-full">
@@ -1448,133 +1444,115 @@ function LandingPageContent() {
             </div>
           )}
 
-          {/* Tab 2: AI Chat with Sticky Input */}
+          {/* Tab 2: AI Chat */}
           {mobileActiveTab === 'chat' && (
             <div className="flex-1 flex flex-col h-full overflow-hidden w-full relative">
-
-
-              {/* Sticky Top Form */}
-              <form
-                onSubmit={handleSend}
-                className="p-3 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md flex flex-col gap-2 flex-shrink-0 shadow-sm"
-              >
-                <div className="flex items-center justify-between px-1">
-                  <div className="flex items-center gap-1.5">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button type="button" className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors flex items-center gap-1.5 py-1 px-2.5 bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-xs">
-                          <Bot className="w-3.5 h-3.5 text-indigo-500" />
-                          <span>
-                            {selectedModel === 'gemini-search'
-                              ? 'Gemini Realtime'
-                              : selectedModel === 'deepseek-search'
-                              ? 'Deepseek Realtime'
-                              : 'DeepSeek Chat'}
-                          </span>
-                          <ChevronDown className="w-3 h-3 text-slate-400 ml-0.5" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md rounded-xl p-1 z-50">
-                        <DropdownMenuItem onClick={() => setSelectedModel('deepseek')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-slate-700 dark:text-slate-200">
-                          <Brain className="w-3.5 h-3.5 text-blue-500" />
-                          <span>DeepSeek Chat</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setSelectedModel('deepseek-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-slate-700 dark:text-slate-200">
-                          <Sparkles className="w-3.5 h-3.5 text-blue-500" />
-                          <span>Deepseek Realtime</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setSelectedModel('gemini-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-slate-700 dark:text-slate-200">
-                          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                          <span>Gemini Realtime</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    {user && (
-                      <button
-                        type="button"
-                        onClick={() => setIsUpgradeOpen(true)}
-                        className={`flex items-center gap-1 py-1 px-2 rounded-xl text-xs font-semibold transition-all border shadow-xs cursor-pointer ${
-                          aiCreditsRemaining <= 0
-                            ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
-                            : aiCreditsRemaining <= 2
-                            ? 'bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100'
-                            : 'bg-indigo-50/70 text-indigo-700 border-indigo-200/60 hover:bg-indigo-100/80 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800/60'
-                        }`}
-                        title="Remaining monthly AI credits. Click to view subscription plans."
+              {messages.length === 0 ? (
+                /* Gemini Hero Empty State */
+                <div className="flex-1 overflow-y-auto w-full px-4 py-6 pb-28 flex flex-col items-center justify-center text-center animate-in fade-in duration-300">
+                  {/* Glowing 4-pointed Gemini Star */}
+                  <div className="relative mb-5 flex items-center justify-center">
+                    <div className="absolute w-20 h-20 rounded-full bg-gradient-to-tr from-sky-400/20 via-indigo-500/25 to-pink-500/20 blur-xl animate-pulse pointer-events-none" />
+                    <div className="relative w-14 h-14 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-800 shadow-lg shadow-indigo-500/5 flex items-center justify-center backdrop-blur-md">
+                      <svg
+                        className="w-8 h-8"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
                       >
-                        <Zap className="w-3 h-3 text-current" />
-                        <span>{aiCreditsRemaining}/{aiCreditsLimit}</span>
-                      </button>
+                        <defs>
+                          <linearGradient id="geminiStarGradMobile" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#38bdf8" />
+                            <stop offset="35%" stopColor="#818cf8" />
+                            <stop offset="70%" stopColor="#c084fc" />
+                            <stop offset="100%" stopColor="#f472b6" />
+                          </linearGradient>
+                        </defs>
+                        <path
+                          d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z"
+                          fill="url(#geminiStarGradMobile)"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+
+                  {/* Personalized Greeting */}
+                  <h1 className="text-xl xs:text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-100 mb-1.5">
+                    {userGreetingName ? (
+                      <>
+                        The mic is yours,{" "}
+                        <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+                          {userGreetingName}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        Let's build a{" "}
+                        <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+                          chart
+                        </span>
+                      </>
                     )}
-                  </div>
+                  </h1>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mb-6 leading-relaxed">
+                    Ask questions, visualize your data, or generate ready-to-present charts in seconds.
+                  </p>
 
-                  {/* Image Toggle */}
-                  <div className="flex items-center gap-2 select-none">
-                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Images</span>
-                    <button
-                      type="button"
-                      onClick={() => setIncludeImages(!includeImages)}
-                      className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent outline-none ${
-                        includeImages ? 'bg-indigo-600 dark:bg-indigo-500' : 'bg-slate-200 dark:bg-slate-800'
-                      }`}
-                      title={includeImages ? "Auto-fetch images enabled" : "Auto-fetch images disabled"}
-                    >
-                      <span className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-xs ${
-                        includeImages ? 'translate-x-3' : 'translate-x-0'
-                      }`} />
-                    </button>
+                  {/* Starter Prompt Chips */}
+                  <div className="w-full flex flex-col gap-2 max-w-xs">
+                    {[
+                      { label: "Quarterly Revenue Growth", icon: LineChart, prompt: "Create a quarterly revenue growth line chart for 2024 with Q1 to Q4" },
+                      { label: "Market Share Breakdown", icon: PieChart, prompt: "Create a market share breakdown donut chart for top 5 cloud providers" },
+                      { label: "Customer Acquisition Funnel", icon: BarChart2, prompt: "Create a funnel chart of customer acquisition stages with conversion drop-offs" },
+                    ].map((item, idx) => {
+                      const Icon = item.icon
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            setInput(item.prompt)
+                            sidebarContext.setChatInput(item.prompt)
+                            if (textareaRef.current) {
+                              textareaRef.current.focus()
+                            }
+                          }}
+                          className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-850 border border-slate-200/80 dark:border-slate-800 shadow-xs transition-all active:scale-[0.98] group"
+                        >
+                          <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/50 transition-colors flex-shrink-0">
+                            <Icon className="w-3.5 h-3.5" />
+                          </div>
+                          <span className="text-xs font-medium text-slate-700 dark:text-slate-200 flex-1 truncate">
+                            {item.label}
+                          </span>
+                          <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
-                <div className="flex items-end gap-2 w-full">
-                  <textarea
-                    ref={textareaRef}
-                    className="flex-1 rounded-xl border border-slate-200/80 dark:border-slate-800 px-3 py-2.5 text-xs xs:text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 dark:focus:border-indigo-500 bg-white dark:bg-slate-950 resize-none max-h-[100px] min-h-[40px] leading-relaxed transition-all font-sans text-slate-850 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    placeholder={isChatDisabled ? "Attach a template to start..." : (hasActiveChart ? "Modify (colors, title, data)..." : "Describe the chart to build...")}
-                    value={input}
-                    onChange={handleInputChange}
-                    onPaste={handlePaste}
-                    disabled={isProcessing || isChatDisabled}
-                    rows={1}
-                    onKeyDown={e => {
-                      if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                        e.preventDefault();
-                        if (!isChatDisabled) {
-                          handleSend(e)
-                        }
-                      }
-                    }}
+              ) : (
+                /* Scrollable messages area - Full height container */
+                <div className="flex-1 min-h-0 w-full h-full relative">
+                  <ChatWindow
+                    messages={messages}
+                    input={input}
+                    setInput={setInput}
+                    onSend={handleSend}
+                    handleInputChange={handleInputChange}
+                    handlePaste={handlePaste}
+                    isProcessing={isProcessing}
+                    hasActiveChart={hasActiveChart}
+                    showActiveBanner={showActiveBanner}
+                    setShowActiveBanner={setShowActiveBanner}
+                    isChatDisabled={isChatDisabled}
+                    disabledMessage="Type a message or load a template below to get started."
+                    messagesEndRef={messagesEndRef}
+                    textareaRef={textareaRef}
+                    currentChartState={currentChartState}
                   />
-                  <button
-                    type="submit"
-                    className="bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-600 active:scale-95 text-white w-[38px] h-[38px] flex items-center justify-center rounded-xl flex-shrink-0 disabled:opacity-50 transition-all duration-200 shadow-sm mb-[1px]"
-                    disabled={isProcessing || !input.trim() || isChatDisabled}
-                  >
-                    <ArrowUp className="w-4.5 h-4.5" strokeWidth={2.5} />
-                  </button>
                 </div>
-              </form>
-
-              {/* Scrollable messages area */}
-              <div className="flex-1 min-h-0 overflow-y-auto w-full pb-2">
-                <ChatWindow
-                  messages={messages}
-                  input={input}
-                  setInput={setInput}
-                  onSend={handleSend}
-                  handleInputChange={handleInputChange}
-                  handlePaste={handlePaste}
-                  isProcessing={isProcessing}
-                  hasActiveChart={hasActiveChart}
-                  showActiveBanner={showActiveBanner}
-                  setShowActiveBanner={setShowActiveBanner}
-                  isChatDisabled={isChatDisabled}
-                  disabledMessage="Type a message or load a template below to get started."
-                  messagesEndRef={messagesEndRef}
-                  textareaRef={textareaRef}
-                  currentChartState={currentChartState}
-                />
-              </div>
+              )}
             </div>
           )}
 
@@ -1619,25 +1597,224 @@ function LandingPageContent() {
           )}
         </main>
 
+        {/* Subtle gradient backdrop fade behind floating pill so messages fade out smoothly */}
+        {mobileActiveTab === 'chat' && (
+          <div className="fixed bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-white via-white/85 to-transparent dark:from-slate-950 dark:via-slate-950/85 dark:to-transparent pointer-events-none z-30" />
+        )}
 
+        {/* Floating Bottom Capsule Input Pill - True floating bar */}
+        {mobileActiveTab === 'chat' && (
+          <div className="fixed bottom-3.5 left-3.5 right-3.5 z-40 max-w-lg mx-auto">
+            <form
+              onSubmit={handleSend}
+              className="flex items-center gap-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-full px-3 py-1.5 border border-slate-200/90 dark:border-slate-800 shadow-xl shadow-slate-900/10 dark:shadow-black/30 transition-shadow"
+            >
+              {/* Plus Button for Action Sheet */}
+              <button
+                type="button"
+                onClick={() => setIsActionSheetOpen(true)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-all flex-shrink-0 active:scale-95"
+                title="Tools & Settings"
+              >
+                <Plus className="w-4 h-4 stroke-[2.5]" />
+              </button>
 
-        {/* Bottom navigation bar removed at user's request */}
+              {/* Textarea */}
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={handleInputChange}
+                onPaste={handlePaste}
+                rows={1}
+                placeholder={
+                  isChatDisabled
+                    ? "Attach a template to start..."
+                    : hasActiveChart
+                    ? "Modify (colors, title, data)..."
+                    : "Ask Chartography..."
+                }
+                disabled={isProcessing || isChatDisabled}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                    e.preventDefault()
+                    if (!isChatDisabled && input.trim()) {
+                      handleSend(e)
+                    }
+                  }
+                }}
+                className="flex-1 bg-transparent py-2 px-1 text-xs xs:text-sm focus:outline-none resize-none max-h-[100px] min-h-[36px] leading-relaxed text-slate-850 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 font-sans disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+
+              {/* Send / Action Button */}
+              <button
+                type="submit"
+                disabled={isProcessing || !input.trim() || isChatDisabled}
+                className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all active:scale-95 ${
+                  input.trim() && !isProcessing && !isChatDisabled
+                    ? "bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 text-white shadow-xs"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-350 dark:text-slate-650 cursor-not-allowed"
+                }`}
+              >
+                {isProcessing ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
+                ) : (
+                  <ArrowUp className="w-4 h-4 stroke-[2.5]" />
+                )}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* Floating Quick Switch Pill when viewing chart */}
+        {mobileActiveTab === 'chart' && chartData?.datasets?.length > 0 && hasJSON && (
+          <div className="fixed bottom-4 right-4 z-40">
+            <button
+              type="button"
+              onClick={() => {
+                setMobileActiveTab('chat')
+                setTimeout(() => textareaRef.current?.focus(), 100)
+              }}
+              className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 text-white rounded-full shadow-lg shadow-indigo-500/25 active:scale-95 transition-all text-xs font-semibold"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Modify with AI</span>
+            </button>
+          </div>
+        )}
+
+        {/* Action Sheet Backdrop */}
+        {isActionSheetOpen && (
+          <div
+            className="fixed inset-0 z-[80] bg-slate-900/50 backdrop-blur-xs transition-opacity duration-150 animate-in fade-in"
+            onClick={() => setIsActionSheetOpen(false)}
+          />
+        )}
+
+        {/* Action Sheet Modal / Bottom Sheet */}
+        <div
+          className={`fixed bottom-0 left-0 right-0 z-[85] max-w-lg mx-auto bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 rounded-t-xl shadow-xl p-3.5 pb-safe transition-transform duration-200 ease-out transform ${
+            isActionSheetOpen ? "translate-y-0" : "translate-y-full"
+          }`}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-slate-100 dark:border-slate-800">
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 tracking-tight">
+              Tools & Preferences
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsActionSheetOpen(false)}
+              className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Options List */}
+          <div className="space-y-2">
+            {/* AI Model Dropdown Row */}
+            <div className="flex items-center justify-between py-2 px-2.5 rounded-md border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center flex-shrink-0">
+                  <Bot className="w-4 h-4" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs font-medium text-slate-800 dark:text-slate-200">AI Model</span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">Select model engine</span>
+                </div>
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-1.5 py-1.5 px-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md shadow-2xs cursor-pointer"
+                  >
+                    <span className="max-w-[115px] truncate">
+                      {selectedModel === 'gemini-search'
+                        ? 'Gemini Realtime'
+                        : selectedModel === 'deepseek-search'
+                        ? 'Deepseek Realtime'
+                        : 'DeepSeek Chat'}
+                    </span>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-lg p-1 z-[120]">
+                  <DropdownMenuItem
+                    onClick={() => setSelectedModel('gemini-search')}
+                    className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded text-slate-700 dark:text-slate-200"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                    <div>
+                      <div className="font-semibold">Gemini Realtime</div>
+                      <div className="text-[10px] text-slate-400">Live search & multimodal</div>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setSelectedModel('deepseek-search')}
+                    className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded text-slate-700 dark:text-slate-200"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                    <div>
+                      <div className="font-semibold">Deepseek Realtime</div>
+                      <div className="text-[10px] text-slate-400">Web search enabled</div>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setSelectedModel('deepseek')}
+                    className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded text-slate-700 dark:text-slate-200"
+                  >
+                    <Brain className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
+                    <div>
+                      <div className="font-semibold">DeepSeek Chat</div>
+                      <div className="text-[10px] text-slate-400">Standard fast reasoning</div>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* Auto-enrich with images toggle */}
+            <div className="flex items-center justify-between py-2 px-2.5 rounded-md border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center flex-shrink-0">
+                  <ImageIcon className="w-4 h-4" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs font-medium text-slate-800 dark:text-slate-200">Include Web Images</span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">Auto-enrich charts with logos and icons</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIncludeImages(!includeImages)}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out outline-none ${
+                  includeImages ? "bg-indigo-600 dark:bg-indigo-500" : "bg-slate-200 dark:bg-slate-700"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs transition duration-200 ease-in-out ${
+                    includeImages ? "translate-x-4" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+        </div>
 
         {/* Sandwich Backdrop overlay */}
         {sandwichOpen && (
           <div 
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity duration-300 animate-in fade-in"
-            style={{ zIndex: 90 }}
+            className="fixed inset-0 z-[90] bg-slate-900/60 backdrop-blur-xs transition-opacity duration-150 animate-in fade-in"
             onClick={() => setSandwichOpen(false)}
           />
         )}
 
         {/* Sandwich Drawer Window */}
         <div 
-          className={`fixed top-0 bottom-0 left-0 bg-white dark:bg-slate-950 border-r border-slate-200/80 dark:border-slate-800/80 flex flex-col shadow-2xl transition-transform duration-300 ease-out transform ${
+          className={`fixed top-0 bottom-0 left-0 z-[100] w-[85vw] max-w-[360px] bg-white dark:bg-slate-950 border-r border-slate-200/80 dark:border-slate-800/80 flex flex-col shadow-2xl transition-transform duration-150 ease-out transform ${
             sandwichOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
-          style={{ zIndex: 100, width: isUnder415 ? '100vw' : '50vw' }}
         >
           {/* Drawer Header */}
           <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-850 flex-shrink-0">

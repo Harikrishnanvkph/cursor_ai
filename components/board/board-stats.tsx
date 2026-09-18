@@ -35,7 +35,7 @@ export function TotalChartsBadge({
         <span className="text-slate-600 dark:text-slate-300 font-semibold hidden md:inline">
           Total Charts
         </span>
-        <span className="text-slate-600 dark:text-slate-300 font-semibold xs450:hidden hide-below-450 md:hidden">
+        <span className="text-slate-600 dark:text-slate-300 font-semibold hidden phab:inline md:hidden">
           Total
         </span>
         <span className="px-1.5 sm:px-2 py-0.2 sm:py-0.5 text-[11px] sm:text-xs font-bold rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800/60">

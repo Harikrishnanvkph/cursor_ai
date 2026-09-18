@@ -736,8 +736,14 @@ export const useChatStore = create<ChatStore>()(
             errorMessage = error.message;
           }
 
+          // Retain the user's prompt in the chat log and append an assistant error response
+          const errorMsg: ChatMessage = {
+            role: 'assistant',
+            content: errorMessage,
+            timestamp: Date.now()
+          };
           set({
-            messages: originalMessages,
+            messages: [...messagesWithUser, errorMsg],
             isProcessing: false
           });
 
@@ -788,6 +794,7 @@ export const useChatStore = create<ChatStore>()(
         // Persisting it would permanently lock the chat input if the browser crashes mid-request.
         historyConversationId: state.historyConversationId,
         backendConversationId: state.backendConversationId,
+        selectedModel: state.selectedModel,
         includeImages: state.includeImages
       }),
     }

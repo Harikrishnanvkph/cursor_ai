@@ -50,6 +50,10 @@ const nextConfig = {
         source: '/auth/:path*',
         destination: 'http://localhost:5000/auth/:path*',
       },
+      {
+        source: '/payments/:path*',
+        destination: 'http://localhost:5000/payments/:path*',
+      },
     ]
   },
 }

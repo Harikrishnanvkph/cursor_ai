@@ -103,25 +103,10 @@ export function ChatWindow({
     }, 10)
   }, [handlePaste, textareaRef])
 
-  // Initial height adjustment when input value changes
-  useEffect(() => {
-    if (textareaRef.current && input) {
-      const updateHeight = () => {
-        if (textareaRef.current) {
-          textareaRef.current.style.height = "44px"
-          const maxHeight = 150
-          textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight + 2, maxHeight)}px`
-          textareaRef.current.style.overflowY = textareaRef.current.scrollHeight + 2 > maxHeight ? "auto" : "hidden"
-        }
-      }
-      requestAnimationFrame(updateHeight)
-    }
-  }, [input, textareaRef])
-
   return (
     <div className={`flex flex-col h-full ${className}`}>
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2 bg-gradient-to-b from-white/80 to-slate-50/80 font-sans">
+      <div className="flex-1 overflow-y-auto px-3.5 py-3 pb-24 space-y-3 bg-transparent font-sans">
         {/* Show disabled message if chat is disabled and no messages */}
         {isChatDisabled && messages.length === 0 && (
           <div className="flex items-center justify-center h-full px-4">
@@ -141,22 +126,22 @@ export function ChatWindow({
         {messages.map((msg, idx) => (
           <div
             key={idx}
-            className={`rounded-2xl px-4 py-3 w-[95%] whitespace-pre-wrap break-words shadow-lg font-medium text-sm ${msg.role === "user"
-              ? "bg-gradient-to-br from-indigo-500 to-purple-600 text-white self-end ml-auto border border-indigo-400/30 shadow-indigo-500/25"
-              : "bg-gradient-to-br from-white to-slate-50 text-slate-800 self-start mr-auto border border-slate-200/50 shadow-slate-500/10"
+            className={`rounded-2xl px-4 py-3 w-[95%] whitespace-pre-wrap break-words shadow-xs font-medium text-sm ${msg.role === "user"
+              ? "bg-gradient-to-br from-indigo-500 to-purple-600 text-white self-end ml-auto border border-indigo-400/30 shadow-indigo-500/20"
+              : "bg-slate-100/90 dark:bg-slate-900 text-slate-800 dark:text-slate-100 self-start mr-auto border border-slate-200/70 dark:border-slate-800"
               }`}
             style={{ wordBreak: 'break-word' }}
           >
             <div className="flex items-start gap-3">
               {msg.role === 'assistant' && (
-                <div className="p-1.5 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-lg flex-shrink-0">
-                  <Sparkles className="w-4 h-4 text-blue-600" />
+                <div className="p-1.5 bg-white dark:bg-slate-800 rounded-lg flex-shrink-0 shadow-2xs border border-slate-200/50 dark:border-slate-700/50">
+                  <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                 </div>
               )}
               <div className="flex-1">
                 {msg.content}
                 {msg.chartSnapshot && (
-                  <div className="mt-3 text-xs opacity-80 flex items-center gap-2 bg-white/50 rounded-lg px-2 py-1.5">
+                  <div className="mt-3 text-xs opacity-85 flex items-center gap-2 bg-white/70 dark:bg-slate-800/70 rounded-lg px-2 py-1.5 border border-slate-200/50 dark:border-slate-700/50">
                     <Edit3 className="w-3 h-3" />
                     Chart {msg.action === 'create' ? 'created' : 'updated'}
                     {msg.changes && msg.changes.length > 0 && (
@@ -169,10 +154,10 @@ export function ChatWindow({
           </div>
         ))}
         {isProcessing && (
-          <div className="bg-gradient-to-br from-white to-slate-50 text-slate-800 self-start mr-auto border border-slate-200/50 rounded-2xl px-4 py-3 w-[95%] shadow-lg">
+          <div className="bg-slate-100/90 dark:bg-slate-900 text-slate-800 dark:text-slate-100 self-start mr-auto border border-slate-200/70 dark:border-slate-800 rounded-2xl px-4 py-3 w-[95%] shadow-xs">
             <div className="flex items-center gap-3">
-              <div className="p-1.5 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-lg">
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>
+              <div className="p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow-2xs border border-slate-200/50 dark:border-slate-700/50">
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-indigo-600 border-t-transparent"></div>
               </div>
               <span className="text-sm font-medium">Processing your request...</span>
             </div>

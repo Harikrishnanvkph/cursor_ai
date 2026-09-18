@@ -414,14 +414,32 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
             setCurrentSnapshotId(snapshotId);
         }
 
-        // Save messages for new conversations
-        if (!isUpdate) {
-            const messagesToSave = chatMessages.filter(m => {
-                return !(m.role === 'assistant' && m.content.includes('Hi! Describe the chart'));
-            });
+        // Save messages (for new conversations and new follow-ups during updates)
+        const messagesToSave = chatMessages.filter(m => {
+            return !(m.role === 'assistant' && m.content.includes('Hi! Describe the chart'));
+        });
 
-            for (let i = 0; i < messagesToSave.length; i++) {
-                const msg = messagesToSave[i];
+        let startIndex = 0;
+        let shouldSaveMessages = !isUpdate;
+        if (isUpdate) {
+            try {
+                const existingRes = await dataService.getMessages(conversationId);
+                if (existingRes.data) {
+                    const existingNonGreeting = existingRes.data.filter((m: any) =>
+                        !(m.role === 'assistant' && m.content?.includes('Hi! Describe the chart'))
+                    );
+                    startIndex = existingNonGreeting.length;
+                    shouldSaveMessages = true;
+                }
+            } catch (err) {
+                console.warn('Could not check existing message count for update save, skipping message persistence to avoid duplicates:', err);
+            }
+        }
+
+        if (shouldSaveMessages) {
+            const newMessages = messagesToSave.slice(startIndex);
+            for (let i = 0; i < newMessages.length; i++) {
+                const msg = newMessages[i];
                 try {
                     const chartSnapshotId = (msg.role === 'assistant' && msg.chartSnapshot)
                         ? snapshotId
@@ -436,7 +454,7 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
                         msg.changes || undefined
                     );
                 } catch (msgError) {
-                    console.error(`Failed to save message ${i}:`, msgError);
+                    console.error(`Failed to save message ${startIndex + i}:`, msgError);
                 }
             }
         }

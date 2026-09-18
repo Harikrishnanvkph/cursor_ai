@@ -174,12 +174,16 @@ export const useHistoryStore = create<HistoryStore>()(
           return;
         }
 
-        // Restore chat messages
+        // Restore chat messages and sync conversation IDs
         const chatStore = useChatStore.getState();
         chatStore.setMessages(conv.messages);
 
-        // Set backend conversation ID so Save button knows to update instead of create
-        chatStore.setBackendConversationId(conv.id);
+        // Set backend and current conversation ID so follow-up modifications and Save button
+        // link to this loaded conversation rather than an unlinked temporary ID
+        useChatStore.setState({
+          currentConversationId: conv.id,
+          backendConversationId: conv.id
+        });
 
         if (conv.snapshot) {
           const chartStore = useChartStore.getState();

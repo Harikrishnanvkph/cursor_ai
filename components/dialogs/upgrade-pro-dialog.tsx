@@ -2,6 +2,9 @@
 
 import React, { useState } from "react"
 import { useAuth } from "@/components/auth/AuthProvider"
+import { useGeoLocation } from "@/hooks/useGeoLocation"
+import { RegionSelector } from "@/components/pricing/RegionSelector"
+import { initiateCheckout } from "@/lib/payment-client"
 import {
   Dialog,
   DialogContent,
@@ -27,17 +30,32 @@ export function UpgradeProDialog({
   description = "Unlock higher AI generation limits, expanded cloud storage, and premium export capabilities.",
   featureHighlight = 'all'
 }: UpgradeProDialogProps) {
-  const { user, upgradeToPro } = useAuth()
+  const { user } = useAuth()
+  const { region, isIndia, setRegion } = useGeoLocation()
   const [isUpgrading, setIsUpgrading] = useState(false)
 
   const handleUpgrade = async () => {
+    if (!user) {
+      window.location.href = "/signin"
+      return
+    }
     setIsUpgrading(true)
     try {
-      const success = await upgradeToPro()
-      if (success) {
-        onOpenChange(false)
-      }
-    } finally {
+      await initiateCheckout({
+        planTier: 'pro',
+        billingCycle: 'monthly',
+        regionOverride: region,
+        user,
+        onSuccess: () => {
+          onOpenChange(false)
+        },
+        onError: (err) => {
+          console.error("Upgrade error:", err)
+          setIsUpgrading(false)
+        }
+      })
+    } catch (err) {
+      console.error(err)
       setIsUpgrading(false)
     }
   }
@@ -66,11 +84,23 @@ export function UpgradeProDialog({
 
             {/* Price Tag */}
             <div className="mt-4 flex items-baseline gap-2">
-              <span className="text-3xl font-extrabold text-white tracking-tight">$5</span>
+              <span className="text-3xl font-extrabold text-white tracking-tight">
+                {isIndia ? "₹399" : "$5"}
+              </span>
               <span className="text-sm font-medium text-indigo-200">/ month</span>
               <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-emerald-400/20 text-emerald-200 font-semibold border border-emerald-400/30">
                 Cancel anytime
               </span>
+            </div>
+
+            {/* Region Switcher inside dialog */}
+            <div className="mt-3 flex items-center justify-between bg-black/20 backdrop-blur-md rounded-xl p-1 px-2 border border-white/10">
+              <span className="text-[11px] text-indigo-200 font-medium">Region:</span>
+              <RegionSelector
+                variant="compact"
+                region={region}
+                onSelectRegion={setRegion}
+              />
             </div>
           </div>
         </div>
@@ -176,7 +206,7 @@ export function UpgradeProDialog({
                 </>
               ) : (
                 <>
-                  <span>Upgrade to Pro ($5/mo)</span>
+                  <span>Upgrade to Pro ({isIndia ? "₹399" : "$5"}/mo)</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}

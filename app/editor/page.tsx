@@ -936,7 +936,7 @@ function EditorPageContent() {
             </button>
             <Link href="/landing" className="flex items-center gap-2 px-1 text-slate-700 min-w-0">
               <img src="/logo.png" alt="Logo" className="h-6 w-6 object-contain flex-shrink-0" />
-              <span className="hidden mob:inline text-slate-800 dark:text-slate-100 font-bold text-base tracking-tight select-none truncate">
+              <span className="hidden phab:inline text-slate-800 dark:text-slate-100 font-bold text-base tracking-tight select-none truncate">
                 Chartography<span className="text-indigo-600 dark:text-indigo-400">.in</span>
               </span>
             </Link>

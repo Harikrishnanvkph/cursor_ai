@@ -2,19 +2,20 @@
 
 import { useState, useEffect } from "react"
 
-// Custom hook to detect <=768px (Mobile Range including Large)
-export function useIsMobile576() {
+// Custom hook to detect < 768px (Mobile Range, below Tailwind 'md')
+export function useIsMobile() {
     const [isMobile, setIsMobile] = useState(false);
     useEffect(() => {
-        setIsMobile(window.innerWidth <= 768);
-        function handleResize() {
-            setIsMobile(window.innerWidth <= 768);
-        }
-        window.addEventListener("resize", handleResize);
-        return () => window.removeEventListener("resize", handleResize);
+        const check = () => setIsMobile(window.innerWidth < 768);
+        check();
+        window.addEventListener("resize", check);
+        return () => window.removeEventListener("resize", check);
     }, []);
     return isMobile;
 }
+
+// Backward compatibility alias for existing imports
+export const useIsMobile576 = useIsMobile;
 
 // Custom hook to get screen dimensions
 export function useScreenDimensions() {
@@ -36,16 +37,14 @@ export function useScreenDimensions() {
     return dimensions;
 }
 
-// Custom hook to detect 769-1024px (Tablet Range)
+// Custom hook to detect 768px - 1023px (Tablet Range, Tailwind 'md' to 'lg')
 export function useIsTablet() {
     const [isTablet, setIsTablet] = useState(false);
     useEffect(() => {
-        setIsTablet(window.innerWidth >= 769 && window.innerWidth <= 1024);
-        function handleResize() {
-            setIsTablet(window.innerWidth >= 769 && window.innerWidth <= 1024);
-        }
-        window.addEventListener("resize", handleResize);
-        return () => window.removeEventListener("resize", handleResize);
+        const check = () => setIsTablet(window.innerWidth >= 768 && window.innerWidth < 1024);
+        check();
+        window.addEventListener("resize", check);
+        return () => window.removeEventListener("resize", check);
     }, []);
     return isTablet;
 }
