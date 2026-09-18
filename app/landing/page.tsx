@@ -555,9 +555,13 @@ function LandingPageContent() {
     setMobileRightSidebarContent(null)
   }, [])
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages arrive (avoid scrolling on initial mount)
+  const prevMessagesCountRef = useRef(messages.length)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    if (messages.length > 1 && messages.length > prevMessagesCountRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+    }
+    prevMessagesCountRef.current = messages.length
   }, [messages])
 
   // Track currentChartState changes and set hasJSON flag
@@ -1006,9 +1010,9 @@ function LandingPageContent() {
 
   if (isMobile) {
     return (
-      <div className="flex flex-col h-screen w-screen bg-white dark:bg-slate-950 relative overflow-hidden font-sans">
-        {/* Fixed Header (Gemini / ChatGPT Style - borderless white) */}
-        <header className="fixed top-0 left-0 right-0 z-40 h-14 bg-white dark:bg-slate-950 flex items-center justify-between px-3 xs:px-4 phab:px-5">
+      <div className="flex flex-col h-screen h-dvh w-screen bg-white dark:bg-slate-950 relative overflow-hidden font-sans">
+        {/* Top Header (In-flow flex item - never covers content) */}
+        <header className="w-full h-14 flex-shrink-0 z-40 bg-white dark:bg-slate-950 flex items-center justify-between px-3 xs:px-4 phab:px-5 relative">
           {/* Left: Sandwich Menu Icon */}
           <div className="flex items-center gap-1.5 xs:gap-2 min-w-0">
             <button 
@@ -1410,8 +1414,8 @@ function LandingPageContent() {
           </div>
         </header>
 
-        {/* Main Content Area - Positioned precisely between fixed header and bottom of screen */}
-        <main className="flex-1 mt-14 mb-0 relative flex flex-col overflow-hidden w-full h-full bg-transparent">
+        {/* Main Content Area - In-flow flex child positioned naturally below header */}
+        <main className="flex-1 min-h-0 relative flex flex-col overflow-hidden w-full bg-transparent">
           {/* Tab 1: Chart / Prompt */}
           {mobileActiveTab === 'chart' && (
             <div className="flex-1 p-3 flex flex-col relative w-full h-full">

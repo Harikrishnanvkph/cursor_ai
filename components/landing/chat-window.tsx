@@ -106,7 +106,7 @@ export function ChatWindow({
   return (
     <div className={`flex flex-col h-full ${className}`}>
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-3.5 py-3 pb-24 space-y-3 bg-transparent font-sans">
+      <div className="flex-1 overflow-y-auto px-3.5 pt-3.5 pb-24 space-y-3 bg-transparent font-sans">
         {/* Show disabled message if chat is disabled and no messages */}
         {isChatDisabled && messages.length === 0 && (
           <div className="flex items-center justify-center h-full px-4">
