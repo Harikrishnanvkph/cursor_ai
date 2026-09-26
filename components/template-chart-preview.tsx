@@ -615,6 +615,15 @@ export function TemplateChartPreview({
           )
 
           try {
+            if (typeof document !== 'undefined' && 'fonts' in document) {
+              try {
+                await Promise.race([
+                  (document.fonts as any).ready,
+                  new Promise(resolve => setTimeout(resolve, 1500))
+                ])
+              } catch (_) {}
+            }
+
             const options = {
               scale: 4,
               width: renderedFormat.skeleton.dimensions.width,
@@ -628,12 +637,6 @@ export function TemplateChartPreview({
                     node.classList.contains('format-zone-type-badge')
                   ) {
                     return false
-                  }
-                  if (node.tagName === 'LINK') {
-                    const href = (node as HTMLLinkElement).href || ''
-                    if (href.includes('fonts.googleapis.com') || href.includes('fonts.gstatic.com')) {
-                      return false
-                    }
                   }
                 }
                 return true

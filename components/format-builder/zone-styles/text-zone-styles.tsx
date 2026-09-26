@@ -3,6 +3,7 @@
 import React from 'react'
 import { Input } from '@/components/ui/input'
 import { useFormatBuilder } from '../format-builder-context'
+import { UNIFIED_FONT_FAMILIES, ensureGoogleFontLoaded } from '@/lib/typography-registry'
 
 export function TextZoneStyles() {
   const { selectedZone, updateZoneStyle } = useFormatBuilder()
@@ -66,7 +67,20 @@ export function TextZoneStyles() {
       </div>
       <div>
         <label className="text-[10px] text-gray-500 block">Font Family</label>
-        <Input value={s.fontFamily || 'Inter, sans-serif'} onChange={e => update({ fontFamily: e.target.value })} className="h-6 text-[10px] bg-gray-900 border-gray-700 text-white" />
+        <select
+          value={s.fontFamily || 'Inter, sans-serif'}
+          onChange={e => {
+            ensureGoogleFontLoaded(e.target.value)
+            update({ fontFamily: e.target.value })
+          }}
+          className="w-full h-6 text-[10px] bg-gray-900 border border-gray-700 rounded text-white"
+        >
+          {UNIFIED_FONT_FAMILIES.filter(f => f.value !== 'default').map(f => (
+            <option key={f.id} value={f.value}>
+              {f.label}
+            </option>
+          ))}
+        </select>
       </div>
     </div>
   )

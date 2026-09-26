@@ -15,7 +15,7 @@ export function sanitizeHTML(html: string): string {
   if (typeof window === 'undefined') return html;
   return DOMPurify.sanitize(html, {
     ALLOWED_TAGS: [
-      'b', 'i', 'em', 'strong', 'p', 'br', 'span', 'div',
+      'b', 'i', 'em', 'strong', 'u', 's', 'strike', 'p', 'br', 'span', 'div',
       'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
       'a', 'blockquote', 'code', 'pre', 'sub', 'sup', 'hr',
       'table', 'thead', 'tbody', 'tr', 'th', 'td',

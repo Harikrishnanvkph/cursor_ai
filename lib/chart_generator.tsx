@@ -314,6 +314,7 @@ import {
   useChartGroups,
 } from "@/lib/hooks/use-chart-state"
 import { computeScaledFonts, applyScaledFontsToConfig, applyFontScaling } from "@/lib/utils/font-scale-utils"
+import { ensureFontsLoaded } from "@/lib/typography-registry"
 
 export interface ChartGeneratorProps {
   className?: string;
@@ -645,6 +646,39 @@ export const ChartGenerator = memo(function ChartGenerator({
       chartRef.current.update();
     }
   }, [finalWidth, finalHeight]);
+
+  // Re-render chart canvas when external web fonts finish downloading into document.fonts
+  // Prevents canvas staying locked onto fallback Arial when user selects a Google Font.
+  useEffect(() => {
+    if (typeof document === 'undefined' || !('fonts' in document)) return;
+
+    const handleFontsDone = () => {
+      if (chartRef.current) {
+        chartRef.current.update('none');
+      }
+    };
+
+    document.fonts.addEventListener('loadingdone', handleFontsDone);
+    return () => {
+      document.fonts.removeEventListener('loadingdone', handleFontsDone);
+    };
+  }, []);
+
+  // Preload any web fonts configured in chart titles, subtitles, axes, or custom labels
+  useEffect(() => {
+    const fontsToLoad = [
+      (chartConfig?.plugins?.title?.font as any)?.family,
+      (chartConfig?.plugins?.subtitle?.font as any)?.family,
+      (chartConfig?.scales?.x?.title?.font as any)?.family,
+      (chartConfig?.scales?.y?.title?.font as any)?.family,
+      (chartConfig?.scales?.x?.ticks?.font as any)?.family,
+      (chartConfig?.scales?.y?.ticks?.font as any)?.family,
+    ].filter(Boolean);
+
+    if (fontsToLoad.length > 0) {
+      ensureFontsLoaded(fontsToLoad);
+    }
+  }, [chartConfig]);
 
 
 

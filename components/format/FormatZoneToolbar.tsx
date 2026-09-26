@@ -10,6 +10,7 @@
 import React, { useCallback } from "react"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { RichTextToolbar, type RichTextToolbarStyleState, type RichTextToolbarCallbacks } from "./RichTextToolbar"
+import { ensureGoogleFontLoaded } from "@/lib/typography-registry"
 
 interface FormatZoneToolbarProps {
   zoneId: string
@@ -75,6 +76,7 @@ export function FormatZoneToolbar({ zoneId, zoneType, x, y, scale }: FormatZoneT
       else updateZoneStyle(zoneId, { valueColor: color })
     },
     onFontChange: (fontFamily: string) => {
+      ensureGoogleFontLoaded(fontFamily)
       if (isText) updateZoneStyle(zoneId, { fontFamily })
       else updateZoneStyle(zoneId, { valueFontFamily: fontFamily })
     },

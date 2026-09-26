@@ -1,6 +1,7 @@
 "use client"
 
 import html2canvas from 'html2canvas'
+import { ensureGoogleFontLoaded } from '@/lib/typography-registry'
 
 /**
  * Helper to convert hex color to rgba with opacity
@@ -361,6 +362,18 @@ export async function renderHTMLToCanvas(
   `
     container.innerHTML = htmlContent
     document.body.appendChild(container)
+
+    if (style.fontFamily) {
+        await ensureGoogleFontLoaded(style.fontFamily)
+    }
+    if (typeof document !== 'undefined' && 'fonts' in document) {
+        try {
+            await Promise.race([
+                (document.fonts as any).ready,
+                new Promise(resolve => setTimeout(resolve, 1500))
+            ])
+        } catch (_) {}
+    }
 
     try {
         // Use html2canvas to capture the exact rendering

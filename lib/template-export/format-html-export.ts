@@ -251,6 +251,22 @@ export async function exportFormatAsHTML(
             border-radius: 0.2em;
         }
         
+        .format-zone-text u, .html-content-area u {
+            text-decoration: underline !important;
+        }
+        
+        .format-zone-text s, .format-zone-text strike, .format-zone-text del,
+        .html-content-area s, .html-content-area strike, .html-content-area del {
+            text-decoration: line-through !important;
+        }
+        
+        .format-zone-text u s, .format-zone-text u strike, .format-zone-text u del,
+        .format-zone-text s u, .format-zone-text strike u, .format-zone-text del u,
+        .html-content-area u s, .html-content-area u strike, .html-content-area u del,
+        .html-content-area s u, .html-content-area strike u, .html-content-area del u {
+            text-decoration: underline line-through !important;
+        }
+        
         .format-zone-text ul { list-style-type: disc; padding-left: 16px; margin: 2px 0; }
         .format-zone-text ol { list-style-type: decimal; padding-left: 16px; margin: 2px 0; }
         .format-zone-text li { margin-bottom: 1px; }

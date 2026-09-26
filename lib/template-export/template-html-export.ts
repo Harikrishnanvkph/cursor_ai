@@ -631,8 +631,20 @@ export const exportTemplateAsHTML = async (
             border-radius: 0.2em;
         }
 
-        .text-area.html-content u {
-            text-decoration: underline;
+        .text-area.html-content u, .html-content-area u {
+            text-decoration: underline !important;
+        }
+
+        .text-area.html-content s, .text-area.html-content strike, .text-area.html-content del,
+        .html-content-area s, .html-content-area strike, .html-content-area del {
+            text-decoration: line-through !important;
+        }
+
+        .text-area.html-content u s, .text-area.html-content u strike, .text-area.html-content u del,
+        .text-area.html-content s u, .text-area.html-content strike u, .text-area.html-content del u,
+        .html-content-area u s, .html-content-area u strike, .html-content-area u del,
+        .html-content-area s u, .html-content-area strike u, .html-content-area del u {
+            text-decoration: underline line-through !important;
         }
 
         .text-area.html-content img {

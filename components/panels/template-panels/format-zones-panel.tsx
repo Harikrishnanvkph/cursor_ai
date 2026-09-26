@@ -85,10 +85,10 @@ export function FormatZonesPanel() {
     const container = richPreviewContainerRef.current
     const containerWidth = container.clientWidth - 16
     const containerHeight = container.clientHeight - 16
-    // Use actual zone dimensions if available
+    // Use actual zone dimensions with sensible min height
     const zoneW = richEditorZone?.position?.width || 600
-    const zoneH = richEditorZone?.position?.height || 200
-    if (containerWidth > 0 && containerHeight > 0) {
+    const zoneH = Math.max(richEditorZone?.position?.height || 200, 160)
+    if (containerWidth > 0 && containerHeight > 0 && zoneW > 0 && zoneH > 0) {
       const scaleX = containerWidth / zoneW
       const scaleY = containerHeight / zoneH
       setRichPreviewScale(Math.min(scaleX, scaleY, 1))
@@ -768,6 +768,11 @@ export function FormatZonesPanel() {
                   contentStyle={richEditorZone?.style ? {
                     fontSize: richEditorZone.style.fontSize,
                     fontFamily: richEditorZone.style.fontFamily,
+                    fontWeight: richEditorZone.style.fontWeight,
+                    fontStyle: richEditorZone.style.fontStyle,
+                    textDecoration: richEditorZone.style.textDecoration,
+                    textTransform: richEditorZone.style.textTransform,
+                    textAlign: richEditorZone.style.textAlign || 'left',
                     color: richEditorZone.style.color,
                     lineHeight: richEditorZone.style.lineHeight || 1.6,
                     letterSpacing: richEditorZone.style.letterSpacing
@@ -823,57 +828,132 @@ export function FormatZonesPanel() {
               >
                 {(() => {
                   const zoneW = richEditorZone?.position?.width || 600
-                  const zoneH = richEditorZone?.position?.height || 200
+                  const rawZoneH = richEditorZone?.position?.height || 200
+                  const previewBoxH = Math.max(rawZoneH, 160)
                   const zStyle = richEditorZone?.style || {}
+
+                  // Resolve background styling
+                  const bgZone = (format?.skeleton?.zones || []).find((z: any) => z.type === 'background')
+                  const formatBgColor = bgZone?.style?.color || bgZone?.style?.backgroundColor || bgZone?.style?.baseColor || (format?.skeleton?.palette as any)?.background
+                  const effectiveBgColor = zStyle.backgroundColor || zStyle.bgColor || (editorBg === 'black' ? '#111827' : (formatBgColor || '#ffffff'))
+
                   const previewStyle: React.CSSProperties = {
                     fontSize: zStyle.fontSize ? `${zStyle.fontSize}px` : '14px',
                     fontFamily: zStyle.fontFamily || 'inherit',
                     fontWeight: zStyle.fontWeight || 'normal',
-                    color: zStyle.color || '#1a1a2e',
+                    fontStyle: zStyle.fontStyle || 'normal',
+                    textDecoration: zStyle.textDecoration || 'none',
+                    textTransform: (zStyle.textTransform as any) || 'none',
+                    color: zStyle.color || (editorBg === 'black' ? '#f9fafb' : '#1a1a2e'),
                     textAlign: (zStyle.textAlign as any) || 'left',
                     lineHeight: zStyle.lineHeight || 1.6,
                     letterSpacing: zStyle.letterSpacing ? `${zStyle.letterSpacing}px` : 'normal',
                     padding: '4px',
+                    boxSizing: 'border-box',
                     wordBreak: 'break-word' as const,
+                    backgroundColor: effectiveBgColor,
                   }
 
                   if (previewFitToView) {
                     return (
                       <div style={{
                         width: `${zoneW * richPreviewScale}px`,
-                        height: `${zoneH * richPreviewScale}px`,
+                        minHeight: `${previewBoxH * richPreviewScale}px`,
                         flexShrink: 0,
-                        margin: '0 auto'
+                        margin: '0 auto',
+                        position: 'relative'
                       }}>
                         <div
-                          className="bg-white border rounded shadow-sm html-content-area"
+                          className="border rounded shadow-sm html-content-area relative"
                           style={{
                             width: `${zoneW}px`,
-                            height: `${zoneH}px`,
+                            minHeight: `${previewBoxH}px`,
                             ...previewStyle,
-                            overflow: 'hidden',
+                            overflow: 'visible',
                             transform: `scale(${richPreviewScale})`,
                             transformOrigin: 'top left'
                           }}
-                          dangerouslySetInnerHTML={{ __html: sanitizeHTML(richEditorContent || '<p style="color:#999">Preview will appear here...</p>') }}
-                        />
+                        >
+                          <div className="html-content-area w-full" dangerouslySetInnerHTML={{ __html: sanitizeHTML(richEditorContent || '<p style="color:#999">Preview will appear here...</p>') }} />
+                          {rawZoneH < 160 && (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                top: `${rawZoneH}px`,
+                                left: 0,
+                                right: 0,
+                                borderTop: '1.5px dashed #93c5fd',
+                                pointerEvents: 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'flex-end',
+                                paddingRight: '8px',
+                                paddingTop: '2px',
+                                zIndex: 20
+                              }}
+                            >
+                              <span style={{
+                                fontSize: '9px',
+                                fontWeight: 600,
+                                color: '#3b82f6',
+                                backgroundColor: editorBg === 'black' ? '#1f2937' : '#eff6ff',
+                                padding: '1px 6px',
+                                borderRadius: '3px',
+                                border: '1px solid #bfdbfe'
+                              }}>
+                                Canvas Slot Height ({rawZoneH}px)
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )
                   }
 
                   return (
                     <div
-                      className="bg-white border rounded shadow-sm html-content-area"
+                      className="border rounded shadow-sm html-content-area relative"
                       style={{
                         width: `${zoneW}px`,
-                        height: `${zoneH}px`,
+                        minHeight: `${previewBoxH}px`,
                         ...previewStyle,
-                        overflow: 'auto',
+                        overflow: 'visible',
                         flexShrink: 0,
                         margin: '0 auto'
                       }}
-                      dangerouslySetInnerHTML={{ __html: sanitizeHTML(richEditorContent || '<p style="color:#999">Preview will appear here...</p>') }}
-                    />
+                    >
+                      <div className="html-content-area w-full" dangerouslySetInnerHTML={{ __html: sanitizeHTML(richEditorContent || '<p style="color:#999">Preview will appear here...</p>') }} />
+                      {rawZoneH < 160 && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: `${rawZoneH}px`,
+                            left: 0,
+                            right: 0,
+                            borderTop: '1.5px dashed #93c5fd',
+                            pointerEvents: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end',
+                            paddingRight: '8px',
+                            paddingTop: '2px',
+                            zIndex: 20
+                          }}
+                        >
+                          <span style={{
+                            fontSize: '9px',
+                            fontWeight: 600,
+                            color: '#3b82f6',
+                            backgroundColor: editorBg === 'black' ? '#1f2937' : '#eff6ff',
+                            padding: '1px 6px',
+                            borderRadius: '3px',
+                            border: '1px solid #bfdbfe'
+                          }}>
+                            Canvas Slot Height ({rawZoneH}px)
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   )
                 })()}
               </div>

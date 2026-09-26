@@ -19,6 +19,7 @@ import { useGroupedSettingsTarget, GroupedSettingsFilter } from "./grouped-setti
 import { SliceSettingsFilter } from "./slice-settings-filter"
 import { StylingTab } from "./design-settings/styling-tab"
 import { useUIStore } from "@/lib/stores/ui-store"
+import { UNIFIED_FONT_FAMILIES, FONT_WEIGHT_OPTIONS, ensureGoogleFontLoaded } from "@/lib/typography-registry"
 
 type ConfigPathUpdate = {
     path: string;
@@ -356,20 +357,20 @@ export function LabelsPanel({ mode = 'labels' }: LabelsPanelProps) {
                                     <Label className="text-xs font-medium">Font Family</Label>
                                     <Select
                                         value={customLabelsConfig.fontFamily || "Arial"}
-                                        onValueChange={(value) => handleCustomLabelConfigUpdate("fontFamily", value)}
+                                        onValueChange={(value) => {
+                                            ensureGoogleFontLoaded(value)
+                                            handleCustomLabelConfigUpdate("fontFamily", value)
+                                        }}
                                     >
                                         <SelectTrigger className="h-8 text-xs">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="Arial">Arial</SelectItem>
-                                            <SelectItem value="Helvetica">Helvetica</SelectItem>
-                                            <SelectItem value="Times">Times</SelectItem>
-                                            <SelectItem value="Courier">Courier</SelectItem>
-                                            <SelectItem value="Georgia">Georgia</SelectItem>
-                                            <SelectItem value="Verdana">Verdana</SelectItem>
-                                            <SelectItem value="Impact">Impact</SelectItem>
-                                            <SelectItem value="Trebuchet MS">Trebuchet</SelectItem>
+                                        <SelectContent className="max-h-56">
+                                            {UNIFIED_FONT_FAMILIES.filter(f => f.value !== 'default').map(f => (
+                                                <SelectItem key={f.id} value={f.value} style={{ fontFamily: f.value }}>
+                                                    {f.label}
+                                                </SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -393,17 +394,18 @@ export function LabelsPanel({ mode = 'labels' }: LabelsPanelProps) {
                                 <div className="space-y-1">
                                     <Label className="text-xs font-medium">Weight</Label>
                                     <Select
-                                        value={customLabelsConfig.fontWeight || "bold"}
+                                        value={String(customLabelsConfig.fontWeight || "bold")}
                                         onValueChange={(value) => handleCustomLabelConfigUpdate("fontWeight", value)}
                                     >
                                         <SelectTrigger className="h-8 text-xs">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="normal">Normal</SelectItem>
-                                            <SelectItem value="bold">Bold</SelectItem>
-                                            <SelectItem value="lighter">Lighter</SelectItem>
-                                            <SelectItem value="bolder">Bolder</SelectItem>
+                                            {FONT_WEIGHT_OPTIONS.map(w => (
+                                                <SelectItem key={w.value} value={w.value}>
+                                                    {w.label}
+                                                </SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
                                 </div>

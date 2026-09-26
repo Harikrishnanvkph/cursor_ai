@@ -45,8 +45,16 @@ export async function exportDOMElementAsImage(
     element.style.transform = 'none'
     element.style.transformOrigin = 'top left'
 
-    // 3. Wait for the browser to repaint with the cleaned-up state
+    // 3. Wait for the browser to repaint with the cleaned-up state and ensure fonts are loaded
     await new Promise(resolve => setTimeout(resolve, 150))
+    if (typeof document !== 'undefined' && 'fonts' in document) {
+      try {
+        await Promise.race([
+          (document.fonts as any).ready,
+          new Promise(resolve => setTimeout(resolve, 1500))
+        ])
+      } catch (_) {}
+    }
 
     // 4. Capture the DOM element with html2canvas
     const canvas = await html2canvas(element, {

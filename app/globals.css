@@ -185,7 +185,22 @@ body {
 }
 
 .html-content-area u {
-  text-decoration: underline;
+  text-decoration: underline !important;
+}
+
+.html-content-area s,
+.html-content-area strike,
+.html-content-area del {
+  text-decoration: line-through !important;
+}
+
+.html-content-area u s,
+.html-content-area u strike,
+.html-content-area u del,
+.html-content-area s u,
+.html-content-area strike u,
+.html-content-area del u {
+  text-decoration: underline line-through !important;
 }
 
 .html-content-area img {
@@ -284,7 +299,12 @@ body {
 .html-content-area>p:first-child,
 .html-content-area>ul:first-child,
 .html-content-area>ol:first-child,
-.html-content-area>blockquote:first-child {
+.html-content-area>blockquote:first-child,
+.html-content-area>*:first-child>p:first-child,
+.html-content-area>*:first-child>h1:first-child,
+.html-content-area>*:first-child>h2:first-child,
+.html-content-area>*:first-child>h3:first-child,
+.html-content-area p:first-child {
   margin-top: 0 !important;
 }
 
@@ -297,11 +317,16 @@ body {
 .html-content-area>p:last-child,
 .html-content-area>ul:last-child,
 .html-content-area>ol:last-child,
-.html-content-area>blockquote:last-child {
+.html-content-area>blockquote:last-child,
+.html-content-area>*:last-child>p:last-child,
+.html-content-area>*:last-child>h1:last-child,
+.html-content-area>*:last-child>h2:last-child,
+.html-content-area>*:last-child>h3:last-child,
+.html-content-area p:last-child {
   margin-bottom: 0 !important;
 }
 
-/* Tiptap Editor Styles */
+/* Tiptap Editor Styles - Harmonized with .html-content-area */
 .tiptap {
   outline: none;
 }
@@ -310,46 +335,99 @@ body {
   margin: 0.5em 0;
 }
 
-.tiptap > p:first-child {
-  margin-top: 0 !important;
-}
-
-.tiptap > p:last-child {
-  margin-bottom: 0 !important;
-}
-
 .tiptap ul {
   list-style-type: disc;
   padding-left: 1.5em;
-  margin: 4px 0;
+  margin: 0.5em 0;
 }
 
 .tiptap ol {
   list-style-type: decimal;
   padding-left: 1.5em;
-  margin: 4px 0;
+  margin: 0.5em 0;
 }
 
 .tiptap li {
-  margin: 0;
+  margin: 0.25em 0;
+}
+
+.tiptap ul ul {
+  list-style-type: circle;
+}
+
+.tiptap ul ul ul {
+  list-style-type: square;
+}
+
+.tiptap ol ol {
+  list-style-type: lower-alpha;
+}
+
+.tiptap ol ol ol {
+  list-style-type: lower-roman;
 }
 
 .tiptap h1 {
   font-size: 2em;
   font-weight: bold;
-  margin: 8px 0;
+  margin: 0.5em 0;
 }
 
 .tiptap h2 {
   font-size: 1.5em;
   font-weight: bold;
-  margin: 8px 0;
+  margin: 0.5em 0;
 }
 
 .tiptap h3 {
   font-size: 1.17em;
   font-weight: bold;
-  margin: 8px 0;
+  margin: 0.5em 0;
+}
+
+.tiptap h4 {
+  font-size: 1em;
+  font-weight: bold;
+  margin: 0.5em 0;
+}
+
+.tiptap h5 {
+  font-size: 0.83em;
+  font-weight: bold;
+  margin: 0.5em 0;
+}
+
+.tiptap h6 {
+  font-size: 0.67em;
+  font-weight: bold;
+  margin: 0.5em 0;
+}
+
+/* Remove top margin from first child, bottom margin from last child */
+.tiptap>h1:first-child,
+.tiptap>h2:first-child,
+.tiptap>h3:first-child,
+.tiptap>h4:first-child,
+.tiptap>h5:first-child,
+.tiptap>h6:first-child,
+.tiptap>p:first-child,
+.tiptap>ul:first-child,
+.tiptap>ol:first-child,
+.tiptap>blockquote:first-child {
+  margin-top: 0 !important;
+}
+
+.tiptap>h1:last-child,
+.tiptap>h2:last-child,
+.tiptap>h3:last-child,
+.tiptap>h4:last-child,
+.tiptap>h5:last-child,
+.tiptap>h6:last-child,
+.tiptap>p:last-child,
+.tiptap>ul:last-child,
+.tiptap>ol:last-child,
+.tiptap>blockquote:last-child {
+  margin-bottom: 0 !important;
 }
 
 .tiptap a {
@@ -361,6 +439,8 @@ body {
 .tiptap img {
   max-width: 100%;
   height: auto;
+  display: block;
+  margin: 0.5em 0;
 }
 
 .tiptap mark {
@@ -369,15 +449,19 @@ body {
   border-radius: 0.2em;
 }
 
+.tiptap u {
+  text-decoration: underline;
+}
+
 .tiptap blockquote {
-  border-left: 3px solid #e5e7eb;
+  border-left: 3px solid #cbd5e1;
   padding-left: 1em;
   margin: 0.5em 0;
-  color: #6b7280;
+  color: #64748b;
 }
 
 .tiptap code {
-  background-color: #f3f4f6;
+  background-color: #f1f5f9;
   padding: 0.2em 0.4em;
   border-radius: 0.25em;
   font-family: monospace;

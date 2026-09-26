@@ -49,35 +49,10 @@ import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { UNIFIED_FONT_FAMILIES, ensureGoogleFontLoaded, findFontByInput } from '@/lib/typography-registry'
 
-// ── Unified Font Families (shared with RichTextToolbar) ──────────────
-export const EDITOR_FONT_FAMILIES = [
-    { label: 'Default', value: 'default' },
-    { label: 'Inter', value: 'Inter, sans-serif' },
-    { label: 'Roboto', value: 'Roboto, sans-serif' },
-    { label: 'Poppins', value: 'Poppins, sans-serif' },
-    { label: 'Open Sans', value: 'Open Sans, sans-serif' },
-    { label: 'Lato', value: 'Lato, sans-serif' },
-    { label: 'Montserrat', value: 'Montserrat, sans-serif' },
-    { label: 'Oswald', value: 'Oswald, sans-serif' },
-    { label: 'Raleway', value: 'Raleway, sans-serif' },
-    { label: 'Outfit', value: 'Outfit, sans-serif' },
-    { label: 'DM Sans', value: 'DM Sans, sans-serif' },
-    { label: 'Space Grotesk', value: 'Space Grotesk, sans-serif' },
-    { label: 'Nunito', value: 'Nunito, sans-serif' },
-    { label: 'Cabin', value: 'Cabin, sans-serif' },
-    { label: 'Ubuntu', value: 'Ubuntu, sans-serif' },
-    { label: 'Source Sans Pro', value: 'Source Sans Pro, sans-serif' },
-    { label: 'Playfair Display', value: 'Playfair Display, serif' },
-    { label: 'Merriweather', value: 'Merriweather, serif' },
-    { label: 'Georgia', value: 'Georgia, serif' },
-    { label: 'Times New Roman', value: 'Times New Roman, serif' },
-    { label: 'Arial', value: 'Arial, sans-serif' },
-    { label: 'Helvetica', value: 'Helvetica, sans-serif' },
-    { label: 'Verdana', value: 'Verdana, sans-serif' },
-    { label: 'Trebuchet MS', value: 'Trebuchet MS, sans-serif' },
-    { label: 'Courier New', value: 'Courier New, monospace' },
-]
+// ── Unified Font Families (re-exported for backwards compatibility) ──
+export const EDITOR_FONT_FAMILIES = UNIFIED_FONT_FAMILIES
 
 // ── Color presets ──────────────────────────────
 const TEXT_COLOR_PRESETS = [
@@ -346,6 +321,9 @@ interface TiptapEditorProps {
         fontSize?: number
         fontFamily?: string
         fontWeight?: string | number
+        fontStyle?: string
+        textDecoration?: string
+        textTransform?: string
         color?: string
         textAlign?: string
         lineHeight?: number | string
@@ -388,6 +366,11 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
     const editorStyleParts: string[] = []
     if (contentStyle?.fontSize) editorStyleParts.push(`font-size: ${contentStyle.fontSize}px`)
     if (contentStyle?.fontFamily) editorStyleParts.push(`font-family: ${contentStyle.fontFamily}`)
+    if (contentStyle?.fontWeight) editorStyleParts.push(`font-weight: ${contentStyle.fontWeight}`)
+    if (contentStyle?.fontStyle) editorStyleParts.push(`font-style: ${contentStyle.fontStyle}`)
+    if (contentStyle?.textDecoration && contentStyle.textDecoration !== 'none') editorStyleParts.push(`text-decoration: ${contentStyle.textDecoration}`)
+    if (contentStyle?.textTransform && contentStyle.textTransform !== 'none') editorStyleParts.push(`text-transform: ${contentStyle.textTransform}`)
+    if (contentStyle?.textAlign) editorStyleParts.push(`text-align: ${contentStyle.textAlign}`)
     if (contentStyle?.color) editorStyleParts.push(`color: ${contentStyle.color}`)
     if (contentStyle?.lineHeight) editorStyleParts.push(`line-height: ${contentStyle.lineHeight}`)
     if (contentStyle?.letterSpacing) editorStyleParts.push(`letter-spacing: ${contentStyle.letterSpacing}px`)
@@ -457,7 +440,7 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
         },
         editorProps: {
             attributes: {
-                class: 'tiptap max-w-none focus:outline-none min-h-[350px] p-2',
+                class: `tiptap max-w-none focus:outline-none box-border ${zoneDimensions ? 'min-h-[60px] p-1' : 'min-h-[350px] p-4'}`,
                 style: editorStyleString
             }
         }
@@ -469,6 +452,13 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
             editor.commands.setContent(initialHtml)
         }
     }, [initialHtml, editor])
+
+    // Keep editor DOM styles in sync when contentStyle changes
+    useEffect(() => {
+        if (editor?.view?.dom) {
+            editor.view.dom.setAttribute('style', editorStyleString)
+        }
+    }, [editor, editorStyleString])
 
     const setLink = useCallback(() => {
         if (!editor) return
@@ -508,7 +498,7 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
         const containerWidth = container.clientWidth - 32 // 16px padding on both sides
         const containerHeight = container.clientHeight - 32 // 16px padding on top/bottom
         const zoneW = zoneDimensions.width
-        const zoneH = zoneDimensions.height
+        const zoneH = Math.max(zoneDimensions.height, 160)
         if (containerWidth > 0 && containerHeight > 0 && zoneW > 0 && zoneH > 0) {
             const scaleX = containerWidth / zoneW
             const scaleY = containerHeight / zoneH
@@ -524,6 +514,13 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
             window.removeEventListener('resize', computeScale)
         }
     }, [computeScale])
+
+    // Preload contentStyle font if specified
+    useEffect(() => {
+        if (contentStyle?.fontFamily) {
+            ensureGoogleFontLoaded(contentStyle.fontFamily)
+        }
+    }, [contentStyle?.fontFamily])
 
     // Helper: get the current font family at cursor/selection (with contentStyle fallback)
     const getCurrentFontFamily = useCallback(() => {
@@ -545,12 +542,13 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
 
     // Helper: get the current text alignment
     const getCurrentAlignment = useCallback(() => {
-        if (!editor) return 'left'
+        if (!editor) return contentStyle?.textAlign || 'left'
         if (editor.isActive({ textAlign: 'center' })) return 'center'
         if (editor.isActive({ textAlign: 'right' })) return 'right'
         if (editor.isActive({ textAlign: 'justify' })) return 'justify'
-        return 'left'
-    }, [editor, editorUpdateKey])
+        if (editor.isActive({ textAlign: 'left' })) return 'left'
+        return contentStyle?.textAlign || 'left'
+    }, [editor, editorUpdateKey, contentStyle?.textAlign])
 
     // Helper: get the current heading level
     const getCurrentHeading = useCallback(() => {
@@ -633,16 +631,16 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
 
     // Get current line height from the active node
     const getCurrentLineHeight = () => {
-        if (!editor) return ''
+        if (!editor) return contentStyle?.lineHeight ? String(contentStyle.lineHeight) : ''
         const { lineHeight } = editor.getAttributes('paragraph')
-        return lineHeight || ''
+        return lineHeight || (contentStyle?.lineHeight ? String(contentStyle.lineHeight) : '')
     }
 
     // Get current letter spacing from the active node
     const getCurrentLetterSpacing = () => {
-        if (!editor) return ''
+        if (!editor) return contentStyle?.letterSpacing ? `${contentStyle.letterSpacing}px` : ''
         const { letterSpacing } = editor.getAttributes('paragraph')
-        return letterSpacing || ''
+        return letterSpacing || (contentStyle?.letterSpacing ? `${contentStyle.letterSpacing}px` : '')
     }
 
     // Get current paragraph spacing from the active node
@@ -654,9 +652,9 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
 
     // Get current text color
     const getCurrentTextColor = () => {
-        if (!editor) return '#000000'
+        if (!editor) return contentStyle?.color || (editorBg === 'black' ? '#ffffff' : '#000000')
         const attrs = editor.getAttributes('textStyle')
-        return attrs.color || contentStyle?.color || '#000000'
+        return attrs.color || contentStyle?.color || (editorBg === 'black' ? '#ffffff' : '#000000')
     }
 
     if (!editor) {
@@ -692,6 +690,7 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
                         if (value === 'default') {
                             editor.chain().focus().unsetFontFamily().run()
                         } else {
+                            ensureGoogleFontLoaded(value)
                             editor.chain().focus().setFontFamily(value).run()
                         }
                     }}
@@ -939,21 +938,21 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
                 {/* Text Formatting */}
                 <ToolbarButton
                     onClick={() => editor.chain().focus().toggleBold().run()}
-                    isActive={editor.isActive('bold')}
+                    isActive={editor.isActive('bold') || (!editor.isActive('bold') && ['700', '800', '900', 'bold'].includes(String(contentStyle?.fontWeight || '')))}
                     title="Bold"
                 >
                     <Bold className="h-4 w-4" />
                 </ToolbarButton>
                 <ToolbarButton
                     onClick={() => editor.chain().focus().toggleItalic().run()}
-                    isActive={editor.isActive('italic')}
+                    isActive={editor.isActive('italic') || (!editor.isActive('italic') && contentStyle?.fontStyle === 'italic')}
                     title="Italic"
                 >
                     <Italic className="h-4 w-4" />
                 </ToolbarButton>
                 <ToolbarButton
                     onClick={() => editor.chain().focus().toggleUnderline().run()}
-                    isActive={editor.isActive('underline')}
+                    isActive={editor.isActive('underline') || (!editor.isActive('underline') && contentStyle?.textDecoration === 'underline')}
                     title="Underline"
                 >
                     <UnderlineIcon className="h-4 w-4" />
@@ -1366,8 +1365,20 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
 
                 {/* Clear Formatting */}
                 <ToolbarButton
-                    onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()}
-                    title="Clear Formatting"
+                    onClick={() => {
+                        const chain = editor.chain().focus()
+                            .clearNodes()
+                            .unsetAllMarks()
+                            .unsetFontFamily()
+                            .unsetColor()
+                            .unsetHighlight()
+                            .unsetMark('textStyle')
+                        if ((chain as any).unsetTextAlign) {
+                            (chain as any).unsetTextAlign()
+                        }
+                        chain.run()
+                    }}
+                    title="Clear Formatting (Reset to container defaults)"
                 >
                     <Eraser className="h-4 w-4" />
                 </ToolbarButton>
@@ -1376,28 +1387,61 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
             {/* Editor Content */}
             <div className={`flex-1 ${fitToView ? 'overflow-hidden' : 'overflow-y-auto'}`} ref={editorContainerRef}>
                 {fitToView && zoneDimensions ? (
-                    <div className="flex justify-center p-4 bg-gray-100 h-full w-full">
+                    <div className="flex justify-center p-4 bg-gray-100 h-full w-full overflow-auto">
                         <div
                             style={{
                                 width: `${zoneDimensions.width * editorScale}px`,
-                                height: `${zoneDimensions.height * editorScale}px`,
+                                minHeight: `${Math.max(zoneDimensions.height, 160) * editorScale}px`,
                                 flexShrink: 0,
-                                margin: '0 auto'
+                                margin: '0 auto',
+                                position: 'relative'
                             }}
                         >
                             <div
                                 style={{
                                     width: `${zoneDimensions.width}px`,
-                                    height: `${zoneDimensions.height}px`,
+                                    minHeight: `${Math.max(zoneDimensions.height, 160)}px`,
                                     transform: `scale(${editorScale})`,
                                     transformOrigin: 'top left',
                                     boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
-                                    background: editorBg === 'black' ? 'black' : 'white',
-                                    borderRadius: '2px',
-                                    overflow: 'hidden'
+                                    background: editorBg === 'black' ? '#111827' : '#ffffff',
+                                    borderRadius: '4px',
+                                    overflow: 'visible',
+                                    position: 'relative',
+                                    textAlign: (contentStyle?.textAlign as any) || 'inherit'
                                 }}
                             >
-                                <EditorContent editor={editor} className="h-full" />
+                                <EditorContent editor={editor} className="min-h-full" />
+                                {zoneDimensions.height < 160 && (
+                                    <div
+                                        style={{
+                                            position: 'absolute',
+                                            top: `${zoneDimensions.height}px`,
+                                            left: 0,
+                                            right: 0,
+                                            borderTop: '1.5px dashed #93c5fd',
+                                            pointerEvents: 'none',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'flex-end',
+                                            paddingRight: '8px',
+                                            paddingTop: '2px',
+                                            zIndex: 20
+                                        }}
+                                    >
+                                        <span style={{
+                                            fontSize: '9px',
+                                            fontWeight: 600,
+                                            color: '#3b82f6',
+                                            backgroundColor: editorBg === 'black' ? '#1f2937' : '#eff6ff',
+                                            padding: '1px 6px',
+                                            borderRadius: '3px',
+                                            border: '1px solid #bfdbfe'
+                                        }}>
+                                            Canvas Slot Height ({zoneDimensions.height}px)
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -1406,16 +1450,48 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
                         <div
                             style={{
                                 width: `${zoneDimensions.width}px`,
-                                height: `${zoneDimensions.height}px`,
+                                minHeight: `${Math.max(zoneDimensions.height, 160)}px`,
                                 boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
-                                background: editorBg === 'black' ? 'black' : 'white',
-                                borderRadius: '2px',
-                                overflow: 'auto',
+                                background: editorBg === 'black' ? '#111827' : '#ffffff',
+                                borderRadius: '4px',
+                                overflow: 'visible',
                                 flexShrink: 0,
-                                margin: '0 auto'
+                                margin: '0 auto',
+                                position: 'relative',
+                                textAlign: (contentStyle?.textAlign as any) || 'inherit'
                             }}
                         >
-                            <EditorContent editor={editor} className="h-full" />
+                            <EditorContent editor={editor} className="min-h-full" />
+                            {zoneDimensions.height < 160 && (
+                                <div
+                                    style={{
+                                        position: 'absolute',
+                                        top: `${zoneDimensions.height}px`,
+                                        left: 0,
+                                        right: 0,
+                                        borderTop: '1.5px dashed #93c5fd',
+                                        pointerEvents: 'none',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'flex-end',
+                                        paddingRight: '8px',
+                                        paddingTop: '2px',
+                                        zIndex: 20
+                                    }}
+                                >
+                                    <span style={{
+                                        fontSize: '9px',
+                                        fontWeight: 600,
+                                        color: '#3b82f6',
+                                        backgroundColor: editorBg === 'black' ? '#1f2937' : '#eff6ff',
+                                        padding: '1px 6px',
+                                        borderRadius: '3px',
+                                        border: '1px solid #bfdbfe'
+                                    }}>
+                                        Canvas Slot Height ({zoneDimensions.height}px)
+                                    </span>
+                                </div>
+                            )}
                         </div>
                     </div>
                 ) : (

@@ -86,7 +86,7 @@ export function TemplateContentPanel() {
         const containerWidth = container.clientWidth - 16 // padding
         const containerHeight = container.clientHeight - 16
         const contentWidth = selectedTextArea.position.width
-        const contentHeight = selectedTextArea.position.height
+        const contentHeight = Math.max(selectedTextArea.position.height, 160)
 
         if (contentWidth <= 0 || contentHeight <= 0) return
 
@@ -231,6 +231,11 @@ export function TemplateContentPanel() {
                                                 contentStyle={selectedTextArea ? {
                                                     fontSize: selectedTextArea.style.fontSize,
                                                     fontFamily: selectedTextArea.style.fontFamily,
+                                                    fontWeight: selectedTextArea.style.fontWeight,
+                                                    fontStyle: (selectedTextArea.style as any).fontStyle,
+                                                    textDecoration: (selectedTextArea.style as any).textDecoration,
+                                                    textTransform: (selectedTextArea.style as any).textTransform,
+                                                    textAlign: selectedTextArea.style.textAlign || 'left',
                                                     color: selectedTextArea.style.color,
                                                     lineHeight: selectedTextArea.style.lineHeight,
                                                     letterSpacing: selectedTextArea.style.letterSpacing
@@ -322,64 +327,136 @@ export function TemplateContentPanel() {
 
                                         const customBg = getBgStyle()
 
+                                        const rawHeight = selectedTextArea.position.height
+                                        const previewBoxHeight = Math.max(rawHeight, 160)
+
                                         if (fitToPreview) {
                                             // Wrapper sized to scaled dimensions so content doesn't clip
                                             return (
                                                 <div style={{
                                                     width: `${width * previewScale}px`,
-                                                    height: `${height * previewScale}px`,
+                                                    minHeight: `${previewBoxHeight * previewScale}px`,
                                                     flexShrink: 0,
-                                                    margin: '0 auto'
+                                                    margin: '0 auto',
+                                                    position: 'relative'
                                                 }}>
                                                     <div
-                                                        className="border rounded shadow-sm html-content-area"
+                                                        className="border rounded shadow-sm html-content-area relative"
                                                         style={{
                                                             width: `${width}px`,
-                                                            height: `${height}px`,
+                                                            minHeight: `${previewBoxHeight}px`,
                                                             fontSize: selectedTextArea.style.fontSize ? `${selectedTextArea.style.fontSize}px` : '14px',
                                                             fontFamily: selectedTextArea.style.fontFamily || 'inherit',
                                                             fontWeight: selectedTextArea.style.fontWeight || 'normal',
+                                                            fontStyle: (selectedTextArea.style as any).fontStyle || 'normal',
+                                                            textDecoration: (selectedTextArea.style as any).textDecoration || 'none',
+                                                            textTransform: ((selectedTextArea.style as any).textTransform as any) || 'none',
                                                             color: selectedTextArea.style.color || '#000000',
                                                             textAlign: (selectedTextArea.style.textAlign as any) || 'left',
                                                             lineHeight: selectedTextArea.style.lineHeight || 'normal',
                                                             letterSpacing: selectedTextArea.style.letterSpacing ? `${selectedTextArea.style.letterSpacing}px` : 'normal',
-                                                            padding: '8px',
+                                                            padding: '4px',
                                                             boxSizing: 'border-box',
                                                             wordBreak: 'break-word',
-                                                            overflow: 'hidden',
+                                                            overflow: 'visible',
                                                             transform: `scale(${previewScale})`,
                                                             transformOrigin: 'top left',
                                                             ...customBg
                                                         }}
-                                                        dangerouslySetInnerHTML={{ __html: sanitizeHTML(richEditorContent || 'Preview will appear here...') }}
-                                                    />
+                                                    >
+                                                        <div className="html-content-area w-full" dangerouslySetInnerHTML={{ __html: sanitizeHTML(richEditorContent || 'Preview will appear here...') }} />
+                                                        {rawHeight < 160 && (
+                                                            <div
+                                                                style={{
+                                                                    position: 'absolute',
+                                                                    top: `${rawHeight}px`,
+                                                                    left: 0,
+                                                                    right: 0,
+                                                                    borderTop: '1.5px dashed #93c5fd',
+                                                                    pointerEvents: 'none',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'flex-end',
+                                                                    paddingRight: '8px',
+                                                                    paddingTop: '2px',
+                                                                    zIndex: 20
+                                                                }}
+                                                            >
+                                                                <span style={{
+                                                                    fontSize: '9px',
+                                                                    fontWeight: 600,
+                                                                    color: '#3b82f6',
+                                                                    backgroundColor: '#eff6ff',
+                                                                    padding: '1px 6px',
+                                                                    borderRadius: '3px',
+                                                                    border: '1px solid #bfdbfe'
+                                                                }}>
+                                                                    Canvas Slot Height ({rawHeight}px)
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             )
                                         }
 
                                         return (
                                             <div
-                                                className="border rounded shadow-sm html-content-area"
+                                                className="border rounded shadow-sm html-content-area relative"
                                                 style={{
                                                     width: `${width}px`,
-                                                    height: `${height}px`,
+                                                    minHeight: `${previewBoxHeight}px`,
                                                     fontSize: selectedTextArea.style.fontSize ? `${selectedTextArea.style.fontSize}px` : '14px',
                                                     fontFamily: selectedTextArea.style.fontFamily || 'inherit',
                                                     fontWeight: selectedTextArea.style.fontWeight || 'normal',
+                                                    fontStyle: (selectedTextArea.style as any).fontStyle || 'normal',
+                                                    textDecoration: (selectedTextArea.style as any).textDecoration || 'none',
+                                                    textTransform: ((selectedTextArea.style as any).textTransform as any) || 'none',
                                                     color: selectedTextArea.style.color || '#000000',
                                                     textAlign: (selectedTextArea.style.textAlign as any) || 'left',
                                                     lineHeight: selectedTextArea.style.lineHeight || 'normal',
                                                     letterSpacing: selectedTextArea.style.letterSpacing ? `${selectedTextArea.style.letterSpacing}px` : 'normal',
-                                                    padding: '8px',
+                                                    padding: '4px',
                                                     boxSizing: 'border-box',
                                                     wordBreak: 'break-word',
-                                                    overflow: 'auto',
+                                                    overflow: 'visible',
                                                     flexShrink: 0,
                                                     margin: '0 auto',
                                                     ...customBg
                                                 }}
-                                                dangerouslySetInnerHTML={{ __html: sanitizeHTML(richEditorContent || 'Preview will appear here...') }}
-                                            />
+                                            >
+                                                <div className="html-content-area w-full" dangerouslySetInnerHTML={{ __html: sanitizeHTML(richEditorContent || 'Preview will appear here...') }} />
+                                                {rawHeight < 160 && (
+                                                    <div
+                                                        style={{
+                                                            position: 'absolute',
+                                                            top: `${rawHeight}px`,
+                                                            left: 0,
+                                                            right: 0,
+                                                            borderTop: '1.5px dashed #93c5fd',
+                                                            pointerEvents: 'none',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'flex-end',
+                                                            paddingRight: '8px',
+                                                            paddingTop: '2px',
+                                                            zIndex: 20
+                                                        }}
+                                                    >
+                                                        <span style={{
+                                                            fontSize: '9px',
+                                                            fontWeight: 600,
+                                                            color: '#3b82f6',
+                                                            backgroundColor: '#eff6ff',
+                                                            padding: '1px 6px',
+                                                            borderRadius: '3px',
+                                                            border: '1px solid #bfdbfe'
+                                                        }}>
+                                                            Canvas Slot Height ({rawHeight}px)
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
                                         )
                                     })()}
                                 </div>
