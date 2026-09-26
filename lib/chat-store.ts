@@ -196,10 +196,11 @@ interface ChatStore {
   backendConversationId: string | null; // NEW: Track if chart is already saved to backend
 
   setBackendConversationId: (id: string | null) => void; // NEW: Setter for backend conversation ID
-  selectedModel: 'deepseek' | 'deepseek-search' | 'gemini-search';
-  setSelectedModel: (model: 'deepseek' | 'deepseek-search' | 'gemini-search') => void;
+  selectedModel: 'deepseek' | 'deepseek-search' | 'deepseek-brave' | 'gemini-search' | 'perplexity';
+  setSelectedModel: (model: 'deepseek' | 'deepseek-search' | 'deepseek-brave' | 'gemini-search' | 'perplexity') => void;
   includeImages: boolean;
   setIncludeImages: (include: boolean) => void;
+  stopGeneration: () => void;
   addMessage: (msg: ChatMessage) => void;
   setMessages: (msgs: ChatMessage[]) => void;
   clearMessages: () => void;
@@ -230,21 +231,62 @@ export const useChatStore = create<ChatStore>()(
       includeImages: false,
       setIncludeImages: (include) => set({ includeImages: include }),
 
+      stopGeneration: () => {
+        if (currentRequestController) {
+          try {
+            currentRequestController.abort();
+          } catch { }
+          currentRequestController = null;
+        }
+        set({ isProcessing: false });
+      },
+
       addMessage: (msg: ChatMessage) => set({ messages: [...get().messages, msg] }),
 
       setMessages: (msgs: ChatMessage[]) => set({ messages: msgs }),
 
-      clearMessages: () => set({ messages: [getInitialMessage()] }),
+      clearMessages: () => {
+        if (currentRequestController) {
+          try {
+            currentRequestController.abort();
+          } catch { }
+          currentRequestController = null;
+        }
+        set({ messages: [getInitialMessage()], isProcessing: false });
+      },
 
       startNewConversation: (keepChartData?: boolean) => {
+        if (currentRequestController) {
+          try {
+            currentRequestController.abort();
+          } catch { }
+          currentRequestController = null;
+        }
+
         set({
           messages: [getInitialMessage()],
           currentConversationId: generateId(),
           currentChartState: null,
           conversationContext: null,
           historyConversationId: null,
-          backendConversationId: null // Clear backend ID for new conversation
+          backendConversationId: null, // Clear backend ID for new conversation
+          isProcessing: false
         });
+
+        // Clear snapshot ID so new conversation doesn't inherit old chart's snapshot
+        useChartStore.getState().setCurrentSnapshotId(null);
+
+        // Close any open galleries so new conversation starts on a clean canvas
+        try {
+          useChartStyleStore.getState().closeGallery();
+        } catch (e) {
+          console.warn('Could not close chart style gallery:', e);
+        }
+        try {
+          useFormatGalleryStore.getState().closeGallery();
+        } catch (e) {
+          console.warn('Could not close format gallery:', e);
+        }
 
         // Only reset chart if not explicitly told to keep data
         if (!keepChartData) {
@@ -252,9 +294,7 @@ export const useChatStore = create<ChatStore>()(
           
           // Clear format gallery state when clearing chart data
           const formatStore = useFormatGalleryStore.getState();
-          formatStore.setContentPackage(null);
-          formatStore.setSelectedFormat(null, 'bar');
-          formatStore.setContextualImageUrl(null);
+          formatStore.resetGallery();
 
           // Clear template state when clearing chart data
           try {
@@ -291,8 +331,15 @@ export const useChatStore = create<ChatStore>()(
         set({ messages: messagesWithUser, isProcessing: true });
 
         // Build compact history (last 5, no snapshots, truncate long messages)
-        // Increased from 2→5 messages and 150→300 chars for better AI context
+        // Exclude initial assistant greeting placeholders so the model gets clean history
         const compactHistory = messages
+          .filter(m => !(m.role === 'assistant' && (
+            m.content.includes('Hi! Describe the chart') ||
+            m.content.includes('Please attach a template') ||
+            m.content.includes('Select a template from the options') ||
+            m.content.includes('Describe your chart content') ||
+            m.content.includes('Please select a format')
+          )))
           .slice(-5)
           .map(({ role, content, timestamp }) => ({
             role,
@@ -360,8 +407,10 @@ export const useChatStore = create<ChatStore>()(
           input: finalInput,
           conversationId: currentConversationId,
           messageHistory: compactHistory,
-          service: selectedModel === 'gemini-search' ? 'gemini' : 'deepseek',
-          webSearch: selectedModel === 'gemini-search' || selectedModel === 'deepseek-search',
+          service: selectedModel === 'gemini-search' ? 'gemini' : (selectedModel === 'perplexity' ? 'perplexity' : 'deepseek'),
+          model: selectedModel === 'gemini-search' ? 'gemini-3.5-flash-lite' : (selectedModel === 'perplexity' ? 'sonar-pro' : 'deepseek-chat'),
+          webSearch: selectedModel === 'gemini-search' || selectedModel === 'deepseek-search' || selectedModel === 'deepseek-brave' || selectedModel === 'perplexity',
+          ...(selectedModel === 'deepseek-brave' && { searchProvider: 'brave' }),
           includeImages: get().includeImages
         };
         if (liveChartState) {
@@ -416,6 +465,12 @@ export const useChatStore = create<ChatStore>()(
           if (result.subscription && typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('auth:refresh'));
           }
+
+          // Discard obsolete response if user navigated, switched chats, or started a new conversation
+          if (get().currentConversationId !== currentConversationId) {
+            console.log('[chat-store] Conversation changed during API request; discarding obsolete response.');
+            return;
+          }
           console.log('Frontend - Received result:', {
             hasChartType: !!result.chartType,
             hasChartData: !!result.chartData,
@@ -464,16 +519,17 @@ export const useChatStore = create<ChatStore>()(
             // Sync visualSettings with AI-driven plugin modifications
             if (result.chartConfig.plugins) {
               if (result.chartConfig.plugins.datalabels !== undefined) {
-                if (!finalChartConfig.visualSettings) finalChartConfig.visualSettings = {} as any;
-                finalChartConfig.visualSettings.showLabels = result.chartConfig.plugins.datalabels.display !== false;
+                if (!finalChartConfig.visualSettings) (finalChartConfig as any).visualSettings = {};
+                (finalChartConfig.visualSettings as any).showLabels = result.chartConfig.plugins.datalabels.display !== false;
                 
                 // Sync customLabelsConfig to match datalabels
-                if (!finalChartConfig.plugins.customLabelsConfig) finalChartConfig.plugins.customLabelsConfig = {};
-                (finalChartConfig.plugins.customLabelsConfig as any).display = result.chartConfig.plugins.datalabels.display;
+                if (!finalChartConfig.plugins) (finalChartConfig as any).plugins = {};
+                if (!finalChartConfig.plugins?.customLabelsConfig) (finalChartConfig.plugins as any).customLabelsConfig = {};
+                (finalChartConfig.plugins as any).customLabelsConfig.display = result.chartConfig.plugins.datalabels.display;
               }
               if (result.chartConfig.plugins.legend !== undefined) {
-                if (!finalChartConfig.visualSettings) finalChartConfig.visualSettings = {} as any;
-                finalChartConfig.visualSettings.showLegend = result.chartConfig.plugins.legend.display !== false;
+                if (!finalChartConfig.visualSettings) (finalChartConfig as any).visualSettings = {};
+                (finalChartConfig.visualSettings as any).showLegend = result.chartConfig.plugins.legend.display !== false;
               }
             }
           } else {
@@ -481,12 +537,12 @@ export const useChatStore = create<ChatStore>()(
             finalChartConfig = JSON.parse(JSON.stringify(getDefaultConfigForType(result.chartType)));
 
             // Preserve the user's selected dimension/aspect ratio settings from the store
-            const currentStoreConfig = useChartStore.getState().chartConfig;
+            const currentStoreConfig = useChartStore.getState().chartConfig as Record<string, any> | undefined;
             if (currentStoreConfig) {
               const keysToPreserve = ['manualDimensions', 'dynamicDimension', 'templateDimensions', 'originalDimensions', 'responsive', 'width', 'height'];
               keysToPreserve.forEach(key => {
                 if (currentStoreConfig[key] !== undefined) {
-                  finalChartConfig[key] = currentStoreConfig[key];
+                  (finalChartConfig as Record<string, any>)[key] = currentStoreConfig[key];
                 }
               });
             }
@@ -525,11 +581,13 @@ export const useChatStore = create<ChatStore>()(
           if (result.action === 'modify') {
             const liveType = useChartStore.getState().chartType;
             if (liveType && liveType !== result.chartType) {
-              const CHART_TYPE_KEYWORDS = ['pie', 'bar', 'line', 'doughnut', 'scatter', 'bubble', 'radar', 'polar', 'area', 'chart type', 'convert', 'switch', 'change to'];
-              const isTypeChangeRequested = input && CHART_TYPE_KEYWORDS.some(kw => input.toLowerCase().includes(kw));
+              const inputLower = (input || '').toLowerCase();
+              const hasNegativeConstraint = /\b(don't|do not|keep|stay|maintain|preserve)\b/i.test(inputLower);
+              const isExplicitTypeRequest = /\b(change to|switch to|convert to|make it a|turn into|as a)\s+(pie|bar|line|doughnut|scatter|bubble|radar|polar|area)/i.test(inputLower) ||
+                /\b(pie|bar|line|doughnut|scatter|bubble|radar|polar|area)\s+chart\b/i.test(inputLower);
 
-              if (!isTypeChangeRequested) {
-                console.log(`Frontend - Chart type override: AI returned "${result.chartType}", using live store "${liveType}"`);
+              if (hasNegativeConstraint || !isExplicitTypeRequest) {
+                console.log(`Frontend - Chart type preserved: AI returned "${result.chartType}", keeping live store "${liveType}"`);
                 finalChartType = liveType;
               } else {
                 console.log(`Frontend - Chart type change accepted: User requested type change to "${result.chartType}"`);
@@ -537,9 +595,14 @@ export const useChatStore = create<ChatStore>()(
             }
           }
 
+          let displayContent = userMessage;
+          if (result.searchWarning) {
+            displayContent += `\n\n⚠️ *${result.searchWarning}*`;
+          }
+
           const assistantMsg: ChatMessage = {
             role: 'assistant',
-            content: userMessage,
+            content: displayContent,
             timestamp: Date.now(),
             chartSnapshot: {
               chartType: finalChartType,
@@ -575,7 +638,7 @@ export const useChatStore = create<ChatStore>()(
                   originalDimensions: currentConfig.originalDimensions,
                   width: currentConfig.width,
                   height: currentConfig.height,
-                };
+                } as any;
               }
             }
 
@@ -641,10 +704,10 @@ export const useChatStore = create<ChatStore>()(
                     console.log('Format mode: Falling back to local content extraction');
                   }
 
-                  if (formatStore.selectedFormatId && formatStore.formats.length > 0) {
+                  if (formatStore.selectedFormatId) {
                     // Format is pre-selected → auto-apply and close gallery
-                    const format = formatStore.formats.find((f: any) => f.id === formatStore.selectedFormatId) ||
-                                   formatStore.userFormats.find((f: any) => f.id === formatStore.selectedFormatId);
+                    const format = formatStore.selectedFormatSnapshot ||
+                                   [...formatStore.formats, ...formatStore.userFormats].find((f: any) => f.id === formatStore.selectedFormatId);
                     if (format && contentPackage) {
                       formatStore.setContentPackage(contentPackage);
                       templateStore.clearAllTemplateState();

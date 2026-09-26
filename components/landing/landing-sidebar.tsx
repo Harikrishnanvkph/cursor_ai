@@ -5,21 +5,27 @@ import { useRouter } from "next/navigation"
 import {
   ArrowUp, BarChart2, SquarePen, Edit3,
   MessageSquare, Sparkles, ChevronLeft, ChevronRight, ChevronDown,
-  Info, LayoutDashboard, Bot, Brain, ExternalLink, ImageIcon, Zap
+  Info, LayoutDashboard, Bot, Brain, ExternalLink, ImageIcon, Zap, Globe,
+  LineChart, PieChart, ArrowRight, Settings, Check, Square
 } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
-  DropdownMenuItem
+  DropdownMenuItem,
+  DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu"
 import { useChartStore } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
 import { useTemplateStore } from "@/lib/template-store"
+import { useChartStyleStore } from "@/lib/stores/chart-style-store"
+import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { useSubscriptionQuota } from "@/lib/hooks/use-subscription-quota"
 import { UpgradeProDialog } from "@/components/dialogs/upgrade-pro-dialog"
 import { chartTemplate } from "./prompt_template"
 import { useSidebarContext } from "./sidebar-context"
+import { ChatSettingsPopover } from "./chat-settings-popover"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { toast } from "sonner"
 
 interface LandingSidebarProps {
@@ -56,6 +62,26 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
   const isChatDisabled = (generateMode === 'template' && !currentTemplate)
   const hasActiveChart = currentChartState !== null && hasJSON
 
+  const userGreetingName = React.useMemo(() => {
+    if (!user) return ""
+    return (
+      (user.user_metadata?.full_name as string) ||
+      (user.user_metadata?.name as string) ||
+      user.email?.split("@")[0] ||
+      ""
+    )
+  }, [user])
+
+  const isConversationEmpty = messages.length === 0 || messages.every(m =>
+    m.role === 'assistant' && (
+      m.content.includes('Hi! Describe the chart') ||
+      m.content.includes('Please attach a template') ||
+      m.content.includes('Select a template from the options') ||
+      m.content.includes('Describe your chart content') ||
+      m.content.includes('Please select a format')
+    )
+  )
+
   const handleSend = useCallback(async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     if (!input.trim() || isProcessing || isChatDisabled) return
@@ -87,10 +113,8 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
       if (textareaRef.current) {
         setTimeout(() => {
           if (textareaRef.current) {
-            textareaRef.current.style.height = "36px"
-            const maxHeight = 100
-            textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`
-            textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > maxHeight ? "auto" : "hidden"
+            textareaRef.current.style.height = "34px"
+            textareaRef.current.style.overflowY = "hidden"
           }
         }, 50)
       }
@@ -101,45 +125,43 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
     }, 100)
   }, [input, isProcessing, continueConversation, isChatDisabled, setInput, textareaRef, user, aiCreditsRemaining, aiCreditsLimit])
 
+  // Auto-adjust textarea to 1 row (34px) or 2 rows max (58px) depending on content height needed
+  const adjustTextareaHeight = useCallback(() => {
+    if (textareaRef.current) {
+      const el = textareaRef.current
+      if (!el.value) {
+        el.style.height = "34px"
+        el.style.overflowY = "hidden"
+      } else {
+        el.style.height = "auto"
+        const singleRowHeight = 34
+        const twoRowsMaxHeight = 58 // max height for 2 rows of text with padding
+        const scrollH = el.scrollHeight
+        const targetH = Math.max(singleRowHeight, Math.min(scrollH, twoRowsMaxHeight))
+        el.style.height = `${targetH}px`
+        el.style.overflowY = scrollH > twoRowsMaxHeight ? "auto" : "hidden"
+      }
+    }
+  }, [textareaRef])
+
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value)
-
-    if (textareaRef.current) {
-      if (textareaRef.current.dataset.resizeTimeout) {
-        clearTimeout(Number(textareaRef.current.dataset.resizeTimeout))
-      }
-
-      const updateHeight = () => {
-        if (textareaRef.current) {
-          if (e.target.value === "") {
-            textareaRef.current.style.height = "36px"
-            textareaRef.current.style.overflowY = "hidden"
-          } else {
-            textareaRef.current.style.height = "36px"
-            const maxHeight = 100
-            textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`
-            textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > maxHeight ? "auto" : "hidden"
-          }
-        }
-      }
-
-      const timeoutId = setTimeout(updateHeight, 16)
-      textareaRef.current.dataset.resizeTimeout = timeoutId.toString()
-    }
-  }, [])
+    adjustTextareaHeight()
+  }, [adjustTextareaHeight])
 
   const handlePaste = useCallback(() => {
-    setTimeout(() => {
-      if (textareaRef.current) {
-        textareaRef.current.style.height = "36px"
-        const maxHeight = 80
-        textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`
-        textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > maxHeight ? "auto" : "hidden"
-      }
-    }, 10)
-  }, [])
+    requestAnimationFrame(adjustTextareaHeight)
+  }, [adjustTextareaHeight])
+
+  useEffect(() => {
+    adjustTextareaHeight()
+  }, [input, adjustTextareaHeight])
 
   const handleNewConversation = useCallback(() => {
+    try {
+      useChartStyleStore.getState().closeGallery()
+      useFormatGalleryStore.getState().closeGallery()
+    } catch (e) {}
     startNewConversation()
     setInput("")
   }, [startNewConversation])
@@ -207,81 +229,13 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
           {/* Input */}
           <form
             onSubmit={handleSend}
-            className="p-4 border-t border-slate-200/80 bg-transparent flex flex-col gap-2 flex-shrink-0"
+            className="p-4 bg-transparent flex flex-col gap-2 flex-shrink-0"
           >
-            <div className="flex items-center justify-between px-1">
-              <div className="flex items-center gap-1.5">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button type="button" className="text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors flex items-center gap-1.5 py-1 px-2.5 bg-white hover:bg-slate-50 border border-slate-200/60 rounded-xl shadow-xs">
-                      <Bot className="w-3.5 h-3.5 text-indigo-500" />
-                      <span>
-                        {selectedModel === 'gemini-search'
-                          ? 'Gemini Realtime'
-                          : selectedModel === 'deepseek-search'
-                          ? 'Deepseek Realtime'
-                          : 'DeepSeek Chat'}
-                      </span>
-                      <ChevronDown className="w-3 h-3 text-slate-400 ml-0.5" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-48 bg-white border border-slate-200 shadow-md rounded-xl p-1 z-50">
-                    <DropdownMenuItem onClick={() => setSelectedModel('deepseek')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 rounded-lg text-slate-700">
-                      <Brain className="w-3.5 h-3.5 text-blue-500" />
-                      <span>DeepSeek Chat</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setSelectedModel('deepseek-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 rounded-lg text-slate-700">
-                      <Sparkles className="w-3.5 h-3.5 text-blue-500" />
-                      <span>Deepseek Realtime</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setSelectedModel('gemini-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 rounded-lg text-slate-700">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                      <span>Gemini Realtime</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                {/* AI Credit Pill */}
-                {user && (
-                  <button
-                    type="button"
-                    onClick={() => setIsUpgradeOpen(true)}
-                    className={`flex items-center gap-1 py-1 px-2 rounded-xl text-xs font-semibold transition-all border shadow-xs cursor-pointer ${
-                      aiCreditsRemaining <= 0
-                        ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
-                        : aiCreditsRemaining <= 2
-                        ? 'bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100'
-                        : 'bg-indigo-50/70 text-indigo-700 border-indigo-200/60 hover:bg-indigo-100/80'
-                    }`}
-                    title="Remaining monthly AI credits. Click to view subscription plans."
-                  >
-                    <Zap className="w-3 h-3 text-current" />
-                    <span>{aiCreditsRemaining}/{aiCreditsLimit}</span>
-                  </button>
-                )}
-              </div>
-
-              {/* Image Toggle */}
-              <div className="flex items-center gap-2 select-none">
-                <span className="text-xs font-semibold text-slate-500">Images</span>
-                <button
-                  type="button"
-                  onClick={() => setIncludeImages(!includeImages)}
-                  className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent outline-none ${
-                    includeImages ? 'bg-indigo-600' : 'bg-slate-200'
-                  }`}
-                  title={includeImages ? "Auto-fetch images enabled" : "Auto-fetch images disabled"}
-                >
-                  <span className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-xs ${
-                    includeImages ? 'translate-x-3' : 'translate-x-0'
-                  }`} />
-                </button>
-              </div>
-            </div>
-            <div className="relative flex items-center w-full bg-white border border-slate-200 hover:border-slate-300 focus-within:border-indigo-400 focus-within:ring-4 focus-within:ring-indigo-50/50 transition-all rounded-2xl p-1.5 shadow-xs">
+            {/* Input Capsule with Textarea and vertical Gear + Send column */}
+            <div className="relative flex items-stretch w-full bg-white dark:bg-slate-900 border border-indigo-200/80 dark:border-indigo-900/60 hover:border-indigo-400 dark:hover:border-indigo-700 focus-within:border-indigo-600 dark:focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/15 shadow-md shadow-indigo-500/5 transition-all rounded-2xl p-2 min-h-[58px]">
               <textarea
                 ref={textareaRef}
-                className="flex-1 px-3 py-2 text-sm bg-transparent border-0 outline-none resize-none max-h-[140px] min-h-[38px] leading-relaxed transition-all font-sans text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none disabled:opacity-50"
+                className="flex-1 px-2 py-1 text-sm bg-transparent border-0 outline-none resize-none min-h-[34px] max-h-[58px] leading-relaxed transition-all font-sans text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-0 focus:outline-none disabled:opacity-50"
                 placeholder={isChatDisabled ? "Attach a template to start..." : (hasActiveChart ? "Modify the chart..." : "Ask AI to Generate Chart...")}
                 value={input}
                 onChange={handleInputChange}
@@ -291,76 +245,226 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
                 onKeyDown={e => {
                   if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                     e.preventDefault();
-                    if (!isChatDisabled) {
+                    if (!isChatDisabled && input.trim()) {
                       handleSend(e)
                     }
                   }
                 }}
               />
-              <button
-                type="submit"
-                className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white w-9 h-9 flex items-center justify-center rounded-xl flex-shrink-0 transition-all duration-200 shadow-sm disabled:opacity-30 disabled:hover:bg-indigo-600 disabled:active:scale-100"
-                disabled={isProcessing || !input.trim() || isChatDisabled}
-              >
-                <ArrowUp className="w-4 h-4" strokeWidth={2.5} />
-              </button>
+              <div className="flex flex-col items-center justify-between pl-1 flex-shrink-0 gap-1.5">
+                {/* Gear Icon: inside textbox, opens popover with remaining credits, model dropdown, and image toggle */}
+                <ChatSettingsPopover
+                  selectedModel={selectedModel}
+                  setSelectedModel={setSelectedModel}
+                  includeImages={includeImages}
+                  setIncludeImages={setIncludeImages}
+                  aiCreditsRemaining={aiCreditsRemaining}
+                  aiCreditsLimit={aiCreditsLimit}
+                  onOpenUpgrade={() => setIsUpgradeOpen(true)}
+                />
+
+                {/* Send / Stop Button */}
+                {isProcessing ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      useChatStore.getState().stopGeneration()
+                      toast.info("Generation cancelled")
+                    }}
+                    className="bg-red-500 hover:bg-red-600 active:scale-95 text-white w-7 h-7 flex items-center justify-center rounded-lg flex-shrink-0 transition-all duration-200 shadow-2xs cursor-pointer"
+                    title="Stop generation"
+                  >
+                    <Square className="w-3 h-3 fill-current" />
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white w-7 h-7 flex items-center justify-center rounded-lg flex-shrink-0 transition-all duration-200 shadow-2xs disabled:opacity-30 disabled:hover:bg-indigo-600 disabled:active:scale-100"
+                    disabled={!input.trim() || isChatDisabled}
+                  >
+                    <ArrowUp className="w-3.5 h-3.5" strokeWidth={2.5} />
+                  </button>
+                )}
+              </div>
             </div>
           </form>
 
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-transparent font-sans scrollbar-thin scrollbar-thumb-slate-200/80 scrollbar-track-transparent">
-            {messages.map((msg, idx) => (
-              <div
-                key={idx}
-                className={`px-4 py-3 w-[95%] whitespace-pre-wrap break-words text-sm leading-relaxed ${msg.role === "user"
-                  ? "bg-gradient-to-br from-indigo-500 to-indigo-600 text-white self-end ml-auto border border-indigo-400/20 rounded-2xl rounded-tr-sm font-semibold shadow-xs"
-                  : "bg-indigo-50/40 text-slate-800 self-start mr-auto border border-indigo-200/70 rounded-2xl rounded-tl-sm px-4 py-3 shadow-[0_2px_8px_rgba(99,102,241,0.04)] font-medium"
-                  }`}
-                style={{ wordBreak: 'break-word' }}
-              >
-                <div className="flex items-start gap-3">
-                  {msg.role === 'assistant' && (
-                    <div className="flex flex-col items-center gap-1 flex-shrink-0">
-                      <div className="p-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-xs text-white flex items-center justify-center">
-                        <Sparkles className="w-3.5 h-3.5" />
-                      </div>
-                      {msg.chartSnapshot && (
-                        <div className="relative group">
-                          <Info className="w-3 h-3 text-blue-400 hover:text-blue-600 cursor-help transition-colors" />
-                          {/* Tooltip */}
-                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 transition-opacity duration-200 delay-0 group-hover:opacity-100 group-hover:delay-300 pointer-events-none whitespace-nowrap z-50">
-                            <div className="space-y-1">
-                              {msg.chartSnapshot && (
-                                <div className="flex items-center gap-1">
-                                  <Edit3 className="w-3 h-3" />
-                                  <span>Chart {msg.action === 'create' ? 'created' : 'updated'}</span>
-                                  {msg.changes && msg.changes.length > 0 && (
-                                    <span>• {msg.changes.length} change{msg.changes.length > 1 ? 's' : ''}</span>
-                                  )}
+          {/* Messages or Gemini Hero Empty State */}
+          <div className="flex-1 overflow-y-auto px-4 py-3 bg-transparent font-sans scrollbar-thin scrollbar-thumb-slate-200/80 scrollbar-track-transparent flex flex-col">
+            {isConversationEmpty ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center px-2 py-6 animate-in fade-in duration-300 select-none">
+                {/* Glowing 4-pointed Gemini Star (mobile screen size only) */}
+                <div className="relative mb-5 flex items-center justify-center md:hidden">
+                  <div className="absolute w-20 h-20 rounded-full bg-gradient-to-tr from-sky-400/20 via-indigo-500/25 to-pink-500/20 blur-xl animate-pulse pointer-events-none" />
+                  <div className="relative w-14 h-14 rounded-2xl bg-white/90 border border-slate-200/80 shadow-md shadow-indigo-500/5 flex items-center justify-center backdrop-blur-md">
+                    <svg
+                      className="w-8 h-8"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <defs>
+                        <linearGradient id="geminiStarSidebarGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#38bdf8" />
+                          <stop offset="35%" stopColor="#818cf8" />
+                          <stop offset="70%" stopColor="#c084fc" />
+                          <stop offset="100%" stopColor="#f472b6" />
+                        </linearGradient>
+                      </defs>
+                      <path
+                        d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z"
+                        fill="url(#geminiStarSidebarGrad)"
+                      />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Personalized Greeting */}
+                <h2 className="text-lg font-bold tracking-tight text-slate-800 mb-1.5">
+                  Let's Jump in{userGreetingName ? (
+                    <>
+                      ,{" "}
+                      <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+                        {userGreetingName}
+                      </span>
+                    </>
+                  ) : ""}
+                </h2>
+
+                {/* Contextual Subtitle */}
+                {isChatDisabled ? (
+                  <div className="p-3 bg-amber-50/80 border border-amber-200/80 rounded-xl text-xs text-amber-800 font-medium mb-4 max-w-[280px] leading-relaxed">
+                    Please attach a template from the options above to start your conversation.
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 max-w-[280px] mb-5 leading-relaxed">
+                    Type or Select a prompt
+                  </p>
+                )}
+
+                {/* Starter Prompt Chips */}
+                {!isChatDisabled && (
+                  <TooltipProvider delayDuration={100}>
+                    <div className="w-full flex flex-col gap-2 max-w-[280px]">
+                      {[
+                        {
+                          label: "Top Tech Companies by Market Cap",
+                          icon: BarChart2,
+                          prompt: "Create a bar chart comparing the top 5 tech companies by market cap in USD billions",
+                        },
+                        {
+                          label: "Quarterly Revenue Growth",
+                          icon: LineChart,
+                          prompt: "Create a line chart showing quarterly revenue growth from Q1 to Q4",
+                        },
+                        {
+                          label: "Global Smartphone Market Share",
+                          icon: PieChart,
+                          prompt: "Create a donut chart of global smartphone market share by leading brands",
+                        },
+                      ].map((item, idx) => {
+                        const Icon = item.icon
+                        return (
+                          <Tooltip key={idx}>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setInput(item.prompt)
+                                  if (textareaRef?.current) {
+                                    textareaRef.current.focus()
+                                  }
+                                }}
+                                className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left bg-slate-50/80 dark:bg-slate-900/80 hover:bg-indigo-50/70 dark:hover:bg-slate-800 border border-slate-200/70 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 shadow-2xs transition-all active:scale-[0.98] group cursor-pointer"
+                                title={item.prompt}
+                              >
+                                <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/40 transition-colors flex-shrink-0">
+                                  <Icon className="w-3.5 h-3.5" />
                                 </div>
-                              )}
-                            </div>
-                            {/* Arrow */}
-                            <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
-                          </div>
-                        </div>
-                      )}
+                                <span className="text-xs font-medium text-slate-700 dark:text-slate-200 group-hover:text-indigo-950 dark:group-hover:text-indigo-200 flex-1 truncate">
+                                  {item.label}
+                                </span>
+                                <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-500 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent
+                              side="right"
+                              sideOffset={8}
+                              className="max-w-[280px] p-3 bg-slate-900 text-white rounded-xl shadow-2xl border border-slate-800 text-xs leading-relaxed z-[150]"
+                            >
+                              <div className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-300 uppercase tracking-wider mb-1">
+                                <Sparkles className="w-3 h-3 text-indigo-400" />
+                                <span>Full Prompt</span>
+                              </div>
+                              <p className="text-slate-100 font-medium select-none">{item.prompt}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )
+                      })}
                     </div>
-                  )}
-                  <div className="flex-1 text-sm">
-                    {msg.content}
-                  </div>
-                </div>
+                  </TooltipProvider>
+                )}
               </div>
-            ))}
-            {isProcessing && (
-              <div className="bg-indigo-50/40 text-slate-800 self-start mr-auto border border-indigo-200/70 rounded-2xl rounded-tl-sm px-4 py-3 shadow-[0_2px_8px_rgba(99,102,241,0.04)] font-medium w-[95%]">
-                <div className="flex items-center gap-3">
-                  <div className="p-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-xs text-white flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-4.5 w-4.5 border-2 border-white border-t-transparent"></div>
+            ) : (
+              <div className="space-y-3">
+                {messages
+                  .filter(m => !(m.role === 'assistant' && (
+                    m.content.includes('Hi! Describe the chart') ||
+                    m.content.includes('Please attach a template') ||
+                    m.content.includes('Select a template from the options') ||
+                    m.content.includes('Describe your chart content') ||
+                    m.content.includes('Please select a format')
+                  )))
+                  .map((msg, idx) => (
+                    <div
+                      key={idx}
+                      className={`px-4 py-3 w-[95%] whitespace-pre-wrap break-words text-sm leading-relaxed ${msg.role === "user"
+                        ? "bg-gradient-to-br from-indigo-500 to-indigo-600 text-white self-end ml-auto border border-indigo-400/20 rounded-2xl rounded-tr-sm font-semibold shadow-xs"
+                        : "bg-indigo-50/40 text-slate-800 self-start mr-auto border border-indigo-200/70 rounded-2xl rounded-tl-sm px-4 py-3 shadow-[0_2px_8px_rgba(99,102,241,0.04)] font-medium"
+                        }`}
+                      style={{ wordBreak: 'break-word' }}
+                    >
+                      <div className="flex items-start gap-3">
+                        {msg.role === 'assistant' && (
+                          <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                            <div className="p-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-xs text-white flex items-center justify-center">
+                              <Sparkles className="w-3.5 h-3.5" />
+                            </div>
+                            {msg.chartSnapshot && (
+                              <div className="relative group">
+                                <Info className="w-3 h-3 text-blue-400 hover:text-blue-600 cursor-help transition-colors" />
+                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 transition-opacity duration-200 delay-0 group-hover:opacity-100 group-hover:delay-300 pointer-events-none whitespace-nowrap z-50">
+                                  <div className="space-y-1">
+                                    <div className="flex items-center gap-1">
+                                      <Edit3 className="w-3 h-3" />
+                                      <span>Chart {msg.action === 'create' ? 'created' : 'updated'}</span>
+                                      {msg.changes && msg.changes.length > 0 && (
+                                        <span>• {msg.changes.length} change{msg.changes.length > 1 ? 's' : ''}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        <div className="flex-1 text-sm">
+                          {msg.content}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                {isProcessing && (
+                  <div className="bg-indigo-50/40 text-slate-800 self-start mr-auto border border-indigo-200/70 rounded-2xl rounded-tl-sm px-4 py-3 shadow-[0_2px_8px_rgba(99,102,241,0.04)] font-medium w-[95%]">
+                    <div className="flex items-center gap-3">
+                      <div className="p-1.5 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-xs text-white flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-4.5 w-4.5 border-2 border-white border-t-transparent"></div>
+                      </div>
+                      <span className="text-sm">Processing...</span>
+                    </div>
                   </div>
-                  <span className="text-sm">Processing...</span>
-                </div>
+                )}
               </div>
             )}
             <div ref={messagesEndRef} />

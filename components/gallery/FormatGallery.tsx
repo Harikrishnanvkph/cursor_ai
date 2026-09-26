@@ -236,7 +236,7 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
           templateStore.clearAllTemplateState()
           templateStore.setEditorMode('template')
           templateStore.setGenerateMode('format')
-          const rendered = renderFormat(format, localContentPackage)
+          const rendered = renderFormat(format, localContentPackage, chartType || undefined, contextualImageUrl || undefined)
           setSelectedFormat(format.id, rendered.chartType)
           closeGallery()
           if (setLeftSidebarOpen) setLeftSidebarOpen(true)
@@ -267,7 +267,7 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
 
     if (localContentPackage) {
       try {
-        const rendered = renderFormat(previewFormat, localContentPackage)
+        const rendered = renderFormat(previewFormat, localContentPackage, chartType || undefined, contextualImageUrl || undefined)
         setSelectedFormat(previewFormat.id, rendered.chartType)
         toast.success(`Format "${previewFormat.name}" selected!`)
       } catch (err) {
@@ -275,7 +275,7 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
         toast.error('Failed to apply format')
       }
     } else {
-      setSelectedFormat(previewFormat.id, 'bar')
+      setSelectedFormat(previewFormat.id, chartType || 'bar')
       toast.info(`Format "${previewFormat.name}" selected. Generate a chart to see it applied.`)
     }
 

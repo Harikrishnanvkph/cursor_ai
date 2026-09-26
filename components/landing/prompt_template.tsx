@@ -4,12 +4,13 @@ import React, { useState, useEffect } from "react"
 import { BarChart2, Bot, Forward, FileText, Layout, X, Settings, Info, LayoutGrid } from "lucide-react"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { Button } from "@/components/ui/button"
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import { useTemplateStore } from "@/lib/template-store"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { useChartStore } from "@/lib/chart-store"
 import { dataService } from "@/lib/data-service"
 
-const chartTemplate = "Create a bar chart comparing the top 5 countries by smartphone usage in 2025. Include country names on the x-axis and number of users on the y-axis."
+const chartTemplate = "Create a bar chart comparing the top 5 countries by smartphone usage. Include country names on the x-axis and number of users on the y-axis."
 
 interface PromptTemplateProps {
   onSampleClick?: (template: string) => void
@@ -45,6 +46,7 @@ export function PromptTemplate({
   setIsTemplateModalOpen: setIsTemplateModalOpenProp
 }: PromptTemplateProps) {
   const [selectedRatio, setSelectedRatio] = useState<string | null>(null)
+  const [isFormatInfoOpen, setIsFormatInfoOpen] = useState(false)
   
   const {
     generateMode,
@@ -139,19 +141,19 @@ export function PromptTemplate({
       container: "max-w-lg",
       title: "text-lg md:text-xl",
       description: "text-xs",
-      padding: "p-2"
+      padding: "px-2 py-1"
     },
     default: {
       container: "max-w-4xl",
-      title: "text-2xl md:text-3xl",
-      description: "text-sm",
-      padding: "p-3 md:p-4"
+      title: "text-xl md:text-2xl",
+      description: "text-xs md:text-sm",
+      padding: "px-4 py-2"
     },
     large: {
       container: "max-w-5xl",
-      title: "text-2xl md:text-3xl",
-      description: "text-sm md:text-base",
-      padding: "p-4 md:p-5"
+      title: "text-xl md:text-2xl",
+      description: "text-xs md:text-sm",
+      padding: "px-4 md:px-6 py-2"
     }
   }
 
@@ -164,20 +166,20 @@ export function PromptTemplate({
     .join(' ')
 
   return (
-    <div className={`overflow-y-auto h-full w-full flex justify-center py-6 md:py-8 ${styles.padding} ${cleanedClassName} scrollbar-thin scrollbar-thumb-slate-200 hover:scrollbar-thumb-slate-300 scrollbar-track-transparent antialiased`}>
+    <div className={`overflow-y-auto h-full w-full flex justify-center py-2 sm:py-3 ${styles.padding} ${cleanedClassName} scrollbar-thin scrollbar-thumb-slate-200 hover:scrollbar-thumb-slate-300 scrollbar-track-transparent antialiased`}>
       {/* Background card removed: container is fully transparent border-free, lets items float natively */}
-      <div className={`relative flex flex-col w-full ${styles.container} bg-transparent border-none h-fit my-auto p-2 md:p-3`}>
+      <div className={`relative flex flex-col w-full ${styles.container} bg-transparent border-none h-fit my-auto p-1 sm:p-2`}>
 
         {/* Header Block - Compacted padding and margins, eye-friendly weights */}
-        <div className="relative flex flex-col items-center justify-center mb-4 w-full pt-1.5 text-center">
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 bg-slate-100/60 border border-slate-200/50 rounded-full mb-2 shadow-inner-sm">
+        <div className="relative flex flex-col items-center justify-center mb-2.5 w-full pt-0 text-center">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-slate-100/60 border border-slate-200/50 rounded-full mb-1.5 shadow-inner-sm">
             <span className="p-0.5 bg-white rounded-md shadow-sm border border-slate-200">
               <Bot className="w-3.5 h-3.5 text-slate-600" />
             </span>
             <span className="text-[9px] font-bold text-slate-500 tracking-wider uppercase px-0.5">AI Copilot</span>
           </div>
 
-          <h2 className={`${styles.title} font-semibold text-slate-800 tracking-tight mb-1.5 max-w-2xl`}>
+          <h2 className={`${styles.title} font-semibold text-slate-800 tracking-tight mb-1 max-w-2xl`}>
             Create Your Chart with <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent font-bold">AI Prompt</span>
           </h2>
           
@@ -186,9 +188,9 @@ export function PromptTemplate({
           </p>
         </div>
 
-        <div className="relative space-y-5 w-full pb-4">
+        <div className="relative space-y-2.5 sm:space-y-3 w-full pb-1">
           {/* Segmented Control - Sleek Apple segmented pill bounded to max-w-xs */}
-          <div className="flex flex-col gap-1.5 max-w-[240px] w-full mx-auto">
+          <div className="flex flex-col gap-1 max-w-[220px] w-full mx-auto">
             <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider text-center">
               Generate As
             </label>
@@ -201,12 +203,12 @@ export function PromptTemplate({
                   setGenerateMode(mode)
                 }
               }}
-              className="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/60 shadow-inner gap-1 p-0.5 rounded-lg h-9"
+              className="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/60 shadow-inner gap-1 p-0.5 rounded-lg h-8"
             >
               <ToggleGroupItem
                 value="chart"
                 aria-label="Chart"
-                className="flex-1 rounded-md h-8 py-0.5 data-[state=on]:bg-white dark:data-[state=on]:bg-slate-700 data-[state=on]:text-slate-800 dark:data-[state=on]:text-slate-100 data-[state=on]:shadow-[0_2px_6px_rgba(0,0,0,0.04)] data-[state=on]:border data-[state=on]:border-slate-200/20 transition-all duration-200 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-semibold text-[11px] tracking-wide uppercase"
+                className="flex-1 rounded-md h-7 py-0.5 data-[state=on]:bg-white dark:data-[state=on]:bg-slate-700 data-[state=on]:text-slate-800 dark:data-[state=on]:text-slate-100 data-[state=on]:shadow-[0_2px_6px_rgba(0,0,0,0.04)] data-[state=on]:border data-[state=on]:border-slate-200/20 transition-all duration-200 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-semibold text-[10px] sm:text-[11px] tracking-wide uppercase"
               >
                 <BarChart2 className="w-3.5 h-3.5 mr-1.5" />
                 Chart
@@ -214,44 +216,44 @@ export function PromptTemplate({
               <ToggleGroupItem
                 value="format"
                 aria-label="Format"
-                className="flex-1 rounded-md h-8 py-0.5 data-[state=on]:bg-white dark:data-[state=on]:bg-slate-700 data-[state=on]:text-slate-800 dark:data-[state=on]:text-slate-100 data-[state=on]:shadow-[0_2px_6px_rgba(0,0,0,0.04)] data-[state=on]:border data-[state=on]:border-slate-200/20 transition-all duration-200 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-semibold text-[11px] tracking-wide uppercase"
+                className="flex-1 rounded-md h-7 py-0.5 data-[state=on]:bg-white dark:data-[state=on]:bg-slate-700 data-[state=on]:text-slate-800 dark:data-[state=on]:text-slate-100 data-[state=on]:shadow-[0_2px_6px_rgba(0,0,0,0.04)] data-[state=on]:border data-[state=on]:border-slate-200/20 transition-all duration-200 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-semibold text-[10px] sm:text-[11px] tracking-wide uppercase"
               >
                 <LayoutGrid className="w-3.5 h-3.5 mr-1.5" />
                 Format
               </ToggleGroupItem>
             </ToggleGroup>
           </div>
- 
-          {/* Aspect Ratio Selector Section - Separated beautifully from Segmented Control using mt-7 */}
-          <div className="flex flex-col gap-2.5 w-full mt-7">
+
+          {/* Aspect Ratio Selector Section - Separated cleanly from Segmented Control */}
+          <div className="flex flex-col gap-1.5 sm:gap-2 w-full mt-1.5 sm:mt-2">
             <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider pl-1">
               Select Aspect Ratio
             </label>
             
             {/* Show All Aspect Ratio Option (Radio UI, high-contrast border and custom radio circle) */}
-            <div className="flex justify-center w-full mb-1.5">
+            <div className="flex justify-center w-full mb-1">
               <button
                 onClick={() => handleRatioSelect(null)}
-                className="flex items-center gap-3 px-4 py-2 text-slate-700 hover:text-indigo-600 transition-all group cursor-pointer"
+                className="flex items-center gap-2.5 px-3 py-1 text-slate-700 hover:text-indigo-600 transition-all group cursor-pointer"
               >
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
                   selectedRatio === null
                     ? "border-indigo-600 bg-white"
                     : "border-slate-400 bg-white group-hover:border-indigo-500"
                 }`}>
                   {selectedRatio === null ? (
-                    <div className="w-2.5 h-2.5 rounded-full bg-indigo-600 animate-scale-up" />
+                    <div className="w-2 h-2 rounded-full bg-indigo-600 animate-scale-up" />
                   ) : null}
                 </div>
-                <span className="text-sm font-semibold text-slate-700 select-none tracking-tight group-hover:text-indigo-600 transition-colors">
+                <span className="text-xs sm:text-sm font-semibold text-slate-700 select-none tracking-tight group-hover:text-indigo-600 transition-colors">
                   Generate for All Aspect Ratios
                 </span>
               </button>
             </div>
- 
+
             {/* Grid/Carousel of famous aspect ratio boxes - Swipable on mobile, Grid on desktop */}
             <div 
-              className="flex sm:grid flex-nowrap sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 overflow-x-auto sm:overflow-x-visible pb-3 sm:pb-0 w-full items-stretch snap-x snap-mandatory scroll-smooth"
+              className="flex sm:grid flex-nowrap sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3.5 overflow-x-auto sm:overflow-x-visible pb-2 sm:pb-0 w-full items-stretch snap-x snap-mandatory scroll-smooth"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
               {FAMOUS_ASPECT_RATIOS.map((opt) => {
@@ -260,7 +262,7 @@ export function PromptTemplate({
                   <button
                     key={opt.value}
                     onClick={() => handleRatioSelect(opt)}
-                    className={`flex items-center gap-3 sm:gap-6 p-2.5 sm:p-3.5 rounded-2xl border text-left transition-all duration-200 h-[80px] sm:h-[92px] group relative flex-shrink-0 w-[160px] sm:w-auto snap-center ${
+                    className={`flex items-center gap-3 sm:gap-4 p-2 sm:p-2.5 rounded-2xl border text-left transition-all duration-200 h-[72px] sm:h-[80px] group relative flex-shrink-0 w-[160px] sm:w-auto snap-center ${
                       isSelected
                         ? "border-2 border-indigo-500 ring-4 ring-indigo-500/5 bg-indigo-50/20 text-slate-800 shadow-[0_4px_16px_rgba(99,102,241,0.06)]"
                         : "border border-slate-200 bg-white/90 hover:border-slate-300 hover:bg-white hover:shadow-[0_4px_16px_rgba(0,0,0,0.05)] shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:-translate-y-0.5"
@@ -268,7 +270,7 @@ export function PromptTemplate({
                   >
                     {/* Visual aspect proportion container (Plain style, scale-adjusted on mobile) */}
                     <div 
-                      className="w-12 h-14 sm:w-[72px] sm:h-[76px] flex-shrink-0 flex items-center justify-center bg-transparent border-none overflow-hidden relative scale-75 sm:scale-100 origin-center"
+                      className="w-11 h-12 sm:w-[60px] sm:h-[64px] flex-shrink-0 flex items-center justify-center bg-transparent border-none overflow-hidden relative scale-75 sm:scale-100 origin-center"
                     >
                       <div 
                         className={`rounded-[3px] border-2 transition-all duration-300 shadow-xs ${
@@ -299,43 +301,16 @@ export function PromptTemplate({
 
           {/* Conditional Content Based on Generate Mode */}
           {generateMode === 'chart' ? (
-            <div className="space-y-4 pt-0.5">
-              {selectedRatio && (
+            selectedRatio ? (
+              <div className="space-y-4 pt-0.5">
                 <div className="text-xs font-semibold text-slate-700 bg-white/80 border border-slate-200 rounded-2xl p-4 flex items-center gap-3 shadow-sm">
                   <div className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse flex-shrink-0"></div>
                   <div>
                     Chart will generate in <span className="font-semibold text-slate-900">{selectedRatio}</span> dimensions ({FAMOUS_ASPECT_RATIOS.find(r => r.value === selectedRatio)?.width} × {FAMOUS_ASPECT_RATIOS.find(r => r.value === selectedRatio)?.height} px).
                   </div>
                 </div>
-              )}
-                            {/* Premium light prompt showcase container floating natively */}
-              <div className="w-full bg-white/90 rounded-2xl border border-slate-200 p-5 shadow-[0_2px_8px_rgba(0,0,0,0.03)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.05)] transition-all duration-200">
-                <div className="flex items-center justify-between mb-2.5">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
-                    Sample AI Prompt Request
-                  </span>
-                  <button
-                    onClick={handleSampleClick}
-                    className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 hover:underline transition-all"
-                  >
-                    <span>Apply Prompt</span>
-                    <Forward className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                <div className="bg-indigo-50/30 text-indigo-950 rounded-xl p-4 font-mono text-[11px] leading-relaxed shadow-inner border border-indigo-100/50 relative overflow-hidden select-all group">
-                  <div className="absolute inset-0 bg-gradient-to-r from-white/[0.01] to-transparent pointer-events-none"></div>
-                  <span className="text-indigo-500 select-none mr-2 font-bold">$</span>
-                  {chartTemplate}
-                </div>
               </div>
-
-              <div className="text-center">
-                <div className="text-xs text-slate-400 font-semibold tracking-wide">
-                  Or type your own request in the chat panel input text box
-                </div>
-              </div>
-            </div>
+            ) : null
           ) : (
             /* Format Mode */
             <div className="space-y-4 pt-0.5">
@@ -399,24 +374,59 @@ export function PromptTemplate({
                     <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
                   </div>
 
-                  {/* Choose a Format Layout Button */}
-                  <Button
-                    onClick={handleChooseFormat}
-                    disabled={isLoadingFormats}
-                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-12 rounded-full transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-md hover:shadow-lg flex items-center justify-center border-none text-xs md:text-sm uppercase tracking-widest"
-                  >
-                    <LayoutGrid className="w-4 h-4 mr-2.5" />
-                    {isLoadingFormats ? 'Loading layouts...' : (selectedRatio ? `Browse ${selectedRatio} Formats` : 'Choose a Format Layout')}
-                  </Button>
+                  {/* Action Row: Choose a Format Layout Button + Info Popover/Tooltip */}
+                  <div className="flex items-center gap-2.5 w-full">
+                    <Button
+                      onClick={handleChooseFormat}
+                      disabled={isLoadingFormats}
+                      className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-12 rounded-full transition-all duration-300 hover:scale-[1.01] active:scale-[0.98] shadow-md hover:shadow-lg flex items-center justify-center border-none text-xs md:text-sm uppercase tracking-widest cursor-pointer"
+                    >
+                      <LayoutGrid className="w-4 h-4 mr-2.5" />
+                      {isLoadingFormats ? 'Loading layouts...' : (selectedRatio ? `Browse ${selectedRatio} Formats` : 'Choose a Format Layout')}
+                    </Button>
 
-                  {/* Descriptive Title card moved BELOW button */}
-                  <div className="bg-white border border-slate-200/80 rounded-[24px] px-8 py-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] text-center hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300">
-                    <div className="font-semibold text-sm text-slate-800 mb-1.5 tracking-tight">
-                      <span className="text-indigo-600 font-bold mr-1">Optional</span> Format Selection
-                    </div>
-                    <div className="text-xs text-slate-500 leading-relaxed font-normal px-4">
-                      Choose a pre-designed template to customize the AI-generated response and gain full control over the design.
-                    </div>
+                    {/* Info Button: Shows 'Optional Format Selection' details on hover or click */}
+                    <Popover open={isFormatInfoOpen} onOpenChange={setIsFormatInfoOpen}>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          onMouseEnter={() => setIsFormatInfoOpen(true)}
+                          onMouseLeave={() => setIsFormatInfoOpen(false)}
+                          onClick={() => setIsFormatInfoOpen((prev) => !prev)}
+                          className={`h-12 w-12 rounded-full border transition-all duration-200 flex items-center justify-center flex-shrink-0 cursor-pointer shadow-sm hover:shadow-md ${
+                            isFormatInfoOpen
+                              ? 'bg-indigo-50 border-indigo-300 text-indigo-600 ring-2 ring-indigo-500/20 dark:bg-indigo-950/60 dark:border-indigo-700 dark:text-indigo-400'
+                              : 'bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400'
+                          }`}
+                          title="Optional Format Selection Info"
+                          aria-label="Format selection information"
+                        >
+                          <Info className="w-4 h-4 stroke-[2.2]" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        side="top"
+                        align="end"
+                        sideOffset={10}
+                        onMouseEnter={() => setIsFormatInfoOpen(true)}
+                        onMouseLeave={() => setIsFormatInfoOpen(false)}
+                        className="w-80 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-2xl p-3.5 z-50 text-left animate-in fade-in zoom-in-95 duration-150"
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <div className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <Info className="w-3.5 h-3.5 stroke-[2.2]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-xs text-slate-800 dark:text-slate-100 mb-1 tracking-tight">
+                              <span className="text-indigo-600 dark:text-indigo-400 font-bold mr-1">Optional</span> Format Selection
+                            </div>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed font-normal">
+                              Choose a pre-designed template to customize the AI-generated response and gain full control over the design.
+                            </p>
+                          </div>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 </div>
               )}
@@ -424,15 +434,15 @@ export function PromptTemplate({
           )}
 
           {/* Advanced Editor Callout Card - Standardized with the section theme font sizes */}
-          <div className="bg-white/80 rounded-2xl p-5 border border-dashed border-slate-200 flex items-start gap-3.5 mt-2 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-            <div className="p-2 bg-slate-50 rounded-xl border border-slate-200/50 flex-shrink-0 text-slate-700 shadow-sm">
-              <Info className="w-4 h-4" />
+          <div className="bg-white/80 rounded-2xl p-3 sm:p-3.5 border border-dashed border-slate-200 flex items-start gap-3 mt-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+            <div className="p-1.5 bg-slate-50 rounded-xl border border-slate-200/50 flex-shrink-0 text-slate-700 shadow-sm">
+              <Info className="w-3.5 h-3.5" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-sm text-slate-800 leading-normal">
+              <div className="font-semibold text-xs sm:text-sm text-slate-800 leading-normal">
                 Need custom dimensions or exact layouts?
               </div>
-              <div className="text-xs text-slate-500 mt-1 leading-relaxed font-normal">
+              <div className="text-[11px] sm:text-xs text-slate-500 mt-0.5 leading-relaxed font-normal">
                 Use the <span className="font-semibold text-indigo-600 hover:underline cursor-pointer">Advanced Editor</span> in the workspace toolbar after your chart generates to input custom width/height values and configure exact layout spacing.
               </div>
             </div>

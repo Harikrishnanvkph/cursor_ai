@@ -15,6 +15,7 @@ import { dataService } from "@/lib/data-service"
 import { toast } from "sonner"
 import { getChartTypeBadgeClass, formatChartTypeName } from "@/lib/chart-type-meta"
 import { getBackgroundConfig } from "@/lib/utils/dimension-utils"
+import { sanitizeHTML } from "@/lib/utils/sanitize"
 import {
   Eye,
   Edit3,
@@ -823,7 +824,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
                               padding: '4px',
                               wordBreak: 'break-word',
                             }}
-                            dangerouslySetInnerHTML={{ __html: contentText }}
+                            dangerouslySetInnerHTML={{ __html: sanitizeHTML(contentText || '') }}
                           />
                         );
                       })}

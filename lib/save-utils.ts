@@ -372,7 +372,7 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
                 const currentSnapshot = await dataService.getCurrentChartSnapshot(conversationId);
                 if (currentSnapshot.data?.id) {
                     snapshotIdForUpdate = currentSnapshot.data.id;
-                    setCurrentSnapshotId(snapshotIdForUpdate);
+                    setCurrentSnapshotId(snapshotIdForUpdate || null);
                 }
             } catch {
                 // If this fails, we'll fall back to creating a new snapshot
@@ -416,7 +416,13 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
 
         // Save messages (for new conversations and new follow-ups during updates)
         const messagesToSave = chatMessages.filter(m => {
-            return !(m.role === 'assistant' && m.content.includes('Hi! Describe the chart'));
+            return !(m.role === 'assistant' && (
+                m.content.includes('Hi! Describe the chart') ||
+                m.content.includes('Please attach a template') ||
+                m.content.includes('Select a template from the options') ||
+                m.content.includes('Describe your chart content') ||
+                m.content.includes('Please select a format')
+            ));
         });
 
         let startIndex = 0;
@@ -426,7 +432,13 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
                 const existingRes = await dataService.getMessages(conversationId);
                 if (existingRes.data) {
                     const existingNonGreeting = existingRes.data.filter((m: any) =>
-                        !(m.role === 'assistant' && m.content?.includes('Hi! Describe the chart'))
+                        !(m.role === 'assistant' && (
+                            m.content?.includes('Hi! Describe the chart') ||
+                            m.content?.includes('Please attach a template') ||
+                            m.content?.includes('Select a template from the options') ||
+                            m.content?.includes('Describe your chart content') ||
+                            m.content?.includes('Please select a format')
+                        ))
                     );
                     startIndex = existingNonGreeting.length;
                     shouldSaveMessages = true;

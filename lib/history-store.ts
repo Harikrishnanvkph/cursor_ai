@@ -6,6 +6,7 @@ import { useChatStore, ChatMessage, ChartSnapshot } from "@/lib/chat-store";
 import { useChartStore, type SupportedChartType, type ExtendedChartData } from "@/lib/chart-store";
 import { useTemplateStore } from "@/lib/template-store";
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store";
+import { useChartStyleStore } from "@/lib/stores/chart-style-store";
 import { dataService } from "@/lib/data-service";
 import { createExpiringStorage } from "@/lib/storage-utils";
 import { useDecorationStore } from "@/lib/stores/decoration-store";
@@ -173,6 +174,11 @@ export const useHistoryStore = create<HistoryStore>()(
           console.error('Conversation not found:', id);
           return;
         }
+
+        // Close any open galleries so restored conversation is immediately visible
+        try {
+          useChartStyleStore.getState().closeGallery();
+        } catch (e) {}
 
         // Restore chat messages and sync conversation IDs
         const chatStore = useChatStore.getState();

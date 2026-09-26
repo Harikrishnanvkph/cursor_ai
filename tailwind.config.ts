@@ -13,6 +13,7 @@ const config: Config = {
 		screens: {
 			'xs': '360px',
 			'phab': '450px',
+			'lap1025': '1025px',
 		},
   		colors: {
   			background: 'hsl(var(--background))',

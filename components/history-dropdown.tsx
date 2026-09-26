@@ -5,6 +5,8 @@ import { useAuth } from "@/components/auth/AuthProvider"
 import { useHistoryStore, type Conversation } from "@/lib/history-store"
 import { useChatStore } from "@/lib/chat-store"
 import { useChartStore } from "@/lib/chart-store"
+import { useChartStyleStore } from "@/lib/stores/chart-style-store"
+import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { History, ChevronDown, ChevronUp, Trash2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -72,6 +74,10 @@ export function HistoryDropdown({ variant = 'full', className, onConversationRes
   });
 
   const handleConversationClick = (conversationId: string) => {
+    try {
+      useChartStyleStore.getState().closeGallery()
+      useFormatGalleryStore.getState().closeGallery()
+    } catch (e) {}
     restoreConversation(conversationId)
     // Clear undo/redo stack when switching to a different conversation
     // since the undo operations from the previous conversation are no longer relevant

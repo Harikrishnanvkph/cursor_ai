@@ -176,13 +176,21 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
         selectedFormatId: formatId,
         selectedChartType: chartType,
         selectedFormatSnapshot: snapshot,
+        selectedZoneId: null,
+        editingZoneId: null,
+        hoveredZoneId: null,
+        isResizeMode: false,
         isGalleryOpen: false  // Close gallery when format is selected
       }
     }),
     clearSelection: () => set({
       selectedFormatId: null,
       selectedChartType: null,
-      selectedFormatSnapshot: null
+      selectedFormatSnapshot: null,
+      selectedZoneId: null,
+      editingZoneId: null,
+      hoveredZoneId: null,
+      isResizeMode: false
     }),
 
     // Filters
@@ -385,6 +393,10 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
             selectedFormatId: null,
             selectedChartType: null,
             selectedFormatSnapshot: null,
+            selectedZoneId: null,
+            editingZoneId: null,
+            hoveredZoneId: null,
+            isResizeMode: false,
           } : {})
         })
 
@@ -417,6 +429,7 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
       hoveredZoneId: null,
       selectedZoneId: null,
       editingZoneId: null,
+      isResizeMode: false,
       formatZoneNotes: {}
     })
   }),

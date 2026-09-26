@@ -15,6 +15,7 @@ import { useChatStore } from "@/lib/chat-store"
 import { useTemplateStore } from "@/lib/template-store"
 import { useDecorationStore } from "@/lib/stores/decoration-store"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
+import { useChartStyleStore } from "@/lib/stores/chart-style-store"
 import { clearCurrentChart } from "@/lib/storage-utils"
 import { toast } from "sonner"
 
@@ -52,14 +53,13 @@ export function ClearChartDialog({
         // 5. Clear all decoration shapes
         useDecorationStore.getState().clearShapes()
 
-        // 6. Clear format gallery state
+        // 6. Clear galleries state
         try {
+            useChartStyleStore.getState().closeGallery();
             const formatStore = useFormatGalleryStore.getState();
-            formatStore.setContentPackage(null);
-            formatStore.setSelectedFormat(null, 'bar');
-            formatStore.setContextualImageUrl(null);
+            formatStore.resetGallery();
         } catch(e) {
-            console.warn("Could not clear format store", e)
+            console.warn("Could not clear gallery stores", e)
         }
 
         // "Reset Application" - Hard Reset

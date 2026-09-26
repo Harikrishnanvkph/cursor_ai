@@ -3,7 +3,7 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react"
 
 import { useRouter } from "next/navigation"
-import { Send, ArrowUp, BarChart2, Plus, SquarePen, Pencil, PencilRuler, RotateCcw, Edit3, MessageSquare, Sparkles, ArrowRight, X, ChevronLeft, ChevronRight, ChevronDown, PanelLeft, PanelRight, Settings, Brain, Bot, Info, LayoutDashboard, Layers, Menu, MoreVertical, Check, Palette, Cloud, Trash2, Download, FileImage, ImageIcon, FileCode, FileText, Maximize2, MessageCircleDashed, ChartColumnBig, Eye, Loader2, History, ToolCase, Share2, Copy, ExternalLink, PieChart, LineChart } from "lucide-react"
+import { Send, ArrowUp, BarChart2, Plus, SquarePen, Pencil, PencilRuler, RotateCcw, Edit3, MessageSquare, Sparkles, ArrowRight, X, ChevronLeft, ChevronRight, ChevronDown, PanelLeft, PanelRight, Settings, Brain, Bot, Info, LayoutDashboard, Layers, Menu, MoreVertical, Check, Palette, Cloud, Trash2, Download, FileImage, ImageIcon, FileCode, FileText, Maximize2, MessageCircleDashed, ChartColumnBig, Eye, Loader2, History, ToolCase, Share2, Copy, ExternalLink, PieChart, LineChart, Globe, Compass, Square } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { STANDARD_CHART_TYPES, THREE_D_CHART_TYPES } from "@/lib/chart-types"
@@ -39,6 +39,8 @@ import { ChartStyleGalleryPage } from "@/components/chart-style-gallery/ChartSty
 import { useSidebarContext } from "@/components/landing/sidebar-context"
 import { useIsMobile, useIsTablet } from "@/lib/hooks/use-screen-dimensions"
 import { PromptTemplate, chartTemplate, ChatWindow } from "@/components/landing"
+import { ChatSettingsPopover } from "@/components/landing/chat-settings-popover"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { ConfigSidebar } from "@/components/config-sidebar"
 
 export default function LandingPage() {
@@ -288,6 +290,16 @@ function LandingPageContent() {
     )
   }, [user])
 
+  const isConversationEmpty = messages.length === 0 || messages.every(m =>
+    m.role === 'assistant' && (
+      m.content.includes('Hi! Describe the chart') ||
+      m.content.includes('Please attach a template') ||
+      m.content.includes('Select a template from the options') ||
+      m.content.includes('Describe your chart content') ||
+      m.content.includes('Please select a format')
+    )
+  )
+
   const [showSaveChartDialog, setShowSaveChartDialog] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveChartDialogName, setSaveChartDialogName] = useState("");
@@ -474,16 +486,18 @@ function LandingPageContent() {
     const val = e.target.value
     setInput(val)
 
-    // Smooth synchronous height update without async timers to prevent jumping
+    // Smooth synchronous height update: 1 row (38px) or 2 rows max (68px)
     const el = e.target
     if (!val) {
-      el.style.height = "36px"
+      el.style.height = "38px"
       el.style.overflowY = "hidden"
     } else {
       el.style.height = "auto"
-      const nextHeight = Math.min(Math.max(el.scrollHeight, 36), 110)
+      const singleRowHeight = 38
+      const twoRowsMaxHeight = 68
+      const nextHeight = Math.min(Math.max(el.scrollHeight, singleRowHeight), twoRowsMaxHeight)
       el.style.height = `${nextHeight}px`
-      el.style.overflowY = el.scrollHeight > 110 ? "auto" : "hidden"
+      el.style.overflowY = el.scrollHeight > twoRowsMaxHeight ? "auto" : "hidden"
     }
   }, [])
 
@@ -492,36 +506,58 @@ function LandingPageContent() {
     requestAnimationFrame(() => {
       if (textareaRef.current) {
         textareaRef.current.style.height = "auto"
-        const nextHeight = Math.min(Math.max(textareaRef.current.scrollHeight, 36), 110)
+        const singleRowHeight = 38
+        const twoRowsMaxHeight = 68
+        const nextHeight = Math.min(Math.max(textareaRef.current.scrollHeight, singleRowHeight), twoRowsMaxHeight)
         textareaRef.current.style.height = `${nextHeight}px`
-        textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > 110 ? "auto" : "hidden"
+        textareaRef.current.style.overflowY = textareaRef.current.scrollHeight > twoRowsMaxHeight ? "auto" : "hidden"
       }
     })
   }, [])
 
   const handleNewConversation = useCallback(() => {
+    try {
+      useChartStyleStore.getState().closeGallery()
+      useFormatGalleryStore.getState().closeGallery()
+    } catch (e) {}
     startNewConversation()
     setInput("")
     setShowActiveBanner(false)
+    useTemplateStore.getState().setEditorMode('chart')
+    useTemplateStore.getState().setGenerateMode('chart')
     // Clear any existing banner shown flags when starting new conversation
-    Object.keys(sessionStorage).forEach(key => {
-      if (key.startsWith('chartBannerShown_')) {
-        sessionStorage.removeItem(key)
-      }
-    })
+    if (typeof window !== 'undefined') {
+      Object.keys(sessionStorage).forEach(key => {
+        if (key.startsWith('chartBannerShown_')) {
+          sessionStorage.removeItem(key)
+        }
+      })
+    }
   }, [startNewConversation])
 
   const handleResetChart = useCallback(() => {
+    useChatStore.getState().stopGeneration()
+    try {
+      useChartStyleStore.getState().closeGallery()
+      useFormatGalleryStore.getState().closeGallery()
+    } catch (e) {}
     clearMessages()
     resetChart()
     setHasJSON(false)
     setShowActiveBanner(false)
+    useChartStore.getState().setCurrentSnapshotId(null)
+    useFormatGalleryStore.getState().resetGallery()
+    useTemplateStore.getState().clearAllTemplateState()
+    useTemplateStore.getState().setEditorMode('chart')
+    useTemplateStore.getState().setGenerateMode('chart')
     // Clear any existing banner shown flags when resetting chart
-    Object.keys(sessionStorage).forEach(key => {
-      if (key.startsWith('chartBannerShown_')) {
-        sessionStorage.removeItem(key)
-      }
-    })
+    if (typeof window !== 'undefined') {
+      Object.keys(sessionStorage).forEach(key => {
+        if (key.startsWith('chartBannerShown_')) {
+          sessionStorage.removeItem(key)
+        }
+      })
+    }
   }, [clearMessages, resetChart, setHasJSON])
 
   // Tablet sidebar handlers
@@ -783,7 +819,26 @@ function LandingPageContent() {
               </div>
             )}
             {chartData?.datasets?.length > 0 && hasJSON ? (
-              <div className="flex-1 h-full">
+              <div className="flex-1 h-full relative">
+                {isProcessing && (
+                  <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-1.5 rounded-full border border-indigo-200/80 dark:border-indigo-800 shadow-lg flex items-center gap-2.5">
+                    <div className="w-2 h-2 rounded-full bg-indigo-600 animate-ping" />
+                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-100">
+                      Updating chart...
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        useChatStore.getState().stopGeneration()
+                        toast.info("Generation cancelled")
+                      }}
+                      className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-red-50 hover:text-red-600 text-slate-600 dark:text-slate-300 font-medium transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      <Square className="w-2.5 h-2.5 fill-current text-red-500" />
+                      <span>Cancel</span>
+                    </button>
+                  </div>
+                )}
                 <ChartPreview
                   onToggleSidebar={() => { }}
                   isSidebarCollapsed={true}
@@ -791,6 +846,8 @@ function LandingPageContent() {
                   isLeftSidebarCollapsed={true}
                 />
               </div>
+            ) : isProcessing ? (
+              <GenerationProgressView />
             ) : storeHydrated ? (
               <PromptTemplate
                 size="default"
@@ -866,78 +923,11 @@ function LandingPageContent() {
                       onSubmit={handleSend}
                       className="p-3 border-b border-gray-200 bg-white flex flex-col gap-2 flex-shrink-0"
                     >
-                      <div className="flex items-center justify-between px-1">
-                        <div className="flex items-center gap-1.5">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <button type="button" className="text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors flex items-center gap-1.5 py-1 px-2.5 bg-white hover:bg-slate-50 border border-slate-200/60 rounded-xl shadow-xs">
-                                <Bot className="w-3.5 h-3.5 text-indigo-500" />
-                                <span>
-                                  {selectedModel === 'gemini-search'
-                                    ? 'Gemini Realtime'
-                                    : selectedModel === 'deepseek-search'
-                                    ? 'Deepseek Realtime'
-                                    : 'DeepSeek Chat'}
-                                </span>
-                                <ChevronDown className="w-3 h-3 text-slate-400 ml-0.5" />
-                              </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="w-48 bg-white border border-slate-200 shadow-md rounded-xl p-1 z-50">
-                              <DropdownMenuItem onClick={() => setSelectedModel('deepseek')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 rounded-lg text-slate-700">
-                                <Brain className="w-3.5 h-3.5 text-blue-500" />
-                                <span>DeepSeek Chat</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => setSelectedModel('deepseek-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 rounded-lg text-slate-700">
-                                <Sparkles className="w-3.5 h-3.5 text-blue-500" />
-                                <span>Deepseek Realtime</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => setSelectedModel('gemini-search')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 rounded-lg text-slate-700">
-                                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                                <span>Gemini Realtime</span>
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-
-                          {user && (
-                            <button
-                              type="button"
-                              onClick={() => setIsUpgradeOpen(true)}
-                              className={`flex items-center gap-1 py-1 px-2 rounded-xl text-xs font-semibold transition-all border shadow-xs cursor-pointer ${
-                                aiCreditsRemaining <= 0
-                                  ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
-                                  : aiCreditsRemaining <= 2
-                                  ? 'bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100'
-                                  : 'bg-indigo-50/70 text-indigo-700 border-indigo-200/60 hover:bg-indigo-100/80'
-                              }`}
-                              title="Remaining monthly AI credits. Click to view subscription plans."
-                            >
-                              <Zap className="w-3 h-3 text-current" />
-                              <span>{aiCreditsRemaining}/{aiCreditsLimit}</span>
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Image Toggle */}
-                        <div className="flex items-center gap-2 select-none">
-                          <span className="text-xs font-semibold text-slate-500">Images</span>
-                          <button
-                            type="button"
-                            onClick={() => setIncludeImages(!includeImages)}
-                            className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent outline-none ${
-                              includeImages ? 'bg-indigo-600' : 'bg-slate-200'
-                            }`}
-                            title={includeImages ? "Auto-fetch images enabled" : "Auto-fetch images disabled"}
-                          >
-                            <span className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-xs ${
-                              includeImages ? 'translate-x-3' : 'translate-x-0'
-                            }`} />
-                          </button>
-                        </div>
-                      </div>
-                      <div className="flex items-end gap-2 w-full">
+                      {/* Tablet Input Capsule with Textarea and vertical Gear + Send column */}
+                      <div className="relative flex items-stretch w-full bg-white border border-indigo-200/80 hover:border-indigo-400 focus-within:border-indigo-600 focus-within:ring-4 focus-within:ring-indigo-500/15 shadow-md shadow-indigo-500/5 transition-all rounded-2xl p-2 min-h-[58px]">
                         <textarea
                           ref={textareaRef}
-                          className="flex-1 rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-300 bg-white resize-none max-h-[150px] min-h-[44px] leading-relaxed transition-all font-sans disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="flex-1 px-2 py-1 text-sm bg-transparent border-0 outline-none resize-none min-h-[34px] max-h-[58px] leading-relaxed transition-all font-sans disabled:opacity-50 disabled:cursor-not-allowed"
                           placeholder={isChatDisabled ? "Attach a template to start..." : (hasActiveChart ? "Modify the chart..." : "Ask AI to Generate Chart...")}
                           value={input}
                           onChange={handleInputChange}
@@ -953,13 +943,27 @@ function LandingPageContent() {
                             }
                           }}
                         />
-                        <button
-                          type="submit"
-                          className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white w-[38px] h-[38px] flex items-center justify-center rounded-full flex-shrink-0 disabled:opacity-50 transition-all duration-200 shadow-sm mb-[3px]"
-                          disabled={isProcessing || !input.trim() || isChatDisabled}
-                        >
-                          <ArrowUp className="w-5 h-5" strokeWidth={2.5} />
-                        </button>
+                        <div className="flex flex-col items-center justify-between pl-1 flex-shrink-0 gap-1.5">
+                          {/* Gear Icon: inside textbox, opens popover with remaining credits, model dropdown, and image toggle */}
+                          <ChatSettingsPopover
+                            selectedModel={selectedModel}
+                            setSelectedModel={setSelectedModel}
+                            includeImages={includeImages}
+                            setIncludeImages={setIncludeImages}
+                            aiCreditsRemaining={aiCreditsRemaining}
+                            aiCreditsLimit={aiCreditsLimit}
+                            onOpenUpgrade={() => setIsUpgradeOpen(true)}
+                          />
+
+                          {/* Send Button */}
+                          <button
+                            type="submit"
+                            className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white w-7 h-7 flex items-center justify-center rounded-lg flex-shrink-0 disabled:opacity-50 transition-all duration-200 shadow-2xs"
+                            disabled={isProcessing || !input.trim() || isChatDisabled}
+                          >
+                            <ArrowUp className="w-3.5 h-3.5" strokeWidth={2.5} />
+                          </button>
+                        </div>
                       </div>
                     </form>
                     <ChatWindow
@@ -1113,7 +1117,7 @@ function LandingPageContent() {
                         {rename.canEditTitle && (
                           <button 
                             onClick={() => rename.handleStartRename()} 
-                            className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-400 hover:text-slate-650 transition-colors flex-shrink-0" 
+                            className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors flex-shrink-0" 
                             title="Rename"
                           >
                             <Pencil className="h-3.5 w-3.5" />
@@ -1156,7 +1160,7 @@ function LandingPageContent() {
                             <span className="truncate flex-1 min-w-0 text-left" title={leftLabel}>
                               {leftLabel}
                             </span>
-                            <span className="flex-shrink-0 text-right font-semibold tabular-nums text-slate-450 dark:text-slate-405">
+                            <span className="flex-shrink-0 text-right font-semibold tabular-nums text-slate-500 dark:text-slate-400">
                               {aspect} | {w}px × {h}px
                             </span>
                           </>
@@ -1297,14 +1301,14 @@ function LandingPageContent() {
                     <div className="pl-4 pr-1 py-1 space-y-0.5 bg-slate-50 dark:bg-slate-900/50 rounded-lg animate-in fade-in slide-in-from-top-1 duration-200">
                       <DropdownMenuItem 
                         onClick={handleCopyShareLink}
-                        className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-755 dark:text-slate-355"
+                        className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-300"
                       >
                         <Copy className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                         <span>Copy Link</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem 
                         onClick={handleOpenShareLink}
-                        className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-755 dark:text-slate-355"
+                        className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-300"
                       >
                         <ExternalLink className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                         <span>Open Link</span>
@@ -1333,14 +1337,14 @@ function LandingPageContent() {
                         <>
                           <DropdownMenuItem 
                             onClick={() => window.dispatchEvent(new CustomEvent('triggerTemplateExport', { detail: { format: 'png' } }))}
-                            className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-750 dark:text-slate-355"
+                            className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-300"
                           >
                             <FileImage className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                             <span>PNG Image</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem 
                             onClick={() => window.dispatchEvent(new CustomEvent('triggerTemplateExportNew', { detail: { format: 'png' } }))}
-                            className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-750 dark:text-slate-355"
+                            className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-300"
                           >
                             <FileImage className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
                             <span>Image (New)</span>
@@ -1348,7 +1352,7 @@ function LandingPageContent() {
                           </DropdownMenuItem>
                           <DropdownMenuItem 
                             onClick={() => window.dispatchEvent(new CustomEvent('triggerTemplateExport', { detail: { format: 'html' } }))}
-                            className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-750 dark:text-slate-355"
+                            className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-300"
                           >
                             <FileCode className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                             <span>Interactive HTML</span>
@@ -1358,14 +1362,14 @@ function LandingPageContent() {
                         <>
                           <DropdownMenuItem 
                             onClick={exports.handleExport} 
-                            className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-750 dark:text-slate-355"
+                            className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-300"
                           >
                             <FileImage className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                             <span>PNG Image</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem 
                             onClick={() => window.dispatchEvent(new CustomEvent('triggerTemplateExportNew', { detail: { format: 'png' } }))}
-                            className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-750 dark:text-slate-355"
+                            className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-300"
                           >
                             <FileImage className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
                             <span>Image (New)</span>
@@ -1373,21 +1377,21 @@ function LandingPageContent() {
                           </DropdownMenuItem>
                           <DropdownMenuItem 
                             onClick={exports.handleExportJPEG} 
-                            className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-750 dark:text-slate-355"
+                            className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-300"
                           >
                             <ImageIcon className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                             <span>JPEG Image</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem 
                             onClick={exports.handleExportHTML} 
-                            className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-750 dark:text-slate-355"
+                            className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-300"
                           >
                             <FileCode className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                             <span>Interactive HTML</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem 
                             onClick={exports.handleExportCSV} 
-                            className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-750 dark:text-slate-355"
+                            className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-300"
                           >
                             <FileText className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                             <span>CSV Data</span>
@@ -1405,7 +1409,7 @@ function LandingPageContent() {
                         toast.success("Workspace cleared successfully");
                       }
                     }}
-                    className="flex items-center gap-2 px-2.5 py-2 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-650 dark:text-red-450 rounded-lg text-xs font-medium cursor-pointer"
+                    className="flex items-center gap-2 px-2.5 py-2 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-600 dark:text-red-400 rounded-lg text-xs font-medium cursor-pointer"
                   >
                     <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
                     <span>Clear Workspace</span>
@@ -1426,7 +1430,26 @@ function LandingPageContent() {
                 </div>
               )}
               {chartData?.datasets?.length > 0 && hasJSON ? (
-                <div className="flex-1 h-full w-full">
+                <div className="flex-1 h-full w-full relative">
+                  {isProcessing && (
+                    <div className="absolute top-2 left-1/2 -translate-x-1/2 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-3 py-1 rounded-full border border-indigo-200/80 dark:border-indigo-800 shadow-md flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-indigo-600 animate-ping" />
+                      <span className="text-[11px] font-semibold text-slate-800 dark:text-slate-100">
+                        Updating chart...
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          useChatStore.getState().stopGeneration()
+                          toast.info("Generation cancelled")
+                        }}
+                        className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-red-50 hover:text-red-600 text-slate-600 dark:text-slate-300 font-medium transition-colors flex items-center gap-1 cursor-pointer"
+                      >
+                        <Square className="w-2 h-2 fill-current text-red-500" />
+                        <span>Cancel</span>
+                      </button>
+                    </div>
+                  )}
                   <ChartPreview
                     onToggleSidebar={() => { }}
                     isSidebarCollapsed={true}
@@ -1434,6 +1457,8 @@ function LandingPageContent() {
                     isLeftSidebarCollapsed={true}
                   />
                 </div>
+              ) : isProcessing ? (
+                <GenerationProgressView />
               ) : storeHydrated ? (
                 <PromptTemplate
                   size="compact"
@@ -1452,7 +1477,7 @@ function LandingPageContent() {
           {/* Tab 2: AI Chat */}
           {mobileActiveTab === 'chat' && (
             <div className="flex-1 flex flex-col h-full overflow-hidden w-full relative">
-              {messages.length === 0 ? (
+              {isConversationEmpty ? (
                 /* Gemini Hero Empty State */
                 <div className="flex-1 overflow-y-auto w-full px-4 py-6 pb-28 flex flex-col items-center justify-center text-center animate-in fade-in duration-300">
                   {/* Glowing 4-pointed Gemini Star */}
@@ -1483,58 +1508,80 @@ function LandingPageContent() {
 
                   {/* Personalized Greeting */}
                   <h1 className="text-xl xs:text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-100 mb-1.5">
-                    {userGreetingName ? (
+                    Let's Jump in{userGreetingName ? (
                       <>
-                        The mic is yours,{" "}
+                        ,{" "}
                         <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
                           {userGreetingName}
                         </span>
                       </>
-                    ) : (
-                      <>
-                        Let's build a{" "}
-                        <span className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
-                          chart
-                        </span>
-                      </>
-                    )}
+                    ) : ""}
                   </h1>
                   <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mb-6 leading-relaxed">
-                    Ask questions, visualize your data, or generate ready-to-present charts in seconds.
+                    Type or Select a prompt
                   </p>
 
                   {/* Starter Prompt Chips */}
-                  <div className="w-full flex flex-col gap-2 max-w-xs">
-                    {[
-                      { label: "Quarterly Revenue Growth", icon: LineChart, prompt: "Create a quarterly revenue growth line chart for 2024 with Q1 to Q4" },
-                      { label: "Market Share Breakdown", icon: PieChart, prompt: "Create a market share breakdown donut chart for top 5 cloud providers" },
-                      { label: "Customer Acquisition Funnel", icon: BarChart2, prompt: "Create a funnel chart of customer acquisition stages with conversion drop-offs" },
-                    ].map((item, idx) => {
-                      const Icon = item.icon
-                      return (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => {
-                            setInput(item.prompt)
-                            sidebarContext.setChatInput(item.prompt)
-                            if (textareaRef.current) {
-                              textareaRef.current.focus()
-                            }
-                          }}
-                          className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-850 border border-slate-200/80 dark:border-slate-800 shadow-xs transition-all active:scale-[0.98] group"
-                        >
-                          <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/50 transition-colors flex-shrink-0">
-                            <Icon className="w-3.5 h-3.5" />
-                          </div>
-                          <span className="text-xs font-medium text-slate-700 dark:text-slate-200 flex-1 truncate">
-                            {item.label}
-                          </span>
-                          <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
-                        </button>
-                      )
-                    })}
-                  </div>
+                  <TooltipProvider delayDuration={100}>
+                    <div className="w-full flex flex-col gap-2 max-w-xs">
+                      {[
+                        {
+                          label: "Quarterly Revenue Growth",
+                          icon: LineChart,
+                          prompt: "Create a quarterly revenue growth line chart across Q1 to Q4",
+                        },
+                        {
+                          label: "Market Share Breakdown",
+                          icon: PieChart,
+                          prompt: "Create a market share breakdown donut chart for top 5 cloud providers",
+                        },
+                        {
+                          label: "Customer Acquisition Funnel",
+                          icon: BarChart2,
+                          prompt: "Create a funnel chart of customer acquisition stages with conversion drop-offs",
+                        },
+                      ].map((item, idx) => {
+                        const Icon = item.icon
+                        return (
+                          <Tooltip key={idx}>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setInput(item.prompt)
+                                  sidebarContext.setChatInput(item.prompt)
+                                  if (textareaRef.current) {
+                                    textareaRef.current.focus()
+                                  }
+                                }}
+                                className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800 shadow-xs transition-all active:scale-[0.98] group cursor-pointer"
+                                title={item.prompt}
+                              >
+                                <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/50 transition-colors flex-shrink-0">
+                                  <Icon className="w-3.5 h-3.5" />
+                                </div>
+                                <span className="text-xs font-medium text-slate-700 dark:text-slate-200 flex-1 truncate">
+                                  {item.label}
+                                </span>
+                                <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent
+                              side="top"
+                              sideOffset={8}
+                              className="max-w-[280px] p-3 bg-slate-900 text-white rounded-xl shadow-2xl border border-slate-800 text-xs leading-relaxed z-[150]"
+                            >
+                              <div className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-300 uppercase tracking-wider mb-1">
+                                <Sparkles className="w-3 h-3 text-indigo-400" />
+                                <span>Full Prompt</span>
+                              </div>
+                              <p className="text-slate-100 font-medium select-none">{item.prompt}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )
+                      })}
+                    </div>
+                  </TooltipProvider>
                 </div>
               ) : (
                 /* Scrollable messages area - Full height container */
@@ -1568,7 +1615,7 @@ function LandingPageContent() {
                 <ConfigSidebar />
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
-                  <div className="w-14 h-14 rounded-2xl bg-white dark:bg-slate-900 flex items-center justify-center text-slate-400 dark:text-slate-650 mb-4 border border-slate-200/60 dark:border-slate-850 shadow-sm">
+                  <div className="w-14 h-14 rounded-2xl bg-white dark:bg-slate-900 flex items-center justify-center text-slate-400 dark:text-slate-500 mb-4 border border-slate-200/60 dark:border-slate-800 shadow-sm">
                     <Settings className="w-6 h-6" />
                   </div>
                   <h3 className="font-semibold text-slate-800 dark:text-slate-200 text-sm">Customize Design</h3>
@@ -1647,25 +1694,35 @@ function LandingPageContent() {
                     }
                   }
                 }}
-                className="flex-1 bg-transparent py-2 px-1 text-xs xs:text-sm focus:outline-none resize-none max-h-[100px] min-h-[36px] leading-relaxed text-slate-850 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 font-sans disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 bg-transparent py-2 px-1 text-xs xs:text-sm focus:outline-none resize-none max-h-[100px] min-h-[36px] leading-relaxed text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 font-sans disabled:opacity-50 disabled:cursor-not-allowed"
               />
 
               {/* Send / Action Button */}
-              <button
-                type="submit"
-                disabled={isProcessing || !input.trim() || isChatDisabled}
-                className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all active:scale-95 ${
-                  input.trim() && !isProcessing && !isChatDisabled
-                    ? "bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 text-white shadow-xs"
-                    : "bg-slate-100 dark:bg-slate-800 text-slate-350 dark:text-slate-650 cursor-not-allowed"
-                }`}
-              >
-                {isProcessing ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
-                ) : (
+              {isProcessing ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    useChatStore.getState().stopGeneration()
+                    toast.info("Generation cancelled")
+                  }}
+                  className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all active:scale-95 bg-red-500 hover:bg-red-600 text-white shadow-xs cursor-pointer"
+                  title="Stop generation"
+                >
+                  <Square className="w-3.5 h-3.5 fill-current" />
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={!input.trim() || isChatDisabled}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all active:scale-95 ${
+                    input.trim() && !isChatDisabled
+                      ? "bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 text-white shadow-xs"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed"
+                  }`}
+                >
                   <ArrowUp className="w-4 h-4 stroke-[2.5]" />
-                )}
-              </button>
+                </button>
+              )}
             </form>
           </div>
         )}
@@ -1717,6 +1774,37 @@ function LandingPageContent() {
 
           {/* Options List */}
           <div className="space-y-2">
+            {/* Remaining AI Credits Card */}
+            <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-950/40 border border-slate-200/80 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center flex-shrink-0">
+                  <Zap className="w-3.5 h-3.5 fill-current" />
+                </div>
+                <div className="flex flex-col text-left">
+                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">Credits Remaining</span>
+                  <span className="text-[10px] text-slate-400">Monthly AI quota</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsActionSheetOpen(false)
+                  setIsUpgradeOpen(true)
+                }}
+                className={`flex items-center gap-1 py-1 px-2.5 rounded-lg text-xs font-bold transition-all border shadow-2xs cursor-pointer ${
+                  aiCreditsRemaining <= 0
+                    ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
+                    : aiCreditsRemaining <= 2
+                    ? 'bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100'
+                    : 'bg-indigo-50 text-indigo-700 border-indigo-200/80 hover:bg-indigo-100'
+                }`}
+                title="Click to view subscription plans or upgrade"
+              >
+                <Zap className="w-3 h-3 text-current" />
+                <span>{aiCreditsRemaining}/{aiCreditsLimit}</span>
+              </button>
+            </div>
+
             {/* AI Model Dropdown Row */}
             <div className="flex items-center justify-between py-2 px-2.5 rounded-md border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/40">
               <div className="flex items-center gap-2.5">
@@ -1739,41 +1827,50 @@ function LandingPageContent() {
                         ? 'Gemini Realtime'
                         : selectedModel === 'deepseek-search'
                         ? 'Deepseek Realtime'
+                        : selectedModel === 'deepseek-brave'
+                        ? 'DeepSeek Brave'
+                        : selectedModel === 'perplexity'
+                        ? 'Perplexity Realtime'
                         : 'DeepSeek Chat'}
                     </span>
                     <ChevronDown className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-lg p-1 z-[120]">
+                <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-lg p-1 z-[120]">
                   <DropdownMenuItem
                     onClick={() => setSelectedModel('gemini-search')}
-                    className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded text-slate-700 dark:text-slate-200"
+                    className="flex items-center gap-2.5 px-2.5 py-1.5 text-xs font-medium cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded text-slate-700 dark:text-slate-200"
                   >
                     <Sparkles className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
-                    <div>
-                      <div className="font-semibold">Gemini Realtime</div>
-                      <div className="text-[10px] text-slate-400">Live search & multimodal</div>
-                    </div>
+                    <span>Gemini Realtime</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => setSelectedModel('deepseek-search')}
-                    className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded text-slate-700 dark:text-slate-200"
+                    className="flex items-center gap-2.5 px-2.5 py-1.5 text-xs font-medium cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded text-slate-700 dark:text-slate-200"
                   >
                     <Sparkles className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
-                    <div>
-                      <div className="font-semibold">Deepseek Realtime</div>
-                      <div className="text-[10px] text-slate-400">Web search enabled</div>
-                    </div>
+                    <span>Deepseek Realtime</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setSelectedModel('deepseek-brave')}
+                    className="flex items-center gap-2.5 px-2.5 py-1.5 text-xs font-medium cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded text-slate-700 dark:text-slate-200"
+                  >
+                    <Compass className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" />
+                    <span>DeepSeek Brave</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setSelectedModel('perplexity')}
+                    className="flex items-center gap-2.5 px-2.5 py-1.5 text-xs font-medium cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded text-slate-700 dark:text-slate-200"
+                  >
+                    <Globe className="w-3.5 h-3.5 text-teal-500 flex-shrink-0" />
+                    <span>Perplexity Realtime</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => setSelectedModel('deepseek')}
-                    className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded text-slate-700 dark:text-slate-200"
+                    className="flex items-center gap-2.5 px-2.5 py-1.5 text-xs font-medium cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 rounded text-slate-700 dark:text-slate-200"
                   >
                     <Brain className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
-                    <div>
-                      <div className="font-semibold">DeepSeek Chat</div>
-                      <div className="text-[10px] text-slate-400">Standard fast reasoning</div>
-                    </div>
+                    <span>DeepSeek Chat</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -1822,7 +1919,7 @@ function LandingPageContent() {
           }`}
         >
           {/* Drawer Header */}
-          <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-850 flex-shrink-0">
+          <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
             <div className="flex items-center gap-2">
               <img src="/logo.png" alt="Logo" className="h-6 w-6 object-contain" />
               <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Chartography.in</span>
@@ -1847,7 +1944,7 @@ function LandingPageContent() {
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-3 border border-transparent rounded-xl text-left transition-all active:scale-98 ${
                   mobileActiveTab === 'chart'
-                    ? 'bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-650 dark:text-indigo-400 font-semibold border-indigo-100/30'
+                    ? 'bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 font-semibold border-indigo-100/30'
                     : 'hover:bg-slate-50 dark:hover:bg-slate-900/50 text-slate-700 dark:text-slate-300'
                 }`}
               >
@@ -1863,7 +1960,7 @@ function LandingPageContent() {
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-3 border border-transparent rounded-xl text-left transition-all active:scale-98 ${
                   mobileActiveTab === 'chat'
-                    ? 'bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-650 dark:text-indigo-400 font-semibold border-indigo-100/30'
+                    ? 'bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 font-semibold border-indigo-100/30'
                     : 'hover:bg-slate-50 dark:hover:bg-slate-900/50 text-slate-700 dark:text-slate-300'
                 }`}
               >
@@ -1880,7 +1977,7 @@ function LandingPageContent() {
                 }}
                 className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-900/50 rounded-xl text-left transition-all active:scale-98 text-slate-700 dark:text-slate-300"
               >
-                <SquarePen className="w-5 h-5 text-slate-550 dark:text-slate-400 flex-shrink-0" />
+                <SquarePen className="w-5 h-5 text-slate-500 dark:text-slate-400 flex-shrink-0" />
                 <span className="font-bold text-xs xs:text-sm">New Chat</span>
               </button>
 
@@ -1892,7 +1989,7 @@ function LandingPageContent() {
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-3 border border-transparent rounded-xl text-left transition-all active:scale-98 ${
                   mobileActiveTab === 'history'
-                    ? 'bg-slate-100/80 dark:bg-slate-900 text-indigo-650 dark:text-indigo-400 font-semibold'
+                    ? 'bg-slate-100/80 dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 font-semibold'
                     : 'hover:bg-slate-50 dark:hover:bg-slate-900/50 text-slate-700 dark:text-slate-300'
                 }`}
               >
@@ -1908,7 +2005,7 @@ function LandingPageContent() {
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-3 border border-transparent rounded-xl text-left transition-all active:scale-98 ${
                   mobileActiveTab === 'design'
-                    ? 'bg-slate-100/80 dark:bg-slate-900 text-indigo-650 dark:text-indigo-400 font-semibold'
+                    ? 'bg-slate-100/80 dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 font-semibold'
                     : 'hover:bg-slate-50 dark:hover:bg-slate-900/50 text-slate-700 dark:text-slate-300'
                 }`}
               >
@@ -1943,7 +2040,7 @@ function LandingPageContent() {
           </div>
 
           {/* Profile Footer - Always Fixed at Bottom */}
-          <div className="border-t border-slate-100 dark:border-slate-850 p-4 bg-white dark:bg-slate-950 flex-shrink-0">
+          <div className="border-t border-slate-100 dark:border-slate-800 p-4 bg-white dark:bg-slate-950 flex-shrink-0">
             <div className="flex items-center bg-slate-50 dark:bg-slate-900 rounded-xl p-3 border border-slate-200/50 dark:border-slate-800">
               <div className="flex items-center gap-2.5 min-w-0">
                 <SimpleProfileDropdown size="sm" />
@@ -1980,7 +2077,7 @@ function LandingPageContent() {
   return (
     <>
       {/* Floating global header for history and avatar, only when no chart is created and no template modal is open - Desktop only */}
-      {storeHydrated && (!chartData?.datasets?.length || !hasJSON) && !isTablet && !isMobile && !isTemplateModalOpen && !isGalleryOpen && (
+      {storeHydrated && (!chartData?.datasets?.length || !hasJSON) && !isTablet && !isMobile && !isTemplateModalOpen && !isGalleryOpen && !isStyleGalleryOpen && (
         <div className="fixed top-4 right-4 z-50 flex items-center gap-3">
           <HistoryDropdown variant="full" />
           <SimpleProfileDropdown size="sm" />
@@ -2003,14 +2100,36 @@ function LandingPageContent() {
       ) : isStyleGalleryOpen ? (
         <ChartStyleGalleryPage />
       ) : chartData?.datasets?.length > 0 && hasJSON ? (
-        <ChartLayout
-          leftSidebarOpen={leftSidebarOpen}
-          setLeftSidebarOpen={setLeftSidebarOpen}
-        />
+        <div className="relative w-full h-full flex-1 flex flex-col">
+          {isProcessing && (
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-2 rounded-full border border-indigo-200/80 dark:border-indigo-800 shadow-lg flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="w-2.5 h-2.5 rounded-full bg-indigo-600 animate-ping" />
+              <span className="text-xs font-semibold text-slate-800 dark:text-slate-100">
+                Updating chart with AI...
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  useChatStore.getState().stopGeneration()
+                  toast.info("Generation cancelled")
+                }}
+                className="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 text-slate-600 dark:text-slate-300 font-medium transition-colors flex items-center gap-1 cursor-pointer"
+              >
+                <Square className="w-2.5 h-2.5 fill-current text-red-500" />
+                <span>Cancel</span>
+              </button>
+            </div>
+          )}
+          <ChartLayout
+            leftSidebarOpen={leftSidebarOpen}
+            setLeftSidebarOpen={setLeftSidebarOpen}
+          />
+        </div>
+      ) : isProcessing ? (
+        <GenerationProgressView />
       ) : (
         <PromptTemplate
           size="large"
-          className="p-12"
           onSampleClick={handleTemplateClick}
           isTemplateModalOpen={isTemplateModalOpen}
           setIsTemplateModalOpen={setIsTemplateModalOpen}
@@ -2063,6 +2182,63 @@ function ChartAreaSkeleton() {
           </span>
           <span className="text-xs text-gray-400 mt-1">Loading your context...</span>
         </div>
+      </div>
+    </div>
+  )
+}
+
+/** Rich generation progress visual on main canvas during AI generation */
+function GenerationProgressView() {
+  const [stepIndex, setStepIndex] = useState(0)
+  const steps = [
+    "Analyzing your prompt and requirements...",
+    "Extracting categories, series, and values...",
+    "Composing visualization layout...",
+    "Formatting styles, legends, and color palettes...",
+  ]
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setStepIndex((prev) => (prev + 1) % steps.length)
+    }, 2600)
+    return () => clearInterval(timer)
+  }, [steps.length])
+
+  return (
+    <div className="flex flex-1 items-center justify-center h-full relative z-10 bg-transparent px-4">
+      <div className="flex flex-col items-center max-w-sm w-full p-8 rounded-3xl bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800 shadow-2xl text-center animate-in fade-in zoom-in-95 duration-300">
+        <div className="relative mb-5">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 p-0.5 shadow-xl shadow-indigo-500/20 animate-pulse">
+            <div className="w-full h-full bg-white dark:bg-slate-900 rounded-[14px] flex items-center justify-center">
+              <Sparkles className="w-8 h-8 text-indigo-600 dark:text-indigo-400 animate-spin" style={{ animationDuration: '6s' }} />
+            </div>
+          </div>
+          <div className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900 animate-ping" />
+        </div>
+
+        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-1">
+          Generating Your Chart
+        </h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-5 min-h-[32px] flex items-center justify-center transition-all">
+          {steps[stepIndex]}
+        </p>
+
+        <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden mb-6">
+          <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 h-full rounded-full w-3/4 animate-pulse" />
+        </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            useChatStore.getState().stopGeneration()
+            toast.info("Generation cancelled")
+          }}
+          className="text-xs h-8 px-4 rounded-xl gap-1.5 text-slate-600 dark:text-slate-300 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 hover:border-red-200 dark:hover:border-red-900/50 cursor-pointer"
+        >
+          <Square className="w-3 h-3 fill-current text-red-500" />
+          <span>Cancel Generation</span>
+        </Button>
       </div>
     </div>
   )

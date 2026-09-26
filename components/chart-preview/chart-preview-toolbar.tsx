@@ -17,6 +17,7 @@ import { Slider } from "@/components/ui/slider"
 import { FileCode, FileImage, FileText, ImageIcon, Settings } from "lucide-react"
 import { UndoRedoButtons } from "@/components/ui/undo-redo-buttons"
 import { useTemplateStore } from "@/lib/template-store"
+import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { useUIStore } from "@/lib/stores/ui-store"
 import { useChartStore } from "@/lib/chart-store"
 import { useChartStyleStore } from "@/lib/stores/chart-style-store"
@@ -74,7 +75,8 @@ const ModeAndTypeSection = memo(({
                 <button
                     onClick={() => {
                         const templateStore = useTemplateStore.getState()
-                        if (!templateStore.currentTemplate) {
+                        const formatStore = useFormatGalleryStore.getState()
+                        if (!templateStore.currentTemplate && !formatStore.selectedFormatId) {
                             templateStore.applyTemplate('template-1')
                             useUIStore.getState().setActiveSidebarTab('templates')
                         }

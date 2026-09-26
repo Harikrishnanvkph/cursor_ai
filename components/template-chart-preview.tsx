@@ -40,7 +40,7 @@ import {
 } from "@/lib/hooks/use-chart-state"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { getPatternCSS } from "@/lib/utils"
-import { renderFormat } from "@/lib/variant-engine"
+import { renderFormat, extractContentFromChartData } from "@/lib/variant-engine"
 import { FormatRenderer } from "@/components/gallery/FormatRenderer"
 import { getProxiedImageUrl, requiresProxy } from "@/lib/utils/image-proxy-utils"
 
@@ -99,18 +99,6 @@ export function TemplateChartPreview({
     }
   }, [selectedFormatId, loadFormats])
 
-  const renderedFormat = React.useMemo(() => {
-    if (!selectedFormatId || !contentPackage) return null
-
-    // Priority: use the persisted snapshot (contains user modifications),
-    // then fall back to looking up the original from the database list
-    const format = selectedFormatSnapshot
-      || [...formats, ...userFormats].find(f => f.id === selectedFormatId)
-
-    if (!format) return null
-    return renderFormat(format, contentPackage, undefined, contextualImageUrl || undefined)
-  }, [selectedFormatId, contentPackage, selectedFormatSnapshot, formats, userFormats, contextualImageUrl])
-
   // Granular hooks
   const chartData = useChartData()
   const hasData = chartData?.datasets?.length > 0;
@@ -122,6 +110,38 @@ export function TemplateChartPreview({
   const activeDatasetIndex = useActiveDatasetIndex()
   const activeGroupId = useActiveGroupId()
   const groups = useChartGroups()
+
+  // Derive effective content package: use store contentPackage or dynamically extract from live chartData
+  const effectiveContentPackage = React.useMemo(() => {
+    if (contentPackage) return contentPackage
+    if (hasData) {
+      try {
+        return extractContentFromChartData(chartType, chartData, chartConfig)
+      } catch (err) {
+        console.warn('Failed to extract content package from chart data:', err)
+      }
+    }
+    return null
+  }, [contentPackage, hasData, chartType, chartData, chartConfig])
+
+  // Sync derived content package to store if missing
+  React.useEffect(() => {
+    if (!contentPackage && effectiveContentPackage) {
+      useFormatGalleryStore.getState().setContentPackage(effectiveContentPackage)
+    }
+  }, [contentPackage, effectiveContentPackage])
+
+  const renderedFormat = React.useMemo(() => {
+    if (!selectedFormatId || !effectiveContentPackage) return null
+
+    // Priority: use the persisted snapshot (contains user modifications),
+    // then fall back to looking up the original from the database list
+    const format = selectedFormatSnapshot
+      || [...formats, ...userFormats].find(f => f.id === selectedFormatId)
+
+    if (!format) return null
+    return renderFormat(format, effectiveContentPackage, chartType || undefined, contextualImageUrl || undefined)
+  }, [selectedFormatId, effectiveContentPackage, selectedFormatSnapshot, formats, userFormats, chartType, contextualImageUrl])
 
   const { setChartType, setActiveGroup } = useChartActions()
   const setChartTitle = useChartStore(s => s.setChartTitle)
@@ -1658,7 +1678,7 @@ export function TemplateChartPreview({
                     zoom={scale}
                   />
                 </>
-              ) : (
+              ) : (currentTemplate || templateInBackground) ? (
                 <>
                   {/* Template Background */}
                   {renderTemplateBackground()}
@@ -1678,6 +1698,33 @@ export function TemplateChartPreview({
                     zoom={scale}
                   />
                 </>
+              ) : (
+                <div className="flex flex-col items-center justify-center w-full h-full p-8 text-center bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm rounded-xl border border-dashed border-slate-300 dark:border-slate-700 min-h-[360px]">
+                  <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center text-blue-500 mb-3 shadow-inner">
+                    <ChartColumn className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1">
+                    No Template or Format Selected
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mb-4">
+                    Choose a template or infographic format from the sidebar to visualize your chart.
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      if (onToggleLeftSidebar && isLeftSidebarCollapsed) {
+                        onToggleLeftSidebar()
+                      }
+                      if (onTabChange) {
+                        onTabChange('templates')
+                      }
+                    }}
+                    className="text-xs h-8 gap-1.5 font-medium"
+                  >
+                    Browse Templates
+                  </Button>
+                </div>
               )}
             </div>
           </div>
