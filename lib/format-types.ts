@@ -352,6 +352,60 @@ export interface ContentStat {
   priority?: number;        // 1 = top primary stat, 2 = secondary, etc.
 }
 
+// ========================================
+// AI CONTENT BANK — 10 Categorized Blocks, Multi-Asset Bank
+// ========================================
+
+export interface ContentBankTextBlock {
+  id: string;
+  category: string;
+  length?: 'short' | 'medium' | 'long' | 'list' | string;
+  text: string;
+  bullets?: string[];
+}
+
+export interface ContentBankTitle {
+  id: string;
+  style: 'punchy' | 'analytical' | 'provocative' | string;
+  text: string;
+}
+
+export interface ContentBankSubtitle {
+  id: string;
+  style: 'short' | 'standard' | 'detailed' | string;
+  text: string;
+}
+
+export interface ContentBankPhrase {
+  id: string;
+  phrase: string;
+}
+
+export interface ContentBankImage {
+  id: string;
+  url: string;
+  thumbUrl?: string;
+  alt?: string;
+  credit?: string;
+  query?: string;
+}
+
+export interface ContentBankSliceImage {
+  label: string;
+  imageUrl: string | null;
+}
+
+export interface ContentBank {
+  titles: ContentBankTitle[];
+  subtitles: ContentBankSubtitle[];
+  catchyPhrases: ContentBankPhrase[];
+  textBlocks: ContentBankTextBlock[];
+  sources: string[];
+  generalImageQueries?: string[];
+  generalImages?: ContentBankImage[];
+  sliceImages?: ContentBankSliceImage[];
+}
+
 /** The complete content package returned by the LLM (Unified Resource Bundle) */
 export interface LLMContentPackage {
   /** Text content (legacy fallback) */
@@ -370,6 +424,12 @@ export interface LLMContentPackage {
     keyInsight?: string;
     takeaway?: string;
   };
+
+  /** AI Content Bank (10 categorized blocks, 3 titles, 3 subtitles, 3 phrases, images, sources) */
+  contentBank?: ContentBank;
+
+  /** Zone content overrides (custom text/images dropped into specific zone IDs) */
+  zoneOverrides?: Record<string, string>;
 
   /** Key metrics */
   stats: ContentStat[];

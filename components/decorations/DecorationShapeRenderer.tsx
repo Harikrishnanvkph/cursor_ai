@@ -2148,13 +2148,12 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
 
         const isTextbox = selectedShape.type === 'textbox' || selectedShape.type === 'textbox-auto'
         
-        const effectiveZoom = zoom < 1.0 ? Math.max(0.01, Math.sqrt(zoom)) : zoom
-        const netScale = zoom / effectiveZoom
+        const effectiveZoom = Math.max(0.15, Math.min(3.0, zoom))
         
         // Define fixed screen sizes for the toolbars (these match the values inside DecorationToolbar.tsx)
-        const screenToolbarWidth = (isTextbox ? (editingShapeId === selectedShape.id ? 330 : 270) : 152) * netScale
-        const screenToolbarHeight = (isTextbox ? 74 : 34) * netScale
-        const screenGap = 10 * netScale
+        const screenToolbarWidth = isTextbox ? (editingShapeId === selectedShape.id ? 350 : 290) : 152
+        const screenToolbarHeight = isTextbox ? 80 : 38
+        const screenGap = 10
 
         // Calculate positions in screen coordinates, then map back to SVG coordinates considering zoom scale
         let yScreen = topObjectY * zoom - screenGap - screenToolbarHeight

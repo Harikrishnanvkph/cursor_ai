@@ -17,10 +17,26 @@ interface FormatZoneToolbarProps {
   zoneType: 'text' | 'stat'
   x: number
   y: number
-  scale: number
+  zoneWidth?: number
+  zoneHeight?: number
+  scale?: number
+  zoomLevel?: number
+  canvasWidth?: number
+  canvasHeight?: number
 }
 
-export function FormatZoneToolbar({ zoneId, zoneType, x, y, scale }: FormatZoneToolbarProps) {
+export function FormatZoneToolbar({
+  zoneId,
+  zoneType,
+  x,
+  y,
+  zoneWidth = 200,
+  zoneHeight = 50,
+  scale = 1,
+  zoomLevel,
+  canvasWidth = 1200,
+  canvasHeight = 800,
+}: FormatZoneToolbarProps) {
   const { formats, selectedFormatId, updateZoneStyle, editingZoneId, setEditingZoneId } = useFormatGalleryStore()
 
   const format = formats.find(f => f.id === selectedFormatId)
@@ -110,15 +126,52 @@ export function FormatZoneToolbar({ zoneId, zoneType, x, y, scale }: FormatZoneT
     onEdit: () => setEditingZoneId(zoneId),
   }
 
-  // ── Position ─────────────────────────────────
-  const toolbarX = Math.max(4, x * scale)
-  const toolbarY = Math.max(4, y * scale - 44)
+  // ── Adaptive Scaling for all Screen Sizes & Zoom Levels ────
+  // When viewed on laptops, the 1200x800 canvas is scaled down via CSS
+  // transform: scale(zoomLevel) to fit the viewport (e.g. 0.35x - 0.55x).
+  // Without counter-scaling, the toolbar shrinks to microscopic sizes.
+  // By counter-scaling by 1 / effectiveZoom, the toolbar retains a consistent,
+  // touch-friendly, legible physical screen size (standard 40-44px height, 14-16px icons).
+  const effectiveZoom = Math.max(0.15, Math.min(3.0, zoomLevel ?? scale ?? 1))
+  const counterScale = 1 / effectiveZoom
+
+  // Standard physical screen dimensions for the toolbar (in screen px)
+  const screenToolbarWidth = isEditing ? 360 : 300
+  const screenToolbarHeight = 44
+  const screenGap = 10
+
+  // Convert to canvas coordinates
+  const canvasToolbarWidth = screenToolbarWidth * counterScale
+  const canvasToolbarHeight = screenToolbarHeight * counterScale
+  const canvasGap = screenGap * counterScale
+  const zHeight = zoneHeight || 50
+  const cWidth = canvasWidth || 1200
+
+  // Determine Y position:
+  // If there is enough room above the zone within the canvas (plus margin), place above.
+  // Otherwise, place it below the zone.
+  const canFitAbove = (y - canvasToolbarHeight - canvasGap) >= (6 * counterScale)
+  const toolbarY = canFitAbove
+    ? y - canvasToolbarHeight - canvasGap
+    : y + zHeight + canvasGap
+
+  // Determine X position:
+  // Align with the left edge of the zone, but clamp so it never overflows canvas bounds.
+  const minX = 8 * counterScale
+  const maxX = Math.max(minX, cWidth - canvasToolbarWidth - 8 * counterScale)
+  const toolbarX = Math.max(minX, Math.min(x, maxX))
 
   return (
     <div
       className="format-zone-toolbar absolute z-[60] pointer-events-auto"
       data-export-ignore="true"
-      style={{ left: toolbarX, top: toolbarY }}
+      style={{
+        left: toolbarX,
+        top: toolbarY,
+        transform: `scale(${counterScale})`,
+        transformOrigin: 'top left',
+        width: 'max-content',
+      }}
     >
       <RichTextToolbar
         style={styleState}

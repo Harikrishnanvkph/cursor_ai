@@ -8,12 +8,13 @@ import { dataService } from "@/lib/data-service"
 import { VariantCard } from "@/components/gallery/VariantCard"
 import { extractContentFromChartData, renderFormat, generateGalleryVariants } from "@/lib/variant-engine"
 import type { FormatCategory, LLMContentPackage, RenderedFormat } from "@/lib/format-types"
-import { X, Layers, SlidersHorizontal, LayoutGrid, BarChart3, ChevronLeft, Check, StickyNote, Code2, Trash2, Plus, Info, Eye, RefreshCw, Search, ChevronDown } from "lucide-react"
+import { X, Layers, SlidersHorizontal, LayoutGrid, BarChart3, ChevronLeft, Check, StickyNote, Code2, Trash2, Plus, Info, Eye, RefreshCw, Search, ChevronDown, Sparkles } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
 import { getStandardAspectRatio } from "@/lib/utils/dimension-utils"
+import { ContentBankDrawer } from "@/components/gallery/ContentBankDrawer"
 
 const FORMAT_PAGE_SIZE = 8
 
@@ -60,7 +61,9 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
     formatZoneNotes,
     setFormatZoneNote,
     clearFormatZoneNote,
-    loadFormats
+    loadFormats,
+    isContentBankOpen,
+    toggleContentBank
   } = useFormatGalleryStore()
 
   const [showFilters, setShowFilters] = useState(false)
@@ -372,6 +375,29 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
               <Check className="w-4 h-4 text-green-500" />
             ) : (
               <RefreshCw className="w-4 h-4" />
+            )}
+          </button>
+
+          <div className="h-5 w-px bg-gray-200 mx-1"></div>
+
+          {/* AI Content Bank Toggle */}
+          <button
+            onClick={toggleContentBank}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border shadow-xs ${
+              isContentBankOpen
+                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-transparent shadow-purple-200'
+                : 'bg-white text-purple-700 border-purple-200 hover:bg-purple-50'
+            }`}
+            title="Open AI Content Bank"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Content Bank</span>
+            {localContentPackage?.contentBank && (
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                isContentBankOpen ? 'bg-white/20 text-white' : 'bg-purple-100 text-purple-700'
+              }`}>
+                {localContentPackage.contentBank.textBlocks?.length || 10}
+              </span>
             )}
           </button>
 
@@ -699,6 +725,8 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
           )}
         </div>
       </div>
+      {/* AI Content Bank Slide-out Drawer */}
+      <ContentBankDrawer />
     </div>
   )
 }

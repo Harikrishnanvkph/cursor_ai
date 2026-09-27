@@ -18,7 +18,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   // Display a secure loading state instead.
   if (loading) {
     return (
-      <div className="fixed inset-0 z-[9999] bg-[#f6f8fa] flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[9999] bg-[#f6f8fa] flex flex-col items-center justify-center p-4">
         {/* Soft background glow circles */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] rounded-full bg-gradient-to-br from-indigo-500/10 to-purple-500/10 blur-[80px]" />

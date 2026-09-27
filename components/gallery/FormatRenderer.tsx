@@ -36,6 +36,7 @@ import { ChartGenerator } from "@/lib/chart_generator"
 import { getPatternCSS } from "@/lib/utils"
 import { getProxiedImageUrl } from "@/lib/utils/image-proxy-utils"
 import { Maximize2, X, Move } from "lucide-react"
+import { toast } from "sonner"
 
 // ========================================
 // COLLISION-AWARE RESIZE HELPERS
@@ -384,11 +385,17 @@ export function FormatRenderer({
       {interactive && isResizeMode && (
         <div
           data-export-ignore="true"
-          className="absolute top-2.5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 px-2.5 py-1 bg-gray-900/80 text-white text-[11px] rounded-full shadow-md backdrop-blur-sm pointer-events-auto select-none border border-white/10"
+          className="absolute z-50 flex items-center gap-1.5 px-3 py-1.5 bg-gray-900/90 text-white text-xs rounded-full shadow-lg backdrop-blur-sm pointer-events-auto select-none border border-white/15 whitespace-nowrap"
+          style={{
+            top: 12 / (zoomLevel || scale || 1),
+            left: '50%',
+            transform: `translateX(-50%) scale(${1 / (zoomLevel || scale || 1)})`,
+            transformOrigin: 'top center',
+          }}
         >
-          <Maximize2 className="h-3 w-3 text-blue-400" />
+          <Maximize2 className="h-3.5 w-3.5 text-blue-400" />
           <span className="font-medium">Resize &amp; Move</span>
-          <span className="text-gray-400 text-[10px] hidden sm:inline">• Drag zone to move, edges to resize</span>
+          <span className="text-gray-400 text-[11px] hidden sm:inline">• Drag zone to move, edges to resize</span>
           <button
             type="button"
             onClick={(e) => {
@@ -398,7 +405,7 @@ export function FormatRenderer({
             className="ml-1 p-0.5 rounded-full hover:bg-white/20 text-gray-300 hover:text-white transition-colors"
             title="Exit Resize Mode"
           >
-            <X className="h-3 w-3" />
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
       )}
@@ -436,7 +443,12 @@ export function FormatRenderer({
             zoneType={zone.type as 'text' | 'stat'}
             x={zone.position.x}
             y={zone.position.y}
+            zoneWidth={zone.position.width}
+            zoneHeight={zone.position.height}
             scale={scale}
+            zoomLevel={zoomLevel}
+            canvasWidth={width}
+            canvasHeight={height}
           />
         )
       })()}
@@ -637,8 +649,11 @@ function InteractiveZoneWrapper({
     hoveredZoneId, setHoveredZoneId,
     selectedZoneId, setSelectedZoneId,
     editingZoneId, setEditingZoneId,
-    isResizeMode, updateZonePosition
+    isResizeMode, updateZonePosition,
+    setZoneContentOverride, updateZoneContent
   } = useFormatGalleryStore()
+
+  const [isDragOver, setIsDragOver] = useState(false)
 
   const isHovered = hoveredZoneId === zoneId
   const isSelected = selectedZoneId === zoneId
@@ -679,6 +694,55 @@ function InteractiveZoneWrapper({
       setEditingZoneId(zoneId)
     }
   }, [zoneId, isEditing, isResizeMode, isEditable, setEditingZoneId])
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    e.dataTransfer.dropEffect = 'copy'
+    setIsDragOver(true)
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+
+    try {
+      const rawData = e.dataTransfer.getData('application/json')
+      let content = ''
+      let label = ''
+      if (rawData) {
+        const parsed = JSON.parse(rawData)
+        content = parsed.content || ''
+        label = parsed.label || parsed.category || 'Asset'
+      } else {
+        content = e.dataTransfer.getData('text/plain') || ''
+        label = 'Text'
+      }
+
+      if (content) {
+        setZoneContentOverride(zoneId, content)
+        updateZoneContent(zoneId, content)
+        setSelectedZoneId(zoneId)
+        toast.success(`Updated ${zoneRole || zoneType} with ${label}!`)
+      }
+    } catch (err) {
+      console.error('Drop error:', err)
+      const plainText = e.dataTransfer.getData('text/plain')
+      if (plainText) {
+        setZoneContentOverride(zoneId, plainText)
+        updateZoneContent(zoneId, plainText)
+        setSelectedZoneId(zoneId)
+        toast.success(`Updated ${zoneRole || zoneType}!`)
+      }
+    }
+  }, [zoneId, zoneRole, zoneType, setZoneContentOverride, updateZoneContent, setSelectedZoneId])
 
   // Start dragging / moving the zone across free space
   const handleStartMove = useCallback((e: React.MouseEvent) => {
@@ -958,6 +1022,10 @@ function InteractiveZoneWrapper({
       onMouseDown={isResizeMode && !isEditing ? handleStartMove : undefined}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
+      onDragOver={handleDragOver}
+      onDragEnter={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
       {/* Content */}
       <div
@@ -972,8 +1040,41 @@ function InteractiveZoneWrapper({
         {children}
       </div>
 
+      {/* Drag & Drop Target Active Overlay */}
+      {isDragOver && (
+        <div
+          data-export-ignore="true"
+          style={{
+            position: 'absolute',
+            inset: -4,
+            border: '2px dashed #10b981',
+            backgroundColor: 'rgba(16, 185, 129, 0.12)',
+            borderRadius: 6,
+            zIndex: 60,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+            boxShadow: '0 0 16px rgba(16, 185, 129, 0.35)',
+          }}
+        >
+          <span style={{
+            fontSize: 10,
+            fontWeight: 700,
+            color: '#065f46',
+            backgroundColor: '#d1fae5',
+            padding: '2px 8px',
+            borderRadius: 4,
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            whiteSpace: 'nowrap'
+          }}>
+            Drop to replace {zoneDisplayName}
+          </span>
+        </div>
+      )}
+
       {/* Hover/Select overlay border */}
-      {borderOverlay && (
+      {borderOverlay && !isDragOver && (
         <div
           className="format-zone-selection-border"
           data-export-ignore="true"
@@ -1133,8 +1234,14 @@ function TextZoneContent({ renderedZone, scale, interactive }: {
 
   // Read content from contentPackage directly (reactive) or fallback to resolvedContent
   const text = useMemo(() => {
+    if (contentPackage?.zoneOverrides && contentPackage.zoneOverrides[zone.id] !== undefined) {
+      return String(contentPackage.zoneOverrides[zone.id])
+    }
     if (contentPackage && zone.id && (contentPackage as any)[zone.id] !== undefined) {
       return String((contentPackage as any)[zone.id])
+    }
+    if ((zone as any).content !== undefined) {
+      return String((zone as any).content)
     }
     if (renderedZone.resolvedContent) {
       return renderedZone.resolvedContent
@@ -1143,7 +1250,7 @@ function TextZoneContent({ renderedZone, scale, interactive }: {
       return String((contentPackage as any)[zone.role])
     }
     return ''
-  }, [contentPackage, zone.id, zone.role, renderedZone.resolvedContent])
+  }, [contentPackage, zone.id, zone.role, renderedZone.resolvedContent, (zone as any).content])
 
   // Save content when editing stops (isEditing transitions true → false)
   // This replaces onBlur entirely — no more focus-related bugs
@@ -1225,6 +1332,7 @@ function TextZoneContent({ renderedZone, scale, interactive }: {
     textTransform: zone.style.textTransform || 'none',
     textDecoration: zone.style.textDecoration || 'none',
     wordBreak: 'break-word',
+    whiteSpace: hasHtml ? 'normal' : 'pre-wrap',
     outline: 'none',
     cursor: isEditing ? 'text' : 'inherit',
     overflow: 'hidden',

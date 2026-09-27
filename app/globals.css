@@ -178,6 +178,28 @@ body {
   margin: 0.5em 0;
 }
 
+/* Compact list formatting for format text zones */
+.format-text-zone ul {
+  list-style-type: disc !important;
+  padding-left: 1.25em !important;
+  margin: 0.25em 0 !important;
+}
+
+.format-text-zone ol {
+  list-style-type: decimal !important;
+  padding-left: 1.25em !important;
+  margin: 0.25em 0 !important;
+}
+
+.format-text-zone li {
+  margin: 0.2em 0 !important;
+  line-height: inherit;
+}
+
+.format-text-zone p {
+  margin: 0 0 0.25em 0 !important;
+}
+
 .html-content-area mark {
   background-color: #fef08a;
   padding: 0.1em 0.2em;

@@ -117,6 +117,19 @@ interface FormatGalleryStore {
   loadFormats: (force?: boolean) => Promise<void>
   deleteFormat: (id: string) => Promise<{ success: boolean; error?: string }>
 
+  // AI Content Bank Drawer
+  isContentBankOpen: boolean
+  openContentBank: () => void
+  closeContentBank: () => void
+  toggleContentBank: () => void
+
+  // Zone Content Overrides
+  zoneContentOverrides: Record<string, string>
+  setZoneContentOverride: (zoneId: string, content: string) => void
+  clearZoneContentOverride: (zoneId: string) => void
+  clearAllZoneContentOverrides: () => void
+  updateZoneContent: (zoneId: string, content: string) => void
+
   // Reset all gallery state
   resetGallery: () => void
 }
@@ -131,6 +144,20 @@ function applyZoneStyleToFormat(
   const zones = (skeleton.zones || []).map((z: any) => {
     if (z.id !== zoneId) return z
     return { ...z, style: { ...z.style, ...styleUpdates } }
+  })
+  return { ...format, skeleton: { ...skeleton, zones } }
+}
+
+/** Apply zone content update to a format blueprint, returning a new copy */
+function applyZoneContentToFormat(
+  format: FormatBlueprintRow,
+  zoneId: string,
+  content: string
+): FormatBlueprintRow {
+  const skeleton = { ...(format.skeleton as any) }
+  const zones = (skeleton.zones || []).map((z: any) => {
+    if (z.id !== zoneId) return z
+    return { ...z, content }
   })
   return { ...format, skeleton: { ...skeleton, zones } }
 }
@@ -209,7 +236,8 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
       selectedZoneId: null,
       editingZoneId: null,
       hoveredZoneId: null,
-      isResizeMode: false
+      isResizeMode: false,
+      zoneContentOverrides: {}
     }),
 
     // Filters
@@ -349,6 +377,42 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
       return { formatZoneNotes: updatedNotes };
     }),
 
+    // AI Content Bank Drawer
+    isContentBankOpen: false,
+    openContentBank: () => set({ isContentBankOpen: true }),
+    closeContentBank: () => set({ isContentBankOpen: false }),
+    toggleContentBank: () => set((state) => ({ isContentBankOpen: !state.isContentBankOpen })),
+
+    // Zone Content Overrides
+    zoneContentOverrides: {},
+    setZoneContentOverride: (zoneId, content) => set((state) => {
+      const overrides = { ...state.zoneContentOverrides, [zoneId]: content };
+      let newSnapshot = state.selectedFormatSnapshot;
+      if (newSnapshot) {
+        newSnapshot = applyZoneContentToFormat(newSnapshot, zoneId, content);
+      }
+      let updatedPkg = state.contentPackage ? {
+        ...state.contentPackage,
+        zoneOverrides: overrides,
+        [zoneId]: content
+      } : null;
+
+      return {
+        zoneContentOverrides: overrides,
+        selectedFormatSnapshot: newSnapshot,
+        contentPackage: updatedPkg
+      };
+    }),
+    clearZoneContentOverride: (zoneId) => set((state) => {
+      const overrides = { ...state.zoneContentOverrides };
+      delete overrides[zoneId];
+      return { zoneContentOverrides: overrides };
+    }),
+    clearAllZoneContentOverrides: () => set({ zoneContentOverrides: {} }),
+    updateZoneContent: (zoneId, content) => {
+      get().setZoneContentOverride(zoneId, content);
+    },
+
     // Caching metadata & actions
     lastFetchedAt: null,
     loadFormats: async (force = false) => {
@@ -468,7 +532,9 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
       selectedZoneId: null,
       editingZoneId: null,
       isResizeMode: false,
-      formatZoneNotes: {}
+      formatZoneNotes: {},
+      isContentBankOpen: false,
+      zoneContentOverrides: {}
     })
   }),
   {
@@ -483,6 +549,7 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
       contextualImageUrl: state.contextualImageUrl,
       selectedFormatSnapshot: state.selectedFormatSnapshot,
       formatZoneNotes: state.formatZoneNotes,
+      zoneContentOverrides: state.zoneContentOverrides,
       lastFetchedAt: state.lastFetchedAt,
     }),
   }

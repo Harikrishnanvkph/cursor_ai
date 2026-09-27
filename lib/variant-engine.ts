@@ -74,6 +74,50 @@ export function extractContentFromChartData(
   const standardTitle = title
   const detailedTitle = subtitle ? `${title}: ${subtitle}` : title
 
+  // 10 Categorized Default Text Blocks
+  const defaultTextBlocks = [
+    { id: 'b1', category: 'Executive Summary', length: 'short', text: body.split('.')[0] ? body.split('.')[0] + '.' : body },
+    { id: 'b2', category: 'Market Drivers', length: 'medium', text: `Primary catalysts include accelerating adoption and infrastructural investments across ${labels.slice(0, 3).join(', ') || 'key segments'}.` },
+    { id: 'b3', category: 'Key Comparison', length: 'medium', text: stats[0] ? `${stats[0].label} commands the highest share at ${stats[0].value}, outperforming secondary peers.` : `Top segments outperform secondary peers by a notable margin.` },
+    { id: 'b4', category: 'Strategic Takeaway', length: 'short', text: stats[0] ? `Strategic positioning requires prioritizing growth channels aligned with ${stats[0].label}.` : callout },
+    { id: 'b5', category: 'Historical Context', length: 'medium', text: `Over the past cycles, historical patterns demonstrate steady expansion culminating in the current distribution.` },
+    { id: 'b6', category: 'Bullet Points', length: 'list', text: 'Key takeaways and distribution metrics summary:', bullets: stats.map(s => `${s.label}: ${s.value}`) },
+    { id: 'b7', category: 'Consumer Behavior', length: 'long', text: `User engagement patterns reflect heightened reliance on primary channels, driving substantive activity across top demographic cohorts.` },
+    { id: 'b8', category: 'Industry Impact', length: 'medium', text: `Cross-sector implications indicate competitive realignment as industry participants adapt to shifting market share.` },
+    { id: 'b9', category: 'Underlying Factors', length: 'medium', text: `Technological integration, accessibility, and macroeconomic conditions serve as foundational pillars behind these figures.` },
+    { id: 'b10', category: 'Outlook & Risks', length: 'short', text: `Future momentum remains subject to regulatory adjustments and supply chain equilibrium over the upcoming quarters.` }
+  ]
+
+  const sliceImages = (datasets[0]?.pointImages && Array.isArray(datasets[0].pointImages))
+    ? labels.map((lbl: any, idx: number) => ({
+        label: String(lbl || `Slice ${idx + 1}`),
+        imageUrl: datasets[0].pointImages[idx] || null
+      })).filter((item: any) => Boolean(item.imageUrl))
+    : []
+
+  const contentBank = {
+    titles: [
+      { id: 't1', style: 'punchy', text: punchyTitle },
+      { id: 't2', style: 'analytical', text: standardTitle },
+      { id: 't3', style: 'provocative', text: detailedTitle }
+    ],
+    subtitles: [
+      { id: 's1', style: 'short', text: subtitle ? (subtitle.length > 50 ? subtitle.substring(0, 47) + '…' : subtitle) : `${title} Summary` },
+      { id: 's2', style: 'standard', text: subtitle || `Key distribution and comparative performance across ${labels.slice(0, 3).join(', ') || 'primary segments'}` },
+      { id: 's3', style: 'detailed', text: subtitle ? `${subtitle} with detailed segment indicators` : `Comprehensive metric distribution and comparative historical indicators across ${labels.slice(0, 3).join(', ') || 'categories'}` }
+    ],
+    catchyPhrases: [
+      { id: 'cp1', phrase: callout || `${title} Analysis` },
+      { id: 'cp2', phrase: stats[0] ? `Leading category remains ${stats[0].label} (${stats[0].value}).` : (callout || `${title} Breakdown`) },
+      { id: 'cp3', phrase: stats[1] ? `Runner up ${stats[1].label} holds steady at ${stats[1].value}.` : `Market trajectory highlights sustained acceleration.` }
+    ],
+    textBlocks: defaultTextBlocks,
+    sources: [source],
+    generalImageQueries: keywords.length >= 3 ? keywords.slice(0, 3) : [title, `${title} technology`, `${title} visual`],
+    generalImages: [],
+    sliceImages
+  }
+
   return {
     title,
     subtitle: subtitle || undefined,
@@ -98,6 +142,7 @@ export function extractContentFromChartData(
       keyInsight: callout,
       takeaway: stats[0] ? `Leading category remains ${stats[0].label} (${stats[0].value}).` : callout,
     },
+    contentBank,
     stats,
     keywords,
     visualKeywords: keywords,
@@ -472,7 +517,9 @@ function renderTextZone(zone: TextZone, content: LLMContentPackage): RenderedZon
   }
 
   let text = ''
-  if (zone.id && (content as any)[zone.id] !== undefined) {
+  if (zone.id && content.zoneOverrides && content.zoneOverrides[zone.id] !== undefined) {
+    text = String(content.zoneOverrides[zone.id])
+  } else if (zone.id && (content as any)[zone.id] !== undefined) {
     text = String((content as any)[zone.id])
   } else if ((zone as any).content) {
     text = String((zone as any).content)
@@ -535,7 +582,13 @@ function renderTextZone(zone: TextZone, content: LLMContentPackage): RenderedZon
     }
   }
 
-  if (effectiveMaxLength > 0 && text.length > effectiveMaxLength) {
+  const isOverridden = (zone.id && content.zoneOverrides && content.zoneOverrides[zone.id] !== undefined) ||
+                       (zone.id && (content as any)[zone.id] !== undefined) ||
+                       (zone as any).content !== undefined
+  const hasHtml = /<[a-z][\s\S]*>/i.test(text)
+
+  // Only truncate default auto-generated plain text, never truncate user overrides or rich HTML
+  if (!isOverridden && !hasHtml && effectiveMaxLength > 0 && text.length > effectiveMaxLength) {
     text = text.substring(0, effectiveMaxLength - 1) + '…'
   }
 
@@ -605,6 +658,23 @@ function renderChartZone(
  * Map stat data to a stat zone
  */
 function renderStatZone(zone: StatZone, content: LLMContentPackage): RenderedZone {
+  // Support explicit content override
+  if (zone.id && content.zoneOverrides && content.zoneOverrides[zone.id] !== undefined) {
+    return {
+      zone,
+      resolvedValue: String(content.zoneOverrides[zone.id]),
+      resolvedLabel: (zone as any).label || (zone as any).style?.label || '',
+    }
+  }
+
+  if ((zone as any).content !== undefined) {
+    return {
+      zone,
+      resolvedValue: String((zone as any).content),
+      resolvedLabel: (zone as any).label || (zone as any).style?.label || '',
+    }
+  }
+
   const stats = content.stats || []
   let stat: ContentStat | undefined
 
@@ -638,6 +708,12 @@ function renderBackgroundZone(
   contextualImageUrl?: string
 ): RenderedZone {
   const result: RenderedZone = { zone }
+
+  // Check zoneOverrides for background image
+  if (zone.id && content.zoneOverrides && content.zoneOverrides[zone.id]) {
+    result.resolvedImageUrl = content.zoneOverrides[zone.id]
+    return result
+  }
 
   // If the zone has a pre-filled background image, use it only if type is 'image'
   if (zone.style.type === 'image' && zone.style.imageUrl) {
@@ -692,6 +768,12 @@ function renderImageZone(
   contextualImageUrl?: string
 ): RenderedZone {
   const result: RenderedZone = { zone }
+
+  // Check zoneOverrides for image
+  if (zone.id && content.zoneOverrides && content.zoneOverrides[zone.id]) {
+    result.resolvedImageUrl = content.zoneOverrides[zone.id]
+    return result
+  }
 
   // If the zone has a pre-filled image URL, use it
   if (zone.imageUrl) {

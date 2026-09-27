@@ -695,11 +695,19 @@ export const useChatStore = create<ChatStore>()(
                     chartData: { labels: result.chartData.labels, datasets: result.chartData.datasets },
                     chartConfig: result.chartConfig || {},
                     suggestedChartTypes: suggestChartTypes?.(result.chartType) || [result.chartType],
+                    contentBank: result.contentBank || result.formatContent.contentBank,
                   };
                   console.log(`Format mode: Applied AI content package on ${result.action}`);
                 } else if (result.chartData) {
                   contentPackage = extractContentFromChartData(result.chartType, result.chartData, result.chartConfig);
+                  if (result.contentBank) {
+                    contentPackage.contentBank = result.contentBank;
+                  }
                   console.log('Format mode: Falling back to local content extraction');
+                }
+
+                if (contentPackage) {
+                  formatStore.setContentPackage(contentPackage);
                 }
 
                 if (result.action === 'create') {

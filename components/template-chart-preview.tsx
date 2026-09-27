@@ -14,9 +14,10 @@ import { useZoomPan } from "@/lib/hooks/use-zoom-pan"
 import { Button } from "@/components/ui/button"
 import { UndoRedoButtons } from "@/components/ui/undo-redo-buttons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ZoomIn, ZoomOut, Eye, EyeOff, Ellipsis, Maximize2, Minimize2, Settings, Menu, X, ChevronLeft, Download, Hand, Pencil, Check, Loader2, ChartColumn, RulerDimensionLine, Search, Undo2, Redo2 } from "lucide-react"
+import { ZoomIn, ZoomOut, Eye, EyeOff, Ellipsis, Maximize2, Minimize2, Settings, Menu, X, ChevronLeft, Download, Hand, Pencil, Check, Loader2, ChartColumn, RulerDimensionLine, Search, Undo2, Redo2, Sparkles } from "lucide-react"
 import { downloadTemplateExport, downloadFormatExport } from "@/lib/template-export"
 import { FileDown, FileImage, FileCode, Ban, Cloud, Camera } from "lucide-react"
+import { ContentBankDrawer } from "@/components/gallery/ContentBankDrawer"
 import { ChartBgColorPicker } from "./chart-preview/chart-bg-color-picker"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -1460,18 +1461,35 @@ export function TemplateChartPreview({
               </SelectContent>
             </Select>
             {renderedFormat ? (
-              <TooltipProvider delayDuration={0}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center justify-center p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded cursor-help transition-colors">
-                      <RulerDimensionLine className="w-4 h-4" />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" sideOffset={5} className="z-[100] text-xs font-medium">
-                    {renderedFormat.skeleton.dimensions.width} × {renderedFormat.skeleton.dimensions.height}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <>
+                <TooltipProvider delayDuration={0}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center justify-center p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded cursor-help transition-colors">
+                        <RulerDimensionLine className="w-4 h-4" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" sideOffset={5} className="z-[100] text-xs font-medium">
+                      {renderedFormat.skeleton.dimensions.width} × {renderedFormat.skeleton.dimensions.height}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                {/* AI Content Bank Button */}
+                <button
+                  onClick={() => useFormatGalleryStore.getState().toggleContentBank()}
+                  className="flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200/80 rounded-md transition-all shadow-2xs hover:shadow-xs"
+                  title="Open AI Content Bank"
+                >
+                  <Sparkles className="w-3 h-3 text-purple-600" />
+                  <span>Content Bank</span>
+                  {effectiveContentPackage?.contentBank && (
+                    <span className="text-[9px] bg-purple-200/70 text-purple-800 px-1 rounded-full font-bold">
+                      {effectiveContentPackage.contentBank.textBlocks?.length || 10}
+                    </span>
+                  )}
+                </button>
+              </>
             ) : template ? (
               <TooltipProvider delayDuration={0}>
                 <Tooltip>
@@ -1944,6 +1962,9 @@ export function TemplateChartPreview({
           )}
         </>
       )}
+
+      {/* AI Content Bank Drawer */}
+      <ContentBankDrawer />
     </div>
   )
 } 

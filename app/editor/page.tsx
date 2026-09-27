@@ -904,7 +904,7 @@ function EditorPageContent() {
   };
 
   const renderCenterAreaLoader = () => (
-    <div className="flex flex-1 items-center justify-center h-full relative">
+    <div className="flex flex-1 flex-col items-center justify-center h-full relative">
       <div className="flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-500">
         <div className="relative">
           <div className="w-16 h-16 rounded-full border-4 border-indigo-100 border-t-indigo-600 animate-spin shadow-lg"></div>
@@ -1302,12 +1302,12 @@ function EditorPageContent() {
             <SimpleProfileDropdown size="sm" />
           </div>
         </div>
-        {/* Chart Preview */}
-        <div className="flex-1 flex flex-col items-center justify-center p-2 pb-20 overflow-hidden">
-          <div className="w-full max-w-full flex-1 flex flex-col overflow-hidden" style={{ maxHeight: 'calc(100vh - 120px)', height: '100%' }}>
-            {!storeHydrated ? (
-              renderCenterAreaLoader()
-            ) : hasJSON ? (
+        {/* Chart Preview / Welcome Area */}
+        <div className={`flex-1 w-full flex flex-col items-center justify-center p-2 pb-16 ${hasJSON ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+          {!storeHydrated ? (
+            renderCenterAreaLoader()
+          ) : hasJSON ? (
+            <div className="w-full max-w-full flex-1 flex flex-col justify-center items-center" style={{ maxHeight: 'calc(100vh - 120px)', height: '100%' }}>
               <ChartPreview
                 activeTab={mobilePanel || activeTab}
                 onTabChange={(tab) => {
@@ -1316,13 +1316,13 @@ function EditorPageContent() {
                 }}
                 onNewChart={handleNewChart}
               />
-            ) : (
-              <EditorWelcomeScreen
-                onDatasetClick={() => setMobilePanel('datasets_slices')}
-                size="compact"
-              />
-            )}
-          </div>
+            </div>
+          ) : (
+            <EditorWelcomeScreen
+              onDatasetClick={() => setMobilePanel('datasets_slices')}
+              size="compact"
+            />
+          )}
         </div>
         {/* Bottom Navigation - horizontally scrollable, tiles never squish */}
         {/* fixed right-0 left-0 bottom-0 top-0 */}
@@ -1623,7 +1623,7 @@ function EditorPageContent() {
         </div>
 
         {/* Chart Area (between left and right sidebars) */}
-        <div className="flex-1 min-w-0 pr-4 pl-2 pt-2 pb-4">
+        <div className={`flex-1 min-w-0 h-full flex flex-col ${hasJSON ? 'pr-4 pl-2 pt-2 pb-4 overflow-hidden' : 'p-2 sm:p-4 overflow-y-auto justify-center items-center'}`}>
           {!storeHydrated ? (
             renderCenterAreaLoader()
           ) : hasJSON ? (
@@ -1863,7 +1863,7 @@ function EditorPageContent() {
   return (
     <>
       {/* Center Area - Chart Preview */}
-      <div className="flex-1 min-w-0 pr-4 pl-1 pt-2 pb-4 h-full overflow-hidden flex flex-col">
+      <div className={`flex-1 min-w-0 h-full flex flex-col ${hasJSON ? 'pr-4 pl-1 pt-2 pb-4 overflow-hidden' : 'p-4 overflow-y-auto justify-center items-center'}`}>
         {!storeHydrated ? (
           renderCenterAreaLoader()
         ) : hasJSON ? (

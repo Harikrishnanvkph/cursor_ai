@@ -213,12 +213,12 @@ export function RichTextToolbar({
     )
 
     if (embedded) {
-      return <div className="flex flex-nowrap items-center gap-0.5 shrink-0">{selectedContent}</div>
+      return <div className="flex flex-nowrap items-center gap-1 shrink-0">{selectedContent}</div>
     }
 
     return (
       <div
-        className="flex flex-nowrap items-center gap-0.5 bg-white opacity-100 rounded-xl shadow-lg border border-slate-200 p-0.5 shrink-0"
+        className="flex flex-nowrap items-center gap-1 bg-white/95 backdrop-blur-sm opacity-100 rounded-xl shadow-xl border border-slate-200/90 p-1 shrink-0"
         onMouseDown={e => { e.stopPropagation(); e.preventDefault() }}
         onClick={e => e.stopPropagation()}
       >
@@ -260,13 +260,13 @@ export function RichTextToolbar({
       <div className="w-px h-4 bg-slate-200 mx-0.5 shrink-0" />
 
       {/* Font Size: − size + */}
-      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-lg text-slate-700 hover:bg-slate-100 shrink-0" onClick={callbacks.onSizeDown} title="Decrease Size">
+      <Button variant="ghost" size="sm" className="h-8 w-7 p-0 rounded-lg text-slate-700 hover:bg-slate-100 shrink-0" onClick={callbacks.onSizeDown} title="Decrease Size">
         <Minus className="w-3.5 h-3.5" />
       </Button>
       <span className="text-xs font-semibold font-mono text-slate-700 w-6 text-center select-none shrink-0">
         {Math.round(style.fontSize)}
       </span>
-      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-lg text-slate-700 hover:bg-slate-100 shrink-0" onClick={callbacks.onSizeUp} title="Increase Size">
+      <Button variant="ghost" size="sm" className="h-8 w-7 p-0 rounded-lg text-slate-700 hover:bg-slate-100 shrink-0" onClick={callbacks.onSizeUp} title="Increase Size">
         <Plus className="w-3.5 h-3.5" />
       </Button>
 
@@ -289,7 +289,7 @@ export function RichTextToolbar({
             <MoreHorizontal className="w-3.5 h-3.5" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-2.5" side="bottom" align="start">
+        <PopoverContent className="w-auto p-3 shadow-xl rounded-xl" side="bottom" align="start">
           <div className="space-y-3">
             {/* Underline */}
             <div>
@@ -346,12 +346,12 @@ export function RichTextToolbar({
   )
 
   if (embedded) {
-    return <div className="flex flex-nowrap items-center gap-0.5 shrink-0">{editingContent}</div>
+    return <div className="flex flex-nowrap items-center gap-1 shrink-0">{editingContent}</div>
   }
 
   return (
     <div
-      className="flex flex-nowrap items-center gap-0.5 bg-white opacity-100 rounded-xl shadow-lg border border-slate-200 p-0.5 shrink-0"
+      className="flex flex-nowrap items-center gap-1 bg-white/95 backdrop-blur-sm opacity-100 rounded-xl shadow-xl border border-slate-200/90 p-1 shrink-0"
       onMouseDown={e => { e.stopPropagation(); e.preventDefault() }}
       onClick={e => e.stopPropagation()}
     >
@@ -373,24 +373,24 @@ function ColorPickerButton({ currentColor, onColorChange }: { currentColor: stri
           </div>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-2" side="bottom" align="start">
+      <PopoverContent className="w-auto p-2.5 shadow-xl rounded-xl" side="bottom" align="start">
         <div className="grid grid-cols-7 gap-1">
           {QUICK_COLORS.map(c => (
             <button
               key={c}
-              className={`w-6 h-6 rounded border-2 transition-transform hover:scale-110 ${currentColor === c ? 'border-blue-500 scale-110' : 'border-transparent'}`}
+              className={`w-6 h-6 rounded border-2 transition-transform hover:scale-110 ${currentColor === c ? 'border-blue-500 scale-110 shadow-sm' : 'border-transparent'}`}
               style={{ backgroundColor: c }}
               onClick={() => onColorChange(c)}
             />
           ))}
         </div>
-        <div className="mt-2 flex items-center gap-2">
-          <label className="text-[10px] text-slate-500">Custom:</label>
+        <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center gap-2">
+          <label className="text-[10px] text-slate-500 font-medium">Custom:</label>
           <input
             type="color"
             value={currentColor}
             onChange={e => onColorChange(e.target.value)}
-            className="w-6 h-6 border-0 p-0 cursor-pointer"
+            className="w-6 h-6 border-0 p-0 cursor-pointer rounded"
           />
           <span className="text-[10px] font-mono text-slate-400">{currentColor}</span>
         </div>
@@ -405,19 +405,19 @@ function FontPickerButton({ currentFont, onFontChange }: { currentFont: string; 
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-8 px-1.5 rounded-lg text-slate-700 hover:bg-slate-100 text-xs font-medium max-w-[82px] truncate shrink-0" title="Font family">
+        <Button variant="ghost" size="sm" className="h-8 px-2 rounded-lg text-slate-700 hover:bg-slate-100 text-xs font-medium max-w-[96px] truncate shrink-0" title="Font family">
           <Type className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
           <span className="truncate">{currentCleanFont || 'Font'}</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-48 p-1" side="bottom" align="start">
-        <div className="max-h-48 overflow-y-auto">
+      <PopoverContent className="w-48 p-1.5 shadow-xl rounded-xl" side="bottom" align="start">
+        <div className="max-h-52 overflow-y-auto">
           {FONT_OPTIONS.map(f => {
             const isSelected = currentFont === f.value || currentCleanFont.toLowerCase() === f.label.toLowerCase()
             return (
               <button
                 key={f.id}
-                className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-slate-100 transition-colors ${
+                className={`w-full text-left px-2.5 py-1.5 text-xs rounded-lg hover:bg-slate-100 transition-colors ${
                   isSelected ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-700'
                 }`}
                 style={{ fontFamily: f.value }}
