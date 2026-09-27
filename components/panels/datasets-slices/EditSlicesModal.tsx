@@ -3,7 +3,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, X, AlertTriangle, GripVertical } from "lucide-react";
+import { Plus, Trash2, X, AlertTriangle, GripVertical, FileSpreadsheet, Table } from "lucide-react";
+import { PasteDataDialog } from "@/components/dialogs/paste-data-dialog";
+import { chartDataToGrid } from "@/lib/utils/spreadsheet-parser";
 import { cn } from "@/lib/utils";
 
 interface EditSlicesModalProps {
@@ -33,6 +35,69 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [dropPosition, setDropPosition] = useState<'top' | 'bottom' | null>(null);
   const [draggableIndex, setDraggableIndex] = useState<number | null>(null);
+
+  // Spreadsheet paste / edit state
+  const [isPasteOpen, setIsPasteOpen] = useState<boolean>(false);
+  const [initialPasteText, setInitialPasteText] = useState<string>("");
+  const [initialPasteGrid, setInitialPasteGrid] = useState<string[][] | undefined>(undefined);
+  const [pasteModalMode, setPasteModalMode] = useState<'paste' | 'edit'>('paste');
+
+  // Global paste handler when modal is open
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePaste = (e: ClipboardEvent) => {
+      const text = e.clipboardData?.getData("text");
+      if (!text) return;
+
+      if (text.includes("\t") || text.split(/\r?\n/).filter(Boolean).length > 1) {
+        e.preventDefault();
+        setInitialPasteText(text);
+        setInitialPasteGrid(undefined);
+        setPasteModalMode('paste');
+        setIsPasteOpen(true);
+      }
+    };
+
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, [open]);
+
+  const handleApplySpreadsheetData = (data: {
+    datasetNames: string[]
+    sliceLabels: string[]
+    datasetValues: number[][]
+    coordinatePoints?: Array<{ name: string; x: number; y: number; r?: number }>
+  }) => {
+    if (data.sliceLabels.length === 0) return;
+
+    setSliceLabels(data.sliceLabels);
+
+    const newValues: any[][] = Array.from({ length: data.sliceLabels.length }, (_, rowIdx) => {
+      const row = new Array(datasets.length).fill(null);
+
+      filteredDatasets.forEach((ds: any, dsColIdx: number) => {
+        const originalIdx = ds.originalIndex;
+        const pastedColIdx = dsColIdx < data.datasetValues.length ? dsColIdx : 0;
+        const val = data.datasetValues[pastedColIdx]?.[rowIdx];
+
+        if (isCurrentGroupCoordinateChart) {
+          const coordPt = data.coordinatePoints?.[rowIdx];
+          row[originalIdx] = {
+            x: coordPt?.x ?? 0,
+            y: coordPt?.y ?? 0,
+            r: coordPt?.r ?? (currentGroupChartType === 'bubble' ? 10 : undefined),
+          };
+        } else {
+          row[originalIdx] = val !== undefined ? val : "";
+        }
+      });
+
+      return row;
+    });
+
+    setValues(newValues);
+  };
 
   // Filter datasets based on mode and selected group
   const getFilteredDatasets = (groupId: string) => {
@@ -82,6 +147,48 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
   const filteredDatasets = getFilteredDatasets(selectedGroupId);
   const currentGroupChartType = getGroupChartType(selectedGroupId);
   const isCurrentGroupCoordinateChart = currentGroupChartType === 'scatter' || currentGroupChartType === 'bubble';
+
+  const handleOpenEditFromExcel = () => {
+    let grid: string[][];
+    if (isCurrentGroupCoordinateChart) {
+      const pts = sliceLabels.map((label, rowIdx) => {
+        const firstDs = filteredDatasets[0];
+        const val = firstDs ? values[rowIdx]?.[firstDs.originalIndex] : null;
+        return {
+          name: label || `Point ${rowIdx + 1}`,
+          x: Number(val?.x ?? 0),
+          y: Number(val?.y ?? 0),
+          r: currentGroupChartType === 'bubble' ? Number(val?.r ?? 10) : undefined,
+        };
+      });
+      grid = chartDataToGrid({
+        datasetNames: filteredDatasets.map((ds: any, i: number) => ds.label || ds.name || `Dataset ${i + 1}`),
+        sliceLabels,
+        datasetValues: [],
+        isCoordinate: true,
+        coordinatePoints: pts,
+      });
+    } else {
+      const dsNames = filteredDatasets.map((ds: any, i: number) => ds.label || ds.name || `Dataset ${i + 1}`);
+      const dsValues = filteredDatasets.map((ds: any) => {
+        return sliceLabels.map((_, rowIdx) => {
+          const v = values[rowIdx]?.[ds.originalIndex];
+          return v !== undefined && v !== null && v !== "" ? v : 0;
+        });
+      });
+      grid = chartDataToGrid({
+        datasetNames: dsNames,
+        sliceLabels,
+        datasetValues: dsValues,
+        isCoordinate: false,
+      });
+    }
+
+    setInitialPasteGrid(grid);
+    setInitialPasteText("");
+    setPasteModalMode('edit');
+    setIsPasteOpen(true);
+  };
 
   // Initialize state for a specific group - completely isolated from other groups
   const initializeForGroup = (groupId: string) => {
@@ -560,14 +667,39 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
 
           {/* Footer */}
           <DialogFooter className="px-6 py-4 border-t bg-gray-50/50 gap-3 flex-shrink-0">
-            <div className="flex-1 flex justify-start">
+            <div className="flex-1 flex items-center justify-start gap-2">
               <Button
                 variant="outline"
                 onClick={() => handleAddSlice()}
                 className="gap-2 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300"
               >
                 <Plus className="w-4 h-4" />
-                Add {isCurrentGroupCoordinateChart ? 'Point' : 'Slice'}
+                Row
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleOpenEditFromExcel}
+                className="h-9 px-3.5 border border-blue-200/90 text-blue-700 bg-blue-50/70 hover:bg-blue-100/80 hover:border-blue-300 hover:text-blue-800 transition-all shadow-xs font-semibold rounded-lg flex items-center gap-1.5 cursor-pointer"
+                title="Open spreadsheet grid to edit current slices/points"
+              >
+                <Table className="w-4 h-4 text-blue-600" />
+                Edit in Grid
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setInitialPasteText("");
+                  setInitialPasteGrid(undefined);
+                  setPasteModalMode('paste');
+                  setIsPasteOpen(true);
+                }}
+                className="h-9 px-3.5 border border-emerald-200/90 text-emerald-700 bg-emerald-50/70 hover:bg-emerald-100/80 hover:border-emerald-300 hover:text-emerald-800 transition-all shadow-xs font-semibold rounded-lg flex items-center gap-1.5 cursor-pointer"
+                title="Paste table from spreadsheet or clipboard (Ctrl+V)"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                Paste As Table
               </Button>
             </div>
 
@@ -608,6 +740,21 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
               </>
             )}
           </DialogFooter>
+
+          <PasteDataDialog
+            open={isPasteOpen}
+            onClose={() => {
+              setIsPasteOpen(false);
+              setInitialPasteText("");
+              setInitialPasteGrid(undefined);
+            }}
+            onApply={handleApplySpreadsheetData}
+            isCoordinate={isCurrentGroupCoordinateChart}
+            datasetType={chartMode}
+            initialText={initialPasteText}
+            initialGrid={initialPasteGrid}
+            mode={pasteModalMode}
+          />
         </DialogContent>
       </Dialog>
     </>

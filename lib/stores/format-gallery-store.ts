@@ -18,6 +18,24 @@ import { createExpiringStorage } from '@/lib/storage-utils'
 import type { FormatCategory, FormatBlueprintRow, GalleryFilters, ZoneType } from '@/lib/format-types'
 import { dataService } from '@/lib/data-service'
 import { createZone } from '@/components/format-builder/format-builder-utils'
+import { defaultFormats } from '@/lib/format-defaults'
+
+const fallbackOfficialFormats: FormatBlueprintRow[] = defaultFormats.map((f, idx) => ({
+  id: f.id,
+  name: f.name,
+  description: f.description || null,
+  category: f.category,
+  skeleton: f,
+  dimensions: f.dimensions,
+  tags: f.tags || [],
+  thumbnail_url: f.thumbnailUrl || null,
+  user_id: null,
+  is_official: true,
+  is_public: true,
+  sort_order: f.sortOrder ?? idx,
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+}))
 
 interface FormatGalleryStore {
   // Gallery Mode
@@ -139,8 +157,8 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
     openGallery: () => set({ isGalleryOpen: true }),
     closeGallery: () => set({ isGalleryOpen: false }),
 
-    // Formats (official/global)
-    formats: [],
+    // Formats (official/global) — initialized with fallback defaults for instant rendering
+    formats: fallbackOfficialFormats,
     setFormats: (formats) => set({ formats }),
     isLoadingFormats: false,
     setLoadingFormats: (loading) => set({ isLoadingFormats: loading }),
@@ -167,7 +185,8 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
       // When selecting a format, create an isolated deep clone of the blueprint
       let snapshot: FormatBlueprintRow | null = null
       if (formatId) {
-        const found = [...state.formats, ...state.userFormats].find(f => f.id === formatId)
+        const allAvailable = [...state.formats, ...state.userFormats, ...fallbackOfficialFormats]
+        const found = allAvailable.find(f => f.id === formatId || f.name.toLowerCase() === formatId.toLowerCase())
         if (found) {
           snapshot = JSON.parse(JSON.stringify(found))
         }
@@ -357,11 +376,30 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
           lastFetchedAt: new Date().toISOString()
         }
 
-        if (!officialRes.error && officialRes.data) {
-          updates.formats = officialRes.data
+        if (!officialRes.error && officialRes.data && officialRes.data.length > 0) {
+          // Merge official formats with any defaults not yet in the DB
+          const existingNames = new Set(officialRes.data.map((d: any) => d.name?.toLowerCase().trim()))
+          const missingDefaults = fallbackOfficialFormats.filter(
+            f => !existingNames.has(f.name.toLowerCase().trim())
+          )
+          updates.formats = [...officialRes.data, ...missingDefaults]
+        } else {
+          updates.formats = fallbackOfficialFormats
         }
+
         if (!userRes.error && userRes.data) {
           updates.userFormats = userRes.data
+        }
+
+        // Keep active snapshot updated with latest format skeleton
+        if (state.selectedFormatId && updates.formats) {
+          const freshSelected = updates.formats.find(
+            f => f.id === state.selectedFormatId || f.name.toLowerCase() === (state.selectedFormatSnapshot?.name || '').toLowerCase()
+          )
+          if (freshSelected) {
+            updates.selectedFormatSnapshot = JSON.parse(JSON.stringify(freshSelected))
+            updates.selectedFormatId = freshSelected.id
+          }
         }
 
         set(updates)

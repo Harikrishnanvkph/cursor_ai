@@ -70,14 +70,37 @@ export function extractContentFromChartData(
   // Generate a meaningful callout
   const callout = generateCalloutText(stats, labels, datasets, dataStory)
 
+  const punchyTitle = title.length > 35 ? title.substring(0, 32) + '…' : title
+  const standardTitle = title
+  const detailedTitle = subtitle ? `${title}: ${subtitle}` : title
+
   return {
     title,
     subtitle: subtitle || undefined,
     body,
     source,
     callout,
+    titles: {
+      punchy: punchyTitle,
+      standard: standardTitle,
+      detailed: detailedTitle,
+    },
+    subtitles: {
+      short: subtitle ? (subtitle.length > 50 ? subtitle.substring(0, 47) + '…' : subtitle) : '',
+      detailed: subtitle || '',
+    },
+    narratives: {
+      summary: body.split('.')[0] ? body.split('.')[0] + '.' : body,
+      editorial: body,
+      bulletPoints: stats.map(s => `${s.label}: ${s.value}`),
+    },
+    callouts: {
+      keyInsight: callout,
+      takeaway: stats[0] ? `Leading category remains ${stats[0].label} (${stats[0].value}).` : callout,
+    },
     stats,
     keywords,
+    visualKeywords: keywords,
     dataStory,
     chartData: {
       labels,
@@ -431,37 +454,11 @@ function renderZone(
 }
 
 /**
- * Map text content to a text zone based on role
+ * Map text content to a text zone based on role and container character capacity
+ * Uses the Semantic Resource Bundle for adaptive slot-fitting
  */
 function renderTextZone(zone: TextZone, content: LLMContentPackage): RenderedZone {
-  let text = ''
-  if (zone.id && (content as any)[zone.id] !== undefined) {
-    text = String((content as any)[zone.id])
-  } else if ((zone as any).content) {
-    text = String((zone as any).content)
-  } else {
-    switch (zone.role) {
-      case 'title':
-        text = content.title || 'Untitled'
-        break
-      case 'subtitle':
-        text = content.subtitle || ''
-        break
-      case 'body':
-        text = content.body || ''
-        break
-      case 'source':
-        text = content.source || ''
-        break
-      case 'callout':
-        text = content.callout || ''
-        break
-    }
-  }
-
-  // Enforce character limits to prevent overflow/clipping:
-  // 1. Use explicit maxLength if set by the format admin
-  // 2. Otherwise, calculate from zone dimensions and font size
+  // 1. Calculate effective character limit from explicit maxLength or zone geometry
   let effectiveMaxLength = zone.maxLength || 0
   if (!effectiveMaxLength && zone.position && zone.style) {
     const { width, height } = zone.position
@@ -472,6 +469,70 @@ function renderTextZone(zone: TextZone, content: LLMContentPackage): RenderedZon
     const charsPerLine = Math.floor((width - padding) / avgCharWidth)
     const maxLines = Math.max(1, Math.floor((height - padding) / (fontSize * lineHeight)))
     effectiveMaxLength = charsPerLine * maxLines
+  }
+
+  let text = ''
+  if (zone.id && (content as any)[zone.id] !== undefined) {
+    text = String((content as any)[zone.id])
+  } else if ((zone as any).content) {
+    text = String((zone as any).content)
+  } else {
+    switch (zone.role) {
+      case 'title':
+        if (content.titles) {
+          if (effectiveMaxLength > 0 && effectiveMaxLength <= 40) {
+            text = content.titles.punchy || content.title
+          } else if (effectiveMaxLength > 0 && effectiveMaxLength <= 80) {
+            text = content.titles.standard || content.title
+          } else {
+            text = content.titles.detailed || content.titles.standard || content.title
+          }
+        } else {
+          text = content.title || 'Untitled'
+        }
+        break
+
+      case 'subtitle':
+        if (content.subtitles) {
+          if (effectiveMaxLength > 0 && effectiveMaxLength <= 55) {
+            text = content.subtitles.short || content.subtitle || ''
+          } else {
+            text = content.subtitles.detailed || content.subtitles.short || content.subtitle || ''
+          }
+        } else {
+          text = content.subtitle || ''
+        }
+        break
+
+      case 'body':
+        if (content.narratives) {
+          if ((zone.style as any)?.layout === 'bullets' || (zone as any).contentType === 'bullets') {
+            text = content.narratives.bulletPoints ? content.narratives.bulletPoints.map(b => `• ${b}`).join('\n') : content.body || ''
+          } else if (effectiveMaxLength > 0 && effectiveMaxLength <= 130) {
+            text = content.narratives.summary || content.body || ''
+          } else {
+            text = content.narratives.editorial || content.narratives.summary || content.body || ''
+          }
+        } else {
+          text = content.body || ''
+        }
+        break
+
+      case 'source':
+        text = content.source || ''
+        break
+
+      case 'callout':
+        if (content.callouts) {
+          text = content.callouts.keyInsight || content.callout || content.callouts.takeaway || ''
+        } else {
+          text = content.callout || ''
+        }
+        break
+
+      default:
+        text = content.body || ''
+    }
   }
 
   if (effectiveMaxLength > 0 && text.length > effectiveMaxLength) {
@@ -552,11 +613,13 @@ function renderStatZone(zone: StatZone, content: LLMContentPackage): RenderedZon
       stat = stats[0] // Primary/most important stat
       break
     case 'secondary':
-      stat = stats[1]
+      stat = stats[1] || stats[0]
       break
     case 'tertiary':
-      stat = stats[2]
+      stat = stats[2] || stats[0]
       break
+    default:
+      stat = stats[0]
   }
 
   return {

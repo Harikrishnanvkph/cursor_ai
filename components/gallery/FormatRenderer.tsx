@@ -1133,15 +1133,16 @@ function TextZoneContent({ renderedZone, scale, interactive }: {
 
   // Read content from contentPackage directly (reactive) or fallback to resolvedContent
   const text = useMemo(() => {
-    if (contentPackage) {
-      if (zone.id && (contentPackage as any)[zone.id] !== undefined) {
-        return String((contentPackage as any)[zone.id])
-      }
-      if (zone.role && (contentPackage as any)[zone.role] !== undefined) {
-        return String((contentPackage as any)[zone.role])
-      }
+    if (contentPackage && zone.id && (contentPackage as any)[zone.id] !== undefined) {
+      return String((contentPackage as any)[zone.id])
     }
-    return renderedZone.resolvedContent || ''
+    if (renderedZone.resolvedContent) {
+      return renderedZone.resolvedContent
+    }
+    if (contentPackage && zone.role && (contentPackage as any)[zone.role] !== undefined) {
+      return String((contentPackage as any)[zone.role])
+    }
+    return ''
   }, [contentPackage, zone.id, zone.role, renderedZone.resolvedContent])
 
   // Save content when editing stops (isEditing transitions true → false)

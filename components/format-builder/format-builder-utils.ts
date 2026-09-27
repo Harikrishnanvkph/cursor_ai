@@ -199,23 +199,33 @@ export function createZone(
       } as any
     }
     case 'decoration': {
-      const subtype: DecorationSubtype = subConfig?.subtype || 'shape'
-      const defaultPos = { x: dims.width * 0.1, y: dims.height * 0.4, width: 150, height: 150 }
-      const linePos = { x: dims.width * 0.15, y: dims.height * 0.5, width: dims.width * 0.7, height: 4 }
+      const subtype: DecorationSubtype = subConfig?.subtype || 'divider'
+      const defaultPos = { x: Math.round(dims.width * 0.1), y: Math.round(dims.height * 0.4), width: 150, height: 150 }
+      const linePos = { x: Math.round(dims.width * 0.15), y: Math.round(dims.height * 0.5), width: Math.round(dims.width * 0.7), height: 4 }
+      const dividerPos = { x: Math.round(dims.width * 0.05), y: Math.round(dims.height * 0.18), width: Math.round(dims.width * 0.9), height: 2 }
+      const borderPos = { x: 24, y: 24, width: dims.width - 48, height: dims.height - 48 }
 
       const styleMap: Record<string, any> = {
-        'shape':      { shapeType: 'rectangle', shapeColor: palette.accent, shapeOpacity: 0.2, strokeColor: palette.primary, strokeWidth: 0 },
-        'line':       { lineType: 'arrow', lineColor: palette.primary, lineThickness: 2, lineStyle: 'solid' },
-        'connector':  { lineType: 'connected-lines', lineColor: palette.primary, lineThickness: 2, lineStyle: 'solid' },
-        'icon':       { iconType: 'emoji-star', iconColor: palette.accent, iconSize: 48 },
+        'divider':    { dividerColor: palette.primary || '#38BDF8', dividerThickness: 2, dividerStyle: 'solid' },
+        'border':     { borderColor: palette.primary || '#38BDF8', borderWidth: 2, borderStyle: 'solid', borderRadius: 8 },
+        'shape':      { shapeType: 'rectangle', shapeColor: palette.accent || '#F472B6', shapeOpacity: 0.3, strokeColor: palette.primary || '#38BDF8', strokeWidth: 0 },
+        'line':       { lineType: 'line', lineColor: palette.primary || '#38BDF8', lineThickness: 2, lineStyle: 'solid' },
+        'connector':  { lineType: 'connected-lines', lineColor: palette.primary || '#38BDF8', lineThickness: 2, lineStyle: 'solid' },
+        'icon':       { iconType: 'emoji-star', iconColor: palette.accent || '#F59E0B', iconSize: 48 },
+        'svg-icon':   { svgColor: palette.primary || '#38BDF8', svgOpacity: 0.8 },
         'image':      { imageUrl: '', imageFit: 'cover', imageBorderRadius: 8 },
-        'svg-upload': { svgContent: '', svgColor: palette.primary, svgOpacity: 1 },
+        'svg-upload': { svgContent: '', svgColor: palette.primary || '#38BDF8', svgOpacity: 1 },
       }
+
+      let position = defaultPos
+      if (subtype === 'divider') position = dividerPos
+      else if (subtype === 'border') position = borderPos
+      else if (subtype === 'line' || subtype === 'connector') position = linePos
 
       return {
         id, type: 'decoration', subtype,
-        position: subtype === 'line' || subtype === 'connector' ? linePos : defaultPos,
-        style: styleMap[subtype] || styleMap['shape'],
+        position,
+        style: styleMap[subtype] || styleMap['divider'],
       }
     }
     case 'background': {

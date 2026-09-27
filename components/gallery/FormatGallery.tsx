@@ -149,14 +149,18 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
 
   // Fetch contextual image when content package is ready
   useEffect(() => {
-    if (!localContentPackage?.keywords?.length) {
+    const keywords = (localContentPackage?.visualKeywords && localContentPackage.visualKeywords.length > 0)
+      ? localContentPackage.visualKeywords
+      : localContentPackage?.keywords
+
+    if (!keywords?.length) {
       setContextualImageUrl(null)
       return
     }
 
     const fetchContextualImage = async () => {
       try {
-        const query = localContentPackage.keywords.slice(0, 3).join(' ')
+        const query = keywords.slice(0, 3).join(' ')
         const res = await fetch(`/api/unsplash?query=${encodeURIComponent(query)}`)
         if (res.ok) {
           const data = await res.json()
@@ -170,7 +174,7 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
     }
 
     fetchContextualImage()
-  }, [localContentPackage?.keywords])
+  }, [localContentPackage?.keywords, localContentPackage?.visualKeywords])
 
   // loadFormats is now imported directly from the format gallery store to support SWR and IndexedDB.
 

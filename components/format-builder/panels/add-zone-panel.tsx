@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from 'react'
-import { Plus, BarChart3, Type, Hash, Image, ImageIcon, ChevronRight } from 'lucide-react'
+import { Plus, BarChart3, Type, Hash, Image, ImageIcon, ChevronRight, Shapes } from 'lucide-react'
 import { useFormatBuilder } from '../format-builder-context'
 import { TEXT_ROLES, STAT_ROLES } from '../format-builder-utils'
 import { PanelSection } from './panel-section'
@@ -88,6 +88,36 @@ export function AddZonePanel({ isOpen, onToggle }: { isOpen?: boolean; onToggle?
           color="cyan"
           onClick={() => addZone('image')}
         />
+
+        {/* Decoration — expands to show subtypes */}
+        <ZoneTypeRow
+          icon={<Shapes className="w-3.5 h-3.5" />}
+          label="Decoration"
+          color="pink"
+          expanded={expandedType === 'decoration'}
+          hasSubMenu
+          onClick={() => toggleExpand('decoration')}
+        />
+        {expandedType === 'decoration' && (
+          <div className="pl-5 space-y-0.5">
+            {[
+              { label: 'Divider / Line Separator', value: 'divider' },
+              { label: 'Frame Border', value: 'border' },
+              { label: 'Shape', value: 'shape' },
+              { label: 'Line / Arrow', value: 'line' },
+              { label: 'SVG Icon', value: 'svg-icon' },
+              { label: 'Custom SVG Upload', value: 'svg-upload' },
+            ].map(r => (
+              <button
+                key={r.value}
+                onClick={() => { addZone('decoration', { subtype: r.value }); setExpandedType(null) }}
+                className="w-full text-left px-2.5 py-1.5 rounded text-[11px] text-gray-400 hover:bg-pink-500/10 hover:text-pink-400 transition-colors"
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </PanelSection>
   )
@@ -109,6 +139,7 @@ function ZoneTypeRow({
     amber: 'hover:bg-amber-500/10 text-amber-400',
     purple: 'hover:bg-purple-500/10 text-purple-400',
     cyan: 'hover:bg-cyan-500/10 text-cyan-400',
+    pink: 'hover:bg-pink-500/10 text-pink-400',
   }
 
   return (

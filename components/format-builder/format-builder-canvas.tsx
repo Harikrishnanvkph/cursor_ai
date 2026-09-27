@@ -191,6 +191,29 @@ export function FormatBuilderCanvas() {
             ))
           }
 
+          {/* Non-positioned full-canvas decorations (e.g. frame border) */}
+          {skeleton.zones
+            .filter(z => !z.position && z.type === 'decoration')
+            .map(zone => {
+              const s = (zone as any).style || {}
+              const isSelected = selectedZoneId === zone.id
+              return (
+                <div
+                  key={zone.id}
+                  onClick={(e) => { e.stopPropagation(); setSelectedZoneId(zone.id); setSelectedShapeId(null) }}
+                  className={`absolute inset-0 rounded-lg pointer-events-auto cursor-pointer transition-all ${
+                    isSelected ? 'ring-2 ring-pink-500 ring-offset-2' : ''
+                  }`}
+                  style={{
+                    border: `${s.borderWidth || 2}px ${s.borderStyle || 'solid'} ${s.borderColor || '#38BDF8'}`,
+                    borderRadius: s.borderRadius ? `${s.borderRadius}px` : undefined,
+                    zIndex: 2,
+                  }}
+                />
+              )
+            })
+          }
+
           {/* Grid overlay — rendered AFTER background so it's visible on top */}
           {showGuides && gridSize > 0 && (
             <div
@@ -212,9 +235,9 @@ export function FormatBuilderCanvas() {
 
           {/* Render positioned content zones with DraggableResizable */}
           {skeleton.zones
-            .filter(z => z.position && z.type !== 'decoration' && z.type !== 'background')
+            .filter(z => z.position && z.type !== 'background')
             .map(zone => {
-              const colors = ZONE_COLORS[zone.type] || ZONE_COLORS.text
+              const colors = ZONE_COLORS[zone.type] || ZONE_COLORS.decoration
               const isSelected = selectedZoneId === zone.id
 
               return (
@@ -224,6 +247,8 @@ export function FormatBuilderCanvas() {
                   y={zone.position!.y}
                   width={zone.position!.width}
                   height={zone.position!.height}
+                  minWidth={zone.type === 'decoration' ? 1 : 20}
+                  minHeight={zone.type === 'decoration' ? 1 : 20}
                   bounds={bounds}
                   grid={gridSize}
                   scale={scale}
@@ -426,6 +451,129 @@ function ZoneVisualContent({ zone, isSelected, onClick }: {
             )}
           </>
         )}
+      </div>
+    )
+  }
+
+  // ─── DECORATION: render dividers, borders, shapes, icons, SVGs ───
+  if (zone.type === 'decoration') {
+    const subtype = (zone as any).subtype || 'divider'
+    const isSelectedBorder = isSelected ? `2px solid ${colors.accent}` : `1px dashed ${colors.border}50`
+
+    // 1. Divider / Separator line
+    if (subtype === 'divider' || subtype === 'line') {
+      const isHorizontal = (zone.position?.width || 100) >= (zone.position?.height || 10)
+      const thickness = s.dividerThickness || s.lineThickness || (isHorizontal ? zone.position?.height : zone.position?.width) || 2
+      const lineColor = s.dividerColor || s.lineColor || colors.accent
+      const lineStyle = s.dividerStyle || s.lineStyle || 'solid'
+
+      return (
+        <div
+          className="w-full h-full flex items-center justify-center relative overflow-visible cursor-pointer"
+          onClick={e => { e.stopPropagation(); onClick() }}
+          style={{
+            minHeight: '6px',
+            minWidth: '6px',
+          }}
+        >
+          <div
+            style={{
+              width: isHorizontal ? '100%' : `${Math.max(thickness, 1)}px`,
+              height: isHorizontal ? `${Math.max(thickness, 1)}px` : '100%',
+              backgroundColor: lineStyle === 'dashed' || lineStyle === 'dotted' ? 'transparent' : lineColor,
+              borderTop: lineStyle !== 'solid' && isHorizontal ? `${Math.max(thickness, 1)}px ${lineStyle} ${lineColor}` : undefined,
+              borderLeft: lineStyle !== 'solid' && !isHorizontal ? `${Math.max(thickness, 1)}px ${lineStyle} ${lineColor}` : undefined,
+              borderRadius: isHorizontal ? '1px' : '0px',
+              boxShadow: isSelected ? `0 0 0 1px ${colors.accent}` : undefined,
+            }}
+          />
+        </div>
+      )
+    }
+
+    // 2. Border
+    if (subtype === 'border') {
+      return (
+        <div
+          className="w-full h-full cursor-pointer"
+          onClick={e => { e.stopPropagation(); onClick() }}
+          style={{
+            border: `${s.borderWidth || 2}px ${s.borderStyle || 'solid'} ${s.borderColor || colors.accent}`,
+            borderRadius: s.borderRadius ? `${s.borderRadius}px` : undefined,
+            backgroundColor: isSelected ? `${colors.accent}15` : 'transparent',
+          }}
+        />
+      )
+    }
+
+    // 3. Shape (rectangle, circle, dots, etc.)
+    if (subtype === 'shape') {
+      const isCircle = s.shapeType === 'circle'
+      const isDots = s.shapeType === 'dots'
+      return (
+        <div
+          className="w-full h-full overflow-hidden flex items-center justify-center cursor-pointer"
+          onClick={e => { e.stopPropagation(); onClick() }}
+          style={{
+            backgroundColor: isDots ? 'transparent' : (s.shapeColor || colors.accent),
+            opacity: s.shapeOpacity ?? 0.6,
+            borderRadius: isCircle ? '50%' : s.borderRadius ? `${s.borderRadius}px` : 0,
+            border: s.strokeWidth ? `${s.strokeWidth}px ${s.strokeStyle || 'solid'} ${s.strokeColor || colors.accent}` : isSelectedBorder,
+          }}
+        >
+          {isDots && (
+            <div className="w-full h-full flex flex-wrap gap-2 p-2 opacity-60">
+              {Array.from({ length: 16 }).map((_, i) => (
+                <div key={i} className="w-2 h-2 rounded-full" style={{ backgroundColor: s.shapeColor || colors.accent }} />
+              ))}
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    // 4. SVG Icon / Vector
+    if (subtype === 'svg-icon' || subtype === 'icon') {
+      const iconSize = Math.min(zone.position?.width || 48, zone.position?.height || 48, 64)
+      return (
+        <div
+          className="w-full h-full flex items-center justify-center overflow-hidden cursor-pointer"
+          onClick={e => { e.stopPropagation(); onClick() }}
+          style={{
+            border: isSelectedBorder,
+            backgroundColor: isSelected ? colors.bg : 'transparent',
+          }}
+        >
+          {s.svgContent ? (
+            <div
+              className="w-full h-full flex items-center justify-center"
+              style={{ color: s.svgColor || colors.accent, opacity: s.svgOpacity || 0.8 }}
+              dangerouslySetInnerHTML={{ __html: s.svgContent }}
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center text-center opacity-70">
+              <span style={{ fontSize: `${iconSize * 0.5}px` }}>
+                {s.iconType?.startsWith('emoji-') ? s.iconType.replace('emoji-', '') : '✨'}
+              </span>
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    // 5. Fallback for any other decoration subtype
+    return (
+      <div
+        className="w-full h-full flex items-center justify-center overflow-hidden rounded cursor-pointer"
+        onClick={e => { e.stopPropagation(); onClick() }}
+        style={{
+          border: isSelectedBorder,
+          backgroundColor: isSelected ? colors.bg : `${colors.accent}10`,
+        }}
+      >
+        <span className="text-[10px] uppercase font-bold tracking-wider text-pink-400 opacity-60">
+          {subtype}
+        </span>
       </div>
     )
   }

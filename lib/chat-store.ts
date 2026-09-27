@@ -373,9 +373,8 @@ export const useChatStore = create<ChatStore>()(
                 const formatStructure = extractFormatStructure(format, zoneNotes);
                 formatStructureData = formatStructure;
 
-                // Append human-readable format structure to the prompt so the AI
-                // understands the zone layout, character limits, and theme
-                finalInput += `\n\n${formatStructureForPrompt(formatStructure)}`;
+                // Provide a clean context hint about the active format
+                finalInput += `\n[Format Context: "${formatStructure.formatName}" (${formatStructure.dimensions.aspect}, theme: ${formatStructure.theme.mood})]`;
               }
             }
           } catch (e) {
@@ -673,37 +672,37 @@ export const useChatStore = create<ChatStore>()(
               }
             }
 
-            // FIX: Clear backendConversationId when AI creates a NEW chart
-            // This ensures the save dialog shows "Save" instead of "Update" for new charts
+            // Clear backendConversationId when AI creates a NEW chart
             if (result.action === 'create') {
               set({ backendConversationId: null });
               // Also clear the current snapshot ID since this is a brand new chart
               useChartStore.getState().setCurrentSnapshotId(null);
+            }
 
-              // Format mode handling for new chart creations
-              const templateStore = useTemplateStore.getState();
-              if (templateStore.generateMode === 'format') {
-                // Format mode: apply content to the selected format (or open gallery to browse)
-                try {
-                  const formatStore = useFormatGalleryStore.getState();
+            // Format mode handling (both creations AND modifications)
+            if (templateStore.generateMode === 'format') {
+              try {
+                const formatStore = useFormatGalleryStore.getState();
 
-                  // Build content package: prefer AI-generated formatContent, fall back to local extraction
-                  let contentPackage = null;
-                  if (result.formatContent && result.chartData) {
-                    // AI was format-aware and returned zone-specific content
-                    contentPackage = {
-                      ...result.formatContent,
-                      chartData: { labels: result.chartData.labels, datasets: result.chartData.datasets },
-                      chartConfig: result.chartConfig || {},
-                      suggestedChartTypes: suggestChartTypes?.(result.chartType) || [result.chartType],
-                    };
-                    console.log('Format mode: Using AI-generated formatContent for zone text');
-                  } else if (result.chartData) {
-                    // Fallback: AI didn't return formatContent, extract locally from chart data
-                    contentPackage = extractContentFromChartData(result.chartType, result.chartData, result.chartConfig);
-                    console.log('Format mode: Falling back to local content extraction');
-                  }
+                // Build content package from AI resource bundle or fallback extraction
+                let contentPackage = null;
+                if (result.formatContent && result.chartData) {
+                  contentPackage = {
+                    ...result.formatContent,
+                    title: result.formatContent.titles?.standard || result.formatContent.title || result.title,
+                    subtitle: result.formatContent.subtitles?.short || result.formatContent.subtitle || result.subtitle,
+                    body: result.formatContent.narratives?.editorial || result.formatContent.narratives?.summary || result.formatContent.body,
+                    chartData: { labels: result.chartData.labels, datasets: result.chartData.datasets },
+                    chartConfig: result.chartConfig || {},
+                    suggestedChartTypes: suggestChartTypes?.(result.chartType) || [result.chartType],
+                  };
+                  console.log(`Format mode: Applied AI content package on ${result.action}`);
+                } else if (result.chartData) {
+                  contentPackage = extractContentFromChartData(result.chartType, result.chartData, result.chartConfig);
+                  console.log('Format mode: Falling back to local content extraction');
+                }
 
+                if (result.action === 'create') {
                   if (formatStore.selectedFormatId) {
                     // Format is pre-selected → auto-apply and close gallery
                     const format = formatStore.selectedFormatSnapshot ||
@@ -721,13 +720,18 @@ export const useChatStore = create<ChatStore>()(
                     templateStore.setGenerateMode('format');
                     formatStore.openGallery();
                   }
-                } catch (e) {
-                  console.warn('Could not auto-apply pre-selected format:', e);
+                } else if (result.action === 'modify' && contentPackage) {
+                  // Reactive modification: update format content package without resetting selection
+                  formatStore.setContentPackage(contentPackage);
+                  console.log('Format mode: Reactively updated formatContent package on modify');
                 }
-              } else if (templateStore.generateMode === 'chart') {
-                // Chart mode (not format/template): auto-open Chart Style Gallery
-                // so user can immediately browse and apply styles to their new chart
-                try {
+              } catch (e) {
+                console.warn('Could not update format store:', e);
+              }
+            } else if (result.action === 'create' && templateStore.generateMode === 'chart') {
+              // Chart mode (not format/template): auto-open Chart Style Gallery
+              // so user can immediately browse and apply styles to their new chart
+              try {
                   const styleStore = useChartStyleStore.getState();
                   
                   // Check if the user's input explicitly requested a specific chart type
@@ -746,7 +750,6 @@ export const useChatStore = create<ChatStore>()(
                   console.warn('Could not auto-open style gallery:', e);
                 }
               }
-            }
 
             // Undo is now handled by zundo in chart-store
             // For brand-new chart creations, clear undo history so the user

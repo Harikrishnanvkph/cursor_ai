@@ -91,51 +91,19 @@ export const defaultFormats: FormatSkeleton[] = [
       {
         id: 'chart-1',
         type: 'chart',
-        position: { x: 60, y: 270, width: 960, height: 480 },
+        position: { x: 60, y: 270, width: 960, height: 600 },
         chartConfig: {
-          preferredChartTypes: ['pie', 'doughnut', 'pie3d', 'doughnut3d'],
+          preferredChartTypes: ['pie', 'doughnut', 'pie3d', 'doughnut3d', 'bar'],
           backgroundColor: 'transparent',
           legendPosition: 'bottom',
           legendColor: '#E0E0E0'
         }
       },
       {
-        id: 'stat-highlight-1',
-        type: 'stat',
-        role: 'highlight',
-        position: { x: 60, y: 790, width: 450, height: 130 },
-        style: {
-          valueSize: 52,
-          labelSize: 14,
-          valueColor: '#FFD700',
-          labelColor: '#CCCCCC',
-          valueFontWeight: '800',
-          valueFontFamily: 'Inter, sans-serif',
-          labelFontFamily: 'Inter, sans-serif',
-          layout: 'vertical'
-        }
-      },
-      {
-        id: 'stat-secondary-1',
-        type: 'stat',
-        role: 'secondary',
-        position: { x: 570, y: 790, width: 450, height: 130 },
-        style: {
-          valueSize: 52,
-          labelSize: 14,
-          valueColor: '#E94560',
-          labelColor: '#CCCCCC',
-          valueFontWeight: '800',
-          valueFontFamily: 'Inter, sans-serif',
-          labelFontFamily: 'Inter, sans-serif',
-          layout: 'vertical'
-        }
-      },
-      {
         id: 'body-1',
         type: 'text',
         role: 'body',
-        position: { x: 60, y: 950, width: 960, height: 220 },
+        position: { x: 60, y: 895, width: 960, height: 280 },
         style: {
           fontSize: 16,
           fontFamily: 'Inter, sans-serif',
@@ -377,34 +345,19 @@ export const defaultFormats: FormatSkeleton[] = [
       {
         id: 'chart-3',
         type: 'chart',
-        position: { x: 60, y: 570, width: 960, height: 580 },
+        position: { x: 60, y: 560, width: 960, height: 740 },
         chartConfig: {
-          preferredChartTypes: ['doughnut', 'pie', 'doughnut3d', 'polarArea'],
+          preferredChartTypes: ['doughnut', 'pie', 'doughnut3d', 'polarArea', 'bar'],
           backgroundColor: 'transparent',
           legendPosition: 'bottom',
           legendColor: '#CCCCDD'
         }
       },
       {
-        id: 'stat-highlight-3',
-        type: 'stat',
-        role: 'highlight',
-        position: { x: 80, y: 1200, width: 920, height: 160 },
-        style: {
-          valueSize: 72,
-          labelSize: 16,
-          valueColor: '#FF6B9D',
-          labelColor: '#A0A0CC',
-          valueFontWeight: '900',
-          valueFontFamily: 'Inter, sans-serif',
-          layout: 'vertical'
-        }
-      },
-      {
         id: 'body-3',
         type: 'text',
         role: 'body',
-        position: { x: 80, y: 1400, width: 920, height: 220 },
+        position: { x: 80, y: 1350, width: 920, height: 270 },
         style: {
           fontSize: 18,
           fontFamily: 'Inter, sans-serif',
@@ -642,7 +595,7 @@ export const defaultFormats: FormatSkeleton[] = [
       {
         id: 'chart-5',
         type: 'chart',
-        position: { x: 60, y: 200, width: 1100, height: 650 },
+        position: { x: 60, y: 200, width: 1100, height: 680 },
         chartConfig: {
           preferredChartTypes: ['bar', 'line', 'area', 'horizontalBar'],
           backgroundColor: '#FAFAFA',
@@ -652,46 +605,31 @@ export const defaultFormats: FormatSkeleton[] = [
         }
       },
       {
-        id: 'stat-highlight-5',
-        type: 'stat',
-        role: 'highlight',
-        position: { x: 1220, y: 200, width: 640, height: 140 },
+        id: 'callout-5',
+        type: 'text',
+        role: 'callout',
+        position: { x: 1220, y: 200, width: 640, height: 130 },
         style: {
-          valueSize: 48,
-          labelSize: 14,
-          valueColor: '#2563EB',
-          labelColor: '#6B7280',
-          valueFontWeight: '800',
-          valueFontFamily: 'Inter, sans-serif',
-          layout: 'vertical'
-        }
-      },
-      {
-        id: 'stat-secondary-5',
-        type: 'stat',
-        role: 'secondary',
-        position: { x: 1220, y: 360, width: 640, height: 120 },
-        style: {
-          valueSize: 36,
-          labelSize: 12,
-          valueColor: '#7C3AED',
-          labelColor: '#6B7280',
-          valueFontWeight: '700',
-          layout: 'vertical'
+          fontSize: 18,
+          fontFamily: 'Inter, sans-serif',
+          fontWeight: '600',
+          color: '#1E40AF',
+          textAlign: 'left',
+          lineHeight: 1.4
         }
       },
       {
         id: 'body-5',
         type: 'text',
         role: 'body',
-        position: { x: 1220, y: 500, width: 640, height: 350 },
+        position: { x: 1220, y: 350, width: 640, height: 500 },
         style: {
-          fontSize: 15,
+          fontSize: 16,
           fontFamily: 'Inter, sans-serif',
           fontWeight: '400',
-          color: '#4B5563',
+          color: '#374151',
           textAlign: 'left',
-          lineHeight: 1.7
+          lineHeight: 1.8
         }
       },
       {
@@ -884,7 +822,7 @@ export const defaultFormats: FormatSkeleton[] = [
       {
         id: 'chart-7',
         type: 'chart',
-        position: { x: 40, y: 150, width: 720, height: 400 },
+        position: { x: 40, y: 150, width: 720, height: 490 },
         chartConfig: {
           preferredChartTypes: ['line', 'bar', 'area', 'doughnut'],
           backgroundColor: '#FAFBFC',
@@ -894,32 +832,19 @@ export const defaultFormats: FormatSkeleton[] = [
         }
       },
       {
-        id: 'stat-highlight-7',
-        type: 'stat',
-        role: 'highlight',
-        position: { x: 40, y: 580, width: 340, height: 100 },
+        id: 'body-7',
+        type: 'text',
+        role: 'body',
+        position: { x: 40, y: 655, width: 720, height: 45 },
         style: {
-          valueSize: 32,
-          labelSize: 11,
-          valueColor: '#6366F1',
-          labelColor: '#94A3B8',
-          valueFontWeight: '800',
-          layout: 'vertical'
-        }
-      },
-      {
-        id: 'stat-secondary-7',
-        type: 'stat',
-        role: 'secondary',
-        position: { x: 420, y: 580, width: 340, height: 100 },
-        style: {
-          valueSize: 32,
-          labelSize: 11,
-          valueColor: '#EC4899',
-          labelColor: '#94A3B8',
-          valueFontWeight: '800',
-          layout: 'vertical'
-        }
+          fontSize: 12,
+          fontFamily: 'Inter, sans-serif',
+          fontWeight: '400',
+          color: '#64748B',
+          textAlign: 'left',
+          lineHeight: 1.5
+        },
+        maxLength: 120
       },
       {
         id: 'source-7',
@@ -1001,24 +926,10 @@ export const defaultFormats: FormatSkeleton[] = [
         }
       },
       {
-        id: 'stat-highlight-8',
-        type: 'stat',
-        role: 'highlight',
-        position: { x: 50, y: 220, width: 480, height: 120 },
-        style: {
-          valueSize: 48,
-          labelSize: 13,
-          valueColor: '#22D3EE',
-          labelColor: '#A0C4D0',
-          valueFontWeight: '900',
-          layout: 'vertical'
-        }
-      },
-      {
         id: 'body-8',
         type: 'text',
         role: 'body',
-        position: { x: 50, y: 360, width: 480, height: 150 },
+        position: { x: 50, y: 215, width: 480, height: 295 },
         style: {
           fontSize: 14,
           fontFamily: 'Inter, sans-serif',
@@ -1250,6 +1161,360 @@ export const defaultFormats: FormatSkeleton[] = [
           fontFamily: 'Inter, sans-serif',
           fontWeight: '400',
           color: '#D1D5DB',
+          textAlign: 'left',
+          fontStyle: 'italic'
+        }
+      }
+    ]
+  },
+
+  // ──────────────────────────────────────────────
+  // 11. EDITORIAL ANALYST — 1080×1350 (4:5)
+  //     FT & Economist editorial style, warm paper, no stats
+  // ──────────────────────────────────────────────
+  {
+    id: 'fmt-editorial-analyst',
+    name: 'Editorial Analyst',
+    description: 'Financial Times & Economist-inspired deep dive. Warm paper background, prominent chart, key takeaway callout, and in-depth narrative. Zero stats clutter.',
+    category: 'report',
+    dimensions: { width: 1080, height: 1350, aspect: '4:5', label: 'Editorial (4:5)' },
+    hasPrefilledBackground: true,
+    tags: ['editorial', 'newspaper', 'analysis', 'clean', 'report', 'warm'],
+    sortOrder: 11,
+    colorPalette: {
+      primary: '#991B1B',
+      secondary: '#B45309',
+      text: '#111827',
+      background: '#FBF9F4',
+      accent: '#D97706',
+      chartColors: ['#991B1B', '#D97706', '#2563EB', '#059669', '#7C3AED', '#DC2626']
+    },
+    zones: [
+      {
+        id: 'bg-11',
+        type: 'background',
+        style: {
+          type: 'solid',
+          color: '#FBF9F4'
+        }
+      },
+      {
+        id: 'title-11',
+        type: 'text',
+        role: 'title',
+        position: { x: 60, y: 60, width: 960, height: 110 },
+        style: {
+          fontSize: 38,
+          fontFamily: 'Georgia, serif',
+          fontWeight: '700',
+          color: '#111827',
+          textAlign: 'left',
+          lineHeight: 1.2
+        }
+      },
+      {
+        id: 'subtitle-11',
+        type: 'text',
+        role: 'subtitle',
+        position: { x: 60, y: 175, width: 960, height: 45 },
+        style: {
+          fontSize: 16,
+          fontFamily: 'Inter, sans-serif',
+          fontWeight: '400',
+          color: '#4B5563',
+          textAlign: 'left',
+          lineHeight: 1.4
+        }
+      },
+      {
+        id: 'divider-11',
+        type: 'decoration',
+        subtype: 'divider',
+        position: { x: 60, y: 230, width: 960, height: 2 },
+        style: {
+          dividerColor: '#991B1B',
+          dividerThickness: 2,
+          dividerStyle: 'solid'
+        }
+      },
+      {
+        id: 'chart-11',
+        type: 'chart',
+        position: { x: 60, y: 250, width: 960, height: 580 },
+        chartConfig: {
+          preferredChartTypes: ['bar', 'line', 'area', 'horizontalBar'],
+          backgroundColor: '#FFFFFF',
+          legendPosition: 'bottom',
+          showGrid: true,
+          gridColor: '#F3F4F6'
+        }
+      },
+      {
+        id: 'callout-11',
+        type: 'text',
+        role: 'callout',
+        position: { x: 60, y: 850, width: 960, height: 90 },
+        style: {
+          fontSize: 17,
+          fontFamily: 'Georgia, serif',
+          fontWeight: '600',
+          color: '#991B1B',
+          textAlign: 'left',
+          lineHeight: 1.4
+        }
+      },
+      {
+        id: 'body-11',
+        type: 'text',
+        role: 'body',
+        position: { x: 60, y: 955, width: 960, height: 280 },
+        style: {
+          fontSize: 15,
+          fontFamily: 'Inter, sans-serif',
+          fontWeight: '400',
+          color: '#374151',
+          textAlign: 'left',
+          lineHeight: 1.7
+        }
+      },
+      {
+        id: 'source-11',
+        type: 'text',
+        role: 'source',
+        position: { x: 60, y: 1270, width: 960, height: 30 },
+        style: {
+          fontSize: 11,
+          fontFamily: 'Inter, sans-serif',
+          fontWeight: '400',
+          color: '#9CA3AF',
+          textAlign: 'left',
+          fontStyle: 'italic'
+        }
+      }
+    ]
+  },
+
+  // ──────────────────────────────────────────────
+  // 12. EXECUTIVE SPLIT — 1920×1080 (16:9)
+  //     Modern dark presentation layout, chart dominant, zero stats
+  // ──────────────────────────────────────────────
+  {
+    id: 'fmt-executive-split',
+    name: 'Executive Split',
+    description: 'Modern 16:9 executive presentation slide. 65% width chart on the left, strategic takeaways and key insights column on the right. Zero stats clutter.',
+    category: 'presentation',
+    dimensions: { width: 1920, height: 1080, aspect: '16:9', label: 'Executive Slide (16:9)' },
+    hasPrefilledBackground: true,
+    tags: ['executive', 'presentation', 'slide', 'widescreen', 'dark', 'modern'],
+    sortOrder: 12,
+    colorPalette: {
+      primary: '#38BDF8',
+      secondary: '#818CF8',
+      text: '#F8FAFC',
+      background: '#0B0F19',
+      accent: '#F472B6',
+      chartColors: ['#38BDF8', '#818CF8', '#34D399', '#F472B6', '#FBBF24', '#A78BFA']
+    },
+    zones: [
+      {
+        id: 'bg-12',
+        type: 'background',
+        style: {
+          type: 'solid',
+          color: '#0B0F19'
+        }
+      },
+      {
+        id: 'title-12',
+        type: 'text',
+        role: 'title',
+        position: { x: 80, y: 50, width: 1760, height: 60 },
+        style: {
+          fontSize: 34,
+          fontFamily: 'Inter, sans-serif',
+          fontWeight: '800',
+          color: '#F8FAFC',
+          textAlign: 'left',
+          lineHeight: 1.2
+        }
+      },
+      {
+        id: 'subtitle-12',
+        type: 'text',
+        role: 'subtitle',
+        position: { x: 80, y: 115, width: 1760, height: 40 },
+        style: {
+          fontSize: 16,
+          fontFamily: 'Inter, sans-serif',
+          fontWeight: '400',
+          color: '#94A3B8',
+          textAlign: 'left',
+          lineHeight: 1.3
+        }
+      },
+      {
+        id: 'divider-12',
+        type: 'decoration',
+        subtype: 'divider',
+        position: { x: 80, y: 165, width: 1760, height: 2 },
+        style: {
+          dividerColor: '#38BDF8',
+          dividerThickness: 2,
+          dividerStyle: 'solid'
+        }
+      },
+      {
+        id: 'chart-12',
+        type: 'chart',
+        position: { x: 80, y: 190, width: 1120, height: 780 },
+        chartConfig: {
+          preferredChartTypes: ['bar', 'line', 'area', 'horizontalBar', 'radar'],
+          backgroundColor: '#111827',
+          legendPosition: 'top',
+          showGrid: true,
+          gridColor: '#1F2937'
+        }
+      },
+      {
+        id: 'callout-12',
+        type: 'text',
+        role: 'callout',
+        position: { x: 1240, y: 190, width: 600, height: 140 },
+        style: {
+          fontSize: 18,
+          fontFamily: 'Inter, sans-serif',
+          fontWeight: '700',
+          color: '#38BDF8',
+          textAlign: 'left',
+          lineHeight: 1.4
+        }
+      },
+      {
+        id: 'body-12',
+        type: 'text',
+        role: 'body',
+        position: { x: 1240, y: 350, width: 600, height: 550 },
+        style: {
+          fontSize: 16,
+          fontFamily: 'Inter, sans-serif',
+          fontWeight: '400',
+          color: '#CBD5E1',
+          textAlign: 'left',
+          lineHeight: 1.8
+        }
+      },
+      {
+        id: 'source-12',
+        type: 'text',
+        role: 'source',
+        position: { x: 1240, y: 935, width: 600, height: 35 },
+        style: {
+          fontSize: 11,
+          fontFamily: 'Inter, sans-serif',
+          fontWeight: '400',
+          color: '#64748B',
+          textAlign: 'left',
+          fontStyle: 'italic'
+        }
+      }
+    ]
+  },
+
+  // ──────────────────────────────────────────────
+  // 13. HERO FOCUS — 1080×1080 (1:1)
+  //     Maximized chart canvas, clean social square, no stats
+  // ──────────────────────────────────────────────
+  {
+    id: 'fmt-hero-focus',
+    name: 'Hero Focus',
+    description: 'Chart-first minimalist layout for LinkedIn and Instagram. 70% of canvas allocated to the visualization with a punchy header and bottom takeaway. No stats.',
+    category: 'social',
+    dimensions: { width: 1080, height: 1080, aspect: '1:1', label: 'Square Hero (1:1)' },
+    hasPrefilledBackground: true,
+    tags: ['hero', 'chart-first', 'social', 'minimal', 'square', 'clean'],
+    sortOrder: 13,
+    colorPalette: {
+      primary: '#10B981',
+      secondary: '#059669',
+      text: '#FFFFFF',
+      background: '#0F172A',
+      accent: '#34D399',
+      chartColors: ['#10B981', '#3B82F6', '#8B5CF6', '#F59E0B', '#EC4899', '#06B6D4']
+    },
+    zones: [
+      {
+        id: 'bg-13',
+        type: 'background',
+        style: {
+          type: 'solid',
+          color: '#0F172A'
+        }
+      },
+      {
+        id: 'title-13',
+        type: 'text',
+        role: 'title',
+        position: { x: 50, y: 40, width: 980, height: 80 },
+        style: {
+          fontSize: 32,
+          fontFamily: 'Inter, sans-serif',
+          fontWeight: '800',
+          color: '#FFFFFF',
+          textAlign: 'left',
+          lineHeight: 1.2
+        }
+      },
+      {
+        id: 'subtitle-13',
+        type: 'text',
+        role: 'subtitle',
+        position: { x: 50, y: 125, width: 980, height: 35 },
+        style: {
+          fontSize: 14,
+          fontFamily: 'Inter, sans-serif',
+          fontWeight: '400',
+          color: '#94A3B8',
+          textAlign: 'left',
+          lineHeight: 1.3
+        }
+      },
+      {
+        id: 'chart-13',
+        type: 'chart',
+        position: { x: 50, y: 175, width: 980, height: 700 },
+        chartConfig: {
+          preferredChartTypes: ['bar', 'line', 'pie', 'doughnut', 'area'],
+          backgroundColor: '#1E293B',
+          legendPosition: 'top',
+          showGrid: true,
+          gridColor: '#334155'
+        }
+      },
+      {
+        id: 'body-13',
+        type: 'text',
+        role: 'body',
+        position: { x: 50, y: 895, width: 980, height: 110 },
+        style: {
+          fontSize: 15,
+          fontFamily: 'Inter, sans-serif',
+          fontWeight: '400',
+          color: '#CBD5E1',
+          textAlign: 'left',
+          lineHeight: 1.6
+        },
+        maxLength: 180
+      },
+      {
+        id: 'source-13',
+        type: 'text',
+        role: 'source',
+        position: { x: 50, y: 1025, width: 980, height: 25 },
+        style: {
+          fontSize: 10,
+          fontFamily: 'Inter, sans-serif',
+          fontWeight: '400',
+          color: '#64748B',
           textAlign: 'left',
           fontStyle: 'italic'
         }

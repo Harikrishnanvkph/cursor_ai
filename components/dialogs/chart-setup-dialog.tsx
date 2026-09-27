@@ -75,7 +75,11 @@ import {
   Info,
   Pencil,
   GripVertical,
+  FileSpreadsheet,
+  Table,
 } from "lucide-react"
+import { PasteDataDialog } from "@/components/dialogs/paste-data-dialog"
+import { chartDataToGrid } from "@/lib/utils/spreadsheet-parser"
 import { type SupportedChartType, type ExtendedChartDataset } from "@/lib/chart-store"
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -452,6 +456,182 @@ export function ChartSetupDialog({
   const [isAutoRandom, setIsAutoRandom] = useState(true);
   const [randomMin, setRandomMin] = useState(10);
   const [randomMax, setRandomMax] = useState(100);
+
+  // ── Spreadsheet Paste / Edit State ──
+  const [isPasteOpen, setIsPasteOpen] = useState(false);
+  const [initialPasteText, setInitialPasteText] = useState("");
+  const [initialPasteGrid, setInitialPasteGrid] = useState<string[][] | undefined>(undefined);
+  const [pasteModalMode, setPasteModalMode] = useState<'paste' | 'edit'>('paste');
+
+  // Global paste handler when in Step 2: detects spreadsheet clipboard data (TSV or multi-line)
+  useEffect(() => {
+    if (!open || step !== 2) return;
+
+    const handlePaste = (e: ClipboardEvent) => {
+      const text = e.clipboardData?.getData("text");
+      if (!text) return;
+
+      // Check if text has tab character or multiple lines (meaning it's copied from Excel / spreadsheet)
+      if (text.includes("\t") || text.split(/\r?\n/).filter(Boolean).length > 1) {
+        e.preventDefault();
+        setInitialPasteText(text);
+        setInitialPasteGrid(undefined);
+        setPasteModalMode('paste');
+        setIsPasteOpen(true);
+      }
+    };
+
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, [open, step]);
+
+  const handleOpenEditFromExcel = () => {
+    const isCoord = chartCategory === 'coordinate';
+    let grid: string[][];
+
+    if (isCoord) {
+      const pts = (activeDataset?.dataPoints || []).map((p, i) => ({
+        name: p.name || `Point ${i + 1}`,
+        x: p.x ?? 0,
+        y: p.y ?? 0,
+        r: isBubbleChart ? (p.r ?? 10) : undefined,
+      }));
+      grid = chartDataToGrid({
+        datasetNames: [activeDataset?.name || 'Dataset 1'],
+        sliceLabels: pts.map(p => p.name),
+        datasetValues: [pts.map(p => p.y)],
+        isCoordinate: true,
+        coordinatePoints: pts,
+      });
+    } else {
+      const targetDatasets = datasetType === 'grouped' ? datasets : (activeDataset ? [activeDataset] : datasets);
+      const dsNames = targetDatasets.map((d, i) => d.name || `Dataset ${i + 1}`);
+      const sLabels = (targetDatasets[0]?.dataPoints || []).map((p, i) => p.name || `Slice ${i + 1}`);
+      const dsValues = targetDatasets.map(d => d.dataPoints.map(p => p.value ?? 0));
+      grid = chartDataToGrid({
+        datasetNames: dsNames,
+        sliceLabels: sLabels,
+        datasetValues: dsValues,
+        isCoordinate: false,
+      });
+    }
+
+    setInitialPasteGrid(grid);
+    setInitialPasteText("");
+    setPasteModalMode('edit');
+    setIsPasteOpen(true);
+  };
+
+  const handleApplySpreadsheetData = (data: {
+    datasetNames: string[]
+    sliceLabels: string[]
+    datasetValues: number[][]
+    coordinatePoints?: Array<{ name: string; x: number; y: number; r?: number }>
+  }) => {
+    const baseColors = ['#1E90FF', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#f59e0b', '#8b5cf6', '#ec4899'];
+
+    if (chartCategory === 'coordinate' && data.coordinatePoints && data.coordinatePoints.length > 0) {
+      const points: DataPoint[] = data.coordinatePoints.map((pt, i) => ({
+        id: `pt-coord-${i}-${Math.random().toString(36).slice(2, 7)}`,
+        name: pt.name,
+        value: 0,
+        x: pt.x,
+        y: pt.y,
+        r: pt.r ?? 10,
+        color: isColorLinked
+          ? (activeDataset?.dataPoints?.[0]?.color || '#1E90FF')
+          : (['#1E90FF', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4'][i % 5] || '#1E90FF'),
+      }));
+      updateActiveDataset({ dataPoints: points });
+      return;
+    }
+
+    // Categorical charts
+    if (datasetType === 'grouped') {
+      if (data.datasetNames.length > 1) {
+        const firstDs = datasets[0];
+        const category = uniformityMode === 'uniform' ? firstDs.category : 'categorical';
+        const type = uniformityMode === 'uniform' ? firstDs.type : 'bar';
+
+        const newDatasets: DatasetConfig[] = data.datasetNames.map((name, dsIdx) => {
+          const existingDs = datasets[dsIdx];
+          const dsBaseColor = baseColors[dsIdx % baseColors.length];
+
+          const points: DataPoint[] = data.sliceLabels.map((label, sliceIdx) => {
+            const val = data.datasetValues[dsIdx]?.[sliceIdx] ?? 0;
+            return {
+              id: `pt-${dsIdx}-${sliceIdx}-${Math.random().toString(36).slice(2, 7)}`,
+              name: label,
+              value: val,
+              x: 0,
+              y: 0,
+              r: 10,
+              color: isColorLinked
+                ? (existingDs?.dataPoints?.[0]?.color || dsBaseColor)
+                : (['#1E90FF', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4'][sliceIdx % 5] || '#1E90FF'),
+            };
+          });
+
+          return {
+            id: existingDs?.id || `ds-${dsIdx}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            name: name || `Dataset ${dsIdx + 1}`,
+            category: uniformityMode === 'uniform' ? firstDs.category : (existingDs?.category || category),
+            type: uniformityMode === 'uniform' ? firstDs.type : (existingDs?.type || type),
+            dataPoints: points,
+            originalStyle: existingDs?.originalStyle,
+          };
+        });
+
+        setDatasets(newDatasets);
+        setActiveDatasetId(newDatasets[0].id);
+      } else {
+        const targetVals = data.datasetValues[0] || [];
+        setDatasets(prev => prev.map(d => {
+          const isTarget = d.id === activeDatasetId;
+          const dsBaseColor = d.dataPoints[0]?.color || baseColors[0];
+
+          const points: DataPoint[] = data.sliceLabels.map((label, sliceIdx) => {
+            const existingPt = d.dataPoints[sliceIdx];
+            return {
+              id: existingPt?.id || `pt-${d.id}-${sliceIdx}-${Math.random().toString(36).slice(2, 7)}`,
+              name: label,
+              value: isTarget ? (targetVals[sliceIdx] ?? 0) : (existingPt?.value ?? 10),
+              x: 0,
+              y: 0,
+              r: 10,
+              color: isColorLinked
+                ? dsBaseColor
+                : (existingPt?.color || baseColors[sliceIdx % baseColors.length]),
+            };
+          });
+
+          return {
+            ...d,
+            name: isTarget && data.datasetNames[0] ? data.datasetNames[0] : d.name,
+            dataPoints: points,
+          };
+        }));
+      }
+    } else {
+      // Single dataset mode
+      const points: DataPoint[] = data.sliceLabels.map((label, i) => ({
+        id: `pt-${i}-${Math.random().toString(36).slice(2, 7)}`,
+        name: label,
+        value: data.datasetValues[0]?.[i] ?? 0,
+        x: 0,
+        y: 0,
+        r: 10,
+        color: isColorLinked
+          ? (dataPoints[0]?.color || '#1E90FF')
+          : (['#1E90FF', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4'][i % 5] || '#1E90FF'),
+      }));
+
+      updateActiveDataset({
+        name: data.datasetNames[0] || activeDataset?.name || "Dataset 1",
+        dataPoints: points,
+      });
+    }
+  };
 
   // ── Handlers (Step 2) ──
   const triggerCategoryChange = (category: ChartCategory) => {
@@ -959,11 +1139,11 @@ export function ChartSetupDialog({
       <DialogContent
         disableAnimation={true}
         onOpenAutoFocus={(e) => e.preventDefault()}
-        className={`max-h-[95vh] overflow-hidden p-0 gap-0 ${step === 2 ? 'max-w-[850px]' : 'max-w-[720px]'}`}
+        className={`w-full max-h-[92vh] h-[min(720px,90vh)] flex flex-col overflow-hidden p-0 gap-0 ${step === 2 ? 'max-w-[850px]' : 'max-w-[720px]'}`}
       >
 
         {/* ── Header ── */}
-        <DialogHeader className={`px-6 pt-5 pb-4 ${step === 2 ? 'border-b border-gray-100 bg-white' : ''}`}>
+        <DialogHeader className={`px-6 pt-5 pb-4 flex-shrink-0 ${step === 2 ? 'border-b border-gray-100 bg-white' : ''}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-3">
@@ -1010,9 +1190,9 @@ export function ChartSetupDialog({
 
         {/* ── Step 1: Dimensions ── */}
         {step === 1 && (
-          <div className="flex flex-col md:flex-row gap-0 overflow-hidden">
+          <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-0 overflow-hidden">
             {/* ── Left: Presets ── */}
-            <div className="md:w-[55%] border-r border-gray-100 overflow-y-auto px-4 pb-4" style={{ maxHeight: '55vh' }}>
+            <div className="md:w-[55%] border-r border-gray-100 overflow-y-auto px-4 pb-4">
               {DIMENSION_PRESETS.map((category) => (
                 <div key={category.label} className="mb-3">
                   <button
@@ -1090,7 +1270,7 @@ export function ChartSetupDialog({
             </div>
 
             {/* ── Right: Custom + Preview ── */}
-            <div className="md:w-[45%] px-5 pb-5 pt-2 flex flex-col gap-4">
+            <div className="md:w-[45%] px-5 pb-5 pt-2 flex flex-col gap-4 overflow-y-auto">
 
               <div>
                 <Label className="text-xs font-medium text-gray-600 mb-1.5 block">Unit</Label>
@@ -1186,9 +1366,9 @@ export function ChartSetupDialog({
 
         {/* ── Step 2: Data Entry ── */}
         {step === 2 && (
-          <div className="flex flex-col overflow-hidden" style={{ height: '75vh', minHeight: '500px' }}>
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
             {/* Header Configuration */}
-            <div className="px-4 py-2.5 bg-white border-b border-gray-100">
+            <div className="px-4 py-2.5 bg-white border-b border-gray-100 flex-shrink-0">
               <div className="flex items-center gap-3">
                 <div className="flex-1">
                   <Label className="text-xs font-medium text-gray-600 mb-1.5 block">Dataset Name</Label>
@@ -1403,7 +1583,7 @@ export function ChartSetupDialog({
 
             {/* Dataset Tabs (for Grouped Mode) */}
             {datasetType === 'grouped' && (
-              <div className="flex items-center px-4 pt-1 bg-white border-b border-gray-100 overflow-x-auto no-scrollbar gap-1">
+              <div className="flex items-center px-4 pt-1 bg-white border-b border-gray-100 overflow-x-auto no-scrollbar gap-1 flex-shrink-0">
                 {datasets.map((ds, index) => {
                   // In grouped mode the first 2 datasets are default/protected — no delete button
                   const isDeletable = datasetType === 'grouped' ? index > 1 : index > 0;
@@ -1472,7 +1652,7 @@ export function ChartSetupDialog({
             )}
 
             {/* Data Grid Header */}
-            <div className="flex items-center gap-1.5 px-2 py-1.5 bg-gray-50 border-b border-gray-100 text-[10px] font-semibold text-gray-500 uppercase tracking-wider mx-1">
+            <div className="flex items-center gap-1.5 px-2 py-1.5 bg-gray-50 border-b border-gray-100 text-[10px] font-semibold text-gray-500 uppercase tracking-wider mx-1 flex-shrink-0">
               <div className="w-5 flex-shrink-0" />
               <div className="grid grid-cols-12 gap-2 flex-1 items-center">
                 {chartCategory === 'coordinate' ? (
@@ -1558,7 +1738,7 @@ export function ChartSetupDialog({
             </div>
 
             {/* Data Grid Body */}
-            <div className="flex-1 overflow-y-auto px-2 py-2 space-y-0.5 bg-white">
+            <div className="flex-1 min-h-0 overflow-y-auto px-2 py-2 space-y-0.5 bg-white">
               {dataPoints.map((point, index) => {
                 const isDragging = draggedIndex === index;
                 const isDropTop = dragOverIndex === index && dropPosition === 'top';
@@ -2010,7 +2190,7 @@ export function ChartSetupDialog({
             </div>
 
             {/* Footer */}
-            <div className="p-4 bg-white border-t border-gray-100 flex items-center justify-between">
+            <div className="p-4 bg-white border-t border-gray-100 flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-2">
                 {canEditSlices ? (
                   <Button
@@ -2019,8 +2199,8 @@ export function ChartSetupDialog({
                     onClick={() => handleAddPoint()}
                     className="h-9 px-4 border-dashed border-gray-300 text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                   >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add {chartCategory === 'coordinate' ? 'Point' : 'Slice'}
+                    <Plus className="h-4 w-4 mr-1.5" />
+                    Row
                   </Button>
                 ) : (
                   <TooltipProvider>
@@ -2033,13 +2213,13 @@ export function ChartSetupDialog({
                             disabled
                             className="h-9 px-4 border-dashed border-gray-200 text-gray-400 cursor-not-allowed"
                           >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add {chartCategory === 'coordinate' ? 'Point' : 'Slice'}
+                            <Plus className="h-4 w-4 mr-1.5" />
+                            Row
                           </Button>
                         </span>
                       </TooltipTrigger>
                       <TooltipContent side="top" align="start" sideOffset={5} className="bg-slate-800 text-white border-slate-700 shadow-xl px-3 py-2 z-[150]">
-                        <p className="text-xs font-medium text-center">To add slices, please use the first dataset tab.</p>
+                        <p className="text-xs font-medium text-center">To add rows, please use the first dataset tab.</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -2077,6 +2257,31 @@ export function ChartSetupDialog({
                     Randomize
                   </Button>
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleOpenEditFromExcel}
+                  className="h-9 px-3.5 border border-blue-200/90 text-blue-700 bg-blue-50/70 hover:bg-blue-100/80 hover:border-blue-300 hover:text-blue-800 transition-all shadow-xs font-semibold rounded-lg flex items-center gap-1.5 cursor-pointer"
+                  title="Open spreadsheet grid to edit current chart data"
+                >
+                  <Table className="h-4 w-4 text-blue-600" />
+                  Edit in Grid
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setInitialPasteText("");
+                    setInitialPasteGrid(undefined);
+                    setPasteModalMode('paste');
+                    setIsPasteOpen(true);
+                  }}
+                  className="h-9 px-3.5 border border-emerald-200/90 text-emerald-700 bg-emerald-50/70 hover:bg-emerald-100/80 hover:border-emerald-300 hover:text-emerald-800 transition-all shadow-xs font-semibold rounded-lg flex items-center gap-1.5 cursor-pointer"
+                  title="Paste table directly from spreadsheet or clipboard (Ctrl+V)"
+                >
+                  <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
+                  Paste As Table
+                </Button>
               </div>
               <Button
                 onClick={handleConfirm}
@@ -2088,6 +2293,21 @@ export function ChartSetupDialog({
             </div>
           </div>
         )}
+
+        <PasteDataDialog
+          open={isPasteOpen}
+          onClose={() => {
+            setIsPasteOpen(false);
+            setInitialPasteText("");
+            setInitialPasteGrid(undefined);
+          }}
+          onApply={handleApplySpreadsheetData}
+          isCoordinate={chartCategory === 'coordinate'}
+          datasetType={datasetType}
+          initialText={initialPasteText}
+          initialGrid={initialPasteGrid}
+          mode={pasteModalMode}
+        />
 
       </DialogContent>
     </Dialog>

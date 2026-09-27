@@ -82,19 +82,195 @@ const ICON_TYPES = [
 ]
 
 export function DecorationZoneStyles() {
-  const { selectedZone, updateZoneStyle, registerBlob, revokeBlob } = useFormatBuilder()
+  const { selectedZone, updateZone, updateZoneStyle, updateZonePosition, registerBlob, revokeBlob } = useFormatBuilder()
   if (!selectedZone || selectedZone.type !== 'decoration') return null
 
   const zone = selectedZone as any
   const s = zone.style || {}
-  const subtype = zone.subtype
+  const subtype = zone.subtype || 'divider'
   const update = (u: Record<string, any>) => updateZoneStyle(selectedZone.id, u)
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
+      {/* ─── Subtype Selector ─── */}
+      <div>
+        <label className="text-[10px] text-gray-500 uppercase block mb-1">Decoration Type</label>
+        <select
+          value={subtype}
+          onChange={e => {
+            const newSubtype = e.target.value
+            const styleDefaults: Record<string, any> = {
+              divider: { dividerColor: s.dividerColor || s.strokeColor || s.lineColor || '#38BDF8', dividerThickness: s.dividerThickness || 2, dividerStyle: s.dividerStyle || 'solid' },
+              border: { borderColor: s.borderColor || s.strokeColor || '#38BDF8', borderWidth: s.borderWidth || 2, borderStyle: s.borderStyle || 'solid', borderRadius: s.borderRadius || 8 },
+              shape: { shapeType: s.shapeType || 'rectangle', shapeColor: s.shapeColor || '#F472B6', shapeOpacity: s.shapeOpacity ?? 0.3, strokeColor: s.strokeColor || '#38BDF8', strokeWidth: s.strokeWidth || 0 },
+              line: { lineType: s.lineType || 'line', lineColor: s.lineColor || '#38BDF8', lineThickness: s.lineThickness || 2, lineStyle: s.lineStyle || 'solid' },
+              connector: { lineType: 'connected-lines', lineColor: '#38BDF8', lineThickness: 2, lineStyle: 'solid' },
+              icon: { iconType: s.iconType || 'emoji-star', iconColor: s.iconColor || '#F59E0B', iconSize: s.iconSize || 48 },
+              'svg-icon': { svgColor: s.svgColor || '#38BDF8', svgOpacity: s.svgOpacity || 0.8 },
+              image: { imageUrl: s.imageUrl || '', imageFit: s.imageFit || 'cover', imageBorderRadius: s.imageBorderRadius || 8 },
+              'svg-upload': { svgContent: s.svgContent || '', svgColor: s.svgColor || '#38BDF8', svgOpacity: s.svgOpacity ?? 1 },
+            }
+            updateZone(selectedZone.id, {
+              subtype: newSubtype,
+              style: { ...s, ...(styleDefaults[newSubtype] || {}) }
+            } as any)
+          }}
+          className="w-full h-7 text-[11px] bg-gray-900 border border-gray-700 rounded px-2 text-white focus:outline-none focus:border-pink-500"
+        >
+          <option value="divider">Divider / Line Separator</option>
+          <option value="border">Frame Border</option>
+          <option value="shape">Shape (Rectangle / Circle / etc.)</option>
+          <option value="line">Line / Arrow</option>
+          <option value="connector">Connector Lines</option>
+          <option value="icon">Icon / Emoji</option>
+          <option value="svg-icon">SVG Vector Icon</option>
+          <option value="image">Static Image</option>
+          <option value="svg-upload">Upload Custom SVG</option>
+        </select>
+      </div>
+
       <label className="text-[10px] text-gray-500 uppercase block border-b border-gray-800 pb-1">
         {subtype} Properties
       </label>
+
+      {/* ═══ DIVIDER / SEPARATOR LINE ═══ */}
+      {subtype === 'divider' && (
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] text-gray-500 block mb-1">Divider Color</label>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="color"
+                  value={s.dividerColor || '#38BDF8'}
+                  onChange={e => update({ dividerColor: e.target.value })}
+                  className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent"
+                />
+                <span className="text-[9px] text-gray-400 font-mono">{s.dividerColor || '#38BDF8'}</span>
+              </div>
+            </div>
+            <div>
+              <label className="text-[10px] text-gray-500 block mb-1">Thickness (px)</label>
+              <Input
+                type="number"
+                min="1"
+                max="30"
+                value={s.dividerThickness || (zone.position?.height && zone.position.height <= 20 ? zone.position.height : 2)}
+                onChange={e => {
+                  const val = Math.max(1, parseInt(e.target.value) || 1)
+                  update({ dividerThickness: val })
+                  if (zone.position) {
+                    const isHorizontal = zone.position.width >= zone.position.height
+                    if (isHorizontal && zone.position.height < val) {
+                      updateZonePosition(zone.id, { ...zone.position, height: val })
+                    } else if (!isHorizontal && zone.position.width < val) {
+                      updateZonePosition(zone.id, { ...zone.position, width: val })
+                    }
+                  }
+                }}
+                className="h-7 text-[10px] bg-gray-900 border-gray-700 text-white"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-[10px] text-gray-500 block mb-1">Line Style</label>
+            <select
+              value={s.dividerStyle || 'solid'}
+              onChange={e => update({ dividerStyle: e.target.value })}
+              className="w-full h-7 text-[10px] bg-gray-900 border border-gray-700 rounded px-2 text-white"
+            >
+              <option value="solid">Solid</option>
+              <option value="dashed">Dashed</option>
+              <option value="dotted">Dotted</option>
+            </select>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ BORDER ═══ */}
+      {subtype === 'border' && (
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] text-gray-500 block mb-1">Border Color</label>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="color"
+                  value={s.borderColor || '#38BDF8'}
+                  onChange={e => update({ borderColor: e.target.value })}
+                  className="w-7 h-7 rounded border border-gray-700 cursor-pointer bg-transparent"
+                />
+                <span className="text-[9px] text-gray-400 font-mono">{s.borderColor || '#38BDF8'}</span>
+              </div>
+            </div>
+            <div>
+              <label className="text-[10px] text-gray-500 block mb-1">Width (px)</label>
+              <Input
+                type="number"
+                min="1"
+                max="30"
+                value={s.borderWidth || 2}
+                onChange={e => update({ borderWidth: Math.max(1, parseInt(e.target.value) || 1) })}
+                className="h-7 text-[10px] bg-gray-900 border-gray-700 text-white"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] text-gray-500 block mb-1">Border Style</label>
+              <select
+                value={s.borderStyle || 'solid'}
+                onChange={e => update({ borderStyle: e.target.value })}
+                className="w-full h-7 text-[10px] bg-gray-900 border border-gray-700 rounded px-2 text-white"
+              >
+                <option value="solid">Solid</option>
+                <option value="dashed">Dashed</option>
+                <option value="dotted">Dotted</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] text-gray-500 block mb-1">Corner Radius</label>
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                value={s.borderRadius || 0}
+                onChange={e => update({ borderRadius: Math.max(0, parseInt(e.target.value) || 0) })}
+                className="h-7 text-[10px] bg-gray-900 border-gray-700 text-white"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ SVG ICON ═══ */}
+      {subtype === 'svg-icon' && (
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] text-gray-500 block mb-1">Color</label>
+              <input
+                type="color"
+                value={s.svgColor || '#38BDF8'}
+                onChange={e => update({ svgColor: e.target.value })}
+                className="w-full h-7 rounded border border-gray-700 cursor-pointer bg-transparent"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-gray-500 block mb-1">Opacity</label>
+              <Input
+                type="number"
+                step="0.1"
+                min="0"
+                max="1"
+                value={s.svgOpacity ?? 0.8}
+                onChange={e => update({ svgOpacity: parseFloat(e.target.value) })}
+                className="h-7 text-[10px] bg-gray-900 border-gray-700 text-white"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ═══ SHAPE ═══ */}
       {subtype === 'shape' && (

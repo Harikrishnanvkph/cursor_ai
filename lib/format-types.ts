@@ -324,15 +324,37 @@ export type FormatDecorationType =
 // LLM CONTENT PACKAGE — What the AI returns
 // ========================================
 
+/** Tiered titles tailored for different container widths / limits */
+export interface TieredTitles {
+  punchy: string;      // <= 35 chars
+  standard: string;    // <= 65 chars
+  detailed: string;    // <= 110 chars
+}
+
+/** Tiered subtitles for varying layout spaces */
+export interface TieredSubtitles {
+  short: string;       // <= 50 chars
+  detailed: string;    // <= 120 chars
+}
+
+/** Tiered narratives for single-line vs multi-paragraph vs bulleted layouts */
+export interface TieredNarratives {
+  summary: string;     // 1 punchy sentence
+  editorial: string;   // 2-3 analytical sentences
+  bulletPoints: string[]; // List of key takeaway items
+}
+
 /** A single stat metric from the LLM */
 export interface ContentStat {
   value: string;            // e.g., '28%', '$42B', '5'
   label: string;            // e.g., "Russia's Market Share"
+  trend?: 'up' | 'down' | 'flat';
+  priority?: number;        // 1 = top primary stat, 2 = secondary, etc.
 }
 
-/** The complete content package returned by the LLM */
+/** The complete content package returned by the LLM (Unified Resource Bundle) */
 export interface LLMContentPackage {
-  /** Text content */
+  /** Text content (legacy fallback) */
   title: string;
   subtitle?: string;
   body?: string;
@@ -340,11 +362,21 @@ export interface LLMContentPackage {
   callout?: string;
   titleVariants?: string[];
 
+  /** Tiered Content Resource Bundle */
+  titles?: TieredTitles;
+  subtitles?: TieredSubtitles;
+  narratives?: TieredNarratives;
+  callouts?: {
+    keyInsight?: string;
+    takeaway?: string;
+  };
+
   /** Key metrics */
   stats: ContentStat[];
 
   /** Context for background/icon selection */
   keywords: string[];
+  visualKeywords?: string[];
   mood?: 'professional' | 'playful' | 'minimal' | 'bold' | 'elegant';
   dataStory?: 'comparison' | 'trend' | 'distribution' | 'ranking' | 'composition';
 

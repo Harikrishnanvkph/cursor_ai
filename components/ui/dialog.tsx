@@ -39,14 +39,15 @@ const DialogContent = React.forwardRef<
     hideCloseButton?: boolean
     forceBodyPortal?: boolean
     disableAnimation?: boolean
+    overlayClassName?: string
   }
->(({ className, children, hideCloseButton, forceBodyPortal, disableAnimation = true, ...props }, ref) => {
+>(({ className, children, hideCloseButton, forceBodyPortal, disableAnimation = true, overlayClassName, ...props }, ref) => {
   const { sidebarContainer } = useSidebarPortal()
   const portalContainer = forceBodyPortal ? undefined : (sidebarContainer || undefined)
 
   return (
     <DialogPrimitive.Portal container={portalContainer}>
-      <DialogOverlay disableAnimation={disableAnimation} />
+      <DialogOverlay disableAnimation={disableAnimation} className={overlayClassName} />
       <DialogPrimitive.Content
         ref={ref}
         className={cn(
