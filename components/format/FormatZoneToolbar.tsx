@@ -37,9 +37,18 @@ export function FormatZoneToolbar({
   canvasWidth = 1200,
   canvasHeight = 800,
 }: FormatZoneToolbarProps) {
-  const { formats, selectedFormatId, updateZoneStyle, editingZoneId, setEditingZoneId } = useFormatGalleryStore()
+  const {
+    formats,
+    userFormats,
+    selectedFormatSnapshot,
+    selectedFormatId,
+    updateZoneStyle,
+    openRichEditor,
+    editingZoneId,
+    setEditingZoneId
+  } = useFormatGalleryStore()
 
-  const format = formats.find(f => f.id === selectedFormatId)
+  const format = selectedFormatSnapshot || [...formats, ...userFormats].find(f => f.id === selectedFormatId)
   const skeleton = format?.skeleton as any
   const zone = skeleton?.zones?.find((z: any) => z.id === zoneId)
   if (!zone?.style) return null
@@ -99,31 +108,7 @@ export function FormatZoneToolbar({
     onAlignChange: (align: 'left' | 'center' | 'right') => {
       updateZoneStyle(zoneId, { textAlign: align })
     },
-    onBulletList: () => {
-      if (!isEditing) {
-        setEditingZoneId(zoneId)
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            document.execCommand('insertUnorderedList', false, undefined)
-          })
-        })
-      } else {
-        document.execCommand('insertUnorderedList', false, undefined)
-      }
-    },
-    onNumberList: () => {
-      if (!isEditing) {
-        setEditingZoneId(zoneId)
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            document.execCommand('insertOrderedList', false, undefined)
-          })
-        })
-      } else {
-        document.execCommand('insertOrderedList', false, undefined)
-      }
-    },
-    onEdit: () => setEditingZoneId(zoneId),
+    onEdit: () => openRichEditor(zoneId),
   }
 
   // ── Adaptive Scaling for all Screen Sizes & Zoom Levels ────
@@ -177,8 +162,8 @@ export function FormatZoneToolbar({
         style={styleState}
         callbacks={callbacks}
         showEdit={true}
-        showLists={isText}
-        isEditing={isEditing}
+        showLists={false}
+        isEditing={false}
       />
     </div>
   )

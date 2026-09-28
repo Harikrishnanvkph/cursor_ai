@@ -16,10 +16,14 @@ import { UndoRedoButtons } from "@/components/ui/undo-redo-buttons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ZoomIn, ZoomOut, Eye, EyeOff, Ellipsis, Maximize2, Minimize2, Settings, Menu, X, ChevronLeft, Download, Hand, Pencil, Check, Loader2, ChartColumn, RulerDimensionLine, Search, Undo2, Redo2, Sparkles } from "lucide-react"
 import { downloadTemplateExport, downloadFormatExport } from "@/lib/template-export"
-import { FileDown, FileImage, FileCode, Ban, Cloud, Camera } from "lucide-react"
+import { FileDown, FileImage, FileCode, Ban, Cloud, Camera, ImageIcon } from "lucide-react"
 import { ContentBankDrawer } from "@/components/gallery/ContentBankDrawer"
+import { FormatRichEditorDialog } from "@/components/format/FormatRichEditorDialog"
 import { ChartBgColorPicker } from "./chart-preview/chart-bg-color-picker"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
+import { 
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
+  DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent 
+} from "@/components/ui/dropdown-menu"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Slider } from "@/components/ui/slider"
 import { Sidebar } from "@/components/sidebar"
@@ -508,7 +512,8 @@ export function TemplateChartPreview({
   // Handle export
   const handleExport = async (
     format: 'png' | 'jpeg' | 'html', 
-    engine: 'html2canvas' | 'modern-screenshot' = 'html2canvas'
+    engine: 'html2canvas' | 'modern-screenshot' = 'modern-screenshot',
+    exportScale: number = 4
   ) => {
     const dateStr = new Date().toISOString().slice(0, 10)
 
@@ -550,7 +555,8 @@ export function TemplateChartPreview({
         }
       } else {
         try {
-          toast.loading(`Exporting as ${format.toUpperCase()}...`, { id: "template-export" })
+          const qualityTag = exportScale === 4 ? 'Crystal Clear 4K' : exportScale === 1 ? '1x Normal' : `${exportScale}x`
+          toast.loading(`Exporting as ${qualityTag} ${format.toUpperCase()}...`, { id: "template-export" })
           const target = exportCanvasRef.current
           if (!target) { console.error('Export target not found'); return }
 
@@ -566,8 +572,39 @@ export function TemplateChartPreview({
 
           const { domToPng, domToJpeg } = await import('modern-screenshot')
           
-          // 1. Pre-process canvases: safely snapshot them to image elements
+          // Boost chart canvases to exportScale resolution so the chart is crystal clear
+          const { Chart: ChartJS } = await import('chart.js')
+          const chartBackups: { chart: any; origDpr: number; origWidth: number; origHeight: number }[] = []
           const canvases = target.querySelectorAll('canvas')
+
+          for (let i = 0; i < canvases.length; i++) {
+            const canvas = canvases[i]
+            let chart = ChartJS.getChart(canvas)
+            if (!chart) {
+              const globalChart = useChartStore.getState().globalChartRef?.current
+              if (globalChart && (globalChart.canvas === canvas || canvases.length === 1)) {
+                chart = globalChart
+              }
+            }
+            if (chart) {
+              const origDpr = chart.options.devicePixelRatio || window.devicePixelRatio || 1
+              const origWidth = chart.width
+              const origHeight = chart.height
+              chartBackups.push({
+                chart,
+                origDpr,
+                origWidth,
+                origHeight
+              })
+              chart.options.devicePixelRatio = exportScale
+              chart.resize(origWidth, origHeight)
+              chart.update('none')
+            }
+          }
+
+          await new Promise(resolve => setTimeout(resolve, 80))
+
+          // 1. Pre-process canvases: safely snapshot them to image elements
           const canvasReplacements: { canvas: HTMLCanvasElement, img: HTMLImageElement }[] = []
           for (let i = 0; i < canvases.length; i++) {
             const canvas = canvases[i]
@@ -577,6 +614,8 @@ export function TemplateChartPreview({
               img.src = data
               img.className = canvas.className
               img.style.cssText = canvas.style.cssText
+              img.style.width = `${canvas.clientWidth || canvas.offsetWidth}px`
+              img.style.height = `${canvas.clientHeight || canvas.offsetHeight}px`
               canvas.parentNode?.insertBefore(img, canvas)
               canvas.style.display = 'none'
               canvasReplacements.push({ canvas, img })
@@ -586,7 +625,9 @@ export function TemplateChartPreview({
           }
 
           // 2. Pre-process all <img> elements (inline icons, flags, logos) to base64 data URLs
-          const allImages = Array.from(target.querySelectorAll('img'))
+          const allImages = Array.from(target.querySelectorAll('img')).filter(
+            img => !canvasReplacements.some(cr => cr.img === img)
+          )
           const imageSrcRestores: { img: HTMLImageElement; origSrc: string }[] = []
 
           await Promise.all(
@@ -626,7 +667,7 @@ export function TemplateChartPreview({
             }
 
             const options = {
-              scale: 4,
+              scale: exportScale,
               width: renderedFormat.skeleton.dimensions.width,
               height: renderedFormat.skeleton.dimensions.height,
               filter: (node: Node) => {
@@ -666,6 +707,13 @@ export function TemplateChartPreview({
                 img.parentNode.removeChild(img)
               }
             }
+
+            // Restore original chart DPR
+            for (const { chart, origDpr, origWidth, origHeight } of chartBackups) {
+              chart.options.devicePixelRatio = origDpr
+              chart.resize(origWidth, origHeight)
+              chart.update('none')
+            }
           }
 
           // Restore transforms
@@ -674,11 +722,12 @@ export function TemplateChartPreview({
 
           const link = document.createElement('a')
           link.href = dataUrl
-          link.download = `${renderedFormat.skeleton.name.toLowerCase().replace(/\s+/g, '-')}-${dateStr}.${format}`
+          const qualitySuffix = exportScale === 4 ? 'crystal-clear-uhd' : `${exportScale}x`
+          link.download = `${renderedFormat.skeleton.name.toLowerCase().replace(/\s+/g, '-')}-${qualitySuffix}-${dateStr}.${format}`
           document.body.appendChild(link)
           link.click()
           document.body.removeChild(link)
-          toast.success(`Exported successfully as ${format.toUpperCase()}`, { id: "template-export" })
+          toast.success(`Exported successfully as ${qualityTag} ${format.toUpperCase()}`, { id: "template-export" })
         } catch (error) {
           console.error('Format image export failed:', error)
           toast.error(`Failed to export as ${format.toUpperCase()}`, { id: "template-export" })
@@ -1485,7 +1534,7 @@ export function TemplateChartPreview({
                   <span>Content Bank</span>
                   {effectiveContentPackage?.contentBank && (
                     <span className="text-[9px] bg-purple-200/70 text-purple-800 px-1 rounded-full font-bold">
-                      {effectiveContentPackage.contentBank.textBlocks?.length || 10}
+                      {effectiveContentPackage.contentBank.textBlocks?.length || 8}
                     </span>
                   )}
                 </button>
@@ -1622,12 +1671,155 @@ export function TemplateChartPreview({
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-600 hover:bg-slate-100" title="Export"><Download className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-600 hover:bg-slate-100" title="Export Format / Image"><Download className="h-4 w-4" /></Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handleExport('png')}><FileImage className="h-4 w-4 mr-2" /> Image (PNG)</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleExport('jpeg')}><FileImage className="h-4 w-4 mr-2" /> Image (JPEG)</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleExport('html')}><FileCode className="h-4 w-4 mr-2" /> HTML</DropdownMenuItem>
+                <DropdownMenuContent align="end" className="w-52 p-1.5 z-[100]">
+                  <div className="px-2 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                    Export Format
+                  </div>
+
+                  {/* PNG Submenu */}
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100">
+                      <FileImage className="h-4 w-4 text-indigo-600" />
+                      <span>PNG Image</span>
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="w-64 p-1.5 z-[110]">
+                      <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        PNG Quality
+                      </div>
+                      <DropdownMenuItem
+                        onClick={() => handleExport('png', 'modern-screenshot', 4)}
+                        className="flex items-center justify-between py-2 cursor-pointer focus:bg-indigo-50"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-indigo-600 shrink-0" />
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-xs text-slate-900">Crystal Clear (4x)</span>
+                            <span className="text-[10px] text-slate-500">Maximum clarity · Print-ready</span>
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-bold bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded shrink-0">UHD</span>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
+                        onClick={() => handleExport('png', 'modern-screenshot', 3)}
+                        className="flex items-center justify-between py-2 cursor-pointer focus:bg-blue-50"
+                      >
+                        <div className="flex items-center gap-2">
+                          <FileImage className="h-4 w-4 text-blue-600 shrink-0" />
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-xs text-slate-900">High Quality (3x)</span>
+                            <span className="text-[10px] text-slate-500">Very sharp · Presentations & 4K</span>
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded shrink-0">3K</span>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
+                        onClick={() => handleExport('png', 'modern-screenshot', 2)}
+                        className="flex items-center justify-between py-2 cursor-pointer focus:bg-slate-50"
+                      >
+                        <div className="flex items-center gap-2">
+                          <FileImage className="h-4 w-4 text-slate-600 shrink-0" />
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-xs text-slate-900">Enhanced (2x)</span>
+                            <span className="text-[10px] text-slate-500">Crisp · Web & social</span>
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded shrink-0">2K</span>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
+                        onClick={() => handleExport('png', 'modern-screenshot', 1)}
+                        className="flex items-center justify-between py-2 cursor-pointer focus:bg-slate-50"
+                      >
+                        <div className="flex items-center gap-2">
+                          <FileImage className="h-4 w-4 text-slate-400 shrink-0" />
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-xs text-slate-900">Normal (1x)</span>
+                            <span className="text-[10px] text-slate-500">Standard resolution · Light size</span>
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded shrink-0">1x</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+
+                  {/* JPEG Submenu */}
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100">
+                      <ImageIcon className="h-4 w-4 text-amber-600" />
+                      <span>JPEG Image</span>
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="w-64 p-1.5 z-[110]">
+                      <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        JPEG Quality
+                      </div>
+                      <DropdownMenuItem
+                        onClick={() => handleExport('jpeg', 'modern-screenshot', 4)}
+                        className="flex items-center justify-between py-2 cursor-pointer focus:bg-amber-50"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-amber-600 shrink-0" />
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-xs text-slate-900">Crystal Clear (4x)</span>
+                            <span className="text-[10px] text-slate-500">Maximum clarity · Print-ready</span>
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded shrink-0">UHD</span>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
+                        onClick={() => handleExport('jpeg', 'modern-screenshot', 3)}
+                        className="flex items-center justify-between py-2 cursor-pointer focus:bg-blue-50"
+                      >
+                        <div className="flex items-center gap-2">
+                          <ImageIcon className="h-4 w-4 text-blue-600 shrink-0" />
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-xs text-slate-900">High Quality (3x)</span>
+                            <span className="text-[10px] text-slate-500">Very sharp · Presentations & 4K</span>
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded shrink-0">3K</span>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
+                        onClick={() => handleExport('jpeg', 'modern-screenshot', 2)}
+                        className="flex items-center justify-between py-2 cursor-pointer focus:bg-slate-50"
+                      >
+                        <div className="flex items-center gap-2">
+                          <ImageIcon className="h-4 w-4 text-slate-600 shrink-0" />
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-xs text-slate-900">Enhanced (2x)</span>
+                            <span className="text-[10px] text-slate-500">Crisp · Web & email</span>
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded shrink-0">2K</span>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
+                        onClick={() => handleExport('jpeg', 'modern-screenshot', 1)}
+                        className="flex items-center justify-between py-2 cursor-pointer focus:bg-slate-50"
+                      >
+                        <div className="flex items-center gap-2">
+                          <ImageIcon className="h-4 w-4 text-slate-400 shrink-0" />
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-xs text-slate-900">Normal (1x)</span>
+                            <span className="text-[10px] text-slate-500">Standard resolution · Small file</span>
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded shrink-0">1x</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+
+                  <DropdownMenuSeparator className="my-1" />
+
+                  <DropdownMenuItem onClick={() => handleExport('html')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100">
+                    <FileCode className="h-4 w-4 text-emerald-600" />
+                    <span>HTML Template</span>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
 
@@ -1828,15 +2020,166 @@ export function TemplateChartPreview({
             >
               <Hand className="h-4 w-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => handleExport('png')}
-              title="Download PNG"
-              className="hover:bg-gray-100 h-8 w-8"
-            >
-              <Download className="h-4 w-4" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="Export Format / Image"
+                  className="hover:bg-gray-100 h-8 w-8"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52 p-1.5 z-[100]">
+                <div className="px-2 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Export Format
+                </div>
+
+                {/* PNG Submenu */}
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100">
+                    <FileImage className="h-4 w-4 text-indigo-600" />
+                    <span>PNG Image</span>
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="w-64 p-1.5 z-[110]">
+                    <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      PNG Quality
+                    </div>
+                    <DropdownMenuItem
+                      onClick={() => handleExport('png', 'modern-screenshot', 4)}
+                      className="flex items-center justify-between py-2 cursor-pointer focus:bg-indigo-50"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-indigo-600 shrink-0" />
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-xs text-slate-900">Crystal Clear (4x)</span>
+                          <span className="text-[10px] text-slate-500">Maximum clarity · Print-ready</span>
+                        </div>
+                      </div>
+                      <span className="text-[9px] font-bold bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded shrink-0">UHD</span>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                      onClick={() => handleExport('png', 'modern-screenshot', 3)}
+                      className="flex items-center justify-between py-2 cursor-pointer focus:bg-blue-50"
+                    >
+                      <div className="flex items-center gap-2">
+                        <FileImage className="h-4 w-4 text-blue-600 shrink-0" />
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-xs text-slate-900">High Quality (3x)</span>
+                          <span className="text-[10px] text-slate-500">Very sharp · Presentations & 4K</span>
+                        </div>
+                      </div>
+                      <span className="text-[9px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded shrink-0">3K</span>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                      onClick={() => handleExport('png', 'modern-screenshot', 2)}
+                      className="flex items-center justify-between py-2 cursor-pointer focus:bg-slate-50"
+                    >
+                      <div className="flex items-center gap-2">
+                        <FileImage className="h-4 w-4 text-slate-600 shrink-0" />
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-xs text-slate-900">Enhanced (2x)</span>
+                          <span className="text-[10px] text-slate-500">Crisp · Web & social</span>
+                        </div>
+                      </div>
+                      <span className="text-[9px] font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded shrink-0">2K</span>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                      onClick={() => handleExport('png', 'modern-screenshot', 1)}
+                      className="flex items-center justify-between py-2 cursor-pointer focus:bg-slate-50"
+                    >
+                      <div className="flex items-center gap-2">
+                        <FileImage className="h-4 w-4 text-slate-400 shrink-0" />
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-xs text-slate-900">Normal (1x)</span>
+                          <span className="text-[10px] text-slate-500">Standard resolution · Light size</span>
+                        </div>
+                      </div>
+                      <span className="text-[9px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded shrink-0">1x</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+
+                {/* JPEG Submenu */}
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100">
+                    <ImageIcon className="h-4 w-4 text-amber-600" />
+                    <span>JPEG Image</span>
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="w-64 p-1.5 z-[110]">
+                    <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      JPEG Quality
+                    </div>
+                    <DropdownMenuItem
+                      onClick={() => handleExport('jpeg', 'modern-screenshot', 4)}
+                      className="flex items-center justify-between py-2 cursor-pointer focus:bg-amber-50"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-amber-600 shrink-0" />
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-xs text-slate-900">Crystal Clear (4x)</span>
+                          <span className="text-[10px] text-slate-500">Maximum clarity · Print-ready</span>
+                        </div>
+                      </div>
+                      <span className="text-[9px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded shrink-0">UHD</span>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                      onClick={() => handleExport('jpeg', 'modern-screenshot', 3)}
+                      className="flex items-center justify-between py-2 cursor-pointer focus:bg-blue-50"
+                    >
+                      <div className="flex items-center gap-2">
+                        <ImageIcon className="h-4 w-4 text-blue-600 shrink-0" />
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-xs text-slate-900">High Quality (3x)</span>
+                          <span className="text-[10px] text-slate-500">Very sharp · Presentations & 4K</span>
+                        </div>
+                      </div>
+                      <span className="text-[9px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded shrink-0">3K</span>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                      onClick={() => handleExport('jpeg', 'modern-screenshot', 2)}
+                      className="flex items-center justify-between py-2 cursor-pointer focus:bg-slate-50"
+                    >
+                      <div className="flex items-center gap-2">
+                        <ImageIcon className="h-4 w-4 text-slate-600 shrink-0" />
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-xs text-slate-900">Enhanced (2x)</span>
+                          <span className="text-[10px] text-slate-500">Crisp · Web & email</span>
+                        </div>
+                      </div>
+                      <span className="text-[9px] font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded shrink-0">2K</span>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                      onClick={() => handleExport('jpeg', 'modern-screenshot', 1)}
+                      className="flex items-center justify-between py-2 cursor-pointer focus:bg-slate-50"
+                    >
+                      <div className="flex items-center gap-2">
+                        <ImageIcon className="h-4 w-4 text-slate-400 shrink-0" />
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-xs text-slate-900">Normal (1x)</span>
+                          <span className="text-[10px] text-slate-500">Standard resolution · Small file</span>
+                        </div>
+                      </div>
+                      <span className="text-[9px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded shrink-0">1x</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+
+                <DropdownMenuSeparator className="my-1" />
+
+                <DropdownMenuItem onClick={() => handleExport('html')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100">
+                  <FileCode className="h-4 w-4 text-emerald-600" />
+                  <span>HTML Template</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button
               variant="ghost"
               size="icon"
@@ -1963,8 +2306,10 @@ export function TemplateChartPreview({
         </>
       )}
 
-      {/* AI Content Bank Drawer */}
-      <ContentBankDrawer />
+      {/* AI Content Bank Drawer - only rendered when a format layout is active */}
+      {renderedFormat && <ContentBankDrawer />}
+      {/* Rich Text Editor Dialog for format text zones */}
+      {renderedFormat && <FormatRichEditorDialog />}
     </div>
   )
 } 

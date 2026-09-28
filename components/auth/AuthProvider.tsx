@@ -50,23 +50,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refresh = useCallback(async () => {
     try {
       const res = await authApi.me()
-      setUser(res.user)
 
-      // Cache the user for optimistic loading on next page load
-      if (typeof window !== 'undefined') {
-        if (res.user?.id) {
+      // If this was a network error, timeout, or 5xx/429 server error (not an explicit 401),
+      // DO NOT wipe the user session! Keep the optimistic session so users aren't locked out.
+      if (res.isNetworkError) {
+        console.warn('⚠️ Transient network/server error checking session — preserving active session.')
+        return
+      }
+
+      // User verified successfully
+      if (res.user) {
+        setUser(res.user)
+        if (typeof window !== 'undefined') {
           localStorage.setItem('user-id', res.user.id)
           localStorage.setItem('cached_auth_user', JSON.stringify(res.user))
-        } else {
+        }
+        setAuthCookie(true, res.user.is_admin)
+        return
+      }
+
+      // Explicit authentication failure (HTTP 401 confirmed)
+      if (res.isAuthError) {
+        setUser(null)
+        setAuthCookie(false)
+        if (typeof window !== 'undefined') {
           localStorage.removeItem('cached_auth_user')
         }
       }
-      setAuthCookie(!!res.user, res.user?.is_admin)
     } catch (error: any) {
-      console.warn('Unexpected error during refresh:', error)
-      setUser(null)
-      setAuthCookie(false)
-      localStorage.removeItem('cached_auth_user')
+      console.warn('Unexpected error during refresh (preserving active session):', error)
     } finally {
       setLoading(false)
     }
@@ -93,6 +105,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener('auth:refresh', handleAuthRefresh)
     }
   }, [refresh])
+
+  // Cross-tab synchronization: keep login/logout in sync across open tabs
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'cached_auth_user') {
+        if (e.newValue) {
+          try {
+            setUser(JSON.parse(e.newValue) as AuthUser)
+          } catch {}
+        } else {
+          setUser(null)
+          setAuthCookie(false)
+        }
+      }
+    }
+    window.addEventListener('storage', handleStorageChange)
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+    }
+  }, [])
 
   useEffect(() => {
     const handlePageShow = (event: PageTransitionEvent) => {

@@ -404,6 +404,17 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
         const chartInstance = globalChartRef.current
         if (chartInstance.exportToImage) {
           try {
+            let exportWidth: number | undefined;
+            let exportHeight: number | undefined;
+            if ((chartConfig as any)?.width) {
+              const w = parseInt(String((chartConfig as any).width), 10);
+              if (!isNaN(w) && w > 0) exportWidth = w;
+            }
+            if ((chartConfig as any)?.height) {
+              const h = parseInt(String((chartConfig as any).height), 10);
+              if (!isNaN(h) && h > 0) exportHeight = h;
+            }
+
             chartInstance.exportToImage({
               background: (chartConfig as any)?.background || {
                 type: 'color',
@@ -411,7 +422,10 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
                 opacity: 100
               },
               fileNamePrefix: 'chart',
-              quality: 1.0
+              quality: 1.0,
+              exportScale: parseInt(exportScale) || 4,
+              width: exportWidth,
+              height: exportHeight
             })
           } catch (error) {
             console.error('Error during chart export:', error)
@@ -544,7 +558,8 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
                 <SelectContent>
                   <SelectItem value="1" className="text-xs">1x (Standard)</SelectItem>
                   <SelectItem value="2" className="text-xs">2x (High Quality)</SelectItem>
-                  <SelectItem value="4" className="text-xs">4x (Ultra HD)</SelectItem>
+                  <SelectItem value="3" className="text-xs">3x (3K / Ultra Sharp)</SelectItem>
+                  <SelectItem value="4" className="text-xs">4x (Ultra HD / Crystal Clear)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -33,7 +33,7 @@ export function DimensionMismatchDialog({
 }: DimensionMismatchDialogProps) {
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-md w-[92vw] sm:w-full">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-amber-600">
                         <AlertTriangle className="h-5 w-5" />
@@ -74,12 +74,12 @@ export function DimensionMismatchDialog({
                     </div>
                 </div>
 
-                <DialogFooter className="flex gap-2 sm:justify-between">
+                <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:justify-between">
                     <Button
                         variant="outline"
                         onClick={onGoToTemplateMode}
                         disabled={isSaving}
-                        className="flex-1 border-blue-200 text-blue-600 hover:bg-blue-50"
+                        className="w-full sm:flex-1 border-blue-200 text-blue-600 hover:bg-blue-50"
                     >
                         <Layout className="h-4 w-4 mr-2" />
                         Go to Template Mode
@@ -88,7 +88,7 @@ export function DimensionMismatchDialog({
                         variant="default"
                         onClick={onSaveAsChartOnly}
                         disabled={isSaving}
-                        className="flex-1 bg-amber-600 hover:bg-amber-700"
+                        className="w-full sm:flex-1 bg-amber-600 hover:bg-amber-700"
                     >
                         <Copy className="h-4 w-4 mr-2" />
                         {isSaving ? 'Saving...' : 'Save as Chart Only'}

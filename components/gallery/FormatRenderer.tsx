@@ -1545,7 +1545,10 @@ function ChartZoneView({
     )
   }
 
-  // Interactive mode renders the actual Chart.js chart (from global store)
+  // Interactive mode renders the actual Chart.js chart from the global store.
+  // Do NOT pass dataOverride/configOverride here — interactive mode must read
+  // live data from the global chart store (which holds cloud-loaded data).
+  // The format's resolvedChartData can be empty/stale and would override the store.
   if (interactive || forceRealChart) {
     return (
       <div style={{ ...containerStyle, padding: 0 }}>
@@ -1553,6 +1556,7 @@ function ChartZoneView({
             or remove it if we want tooltips to work */}
         <div style={{ width: '100%', height: '100%', position: 'relative' }}>
           <ChartGenerator
+            isTemplateOrFormat={true}
             devicePixelRatioMultiplier={Math.max(1, zoomLevel)}
             responsiveWidth={zoneWidth}
             responsiveHeight={zoneHeight}

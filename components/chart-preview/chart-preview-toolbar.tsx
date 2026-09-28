@@ -8,9 +8,12 @@ import { STANDARD_CHART_TYPES, THREE_D_CHART_TYPES } from "@/lib/chart-types"
 import {
     Download, Maximize2,
     ZoomIn, ZoomOut, Hand, Pencil, Check, Loader2,
-    ChartColumn, RulerDimensionLine, Ban, Search, Palette, Upload
+    ChartColumn, RulerDimensionLine, Ban, Search, Palette, Upload, Sparkles
 } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
+import { 
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
+    DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent
+} from "@/components/ui/dropdown-menu"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Slider } from "@/components/ui/slider"
@@ -312,9 +315,9 @@ const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, isMobile, ch
         setZoom: (z: number) => void;
     };
     exports: {
-        handleExport: () => void;
+        handleExport: (exportScale?: number) => void;
         handleExportHTML: () => void;
-        handleExportJPEG: () => void;
+        handleExportJPEG: (exportScale?: number) => void;
         handleExportCSV: () => void;
         handleExportSettings: () => void;
     };
@@ -440,13 +443,159 @@ const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, isMobile, ch
 
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600" title="Export"><Download className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600" title="Export Image / Data"><Download className="h-4 w-4" /></Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={exports.handleExport}><FileImage className="h-4 w-4 mr-2" /> PNG</DropdownMenuItem>
-                    <DropdownMenuItem onClick={exports.handleExportJPEG}><ImageIcon className="h-4 w-4 mr-2" /> JPEG</DropdownMenuItem>
-                    <DropdownMenuItem onClick={exports.handleExportHTML}><FileCode className="h-4 w-4 mr-2" /> HTML</DropdownMenuItem>
-                    <DropdownMenuItem onClick={exports.handleExportCSV}><FileText className="h-4 w-4 mr-2" /> CSV</DropdownMenuItem>
+                <DropdownMenuContent align="end" className="w-52 p-1.5 z-[100]">
+                    <div className="px-2 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                        Export Chart
+                    </div>
+
+                    {/* PNG Submenu */}
+                    <DropdownMenuSub>
+                        <DropdownMenuSubTrigger className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100">
+                            <FileImage className="h-4 w-4 text-indigo-600" />
+                            <span>PNG Image</span>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="w-64 p-1.5 z-[110]">
+                            <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                PNG Quality
+                            </div>
+                            <DropdownMenuItem
+                                onClick={() => exports.handleExport(4)}
+                                className="flex items-center justify-between py-2 cursor-pointer focus:bg-indigo-50"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <Sparkles className="h-4 w-4 text-indigo-600 shrink-0" />
+                                    <div className="flex flex-col">
+                                        <span className="font-semibold text-xs text-slate-900">Crystal Clear (4x)</span>
+                                        <span className="text-[10px] text-slate-500">Maximum clarity · Print-ready</span>
+                                    </div>
+                                </div>
+                                <span className="text-[9px] font-bold bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded shrink-0">UHD</span>
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem
+                                onClick={() => exports.handleExport(3)}
+                                className="flex items-center justify-between py-2 cursor-pointer focus:bg-blue-50"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <FileImage className="h-4 w-4 text-blue-600 shrink-0" />
+                                    <div className="flex flex-col">
+                                        <span className="font-semibold text-xs text-slate-900">High Quality (3x)</span>
+                                        <span className="text-[10px] text-slate-500">Very sharp · Presentations & 4K</span>
+                                    </div>
+                                </div>
+                                <span className="text-[9px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded shrink-0">3K</span>
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem
+                                onClick={() => exports.handleExport(2)}
+                                className="flex items-center justify-between py-2 cursor-pointer focus:bg-slate-50"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <FileImage className="h-4 w-4 text-slate-600 shrink-0" />
+                                    <div className="flex flex-col">
+                                        <span className="font-semibold text-xs text-slate-900">Enhanced (2x)</span>
+                                        <span className="text-[10px] text-slate-500">Crisp · Web & social</span>
+                                    </div>
+                                </div>
+                                <span className="text-[9px] font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded shrink-0">2K</span>
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem
+                                onClick={() => exports.handleExport(1)}
+                                className="flex items-center justify-between py-2 cursor-pointer focus:bg-slate-50"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <FileImage className="h-4 w-4 text-slate-400 shrink-0" />
+                                    <div className="flex flex-col">
+                                        <span className="font-semibold text-xs text-slate-900">Normal (1x)</span>
+                                        <span className="text-[10px] text-slate-500">Standard resolution · Light size</span>
+                                    </div>
+                                </div>
+                                <span className="text-[9px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded shrink-0">1x</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+
+                    {/* JPEG Submenu */}
+                    <DropdownMenuSub>
+                        <DropdownMenuSubTrigger className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100">
+                            <ImageIcon className="h-4 w-4 text-amber-600" />
+                            <span>JPEG Image</span>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="w-64 p-1.5 z-[110]">
+                            <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                JPEG Quality
+                            </div>
+                            <DropdownMenuItem
+                                onClick={() => exports.handleExportJPEG(4)}
+                                className="flex items-center justify-between py-2 cursor-pointer focus:bg-amber-50"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <Sparkles className="h-4 w-4 text-amber-600 shrink-0" />
+                                    <div className="flex flex-col">
+                                        <span className="font-semibold text-xs text-slate-900">Crystal Clear (4x)</span>
+                                        <span className="text-[10px] text-slate-500">Maximum clarity · Print-ready</span>
+                                    </div>
+                                </div>
+                                <span className="text-[9px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded shrink-0">UHD</span>
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem
+                                onClick={() => exports.handleExportJPEG(3)}
+                                className="flex items-center justify-between py-2 cursor-pointer focus:bg-blue-50"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <ImageIcon className="h-4 w-4 text-blue-600 shrink-0" />
+                                    <div className="flex flex-col">
+                                        <span className="font-semibold text-xs text-slate-900">High Quality (3x)</span>
+                                        <span className="text-[10px] text-slate-500">Very sharp · Presentations & 4K</span>
+                                    </div>
+                                </div>
+                                <span className="text-[9px] font-bold bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded shrink-0">3K</span>
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem
+                                onClick={() => exports.handleExportJPEG(2)}
+                                className="flex items-center justify-between py-2 cursor-pointer focus:bg-slate-50"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <ImageIcon className="h-4 w-4 text-slate-600 shrink-0" />
+                                    <div className="flex flex-col">
+                                        <span className="font-semibold text-xs text-slate-900">Enhanced (2x)</span>
+                                        <span className="text-[10px] text-slate-500">Crisp · Web & email</span>
+                                    </div>
+                                </div>
+                                <span className="text-[9px] font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded shrink-0">2K</span>
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem
+                                onClick={() => exports.handleExportJPEG(1)}
+                                className="flex items-center justify-between py-2 cursor-pointer focus:bg-slate-50"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <ImageIcon className="h-4 w-4 text-slate-400 shrink-0" />
+                                    <div className="flex flex-col">
+                                        <span className="font-semibold text-xs text-slate-900">Normal (1x)</span>
+                                        <span className="text-[10px] text-slate-500">Standard resolution · Small file</span>
+                                    </div>
+                                </div>
+                                <span className="text-[9px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded shrink-0">1x</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+
+                    <DropdownMenuSeparator className="my-1" />
+
+                    <DropdownMenuItem onClick={exports.handleExportHTML} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100">
+                        <FileCode className="h-4 w-4 text-emerald-600" />
+                        <span>Interactive HTML</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={exports.handleExportCSV} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100">
+                        <FileText className="h-4 w-4 text-slate-500" />
+                        <span>CSV Data</span>
+                    </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
 

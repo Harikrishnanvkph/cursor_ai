@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 import {
   Bold, Italic, Underline,
   Minus, Plus, Palette, Type,
-  Edit2, List, ListOrdered,
+  Edit2,
   AlignLeft, AlignCenter, AlignRight,
   MoreHorizontal, Check
 } from "lucide-react"
@@ -190,22 +190,6 @@ export function RichTextToolbar({
                   </Button>
                 </div>
               </div>
-              {/* Lists */}
-              {showLists && (
-                <div>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block mb-1.5">Lists</span>
-                  <div className="flex items-center gap-0.5">
-                    <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px] hover:bg-slate-100 gap-1.5"
-                      onClick={callbacks.onBulletList} title="Bullet List">
-                      <List className="h-3.5 w-3.5" /><span>Bullets</span>
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px] hover:bg-slate-100 gap-1.5"
-                      onClick={callbacks.onNumberList} title="Numbered List">
-                      <ListOrdered className="h-3.5 w-3.5" /><span>Numbered</span>
-                    </Button>
-                  </div>
-                </div>
-              )}
             </div>
           </PopoverContent>
         </Popover>
@@ -323,22 +307,6 @@ export function RichTextToolbar({
                 </Button>
               </div>
             </div>
-            {/* Lists */}
-            {showLists && (
-              <div>
-                <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block mb-1.5">Lists</span>
-                <div className="flex items-center gap-0.5">
-                  <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px] hover:bg-slate-100 gap-1.5"
-                    onClick={callbacks.onBulletList} title="Bullet List">
-                    <List className="h-3.5 w-3.5" /><span>Bullets</span>
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px] hover:bg-slate-100 gap-1.5"
-                    onClick={callbacks.onNumberList} title="Numbered List">
-                    <ListOrdered className="h-3.5 w-3.5" /><span>Numbered</span>
-                  </Button>
-                </div>
-              </div>
-            )}
           </div>
         </PopoverContent>
       </Popover>

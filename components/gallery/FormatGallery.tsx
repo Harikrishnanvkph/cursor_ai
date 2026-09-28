@@ -15,6 +15,7 @@ import { HistoryDropdown } from "@/components/history-dropdown"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
 import { getStandardAspectRatio } from "@/lib/utils/dimension-utils"
 import { ContentBankDrawer } from "@/components/gallery/ContentBankDrawer"
+import { FormatRichEditorDialog } from "@/components/format/FormatRichEditorDialog"
 
 const FORMAT_PAGE_SIZE = 8
 
@@ -139,11 +140,13 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
     return extractContentFromChartData(chartType, chartData, chartConfig)
   }, [hasChartData, chartType, chartData, chartConfig])
 
-  // Sync the local content package into the Zustand store
-  const { setContentPackage } = useFormatGalleryStore()
+  // Sync the local content package into the Zustand store if not already set by AI
+  const { setContentPackage, contentPackage: storeContentPackage } = useFormatGalleryStore()
   useEffect(() => {
-    setContentPackage(localContentPackage)
-  }, [localContentPackage])
+    if (!storeContentPackage && localContentPackage) {
+      setContentPackage(localContentPackage)
+    }
+  }, [localContentPackage, storeContentPackage, setContentPackage])
 
   // Load formats on mount
   useEffect(() => {
@@ -396,7 +399,7 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
               <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
                 isContentBankOpen ? 'bg-white/20 text-white' : 'bg-purple-100 text-purple-700'
               }`}>
-                {localContentPackage.contentBank.textBlocks?.length || 10}
+                {localContentPackage.contentBank.textBlocks?.length || 8}
               </span>
             )}
           </button>
@@ -727,6 +730,8 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
       </div>
       {/* AI Content Bank Slide-out Drawer */}
       <ContentBankDrawer />
+      {/* Rich Text Editor Modal for canvas and sidebar zones */}
+      <FormatRichEditorDialog />
     </div>
   )
 }

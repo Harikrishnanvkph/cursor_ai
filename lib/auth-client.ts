@@ -20,9 +20,9 @@ const baseUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   try {
-    // Add timeout to prevent hanging requests
+    // Add timeout to prevent hanging requests (12 seconds gives Supabase room for cold starts/refreshes)
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 4000) // 4 second timeout to avoid long hangs
+    const timeoutId = setTimeout(() => controller.abort(), 12000)
 
     const res = await fetch(`${baseUrl}${path}`, {
       credentials: 'include',
@@ -35,30 +35,34 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
     if (!res.ok) {
       let msg = 'Request failed'
+      let errData: any = {}
       try {
-        const data = await res.json()
-        msg = data.error || msg
+        errData = await res.json()
+        msg = errData.error || errData.message || msg
       } catch { }
-      throw new Error(msg)
+      const err: any = new Error(msg)
+      err.status = res.status
+      err.code = errData.code
+      throw err
     }
 
     return (await res.json()) as T
   } catch (error: any) {
-    // Handle timeout errors - DON'T THROW, return error object
+    // Handle timeout errors - DON'T THROW, return error object with status 408
     if (error.name === 'AbortError') {
       return {
         error: 'timeout',
-        message: 'Request timed out. Please try again.'
+        message: 'Request timed out. Please try again.',
+        status: 408
       } as T
     }
 
-    // Handle network errors gracefully - DON'T THROW, return a default response
+    // Handle network errors gracefully - DON'T THROW, return a default response with status 0
     if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
-      // Return a default response that indicates network failure
-      // This prevents the error from bubbling up
       return {
         error: 'network_failure',
-        message: 'Unable to connect to the server. Please check your internet connection and try again.'
+        message: 'Unable to connect to the server. Please check your internet connection and try again.',
+        status: 0
       } as T
     }
 
@@ -66,35 +70,43 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     if (error.name === 'TypeError') {
       return {
         error: 'network_failure',
-        message: 'Network error occurred. Please try again.'
+        message: 'Network error occurred. Please try again.',
+        status: 0
       } as T
     }
 
-    // Handle other errors - DON'T THROW, return error object
+    // Handle other errors - return error object with HTTP status and code
     return {
       error: 'unknown',
-      message: error.message || 'An unexpected error occurred. Please try again.'
+      message: error.message || 'An unexpected error occurred. Please try again.',
+      status: error.status || 500,
+      code: error.code
     } as T
   }
 }
 
 export const authApi = {
-  me: async () => {
-    const response = await request<{ user: AuthUser | null } | { error: string; message: string }>(`/auth/me`, { method: 'GET' })
+  me: async (): Promise<{ user: AuthUser | null; isAuthError?: boolean; isNetworkError?: boolean }> => {
+    const response = await request<{ user: AuthUser | null } | { error: string; message: string; status?: number; code?: string }>(`/auth/me`, { method: 'GET' })
 
-    // Check if this is any error response (network, timeout, unknown)
+    // Check if this is an error response
     if ('error' in response) {
-      // For refresh/me calls, return null instead of throwing
-      return { user: null }
+      const status = response.status
+      // Only HTTP 401 means the user is definitively unauthenticated
+      if (status === 401) {
+        return { user: null, isAuthError: true, isNetworkError: false }
+      }
+      // Any other error (network failure, timeout, 429, 500/503) is transient and must NOT destroy user session
+      return { user: null, isAuthError: false, isNetworkError: true }
     }
 
     // TypeScript guard to ensure response has user
     if ('user' in response) {
-      return response
+      return { user: response.user, isAuthError: false, isNetworkError: false }
     }
 
-    // Fallback - this shouldn't happen but satisfies TypeScript
-    return { user: null }
+    // Fallback
+    return { user: null, isAuthError: false, isNetworkError: false }
   },
   signIn: async (payload: { email: string; password: string }) => {
     const response = await request<{ user: AuthUser } | { error: string; message: string }>(`/auth/signin`, {

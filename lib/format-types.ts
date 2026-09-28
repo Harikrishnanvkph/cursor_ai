@@ -353,13 +353,13 @@ export interface ContentStat {
 }
 
 // ========================================
-// AI CONTENT BANK — 10 Categorized Blocks, Multi-Asset Bank
+// AI CONTENT BANK — 8 Categorized Blocks, Multi-Asset Bank
 // ========================================
 
 export interface ContentBankTextBlock {
   id: string;
   category: string;
-  length?: 'short' | 'medium' | 'long' | 'list' | string;
+  length?: 'extra-long' | 'long' | 'medium-long' | 'medium' | 'short' | 'list' | string;
   text: string;
   bullets?: string[];
 }
@@ -425,7 +425,7 @@ export interface LLMContentPackage {
     takeaway?: string;
   };
 
-  /** AI Content Bank (10 categorized blocks, 3 titles, 3 subtitles, 3 phrases, images, sources) */
+  /** AI Content Bank (8 categorized blocks, 3 titles, 3 subtitles, 3 phrases, images, sources) */
   contentBank?: ContentBank;
 
   /** Zone content overrides (custom text/images dropped into specific zone IDs) */

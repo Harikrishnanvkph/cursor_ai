@@ -372,12 +372,26 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
       const chart = canvas ? ChartJS.getChart(canvas) : null
 
       if (chart && (chart as any).exportToImage) {
-        const bgConfig = getBackgroundConfig(activeSnapshot.chartConfig)
+        const cfg = activeSnapshot.chartConfig
+        let exportWidth: number | undefined
+        let exportHeight: number | undefined
+        if (cfg?.width) {
+          const w = parseInt(String(cfg.width), 10)
+          if (!isNaN(w) && w > 0) exportWidth = w
+        }
+        if (cfg?.height) {
+          const h = parseInt(String(cfg.height), 10)
+          if (!isNaN(h) && h > 0) exportHeight = h
+        }
+
         await (chart as any).exportToImage({
           background: bgConfig,
           fileName: `${cleanTitle}.png`,
           fileNamePrefix: cleanTitle,
           quality: 1.0,
+          exportScale: 4,
+          width: exportWidth,
+          height: exportHeight,
         })
         toast.success("Chart downloaded successfully!")
         return

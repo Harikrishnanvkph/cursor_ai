@@ -291,12 +291,26 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
 
       // 3. Use the exact editor chartInstance.exportToImage (with background, canvas, and decoration SVG)
       if (chartInstance?.exportToImage) {
-        const bgConfig = getBackgroundConfig(liveConversation.snapshot?.chartConfig)
+        const cfg = liveConversation.snapshot?.chartConfig
+        let exportWidth: number | undefined
+        let exportHeight: number | undefined
+        if (cfg?.width) {
+          const w = parseInt(String(cfg.width), 10)
+          if (!isNaN(w) && w > 0) exportWidth = w
+        }
+        if (cfg?.height) {
+          const h = parseInt(String(cfg.height), 10)
+          if (!isNaN(h) && h > 0) exportHeight = h
+        }
+
         chartInstance.exportToImage({
           background: bgConfig,
           fileName: `${cleanTitle}.png`,
           fileNamePrefix: cleanTitle,
-          quality: 1.0
+          quality: 1.0,
+          exportScale: 4,
+          width: exportWidth,
+          height: exportHeight
         })
         toast.success("Chart downloaded successfully!")
         return

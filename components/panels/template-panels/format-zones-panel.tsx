@@ -7,14 +7,12 @@ import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
-import { LayoutGrid, Type, Hash, BarChart3, Image, Sparkles, ExternalLink, FileEdit, Columns, Rows, Maximize, Minimize, X, Info, PaintBucket, Upload, Link, Eye, EyeOff, Trash2, Plus, Pencil, ArrowRight, Layers, Pipette, Ban } from "lucide-react"
+import { LayoutGrid, Type, Hash, BarChart3, Image, Sparkles, ExternalLink, FileEdit, Upload, Link, Eye, EyeOff, Trash2, Plus, Pencil, ArrowRight, Layers, Pipette, Ban } from "lucide-react"
 import { useChartStore } from "@/lib/chart-store"
 import { ChartConfigService } from "@/lib/services/chart-config-service"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
-import { TiptapEditor } from "@/components/tiptap-editor"
 import { unwrapProxiedImageUrl } from "@/lib/utils/image-proxy-utils"
 
 const ZONE_TYPE_META: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
@@ -48,6 +46,7 @@ export function FormatZonesPanel() {
     loadFormats,
     isLoadingFormats,
     updateZoneStyle,
+    openRichEditor,
     isResizeMode,
     setResizeMode,
     resetFormatPositions,
@@ -64,45 +63,6 @@ export function FormatZonesPanel() {
 
   // Sub-tabs: 1 - My Template, 2 - Edit Content
   const [subTab, setSubTab] = useState<'template' | 'content'>('template')
-
-  // Rich editor state for format text zones
-  const [richEditorOpen, setRichEditorOpen] = useState(false)
-  const [richEditorContent, setRichEditorContent] = useState('')
-  const [richEditorZoneRole, setRichEditorZoneRole] = useState<string | null>(null)
-  const [richEditorZone, setRichEditorZone] = useState<any>(null)
-  const [richEditorLayout, setRichEditorLayout] = useState<'side-by-side' | 'stacked'>('side-by-side')
-  const [editorFitToView, setEditorFitToView] = useState(true)
-  const [editorBg, setEditorBg] = useState<'white' | 'black'>('white')
-  const [previewFitToView, setPreviewFitToView] = useState(true)
-  const richPreviewContainerRef = useRef<HTMLDivElement>(null)
-  const [richPreviewScale, setRichPreviewScale] = useState(1)
-
-  const computeRichScale = useCallback(() => {
-    if (!previewFitToView || !richPreviewContainerRef.current || !richEditorZoneRole) {
-      setRichPreviewScale(1)
-      return
-    }
-    const container = richPreviewContainerRef.current
-    const containerWidth = container.clientWidth - 16
-    const containerHeight = container.clientHeight - 16
-    // Use actual zone dimensions with sensible min height
-    const zoneW = richEditorZone?.position?.width || 600
-    const zoneH = Math.max(richEditorZone?.position?.height || 200, 160)
-    if (containerWidth > 0 && containerHeight > 0 && zoneW > 0 && zoneH > 0) {
-      const scaleX = containerWidth / zoneW
-      const scaleY = containerHeight / zoneH
-      setRichPreviewScale(Math.min(scaleX, scaleY, 1))
-    }
-  }, [previewFitToView, richEditorZoneRole, richEditorZone])
-
-  useEffect(() => {
-    const id = requestAnimationFrame(() => computeRichScale())
-    window.addEventListener('resize', computeRichScale)
-    return () => {
-      cancelAnimationFrame(id)
-      window.removeEventListener('resize', computeRichScale)
-    }
-  }, [computeRichScale, richEditorOpen, richEditorLayout, previewFitToView])
 
   if (!selectedFormatId) {
     return (
@@ -208,7 +168,6 @@ export function FormatZonesPanel() {
   }
 
   return (
-    <>
     <div className="space-y-4">
       <Tabs value={subTab} onValueChange={(val) => setSubTab(val as 'template' | 'content')} className="w-full">
         <TabsList className="grid w-full grid-cols-2 gap-1 h-auto p-1 bg-gray-100 rounded-lg mb-3">
@@ -592,10 +551,7 @@ export function FormatZonesPanel() {
                                 className="h-6 text-[10px] gap-1"
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  setRichEditorZoneRole(zone.role || 'Text')
-                                  setRichEditorZone(zone)
-                                  setRichEditorContent(getTextZoneValue(zone))
-                                  setRichEditorOpen(true)
+                                  openRichEditor(zone.id)
                                 }}
                               >
                                 <FileEdit className="h-3 w-3" />
@@ -658,310 +614,6 @@ export function FormatZonesPanel() {
         </TabsContent>
       </Tabs>
     </div>
-
-      {/* Rich Text Editor Dialog for Format Text Zones */}
-      <Dialog open={richEditorOpen} onOpenChange={(open) => {
-        if (!open) {
-          // Reset on close without save
-          setRichEditorContent('')
-          setRichEditorZoneRole(null)
-          setRichEditorZone(null)
-        }
-        setRichEditorOpen(open)
-      }}>
-        <DialogContent className="max-w-[95vw] h-[95vh] flex flex-col p-0" hideCloseButton>
-          <DialogTitle className="sr-only">Rich Text Editor</DialogTitle>
-          {/* Main body */}
-          <div className={`flex ${richEditorLayout === 'side-by-side' ? 'flex-row' : 'flex-col'} gap-0 flex-1 overflow-hidden min-h-0`}>
-            {/* Editor Section */}
-            <div className={`flex flex-col overflow-hidden ${richEditorLayout === 'side-by-side' ? 'flex-1 border-r' : 'flex-1 border-b'} min-w-0`}>
-              {/* Action bar: title + layout toggle + Save/Cancel */}
-              <div className="flex items-center justify-between px-2 py-1 bg-gray-50 border-b shrink-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-gray-600 mr-1">Rich Editor — {richEditorZoneRole || 'Text'}</span>
-                  <div className="flex items-center border rounded-md overflow-hidden bg-white">
-                    <button
-                      type="button"
-                      className={`p-1.5 transition-colors ${richEditorLayout === 'side-by-side' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-100'}`}
-                      onClick={() => setRichEditorLayout('side-by-side')}
-                      title="Side by Side"
-                    >
-                      <Columns className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      className={`p-1.5 transition-colors border-l ${richEditorLayout === 'stacked' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-100'}`}
-                      onClick={() => setRichEditorLayout('stacked')}
-                      title="Stacked"
-                    >
-                      <Rows className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                  <span className="text-[10px] text-gray-400">Layout</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant={editorFitToView ? "default" : "outline"}
-                    size="sm"
-                    className={`h-7 text-xs gap-1.5 ${editorFitToView ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
-                    onClick={() => setEditorFitToView(!editorFitToView)}
-                  >
-                    {editorFitToView ? <Minimize className="h-3 w-3" /> : <Maximize className="h-3 w-3" />}
-                    Fit to View
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-xs gap-1.5 ml-2"
-                    onClick={() => setEditorBg(prev => prev === 'white' ? 'black' : 'white')}
-                    title="Toggle background color"
-                  >
-                    <PaintBucket className="h-3 w-3" />
-                    Background
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-xs ml-2"
-                    onClick={() => {
-                      setRichEditorOpen(false)
-                      setRichEditorZoneRole(null)
-                      setRichEditorZone(null)
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={() => {
-                      if (contentPackage) {
-                        const key = richEditorZone?.id || richEditorZoneRole || 'body'
-                        handleContentPackageChange(key, richEditorContent)
-                      }
-                      setRichEditorOpen(false)
-                      setRichEditorZoneRole(null)
-                      setRichEditorZone(null)
-                    }}
-                  >
-                    Save
-                  </Button>
-                </div>
-              </div>
-
-              {/* Style coordination info */}
-              {richEditorZone?.style && (
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border-b border-blue-100 shrink-0">
-                  <Info className="h-3 w-3 text-blue-500 shrink-0" />
-                  <span className="text-[10px] text-blue-600">
-                    Zone defaults: {richEditorZone.style.fontSize}px {richEditorZone.style.fontFamily?.split(',')[0]}. Inline formatting in the editor will override zone-level defaults.
-                  </span>
-                </div>
-              )}
-
-              {/* Editor */}
-              <div className={`flex-1 overflow-auto ${editorFitToView ? 'bg-gray-100' : ''}`}>
-                <TiptapEditor
-                  initialHtml={richEditorContent}
-                  onChange={(html) => setRichEditorContent(html)}
-                  className={`h-full ${editorFitToView ? 'border-0' : ''}`}
-                  contentStyle={richEditorZone?.style ? {
-                    fontSize: richEditorZone.style.fontSize,
-                    fontFamily: richEditorZone.style.fontFamily,
-                    fontWeight: richEditorZone.style.fontWeight,
-                    fontStyle: richEditorZone.style.fontStyle,
-                    textDecoration: richEditorZone.style.textDecoration,
-                    textTransform: richEditorZone.style.textTransform,
-                    textAlign: richEditorZone.style.textAlign || 'left',
-                    color: richEditorZone.style.color,
-                    lineHeight: richEditorZone.style.lineHeight || 1.6,
-                    letterSpacing: richEditorZone.style.letterSpacing
-                  } : undefined}
-                  fitToView={editorFitToView}
-                  editorBg={editorBg}
-                  zoneDimensions={richEditorZone?.position ? {
-                    width: richEditorZone.position.width,
-                    height: richEditorZone.position.height
-                  } : undefined}
-                />
-              </div>
-            </div>
-
-            {/* Preview Section */}
-            <div className={`flex flex-col overflow-hidden min-w-0 ${richEditorLayout === 'side-by-side' ? 'flex-1' : 'flex-1'}`}>
-              <div className="flex items-center justify-between px-2 py-1 bg-gray-50 border-b shrink-0">
-                <span className="text-xs font-medium text-gray-600">Live Preview</span>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] transition-colors border ${
-                      previewFitToView
-                        ? 'bg-blue-100 text-blue-700 border-blue-200'
-                        : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-100'
-                    }`}
-                    onClick={() => {
-                      setPreviewFitToView(!previewFitToView)
-                    }}
-                    title={previewFitToView ? 'Show actual size' : 'Fit to container'}
-                  >
-                    {previewFitToView ? <Minimize className="h-3 w-3" /> : <Maximize className="h-3 w-3" />}
-                    {previewFitToView ? 'Actual Size' : 'Fit to View'}
-                  </button>
-                  <button
-                    type="button"
-                    className="p-1 rounded hover:bg-gray-200 text-gray-500 transition-colors"
-                    onClick={() => {
-                      setRichEditorOpen(false)
-                      setRichEditorZoneRole(null)
-                      setRichEditorZone(null)
-                    }}
-                    title="Close"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-
-              <div
-                ref={richPreviewContainerRef}
-                className={`flex-1 ${previewFitToView ? 'overflow-hidden' : 'overflow-auto'} bg-gray-50 p-2 min-w-0`}
-              >
-                {(() => {
-                  const zoneW = richEditorZone?.position?.width || 600
-                  const rawZoneH = richEditorZone?.position?.height || 200
-                  const previewBoxH = Math.max(rawZoneH, 160)
-                  const zStyle = richEditorZone?.style || {}
-
-                  // Resolve background styling
-                  const bgZone = (format?.skeleton?.zones || []).find((z: any) => z.type === 'background')
-                  const formatBgColor = bgZone?.style?.color || bgZone?.style?.backgroundColor || bgZone?.style?.baseColor || (format?.skeleton?.palette as any)?.background
-                  const effectiveBgColor = zStyle.backgroundColor || zStyle.bgColor || (editorBg === 'black' ? '#111827' : (formatBgColor || '#ffffff'))
-
-                  const previewStyle: React.CSSProperties = {
-                    fontSize: zStyle.fontSize ? `${zStyle.fontSize}px` : '14px',
-                    fontFamily: zStyle.fontFamily || 'inherit',
-                    fontWeight: zStyle.fontWeight || 'normal',
-                    fontStyle: zStyle.fontStyle || 'normal',
-                    textDecoration: zStyle.textDecoration || 'none',
-                    textTransform: (zStyle.textTransform as any) || 'none',
-                    color: zStyle.color || (editorBg === 'black' ? '#f9fafb' : '#1a1a2e'),
-                    textAlign: (zStyle.textAlign as any) || 'left',
-                    lineHeight: zStyle.lineHeight || 1.6,
-                    letterSpacing: zStyle.letterSpacing ? `${zStyle.letterSpacing}px` : 'normal',
-                    padding: '4px',
-                    boxSizing: 'border-box',
-                    wordBreak: 'break-word' as const,
-                    backgroundColor: effectiveBgColor,
-                  }
-
-                  if (previewFitToView) {
-                    return (
-                      <div style={{
-                        width: `${zoneW * richPreviewScale}px`,
-                        minHeight: `${previewBoxH * richPreviewScale}px`,
-                        flexShrink: 0,
-                        margin: '0 auto',
-                        position: 'relative'
-                      }}>
-                        <div
-                          className="border rounded shadow-sm html-content-area relative"
-                          style={{
-                            width: `${zoneW}px`,
-                            minHeight: `${previewBoxH}px`,
-                            ...previewStyle,
-                            overflow: 'visible',
-                            transform: `scale(${richPreviewScale})`,
-                            transformOrigin: 'top left'
-                          }}
-                        >
-                          <div className="html-content-area w-full" dangerouslySetInnerHTML={{ __html: sanitizeHTML(richEditorContent || '<p style="color:#999">Preview will appear here...</p>') }} />
-                          {rawZoneH < 160 && (
-                            <div
-                              style={{
-                                position: 'absolute',
-                                top: `${rawZoneH}px`,
-                                left: 0,
-                                right: 0,
-                                borderTop: '1.5px dashed #93c5fd',
-                                pointerEvents: 'none',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'flex-end',
-                                paddingRight: '8px',
-                                paddingTop: '2px',
-                                zIndex: 20
-                              }}
-                            >
-                              <span style={{
-                                fontSize: '9px',
-                                fontWeight: 600,
-                                color: '#3b82f6',
-                                backgroundColor: editorBg === 'black' ? '#1f2937' : '#eff6ff',
-                                padding: '1px 6px',
-                                borderRadius: '3px',
-                                border: '1px solid #bfdbfe'
-                              }}>
-                                Canvas Slot Height ({rawZoneH}px)
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  }
-
-                  return (
-                    <div
-                      className="border rounded shadow-sm html-content-area relative"
-                      style={{
-                        width: `${zoneW}px`,
-                        minHeight: `${previewBoxH}px`,
-                        ...previewStyle,
-                        overflow: 'visible',
-                        flexShrink: 0,
-                        margin: '0 auto'
-                      }}
-                    >
-                      <div className="html-content-area w-full" dangerouslySetInnerHTML={{ __html: sanitizeHTML(richEditorContent || '<p style="color:#999">Preview will appear here...</p>') }} />
-                      {rawZoneH < 160 && (
-                        <div
-                          style={{
-                            position: 'absolute',
-                            top: `${rawZoneH}px`,
-                            left: 0,
-                            right: 0,
-                            borderTop: '1.5px dashed #93c5fd',
-                            pointerEvents: 'none',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'flex-end',
-                            paddingRight: '8px',
-                            paddingTop: '2px',
-                            zIndex: 20
-                          }}
-                        >
-                          <span style={{
-                            fontSize: '9px',
-                            fontWeight: 600,
-                            color: '#3b82f6',
-                            backgroundColor: editorBg === 'black' ? '#1f2937' : '#eff6ff',
-                            padding: '1px 6px',
-                            borderRadius: '3px',
-                            border: '1px solid #bfdbfe'
-                          }}>
-                            Canvas Slot Height ({rawZoneH}px)
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })()}
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
   )
 }
 

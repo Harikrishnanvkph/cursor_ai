@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, X, AlertTriangle, GripVertical, FileSpreadsheet, Table } from "lucide-react";
+import { Plus, Trash2, X, AlertTriangle, GripVertical, FileSpreadsheet, Table, ChevronUp, ChevronDown } from "lucide-react";
 import { PasteDataDialog } from "@/components/dialogs/paste-data-dialog";
 import { chartDataToGrid } from "@/lib/utils/spreadsheet-parser";
 import { cn } from "@/lib/utils";
@@ -325,6 +325,24 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
     });
   };
 
+  const handleMoveSlice = (fromIndex: number, toIndex: number) => {
+    if (toIndex < 0 || toIndex >= sliceLabels.length || fromIndex === toIndex) return;
+
+    setSliceLabels(prev => {
+      const copy = [...prev];
+      const [moved] = copy.splice(fromIndex, 1);
+      copy.splice(toIndex, 0, moved);
+      return copy;
+    });
+
+    setValues(prev => {
+      const copy = [...prev];
+      const [moved] = copy.splice(fromIndex, 1);
+      copy.splice(toIndex, 0, moved);
+      return copy;
+    });
+  };
+
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
     e.dataTransfer.effectAllowed = 'move';
@@ -500,15 +518,15 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
           onOpenChange(isOpen);
         }}
       >
-        <DialogContent className="max-w-4xl w-full max-h-[85vh] flex flex-col p-0 gap-0">
+        <DialogContent className="max-w-4xl w-[96vw] sm:w-full max-h-[88vh] flex flex-col p-0 gap-0">
           {/* Modal Header */}
-          <DialogHeader className="px-6 py-4 border-b bg-gray-50/50 flex-shrink-0 space-y-3">
-            <div className="flex items-center justify-between">
+          <DialogHeader className="px-4 sm:px-6 py-3.5 sm:py-4 border-b bg-gray-50/50 flex-shrink-0 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <DialogTitle className="text-lg font-semibold text-gray-900">
+                <DialogTitle className="text-base sm:text-lg font-semibold text-gray-900">
                   {isCurrentGroupCoordinateChart ? 'Edit Points' : 'Edit Slices'} {chartMode === 'grouped' ? '(Grouped Mode)' : ''}
                 </DialogTitle>
-                <p className="text-sm mt-1 flex items-center gap-1.5">
+                <p className="text-xs sm:text-sm mt-1 flex flex-wrap items-center gap-1.5">
                   {(() => {
                     // Determine if all datasets in this group have the same chart type
                     const groupDatasetTypes = filteredDatasets.map((ds: any) => {
@@ -542,7 +560,7 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
 
               {/* Group Selector (Only in Grouped Mode) */}
               {chartMode === 'grouped' && groups.length > 0 && (
-                <div className="w-[200px] mr-8">
+                <div className="w-full sm:w-[200px] sm:mr-8">
                   <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
                     <SelectTrigger className="h-8 text-xs bg-white">
                       <SelectValue placeholder="Select Group" />
@@ -565,7 +583,7 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
               {/* Sticky Header Row */}
               <div
                 className="sticky top-0 z-10 grid gap-3 items-center px-4 py-2 bg-gray-50 border-b text-[11px] font-medium text-gray-500 uppercase tracking-wider"
-                style={{ gridTemplateColumns, minWidth: '100%' }}
+                style={{ gridTemplateColumns, minWidth: `${Math.max(minWidth, 500)}px` }}
               >
                 <div className="text-center font-semibold">#</div>
                 <div>{isCurrentGroupCoordinateChart ? 'Point Name' : 'Slice Name'}</div>
@@ -601,19 +619,40 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
                         isDropTop && "before:absolute before:top-0 before:left-0 before:right-0 before:h-0.5 before:bg-blue-500 before:rounded-full before:z-10",
                         isDropBottom && "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-blue-500 after:rounded-full after:z-10"
                       )}
-                      style={{ gridTemplateColumns, minWidth: '100%' }}
+                      style={{ gridTemplateColumns, minWidth: `${Math.max(minWidth, 500)}px` }}
                     >
-                      {/* Row Drag Handle */}
+                      {/* Row Drag / Reorder Handle */}
                       <div className="flex items-center justify-center h-8 text-xs text-gray-400 font-mono">
                         <button
                           type="button"
                           onMouseEnter={() => setDraggableIndex(rowIdx)}
                           onMouseLeave={() => setDraggableIndex(null)}
-                          className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-600 p-1 rounded transition-colors"
+                          className="hidden sm:inline-flex cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-600 p-1 rounded transition-colors"
                           title="Drag to reorder"
                         >
                           <GripVertical className="w-3.5 h-3.5" />
                         </button>
+                        {/* Mobile Touch Reorder Buttons */}
+                        <div className="flex flex-col sm:hidden items-center justify-center -space-y-1">
+                          <button
+                            type="button"
+                            onClick={() => handleMoveSlice(rowIdx, rowIdx - 1)}
+                            disabled={rowIdx === 0}
+                            className="p-0.5 text-gray-400 hover:text-gray-700 disabled:opacity-20 transition-colors"
+                            title="Move up"
+                          >
+                            <ChevronUp className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleMoveSlice(rowIdx, rowIdx + 1)}
+                            disabled={rowIdx === sliceLabels.length - 1}
+                            className="p-0.5 text-gray-400 hover:text-gray-700 disabled:opacity-20 transition-colors"
+                            title="Move down"
+                          >
+                            <ChevronDown className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
 
                       {/* Slice/Point Name */}
@@ -642,7 +681,7 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
                           variant="ghost"
                           size="icon"
                           onClick={() => handleAddSlice(rowIdx + 1)}
-                          className="h-7 w-7 text-gray-300 opacity-0 group-hover:opacity-100 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all"
+                          className="h-7 w-7 text-gray-400 sm:text-gray-300 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all"
                           title="Insert slice below"
                         >
                           <Plus className="w-3.5 h-3.5" />
@@ -666,8 +705,8 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
           </div>
 
           {/* Footer */}
-          <DialogFooter className="px-6 py-4 border-t bg-gray-50/50 gap-3 flex-shrink-0">
-            <div className="flex-1 flex items-center justify-start gap-2">
+          <DialogFooter className="px-4 sm:px-6 py-3 sm:py-4 border-t bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 flex-shrink-0">
+            <div className="flex flex-wrap items-center justify-start gap-2 w-full sm:w-auto">
               <Button
                 variant="outline"
                 onClick={() => handleAddSlice()}
@@ -705,39 +744,43 @@ export function EditSlicesModal({ open, onOpenChange, chartData, chartType, onSa
 
             {/* Inline Delete Warning */}
             {showDeleteConfirm ? (
-              <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2">
-                <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0" />
-                <span className="text-sm text-amber-800">
-                  <span className="font-semibold text-red-600">{originalSliceCount - sliceLabels.length}</span> {isCurrentGroupCoordinateChart ? 'point(s)' : 'slice(s)'} removed. Save changes?
-                </span>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setShowDeleteConfirm(false);
-                    initializeForGroup(selectedGroupId); // Restore original slices
-                  }}
-                  className="text-gray-600 hover:text-gray-800"
-                >
-                  No, Undo
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={performSave}
-                  className="bg-red-600 hover:bg-red-700 text-white"
-                >
-                  Yes, Save
-                </Button>
+              <div className="flex flex-wrap items-center gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 w-full sm:w-auto justify-between">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0" />
+                  <span className="text-xs sm:text-sm text-amber-800">
+                    <span className="font-semibold text-red-600">{originalSliceCount - sliceLabels.length}</span> {isCurrentGroupCoordinateChart ? 'point(s)' : 'slice(s)'} removed. Save changes?
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 ml-auto">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setShowDeleteConfirm(false);
+                      initializeForGroup(selectedGroupId); // Restore original slices
+                    }}
+                    className="text-gray-600 hover:text-gray-800"
+                  >
+                    No, Undo
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={performSave}
+                    className="bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    Yes, Save
+                  </Button>
+                </div>
               </div>
             ) : (
-              <>
+              <div className="flex items-center justify-end gap-2 w-full sm:w-auto">
                 <DialogClose asChild>
                   <Button variant="ghost">Cancel</Button>
                 </DialogClose>
-                <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white min-w-[100px]">
+                <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white min-w-[100px] flex-1 sm:flex-initial">
                   Save Changes
                 </Button>
-              </>
+              </div>
             )}
           </DialogFooter>
 

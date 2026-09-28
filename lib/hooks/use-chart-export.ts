@@ -30,7 +30,7 @@ export function useChartExport(options?: {
 
     const getGlobalChartRef = () => useChartStore.getState().globalChartRef;
 
-    const handleExport = useCallback(() => {
+    const handleExport = useCallback((exportScale: number = 4) => {
         // Clear decoration selection before export so selection handles don't appear
         useDecorationStore.getState().setSelectedShapeId(null);
         useDecorationStore.getState().setSelectedShapeIds([]);
@@ -43,12 +43,26 @@ export function useChartExport(options?: {
         const chartInstance = getGlobalChartRef()?.current;
         const bgConfig = getBackgroundConfig(chartConfig);
 
+        let exportWidth: number | undefined;
+        let exportHeight: number | undefined;
+        if ((chartConfig as any)?.width) {
+            const w = parseInt(String((chartConfig as any).width), 10);
+            if (!isNaN(w) && w > 0) exportWidth = w;
+        }
+        if ((chartConfig as any)?.height) {
+            const h = parseInt(String((chartConfig as any).height), 10);
+            if (!isNaN(h) && h > 0) exportHeight = h;
+        }
+
         if (chartInstance.exportToImage) {
             try {
                 chartInstance.exportToImage({
                     background: bgConfig,
                     fileNamePrefix: 'chart',
-                    quality: 1.0
+                    quality: 1.0,
+                    exportScale,
+                    width: exportWidth,
+                    height: exportHeight
                 });
             } catch (error) {
                 console.error('Error during export:', error);
@@ -122,7 +136,7 @@ export function useChartExport(options?: {
         }
     }, [chartConfig, chartType, showImages, showLabels, fillArea, showBorder]);
 
-    const handleExportJPEG = useCallback(() => {
+    const handleExportJPEG = useCallback((exportScale: number = 4) => {
         // Clear decoration selection before export so selection handles don't appear
         useDecorationStore.getState().setSelectedShapeId(null);
         useDecorationStore.getState().setSelectedShapeIds([]);
@@ -131,14 +145,29 @@ export function useChartExport(options?: {
         const chartInstance = getGlobalChartRef()?.current;
         const bgConfig = getBackgroundConfig(chartConfig);
 
+        let exportWidth: number | undefined;
+        let exportHeight: number | undefined;
+        if ((chartConfig as any)?.width) {
+            const w = parseInt(String((chartConfig as any).width), 10);
+            if (!isNaN(w) && w > 0) exportWidth = w;
+        }
+        if ((chartConfig as any)?.height) {
+            const h = parseInt(String((chartConfig as any).height), 10);
+            if (!isNaN(h) && h > 0) exportHeight = h;
+        }
+
         if (chartInstance.exportToImage) {
             try {
                 chartInstance.exportToImage({
+                    format: 'jpeg',
                     background: bgConfig.type === 'transparent'
                         ? { type: 'color', color: '#ffffff' }  // JPEG needs a solid background
                         : bgConfig,
                     fileNamePrefix: 'chart',
-                    quality: 0.95
+                    quality: 0.95,
+                    exportScale,
+                    width: exportWidth,
+                    height: exportHeight
                 });
             } catch (error) {
                 console.error('Error during JPEG export:', error);

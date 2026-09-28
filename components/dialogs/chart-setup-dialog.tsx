@@ -1139,24 +1139,24 @@ export function ChartSetupDialog({
       <DialogContent
         disableAnimation={true}
         onOpenAutoFocus={(e) => e.preventDefault()}
-        className={`w-full max-h-[92vh] h-[min(720px,90vh)] flex flex-col overflow-hidden p-0 gap-0 ${step === 2 ? 'max-w-[850px]' : 'max-w-[720px]'}`}
+        className={`w-[96vw] sm:w-full max-h-[94vh] h-[min(720px,92vh)] flex flex-col overflow-hidden p-0 gap-0 ${step === 2 ? 'max-w-[850px]' : 'max-w-[720px]'}`}
       >
 
         {/* ── Header ── */}
-        <DialogHeader className={`px-6 pt-5 pb-4 flex-shrink-0 ${step === 2 ? 'border-b border-gray-100 bg-white' : ''}`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-3">
+        <DialogHeader className={`px-4 sm:px-6 pt-3.5 sm:pt-5 pb-3 sm:pb-4 flex-shrink-0 ${step === 2 ? 'border-b border-gray-100 bg-white' : ''}`}>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-4 w-full">
+              <div className="flex items-center gap-2.5 sm:gap-3">
                 {step === 2 && !hideBackButton && (
-                  <Button variant="ghost" size="icon" onClick={() => setStep(1)} className="h-8 w-8 -ml-2 text-gray-500 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-full transition-colors">
+                  <Button variant="ghost" size="icon" onClick={() => setStep(1)} className="h-8 w-8 -ml-1 text-gray-500 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0">
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
                 )}
-                <div className="flex items-center gap-2.5">
-                  <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg shadow-sm border border-blue-100/50">
+                <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                  <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg shadow-sm border border-blue-100/50 flex-shrink-0">
                     <TableProperties className="w-5 h-5" />
                   </div>
-                  <DialogTitle className="text-xl font-bold text-gray-900 tracking-tight">
+                  <DialogTitle className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight truncate">
                     {step === 1 ? title : (step2Title || "Initialize")}
                   </DialogTitle>
                 </div>
@@ -1164,9 +1164,9 @@ export function ChartSetupDialog({
 
               {step === 2 && (
                 <>
-                  <div className="h-6 w-px bg-gray-200 mx-1" />
-                  <div className="flex items-center h-8 border border-gray-200 rounded-lg shadow-sm overflow-hidden focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100/50 transition-all bg-white ml-1">
-                    <div className="flex items-center justify-center h-full px-2.5 bg-gray-100 border-r border-gray-200">
+                  <div className="hidden sm:block h-6 w-px bg-gray-200 mx-1 flex-shrink-0" />
+                  <div className="flex items-center h-8 border border-gray-200 rounded-lg shadow-sm overflow-hidden focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100/50 transition-all bg-white w-full sm:w-auto">
+                    <div className="flex items-center justify-center h-full px-2 sm:px-2.5 bg-gray-100 border-r border-gray-200 flex-shrink-0">
                       <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap m-0 cursor-default">
                         {datasetType === 'grouped' ? 'Group Name' : 'Chart Name'}
                       </Label>
@@ -1176,7 +1176,7 @@ export function ChartSetupDialog({
                         type="text"
                         value={groupName}
                         onChange={(e) => setGroupName(e.target.value)}
-                        className="h-full w-[320px] border-none focus-visible:ring-0 focus-visible:ring-offset-0 pl-2.5 pr-8 text-sm font-semibold text-gray-800 shadow-none bg-white rounded-none"
+                        className="h-full w-full sm:w-[220px] md:w-[300px] border-none focus-visible:ring-0 focus-visible:ring-offset-0 pl-2.5 pr-8 text-sm font-semibold text-gray-800 shadow-none bg-white rounded-none"
                         placeholder={datasetType === 'grouped' ? 'Enter group name' : 'Enter chart name'}
                       />
                       <Pencil className="absolute right-2.5 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
@@ -1190,9 +1190,9 @@ export function ChartSetupDialog({
 
         {/* ── Step 1: Dimensions ── */}
         {step === 1 && (
-          <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-0 overflow-hidden">
+          <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-0 overflow-y-auto md:overflow-hidden">
             {/* ── Left: Presets ── */}
-            <div className="md:w-[55%] border-r border-gray-100 overflow-y-auto px-4 pb-4">
+            <div className="w-full md:w-[55%] border-b md:border-b-0 md:border-r border-gray-100 overflow-y-auto px-4 pb-4 max-h-[45vh] md:max-h-none flex-shrink-0 md:flex-shrink">
               {DIMENSION_PRESETS.map((category) => (
                 <div key={category.label} className="mb-3">
                   <button
@@ -1270,7 +1270,7 @@ export function ChartSetupDialog({
             </div>
 
             {/* ── Right: Custom + Preview ── */}
-            <div className="md:w-[45%] px-5 pb-5 pt-2 flex flex-col gap-4 overflow-y-auto">
+            <div className="w-full md:w-[45%] px-4 sm:px-5 pb-5 pt-3 md:pt-2 flex flex-col gap-4 overflow-y-auto flex-1">
 
               <div>
                 <Label className="text-xs font-medium text-gray-600 mb-1.5 block">Unit</Label>
@@ -1369,8 +1369,8 @@ export function ChartSetupDialog({
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
             {/* Header Configuration */}
             <div className="px-4 py-2.5 bg-white border-b border-gray-100 flex-shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="flex-1">
+              <div className={cn("grid gap-2.5 items-start", datasetType === 'grouped' ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-4" : "grid-cols-1 sm:grid-cols-3")}>
+                <div className="w-full">
                   <Label className="text-xs font-medium text-gray-600 mb-1.5 block">Dataset Name</Label>
                   <Input
                     value={datasetName}
@@ -1379,7 +1379,7 @@ export function ChartSetupDialog({
                     placeholder="e.g. Q1 Sales"
                   />
                 </div>
-                <div className="flex-1">
+                <div className="w-full">
                   <Label className="text-xs font-medium text-gray-600 mb-1.5 block">Category</Label>
                   {(() => {
                     const isCategoryDisabled = datasetType === 'grouped' && datasets.length > 0 && activeDatasetId !== datasets[0].id;
@@ -1419,7 +1419,7 @@ export function ChartSetupDialog({
                     );
                   })()}
                 </div>
-                <div className="flex-1">
+                <div className="w-full">
                   <Label className="text-xs font-medium text-gray-600 mb-1.5 block">Chart Type</Label>
                   {(() => {
                     const isTypeDisabled = uniformityMode === 'uniform' && datasetType === 'grouped' && datasets.length > 0 && activeDatasetId !== datasets[0].id;
@@ -1463,7 +1463,7 @@ export function ChartSetupDialog({
 
                 {/* Group Mode (if applicable) seamlessly fits into the same row */}
                 {datasetType === 'grouped' && (
-                  <div className="flex-[0.8]">
+                  <div className="w-full">
                     <div className="flex items-center gap-1.5 mb-1.5">
                       <Label className="text-xs font-medium text-gray-600 block">Group Mode</Label>
                       <Popover>
@@ -1651,8 +1651,11 @@ export function ChartSetupDialog({
               </div>
             )}
 
-            {/* Data Grid Header */}
-            <div className="flex items-center gap-1.5 px-2 py-1.5 bg-gray-50 border-b border-gray-100 text-[10px] font-semibold text-gray-500 uppercase tracking-wider mx-1 flex-shrink-0">
+            {/* Data Grid Scroll Container */}
+            <div className="flex-1 min-h-0 flex flex-col overflow-x-auto">
+              <div className="min-w-[500px] sm:min-w-0 flex-1 flex flex-col min-h-0">
+                {/* Data Grid Header */}
+                <div className="flex items-center gap-1.5 px-2 py-1.5 bg-gray-50 border-b border-gray-100 text-[10px] font-semibold text-gray-500 uppercase tracking-wider mx-1 flex-shrink-0">
               <div className="w-5 flex-shrink-0" />
               <div className="grid grid-cols-12 gap-2 flex-1 items-center">
                 {chartCategory === 'coordinate' ? (
@@ -2189,9 +2192,12 @@ export function ChartSetupDialog({
               )}
             </div>
 
+              </div>
+            </div>
+
             {/* Footer */}
-            <div className="p-4 bg-white border-t border-gray-100 flex items-center justify-between flex-shrink-0">
-              <div className="flex items-center gap-2">
+            <div className="p-3 sm:p-4 bg-white border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 flex-shrink-0">
+              <div className="flex flex-wrap items-center gap-2">
                 {canEditSlices ? (
                   <Button
                     variant="outline"
@@ -2286,7 +2292,7 @@ export function ChartSetupDialog({
               <Button
                 onClick={handleConfirm}
                 disabled={!datasetName.trim()}
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200"
+                className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium shadow-md hover:shadow-lg transition-all duration-200"
               >
                 {confirmButtonText || "Create Chart"}
               </Button>

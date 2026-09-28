@@ -376,18 +376,22 @@ export const useChatStore = create<ChatStore>()(
                 // Provide a clean context hint about the active format
                 finalInput += `\n[Format Context: "${formatStructure.formatName}" (${formatStructure.dimensions.aspect}, theme: ${formatStructure.theme.mood})]`;
               }
+            } else {
+              // User is in format mode without selecting a specific layout yet (wants AI content bank for gallery)
+              formatStructureData = { isGenericFormat: true };
             }
           } catch (e) {
             console.warn('Could not inject format structure:', e);
           }
         } else {
           // If we are generating a standard chart or template (NOT format mode), 
-          // clear any existing format data so 'Browse Formats' doesn't persist
+          // clear any existing format data and close content bank
           try {
             const galleryStore = useFormatGalleryStore.getState();
             galleryStore.setContentPackage(null);
             galleryStore.setSelectedFormat(null, 'bar');
             galleryStore.setContextualImageUrl(null);
+            galleryStore.closeContentBank();
           } catch (e) {
             console.warn('Could not clear format store data:', e);
           }

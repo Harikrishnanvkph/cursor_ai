@@ -194,10 +194,19 @@ body {
 .format-text-zone li {
   margin: 0.2em 0 !important;
   line-height: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
 }
 
 .format-text-zone p {
-  margin: 0 0 0.25em 0 !important;
+  margin: 0 0 0.25em 0;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  text-align: inherit;
 }
 
 .html-content-area mark {
@@ -585,4 +594,26 @@ body {
 * {
   scrollbar-width: thin;
   scrollbar-color: rgba(156, 163, 175, 0.25) transparent;
+}
+
+/* Invisible scrollbar utility to avoid layout width shifts in WYSIWYG editors */
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+.no-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+/* Ensure tiptap in format editor matches format-text-zone typography identically */
+.tiptap.format-text-zone {
+  word-break: break-word !important;
+  white-space: normal !important;
+}
+.tiptap.format-text-zone p {
+  margin: 0 0 0.25em 0;
+  font-family: inherit;
+  color: inherit;
 }

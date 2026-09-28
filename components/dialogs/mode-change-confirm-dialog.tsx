@@ -48,7 +48,7 @@ export function ModeChangeConfirmDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="sm:max-w-[450px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl rounded-xl">
+      <AlertDialogContent className="w-[92vw] sm:w-full sm:max-w-[450px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl rounded-xl">
         <AlertDialogHeader className="space-y-3">
           <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
             <div className="p-2 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg">

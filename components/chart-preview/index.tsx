@@ -572,6 +572,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
           zoomPan={zoomPan}
           handleFullscreen={fullscreen.handleFullscreen}
           handleExport={exports.handleExport}
+          exports={exports}
           showLeftOverlay={fullscreen.showLeftOverlay}
           showRightOverlay={fullscreen.showRightOverlay}
           setShowLeftOverlay={fullscreen.setShowLeftOverlay}

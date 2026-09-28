@@ -76,7 +76,7 @@ export function ClearChartDialog({
 
     return (
         <AlertDialog open={open} onOpenChange={onOpenChange}>
-            <AlertDialogContent className="sm:max-w-[500px]">
+            <AlertDialogContent className="w-[92vw] sm:w-full sm:max-w-[500px]">
                 <AlertDialogHeader>
                     <AlertDialogTitle>Clear Local Workspace</AlertDialogTitle>
                     <AlertDialogDescription>

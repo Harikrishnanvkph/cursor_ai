@@ -117,15 +117,95 @@ const LineHeightExtension = Extension.create({
 
     addCommands() {
         return {
-            setLineHeight: (lineHeight: string) => ({ commands }: { commands: any }) => {
-                return this.options.types.every((type: string) =>
-                    commands.updateAttributes(type, { lineHeight })
-                )
+            setLineHeight: (lineHeight: string) => ({ tr, state, dispatch }: { tr: any; state: any; dispatch?: any }) => {
+                const { selection } = state
+                const { from, to } = selection
+                const types = this.options.types
+                const tasks = new Map<number, any>()
+
+                state.doc.nodesBetween(from, to, (node: any, pos: number) => {
+                    if (types.includes(node.type.name)) {
+                        tasks.set(pos, node)
+                        return false
+                    }
+                })
+
+                if (tasks.size === 0 && selection.$from) {
+                    for (let d = selection.$from.depth; d > 0; d--) {
+                        const parent = selection.$from.node(d)
+                        if (types.includes(parent.type.name)) {
+                            tasks.set(selection.$from.before(d), parent)
+                            break
+                        }
+                    }
+                }
+
+                if (tasks.size === 0) {
+                    state.doc.descendants((node: any, pos: number) => {
+                        if (types.includes(node.type.name)) {
+                            tasks.set(pos, node)
+                            return false
+                        }
+                    })
+                }
+
+                if (tasks.size === 0) return false
+
+                if (dispatch) {
+                    tasks.forEach((node, pos) => {
+                        tr = tr.setNodeMarkup(pos, undefined, {
+                            ...node.attrs,
+                            lineHeight
+                        })
+                    })
+                    dispatch(tr)
+                }
+                return true
             },
-            unsetLineHeight: () => ({ commands }: { commands: any }) => {
-                return this.options.types.every((type: string) =>
-                    commands.resetAttributes(type, 'lineHeight')
-                )
+            unsetLineHeight: () => ({ tr, state, dispatch }: { tr: any; state: any; dispatch?: any }) => {
+                const { selection } = state
+                const { from, to } = selection
+                const types = this.options.types
+                const tasks = new Map<number, any>()
+
+                state.doc.nodesBetween(from, to, (node: any, pos: number) => {
+                    if (types.includes(node.type.name)) {
+                        tasks.set(pos, node)
+                        return false
+                    }
+                })
+
+                if (tasks.size === 0 && selection.$from) {
+                    for (let d = selection.$from.depth; d > 0; d--) {
+                        const parent = selection.$from.node(d)
+                        if (types.includes(parent.type.name)) {
+                            tasks.set(selection.$from.before(d), parent)
+                            break
+                        }
+                    }
+                }
+
+                if (tasks.size === 0) {
+                    state.doc.descendants((node: any, pos: number) => {
+                        if (types.includes(node.type.name)) {
+                            tasks.set(pos, node)
+                            return false
+                        }
+                    })
+                }
+
+                if (tasks.size === 0) return false
+
+                if (dispatch) {
+                    tasks.forEach((node, pos) => {
+                        tr = tr.setNodeMarkup(pos, undefined, {
+                            ...node.attrs,
+                            lineHeight: null
+                        })
+                    })
+                    dispatch(tr)
+                }
+                return true
             }
         } as any
     }
@@ -162,15 +242,95 @@ const LetterSpacingExtension = Extension.create({
 
     addCommands() {
         return {
-            setLetterSpacing: (letterSpacing: string) => ({ commands }: { commands: any }) => {
-                return this.options.types.every((type: string) =>
-                    commands.updateAttributes(type, { letterSpacing })
-                )
+            setLetterSpacing: (letterSpacing: string) => ({ tr, state, dispatch }: { tr: any; state: any; dispatch?: any }) => {
+                const { selection } = state
+                const { from, to } = selection
+                const types = this.options.types
+                const tasks = new Map<number, any>()
+
+                state.doc.nodesBetween(from, to, (node: any, pos: number) => {
+                    if (types.includes(node.type.name)) {
+                        tasks.set(pos, node)
+                        return false
+                    }
+                })
+
+                if (tasks.size === 0 && selection.$from) {
+                    for (let d = selection.$from.depth; d > 0; d--) {
+                        const parent = selection.$from.node(d)
+                        if (types.includes(parent.type.name)) {
+                            tasks.set(selection.$from.before(d), parent)
+                            break
+                        }
+                    }
+                }
+
+                if (tasks.size === 0) {
+                    state.doc.descendants((node: any, pos: number) => {
+                        if (types.includes(node.type.name)) {
+                            tasks.set(pos, node)
+                            return false
+                        }
+                    })
+                }
+
+                if (tasks.size === 0) return false
+
+                if (dispatch) {
+                    tasks.forEach((node, pos) => {
+                        tr = tr.setNodeMarkup(pos, undefined, {
+                            ...node.attrs,
+                            letterSpacing
+                        })
+                    })
+                    dispatch(tr)
+                }
+                return true
             },
-            unsetLetterSpacing: () => ({ commands }: { commands: any }) => {
-                return this.options.types.every((type: string) =>
-                    commands.resetAttributes(type, 'letterSpacing')
-                )
+            unsetLetterSpacing: () => ({ tr, state, dispatch }: { tr: any; state: any; dispatch?: any }) => {
+                const { selection } = state
+                const { from, to } = selection
+                const types = this.options.types
+                const tasks = new Map<number, any>()
+
+                state.doc.nodesBetween(from, to, (node: any, pos: number) => {
+                    if (types.includes(node.type.name)) {
+                        tasks.set(pos, node)
+                        return false
+                    }
+                })
+
+                if (tasks.size === 0 && selection.$from) {
+                    for (let d = selection.$from.depth; d > 0; d--) {
+                        const parent = selection.$from.node(d)
+                        if (types.includes(parent.type.name)) {
+                            tasks.set(selection.$from.before(d), parent)
+                            break
+                        }
+                    }
+                }
+
+                if (tasks.size === 0) {
+                    state.doc.descendants((node: any, pos: number) => {
+                        if (types.includes(node.type.name)) {
+                            tasks.set(pos, node)
+                            return false
+                        }
+                    })
+                }
+
+                if (tasks.size === 0) return false
+
+                if (dispatch) {
+                    tasks.forEach((node, pos) => {
+                        tr = tr.setNodeMarkup(pos, undefined, {
+                            ...node.attrs,
+                            letterSpacing: null
+                        })
+                    })
+                    dispatch(tr)
+                }
+                return true
             }
         } as any
     }
@@ -214,15 +374,97 @@ const ParagraphSpacingExtension = Extension.create({
 
     addCommands() {
         return {
-            setParagraphSpacing: (spacing: string) => ({ commands }: { commands: any }) => {
-                return this.options.types.every((type: string) =>
-                    commands.updateAttributes(type, { marginTop: spacing, marginBottom: spacing })
-                )
+            setParagraphSpacing: (spacing: string) => ({ tr, state, dispatch }: { tr: any; state: any; dispatch?: any }) => {
+                const { selection } = state
+                const { from, to } = selection
+                const types = this.options.types
+                const tasks = new Map<number, any>()
+
+                state.doc.nodesBetween(from, to, (node: any, pos: number) => {
+                    if (types.includes(node.type.name)) {
+                        tasks.set(pos, node)
+                        return false
+                    }
+                })
+
+                if (tasks.size === 0 && selection.$from) {
+                    for (let d = selection.$from.depth; d > 0; d--) {
+                        const parent = selection.$from.node(d)
+                        if (types.includes(parent.type.name)) {
+                            tasks.set(selection.$from.before(d), parent)
+                            break
+                        }
+                    }
+                }
+
+                if (tasks.size === 0) {
+                    state.doc.descendants((node: any, pos: number) => {
+                        if (types.includes(node.type.name)) {
+                            tasks.set(pos, node)
+                            return false
+                        }
+                    })
+                }
+
+                if (tasks.size === 0) return false
+
+                if (dispatch) {
+                    tasks.forEach((node, pos) => {
+                        tr = tr.setNodeMarkup(pos, undefined, {
+                            ...node.attrs,
+                            marginTop: spacing,
+                            marginBottom: spacing
+                        })
+                    })
+                    dispatch(tr)
+                }
+                return true
             },
-            unsetParagraphSpacing: () => ({ commands }: { commands: any }) => {
-                return this.options.types.every((type: string) =>
-                    commands.resetAttributes(type, ['marginTop', 'marginBottom'])
-                )
+            unsetParagraphSpacing: () => ({ tr, state, dispatch }: { tr: any; state: any; dispatch?: any }) => {
+                const { selection } = state
+                const { from, to } = selection
+                const types = this.options.types
+                const tasks = new Map<number, any>()
+
+                state.doc.nodesBetween(from, to, (node: any, pos: number) => {
+                    if (types.includes(node.type.name)) {
+                        tasks.set(pos, node)
+                        return false
+                    }
+                })
+
+                if (tasks.size === 0 && selection.$from) {
+                    for (let d = selection.$from.depth; d > 0; d--) {
+                        const parent = selection.$from.node(d)
+                        if (types.includes(parent.type.name)) {
+                            tasks.set(selection.$from.before(d), parent)
+                            break
+                        }
+                    }
+                }
+
+                if (tasks.size === 0) {
+                    state.doc.descendants((node: any, pos: number) => {
+                        if (types.includes(node.type.name)) {
+                            tasks.set(pos, node)
+                            return false
+                        }
+                    })
+                }
+
+                if (tasks.size === 0) return false
+
+                if (dispatch) {
+                    tasks.forEach((node, pos) => {
+                        tr = tr.setNodeMarkup(pos, undefined, {
+                            ...node.attrs,
+                            marginTop: null,
+                            marginBottom: null
+                        })
+                    })
+                    dispatch(tr)
+                }
+                return true
             }
         } as any
     }
@@ -372,8 +614,11 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
     if (contentStyle?.textTransform && contentStyle.textTransform !== 'none') editorStyleParts.push(`text-transform: ${contentStyle.textTransform}`)
     if (contentStyle?.textAlign) editorStyleParts.push(`text-align: ${contentStyle.textAlign}`)
     if (contentStyle?.color) editorStyleParts.push(`color: ${contentStyle.color}`)
-    if (contentStyle?.lineHeight) editorStyleParts.push(`line-height: ${contentStyle.lineHeight}`)
+    editorStyleParts.push(`line-height: ${contentStyle?.lineHeight || 1.6}`)
     if (contentStyle?.letterSpacing) editorStyleParts.push(`letter-spacing: ${contentStyle.letterSpacing}px`)
+    editorStyleParts.push('word-break: break-word')
+    editorStyleParts.push('box-sizing: border-box')
+    editorStyleParts.push('white-space: normal')
     const editorStyleString = editorStyleParts.join('; ')
 
     const editor = useEditor({
@@ -440,7 +685,7 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
         },
         editorProps: {
             attributes: {
-                class: `tiptap max-w-none focus:outline-none box-border ${zoneDimensions ? 'min-h-[60px] p-1' : 'min-h-[350px] p-4'}`,
+                class: `tiptap max-w-none focus:outline-none box-border format-text-zone html-content-area ${zoneDimensions ? 'min-h-full p-1' : 'min-h-[350px] p-4'}`,
                 style: editorStyleString
             }
         }
@@ -498,7 +743,7 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
         const containerWidth = container.clientWidth - 32 // 16px padding on both sides
         const containerHeight = container.clientHeight - 32 // 16px padding on top/bottom
         const zoneW = zoneDimensions.width
-        const zoneH = Math.max(zoneDimensions.height, 160)
+        const zoneH = zoneDimensions.height
         if (containerWidth > 0 && containerHeight > 0 && zoneW > 0 && zoneH > 0) {
             const scaleX = containerWidth / zoneW
             const scaleY = containerHeight / zoneH
@@ -632,22 +877,26 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
     // Get current line height from the active node
     const getCurrentLineHeight = () => {
         if (!editor) return contentStyle?.lineHeight ? String(contentStyle.lineHeight) : ''
-        const { lineHeight } = editor.getAttributes('paragraph')
-        return lineHeight || (contentStyle?.lineHeight ? String(contentStyle.lineHeight) : '')
+        const pAttrs = editor.getAttributes('paragraph')
+        const hAttrs = editor.getAttributes('heading')
+        return pAttrs.lineHeight || hAttrs.lineHeight || (contentStyle?.lineHeight ? String(contentStyle.lineHeight) : '')
     }
 
     // Get current letter spacing from the active node
     const getCurrentLetterSpacing = () => {
         if (!editor) return contentStyle?.letterSpacing ? `${contentStyle.letterSpacing}px` : ''
-        const { letterSpacing } = editor.getAttributes('paragraph')
-        return letterSpacing || (contentStyle?.letterSpacing ? `${contentStyle.letterSpacing}px` : '')
+        const pAttrs = editor.getAttributes('paragraph')
+        const hAttrs = editor.getAttributes('heading')
+        const spacing = pAttrs.letterSpacing || hAttrs.letterSpacing
+        return spacing || (contentStyle?.letterSpacing ? `${contentStyle.letterSpacing}px` : '')
     }
 
     // Get current paragraph spacing from the active node
     const getCurrentParagraphSpacing = () => {
         if (!editor) return ''
-        const { marginBottom } = editor.getAttributes('paragraph')
-        return marginBottom || ''
+        const pAttrs = editor.getAttributes('paragraph')
+        const hAttrs = editor.getAttributes('heading')
+        return pAttrs.marginBottom || hAttrs.marginBottom || ''
     }
 
     // Get current text color
@@ -804,11 +1053,12 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
                                             ? 'bg-blue-50 text-blue-700 font-medium'
                                             : 'text-gray-700'
                                     }`}
+                                    onMouseDown={(e) => e.preventDefault()}
                                     onClick={() => {
                                         if (opt.value === 'default') {
-                                            (editor.commands as any).unsetLineHeight()
+                                            (editor.chain().focus() as any).unsetLineHeight().run()
                                         } else {
-                                            (editor.commands as any).setLineHeight(opt.value)
+                                            (editor.chain().focus() as any).setLineHeight(opt.value).run()
                                         }
                                     }}
                                 >
@@ -861,11 +1111,12 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
                                             ? 'bg-blue-50 text-blue-700 font-medium'
                                             : 'text-gray-700'
                                     }`}
+                                    onMouseDown={(e) => e.preventDefault()}
                                     onClick={() => {
                                         if (opt.value === 'default') {
-                                            (editor.commands as any).unsetLetterSpacing()
+                                            (editor.chain().focus() as any).unsetLetterSpacing().run()
                                         } else {
-                                            (editor.commands as any).setLetterSpacing(opt.value)
+                                            (editor.chain().focus() as any).setLetterSpacing(opt.value).run()
                                         }
                                     }}
                                 >
@@ -918,11 +1169,12 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
                                             ? 'bg-blue-50 text-blue-700 font-medium'
                                             : 'text-gray-700'
                                     }`}
+                                    onMouseDown={(e) => e.preventDefault()}
                                     onClick={() => {
                                         if (opt.value === 'default') {
-                                            (editor.commands as any).unsetParagraphSpacing()
+                                            (editor.chain().focus() as any).unsetParagraphSpacing().run()
                                         } else {
-                                            (editor.commands as any).setParagraphSpacing(opt.value)
+                                            (editor.chain().focus() as any).setParagraphSpacing(opt.value).run()
                                         }
                                     }}
                                 >
@@ -1391,57 +1643,32 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
                         <div
                             style={{
                                 width: `${zoneDimensions.width * editorScale}px`,
-                                minHeight: `${Math.max(zoneDimensions.height, 160) * editorScale}px`,
+                                height: `${zoneDimensions.height * editorScale}px`,
                                 flexShrink: 0,
-                                margin: '0 auto',
-                                position: 'relative'
+                                margin: 'auto',
+                                position: 'relative',
+                                overflow: 'hidden'
                             }}
                         >
                             <div
                                 style={{
                                     width: `${zoneDimensions.width}px`,
-                                    minHeight: `${Math.max(zoneDimensions.height, 160)}px`,
+                                    height: `${zoneDimensions.height}px`,
                                     transform: `scale(${editorScale})`,
                                     transformOrigin: 'top left',
                                     boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
                                     background: editorBg === 'black' ? '#111827' : '#ffffff',
-                                    borderRadius: '4px',
-                                    overflow: 'visible',
+                                    borderRadius: 0,
+                                    overflow: 'hidden',
                                     position: 'relative',
                                     textAlign: (contentStyle?.textAlign as any) || 'inherit'
                                 }}
                             >
-                                <EditorContent editor={editor} className="min-h-full" />
-                                {zoneDimensions.height < 160 && (
-                                    <div
-                                        style={{
-                                            position: 'absolute',
-                                            top: `${zoneDimensions.height}px`,
-                                            left: 0,
-                                            right: 0,
-                                            borderTop: '1.5px dashed #93c5fd',
-                                            pointerEvents: 'none',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'flex-end',
-                                            paddingRight: '8px',
-                                            paddingTop: '2px',
-                                            zIndex: 20
-                                        }}
-                                    >
-                                        <span style={{
-                                            fontSize: '9px',
-                                            fontWeight: 600,
-                                            color: '#3b82f6',
-                                            backgroundColor: editorBg === 'black' ? '#1f2937' : '#eff6ff',
-                                            padding: '1px 6px',
-                                            borderRadius: '3px',
-                                            border: '1px solid #bfdbfe'
-                                        }}>
-                                            Canvas Slot Height ({zoneDimensions.height}px)
-                                        </span>
-                                    </div>
-                                )}
+                                <EditorContent
+                                    editor={editor}
+                                    className="h-full overflow-y-auto no-scrollbar"
+                                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                                />
                             </div>
                         </div>
                     </div>
@@ -1450,48 +1677,22 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
                         <div
                             style={{
                                 width: `${zoneDimensions.width}px`,
-                                minHeight: `${Math.max(zoneDimensions.height, 160)}px`,
+                                height: `${zoneDimensions.height}px`,
                                 boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
                                 background: editorBg === 'black' ? '#111827' : '#ffffff',
-                                borderRadius: '4px',
-                                overflow: 'visible',
+                                borderRadius: 0,
+                                overflow: 'hidden',
                                 flexShrink: 0,
-                                margin: '0 auto',
+                                margin: 'auto',
                                 position: 'relative',
                                 textAlign: (contentStyle?.textAlign as any) || 'inherit'
                             }}
                         >
-                            <EditorContent editor={editor} className="min-h-full" />
-                            {zoneDimensions.height < 160 && (
-                                <div
-                                    style={{
-                                        position: 'absolute',
-                                        top: `${zoneDimensions.height}px`,
-                                        left: 0,
-                                        right: 0,
-                                        borderTop: '1.5px dashed #93c5fd',
-                                        pointerEvents: 'none',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'flex-end',
-                                        paddingRight: '8px',
-                                        paddingTop: '2px',
-                                        zIndex: 20
-                                    }}
-                                >
-                                    <span style={{
-                                        fontSize: '9px',
-                                        fontWeight: 600,
-                                        color: '#3b82f6',
-                                        backgroundColor: editorBg === 'black' ? '#1f2937' : '#eff6ff',
-                                        padding: '1px 6px',
-                                        borderRadius: '3px',
-                                        border: '1px solid #bfdbfe'
-                                    }}>
-                                        Canvas Slot Height ({zoneDimensions.height}px)
-                                    </span>
-                                </div>
-                            )}
+                            <EditorContent
+                                editor={editor}
+                                className="h-full overflow-y-auto no-scrollbar"
+                                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                            />
                         </div>
                     </div>
                 ) : (

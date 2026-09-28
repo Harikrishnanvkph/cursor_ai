@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useMemo } from "react"
+import React, { useState, useEffect, useMemo, useCallback } from "react"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import {
   Sparkles,
@@ -17,6 +17,8 @@ import {
   ExternalLink,
   Layers,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   RefreshCw,
   Info
 } from "lucide-react"
@@ -24,6 +26,116 @@ import { toast } from "sonner"
 import type { ContentBankTextBlock, ContentBankTitle, ContentBankSubtitle, ContentBankPhrase, ContentBankSliceImage } from "@/lib/format-types"
 
 type TabType = "all" | "text" | "titles" | "media" | "sources"
+
+/** Length tier badge colors */
+const LENGTH_BADGE: Record<string, { label: string; color: string }> = {
+  'extra-long': { label: '500w+', color: 'bg-red-50 text-red-700 border-red-200' },
+  'long': { label: '300w+', color: 'bg-orange-50 text-orange-700 border-orange-200' },
+  'medium-long': { label: '200w+', color: 'bg-amber-50 text-amber-700 border-amber-200' },
+  'medium': { label: '100w+', color: 'bg-blue-50 text-blue-700 border-blue-200' },
+  'short': { label: '50w+', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  'list': { label: 'Bullets', color: 'bg-purple-50 text-purple-700 border-purple-200' },
+}
+
+/** Collapsible text block card with word count badge and expand/collapse for long content */
+function TextBlockCard({
+  block,
+  htmlContent,
+  plainContent,
+  hasBullets,
+  wordCount,
+  isLongBlock,
+  copiedId,
+  onDragStart,
+  onCopy,
+  onApply,
+}: {
+  block: ContentBankTextBlock
+  htmlContent: string
+  plainContent: string
+  hasBullets: boolean
+  wordCount: number
+  isLongBlock: boolean
+  copiedId: string | null
+  onDragStart: (e: React.DragEvent, type: string, content: string, label: string, plainText?: string) => void
+  onCopy: (text: string, id: string) => void
+  onApply: (content: string, label: string) => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const badge = LENGTH_BADGE[block.length || ''] || { label: block.length || '', color: 'bg-gray-50 text-gray-600 border-gray-200' }
+  const PREVIEW_WORDS = 80
+  const displayText = isLongBlock && !expanded
+    ? block.text.split(/\s+/).slice(0, PREVIEW_WORDS).join(' ') + '…'
+    : block.text
+
+  return (
+    <div
+      draggable={true}
+      onDragStart={(e) => onDragStart(e, "text", htmlContent, block.category, plainContent)}
+      className="group bg-white rounded-xl border border-gray-200/80 p-3 hover:border-purple-300 hover:shadow-md transition-all cursor-grab active:cursor-grabbing relative overflow-hidden"
+    >
+      <div className="flex items-start justify-between gap-2 mb-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-gray-300 group-hover:text-purple-500 transition-colors">
+            <GripVertical className="w-3.5 h-3.5" />
+          </span>
+          <span className="text-[11px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200/60">
+            {block.category}
+          </span>
+          {hasBullets ? (
+            <span className="text-[10px] font-bold bg-purple-100/70 text-purple-700 px-1.5 py-0.5 rounded border border-purple-200">
+              {block.bullets!.length} bullets
+            </span>
+          ) : (
+            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${badge.color}`}>
+              {badge.label} · {wordCount}w
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity shrink-0">
+          <button
+            onClick={() => onCopy(plainContent, block.id)}
+            className="p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+            title="Copy text & bullets"
+          >
+            {copiedId === block.id ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
+          </button>
+          <button
+            onClick={() => onApply(htmlContent, block.category)}
+            className="px-2 py-1 rounded bg-purple-50 hover:bg-purple-100 text-purple-700 text-[10px] font-semibold border border-purple-200/80 transition-all flex items-center gap-1"
+            title="Apply to selected zone"
+          >
+            <ArrowRightLeft className="w-3 h-3" />
+            <span>Apply</span>
+          </button>
+        </div>
+      </div>
+
+      <p className="text-xs text-gray-700 leading-relaxed font-normal">
+        {displayText}
+      </p>
+
+      {isLongBlock && (
+        <button
+          onClick={(e) => { e.stopPropagation(); setExpanded(!expanded) }}
+          className="mt-1.5 flex items-center gap-1 text-[10px] font-semibold text-purple-600 hover:text-purple-800 transition-colors"
+        >
+          {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          {expanded ? 'Show less' : `Show all ${wordCount} words`}
+        </button>
+      )}
+
+      {hasBullets && (
+        <ul className="mt-2 pl-4 list-disc space-y-0.5 text-[11px] text-gray-600">
+          {block.bullets!.map((b, bIdx) => (
+            <li key={bIdx}>{b}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
 
 export function ContentBankDrawer() {
   const {
@@ -193,7 +305,7 @@ function getBlockFormattedContent(block: ContentBankTextBlock, asHtml = true): s
     e.dataTransfer.effectAllowed = "copyMove"
   }
 
-  if (!isContentBankOpen) return null
+  if (!isContentBankOpen || !contentPackage) return null
 
   const textBlocks: ContentBankTextBlock[] = bank?.textBlocks || []
   const titles: ContentBankTitle[] = bank?.titles || []
@@ -297,64 +409,23 @@ function getBlockFormattedContent(block: ContentBankTextBlock, asHtml = true): s
                 const htmlContent = getBlockFormattedContent(block, true)
                 const plainContent = getBlockFormattedContent(block, false)
                 const hasBullets = Boolean(block.bullets && Array.isArray(block.bullets) && block.bullets.length > 0)
+                const wordCount = block.text ? block.text.split(/\s+/).filter(Boolean).length : 0
+                const isLongBlock = wordCount > 120
 
                 return (
-                  <div
+                  <TextBlockCard
                     key={block.id}
-                    draggable={true}
-                    onDragStart={(e) => handleDragStart(e, "text", htmlContent, block.category, plainContent)}
-                    className="group bg-white rounded-xl border border-gray-200/80 p-3 hover:border-purple-300 hover:shadow-md transition-all cursor-grab active:cursor-grabbing relative overflow-hidden"
-                  >
-                    <div className="flex items-start justify-between gap-2 mb-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-gray-300 group-hover:text-purple-500 transition-colors">
-                          <GripVertical className="w-3.5 h-3.5" />
-                        </span>
-                        <span className="text-[11px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200/60">
-                          {block.category}
-                        </span>
-                        {hasBullets ? (
-                          <span className="text-[10px] text-purple-700 font-bold bg-purple-100/70 px-1.5 py-0.5 rounded border border-purple-200">
-                            {block.bullets!.length} bullets
-                          </span>
-                        ) : block.length ? (
-                          <span className="text-[10px] text-gray-400 font-medium">
-                            {block.length} · {block.text.length} chars
-                          </span>
-                        ) : null}
-                      </div>
-
-                      <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => handleCopy(plainContent, block.id)}
-                          className="p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                          title="Copy text & bullets"
-                        >
-                          {copiedId === block.id ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
-                        </button>
-                        <button
-                          onClick={() => handleApplyToZone(htmlContent, block.category)}
-                          className="px-2 py-1 rounded bg-purple-50 hover:bg-purple-100 text-purple-700 text-[10px] font-semibold border border-purple-200/80 transition-all flex items-center gap-1"
-                          title="Apply to selected zone"
-                        >
-                          <ArrowRightLeft className="w-3 h-3" />
-                          <span>Apply</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    <p className="text-xs text-gray-700 leading-relaxed font-normal">
-                      {block.text}
-                    </p>
-
-                    {hasBullets && (
-                      <ul className="mt-2 pl-4 list-disc space-y-0.5 text-[11px] text-gray-600">
-                        {block.bullets!.map((b, bIdx) => (
-                          <li key={bIdx}>{b}</li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
+                    block={block}
+                    htmlContent={htmlContent}
+                    plainContent={plainContent}
+                    hasBullets={hasBullets}
+                    wordCount={wordCount}
+                    isLongBlock={isLongBlock}
+                    copiedId={copiedId}
+                    onDragStart={handleDragStart}
+                    onCopy={handleCopy}
+                    onApply={handleApplyToZone}
+                  />
                 )
               })}
             </div>

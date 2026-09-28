@@ -88,6 +88,11 @@ interface FormatGalleryStore {
   /** Zone being inline-edited (double-click to edit) */
   editingZoneId: string | null
   setEditingZoneId: (id: string | null) => void
+  /** Rich Text Editor Dialog state for deep content editing */
+  richEditorOpen: boolean
+  richEditorZoneId: string | null
+  openRichEditor: (zoneId: string) => void
+  closeRichEditor: () => void
   /** Update a specific zone's style in the selected format skeleton.
    *  Updates BOTH the in-memory formats[] AND the persisted snapshot. */
   updateZoneStyle: (zoneId: string, styleUpdates: Record<string, any>) => void
@@ -254,6 +259,10 @@ export const useFormatGalleryStore = create<FormatGalleryStore>()(
     setSelectedZoneId: (id) => set({ selectedZoneId: id, editingZoneId: null }),
     editingZoneId: null,
     setEditingZoneId: (id) => set({ editingZoneId: id }),
+    richEditorOpen: false,
+    richEditorZoneId: null,
+    openRichEditor: (zoneId) => set({ richEditorOpen: true, richEditorZoneId: zoneId }),
+    closeRichEditor: () => set({ richEditorOpen: false, richEditorZoneId: null }),
     updateZoneStyle: (zoneId, styleUpdates) => set((state) => {
       if (!state.selectedFormatId) return state
 

@@ -52,6 +52,31 @@ export interface ExportPluginOptions {
    * @default 1.0
    */
   quality?: number;
+
+  /**
+   * Export scale multiplier for high-DPI output.
+   * Higher values produce sharper, larger images.
+   * @default 2 (Standard)
+   */
+  exportScale?: number;
+
+  /**
+   * Export format ('png' or 'jpeg')
+   * @default 'png'
+   */
+  format?: 'png' | 'jpeg';
+
+  /**
+   * Explicit export width in logical pixels.
+   * If omitted, uses current chart logical width.
+   */
+  width?: number;
+
+  /**
+   * Explicit export height in logical pixels.
+   * If omitted, uses current chart logical height.
+   */
+  height?: number;
 }
 
 /**
@@ -86,7 +111,29 @@ const exportPlugin = {
     // Add export method to chart instance
     chart.exportToImage = async (options?: Partial<ExportPluginOptions>) => {
       const exportOptions = { ...pluginOptions, ...options };
+      const exportScale = typeof exportOptions.exportScale === 'number' ? exportOptions.exportScale : 2;
       const canvas = chart.canvas;
+      // High-DPI Chart Boost: Temporarily increase chart resolution for crystal-clear export
+      const origDpr = chart.options.devicePixelRatio || window.devicePixelRatio || 1;
+      const origWidth = chart.width;
+      const origHeight = chart.height;
+      const origStyleWidth = canvas.style.width;
+      const origStyleHeight = canvas.style.height;
+
+      // Target logical dimensions: prefer explicit options, fallback to existing chart dimensions
+      const targetWidth = exportOptions.width || origWidth;
+      const targetHeight = exportOptions.height || origHeight;
+
+      const shouldAdjustDpr = typeof exportScale === 'number' && exportScale !== origDpr;
+      if (shouldAdjustDpr) {
+        chart.options.devicePixelRatio = exportScale;
+        // MUST pass explicit (targetWidth, targetHeight) to prevent Chart.js
+        // from re-measuring canvas.parentNode.getBoundingClientRect() which is shrunk by CSS scale/zoom
+        chart.resize(targetWidth, targetHeight);
+        chart.update('none');
+        // Small delay to ensure high-DPI canvas buffer has painted
+        await new Promise(resolve => setTimeout(resolve, 80));
+      }
       const ctx = canvas.getContext('2d');
 
       if (!ctx) {
@@ -666,9 +713,13 @@ const exportPlugin = {
         }
 
         // Create download link
-        const url = tempCanvas.toDataURL('image/png', exportOptions.quality);
+        const isJpeg = exportOptions.format === 'jpeg';
+        const mimeType = isJpeg ? 'image/jpeg' : 'image/png';
+        const fileExt = isJpeg ? 'jpeg' : 'png';
+        const url = tempCanvas.toDataURL(mimeType, exportOptions.quality);
         const link = document.createElement('a');
-        link.download = exportOptions.fileName || `${exportOptions.fileNamePrefix}-${Date.now()}.png`;
+        const qualityTag = exportScale === 4 ? '4x-uhd' : exportScale === 3 ? '3x' : exportScale === 2 ? '2x' : '1x-normal';
+        link.download = exportOptions.fileName || `${exportOptions.fileNamePrefix}-${qualityTag}-${Date.now()}.${fileExt}`;
         link.href = url;
 
         // Trigger download
@@ -677,6 +728,23 @@ const exportPlugin = {
         document.body.removeChild(link);
       } catch (error) {
         console.error('Error exporting chart:', error);
+      } finally {
+        // Restore original chart DPR and dimensions after export
+        if (shouldAdjustDpr) {
+          chart.options.devicePixelRatio = origDpr;
+          chart.resize(targetWidth, targetHeight);
+          chart.update('none');
+          if (origStyleWidth) {
+            canvas.style.width = origStyleWidth;
+          } else {
+            canvas.style.removeProperty('width');
+          }
+          if (origStyleHeight) {
+            canvas.style.height = origStyleHeight;
+          } else {
+            canvas.style.removeProperty('height');
+          }
+        }
       }
     };
   },

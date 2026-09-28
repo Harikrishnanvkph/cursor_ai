@@ -298,10 +298,10 @@ export function PasteDataDialog({
         hideCloseButton={true}
         overlayClassName="bg-transparent"
         onOpenAutoFocus={(e) => e.preventDefault()}
-        className="w-full max-w-[850px] max-h-[92vh] h-[min(720px,90vh)] flex flex-col overflow-hidden p-0 gap-0 border border-gray-200 shadow-2xl sm:rounded-lg bg-white"
+        className="w-[96vw] sm:w-full max-w-[850px] max-h-[92vh] h-[min(720px,90vh)] flex flex-col overflow-hidden p-0 gap-0 border border-gray-200 shadow-2xl sm:rounded-lg bg-white"
       >
         {/* Header - Identical sizing & styling to parent Initialize dialog */}
-        <DialogHeader className="px-6 pt-5 pb-4 border-b border-gray-100 bg-white flex-shrink-0">
+        <DialogHeader className="px-4 sm:px-6 pt-3.5 sm:pt-5 pb-3 sm:pb-4 border-b border-gray-100 bg-white flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div
@@ -734,7 +734,7 @@ export function PasteDataDialog({
           </div>
 
           {/* Footer - Identical padding, height, and border to parent modal */}
-          <div className="p-4 bg-white border-t border-gray-100 flex items-center justify-between flex-shrink-0">
+          <div className="p-3 sm:p-4 bg-white border-t border-gray-100 flex flex-wrap items-center justify-between gap-2.5 flex-shrink-0">
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -802,7 +802,7 @@ export function PasteDataDialog({
               size="sm"
               onClick={handleApply}
               disabled={!canApply}
-              className={`h-9 px-5 text-xs font-bold text-white rounded-lg shadow-sm hover:shadow-md transition-all gap-1.5 flex items-center disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${
+              className={`h-9 px-5 text-xs font-bold text-white rounded-lg shadow-sm hover:shadow-md transition-all gap-1.5 flex items-center justify-center w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${
                 mode === 'edit'
                   ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
                   : "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700"
