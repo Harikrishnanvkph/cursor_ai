@@ -289,24 +289,6 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
     setShowClearDialog(true)
   }
 
-  const saveClickRef = useRef(handleSaveClick);
-  useEffect(() => {
-    saveClickRef.current = handleSaveClick;
-  });
-
-  useEffect(() => {
-    const handleTriggerSave = () => {
-      console.log("[ChartLayout] Received triggerSaveClick event! Invoking saveClickRef.current()");
-      saveClickRef.current();
-    };
-    window.addEventListener('triggerSaveClick', handleTriggerSave);
-    document.addEventListener('triggerSaveClick', handleTriggerSave);
-    return () => {
-      window.removeEventListener('triggerSaveClick', handleTriggerSave);
-      document.removeEventListener('triggerSaveClick', handleTriggerSave);
-    };
-  }, []);
-
   // Handle chart resize when sidebar toggles
   useEffect(() => {
     const handleResize = () => {

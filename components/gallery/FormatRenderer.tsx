@@ -1227,7 +1227,8 @@ function TextZoneContent({ renderedZone, scale, interactive }: {
 
   const {
     editingZoneId, setEditingZoneId,
-    contentPackage, setContentPackage
+    contentPackage, setContentPackage,
+    updateZoneContent
   } = useFormatGalleryStore()
 
   const isEditing = interactive && editingZoneId === zone.id
@@ -1252,25 +1253,38 @@ function TextZoneContent({ renderedZone, scale, interactive }: {
     return ''
   }, [contentPackage, zone.id, zone.role, renderedZone.resolvedContent, (zone as any).content])
 
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Clean up debounce timer on unmount and flush any pending text
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+        debounceTimerRef.current = null
+      }
+    }
+  }, [])
+
   // Save content when editing stops (isEditing transitions true → false)
   // This replaces onBlur entirely — no more focus-related bugs
   useEffect(() => {
     if (wasEditingRef.current && !isEditing) {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+        debounceTimerRef.current = null
+      }
       // Just transitioned from editing → not editing
-      // Content was already saved by whoever called setEditingZoneId(null)
-      // But let's save innerHTML as a safety measure
       if (textRef.current && contentPackage) {
         const currentHtml = textRef.current.innerHTML || ''
         const key = zone.id || zone.role
-        // Only save if content actually changed
         const existing = (contentPackage as any)[key]
         if (currentHtml !== existing) {
-          setContentPackage({ ...contentPackage, [key]: currentHtml })
+          updateZoneContent(zone.id, currentHtml)
         }
       }
     }
     wasEditingRef.current = isEditing
-  }, [isEditing, contentPackage, zone.id, zone.role, setContentPackage])
+  }, [isEditing, contentPackage, zone.id, zone.role, updateZoneContent])
 
   // Focus when entering edit mode — set innerHTML via ref
   useEffect(() => {
@@ -1287,7 +1301,7 @@ function TextZoneContent({ renderedZone, scale, interactive }: {
     }
   }, [isEditing]) // intentionally only depend on isEditing
 
-  // Sync content while typing/formatting (captures execCommand and keystrokes instantly)
+  // Sync content while typing/formatting (debounced by 200ms to eliminate keystroke lag)
   const handleInput = useCallback(() => {
     if (!textRef.current || !contentPackage) return
     const currentHtml = textRef.current.innerHTML || ''
@@ -1296,19 +1310,27 @@ function TextZoneContent({ renderedZone, scale, interactive }: {
     // Check if changed to avoid unnecessary store updates
     const existing = (contentPackage as any)[key]
     if (currentHtml !== existing) {
-      setContentPackage({ ...contentPackage, [key]: currentHtml })
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+      }
+      debounceTimerRef.current = setTimeout(() => {
+        updateZoneContent(zone.id, currentHtml)
+      }, 200)
     }
-  }, [contentPackage, setContentPackage, zone.id, zone.role])
+  }, [contentPackage, updateZoneContent, zone.id, zone.role])
 
   // Explicit save + exit function (for Escape key and toolbar actions)
   const saveAndExit = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+      debounceTimerRef.current = null
+    }
     if (textRef.current && contentPackage) {
       const newHtml = textRef.current.innerHTML || ''
-      const key = zone.id || zone.role
-      setContentPackage({ ...contentPackage, [key]: newHtml })
+      updateZoneContent(zone.id, newHtml)
     }
     setEditingZoneId(null)
-  }, [contentPackage, setContentPackage, zone.id, zone.role, setEditingZoneId])
+  }, [contentPackage, updateZoneContent, zone.id, setEditingZoneId])
 
   if (!text && !isEditing) return null
 

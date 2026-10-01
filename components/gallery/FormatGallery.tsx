@@ -134,14 +134,21 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
   const { chartType, chartData, chartConfig, hasJSON } = useChartStore()
   const hasChartData = hasJSON && chartData?.datasets?.length > 0
 
+  // Format gallery store
+  const { setContentPackage, contentPackage: storeContentPackage } = useFormatGalleryStore()
+
   // Build content package from existing chart data
   const localContentPackage: LLMContentPackage | null = useMemo(() => {
     if (!hasChartData) return null
     return extractContentFromChartData(chartType, chartData, chartConfig)
   }, [hasChartData, chartType, chartData, chartConfig])
 
+  // Precedence: 1. Real AI content package from store, 2. Extracted from live chart, 3. Mock preview
+  const effectiveContentPackage: LLMContentPackage | null = useMemo(() => {
+    return storeContentPackage || localContentPackage || null
+  }, [storeContentPackage, localContentPackage])
+
   // Sync the local content package into the Zustand store if not already set by AI
-  const { setContentPackage, contentPackage: storeContentPackage } = useFormatGalleryStore()
   useEffect(() => {
     if (!storeContentPackage && localContentPackage) {
       setContentPackage(localContentPackage)
@@ -155,9 +162,10 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
 
   // Fetch contextual image when content package is ready
   useEffect(() => {
-    const keywords = (localContentPackage?.visualKeywords && localContentPackage.visualKeywords.length > 0)
-      ? localContentPackage.visualKeywords
-      : localContentPackage?.keywords
+    const activePkg = effectiveContentPackage || localContentPackage
+    const keywords = (activePkg?.visualKeywords && activePkg.visualKeywords.length > 0)
+      ? activePkg.visualKeywords
+      : activePkg?.keywords
 
     if (!keywords?.length) {
       setContextualImageUrl(null)
@@ -180,7 +188,7 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
     }
 
     fetchContextualImage()
-  }, [localContentPackage?.keywords, localContentPackage?.visualKeywords])
+  }, [effectiveContentPackage?.keywords, effectiveContentPackage?.visualKeywords, localContentPackage?.keywords, localContentPackage?.visualKeywords])
 
   // loadFormats is now imported directly from the format gallery store to support SWR and IndexedDB.
 
@@ -222,14 +230,14 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
     const map = new Map<string, RenderedFormat>()
     if (filteredFormats.length === 0) return map
 
-    const activeContent = localContentPackage || MOCK_CONTENT_PACKAGE
+    const activeContent = effectiveContentPackage || MOCK_CONTENT_PACKAGE
     const variants = generateGalleryVariants(filteredFormats, activeContent, contextualImageUrl || undefined)
     variants.forEach(v => {
       const blueprintId = v.variantId.replace(/-[^-]+$/, '')
       map.set(blueprintId, v)
     })
     return map
-  }, [localContentPackage, MOCK_CONTENT_PACKAGE, filteredFormats, contextualImageUrl])
+  }, [effectiveContentPackage, MOCK_CONTENT_PACKAGE, filteredFormats, contextualImageUrl])
 
   const previewFormat = useMemo(() => {
     if (!previewFormatId) return null
@@ -237,8 +245,9 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
   }, [previewFormatId, formats, userFormats])
 
   const handlePreviewClick = (formatId: string) => {
-    // If content is already available (AI has generated data), directly apply the format
-    if (localContentPackage) {
+    // If content is already available (AI has generated data or extracted from chart), directly apply the format
+    const contentToApply = effectiveContentPackage || localContentPackage
+    if (contentToApply) {
       const format = [...formats, ...userFormats].find(f => f.id === formatId)
       if (format) {
         try {
@@ -246,7 +255,7 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
           templateStore.clearAllTemplateState()
           templateStore.setEditorMode('template')
           templateStore.setGenerateMode('format')
-          const rendered = renderFormat(format, localContentPackage, chartType || undefined, contextualImageUrl || undefined)
+          const rendered = renderFormat(format, contentToApply, chartType || undefined, contextualImageUrl || undefined)
           setSelectedFormat(format.id, rendered.chartType)
           closeGallery()
           if (setLeftSidebarOpen) setLeftSidebarOpen(true)
@@ -275,9 +284,10 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
     templateStore.setEditorMode('template')
     templateStore.setGenerateMode('format')
 
-    if (localContentPackage) {
+    const contentToApply = effectiveContentPackage || localContentPackage
+    if (contentToApply) {
       try {
-        const rendered = renderFormat(previewFormat, localContentPackage, chartType || undefined, contextualImageUrl || undefined)
+        const rendered = renderFormat(previewFormat, contentToApply, chartType || undefined, contextualImageUrl || undefined)
         setSelectedFormat(previewFormat.id, rendered.chartType)
         toast.success(`Format "${previewFormat.name}" selected!`)
       } catch (err) {

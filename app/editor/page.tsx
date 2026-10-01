@@ -780,17 +780,6 @@ function EditorPageContent() {
     proceedToSaveDialog()
   };
 
-  const saveClickRef = useRef(handleSaveClick);
-  useEffect(() => {
-    saveClickRef.current = handleSaveClick;
-  });
-
-  useEffect(() => {
-    const handleTriggerSave = () => saveClickRef.current();
-    window.addEventListener('triggerSaveClick', handleTriggerSave);
-    return () => window.removeEventListener('triggerSaveClick', handleTriggerSave);
-  }, []);
-
   const handleSave = async (chartName: string) => {
     setIsSaving(true);
 

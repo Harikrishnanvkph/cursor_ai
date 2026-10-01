@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useMemo, useCallback } from "react"
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import {
   Sparkles,
@@ -180,10 +180,21 @@ export function ContentBankDrawer() {
 
   const bank = contentPackage?.contentBank
 
-  // Load general images from Unsplash based on AI visual keywords or queries
+  const currentTopicKey = useMemo(() => {
+    const queries = bank?.generalImageQueries && bank.generalImageQueries.length > 0
+      ? bank.generalImageQueries.slice(0, 3)
+      : (contentPackage?.visualKeywords && contentPackage.visualKeywords.length > 0
+          ? contentPackage.visualKeywords.slice(0, 3)
+          : [contentPackage?.title || 'technology'])
+    return queries.join('|')
+  }, [bank?.generalImageQueries, contentPackage?.visualKeywords, contentPackage?.title])
+
+  const lastLoadedTopicKeyRef = useRef<string>('')
+
+  // Load general images from Unsplash in parallel based on AI visual keywords or queries
   useEffect(() => {
     if (!isContentBankOpen || !bank) return
-    if (fetchedImages.length > 0) return
+    if (lastLoadedTopicKeyRef.current === currentTopicKey && fetchedImages.length > 0) return
 
     const queries = bank.generalImageQueries && bank.generalImageQueries.length > 0
       ? bank.generalImageQueries.slice(0, 3)
@@ -193,26 +204,42 @@ export function ContentBankDrawer() {
 
     async function loadGeneralImages() {
       setIsSearchingImages(true)
-      const results: Array<{ url: string; authorName?: string; query: string }> = []
-      for (const q of queries) {
-        try {
-          const res = await fetch(`/api/unsplash?query=${encodeURIComponent(q)}`)
-          if (res.ok) {
-            const data = await res.json()
-            if (data.url && !results.some(r => r.url === data.url)) {
-              results.push({ url: data.url, authorName: data.authorName, query: q })
+      try {
+        // Parallelize Unsplash queries concurrently instead of sequential waterfall
+        const fetchPromises = queries.map(async (q) => {
+          try {
+            const res = await fetch(`/api/unsplash?query=${encodeURIComponent(q)}`)
+            if (res.ok) {
+              const data = await res.json()
+              if (data.url) {
+                return { url: data.url, authorName: data.authorName, query: q }
+              }
+            }
+          } catch (e) {
+            console.warn('Could not fetch Unsplash image for:', q, e)
+          }
+          return null
+        })
+
+        const settled = await Promise.allSettled(fetchPromises)
+        const results: Array<{ url: string; authorName?: string; query: string }> = []
+        settled.forEach((item) => {
+          if (item.status === 'fulfilled' && item.value) {
+            if (!results.some(r => r.url === item.value!.url)) {
+              results.push(item.value)
             }
           }
-        } catch (e) {
-          console.warn('Could not fetch Unsplash image for:', q, e)
-        }
+        })
+
+        setFetchedImages(results)
+        lastLoadedTopicKeyRef.current = currentTopicKey
+      } finally {
+        setIsSearchingImages(false)
       }
-      setFetchedImages(results)
-      setIsSearchingImages(false)
     }
 
     loadGeneralImages()
-  }, [isContentBankOpen, bank, contentPackage, fetchedImages.length])
+  }, [isContentBankOpen, bank, currentTopicKey, fetchedImages.length])
 
   // Custom search Unsplash
   const handleCustomImageSearch = async (e?: React.FormEvent) => {

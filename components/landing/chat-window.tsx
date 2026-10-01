@@ -67,51 +67,25 @@ export function ChatWindow({
     return name || ""
   }, [user])
 
-  // Enhanced input change handler with auto-resize
-  const enhancedHandleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    handleInputChange?.(e)
+  // Phased progress ticker during AI generation
+  const [processingPhase, setProcessingPhase] = React.useState(0)
+  const processingPhases = React.useMemo(() => [
+    "Structuring layout & dimensions...",
+    "Synthesizing chart data & metrics...",
+    "Drafting editorial story & callouts...",
+    "Assembling AI Content Bank blocks...",
+  ], [])
 
-    // Optimized auto-resize logic with debouncing for ChatWindow textarea
-    if (textareaRef.current) {
-      // Clear any existing timeout
-      if (textareaRef.current.dataset.resizeTimeout) {
-        clearTimeout(Number(textareaRef.current.dataset.resizeTimeout))
-      }
-
-      const updateHeight = () => {
-        if (textareaRef.current) {
-          if (e.target.value === "") {
-            textareaRef.current.style.height = "44px"
-            textareaRef.current.style.overflowY = "hidden"
-          } else {
-            textareaRef.current.style.height = "44px"
-            const maxHeight = 150
-            textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight + 2, maxHeight)}px`
-            textareaRef.current.style.overflowY = textareaRef.current.scrollHeight + 2 > maxHeight ? "auto" : "hidden"
-          }
-        }
-      }
-
-      // Debounce the height update to reduce performance impact
-      const timeoutId = setTimeout(updateHeight, 16) // ~60fps
-      textareaRef.current.dataset.resizeTimeout = timeoutId.toString()
+  React.useEffect(() => {
+    if (!isProcessing) {
+      setProcessingPhase(0)
+      return
     }
-  }, [handleInputChange, textareaRef])
-
-  // Enhanced paste handler for ChatWindow
-  const enhancedHandlePaste = useCallback(() => {
-    handlePaste?.()
-
-    // Single timeout for paste operations to reduce performance impact
-    setTimeout(() => {
-      if (textareaRef.current) {
-        textareaRef.current.style.height = "44px"
-        const maxHeight = 150
-        textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight + 2, maxHeight)}px`
-        textareaRef.current.style.overflowY = textareaRef.current.scrollHeight + 2 > maxHeight ? "auto" : "hidden"
-      }
-    }, 10)
-  }, [handlePaste, textareaRef])
+    const interval = setInterval(() => {
+      setProcessingPhase((prev) => (prev + 1) % processingPhases.length)
+    }, 1800)
+    return () => clearInterval(interval)
+  }, [isProcessing, processingPhases.length])
 
   const isConversationEmpty = messages.length === 0 || messages.every(m =>
     m.role === 'assistant' && (
@@ -266,15 +240,6 @@ export function ChatWindow({
                     )}
                     <div className="flex-1">
                       {msg.content}
-                      {msg.chartSnapshot && (
-                        <div className="mt-3 text-xs opacity-85 flex items-center gap-2 bg-white/70 dark:bg-slate-800/70 rounded-lg px-2 py-1.5 border border-slate-200/50 dark:border-slate-700/50">
-                          <Edit3 className="w-3 h-3" />
-                          <span>Chart {msg.action === 'create' ? 'created' : 'updated'}</span>
-                          {msg.changes && msg.changes.length > 0 && (
-                            <span className="ml-1">• {msg.changes.length} change{msg.changes.length > 1 ? 's' : ''}</span>
-                          )}
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -283,10 +248,17 @@ export function ChatWindow({
               <div className="bg-slate-100/90 dark:bg-slate-900 text-slate-800 dark:text-slate-100 self-start mr-auto border border-slate-200/70 dark:border-slate-800 rounded-2xl px-4 py-3 w-[95%] shadow-xs">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow-2xs border border-slate-200/50 dark:border-slate-700/50">
+                    <div className="p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow-2xs border border-slate-200/50 dark:border-slate-700/50 flex-shrink-0">
                       <div className="animate-spin rounded-full h-4 w-4 border-2 border-indigo-600 border-t-transparent"></div>
                     </div>
-                    <span className="text-sm font-medium">Processing your request...</span>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 transition-all duration-300">
+                        {processingPhases[processingPhase]}
+                      </span>
+                      <span className="text-[11px] text-slate-400 font-normal">
+                        Step {processingPhase + 1} of {processingPhases.length}
+                      </span>
+                    </div>
                   </div>
                   <button
                     type="button"

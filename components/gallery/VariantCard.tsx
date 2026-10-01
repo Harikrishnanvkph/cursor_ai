@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useRef, useState, useEffect, memo } from "react"
 import type { FormatBlueprintRow, RenderedFormat } from "@/lib/format-types"
 import { FormatRenderer } from "./FormatRenderer"
 import { getStandardAspectRatio } from "@/lib/utils/dimension-utils"
@@ -22,7 +22,47 @@ interface VariantCardProps {
   renderedVariant?: RenderedFormat
 }
 
-export function VariantCard({ format, onSelect, isSelected, renderedVariant }: VariantCardProps) {
+function VariantCardInner({ format, onSelect, isSelected, renderedVariant }: VariantCardProps) {
+  const containerRef = useRef<HTMLButtonElement | null>(null)
+  const [isVisible, setIsVisible] = useState(false)
+  const [isHydrated, setIsHydrated] = useState(false)
+
+  // Viewport detection: only mount heavy live chart canvases when card is near or inside viewport
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('IntersectionObserver' in window)) {
+      setIsVisible(true)
+      setIsHydrated(true)
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsVisible(true)
+            observer.disconnect()
+          }
+        })
+      },
+      { rootMargin: '200px' }
+    )
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current)
+    }
+
+    return () => observer.disconnect()
+  }, [])
+
+  // Stagger live canvas mount by one animation frame to prevent main-thread freezing on modal open
+  useEffect(() => {
+    if (!isVisible) return
+    const raf = requestAnimationFrame(() => {
+      setIsHydrated(true)
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [isVisible])
+
   const skeleton = format.skeleton as any
   const zones = skeleton?.zones || []
   const dims = format.dimensions
@@ -37,6 +77,7 @@ export function VariantCard({ format, onSelect, isSelected, renderedVariant }: V
 
   return (
     <button
+      ref={containerRef}
       onClick={() => onSelect(format.id)}
       className={`group relative flex flex-col rounded-xl border transition-all duration-300 overflow-hidden text-left w-full
         ${isSelected 
@@ -46,8 +87,8 @@ export function VariantCard({ format, onSelect, isSelected, renderedVariant }: V
     >
       {/* Skeleton Preview */}
       <div className="relative w-full h-80 flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
-        {renderedVariant ? (
-          /* Live preview with FormatRenderer when chart data available */
+        {renderedVariant && isHydrated ? (
+          /* Live preview with FormatRenderer when chart data available and card is hydrated */
           <div
             className="relative rounded-sm overflow-hidden shadow-sm bg-white"
             style={{
@@ -74,7 +115,7 @@ export function VariantCard({ format, onSelect, isSelected, renderedVariant }: V
             </div>
           </div>
         ) : (
-          /* Fallback: colored zone placeholders */
+          /* Fallback / Instant preview: colored zone placeholders */
           <div
             className="relative rounded-sm overflow-hidden shadow-sm bg-white"
             style={{
@@ -175,3 +216,12 @@ export function VariantCard({ format, onSelect, isSelected, renderedVariant }: V
     </button>
   )
 }
+
+export const VariantCard = memo(VariantCardInner, (prev, next) => {
+  return (
+    prev.format.id === next.format.id &&
+    prev.isSelected === next.isSelected &&
+    prev.format.name === next.format.name &&
+    prev.renderedVariant === next.renderedVariant
+  )
+})

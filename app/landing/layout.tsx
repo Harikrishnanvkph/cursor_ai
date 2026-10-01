@@ -30,16 +30,18 @@ function LandingLayoutInner({ children }: { children: React.ReactNode }) {
   const { leftSidebarOpen, setLeftSidebarOpen } = useSidebarContext()
   const [isDesktop, setIsDesktop] = useState(() => {
     if (typeof window !== 'undefined') {
-      return window.innerWidth >= 1024
+      return window.matchMedia("(min-width: 1024px)").matches
     }
     return false
   })
 
   useEffect(() => {
-    const check = () => setIsDesktop(window.innerWidth >= 1024)
-    check()
-    window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
+    const mediaQuery = window.matchMedia("(min-width: 1024px)")
+    const handleChange = (e: MediaQueryListEvent) => setIsDesktop(e.matches)
+    
+    setIsDesktop(mediaQuery.matches)
+    mediaQuery.addEventListener("change", handleChange)
+    return () => mediaQuery.removeEventListener("change", handleChange)
   }, [])
 
   // On tablet/mobile, the page handles its own layout (inline headers, bottom bars, etc.)

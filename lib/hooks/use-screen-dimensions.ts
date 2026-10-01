@@ -6,23 +6,27 @@ import { useState, useEffect } from "react"
 export function useIsMobile() {
     const [isMobile, setIsMobile] = useState(() => {
         if (typeof window !== "undefined") {
-            return window.innerWidth < 768;
+            return window.matchMedia("(max-width: 767px)").matches;
         }
         return false;
     });
+    
     useEffect(() => {
-        const check = () => setIsMobile(window.innerWidth < 768);
-        check();
-        window.addEventListener("resize", check);
-        return () => window.removeEventListener("resize", check);
+        const mediaQuery = window.matchMedia("(max-width: 767px)");
+        const handleChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+        
+        setIsMobile(mediaQuery.matches);
+        mediaQuery.addEventListener("change", handleChange);
+        return () => mediaQuery.removeEventListener("change", handleChange);
     }, []);
+    
     return isMobile;
 }
 
 // Backward compatibility alias for existing imports
 export const useIsMobile576 = useIsMobile;
 
-// Custom hook to get screen dimensions
+// Custom hook to get screen dimensions (Debounced)
 export function useScreenDimensions() {
     const [dimensions, setDimensions] = useState(() => {
         if (typeof window !== "undefined") {
@@ -32,16 +36,23 @@ export function useScreenDimensions() {
     });
 
     useEffect(() => {
+        let timeoutId: NodeJS.Timeout;
         function updateDimensions() {
-            setDimensions({
-                width: window.innerWidth,
-                height: window.innerHeight
-            });
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => {
+                setDimensions({
+                    width: window.innerWidth,
+                    height: window.innerHeight
+                });
+            }, 100);
         }
 
         updateDimensions();
         window.addEventListener("resize", updateDimensions);
-        return () => window.removeEventListener("resize", updateDimensions);
+        return () => {
+            window.removeEventListener("resize", updateDimensions);
+            clearTimeout(timeoutId);
+        };
     }, []);
 
     return dimensions;
@@ -51,15 +62,19 @@ export function useScreenDimensions() {
 export function useIsTablet() {
     const [isTablet, setIsTablet] = useState(() => {
         if (typeof window !== "undefined") {
-            return window.innerWidth >= 768 && window.innerWidth < 1024;
+            return window.matchMedia("(min-width: 768px) and (max-width: 1023px)").matches;
         }
         return false;
     });
+    
     useEffect(() => {
-        const check = () => setIsTablet(window.innerWidth >= 768 && window.innerWidth < 1024);
-        check();
-        window.addEventListener("resize", check);
-        return () => window.removeEventListener("resize", check);
+        const mediaQuery = window.matchMedia("(min-width: 768px) and (max-width: 1023px)");
+        const handleChange = (e: MediaQueryListEvent) => setIsTablet(e.matches);
+        
+        setIsTablet(mediaQuery.matches);
+        mediaQuery.addEventListener("change", handleChange);
+        return () => mediaQuery.removeEventListener("change", handleChange);
     }, []);
+    
     return isTablet;
 }

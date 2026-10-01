@@ -5,23 +5,33 @@ import React, { createContext, useContext, useRef, useState } from "react"
 interface SidebarContextType {
   leftSidebarOpen: boolean
   setLeftSidebarOpen: (open: boolean) => void
+  /** Ref to the sidebar textarea so external code can focus it */
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>
+}
+
+interface SidebarInputContextType {
   /** Shared chat input draft — written by PromptTemplate, read by LandingSidebar */
   chatInput: string
   setChatInput: (value: string) => void
-  /** Ref to the sidebar textarea so external code can focus it */
-  textareaRef: React.RefObject<HTMLTextAreaElement | null>
 }
 
 const SidebarContext = createContext<SidebarContextType>({
   leftSidebarOpen: true,
   setLeftSidebarOpen: () => {},
+  textareaRef: { current: null },
+})
+
+const SidebarInputContext = createContext<SidebarInputContextType>({
   chatInput: "",
   setChatInput: () => {},
-  textareaRef: { current: null },
 })
 
 export function useSidebarContext() {
   return useContext(SidebarContext)
+}
+
+export function useSidebarInputContext() {
+  return useContext(SidebarInputContext)
 }
 
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
@@ -30,8 +40,10 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   return (
-    <SidebarContext.Provider value={{ leftSidebarOpen, setLeftSidebarOpen, chatInput, setChatInput, textareaRef }}>
-      {children}
+    <SidebarContext.Provider value={{ leftSidebarOpen, setLeftSidebarOpen, textareaRef }}>
+      <SidebarInputContext.Provider value={{ chatInput, setChatInput }}>
+        {children}
+      </SidebarInputContext.Provider>
     </SidebarContext.Provider>
   )
 }

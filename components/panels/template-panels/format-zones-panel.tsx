@@ -53,6 +53,7 @@ export function FormatZonesPanel() {
     toggleZoneVisibility,
     deleteZone,
     addZone,
+    updateZoneContent,
   } = useFormatGalleryStore()
   const chartStore = useChartStore()
 
@@ -121,16 +122,25 @@ export function FormatZonesPanel() {
     groupedZones[type].push(zone)
   })
 
-  const handleContentPackageChange = (key: string, value: any) => {
+  const handleContentPackageChange = (key: string, value: any, role?: string) => {
     if (!contentPackage) return
-    setContentPackage({
-      ...contentPackage,
-      [key]: value,
-    })
+    updateZoneContent(key, value)
+    if (role && role !== key) {
+      const currentPkg = useFormatGalleryStore.getState().contentPackage
+      if (currentPkg) {
+        setContentPackage({
+          ...currentPkg,
+          [role]: value,
+        })
+      }
+    }
   }
 
   const getTextZoneValue = (zone: any) => {
     if (!contentPackage) return zone.content || ''
+    if (contentPackage?.zoneOverrides && contentPackage.zoneOverrides[zone.id] !== undefined) {
+      return String(contentPackage.zoneOverrides[zone.id])
+    }
     if (zone.id && (contentPackage as any)[zone.id] !== undefined) {
       return String((contentPackage as any)[zone.id])
     }
@@ -538,7 +548,7 @@ export function FormatZonesPanel() {
                           <div>
                             <textarea
                               value={getTextZoneValue(zone)}
-                              onChange={(e) => handleContentPackageChange(zone.id || zone.role, e.target.value)}
+                              onChange={(e) => handleContentPackageChange(zone.id, e.target.value, zone.role)}
                               placeholder={`Enter ${zone.role || 'text'}...`}
                               className="w-full min-h-[40px] text-xs border border-gray-200 rounded p-2 resize-y bg-white text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all placeholder:text-gray-300"
                               rows={zone.role === 'body' ? 3 : 1}

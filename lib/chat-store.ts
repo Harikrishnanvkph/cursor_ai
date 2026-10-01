@@ -361,7 +361,16 @@ export const useChatStore = create<ChatStore>()(
         let finalInput = input;
         let formatStructureData: any = null; // Will be added to request body
         const templateStore = useTemplateStore.getState();
-        if (templateStore.generateMode === 'format') {
+
+        // Check if user has explicit format intent in prompt even if in chart mode
+        const formatIntentRegex = /\b(infographic|format\s+layout|social\s+(post|card)|presentation\s+slide|poster\s+layout|story\s+card|banner\s+layout)\b/i;
+        const hasFormatIntent = formatIntentRegex.test(input || '');
+
+        if (templateStore.generateMode === 'format' || (templateStore.generateMode === 'chart' && hasFormatIntent)) {
+          if (templateStore.generateMode !== 'format') {
+            // Auto-promote to format mode so UI and response handler process formatContent
+            templateStore.setGenerateMode('format');
+          }
           try {
             const galleryStore = useFormatGalleryStore.getState();
             if (galleryStore.selectedFormatId) {
