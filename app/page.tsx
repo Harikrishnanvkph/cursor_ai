@@ -149,7 +149,7 @@ export default function HomePage() {
                 </div>
 
                 {/* Headline */}
-                <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-extrabold tracking-tight leading-[1.05]">
+                <h1 className="text-4xl xs:text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-extrabold tracking-tight leading-[1.05]">
                   <span className="block text-slate-900 dark:text-white transition-colors">Transform Data Into</span>
                   <span className="block bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-500 dark:from-indigo-400 dark:via-purple-400 dark:to-cyan-400 bg-clip-text text-transparent animate-gradient-x">
                     Stunning Visuals
@@ -240,9 +240,10 @@ export default function HomePage() {
 
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-5">
                 {chartTypes.map((chart, index) => (
-                  <div
+                  <Link
                     key={index}
-                    className="group cursor-pointer"
+                    href="/landing"
+                    className="group cursor-pointer block"
                   >
                     <div className={`relative rounded-2xl p-6 sm:p-8 ${chart.bg} dark:bg-slate-900 border border-transparent dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 transition-all duration-300 hover:shadow-xl hover:-translate-y-2`}>
                       <div className="text-center space-y-3">
@@ -252,7 +253,7 @@ export default function HomePage() {
                         <h3 className="font-semibold text-slate-800 dark:text-slate-200 text-sm transition-colors">{chart.name}</h3>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             </div>
@@ -323,7 +324,7 @@ export default function HomePage() {
                 </p>
               </div>
 
-              <div className="grid md:grid-cols-3 gap-8 relative">
+              <div className="grid md:grid-cols-3 gap-5 lg:gap-8 relative">
                 {/* Connection line (desktop) */}
                 <div className="hidden md:block absolute top-20 left-[20%] right-[20%] h-0.5">
                   <div className="w-full h-full bg-gradient-to-r from-blue-300 via-purple-300 to-emerald-300 dark:from-blue-600 dark:via-purple-600 dark:to-emerald-600 rounded-full"></div>
@@ -331,7 +332,7 @@ export default function HomePage() {
 
                 {workflow.map((step, index) => (
                   <div key={index} className="relative">
-                    <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-sm border border-slate-200/80 dark:border-slate-800 hover:shadow-xl dark:hover:shadow-indigo-900/20 hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-300 hover:-translate-y-2 text-center">
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200/80 dark:border-slate-800 hover:shadow-xl dark:hover:shadow-indigo-900/20 hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-300 hover:-translate-y-2 text-center">
                       {/* Step number circle */}
                       <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br ${step.color} text-white shadow-lg mb-6`}>
                         <step.icon className="w-7 h-7" />
@@ -372,7 +373,7 @@ export default function HomePage() {
                   </h2>
 
                   <p className="text-lg sm:text-xl text-indigo-200 max-w-2xl mx-auto leading-relaxed">
-                    Join thousands of teams creating stunning visualizations with AIChartor.
+                    Join thousands of teams creating stunning visualizations with Chartography.in.
                     Start your journey from data to insights today.
                   </p>
 
@@ -447,6 +448,8 @@ export default function HomePage() {
                     <Link href="/about" className="block text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors text-sm">About</Link>
                     <Link href="/signin" className="block text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors text-sm">Sign In</Link>
                     <Link href="/signup" className="block text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors text-sm">Sign Up</Link>
+                    <Link href="/terms" className="block text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors text-sm">Terms of Service</Link>
+                    <Link href="/privacy" className="block text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors text-sm">Privacy Policy</Link>
                   </div>
                 </div>
               </div>

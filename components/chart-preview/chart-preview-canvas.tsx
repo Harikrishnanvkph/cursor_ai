@@ -105,8 +105,11 @@ export const ChartPreviewCanvas = React.memo(({
                     style={{
                         width: '100%', height: '100%',
                         top: 0, left: 0, right: 0, bottom: 0,
-                        transform: `translate(${Math.round((rWidth - displayWidth) / 2) + Math.round(panOffset.x)}px, ${Math.round((rHeight - displayHeight) / 2) + Math.round(panOffset.y)}px) scale(${exactScale})`,
+                        transform: `translate3d(${Math.round((rWidth - displayWidth) / 2) + Math.round(panOffset.x)}px, ${Math.round((rHeight - displayHeight) / 2) + Math.round(panOffset.y)}px, 0px) scale(${exactScale})`,
                         transformOrigin: 'top left',
+                        willChange: isDragging ? 'transform' : 'auto',
+                        backfaceVisibility: 'hidden',
+                        WebkitBackfaceVisibility: 'hidden',
                         zIndex: 10,
                         cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'default',
                         pointerEvents: 'auto'
@@ -198,8 +201,11 @@ export const ChartPreviewCanvas = React.memo(({
                 style={{
                     width: `${chartWidth}px`,
                     height: `${chartHeight}px`,
-                    transform: `translate(${Math.round(panOffset.x)}px, ${Math.round(panOffset.y)}px) scale(${exactScale})`,
+                    transform: `translate3d(${Math.round(panOffset.x)}px, ${Math.round(panOffset.y)}px, 0px) scale(${exactScale})`,
                     transformOrigin: 'top left',
+                    willChange: isDragging ? 'transform' : 'auto',
+                    backfaceVisibility: 'hidden',
+                    WebkitBackfaceVisibility: 'hidden',
                     zIndex: 10,
                     cursor: panMode ? (isDragging ? 'grabbing' : 'grab') : 'default',
                     pointerEvents: 'auto'

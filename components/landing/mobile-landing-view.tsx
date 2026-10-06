@@ -144,6 +144,28 @@ export function MobileLandingView({
 
   const { editorMode, currentTemplate, templateInBackground } = useTemplateStore()
 
+  const hasVisualContent = Boolean(
+    (chartData?.datasets?.length > 0 && hasJSON) ||
+    (editorMode === 'template' && (currentTemplate || templateInBackground))
+  )
+
+  // Notify mobile user when a chart is freshly generated while they are on the chat tab
+  React.useEffect(() => {
+    if (showActiveBanner && mobileActiveTab === 'chat' && hasVisualContent) {
+      toast("Chart updated!", {
+        description: "Your chart has been generated and is ready to view.",
+        action: {
+          label: "View Chart",
+          onClick: () => {
+            setMobileActiveTab('chart')
+            setShowActiveBanner(false)
+          }
+        },
+        duration: 5000,
+      })
+    }
+  }, [showActiveBanner, mobileActiveTab, hasVisualContent, setShowActiveBanner])
+
   const userGreetingName = useMemo(() => {
     if (!user) return ""
     return (
@@ -219,9 +241,9 @@ export function MobileLandingView({
   return (
     <div className="fixed inset-0 w-full h-full bg-white dark:bg-slate-950 flex flex-col overflow-hidden font-sans">
       {/* Top Header (In-flow flex item - never covers content) */}
-      <header className="w-full h-14 flex-shrink-0 z-40 bg-white dark:bg-slate-950 flex items-center justify-between px-3 xs:px-4 phab:px-5 relative">
-        {/* Left: Sandwich Menu Icon */}
-        <div className="flex items-center gap-1.5 xs:gap-2 min-w-0">
+      <header className="w-full h-14 flex-shrink-0 z-40 bg-white dark:bg-slate-950 flex items-center justify-between px-3 xs:px-4 phab:px-5 relative border-b border-slate-100 dark:border-slate-800/80">
+        {/* Left: Sandwich Menu Icon & Logo */}
+        <div className="flex items-center gap-1 xs:gap-1.5 min-w-0">
           <button
             onClick={() => setSandwichOpen(true)}
             className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors flex-shrink-0 text-slate-700 dark:text-slate-300 cursor-pointer"
@@ -229,37 +251,45 @@ export function MobileLandingView({
           >
             <Menu className="w-5 h-5" />
           </button>
+          <button
+            onClick={() => router.push('/')}
+            className="p-1 hover:opacity-85 transition-opacity flex-shrink-0 cursor-pointer flex items-center"
+            title="Go to Home"
+          >
+            <img src="/logo.png" alt="Logo" className="h-5 w-5 object-contain" />
+          </button>
         </div>
 
-        {/* Center: Chart / Chat Segmented Pill Switcher (Bigger, Centered) */}
-        {chartData?.datasets?.length > 0 && hasJSON && (
-          <div className="absolute left-1/2 -translate-x-1/2 flex items-center p-1 bg-slate-100 dark:bg-slate-800/90 rounded-full border border-slate-200/80 dark:border-slate-700/80 shadow-xs z-10">
-            <button
-              onClick={() => setMobileActiveTab('chart')}
-              className={`px-3 phab:px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
-                mobileActiveTab === 'chart'
-                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-              }`}
-              title="Chart Preview"
-            >
-              <ChartColumnBig className="w-4 h-4" />
-              <span className="hidden phab:inline">Chart</span>
-            </button>
-            <button
-              onClick={() => setMobileActiveTab('chat')}
-              className={`px-3 phab:px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
-                mobileActiveTab === 'chat'
-                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-              }`}
-              title="AI Chat"
-            >
-              <MessageCircleDashed className="w-4 h-4" />
-              <span className="hidden phab:inline">Chat</span>
-            </button>
-          </div>
-        )}
+        {/* Center: Chart / Chat Segmented Pill Switcher (Persistent & Accessible) */}
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center p-1 bg-slate-100 dark:bg-slate-800/90 rounded-full border border-slate-200/80 dark:border-slate-700/80 shadow-xs z-10">
+          <button
+            onClick={() => setMobileActiveTab('chart')}
+            className={`px-3 phab:px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer relative ${
+              mobileActiveTab === 'chart'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+            }`}
+            title="Chart Preview"
+          >
+            <ChartColumnBig className="w-4 h-4" />
+            <span>Chart</span>
+            {hasVisualContent && mobileActiveTab !== 'chart' && (
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-pulse" />
+            )}
+          </button>
+          <button
+            onClick={() => setMobileActiveTab('chat')}
+            className={`px-3 phab:px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+              mobileActiveTab === 'chat'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+            }`}
+            title="AI Chat"
+          >
+            <MessageCircleDashed className="w-4 h-4" />
+            <span>Chat</span>
+          </button>
+        </div>
 
         {/* Right: New Chat + More Options */}
         <div className="flex items-center gap-1 xs:gap-1.5 flex-shrink-0">
@@ -662,7 +692,7 @@ export function MobileLandingView({
                 <ChartAreaSkeleton />
               </div>
             )}
-            {chartData?.datasets?.length > 0 && hasJSON ? (
+            {hasVisualContent ? (
               <div className="flex-1 h-full w-full relative">
                 {isProcessing && (
                   <div className="absolute top-2 left-1/2 -translate-x-1/2 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-3 py-1 rounded-full border border-indigo-200/80 dark:border-indigo-800 shadow-md flex items-center gap-2">
@@ -842,7 +872,7 @@ export function MobileLandingView({
         {/* Tab 3: Customize (ConfigSidebar) */}
         {mobileActiveTab === 'design' && (
           <div className="flex-1 h-full w-full overflow-y-auto bg-slate-50/50 dark:bg-slate-950/50 pb-4">
-            {chartData?.datasets?.length > 0 && hasJSON ? (
+            {hasVisualContent ? (
               <ConfigSidebar />
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
@@ -958,22 +988,7 @@ export function MobileLandingView({
         </div>
       )}
 
-      {/* Floating Quick Switch Pill when viewing chart */}
-      {mobileActiveTab === 'chart' && chartData?.datasets?.length > 0 && hasJSON && (
-        <div className="fixed bottom-4 right-4 z-40">
-          <button
-            type="button"
-            onClick={() => {
-              setMobileActiveTab('chat')
-              setTimeout(() => textareaRef.current?.focus(), 100)
-            }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 text-white rounded-full shadow-lg shadow-indigo-500/25 active:scale-95 transition-all text-xs font-semibold"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Modify with AI</span>
-          </button>
-        </div>
-      )}
+
 
       {/* Action Sheet Backdrop */}
       {isActionSheetOpen && (
@@ -1151,13 +1166,20 @@ export function MobileLandingView({
       >
         {/* Drawer Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
-          <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setSandwichOpen(false)
+              router.push('/')
+            }}
+            className="flex items-center gap-2 hover:opacity-85 transition-opacity cursor-pointer text-left"
+            title="Go to Home"
+          >
             <img src="/logo.png" alt="Logo" className="h-6 w-6 object-contain" />
             <span className="text-sm font-bold text-slate-700 dark:text-slate-200">Chartography.in</span>
-          </div>
+          </button>
           <button
             onClick={() => setSandwichOpen(false)}
-            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
           >
             <X className="w-5 h-5 text-slate-500" />
           </button>

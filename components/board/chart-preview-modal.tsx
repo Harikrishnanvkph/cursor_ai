@@ -670,11 +670,10 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-8 sm:h-7 text-xs px-2 text-violet-600 hover:text-violet-750 font-semibold select-none w-[76px] justify-start gap-1.5 hover:bg-violet-50/50 rounded transition-colors"
-                        title="Zoom Options"
+                        className="h-8 w-8 sm:h-7 sm:w-7 p-0 text-violet-600 hover:text-violet-750 font-semibold select-none flex items-center justify-center hover:bg-violet-50/50 rounded transition-colors"
+                        title={`Zoom (${currentZoomPct}%)`}
                       >
                         <Search className="h-3.5 w-3.5 text-violet-500 shrink-0" />
-                        <span className="tabular-nums">{currentZoomPct}%</span>
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-52 p-2 z-[9999]">
@@ -729,21 +728,25 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
                       </div>
 
                       <DropdownMenuSeparator className="my-1" />
-                      <div className="flex items-center justify-between gap-1 px-1">
+                      <div className="flex items-center justify-between gap-1 px-1 py-0.5">
                         <DropdownMenuItem
                           onSelect={(e) => { e.preventDefault(); zoomPan.handleZoomOut(); }}
-                          className="flex-1 flex items-center justify-center py-2 cursor-pointer focus:bg-slate-100"
+                          className="h-8 w-8 flex items-center justify-center rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
                           title="Zoom Out"
                         >
-                          <ZoomOut className="h-4 w-4 text-slate-500" />
+                          <ZoomOut className="h-4 w-4" />
                         </DropdownMenuItem>
-                        <div className="w-[1px] h-4 bg-slate-200" />
+
+                        <span className="text-xs font-semibold tabular-nums text-slate-700 dark:text-slate-200 select-none px-2">
+                          {currentZoomPct}%
+                        </span>
+
                         <DropdownMenuItem
                           onSelect={(e) => { e.preventDefault(); zoomPan.handleZoomIn(); }}
-                          className="flex-1 flex items-center justify-center py-2 cursor-pointer focus:bg-slate-100"
+                          className="h-8 w-8 flex items-center justify-center rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
                           title="Zoom In"
                         >
-                          <ZoomIn className="h-4 w-4 text-slate-500" />
+                          <ZoomIn className="h-4 w-4" />
                         </DropdownMenuItem>
                       </div>
                     </DropdownMenuContent>

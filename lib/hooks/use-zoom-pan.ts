@@ -43,6 +43,56 @@ export function useZoomPan() {
     touchStateRef.current.currentPanOffset = panOffset;
     touchStateRef.current.panMode = panMode;
 
+    // RAF batching refs to prevent main-thread lag on 60/120Hz touchmove events
+    const pendingPanRef = useRef({ x: 0, y: 0 });
+    const panRafIdRef = useRef<number | null>(null);
+    const pendingZoomRef = useRef(1);
+    const zoomRafIdRef = useRef<number | null>(null);
+
+    const schedulePanUpdate = useCallback((newOffset: { x: number; y: number }) => {
+        pendingPanRef.current = newOffset;
+        if (panRafIdRef.current === null) {
+            panRafIdRef.current = requestAnimationFrame(() => {
+                setPanOffset(pendingPanRef.current);
+                panRafIdRef.current = null;
+            });
+        }
+    }, []);
+
+    const flushPanUpdate = useCallback(() => {
+        if (panRafIdRef.current !== null) {
+            cancelAnimationFrame(panRafIdRef.current);
+            panRafIdRef.current = null;
+        }
+        setPanOffset(pendingPanRef.current);
+    }, []);
+
+    const scheduleZoomUpdate = useCallback((newZoom: number) => {
+        pendingZoomRef.current = newZoom;
+        if (zoomRafIdRef.current === null) {
+            zoomRafIdRef.current = requestAnimationFrame(() => {
+                setZoom(pendingZoomRef.current);
+                zoomRafIdRef.current = null;
+            });
+        }
+    }, []);
+
+    const flushZoomUpdate = useCallback(() => {
+        if (zoomRafIdRef.current !== null) {
+            cancelAnimationFrame(zoomRafIdRef.current);
+            zoomRafIdRef.current = null;
+        }
+        setZoom(pendingZoomRef.current);
+    }, []);
+
+    // Cleanup pending animation frames on unmount
+    useEffect(() => {
+        return () => {
+            if (panRafIdRef.current !== null) cancelAnimationFrame(panRafIdRef.current);
+            if (zoomRafIdRef.current !== null) cancelAnimationFrame(zoomRafIdRef.current);
+        };
+    }, []);
+
     const handleZoomIn = useCallback(() => {
         setZoom(prev => Math.min(prev + 0.1, 5));
     }, []);
@@ -52,6 +102,14 @@ export function useZoomPan() {
     }, []);
 
     const handleResetZoom = useCallback(() => {
+        if (panRafIdRef.current !== null) {
+            cancelAnimationFrame(panRafIdRef.current);
+            panRafIdRef.current = null;
+        }
+        if (zoomRafIdRef.current !== null) {
+            cancelAnimationFrame(zoomRafIdRef.current);
+            zoomRafIdRef.current = null;
+        }
         setZoom(1);
         setPanOffset({ x: 0, y: 0 });
     }, []);
@@ -69,30 +127,32 @@ export function useZoomPan() {
 
     const handleMouseMove = useCallback((e: React.MouseEvent) => {
         if (isDragging) {
-            setPanOffset({
+            schedulePanUpdate({
                 x: e.clientX - dragStart.x,
                 y: e.clientY - dragStart.y
             });
             e.preventDefault();
         }
-    }, [isDragging, dragStart]);
+    }, [isDragging, dragStart, schedulePanUpdate]);
 
     const handleMouseUp = useCallback(() => {
+        flushPanUpdate();
         setIsDragging(false);
-    }, []);
+    }, [flushPanUpdate]);
 
     // Handle mouse move globally while dragging
     useEffect(() => {
         if (!isDragging) return;
 
         const handleGlobalMouseMove = (e: MouseEvent) => {
-            setPanOffset({
+            schedulePanUpdate({
                 x: e.clientX - dragStart.x,
                 y: e.clientY - dragStart.y
             });
         };
 
         const handleGlobalMouseUp = () => {
+            flushPanUpdate();
             setIsDragging(false);
         };
 
@@ -103,7 +163,7 @@ export function useZoomPan() {
             window.removeEventListener('mousemove', handleGlobalMouseMove);
             window.removeEventListener('mouseup', handleGlobalMouseUp);
         };
-    }, [isDragging, dragStart]);
+    }, [isDragging, dragStart, schedulePanUpdate, flushPanUpdate]);
 
     /**
      * Attach pinch-to-zoom and single-finger pan touch handlers to a container element.
@@ -154,13 +214,13 @@ export function useZoomPan() {
                 if (state.initialDistance > 0) {
                     const scale = currentDistance / state.initialDistance;
                     const newZoom = Math.min(Math.max(state.initialZoom * scale, 0.1), 5);
-                    setZoom(newZoom);
+                    scheduleZoomUpdate(newZoom);
                 }
             } else if (state.isPanning && state.panMode && e.touches.length === 1) {
                 e.preventDefault();
                 const dx = e.touches[0].clientX - state.touchStartPos.x;
                 const dy = e.touches[0].clientY - state.touchStartPos.y;
-                setPanOffset({
+                schedulePanUpdate({
                     x: state.initialPanOffset.x + dx,
                     y: state.initialPanOffset.y + dy,
                 });
@@ -170,9 +230,11 @@ export function useZoomPan() {
         const handleTouchEnd = (e: TouchEvent) => {
             if (state.isPinching && e.touches.length < 2) {
                 state.isPinching = false;
+                flushZoomUpdate();
             }
             if (state.isPanning && e.touches.length === 0) {
                 state.isPanning = false;
+                flushPanUpdate();
                 setIsDragging(false);
             }
         };
@@ -187,7 +249,7 @@ export function useZoomPan() {
             container.removeEventListener('touchmove', handleTouchMove);
             container.removeEventListener('touchend', handleTouchEnd);
         };
-    }, [setZoom, setPanOffset, setIsDragging]);
+    }, [scheduleZoomUpdate, flushZoomUpdate, schedulePanUpdate, flushPanUpdate, setIsDragging]);
 
     return useMemo(() => ({
         zoom,

@@ -324,7 +324,7 @@ interface FormatRendererProps {
   renderLocalCanvas?: boolean
 }
 
-export function FormatRenderer({
+export const FormatRenderer = React.memo(function FormatRenderer({
   rendered,
   scale = 1,
   className = "",
@@ -454,7 +454,7 @@ export function FormatRenderer({
       })()}
     </div>
   )
-}
+})
 
 /** Render order: background → decoration → chart → text → stat */
 function zoneOrder(type: string): number {

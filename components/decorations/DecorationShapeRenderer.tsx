@@ -1002,7 +1002,7 @@ interface DecorationShapeRendererProps {
   zoom?: number
 }
 
-export function DecorationShapeRenderer({ containerWidth, containerHeight, panMode, gridSize = 0, readOnly = false, shapes: propsShapes, zoom = 1.0 }: DecorationShapeRendererProps) {
+export const DecorationShapeRenderer = React.memo(function DecorationShapeRenderer({ containerWidth, containerHeight, panMode, gridSize = 0, readOnly = false, shapes: propsShapes, zoom = 1.0 }: DecorationShapeRendererProps) {
   const storeState = useDecorationStore()
   const shapes = propsShapes || storeState.shapes
   const {
@@ -2493,4 +2493,4 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
   }
 
   return svgElement
-}
+})

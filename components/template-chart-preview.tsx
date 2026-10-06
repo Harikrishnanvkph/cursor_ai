@@ -95,6 +95,7 @@ export function TemplateChartPreview({
 }: TemplateChartPreviewProps) {
   const canvasBgType = useUIStore(s => s.canvasBgType);
   const canvasBgColor = useUIStore(s => s.canvasBgColor);
+  const setCanvasBg = useUIStore(s => s.setCanvasBg);
   const { isLoupeActive, toggleLoupe } = useLoupeStore();
   const { handleExportCSV } = useChartExport();
   const { currentTemplate, templateInBackground, selectedTextAreaId, setSelectedTextAreaId, editorMode, setEditorMode, contentTypePreferences, templateSavedToCloud } = useTemplateStore()
@@ -1346,10 +1347,13 @@ export function TemplateChartPreview({
             <div className="flex items-center flex-shrink-0">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button disabled={!hasData} variant="ghost" size="sm" className="h-9 px-3 text-xs font-semibold text-slate-700 dark:text-slate-200 select-none justify-start gap-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 flex-shrink-0 transition-colors [&_svg]:size-5">
-                    <Search className="h-5 w-5 text-slate-500 shrink-0" />
-                    <span className="tabular-nums">{currentZoomPct}%</span>
-                  </Button>
+                  <button
+                    disabled={!hasData}
+                    className="rounded-full transition-all active:scale-95 duration-200 flex items-center justify-center flex-shrink-0 h-9 w-9 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 dark:text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed"
+                    title={`Zoom (${currentZoomPct}%)`}
+                  >
+                    <Search className="h-5 w-5" />
+                  </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-52 p-2 z-[150]">
                   <DropdownMenuItem disabled={!hasData} onClick={handleResetZoom} className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100 dark:text-slate-200 dark:focus:bg-slate-800">
@@ -1407,21 +1411,25 @@ export function TemplateChartPreview({
                   </div>
 
                   <DropdownMenuSeparator className="my-1" />
-                  <div className="flex items-center justify-between gap-1 px-1">
+                  <div className="flex items-center justify-between gap-1 px-1 py-0.5">
                     <DropdownMenuItem
                       onSelect={(e) => { e.preventDefault(); handleZoomOut(); }}
-                      className="flex-1 flex items-center justify-center py-2 cursor-pointer focus:bg-slate-100 dark:focus:bg-slate-800"
+                      className="h-8 w-8 flex items-center justify-center rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
                       title="Zoom Out"
                     >
-                      <ZoomOut className="h-4 w-4 text-slate-500" />
+                      <ZoomOut className="h-4 w-4" />
                     </DropdownMenuItem>
-                    <div className="w-[1px] h-4 bg-slate-200 dark:bg-slate-800" />
+
+                    <span className="text-xs font-semibold tabular-nums text-slate-700 dark:text-slate-200 select-none px-2">
+                      {currentZoomPct}%
+                    </span>
+
                     <DropdownMenuItem
                       onSelect={(e) => { e.preventDefault(); handleZoomIn(); }}
-                      className="flex-1 flex items-center justify-center py-2 cursor-pointer focus:bg-slate-100 dark:focus:bg-slate-800"
+                      className="h-8 w-8 flex items-center justify-center rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
                       title="Zoom In"
                     >
-                      <ZoomIn className="h-4 w-4 text-slate-500" />
+                      <ZoomIn className="h-4 w-4" />
                     </DropdownMenuItem>
                   </div>
                 </DropdownMenuContent>
@@ -1614,17 +1622,7 @@ export function TemplateChartPreview({
                 </DropdownMenuItem>
 
                 {/* Background Color Picker */}
-                <div className="flex items-center justify-between px-2.5 py-1.5 text-xs font-medium rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200" onClick={(e) => e.stopPropagation()}>
-                  <div className="flex items-center gap-2.5">
-                    <Palette className="h-4 w-4 text-purple-500 shrink-0" />
-                    <span>Background</span>
-                  </div>
-                  <ChartBgColorPicker 
-                    className="flex items-center justify-center rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 duration-200 h-6 w-6" 
-                    innerClassName="w-3.5 h-3.5"
-                    disabled={!hasData}
-                  />
-                </div>
+                <ChartBgColorPicker variant="dropdown-item" disabled={!hasData} />
 
                 <DropdownMenuSeparator className="my-1" />
 
@@ -1859,21 +1857,25 @@ export function TemplateChartPreview({
                     </div>
 
                     <DropdownMenuSeparator className="my-1" />
-                    <div className="flex items-center justify-between gap-1 px-1">
+                    <div className="flex items-center justify-between gap-1 px-1 py-0.5">
                       <DropdownMenuItem
                         onSelect={(e) => { e.preventDefault(); handleZoomOut(); }}
-                        className="flex-1 flex items-center justify-center py-2 cursor-pointer focus:bg-slate-100"
+                        className="h-8 w-8 flex items-center justify-center rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
                         title="Zoom Out"
                       >
-                        <ZoomOut className="h-4 w-4 text-slate-500" />
+                        <ZoomOut className="h-4 w-4" />
                       </DropdownMenuItem>
-                      <div className="w-[1px] h-4 bg-slate-200" />
+
+                      <span className="text-xs font-semibold tabular-nums text-slate-700 dark:text-slate-200 select-none px-2">
+                        {currentZoomPct}%
+                      </span>
+
                       <DropdownMenuItem
                         onSelect={(e) => { e.preventDefault(); handleZoomIn(); }}
-                        className="flex-1 flex items-center justify-center py-2 cursor-pointer focus:bg-slate-100"
+                        className="h-8 w-8 flex items-center justify-center rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
                         title="Zoom In"
                       >
-                        <ZoomIn className="h-4 w-4 text-slate-500" />
+                        <ZoomIn className="h-4 w-4" />
                       </DropdownMenuItem>
                     </div>
                   </DropdownMenuContent>
@@ -2209,8 +2211,11 @@ export function TemplateChartPreview({
               style={{
                 width: width,
                 height: height,
-                transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${scale})`,
-                transformOrigin: 'top left'
+                transform: `translate3d(${panOffset.x}px, ${panOffset.y}px, 0px) scale(${scale})`,
+                transformOrigin: 'top left',
+                willChange: isDragging ? 'transform' : 'auto',
+                backfaceVisibility: 'hidden',
+                WebkitBackfaceVisibility: 'hidden',
               }}
             >
 
@@ -2311,9 +2316,8 @@ export function TemplateChartPreview({
             <div className="flex items-center px-1">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="text-xs px-1.5 h-6 text-slate-700 font-semibold select-none w-[68px] justify-start gap-2 hover:bg-slate-100 flex-shrink-0 transition-colors">
-                    <Search className="h-3 w-3 text-slate-500 shrink-0" />
-                    <span className="tabular-nums">{currentZoomPct}%</span>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600" title={`Zoom (${currentZoomPct}%)`}>
+                    <Search className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-52 p-2 z-[100]">
@@ -2335,21 +2339,25 @@ export function TemplateChartPreview({
                   </div>
 
                   <DropdownMenuSeparator className="my-1" />
-                  <div className="flex items-center justify-between gap-1 px-1">
+                  <div className="flex items-center justify-between gap-1 px-1 py-0.5">
                     <DropdownMenuItem
                       onSelect={(e) => { e.preventDefault(); handleZoomOut(); }}
-                      className="flex-1 flex items-center justify-center py-2 cursor-pointer focus:bg-slate-100"
+                      className="h-8 w-8 flex items-center justify-center rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
                       title="Zoom Out"
                     >
-                      <ZoomOut className="h-4 w-4 text-slate-500" />
+                      <ZoomOut className="h-4 w-4" />
                     </DropdownMenuItem>
-                    <div className="w-[1px] h-4 bg-slate-200" />
+
+                    <span className="text-xs font-semibold tabular-nums text-slate-700 dark:text-slate-200 select-none px-2">
+                      {currentZoomPct}%
+                    </span>
+
                     <DropdownMenuItem
                       onSelect={(e) => { e.preventDefault(); handleZoomIn(); }}
-                      className="flex-1 flex items-center justify-center py-2 cursor-pointer focus:bg-slate-100"
+                      className="h-8 w-8 flex items-center justify-center rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
                       title="Zoom In"
                     >
-                      <ZoomIn className="h-4 w-4 text-slate-500" />
+                      <ZoomIn className="h-4 w-4" />
                     </DropdownMenuItem>
                   </div>
                 </DropdownMenuContent>

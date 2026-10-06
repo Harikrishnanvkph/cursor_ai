@@ -295,9 +295,8 @@ export function FormatBuilderToolbar() {
           <div className="flex items-center flex-shrink-0">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px] font-semibold text-gray-400 hover:text-white hover:bg-gray-800 select-none justify-start gap-1 rounded flex-shrink-0 transition-colors [&_svg]:size-3.5 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0">
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-gray-400 hover:text-white hover:bg-gray-800 select-none flex items-center justify-center rounded flex-shrink-0 transition-colors focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0" title={`Zoom (${currentZoomPct}%)`}>
                   <Search className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-                  <span className="font-mono tabular-nums">{currentZoomPct}%</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-52 p-2 z-[150] bg-gray-900 border-gray-800 text-gray-200" onCloseAutoFocus={(e) => e.preventDefault()}>
@@ -323,18 +322,22 @@ export function FormatBuilderToolbar() {
                 </div>
 
                 <DropdownMenuSeparator className="my-1 border-gray-800" />
-                <div className="flex items-center justify-between gap-1 px-1">
+                <div className="flex items-center justify-between gap-1 px-1 py-0.5">
                   <DropdownMenuItem
                     onSelect={(e) => { e.preventDefault(); handleZoomOut(); }}
-                    className="flex-1 flex items-center justify-center py-2 cursor-pointer focus:bg-gray-800 text-gray-400 hover:text-white"
+                    className="h-8 w-8 flex items-center justify-center rounded cursor-pointer focus:bg-gray-800 text-gray-400 hover:text-white"
                     title="Zoom Out"
                   >
                     <ZoomOut className="h-4 w-4" />
                   </DropdownMenuItem>
-                  <div className="w-[1px] h-4 bg-gray-800" />
+
+                  <span className="text-xs font-semibold tabular-nums text-gray-200 font-mono select-none px-2">
+                    {currentZoomPct}%
+                  </span>
+
                   <DropdownMenuItem
                     onSelect={(e) => { e.preventDefault(); handleZoomIn(); }}
-                    className="flex-1 flex items-center justify-center py-2 cursor-pointer focus:bg-gray-800 text-gray-400 hover:text-white"
+                    className="h-8 w-8 flex items-center justify-center rounded cursor-pointer focus:bg-gray-800 text-gray-400 hover:text-white"
                     title="Zoom In"
                   >
                     <ZoomIn className="h-4 w-4" />

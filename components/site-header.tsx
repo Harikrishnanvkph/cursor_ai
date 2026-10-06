@@ -123,7 +123,7 @@ export function SiteHeader() {
                   asChild
                   className="bg-indigo-600 hover:bg-indigo-700 text-white border border-transparent shadow-md shadow-indigo-600/20 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 rounded-xl px-4 py-1.5 sm:px-4.5 sm:py-2 text-xs sm:text-sm group"
                 >
-                  <Link href="/signin">
+                  <Link href="/signup">
                     <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2 text-indigo-200 group-hover:text-white transition-colors" />
                     Try for Free
                     <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 ml-1 opacity-70 group-hover:translate-x-0.5 group-hover:opacity-100 transition-all" />
@@ -200,7 +200,7 @@ export function SiteHeader() {
                       Sign In
                     </Link>
                     <Link
-                      href="/signin"
+                      href="/signup"
                       className="flex items-center justify-center px-4 py-3 text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl font-medium shadow-sm shadow-indigo-600/20 transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
                     >

@@ -386,6 +386,10 @@ function LandingPageContent() {
   }, [currentChartState, setHasJSON])
 
   const hasActiveChart = currentChartState !== null && hasJSON
+  const hasVisualContent = Boolean(
+    (chartData?.datasets?.length > 0 && hasJSON) ||
+    (editorMode === 'template' && (currentTemplate || templateInBackground))
+  )
 
   // Active banner tracking via in-memory ref
   useEffect(() => {
@@ -438,11 +442,27 @@ function LandingPageContent() {
     return () => { cancelAnimationFrame(raf); clearTimeout(timer) }
   }, [storeHydrated])
 
-  // Tablet Layout (577px - 1024px)
+  // Universal Gallery views (accessible across Desktop, Tablet, and Mobile)
+  if (isGalleryOpen) {
+    return (
+      <FormatGallery
+        leftSidebarOpen={leftSidebarOpen}
+        setLeftSidebarOpen={setLeftSidebarOpen}
+      />
+    )
+  }
+
+  if (isStyleGalleryOpen) {
+    return <ChartStyleGalleryPage />
+  }
+
+  // Tablet Layout (768px - 1023px)
   if (isTablet) {
     return (
       <TabletLandingView
+        user={user}
         handleNewConversation={handleNewConversation}
+        handleResetChart={handleResetChart}
         storeHydrated={storeHydrated}
         contentReady={contentReady}
         hasJSON={hasJSON}
@@ -471,11 +491,23 @@ function LandingPageContent() {
         isTemplateModalOpen={isTemplateModalOpen}
         setIsTemplateModalOpen={setIsTemplateModalOpen}
         currentChartState={currentChartState}
+        currentSnapshotId={currentSnapshotId}
+        showSaveChartDialog={showSaveChartDialog}
+        setShowSaveChartDialog={setShowSaveChartDialog}
+        saveChartDialogName={saveChartDialogName}
+        isUpdate={isUpdate}
+        isSaving={isSaving}
+        handleSaveChart={handleSaveChart}
+        handleSaveToCloudClick={handleSaveToCloudClick}
+        showModeChangeConfirm={showModeChangeConfirm}
+        setModeChangeConfirm={setModeChangeConfirm}
+        confirmModeChange={confirmModeChange}
+        cancelModeChange={cancelModeChange}
       />
     )
   }
 
-  // Mobile Layout (< 577px)
+  // Mobile Layout (< 768px)
   if (isMobile) {
     return (
       <MobileLandingView
@@ -531,7 +563,7 @@ function LandingPageContent() {
   return (
     <>
       {/* Floating global header for history and avatar */}
-      {storeHydrated && (!chartData?.datasets?.length || !hasJSON) && !isTablet && !isMobile && !isTemplateModalOpen && !isGalleryOpen && !isStyleGalleryOpen && (
+      {storeHydrated && !hasVisualContent && !isTablet && !isMobile && !isTemplateModalOpen && !isGalleryOpen && !isStyleGalleryOpen && (
         <div className="fixed top-4 right-4 z-50 flex items-center gap-3">
           <HistoryDropdown variant="full" />
           <SimpleProfileDropdown size="sm" />
@@ -546,14 +578,7 @@ function LandingPageContent() {
       )}
 
       {/* Real content */}
-      {isGalleryOpen ? (
-        <FormatGallery
-          leftSidebarOpen={leftSidebarOpen}
-          setLeftSidebarOpen={setLeftSidebarOpen}
-        />
-      ) : isStyleGalleryOpen ? (
-        <ChartStyleGalleryPage />
-      ) : chartData?.datasets?.length > 0 && hasJSON ? (
+      {hasVisualContent ? (
         <div className="relative w-full h-full flex-1 flex flex-col">
           {isProcessing && (
             <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-2 rounded-full border border-indigo-200/80 dark:border-indigo-800 shadow-lg flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-200">

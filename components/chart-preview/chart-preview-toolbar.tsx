@@ -425,21 +425,25 @@ const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, isMobile, ch
                         </div>
 
                         <DropdownMenuSeparator className="my-1" />
-                        <div className="flex items-center justify-between gap-1 px-1">
+                        <div className="flex items-center justify-between gap-1 px-1 py-0.5">
                             <DropdownMenuItem
                                 onSelect={(e) => { e.preventDefault(); zoomPan.handleZoomOut(); }}
-                                className="flex-1 flex items-center justify-center py-2 cursor-pointer focus:bg-slate-100"
+                                className="h-8 w-8 flex items-center justify-center rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
                                 title="Zoom Out"
                             >
-                                <ZoomOut className="h-4 w-4 text-slate-500" />
+                                <ZoomOut className="h-4 w-4" />
                             </DropdownMenuItem>
-                            <div className="w-[1px] h-4 bg-slate-200" />
+
+                            <span className="text-xs font-semibold tabular-nums text-slate-700 dark:text-slate-200 select-none px-2">
+                                {currentZoomPct}%
+                            </span>
+
                             <DropdownMenuItem
                                 onSelect={(e) => { e.preventDefault(); zoomPan.handleZoomIn(); }}
-                                className="flex-1 flex items-center justify-center py-2 cursor-pointer focus:bg-slate-100"
+                                className="h-8 w-8 flex items-center justify-center rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
                                 title="Zoom In"
                             >
-                                <ZoomIn className="h-4 w-4 text-slate-500" />
+                                <ZoomIn className="h-4 w-4" />
                             </DropdownMenuItem>
                         </div>
                     </DropdownMenuContent>
@@ -664,7 +668,7 @@ const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, isMobile, ch
                         <DropdownMenuSubTrigger className="flex items-center justify-between px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100">
                             <div className="flex items-center gap-2.5">
                                 <Palette className="h-4 w-4 text-slate-500" />
-                                <span>Background</span>
+                                <span>Canvas Background</span>
                             </div>
                             <div
                                 className="w-3.5 h-3.5 rounded-full border border-slate-300 shadow-2xs mr-1"
