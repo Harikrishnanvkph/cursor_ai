@@ -117,7 +117,7 @@ export function GroupedSettingsFilter() {
             {sliceCount > 0 && <SelectSeparator />}
             {Array.from({ length: sliceCount }, (_, idx) => (
               <SelectItem key={idx} value={String(idx)} className="text-xs">
-                {sliceLabels[idx] || chartData.labels?.[idx] || `Slice ${idx + 1}`}
+                {String(sliceLabels[idx] || chartData.labels?.[idx] || `Slice ${idx + 1}`)}
               </SelectItem>
             ))}
           </SelectContent>

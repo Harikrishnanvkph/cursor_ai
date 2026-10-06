@@ -47,6 +47,7 @@ const CLEARABLE_STORES = [
   'decoration-store',
   'chartography-style-presets',
   'format-gallery-store',
+  'snap-state-store',
 ];
 
 /**

@@ -101,29 +101,30 @@ export function ConfigSidebar() {
 
 
         <div className="w-full">
-          {/* Browse Formats button - shows when content is available AND we are in format mode */}
-          {contentPackage && generateMode === 'format' && (
-            <div className="mb-3 px-1">
-              <button
-                onClick={() => openGallery()}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-all w-full justify-center shadow-sm"
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-                Browse Formats
-              </button>
-            </div>
-          )}
+          {/* Action buttons (Browse Formats & Chart Styles in same row) */}
+          {((contentPackage && generateMode === 'format') || (chartData?.datasets?.length > 0)) && (
+            <div className="mb-3 px-1 flex items-center gap-2">
+              {contentPackage && generateMode === 'format' && (
+                <button
+                  onClick={() => openGallery()}
+                  className="flex-1 min-w-0 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-all shadow-sm"
+                  title="Formats"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">Formats</span>
+                </button>
+              )}
 
-          {/* Browse Styles button - shows when chart data is available */}
-          {chartData?.datasets?.length > 0 && (
-            <div className="mb-3 px-1">
-              <button
-                onClick={() => openStyleGallery(chartType)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-violet-600 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-lg transition-all w-full justify-center shadow-sm"
-              >
-                <Palette className="w-3.5 h-3.5" />
-                Chart Styles
-              </button>
+              {chartData?.datasets?.length > 0 && (
+                <button
+                  onClick={() => openStyleGallery(chartType)}
+                  className="flex-1 min-w-0 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-medium text-violet-600 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-lg transition-all shadow-sm"
+                  title="Chart Styles"
+                >
+                  <Palette className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">Chart Styles</span>
+                </button>
+              )}
             </div>
           )}
 

@@ -720,7 +720,7 @@ export const ChartGenerator = memo(function ChartGenerator({
   // Find all slice indices that are enabled
   const enabledSliceIndicesSet = new Set<number>();
   modeFilteredDatasets.forEach(ds => {
-    (ds.data || []).forEach((_, idx) => {
+    (ds.data || []).forEach((_: any, idx: number) => {
       if (isSliceVisible(idx)) {
         enabledSliceIndicesSet.add(idx);
       }
@@ -2000,7 +2000,7 @@ export const ChartGenerator = memo(function ChartGenerator({
 
     // Update the chart with single mode sample data
     useChartStore.getState().setFullChart({
-      chartType: chartType,
+      chartType: chartType as any,
       chartData: singleData,
       chartConfig: chartConfig
     });

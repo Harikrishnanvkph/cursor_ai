@@ -124,7 +124,8 @@ export function ChartStyleGallery() {
         baseBorderColors: ['#4f46e5']
       },
       configSnapshot: {},
-      datasetStyle: {},
+      datasetStyle: {} as any,
+      dimensions: null,
       category: 'minimal' as any,
       tags: ['original', 'default', 'ai'],
       isOfficial: true,
@@ -212,7 +213,8 @@ export function ChartStyleGallery() {
         if (originalSnapshot) {
           useChartStore.getState().setFullChart({
             ...originalSnapshot,
-            replaceMode: true
+            replaceMode: true,
+            preserveHistory: true
           })
           useChartStyleStore.getState().setSelectedPresetId('preset-simple')
           closeGallery()

@@ -206,7 +206,7 @@ export function ContentBankDrawer() {
       setIsSearchingImages(true)
       try {
         // Parallelize Unsplash queries concurrently instead of sequential waterfall
-        const fetchPromises = queries.map(async (q) => {
+        const fetchPromises = queries.map(async (q: string) => {
           try {
             const res = await fetch(`/api/unsplash?query=${encodeURIComponent(q)}`)
             if (res.ok) {

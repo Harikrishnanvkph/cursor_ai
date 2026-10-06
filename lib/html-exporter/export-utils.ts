@@ -467,6 +467,8 @@ export function generateCustomLabelsFromConfig(chartConfig: any, chartData: any,
             };
         });
     });
+
+    return customLabels;
 }
 
 // Sync image positions from drag state into chart data before export

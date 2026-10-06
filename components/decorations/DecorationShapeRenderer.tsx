@@ -1088,7 +1088,7 @@ export function DecorationShapeRenderer({ containerWidth, containerHeight, panMo
     let startY = pt.y
     let didNodeSnap = false
 
-    if (!e.altKey && drawingMode !== 'freehand' && drawingMode !== 'marquee-select') {
+    if (!e.altKey && drawingMode !== 'freehand') {
       const snapNodes = getSnapNodes(shapes)
       let bestDist = 8
       for (const node of snapNodes) {

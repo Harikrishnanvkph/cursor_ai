@@ -64,13 +64,23 @@ export function SliceSettings({ className }: SliceSettingsProps) {
     }, [activeGroupId, chartMode])
 
     const filteredDatasets = chartData.datasets.filter((dataset: any) => {
-        if (dataset.mode) {
-            return dataset.mode === chartMode
+        if (chartMode === 'grouped') {
+            return dataset.groupId === selectedViewGroupId || (!dataset.groupId && selectedViewGroupId === 'default')
         }
         return true
     })
 
-    const currentDataset = filteredDatasets[selectedDatasetIndex] || null
+    const currentDataset = (() => {
+        if (chartMode === 'grouped') {
+            const activeDs = chartData.datasets[activeDatasetIndex];
+            const isInGroup = activeDs && (activeDs.groupId === selectedViewGroupId || (!activeDs.groupId && selectedViewGroupId === 'default'));
+            if (isInGroup) return activeDs;
+            return filteredDatasets[0] || null;
+        }
+        return chartData.datasets[activeDatasetIndex] || chartData.datasets[0] || null;
+    })();
+
+    const currentDatasetIndex = chartData.datasets.findIndex((ds: any) => ds === currentDataset);
     const currentSliceLabels = (currentDataset?.sliceLabels || chartData.labels || []) as string[]
 
     const getSelectedGroupChartType = (): string => {
@@ -97,17 +107,22 @@ export function SliceSettings({ className }: SliceSettingsProps) {
     const isSelectedGroupCoordinateChart = selectedGroupChartType === 'scatter' || selectedGroupChartType === 'bubble';
 
     useEffect(() => {
-        setSelectedDatasetIndex(activeDatasetIndex ?? 0)
-    }, [activeDatasetIndex, chartMode])
+        if (currentDatasetIndex >= 0) {
+            setSelectedDatasetIndex(currentDatasetIndex);
+        }
+    }, [activeDatasetIndex, chartMode, currentDatasetIndex])
 
     useEffect(() => {
         if (chartMode === 'grouped') {
-            const groupDatasets = filteredDatasets
+            const groupDatasets = chartData.datasets
                 .map((d: any, globalIndex: number) => ({ ...d, globalIndex }))
                 .filter((d: any) => d.groupId === selectedViewGroupId || (!d.groupId && selectedViewGroupId === 'default'));
 
             if (groupDatasets.length > 0) {
-                handleDatasetChange(groupDatasets[0].globalIndex);
+                const isCurrentInGroup = currentDataset && (currentDataset.groupId === selectedViewGroupId || (!currentDataset.groupId && selectedViewGroupId === 'default'));
+                if (!isCurrentInGroup) {
+                    handleDatasetChange(groupDatasets[0].globalIndex);
+                }
             }
         }
     }, [selectedViewGroupId])
@@ -238,9 +253,18 @@ export function SliceSettings({ className }: SliceSettingsProps) {
 
         const newData = [...currentDataset.data, 0]
         const newLabels = [...(currentDataset.sliceLabels || []), `Slice ${newData.length}`]
+        const defaultColor = '#1E90FF';
+        const newBg = Array.isArray(currentDataset.backgroundColor)
+            ? [...currentDataset.backgroundColor, defaultColor]
+            : Array(newData.length).fill(currentDataset.backgroundColor || defaultColor);
+        const newBorders = Array.isArray(currentDataset.borderColor)
+            ? [...currentDataset.borderColor, '#1873CC']
+            : Array(newData.length).fill(currentDataset.borderColor || '#1873CC');
 
         updateDataset(datasetIndex, {
             data: newData,
+            backgroundColor: newBg,
+            borderColor: newBorders,
             pointImages: [...(currentDataset.pointImages || []), null],
             pointImageConfig: [...(currentDataset.pointImageConfig || []), {
                 type: getDefaultImageType(chartType),
@@ -281,12 +305,20 @@ export function SliceSettings({ className }: SliceSettingsProps) {
 
         const newData = currentDataset.data.filter((_: any, i: number) => i !== sliceIndex)
         const newLabels = (currentDataset.sliceLabels || []).filter((_: any, i: number) => i !== sliceIndex)
+        const newBg = Array.isArray(currentDataset.backgroundColor)
+            ? currentDataset.backgroundColor.filter((_: any, i: number) => i !== sliceIndex)
+            : currentDataset.backgroundColor;
+        const newBorders = Array.isArray(currentDataset.borderColor)
+            ? currentDataset.borderColor.filter((_: any, i: number) => i !== sliceIndex)
+            : currentDataset.borderColor;
 
         updateDataset(datasetIndex, {
             data: newData,
+            backgroundColor: newBg,
+            borderColor: newBorders,
             pointImages: (currentDataset.pointImages || []).filter((_: any, i: number) => i !== sliceIndex),
             pointImageConfig: (currentDataset.pointImageConfig || []).filter((_: any, i: number) => i !== sliceIndex)
-        })
+        } as any)
         updateLabels(newLabels as string[])
     }
 
@@ -454,7 +486,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                                 newConfig.arrowHead = false;
                             }
                         } else {
-                            newConfig = { ...currentConfig, ...keyOrUpdates };
+                            newConfig = { ...currentConfig, ...(keyOrUpdates as Record<string, any>) };
                         }
 
                         updatePointImage(datasetIndex, pointIndex, imageUrl, newConfig);
@@ -529,7 +561,7 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                             <div className="flex-1 min-w-0">
                                 <Label className="text-[0.70rem] font-medium text-gray-500 mb-1 block">Dataset</Label>
                                 {(() => {
-                                    const groupDatasets = filteredDatasets
+                                    const groupDatasets = chartData.datasets
                                         .map((d: any, globalIndex: number) => ({ ...d, globalIndex }))
                                         .filter((d: any) => d.groupId === selectedViewGroupId || (!d.groupId && selectedViewGroupId === 'default'));
 
@@ -542,10 +574,10 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                                     }
 
                                     return (
-                                        <Select value={String(selectedDatasetIndex)} onValueChange={(value) => handleDatasetChange(Number(value))}>
+                                        <Select value={String(currentDatasetIndex >= 0 ? currentDatasetIndex : selectedDatasetIndex)} onValueChange={(value) => handleDatasetChange(Number(value))}>
                                             <SelectTrigger className="h-8 w-full text-xs bg-blue-50 border-blue-200 hover:bg-blue-100">
                                                 <span className="text-xs truncate">
-                                                    {filteredDatasets[selectedDatasetIndex]?.label || `Dataset ${selectedDatasetIndex + 1}`}
+                                                    {currentDataset?.label || `Dataset ${currentDatasetIndex >= 0 ? currentDatasetIndex + 1 : 1}`}
                                                 </span>
                                             </SelectTrigger>
                                             <SelectContent>
@@ -564,12 +596,12 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                         <div className="flex items-end gap-3 w-full">
                             <div className="flex-1 min-w-0">
                                 <Label className="text-[0.70rem] font-medium text-gray-500 mb-1 block">Dataset</Label>
-                                <Select value={String(selectedDatasetIndex)} onValueChange={(value) => handleDatasetChange(Number(value))}>
+                                <Select value={String(currentDatasetIndex >= 0 ? currentDatasetIndex : selectedDatasetIndex)} onValueChange={(value) => handleDatasetChange(Number(value))}>
                                     <SelectTrigger className="h-8 w-full text-xs bg-blue-50 border-blue-200 hover:bg-blue-100">
-                                        <span className="text-xs truncate">{chartMode === 'single' ? (filteredDatasets[selectedDatasetIndex]?.sourceTitle || filteredDatasets[selectedDatasetIndex]?.label || `Dataset ${selectedDatasetIndex + 1}`) : (filteredDatasets[selectedDatasetIndex]?.label || `Dataset ${selectedDatasetIndex + 1}`)}</span>
+                                        <span className="text-xs truncate">{chartMode === 'single' ? (currentDataset?.sourceTitle || currentDataset?.label || `Dataset ${currentDatasetIndex >= 0 ? currentDatasetIndex + 1 : 1}`) : (currentDataset?.label || `Dataset ${currentDatasetIndex >= 0 ? currentDatasetIndex + 1 : 1}`)}</span>
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {filteredDatasets.map((dataset: any, index: number) => (
+                                        {chartData.datasets.map((dataset: any, index: number) => (
                                             <SelectItem key={index} value={String(index)}>
                                                 {chartMode === 'single'
                                                     ? (dataset.sourceTitle || dataset.label || `Dataset ${index + 1}`)
@@ -754,6 +786,9 @@ export function SliceSettings({ className }: SliceSettingsProps) {
                         const isInEditedGroup = ds.groupId === editedGroupId || (!ds.groupId && editedGroupId === 'default');
 
                         if (chartMode === 'grouped' && !isInEditedGroup) {
+                            return;
+                        }
+                        if (chartMode === 'single' && i !== activeDatasetIndex) {
                             return;
                         }
 

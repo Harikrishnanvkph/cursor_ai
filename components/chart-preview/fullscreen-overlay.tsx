@@ -4,8 +4,9 @@ import React, { RefObject, useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
     Download, Minimize2, X, ZoomIn, ZoomOut, Hand, Menu, ChevronLeft,
-    Sparkles, FileImage, ImageIcon, FileCode, FileText
+    Sparkles, FileImage, ImageIcon, FileCode, FileText, ScanSearch
 } from "lucide-react"
+import { useLoupeStore } from "@/lib/stores/loupe-store"
 import { 
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
     DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent
@@ -68,6 +69,7 @@ export function FullscreenOverlay({
     rightSidebarPanelRef,
 }: FullscreenOverlayProps) {
     const [fullscreenActiveTab, setFullscreenActiveTab] = useState(activeTab || "types_toggles");
+    const { isLoupeActive, toggleLoupe } = useLoupeStore();
 
     return (
         <>
@@ -99,6 +101,20 @@ export function FullscreenOverlay({
                 {/* Pan Mode Toggle */}
                 <Button variant={zoomPan.panMode ? "default" : "ghost"} size="icon" onClick={() => zoomPan.setPanMode(!zoomPan.panMode)} title={zoomPan.panMode ? "Disable Pan Mode" : "Enable Pan Mode"} className="h-8 w-8">
                     <Hand className="h-4 w-4" />
+                </Button>
+                {/* Amazon Loupe Magnifier Button */}
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={toggleLoupe}
+                    className={`h-8 w-8 transition-all ${
+                        isLoupeActive
+                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 ring-1 ring-blue-400 shadow-inner'
+                            : 'hover:bg-slate-100 text-slate-600'
+                    }`}
+                    title={isLoupeActive ? "Disable Loupe View (Esc)" : "Amazon Loupe View (Inspect Details)"}
+                >
+                    <ScanSearch className="h-4 w-4" />
                 </Button>
                 {exports ? (
                     <DropdownMenu>

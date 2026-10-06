@@ -118,7 +118,7 @@ interface ChartStore {
   toggleShowImages: () => void;
   toggleShowLabels: () => void;
   toggleShowLegend: () => void;
-  setFullChart: (chart: { chartType: SupportedChartType; chartData: ExtendedChartData; chartConfig: ExtendedChartOptions; id?: string; name?: string; conversationId?: string; replaceMode?: boolean }) => void;
+  setFullChart: (chart: { chartType: SupportedChartType; chartData: ExtendedChartData; chartConfig: ExtendedChartOptions; id?: string; name?: string; conversationId?: string; replaceMode?: boolean; preserveHistory?: boolean }) => void;
   setHasJSON: (value: boolean) => void;
   /** Initialize chart dimensions from the setup dialog. Sets consistent config flags. */
   initializeChartDimensions: (width: number, height: number, isResponsive: boolean) => void;
@@ -128,14 +128,15 @@ interface ChartStore {
 
 
 
-  // Data operations (temporary transformations)
-  datasetBackups: Map<number, { labels: string[], data: any[], backgroundColor: any, borderColor: any, pointImages: any[], pointImageConfig: any[] }>;
-
-  // Data backups for chart type transitions
+  updateDataPoint: (datasetIndex: number, pointIndex: number, field: string, value: any) => void;
+  pendingChartTypeChange: { targetType: SupportedChartType; currentType: SupportedChartType; direction: 'toScatter' | 'toCategorical' } | null;
+  requestChartTypeChange: (targetType: SupportedChartType) => boolean;
+  clearPendingChartTypeChange: () => void;
   categoricalDataBackup: ExtendedChartData | null;
   scatterBubbleDataBackup: ExtendedChartData | null;
   setCategoricalDataBackup: (data: ExtendedChartData | null) => void;
   setScatterBubbleDataBackup: (data: ExtendedChartData | null) => void;
+  datasetBackups: Map<number, { labels: string[], data: any[], backgroundColor: any, borderColor: any, pointImages: any[], pointImageConfig: any[] }>;
 }
 
 // Create the store with persist middleware
@@ -201,6 +202,10 @@ export const useChartStore = create<ChartStore>()(
 
       chartType: 'bar',
       chartData: emptyChartData,
+      setChartData: (data: ExtendedChartData) => set((state) => ({
+        chartData: data,
+        ...(state.chartMode === 'single' ? { singleModeData: data } : { groupedModeData: data })
+      })),
       chartConfig: getDefaultConfigForType('bar'),
       chartMode: 'single',
       activeDatasetIndex: 0,
@@ -304,7 +309,7 @@ export const useChartStore = create<ChartStore>()(
 
         return newState || state;
       }),
-      updateDataPoint: (datasetIndex, pointIndex, field, value) => set((state) => {
+      updateDataPoint: (datasetIndex: number, pointIndex: number, field: string, value: any) => set((state) => {
         const newState = DatasetService.updateDataPoint(datasetIndex, pointIndex, field, value, {
           chartData: state.chartData,
           chartMode: state.chartMode,
@@ -433,7 +438,7 @@ export const useChartStore = create<ChartStore>()(
           chartTitle: targetDataset.sourceTitle || state.chartTitle,
           currentSnapshotId: targetDataset.sourceId ? state.currentSnapshotId : null,
           ...(state.chartMode === 'single' ? { singleModeData: newChartData } : { groupedModeData: newChartData })
-        };
+        } as any;
       }),
       setActiveGroupId: (id) => set((state) => GroupService.setActiveGroup(id, state)),
       setUniformityMode: (mode: 'uniform' | 'mixed') => set({ uniformityMode: mode }),
@@ -445,6 +450,7 @@ export const useChartStore = create<ChartStore>()(
           chartData: state.chartData,
           chartMode: state.chartMode,
           activeDatasetIndex: state.activeDatasetIndex,
+          activeGroupId: state.activeGroupId,
           singleModeData: state.singleModeData,
           groupedModeData: state.groupedModeData,
           hasJSON: state.hasJSON,
@@ -459,7 +465,7 @@ export const useChartStore = create<ChartStore>()(
       setChartTitle: (title: string | null) => set((state) => ChartStateService.setChartTitle(title, state)),
       setFullChart: (params) => set((state) => {
         const nextState = ChartStateService.setFullChart(params, state);
-        if (params.replaceMode) {
+        if (params.replaceMode && !params.preserveHistory) {
           setTimeout(() => {
             try { (useChartStore as any).temporal?.getState()?.clear(); } catch (e) {}
           }, 0);
@@ -610,6 +616,7 @@ export const useChartStore = create<ChartStore>()(
         showLabels: state.showLabels,
         showImages: state.showImages,
         hasJSON: state.hasJSON,
+        currentSnapshotId: state.currentSnapshotId,
         originalCloudDimensions: state.originalCloudDimensions,
       }),
     }
@@ -619,6 +626,9 @@ export const useChartStore = create<ChartStore>()(
       chartType: state.chartType,
       chartData: state.chartData,
       chartConfig: state.chartConfig,
+      chartMode: state.chartMode,
+      activeDatasetIndex: state.activeDatasetIndex,
+      activeGroupId: state.activeGroupId,
       // Mode-specific data must be tracked so undo restores the correct mode state
       singleModeData: state.singleModeData,
       groupedModeData: state.groupedModeData,

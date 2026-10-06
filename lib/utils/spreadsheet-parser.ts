@@ -361,6 +361,7 @@ export function detectGridHeaders(grid: string[][]): DetectedGridInfo {
       indexColIndex: null,
       numericColIndices: [],
       textColIndices: [],
+      defaultDatasetColIndices: [],
     }
   }
 

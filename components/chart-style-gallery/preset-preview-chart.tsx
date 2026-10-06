@@ -247,7 +247,7 @@ export const PresetPreviewChart = memo(function PresetPreviewChart({
             >
               <ChartGenerator
                 readOnly
-                dataOverride={styledResult.chartData}
+                dataOverride={styledResult.chartData as any}
                 configOverride={styledResult.chartConfig as any}
                 typeOverride={styledResult.chartType}
                 isTemplateOrFormat={isResponsive}

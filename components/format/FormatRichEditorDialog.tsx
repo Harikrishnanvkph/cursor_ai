@@ -110,7 +110,7 @@ export function FormatRichEditorDialog() {
   // Resolve background styling matching format template
   const bgZone = (skeleton?.zones || []).find((z: any) => z.type === 'background')
   const formatBgColor = bgZone?.style?.color || bgZone?.style?.backgroundColor || bgZone?.style?.baseColor || (skeleton?.palette as any)?.background
-  const effectiveBgColor = zoneStyle.backgroundColor || zoneStyle.bgColor || (editorBg === 'black' ? '#111827' : (formatBgColor || '#ffffff'))
+  const effectiveBgColor = (zoneStyle as any).backgroundColor || (zoneStyle as any).bgColor || (editorBg === 'black' ? '#111827' : (formatBgColor || '#ffffff'))
 
   const previewStyle: React.CSSProperties = {
     fontSize: zoneStyle.fontSize ? `${zoneStyle.fontSize}px` : '14px',

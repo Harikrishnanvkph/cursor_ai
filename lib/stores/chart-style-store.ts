@@ -380,24 +380,16 @@ export const useChartStyleStore = create<ChartStyleStore>()(
       })
 
       // Undo is handled automatically by zundo when setFullChart updates the store
-
-      // Apply via setFullChart
+      // Apply via setFullChart with history preserved so user can undo/redo styles
       chartState.setFullChart({
         chartType: result.chartType,
         chartData: result.chartData,
         chartConfig: result.chartConfig,
         replaceMode: true,
+        preserveHistory: true,
       })
 
       set({ selectedPresetId: presetId })
-
-      // Clear undo history so the selected style becomes the new baseline.
-      // Users should not be able to undo back past a style gallery selection.
-      try {
-        useChartStore.temporal.getState().clear()
-      } catch (e) {
-        console.warn('[ChartStyleStore] Could not clear temporal history:', e)
-      }
 
       return true
     } catch (error) {

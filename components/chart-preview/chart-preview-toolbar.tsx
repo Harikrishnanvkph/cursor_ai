@@ -8,8 +8,10 @@ import { STANDARD_CHART_TYPES, THREE_D_CHART_TYPES } from "@/lib/chart-types"
 import {
     Download, Maximize2,
     ZoomIn, ZoomOut, Hand, Pencil, Check, Loader2,
-    ChartColumn, RulerDimensionLine, Ban, Search, Palette, Upload, Sparkles
+    ChartColumn, RulerDimensionLine, Ban, Search, Palette, Upload, Sparkles, ScanSearch, Ellipsis,
+    Camera, RotateCcw, Info
 } from "lucide-react"
+import { useLoupeStore } from "@/lib/stores/loupe-store"
 import { 
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
     DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent
@@ -24,6 +26,8 @@ import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { useUIStore } from "@/lib/stores/ui-store"
 import { useChartStore } from "@/lib/chart-store"
 import { useChartStyleStore } from "@/lib/stores/chart-style-store"
+import { useSnapStateStore } from "@/lib/stores/snap-state-store"
+import { toast } from "sonner"
 import { ChartBgColorPicker } from "./chart-bg-color-picker"
 import { useAuth } from "@/components/auth/AuthProvider"
 import { PublishStyleDialog } from "@/components/chart-style-gallery/publish-dialog"
@@ -105,17 +109,8 @@ const ModeAndTypeSection = memo(({
                 </SelectContent>
             </Select>
 
-            <DimensionDisplay
-                isResponsive={isResponsive}
-                chartContainerRef={chartContainerRef}
-                chartWidth={chartWidth}
-                chartHeight={chartHeight}
-            />
-
             {/* Divider */}
             <div className="w-px h-4 bg-gray-200 mx-1" />
-
-            <ChartBgColorPicker />
 
             {/* Styles Button */}
             <StylesButton />
@@ -313,6 +308,7 @@ const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, isMobile, ch
         handleZoomOut: () => void;
 
         setZoom: (z: number) => void;
+        setPanOffset: (offset: { x: number; y: number }) => void;
     };
     exports: {
         handleExport: (exportScale?: number) => void;
@@ -329,6 +325,11 @@ const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, isMobile, ch
     chartHeight?: number;
     disabled?: boolean;
 }) => {
+    const { isLoupeActive, toggleLoupe } = useLoupeStore();
+    const canvasBgType = useUIStore(s => s.canvasBgType);
+    const canvasBgColor = useUIStore(s => s.canvasBgColor);
+    const setCanvasBg = useUIStore(s => s.setCanvasBg);
+    const dimensionText = chartWidth && chartHeight ? `${chartWidth} × ${chartHeight}` : "Responsive";
     const currentZoomPct = Math.round(zoomPan.zoom * 100);
 
     let closestIndex = 0;
@@ -340,6 +341,29 @@ const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, isMobile, ch
             closestIndex = i;
         }
     }
+
+    const snapState = useSnapStateStore(s => s.snapState);
+    const captureCurrentState = useSnapStateStore(s => s.captureCurrentState);
+    const restoreSnapState = useSnapStateStore(s => s.restoreSnapState);
+    const hasSnap = !!snapState;
+
+    const handleSnapState = () => {
+        captureCurrentState('manual', null, 'Manual Snapshot');
+        toast.success("Snapshot baseline saved!");
+    };
+
+    const handleResetState = () => {
+        if (!hasSnap) {
+            toast.error("No snap state saved yet.");
+            return;
+        }
+        const success = restoreSnapState();
+        if (success) {
+            toast.success("Restored to baseline snapshot. Undo/redo history reset.");
+        } else {
+            toast.error("Failed to restore snap state.");
+        }
+    };
 
     const handleSliderChange = (value: number[]) => {
         const newZoomPct = ZOOM_VALUES[value[0]];
@@ -421,22 +445,25 @@ const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, isMobile, ch
                     </DropdownMenuContent>
                 </DropdownMenu>
 
+                {/* Amazon Loupe Magnifier Button */}
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleLoupe}
+                    className={`h-7 w-7 p-0 transition-all ${
+                        isLoupeActive
+                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 ring-1 ring-blue-400 shadow-inner'
+                            : 'hover:bg-slate-100 text-slate-600'
+                    }`}
+                    title={isLoupeActive ? "Disable Loupe View (Esc)" : "Amazon Loupe View (Inspect Details)"}
+                >
+                    <ScanSearch className="h-4 w-4" />
+                </Button>
+
                 <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
 
             <Button variant="ghost" size="sm" onClick={() => zoomPan.setPanMode(!zoomPan.panMode)} className={`h-7 w-7 p-0 text-slate-600 transition-colors ${zoomPan.panMode ? 'bg-slate-200 shadow-inner' : 'hover:bg-slate-100'}`} title={zoomPan.panMode ? "Disable Pan Mode" : "Enable Pan Mode"}>
                 <Hand className="h-4 w-4" />
-            </Button>
-
-            <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
-
-            <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleFullscreen}
-                className="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600"
-                title="Fullscreen"
-            >
-                <Maximize2 className="h-4 w-4" />
             </Button>
 
             <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
@@ -601,63 +628,166 @@ const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, isMobile, ch
 
             <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
 
+            {/* More Options (Ellipsis Dropdown) */}
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600" title="More Options">
+                        <Ellipsis className="h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 p-1.5 z-[100]">
+                    {/* Fullscreen */}
+                    <DropdownMenuItem
+                        onClick={handleFullscreen}
+                        className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100"
+                    >
+                        <Maximize2 className="h-4 w-4 text-slate-500" />
+                        <span>Fullscreen</span>
+                    </DropdownMenuItem>
+
+                    {/* Dimensions */}
+                    <DropdownMenuItem
+                        onSelect={(e) => e.preventDefault()}
+                        className="flex items-center justify-between px-2.5 py-2 text-xs font-medium cursor-default rounded-md hover:bg-slate-50"
+                    >
+                        <div className="flex items-center gap-2.5">
+                            <RulerDimensionLine className="h-4 w-4 text-slate-500" />
+                            <span>Dimensions</span>
+                        </div>
+                        <span className="text-[11px] font-semibold text-slate-400 font-mono">
+                            {dimensionText}
+                        </span>
+                    </DropdownMenuItem>
+
+                    {/* Background Color */}
+                    <DropdownMenuSub>
+                        <DropdownMenuSubTrigger className="flex items-center justify-between px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100">
+                            <div className="flex items-center gap-2.5">
+                                <Palette className="h-4 w-4 text-slate-500" />
+                                <span>Background</span>
+                            </div>
+                            <div
+                                className="w-3.5 h-3.5 rounded-full border border-slate-300 shadow-2xs mr-1"
+                                style={{ backgroundColor: canvasBgType === 'transparent' ? 'transparent' : (canvasBgColor || '#e5e7eb') }}
+                            />
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="w-[160px] p-2.5 z-[110]" onClick={(e) => e.stopPropagation()}>
+                            <div className="space-y-2">
+                                <div className="grid grid-cols-5 gap-1.5">
+                                    {['#ffffff', '#f9fafb', '#f3f4f6', '#e5e7eb', '#f0f9ff', '#212121', '#2d2d2d', '#1e293b', '#f5f3ff', '#fff1f2'].map((color) => (
+                                        <button
+                                            key={color}
+                                            onClick={() => setCanvasBg('color', color)}
+                                            className={`w-5 h-5 rounded border transition-all ${
+                                                canvasBgType !== 'transparent' && canvasBgColor === color
+                                                    ? 'border-gray-900 ring-1 ring-gray-900 z-10'
+                                                    : 'border-gray-200 hover:border-gray-400'
+                                            }`}
+                                            style={{ backgroundColor: color }}
+                                        />
+                                    ))}
+                                </div>
+                                <div className="h-px bg-gray-100" />
+                                <div className="flex items-center justify-between px-0.5">
+                                    <button
+                                        onClick={() => setCanvasBg('transparent')}
+                                        className={`flex items-center justify-center w-6 h-6 rounded border transition-colors ${
+                                            canvasBgType === 'transparent' ? 'bg-gray-100 border-gray-300' : 'border-gray-200 hover:bg-gray-50'
+                                        }`}
+                                        title="Transparent"
+                                    >
+                                        <Ban className="w-4 h-4 text-red-500" />
+                                    </button>
+                                    <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-tight">Picker</div>
+                                    <div className="relative">
+                                        <div
+                                            className="w-6 h-6 rounded border border-gray-300 shadow-sm cursor-pointer"
+                                            style={{ backgroundColor: canvasBgType === 'transparent' ? '#ffffff' : (canvasBgColor || '#e5e7eb') }}
+                                        />
+                                        <input
+                                            type="color"
+                                            value={canvasBgType === 'transparent' ? '#ffffff' : (canvasBgColor || '#e5e7eb')}
+                                            onChange={(e) => setCanvasBg('color', e.target.value)}
+                                            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+
+                    <DropdownMenuSeparator className="my-1" />
+
+                    {/* Snap State */}
+                    <DropdownMenuItem
+                        onClick={handleSnapState}
+                        className="flex items-center justify-between px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100 group"
+                    >
+                        <div className="flex items-center gap-2.5">
+                            <Camera className="h-4 w-4 text-indigo-500" />
+                            <span>Snap State</span>
+                        </div>
+                        <TooltipProvider delayDuration={100}>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            e.preventDefault();
+                                        }}
+                                        className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors"
+                                    >
+                                        <Info className="h-3.5 w-3.5" />
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="right" sideOffset={10} align="center" className="z-[150] max-w-[210px] p-2 text-xs font-normal text-slate-700 bg-white border border-slate-200 shadow-md">
+                                    Saves current chart state as the snapshot baseline. Only one snapshot is kept.
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    </DropdownMenuItem>
+
+                    {/* Reset State */}
+                    <DropdownMenuItem
+                        onClick={handleResetState}
+                        disabled={!hasSnap}
+                        className="flex items-center justify-between px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed group"
+                    >
+                        <div className="flex items-center gap-2.5">
+                            <RotateCcw className="h-4 w-4 text-amber-500" />
+                            <span>Reset State</span>
+                        </div>
+                        <TooltipProvider delayDuration={100}>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            e.preventDefault();
+                                        }}
+                                        className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors"
+                                    >
+                                        <Info className="h-3.5 w-3.5" />
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="right" sideOffset={10} align="center" className="z-[150] max-w-[210px] p-2 text-xs font-normal text-slate-700 bg-white border border-slate-200 shadow-md">
+                                    Restores chart to the saved baseline snapshot and clears all undo and redo history.
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+
+            <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
+
             <UndoRedoButtons variant="ghost" size="sm" showLabels={false} className="gap-0.5" buttonClassName="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600 hover:scale-100" />
         </div>
     );
 });
 ControlsSection.displayName = "ControlsSection";
-
-const DimensionDisplay = memo(({
-    isResponsive,
-    chartContainerRef,
-    chartWidth,
-    chartHeight
-}: {
-    isResponsive: boolean;
-    chartContainerRef: React.RefObject<HTMLDivElement | null>;
-    chartWidth?: number;
-    chartHeight?: number;
-}) => {
-    const [hoverDimensions, setHoverDimensions] = React.useState<{ width: number, height: number } | null>(null);
-
-    const handleMeasureDimensions = () => {
-        if (!isResponsive || !chartContainerRef.current) return;
-        const rect = chartContainerRef.current.getBoundingClientRect();
-        setHoverDimensions({
-            width: Math.round(rect.width),
-            height: Math.round(rect.height)
-        });
-    };
-
-    const getDimensionText = () => {
-        if (!isResponsive) {
-            return `${chartWidth || 0} × ${chartHeight || 0}`;
-        }
-        if (!hoverDimensions) return 'Responsive (hover to measure)';
-        return `${hoverDimensions.width} × ${hoverDimensions.height} (responsive)`;
-    };
-
-    return (
-        <TooltipProvider delayDuration={0}>
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <div
-                        className="flex items-center justify-center p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded cursor-help transition-colors relative"
-                        onMouseEnter={handleMeasureDimensions}
-                        onClick={handleMeasureDimensions}
-                    >
-                        <RulerDimensionLine className="w-4 h-4" />
-                    </div>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" sideOffset={5} className="z-[100] text-xs font-medium">
-                    {getDimensionText()}
-                </TooltipContent>
-            </Tooltip>
-        </TooltipProvider>
-    );
-});
-DimensionDisplay.displayName = "DimensionDisplay";
-
 
 // --- Main Toolbar ---
 

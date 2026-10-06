@@ -34,7 +34,7 @@ interface ImagesTabProps {
     getDefaultImageSize: (chartType: string) => number
     handleImageUpload: (pointIndex: number, event: React.ChangeEvent<HTMLInputElement>) => void
     handleImageUrlChange: (pointIndex: number, url: string) => void
-    handleImageConfigChange: (pointIndex: number, key: string, value: any) => void
+    handleImageConfigChange: (pointIndex: number, keyOrUpdates: string | Record<string, any>, value?: any) => void
     updatePointImage: (datasetIndex: number, pointIndex: number, imageUrl: string, config: any) => void
     updateDataset: (datasetIndex: number, updates: any) => void
 }

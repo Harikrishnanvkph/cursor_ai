@@ -10,6 +10,7 @@ import { useChartStyleStore } from "@/lib/stores/chart-style-store";
 import { dataService } from "@/lib/data-service";
 import { createExpiringStorage } from "@/lib/storage-utils";
 import { useDecorationStore } from "@/lib/stores/decoration-store";
+import { useSnapStateStore } from "@/lib/stores/snap-state-store";
 import type { ChartOptions } from "chart.js";
 
 export type Conversation = {
@@ -379,7 +380,32 @@ export const useHistoryStore = create<HistoryStore>()(
               if (existingGroupId !== currentStore.activeGroupId) {
                 currentStore.setActiveGroupId(existingGroupId);
               }
+
+              const snapDatasets = conv.snapshot.chartData?.datasets || [];
+              let updatedDatasets = [...currentStore.chartData.datasets];
+              if (snapDatasets.length > 0) {
+                // Filter out existing datasets for this group and replace with snapshot datasets
+                updatedDatasets = updatedDatasets.filter((ds: any) =>
+                  !(ds.groupId === existingGroupId || (!ds.groupId && existingGroupId === 'default'))
+                );
+                const groupSnapDatasets = snapDatasets.map((ds: any) => ({
+                  ...ds,
+                  groupId: existingGroupId,
+                  sourceId: conv.id,
+                  sourceTitle: conv.title
+                }));
+                updatedDatasets = [...updatedDatasets, ...groupSnapDatasets];
+              }
+
+              const updatedChartData = {
+                ...currentStore.chartData,
+                labels: conv.snapshot.chartData?.labels || currentStore.chartData.labels,
+                datasets: updatedDatasets
+              };
+
               useChartStore.setState({
+                chartData: updatedChartData,
+                groupedModeData: updatedChartData,
                 chartConfig: conv.snapshot.chartConfig ? JSON.parse(JSON.stringify(conv.snapshot.chartConfig)) : currentStore.chartConfig,
                 chartType: conv.snapshot.chartType || currentStore.chartType,
                 chartTitle: conv.title || currentStore.chartTitle
@@ -400,6 +426,19 @@ export const useHistoryStore = create<HistoryStore>()(
 
             restoreDecorationsAndDims();
             restoreTemplateOrFormat();
+
+            // Snap State: Preserve original baseline if already loaded, or establish baseline
+            const snapStore = useSnapStateStore.getState();
+            if (snapStore.chartSnaps[conv.id]) {
+              snapStore.setSnapState(snapStore.chartSnaps[conv.id]);
+            } else {
+              snapStore.captureFromSnapshot(conv.snapshot, 'cloud', conv.id, {
+                chartMode: targetChartMode,
+                title: conv.title,
+                formatData: (conv.snapshot.chartConfig as any)?.formatData,
+              });
+            }
+
             return;
           }
 
@@ -428,6 +467,17 @@ export const useHistoryStore = create<HistoryStore>()(
 
           restoreDecorationsAndDims();
           restoreTemplateOrFormat();
+
+          // Snap State: Capture initial cloud pull as baseline snap state
+          useSnapStateStore.getState().captureFromSnapshot(conv.snapshot, 'cloud', conv.id, {
+            chartMode: targetChartMode,
+            title: conv.title,
+            formatData: (conv.snapshot.chartConfig as any)?.formatData,
+            dimensions: conv.snapshot.chartConfig ? {
+              width: (conv.snapshot.chartConfig as any).width,
+              height: (conv.snapshot.chartConfig as any).height,
+            } : null,
+          });
         }
       },
       clearAllConversations: async () => {

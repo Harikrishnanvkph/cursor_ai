@@ -152,7 +152,7 @@ export function BackgroundPanel() {
         ) : (
           selectedTextArea ? (
             <SectionBackgroundEditor
-              background={selectedTextArea.background}
+              background={selectedTextArea.background as any}
               sectionLabel={selectedTextArea.type.charAt(0).toUpperCase() + selectedTextArea.type.slice(1)}
               sectionDimensions={{
                 width: selectedTextArea.position.width,

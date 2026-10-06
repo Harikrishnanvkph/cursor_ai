@@ -60,7 +60,7 @@ export class ChartStateService {
 
             updatedSingleModeData = {
                 ...state.chartData,
-                datasets: committedDatasets
+                datasets: committedDatasets as any
             };
         } else {
             // Outgoing was grouped mode: commit config to active group
@@ -295,27 +295,34 @@ export class ChartStateService {
                 );
                 processedDatasets = [...existingDatasetsFromOtherGroups, ...processedDatasets];
             }
-        } else if (datasetCount > 0 && !replaceMode) {
+        } else if (datasetCount > 0) {
             let existingDatasets = [...state.chartData.datasets];
             
-            // CRITICAL FIX: Before appending, save the CURRENT active config AND shared labels
-            // into the outgoing active dataset so they aren't lost when we switch
-            if (state.chartMode === 'single' && state.activeDatasetIndex >= 0 && state.activeDatasetIndex < existingDatasets.length) {
-                const commitUpdates: any = {};
-                if (state.chartData.labels && state.chartData.labels.length > 0) {
-                    commitUpdates.sliceLabels = [...state.chartData.labels];
+            if (replaceMode) {
+                if (state.chartMode === 'single' && state.activeDatasetIndex >= 0 && state.activeDatasetIndex < existingDatasets.length) {
+                    existingDatasets[state.activeDatasetIndex] = processedDatasets[0];
+                    processedDatasets = existingDatasets;
                 }
-                if (state.chartConfig) {
-                    commitUpdates.chartConfig = JSON.parse(JSON.stringify(state.chartConfig));
+            } else {
+                // CRITICAL FIX: Before appending, save the CURRENT active config AND shared labels
+                // into the outgoing active dataset so they aren't lost when we switch
+                if (state.chartMode === 'single' && state.activeDatasetIndex >= 0 && state.activeDatasetIndex < existingDatasets.length) {
+                    const commitUpdates: any = {};
+                    if (state.chartData.labels && state.chartData.labels.length > 0) {
+                        commitUpdates.sliceLabels = [...state.chartData.labels];
+                    }
+                    if (state.chartConfig) {
+                        commitUpdates.chartConfig = JSON.parse(JSON.stringify(state.chartConfig));
+                    }
+                    if (Object.keys(commitUpdates).length > 0) {
+                        existingDatasets[state.activeDatasetIndex] = {
+                            ...existingDatasets[state.activeDatasetIndex],
+                            ...commitUpdates
+                        };
+                    }
                 }
-                if (Object.keys(commitUpdates).length > 0) {
-                    existingDatasets[state.activeDatasetIndex] = {
-                        ...existingDatasets[state.activeDatasetIndex],
-                        ...commitUpdates
-                    };
-                }
+                processedDatasets = [...existingDatasets, ...processedDatasets];
             }
-            processedDatasets = [...existingDatasets, ...processedDatasets];
         }
 
         const isAppending = !replaceMode && state.chartData.datasets.length > 0;

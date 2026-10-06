@@ -190,6 +190,8 @@ class DataService {
     templateContent?: any,     // Optional: text content for template areas
     snapshotId?: string        // Optional: snapshot ID for updates
   ): Promise<ApiResponse<{ id: string }>> {
+    this.clearConversationCache(conversationId);
+    
     const method = snapshotId ? 'PUT' : 'POST';
     const url = snapshotId ? `/api/data/chart-snapshots/${snapshotId}` : '/api/data/chart-snapshots';
 

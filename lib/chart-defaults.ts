@@ -122,7 +122,7 @@ export interface PatternConfig {
 }
 
 interface CustomDatasetProperties {
-    datasetColorMode?: 'single' | 'slice'
+    datasetColorMode?: 'single' | 'slice' | 'dataset'
     color?: string
     pointImages?: (string | null)[]
     pointImageConfig?: PointImageConfig[]
@@ -165,12 +165,12 @@ export interface ExtendedChartData extends Omit<ChartData, "datasets"> {
 }
 
 export interface VisualSettings {
-    fillArea: boolean;
+    fillArea?: boolean;
     fillPoints?: boolean;
-    showBorder: boolean;
-    showImages: boolean;
-    showLabels: boolean;
-    uniformityMode: 'uniform' | 'mixed';
+    showBorder?: boolean;
+    showImages?: boolean;
+    showLabels?: boolean;
+    uniformityMode?: 'uniform' | 'mixed';
 }
 
 // Create a custom interface that extends ChartOptions with our additional properties
@@ -276,10 +276,15 @@ export function prepareChartDataForSave(
         }
     } else if (chartMode === 'grouped') {
         // GROUPED MODE: Only save datasets belonging to the active group
-        const groupDatasets = (cloned.datasets || []).filter((ds: any) => ds.groupId === activeGroupId);
+        const groupDatasets = (cloned.datasets || []).filter((ds: any) =>
+            ds.groupId === activeGroupId || (!ds.groupId && activeGroupId === 'default')
+        );
         groupDatasets.forEach((ds: any) => {
             ds.sourceTitle = savedTitle;
             if (isNewSave) ds.sourceId = conversationId;
+            if (!ds.groupId && activeGroupId === 'default') {
+                ds.groupId = 'default';
+            }
         });
         if (groupDatasets.length > 0) {
             // Replace all datasets with just the group's datasets
@@ -594,7 +599,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
                     border: { display: false },
                 },
             },
-        } as ExtendedChartOptions;
+        } as unknown as ExtendedChartOptions;
     }
 
     // Special configuration for Waterfall chart

@@ -34,6 +34,7 @@ export function AxisSettings({ axis, config, onUpdate, className, chartType }: A
                     <GeneralTab
                         axis={axis}
                         config={config}
+                        chartType={chartType}
                         updateConfig={updateConfig}
                         updateNestedConfig={updateNestedConfig}
                     />

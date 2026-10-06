@@ -13,6 +13,7 @@ import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { useTemplateStore } from "@/lib/template-store"
 import { downloadChartAsHTML, type HTMLExportOptions, filterChartDataForExport } from "@/lib/html-exporter"
 import { downloadTemplateExport, type TemplateExportOptions } from "@/lib/template-export"
+import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { useDecorationStore } from "@/lib/stores/decoration-store"
 import { templateList } from "@/lib/html-templates"
 import { type DimensionUnit, convertFromPixels, convertToPixels } from "@/lib/utils/dimension-utils"
@@ -320,6 +321,11 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
   }
 
   const handleExportHTML = async () => {
+    const { selectedFormatId } = useFormatGalleryStore.getState();
+    if (selectedFormatId) {
+      window.dispatchEvent(new CustomEvent('triggerTemplateExport', { detail: { format: 'html' } }));
+      return;
+    }
     const isTemplateActive = isGlobalTemplateMode || exportMode === "template" || !!currentTemplate
     if (isTemplateActive && currentTemplate) {
       const chartInstance = globalChartRef?.current
@@ -368,6 +374,14 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
     // Clear decoration selection before export so selection handles don't appear
     useDecorationStore.getState().setSelectedShapeId(null);
     useDecorationStore.getState().setSelectedShapeIds([]);
+
+    const { selectedFormatId } = useFormatGalleryStore.getState();
+    if (selectedFormatId) {
+      window.dispatchEvent(new CustomEvent('triggerTemplateExport', {
+        detail: { format: exportFormat, scale: parseInt(exportScale) || 4 }
+      }));
+      return;
+    }
 
     if (exportMode === "template" && currentTemplate) {
       const chartInstance = globalChartRef?.current

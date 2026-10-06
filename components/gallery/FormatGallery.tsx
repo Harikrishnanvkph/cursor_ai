@@ -140,7 +140,7 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
   // Build content package from existing chart data
   const localContentPackage: LLMContentPackage | null = useMemo(() => {
     if (!hasChartData) return null
-    return extractContentFromChartData(chartType, chartData, chartConfig)
+    return extractContentFromChartData(chartType, chartData as any, chartConfig)
   }, [hasChartData, chartType, chartData, chartConfig])
 
   // Precedence: 1. Real AI content package from store, 2. Extracted from live chart, 3. Mock preview
@@ -231,7 +231,7 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
     if (filteredFormats.length === 0) return map
 
     const activeContent = effectiveContentPackage || MOCK_CONTENT_PACKAGE
-    const variants = generateGalleryVariants(filteredFormats, activeContent, contextualImageUrl || undefined)
+    const variants = generateGalleryVariants(filteredFormats, activeContent as LLMContentPackage, contextualImageUrl || undefined)
     variants.forEach(v => {
       const blueprintId = v.variantId.replace(/-[^-]+$/, '')
       map.set(blueprintId, v)
@@ -257,6 +257,11 @@ export function FormatGallery({ leftSidebarOpen, setLeftSidebarOpen }: FormatGal
           templateStore.setGenerateMode('format')
           const rendered = renderFormat(format, contentToApply, chartType || undefined, contextualImageUrl || undefined)
           setSelectedFormat(format.id, rendered.chartType)
+          // Snap State: Capture initial state of newly applied format
+          try {
+            const { useSnapStateStore } = require('@/lib/stores/snap-state-store');
+            useSnapStateStore.getState().captureCurrentState('new', format.id, `Format: ${format.name}`);
+          } catch (e) {}
           closeGallery()
           if (setLeftSidebarOpen) setLeftSidebarOpen(true)
           toast.success(`Format "${format.name}" applied!`)

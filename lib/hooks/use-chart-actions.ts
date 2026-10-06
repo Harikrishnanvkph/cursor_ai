@@ -29,6 +29,7 @@ export const useChartActions = () => {
         const newState = DatasetService.addDataset(dataset, {
             chartType: currentState.chartType,
             chartData: currentState.chartData,
+            chartConfig: currentState.chartConfig,
             groups: currentState.groups,
             activeGroupId: currentState.activeGroupId,
             chartMode: currentState.chartMode,
@@ -47,7 +48,8 @@ export const useChartActions = () => {
             groups: currentState.groups,
             chartMode: currentState.chartMode,
             singleModeData: currentState.singleModeData,
-            groupedModeData: currentState.groupedModeData
+            groupedModeData: currentState.groupedModeData,
+            activeDatasetIndex: currentState.activeDatasetIndex
         })
         useChartStore.setState(newState)
     }
@@ -93,6 +95,7 @@ export const useChartActions = () => {
             chartData: currentState.chartData,
             chartMode: currentState.chartMode,
             activeDatasetIndex: currentState.activeDatasetIndex,
+            activeGroupId: currentState.activeGroupId,
             singleModeData: currentState.singleModeData,
             groupedModeData: currentState.groupedModeData,
             hasJSON: currentState.hasJSON
@@ -189,7 +192,7 @@ export const useChartActions = () => {
     }
 
     // Transforms
-    const sortDataset = (index: number, order: 'asc' | 'desc') => {
+    const sortDataset = (index: number, order: 'asc' | 'desc' | 'label-asc' | 'label-desc') => {
         applyTransformWithModeSync(ChartTransformService.sortDataset(useChartStore.getState(), index, order))
     }
 
@@ -209,7 +212,7 @@ export const useChartActions = () => {
         applyTransformWithModeSync(ChartTransformService.filterBelowThreshold(useChartStore.getState(), index, threshold))
     }
 
-    const normalizeDataset = (index: number, range: [number, number]) => {
+    const normalizeDataset = (index: number, range: string = '0-100') => {
         applyTransformWithModeSync(ChartTransformService.normalizeDataset(useChartStore.getState(), index, range))
     }
 

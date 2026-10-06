@@ -112,7 +112,7 @@ export function extractContentFromChartData(
       { id: 'cp3', phrase: stats[1] ? `Runner up ${stats[1].label} holds steady at ${stats[1].value}.` : `Market trajectory highlights sustained acceleration.` }
     ],
     textBlocks: defaultTextBlocks,
-    sources: [source],
+    sources: source ? [source] : [],
     generalImageQueries: keywords.length >= 3 ? keywords.slice(0, 3) : [`${labels[0] || title} official`, `${labels[1] || title} logo`, `${title} portrait photo`],
     generalImages: [],
     sliceImages

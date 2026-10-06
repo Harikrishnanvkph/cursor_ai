@@ -32,8 +32,9 @@ export function RadarPanel({ className }: RadarPanelProps) {
     // Ensure the radialLinear type is set properly as before
     if (!newConfig.scales?.r?.type) {
       newConfig.scales = newConfig.scales || {}
-      newConfig.scales.r = newConfig.scales.r || {} as any
-      newConfig.scales.r.type = 'radialLinear'
+      const scalesR = (newConfig.scales.r || {}) as any
+      scalesR.type = 'radialLinear'
+      newConfig.scales.r = scalesR
     }
 
     updateChartConfig(newConfig)

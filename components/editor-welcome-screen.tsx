@@ -168,6 +168,12 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
         replaceMode: true
       })
       setHasJSON(true)
+      setTimeout(() => {
+        try {
+          const { useSnapStateStore } = require('@/lib/stores/snap-state-store');
+          useSnapStateStore.getState().captureCurrentState('new', null, 'Sample Chart');
+        } catch (e) {}
+      }, 50);
     }
   }
 
@@ -230,6 +236,12 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
           replaceMode: true
         })
         setHasJSON(true)
+        setTimeout(() => {
+          try {
+            const { useSnapStateStore } = require('@/lib/stores/snap-state-store');
+            useSnapStateStore.getState().captureCurrentState('new', null, 'Sample Chart');
+          } catch (e) {}
+        }, 50);
       }
     } else if (pendingAction === 'custom') {
       // Initialize chart with the entered dimensions and dataset
@@ -263,6 +275,12 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
         replaceMode: true
       })
       setHasJSON(true)
+      setTimeout(() => {
+        try {
+          const { useSnapStateStore } = require('@/lib/stores/snap-state-store');
+          useSnapStateStore.getState().captureCurrentState('new', null, groupName || 'Custom Chart');
+        } catch (e) {}
+      }, 50);
       // Navigate to datasets tab
       if (onDatasetClick) {
         onDatasetClick()

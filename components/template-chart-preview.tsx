@@ -14,9 +14,13 @@ import { useZoomPan } from "@/lib/hooks/use-zoom-pan"
 import { Button } from "@/components/ui/button"
 import { UndoRedoButtons } from "@/components/ui/undo-redo-buttons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ZoomIn, ZoomOut, Eye, EyeOff, Ellipsis, Maximize2, Minimize2, Settings, Menu, X, ChevronLeft, Download, Hand, Pencil, Check, Loader2, ChartColumn, RulerDimensionLine, Search, Undo2, Redo2, Sparkles } from "lucide-react"
+import { ZoomIn, ZoomOut, Eye, EyeOff, Ellipsis, Maximize2, Minimize2, Settings, Menu, X, ChevronLeft, Download, Hand, Pencil, Check, Loader2, ChartColumn, RulerDimensionLine, Search, Undo2, Redo2, Sparkles, ScanSearch } from "lucide-react"
+import { useLoupeStore } from "@/lib/stores/loupe-store"
+import { ChartLoupeOverlay } from "@/components/chart-preview/chart-loupe-overlay"
 import { downloadTemplateExport, downloadFormatExport } from "@/lib/template-export"
-import { FileDown, FileImage, FileCode, Ban, Cloud, Camera, ImageIcon } from "lucide-react"
+import { FileDown, FileImage, FileCode, Ban, Cloud, Camera, ImageIcon, RotateCcw, Info, FileText, Palette } from "lucide-react"
+import { useChartExport } from "@/lib/hooks/use-chart-export"
+import { useSnapStateStore } from "@/lib/stores/snap-state-store"
 import { ContentBankDrawer } from "@/components/gallery/ContentBankDrawer"
 import { FormatRichEditorDialog } from "@/components/format/FormatRichEditorDialog"
 import { ChartBgColorPicker } from "./chart-preview/chart-bg-color-picker"
@@ -91,6 +95,8 @@ export function TemplateChartPreview({
 }: TemplateChartPreviewProps) {
   const canvasBgType = useUIStore(s => s.canvasBgType);
   const canvasBgColor = useUIStore(s => s.canvasBgColor);
+  const { isLoupeActive, toggleLoupe } = useLoupeStore();
+  const { handleExportCSV } = useChartExport();
   const { currentTemplate, templateInBackground, selectedTextAreaId, setSelectedTextAreaId, editorMode, setEditorMode, contentTypePreferences, templateSavedToCloud } = useTemplateStore()
   const { selectedFormatId, contentPackage, formats, userFormats, contextualImageUrl,
     selectedFormatSnapshot, loadFormats } = useFormatGalleryStore()
@@ -121,7 +127,7 @@ export function TemplateChartPreview({
     if (contentPackage) return contentPackage
     if (hasData) {
       try {
-        return extractContentFromChartData(chartType, chartData, chartConfig)
+        return extractContentFromChartData(chartType, chartData as any, chartConfig)
       } catch (err) {
         console.warn('Failed to extract content package from chart data:', err)
       }
@@ -214,6 +220,7 @@ export function TemplateChartPreview({
 
   const [showGuides, setShowGuides] = useState(false)
   const effectiveShowGuides = !readOnly && showGuides
+  const [mobileExportQuality, setMobileExportQuality] = useState<number>(4)
 
   // Integrate external zoomPan if available, or fall back to internal hook
   const internalZoomPan = useZoomPan()
@@ -276,7 +283,7 @@ export function TemplateChartPreview({
   // Mobile state and resize listener
   const [isMobile, setIsMobile] = useState(false)
   useEffect(() => {
-    const check = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth <= 768)
+    const check = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth < 768)
     check()
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
@@ -478,7 +485,7 @@ export function TemplateChartPreview({
           e.stopPropagation();
 
           const zoomFactor = 1.05;
-          setZoom(prev => {
+          setZoom((prev: number) => {
             const newZoom = e.deltaY < 0 ? prev * zoomFactor : prev / zoomFactor;
             return Math.min(Math.max(newZoom, 0.1), 5);
           });
@@ -758,7 +765,7 @@ export function TemplateChartPreview({
           format,
           fileName: `${template.name.toLowerCase().replace(/\s+/g, '-')}-${dateStr}`,
           quality: 1,
-          scale: 4
+          scale: exportScale
         }
       )
       toast.success(
@@ -774,16 +781,24 @@ export function TemplateChartPreview({
   // Global event listener to trigger template exports from parent/landing pages
   useEffect(() => {
     const handleGlobalExport = (e: Event) => {
-      const customEvent = e as CustomEvent<{ format: 'png' | 'jpeg' | 'html' }>;
+      const customEvent = e as CustomEvent<{ format: 'png' | 'jpeg' | 'html' | 'csv'; scale?: number; engine?: any }>;
       if (customEvent.detail && customEvent.detail.format) {
-        handleExport(customEvent.detail.format);
+        if (customEvent.detail.format === 'csv') {
+          handleExportCSV();
+        } else {
+          handleExport(
+            customEvent.detail.format,
+            customEvent.detail.engine || 'modern-screenshot',
+            customEvent.detail.scale || 4
+          );
+        }
       }
     };
     window.addEventListener('triggerTemplateExport', handleGlobalExport);
     return () => {
       window.removeEventListener('triggerTemplateExport', handleGlobalExport);
     };
-  }, [handleExport])
+  }, [handleExport, handleExportCSV])
 
   // Global event listener to trigger toggle guides and fullscreen in template mode
   useEffect(() => {
@@ -1274,6 +1289,32 @@ export function TemplateChartPreview({
     setZoom(newZoomPct / 100);
   };
 
+  const currentFormatDims = (() => {
+    let w = 800;
+    let h = 600;
+    if (renderedFormat) {
+      w = renderedFormat.skeleton?.dimensions?.width || 800;
+      h = renderedFormat.skeleton?.dimensions?.height || 600;
+    } else {
+      const template = currentTemplate || templateInBackground;
+      if (template) {
+        w = template.width;
+        h = template.height;
+      }
+    }
+    const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
+    const d = gcd(w, h);
+    const ratio = w / h;
+    let aspect = `${w / d}:${h / d}`;
+    if (Math.abs(ratio - 1) < 0.02) aspect = '1:1';
+    else if (Math.abs(ratio - 16 / 9) < 0.02) aspect = '16:9';
+    else if (Math.abs(ratio - 4 / 3) < 0.02) aspect = '4:3';
+    else if (Math.abs(ratio - 3 / 2) < 0.02) aspect = '3:2';
+    else if (Math.abs(ratio - 4 / 5) < 0.02) aspect = '4:5';
+    else if (Math.abs(ratio - 9 / 16) < 0.02) aspect = '9:16';
+    return { w, h, aspect };
+  })();
+
   return (
     <div className="flex flex-col h-full w-full" ref={fullscreenContainerRef}>
       {/* Fullscreen overlay */}
@@ -1285,18 +1326,7 @@ export function TemplateChartPreview({
       {isMobile && !readOnly && (
         <div className="px-3 pb-3 pt-1 flex justify-center flex-shrink-0 w-full select-none" onClick={(e) => e.stopPropagation()}>
           <div className={`flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full px-3 py-1 shadow-md max-w-fit mx-auto ${!hasData ? 'opacity-40 pointer-events-none select-none' : ''}`}>
-            {/* 1. Preview Background Change Picker */}
-            <div className="flex items-center flex-shrink-0">
-              <ChartBgColorPicker 
-                className="flex items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 duration-200 h-9 w-9" 
-                innerClassName="w-[18px] h-[18px]"
-                disabled={!hasData}
-              />
-            </div>
-
-            <div className="w-px h-4.5 bg-slate-200 dark:bg-slate-800 flex-shrink-0" />
-
-            {/* 2. Pan Mode Toggle */}
+            {/* 1. Pan Mode Toggle */}
             <button
               disabled={!hasData}
               onClick={() => setPanMode(!panMode)}
@@ -1398,8 +1428,6 @@ export function TemplateChartPreview({
               </DropdownMenu>
             </div>
 
-            <div className="w-px h-4.5 bg-slate-200 dark:bg-slate-800 flex-shrink-0" />
-
             {/* 4. Undo / Redo Buttons */}
             <div className="flex items-center gap-0.5 flex-shrink-0">
               <button
@@ -1423,6 +1451,214 @@ export function TemplateChartPreview({
                 <Redo2 className="h-[22px] w-[22px]" />
               </button>
             </div>
+
+            <div className="w-px h-4.5 bg-slate-200 dark:bg-slate-800 flex-shrink-0" />
+
+            {/* 4. Download Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  disabled={!hasData}
+                  className="rounded-full transition-all active:scale-95 duration-200 flex items-center justify-center flex-shrink-0 h-9 w-9 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 dark:text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed"
+                  title="Download / Export"
+                >
+                  <Download className="h-5 w-5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[270px] p-2 z-[150] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl space-y-2">
+                {/* 1. Image Section */}
+                <div>
+                  <div className="px-1 pb-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                    Image
+                  </div>
+                  <div className="p-2 bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-100 dark:border-slate-800 space-y-2 select-none" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-medium text-slate-600 dark:text-slate-300 shrink-0">Quality:</span>
+                      <select
+                        value={mobileExportQuality}
+                        onChange={(e) => setMobileExportQuality(Number(e.target.value))}
+                        className="flex-1 min-w-0 max-w-[155px] text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer shadow-sm truncate"
+                      >
+                        <option value={4}>4x (UHD 4K)</option>
+                        <option value={3}>3x (3K HD)</option>
+                        <option value={2}>2x (2K QHD)</option>
+                        <option value={1}>1x (Standard)</option>
+                      </select>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 pt-0.5">
+                      <button
+                        type="button"
+                        disabled={!hasData}
+                        onClick={() => handleExport('png', 'modern-screenshot', mobileExportQuality)}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 bg-white dark:bg-slate-900 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-semibold text-xs rounded-lg border border-indigo-200 dark:border-indigo-800 shadow-sm transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <FileImage className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                        <span>PNG ({mobileExportQuality}x)</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!hasData}
+                        onClick={() => handleExport('jpeg', 'modern-screenshot', mobileExportQuality)}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 bg-white dark:bg-slate-900 hover:bg-amber-50 dark:hover:bg-amber-950/40 text-amber-700 dark:text-amber-300 font-semibold text-xs rounded-lg border border-amber-200 dark:border-amber-800 shadow-sm transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <ImageIcon className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                        <span>JPEG ({mobileExportQuality}x)</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <DropdownMenuSeparator className="my-1" />
+
+                {/* 2. HTML Section */}
+                <div>
+                  <div className="px-1 pb-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                    HTML
+                  </div>
+                  <DropdownMenuItem 
+                    disabled={!hasData}
+                    onClick={() => handleExport('html')}
+                    className="flex items-center justify-between px-2.5 py-2 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-200"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FileCode className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <span>Interactive HTML</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 font-normal">Standalone</span>
+                  </DropdownMenuItem>
+                </div>
+
+                <DropdownMenuSeparator className="my-1" />
+
+                {/* 3. File Section */}
+                <div>
+                  <div className="px-1 pb-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                    File
+                  </div>
+                  <DropdownMenuItem 
+                    disabled={!hasData}
+                    onClick={handleExportCSV}
+                    className="flex items-center justify-between px-2.5 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-200"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                      <span>CSV Data</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 font-normal">Spreadsheet</span>
+                  </DropdownMenuItem>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <div className="w-px h-4.5 bg-slate-200 dark:bg-slate-800 flex-shrink-0" />
+
+            {/* 5. More Options (Ellipsis) Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  disabled={!hasData}
+                  className="rounded-full transition-all active:scale-95 duration-200 flex items-center justify-center flex-shrink-0 h-9 w-9 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 dark:text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed"
+                  title="More Options"
+                >
+                  <Ellipsis className="h-5 w-5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-60 p-1.5 z-[150] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl space-y-1 max-h-[80vh] overflow-y-auto">
+                {/* Dimension & Ratio */}
+                <div className="px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-100 dark:border-slate-800 select-none">
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
+                      <RulerDimensionLine className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                      {currentFormatDims.w}px × {currentFormatDims.h}px
+                    </span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/40">
+                      {currentFormatDims.aspect}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Show Guides Toggle */}
+                <DropdownMenuItem
+                  disabled={!hasData}
+                  onClick={() => setShowGuides(!showGuides)}
+                  className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                >
+                  {showGuides ? <EyeOff className="h-4 w-4 text-slate-500 shrink-0" /> : <Eye className="h-4 w-4 text-slate-500 shrink-0" />}
+                  <span>{showGuides ? "Hide Guides" : "Show Guides"}</span>
+                </DropdownMenuItem>
+
+                {/* Fullscreen Toggle */}
+                <DropdownMenuItem
+                  disabled={!hasData}
+                  onClick={handleFullscreen}
+                  className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                >
+                  {isFullscreen ? <Minimize2 className="h-4 w-4 text-slate-500 shrink-0" /> : <Maximize2 className="h-4 w-4 text-slate-500 shrink-0" />}
+                  <span>{isFullscreen ? "Exit Fullscreen" : "Fullscreen"}</span>
+                </DropdownMenuItem>
+
+                {/* Loupe View (Inspect Details) */}
+                <DropdownMenuItem
+                  disabled={!hasData}
+                  onClick={() => toggleLoupe()}
+                  className={`flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 ${
+                    isLoupeActive ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300' : 'text-slate-700 dark:text-slate-200'
+                  }`}
+                >
+                  <ScanSearch className="h-4 w-4 text-blue-500 shrink-0" />
+                  <span className="flex-1">Loupe View</span>
+                  {isLoupeActive && (
+                    <span className="text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 px-1.5 py-0.5 rounded">ON</span>
+                  )}
+                </DropdownMenuItem>
+
+                {/* Background Color Picker */}
+                <div className="flex items-center justify-between px-2.5 py-1.5 text-xs font-medium rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center gap-2.5">
+                    <Palette className="h-4 w-4 text-purple-500 shrink-0" />
+                    <span>Background</span>
+                  </div>
+                  <ChartBgColorPicker 
+                    className="flex items-center justify-center rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 duration-200 h-6 w-6" 
+                    innerClassName="w-3.5 h-3.5"
+                    disabled={!hasData}
+                  />
+                </div>
+
+                <DropdownMenuSeparator className="my-1" />
+
+                {/* Snap State */}
+                <DropdownMenuItem
+                  disabled={!hasData}
+                  onClick={() => {
+                    useSnapStateStore.getState().captureCurrentState('manual', null, 'Manual Snapshot');
+                    toast.success("Snapshot baseline saved!");
+                  }}
+                  className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                >
+                  <Camera className="h-4 w-4 text-indigo-500 shrink-0" />
+                  <span>Snap State</span>
+                </DropdownMenuItem>
+
+                {/* Reset State */}
+                <DropdownMenuItem
+                  disabled={!hasData || !useSnapStateStore.getState().snapState}
+                  onClick={() => {
+                    const success = useSnapStateStore.getState().restoreSnapState();
+                    if (success) {
+                      toast.success("Restored to baseline snapshot!");
+                    } else {
+                      toast.error("No snap state saved yet.");
+                    }
+                  }}
+                  className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <RotateCcw className="h-4 w-4 text-amber-500 shrink-0" />
+                  <span>Reset State</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       )}
@@ -1643,7 +1879,22 @@ export function TemplateChartPreview({
                   </DropdownMenuContent>
                 </DropdownMenu>
 
-              <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
+                {/* Amazon Loupe Magnifier Button */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleLoupe}
+                  className={`h-7 w-7 p-0 transition-all ${
+                    isLoupeActive
+                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 ring-1 ring-blue-400 shadow-inner'
+                      : 'hover:bg-slate-100 text-slate-600'
+                  }`}
+                  title={isLoupeActive ? "Disable Loupe View (Esc)" : "Amazon Loupe View (Inspect Details)"}
+                >
+                  <ScanSearch className="h-4 w-4" />
+                </Button>
+
+                <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
 
               <Button variant="ghost" size="sm" onClick={() => setPanMode(!panMode)} className={`h-7 w-7 p-0 transition-colors text-slate-600 ${panMode ? 'bg-slate-200 shadow-inner' : 'hover:bg-slate-100'}`} title={panMode ? "Disable Pan Mode" : "Enable Pan Mode"}>
                 <Hand className="h-4 w-4" />
@@ -1653,29 +1904,11 @@ export function TemplateChartPreview({
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-600 hover:bg-slate-100" title="Actions"><Ellipsis className="h-4 w-4" /></Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setShowGuides(!showGuides)}>
-                    {showGuides ? <EyeOff className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-                    <span>{showGuides ? "Hide Guides" : "Show Guides"}</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleFullscreen}>
-                    <Maximize2 className="h-4 w-4 mr-2" />
-                    <span>Fullscreen</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-600 hover:bg-slate-100" title="Export Format / Image"><Download className="h-4 w-4" /></Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-52 p-1.5 z-[100]">
                   <div className="px-2 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                    Export Format
+                    {renderedFormat ? "Export Format" : "Export Template"}
                   </div>
 
                   {/* PNG Submenu */}
@@ -1818,7 +2051,117 @@ export function TemplateChartPreview({
 
                   <DropdownMenuItem onClick={() => handleExport('html')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100">
                     <FileCode className="h-4 w-4 text-emerald-600" />
-                    <span>HTML Template</span>
+                    <span>{renderedFormat ? "Interactive HTML" : "HTML Template"}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportCSV} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100">
+                    <FileText className="h-4 w-4 text-slate-500" />
+                    <span>CSV Data</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
+
+              {/* More Options (Ellipsis Dropdown) */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600" title="More Options">
+                    <Ellipsis className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 p-1.5 z-[100]">
+                  <DropdownMenuItem
+                    onClick={handleFullscreen}
+                    className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100"
+                  >
+                    {isFullscreen ? <Minimize2 className="h-4 w-4 text-slate-500" /> : <Maximize2 className="h-4 w-4 text-slate-500" />}
+                    <span>{isFullscreen ? "Exit Fullscreen" : "Fullscreen"}</span>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem onClick={() => setShowGuides(!showGuides)} className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100">
+                    {showGuides ? <EyeOff className="h-4 w-4 text-slate-500" /> : <Eye className="h-4 w-4 text-slate-500" />}
+                    <span>{showGuides ? "Hide Guides" : "Show Guides"}</span>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem
+                    onClick={toggleLoupe}
+                    className={`flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100 ${isLoupeActive ? 'text-blue-600 font-semibold' : ''}`}
+                  >
+                    <ScanSearch className="h-4 w-4 text-blue-500" />
+                    <span>{isLoupeActive ? "Disable Loupe View" : "Loupe View (Inspect)"}</span>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuSeparator className="my-1" />
+
+                  {/* Snap State */}
+                  <DropdownMenuItem
+                    onClick={() => {
+                      useSnapStateStore.getState().captureCurrentState('manual', null, 'Manual Snapshot');
+                      toast.success("Snapshot baseline saved!");
+                    }}
+                    className="flex items-center justify-between px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100 group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Camera className="h-4 w-4 text-indigo-500" />
+                      <span>Snap State</span>
+                    </div>
+                    <TooltipProvider delayDuration={100}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                            }}
+                            className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors"
+                          >
+                            <Info className="h-3.5 w-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" sideOffset={10} align="center" className="z-[150] max-w-[210px] p-2 text-xs font-normal text-slate-700 bg-white border border-slate-200 shadow-md">
+                          Saves current state as baseline snapshot. Only one baseline is stored.
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </DropdownMenuItem>
+
+                  {/* Reset State */}
+                  <DropdownMenuItem
+                    onClick={() => {
+                      const success = useSnapStateStore.getState().restoreSnapState();
+                      if (success) {
+                        toast.success("Restored to baseline snapshot. Undo/redo history reset.");
+                      } else {
+                        toast.error("No snap state saved yet.");
+                      }
+                    }}
+                    disabled={!useSnapStateStore.getState().hasSnapState()}
+                    className="flex items-center justify-between px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <RotateCcw className="h-4 w-4 text-amber-500" />
+                      <span>Reset State</span>
+                    </div>
+                    <TooltipProvider delayDuration={100}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                            }}
+                            className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors"
+                          >
+                            <Info className="h-3.5 w-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" sideOffset={10} align="center" className="z-[150] max-w-[210px] p-2 text-xs font-normal text-slate-700 bg-white border border-slate-200 shadow-md">
+                          Restores state to baseline snapshot and clears all undo and redo history.
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -1941,6 +2284,8 @@ export function TemplateChartPreview({
               )}
             </div>
           </div>
+          {/* Amazon Loupe Magnifier Overlay */}
+          <ChartLoupeOverlay targetContainerRef={containerRef} />
         </div>
       </div>
 
@@ -2020,6 +2365,20 @@ export function TemplateChartPreview({
             >
               <Hand className="h-4 w-4" />
             </Button>
+            {/* Amazon Loupe Magnifier Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleLoupe}
+              className={`h-8 w-8 transition-all ${
+                isLoupeActive
+                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 ring-1 ring-blue-400 shadow-inner'
+                  : 'hover:bg-slate-100 text-slate-600'
+              }`}
+              title={isLoupeActive ? "Disable Loupe View (Esc)" : "Amazon Loupe View (Inspect Details)"}
+            >
+              <ScanSearch className="h-4 w-4" />
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -2033,7 +2392,7 @@ export function TemplateChartPreview({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52 p-1.5 z-[100]">
                 <div className="px-2 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                  Export Format
+                  {renderedFormat ? "Export Format" : "Export Template"}
                 </div>
 
                 {/* PNG Submenu */}
@@ -2176,7 +2535,11 @@ export function TemplateChartPreview({
 
                 <DropdownMenuItem onClick={() => handleExport('html')} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100">
                   <FileCode className="h-4 w-4 text-emerald-600" />
-                  <span>HTML Template</span>
+                  <span>{renderedFormat ? "Interactive HTML" : "HTML Template"}</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportCSV} className="flex items-center gap-2 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100">
+                  <FileText className="h-4 w-4 text-slate-500" />
+                  <span>CSV Data</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

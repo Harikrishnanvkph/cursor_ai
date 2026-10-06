@@ -384,6 +384,7 @@ export function ChartCard({ conversation, viewMode, onPreview, onEdit, onEditInA
           if (!isNaN(h) && h > 0) exportHeight = h
         }
 
+        const bgConfig = (cfg as any)?.plugins?.exportPlugin?.background || { type: 'color', color: '#ffffff' }
         await (chart as any).exportToImage({
           background: bgConfig,
           fileName: `${cleanTitle}.png`,

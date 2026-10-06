@@ -9,6 +9,7 @@ export const DatasetService = {
         currentState: {
             chartType: SupportedChartType;
             chartData: ExtendedChartData;
+            chartConfig: any;
             groups: ChartGroup[];
             activeGroupId: string;
             chartMode: ChartMode;
@@ -65,11 +66,14 @@ export const DatasetService = {
         // CRITICAL FIX: Before appending in single mode, save the CURRENT shared labels into the outgoing 
         // active dataset's sliceLabels so that it doesn't lose its labels when we switch
         if (currentState.chartMode === 'single' && currentState.activeDatasetIndex >= 0 && currentState.activeDatasetIndex < existingDatasets.length) {
+            existingDatasets[currentState.activeDatasetIndex] = {
+                ...existingDatasets[currentState.activeDatasetIndex]
+            };
             if (currentState.chartData.labels && currentState.chartData.labels.length > 0) {
-                 existingDatasets[currentState.activeDatasetIndex] = {
-                     ...existingDatasets[currentState.activeDatasetIndex],
-                     sliceLabels: [...currentState.chartData.labels]
-                 };
+                 existingDatasets[currentState.activeDatasetIndex].sliceLabels = [...currentState.chartData.labels].map(String);
+            }
+            if (currentState.chartConfig) {
+                 existingDatasets[currentState.activeDatasetIndex].chartConfig = JSON.parse(JSON.stringify(currentState.chartConfig));
             }
         }
 
@@ -121,6 +125,7 @@ export const DatasetService = {
             chartMode: ChartMode;
             singleModeData: ExtendedChartData;
             groupedModeData: ExtendedChartData;
+            activeDatasetIndex: number;
         }
     ) => {
         const datasetToRemove = currentState.chartData.datasets[index];
@@ -153,9 +158,18 @@ export const DatasetService = {
             ? { singleModeData: newChartData }
             : { groupedModeData: newChartData };
 
+        // check if active dataset is removed
+        let newActiveDatasetIndex = currentState.activeDatasetIndex;
+        if (index === currentState.activeDatasetIndex) {
+            newActiveDatasetIndex = Math.max(0, index - 1);
+        } else if (index < currentState.activeDatasetIndex) {
+            newActiveDatasetIndex = currentState.activeDatasetIndex - 1;
+        }
+
         return {
             chartData: newChartData,
             groups: updatedGroups,
+            activeDatasetIndex: newActiveDatasetIndex,
             ...modeDataUpdate,
         };
     },
@@ -274,10 +288,11 @@ export const DatasetService = {
         // Handle color mode changes
         if (updates.datasetColorMode) {
             if (updates.datasetColorMode === 'single') {
-                if (Array.isArray(dataset.backgroundColor)) {
-                    const hasDifferentColors = dataset.backgroundColor.some((c: string) => c !== dataset.backgroundColor[0]);
+                if (Array.isArray(dataset.backgroundColor) && dataset.backgroundColor.length > 0) {
+                    const bgArray = dataset.backgroundColor as string[];
+                    const hasDifferentColors = bgArray.some((c: string) => c !== bgArray[0]);
                     if (hasDifferentColors) {
-                        updatedDataset.lastSliceColors = [...dataset.backgroundColor];
+                        updatedDataset.lastSliceColors = [...bgArray];
                     }
                 }
                 const baseColor = (updates as any).lastDatasetColor || dataset.color || (Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor[0] : dataset.backgroundColor) || generateColorPalette(1)[0];
@@ -470,6 +485,7 @@ export const DatasetService = {
             chartData: ExtendedChartData;
             chartMode: ChartMode;
             activeDatasetIndex: number;
+            activeGroupId: string;
             singleModeData: ExtendedChartData;
             groupedModeData: ExtendedChartData;
             hasJSON: boolean;
@@ -485,8 +501,10 @@ export const DatasetService = {
                         ? { ...dataset, sliceLabels: labels }
                         : dataset;
                 } else {
-                    // In grouped mode, update all datasets
-                    return { ...dataset, sliceLabels: labels };
+                    // In grouped mode, update all datasets in the active group
+                    return dataset.groupId === currentState.activeGroupId
+                        ? { ...dataset, sliceLabels: labels }
+                        : dataset;
                 }
             })
         };

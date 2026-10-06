@@ -1,12 +1,16 @@
 "use client"
 
 import { useRef, useEffect, useState, useCallback } from "react"
-import { Pencil, Check, Loader2, Hand, Search, ZoomIn, ZoomOut, Undo2, Redo2 } from "lucide-react"
+import { Pencil, Check, Loader2, Hand, Search, ZoomIn, ZoomOut, Undo2, Redo2, ScanSearch, Ellipsis, Camera, RotateCcw, Download, Palette, Maximize2, Minimize2, Eye, EyeOff, RulerDimensionLine, Sparkles, FileImage, ImageIcon, FileCode, FileText } from "lucide-react"
 import { ChartBgColorPicker } from "./chart-bg-color-picker"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import { useStore } from "zustand"
+import { useLoupeStore } from "@/lib/stores/loupe-store"
+import { useSnapStateStore } from "@/lib/stores/snap-state-store"
+import { toast } from "sonner"
+import { ChartLoupeOverlay } from "@/components/chart-preview/chart-loupe-overlay"
 
 const ZOOM_VALUES: number[] = (() => {
   let values: number[] = [];
@@ -86,6 +90,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
   const { setChartType, updateChartConfig } = useChartActions();
   const canvasBgType = useUIStore(s => s.canvasBgType);
   const canvasBgColor = useUIStore(s => s.canvasBgColor);
+  const { isLoupeActive, toggleLoupe } = useLoupeStore();
 
   // --- Refs ---
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
@@ -106,10 +111,11 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
 
   // --- Local state ---
   const [isMobile, setIsMobile] = useState(false);
+  const [mobileExportQuality, setMobileExportQuality] = useState<number>(4);
 
   // --- Responsive check ---
   useEffect(() => {
-    const check = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth <= 768);
+    const check = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth < 768);
     check();
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
@@ -340,7 +346,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
           zoomPan={zoomPan}
         />
         <ChartTransitionDialog
-          open={transitions.scatterBubbleSetup.active && transitions.scatterBubbleSetup.targetType !== null && transitions.scatterBubbleSetup.direction !== null && editorMode === 'template'}
+          open={transitions.scatterBubbleSetup.active && transitions.scatterBubbleSetup.targetType !== null && transitions.scatterBubbleSetup.direction !== null}
           targetChartType={transitions.scatterBubbleSetup.targetType || 'bar'}
           direction={transitions.scatterBubbleSetup.direction || 'toScatter'}
           hasBackup={transitions.scatterBubbleSetup.backupData !== null}
@@ -356,6 +362,22 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
     );
   }
 
+  const currentChartDims = (() => {
+    const w = parseDimension((chartConfig as any)?.width) || 800;
+    const h = parseDimension((chartConfig as any)?.height) || 600;
+    const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
+    const d = gcd(w, h);
+    const ratio = w / h;
+    let aspect = `${w / d}:${h / d}`;
+    if (Math.abs(ratio - 1) < 0.02) aspect = '1:1';
+    else if (Math.abs(ratio - 16 / 9) < 0.02) aspect = '16:9';
+    else if (Math.abs(ratio - 4 / 3) < 0.02) aspect = '4:3';
+    else if (Math.abs(ratio - 3 / 2) < 0.02) aspect = '3:2';
+    else if (Math.abs(ratio - 4 / 5) < 0.02) aspect = '4:5';
+    else if (Math.abs(ratio - 9 / 16) < 0.02) aspect = '9:16';
+    return { w, h, aspect };
+  })();
+
   // --- Render ---
   return (
     <div className="flex min-w-full flex-col overflow-hidden h-full relative" ref={fullscreenContainerRef}>
@@ -366,18 +388,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
       {isMobile && rename.chartTitle && (
         <div className="px-3 pb-3 pt-1 flex justify-center flex-shrink-0 w-full select-none" onClick={(e) => e.stopPropagation()}>
           <div className={`flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full px-3 py-1 shadow-md max-w-fit mx-auto ${!hasData ? 'opacity-40 pointer-events-none select-none' : ''}`}>
-            {/* 1. Preview Background Change Picker */}
-            <div className="flex items-center flex-shrink-0">
-              <ChartBgColorPicker 
-                className="flex items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 duration-200 h-9 w-9" 
-                innerClassName="w-[18px] h-[18px]"
-                disabled={!hasData}
-              />
-            </div>
-
-            <div className="w-px h-4.5 bg-slate-200 dark:bg-slate-800 flex-shrink-0" />
-
-            {/* 2. Pan Mode Toggle */}
+            {/* 1. Pan Mode Toggle */}
             <button
               disabled={!hasData}
               onClick={() => zoomPan.setPanMode(!zoomPan.panMode)}
@@ -465,8 +476,6 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
               </DropdownMenu>
             </div>
 
-            <div className="w-px h-4.5 bg-slate-200 dark:bg-slate-800 flex-shrink-0" />
-
             {/* 4. Undo / Redo Buttons */}
             <div className="flex items-center gap-0.5 flex-shrink-0">
               <button
@@ -490,6 +499,204 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
                 <Redo2 className="h-[22px] w-[22px]" />
               </button>
             </div>
+
+            <div className="w-px h-4.5 bg-slate-200 dark:bg-slate-800 flex-shrink-0" />
+
+            {/* 4. Download Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  disabled={!hasData}
+                  className="rounded-full transition-all active:scale-95 duration-200 flex items-center justify-center flex-shrink-0 h-9 w-9 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 dark:text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed"
+                  title="Download / Export"
+                >
+                  <Download className="h-5 w-5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[270px] p-2 z-[150] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl space-y-2">
+                {/* 1. Image Section */}
+                <div>
+                  <div className="px-1 pb-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                    Image
+                  </div>
+                  <div className="p-2 bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-100 dark:border-slate-800 space-y-2 select-none" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-medium text-slate-600 dark:text-slate-300 shrink-0">Quality:</span>
+                      <select
+                        value={mobileExportQuality}
+                        onChange={(e) => setMobileExportQuality(Number(e.target.value))}
+                        className="flex-1 min-w-0 max-w-[155px] text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer shadow-sm truncate"
+                      >
+                        <option value={4}>4x (UHD 4K)</option>
+                        <option value={3}>3x (3K HD)</option>
+                        <option value={2}>2x (2K QHD)</option>
+                        <option value={1}>1x (Standard)</option>
+                      </select>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 pt-0.5">
+                      <button
+                        type="button"
+                        disabled={!hasData}
+                        onClick={() => exports.handleExport(mobileExportQuality)}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 bg-white dark:bg-slate-900 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-semibold text-xs rounded-lg border border-indigo-200 dark:border-indigo-800 shadow-sm transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <FileImage className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                        <span>PNG ({mobileExportQuality}x)</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!hasData}
+                        onClick={() => exports.handleExportJPEG(mobileExportQuality)}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 bg-white dark:bg-slate-900 hover:bg-amber-50 dark:hover:bg-amber-950/40 text-amber-700 dark:text-amber-300 font-semibold text-xs rounded-lg border border-amber-200 dark:border-amber-800 shadow-sm transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <ImageIcon className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                        <span>JPEG ({mobileExportQuality}x)</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <DropdownMenuSeparator className="my-1" />
+
+                {/* 2. HTML Section */}
+                <div>
+                  <div className="px-1 pb-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                    HTML
+                  </div>
+                  <DropdownMenuItem 
+                    disabled={!hasData}
+                    onClick={exports.handleExportHTML}
+                    className="flex items-center justify-between px-2.5 py-2 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-200"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FileCode className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <span>Interactive HTML</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 font-normal">Standalone</span>
+                  </DropdownMenuItem>
+                </div>
+
+                <DropdownMenuSeparator className="my-1" />
+
+                {/* 3. File Section */}
+                <div>
+                  <div className="px-1 pb-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                    File
+                  </div>
+                  <DropdownMenuItem 
+                    disabled={!hasData}
+                    onClick={exports.handleExportCSV}
+                    className="flex items-center justify-between px-2.5 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-200"
+                  >
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                      <span>CSV Data</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 font-normal">Spreadsheet</span>
+                  </DropdownMenuItem>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <div className="w-px h-4.5 bg-slate-200 dark:bg-slate-800 flex-shrink-0" />
+
+            {/* 5. More Options (Ellipsis) Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  disabled={!hasData}
+                  className="rounded-full transition-all active:scale-95 duration-200 flex items-center justify-center flex-shrink-0 h-9 w-9 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 dark:text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed"
+                  title="More Options"
+                >
+                  <Ellipsis className="h-5 w-5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-60 p-1.5 z-[150] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl rounded-xl space-y-1 max-h-[80vh] overflow-y-auto">
+                {/* Dimension & Ratio */}
+                <div className="px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-100 dark:border-slate-800 select-none">
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
+                      <RulerDimensionLine className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                      {currentChartDims.w}px × {currentChartDims.h}px
+                    </span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/40">
+                      {currentChartDims.aspect}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Fullscreen Toggle */}
+                <DropdownMenuItem
+                  disabled={!hasData}
+                  onClick={() => fullscreen.handleFullscreen()}
+                  className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                >
+                  {fullscreen.isFullscreen ? <Minimize2 className="h-4 w-4 text-slate-500 shrink-0" /> : <Maximize2 className="h-4 w-4 text-slate-500 shrink-0" />}
+                  <span>{fullscreen.isFullscreen ? "Exit Fullscreen" : "Fullscreen"}</span>
+                </DropdownMenuItem>
+
+                {/* Loupe View (Inspect Details) */}
+                <DropdownMenuItem
+                  disabled={!hasData}
+                  onClick={() => toggleLoupe()}
+                  className={`flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 ${
+                    isLoupeActive ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300' : 'text-slate-700 dark:text-slate-200'
+                  }`}
+                >
+                  <ScanSearch className="h-4 w-4 text-blue-500 shrink-0" />
+                  <span className="flex-1">Loupe View</span>
+                  {isLoupeActive && (
+                    <span className="text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 px-1.5 py-0.5 rounded">ON</span>
+                  )}
+                </DropdownMenuItem>
+
+                {/* Background Color Picker */}
+                <div className="flex items-center justify-between px-2.5 py-1.5 text-xs font-medium rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center gap-2.5">
+                    <Palette className="h-4 w-4 text-purple-500 shrink-0" />
+                    <span>Background</span>
+                  </div>
+                  <ChartBgColorPicker 
+                    className="flex items-center justify-center rounded-md border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 duration-200 h-6 w-6" 
+                    innerClassName="w-3.5 h-3.5"
+                    disabled={!hasData}
+                  />
+                </div>
+
+                <DropdownMenuSeparator className="my-1" />
+
+                {/* Snap State */}
+                <DropdownMenuItem
+                  disabled={!hasData}
+                  onClick={() => {
+                    useSnapStateStore.getState().captureCurrentState('manual', null, 'Manual Snapshot');
+                    toast.success("Snapshot baseline saved!");
+                  }}
+                  className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                >
+                  <Camera className="h-4 w-4 text-indigo-500 shrink-0" />
+                  <span>Snap State</span>
+                </DropdownMenuItem>
+
+                {/* Reset State */}
+                <DropdownMenuItem
+                  disabled={!hasData || !useSnapStateStore.getState().snapState}
+                  onClick={() => {
+                    const success = useSnapStateStore.getState().restoreSnapState();
+                    if (success) {
+                      toast.success("Restored to baseline snapshot!");
+                    } else {
+                      toast.error("No snap state saved yet.");
+                    }
+                  }}
+                  className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <RotateCcw className="h-4 w-4 text-amber-500 shrink-0" />
+                  <span>Reset State</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       )}
@@ -499,7 +706,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
         <ChartPreviewToolbar
           isMobile={isMobile}
           editorMode={editorMode}
-          setEditorMode={setEditorMode}
+          setEditorMode={setEditorMode as any}
           chartType={chartType}
           onChartTypeChange={handleChartTypeChange}
           isResponsive={isResponsive}
@@ -546,11 +753,13 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
               />
             ) : (
               <ChartPreviewCanvas
-                chartContainerRef={chartContainerRef}
+                chartContainerRef={chartContainerRef as any}
                 chartConfig={chartConfig}
                 zoomPan={zoomPan}
               />
             )}
+            {/* Amazon Loupe Magnifier Overlay */}
+            <ChartLoupeOverlay targetContainerRef={chartContainerRef} />
           </div>
         </CardContent>
       </Card>
@@ -580,14 +789,14 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
           activeTab={activeTab}
           onTabChange={onTabChange}
           onNewChart={onNewChart}
-          leftSidebarPanelRef={leftSidebarPanelRef}
-          rightSidebarPanelRef={rightSidebarPanelRef}
+          leftSidebarPanelRef={leftSidebarPanelRef as any}
+          rightSidebarPanelRef={rightSidebarPanelRef as any}
         />
       )}
 
-      {/* Chart Transition Dialog (template mode) */}
+      {/* Chart Transition Dialog */}
       <ChartTransitionDialog
-        open={transitions.scatterBubbleSetup.active && transitions.scatterBubbleSetup.targetType !== null && transitions.scatterBubbleSetup.direction !== null && editorMode === 'template'}
+        open={transitions.scatterBubbleSetup.active && transitions.scatterBubbleSetup.targetType !== null && transitions.scatterBubbleSetup.direction !== null}
         targetChartType={transitions.scatterBubbleSetup.targetType || 'bar'}
         direction={transitions.scatterBubbleSetup.direction || 'toScatter'}
         hasBackup={transitions.scatterBubbleSetup.backupData !== null}

@@ -319,7 +319,7 @@ export default function SharedChartPage() {
         useChartStore.setState({
           chartData: fetchedChart.chart_data,
           chartConfig: cfg,
-          chartType: fetchedChart.chart_type,
+          chartType: fetchedChart.chart_type as any,
           hasJSON: true,
 
           // CRITICAL: Reset viewing state so it doesn't inherit from the user's localStorage

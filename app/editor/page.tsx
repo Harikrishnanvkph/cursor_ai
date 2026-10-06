@@ -12,7 +12,8 @@ import { useAuth } from "@/components/auth/AuthProvider"
 import { dataService } from "@/lib/data-service"
 import { Button } from "@/components/ui/button"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
-import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Layers, Settings, Menu, Download, ChevronLeft, ChevronRight, FileText, Save, X, Loader2, Plus, Info, LayoutDashboard, MessageSquare, Edit3, BarChart2, SlidersHorizontal, PanelLeft, ExternalLink, Share2, Copy, MoreVertical, Pencil, Check, Cloud, Trash2, ChevronDown, Maximize2, Eye, FileImage, ImageIcon, FileCode, Ellipsis } from "lucide-react"
+import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Layers, Settings, Menu, Download, ChevronLeft, ChevronRight, FileText, Save, X, Loader2, Plus, Info, LayoutDashboard, MessageSquare, Edit3, BarChart2, SlidersHorizontal, PanelLeft, ExternalLink, Share2, Copy, MoreVertical, Pencil, Check, Cloud, Trash2, ChevronDown, Maximize2, Eye, FileImage, ImageIcon, FileCode, Ellipsis, Camera, RotateCcw, ScanSearch, Grip } from "lucide-react"
+import { useLoupeStore } from "@/lib/stores/loupe-store"
 import React from "react"
 import Link from "next/link"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
@@ -45,6 +46,8 @@ import { applyPresetToChart } from "@/lib/chart-style-engine"
 import type { PresetCategory } from "@/lib/chart-style-types"
 import { getPresetById } from "@/lib/chart-style-defaults"
 import { useChartStyleStore } from "@/lib/stores/chart-style-store"
+import { UpdatePresetDialog } from "@/components/chart-style-gallery/update-preset-dialog"
+import { useSnapStateStore } from "@/lib/stores/snap-state-store"
 
 import {
   useChartConfig,
@@ -319,6 +322,7 @@ function EditorPageContent() {
   const rename = useChartRename()
   const exports = useChartExport()
   const [exportExpanded, setExportExpanded] = useState(false)
+  const [headerExportQuality, setHeaderExportQuality] = useState(4)
   const [shareExpanded, setShareExpanded] = useState(false)
   // Sync sidebar tab when changing editor mode
   useEffect(() => {
@@ -497,6 +501,101 @@ function EditorPageContent() {
   const isMobile = useIsMobile576();
   const isTablet = useIsTablet();
   const { width: screenWidth, height: screenHeight } = useScreenDimensions();
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
+  const handlePlusModalConfirm = (
+    dims: ChartDimensions,
+    datasets?: any[],
+    newChartType?: any,
+    newUniformityMode?: any,
+    groupName?: string
+  ) => {
+    const isGrouped = plusModalType === 'grouped';
+    setPlusModalType(null);
+
+    const updatedConfig = chartConfig ? JSON.parse(JSON.stringify(chartConfig)) : {};
+    if (dims.isResponsive) {
+      updatedConfig.responsive = true;
+      updatedConfig.manualDimensions = false;
+      updatedConfig.dynamicDimension = false;
+    } else {
+      updatedConfig.responsive = false;
+      updatedConfig.manualDimensions = true;
+      updatedConfig.dynamicDimension = false;
+      updatedConfig.width = `${dims.width}px`;
+      updatedConfig.height = `${dims.height}px`;
+    }
+
+    if (newUniformityMode) {
+      updatedConfig.visualSettings = {
+        ...updatedConfig.visualSettings,
+        uniformityMode: newUniformityMode
+      };
+    }
+
+    if (isGrouped) {
+      const { id: newGroupId, newState: groupState } = GroupService.addGroup({
+        name: groupName || `Group ${(useChartStore.getState().groups || []).length + 1}`,
+        category: null,
+        uniformityMode: newUniformityMode || 'uniform',
+        baseChartType: newChartType as any,
+        chartConfig: updatedConfig
+      }, { groups: useChartStore.getState().groups || [] });
+      useChartStore.setState(groupState);
+
+      if (datasets && datasets.length > 0) {
+        const store = useChartStore.getState();
+        const currentData = store.chartData;
+        const newGroupDatasets = datasets.map(dataset => ({
+          ...dataset,
+          groupId: newGroupId,
+          mode: 'grouped',
+          chartConfig: updatedConfig
+        }));
+        const newChartData = {
+          ...currentData,
+          datasets: [...currentData.datasets, ...newGroupDatasets]
+        };
+        useChartStore.setState({
+          chartData: newChartData,
+          groupedModeData: newChartData,
+          chartType: newChartType as any
+        });
+      }
+
+      useChartStore.getState().updateChartConfig(updatedConfig);
+      if (useChartStore.getState().chartMode !== 'grouped') {
+        useChartStore.getState().setChartMode('grouped');
+      }
+      useChartStore.getState().setActiveGroupId(newGroupId);
+      toast.success(`Created group "${groupName || `Group ${(useChartStore.getState().groups || []).length + 1}`}"`);
+    } else {
+      // Ensure mode is updated to 'single' if user was in 'grouped' mode
+      const chartStore = useChartStore.getState();
+      if (chartStore.chartMode !== 'single') {
+        chartStore.setChartMode('single');
+      }
+
+      if (datasets && datasets.length > 0) {
+        datasets.forEach(dataset => {
+          const currentState = useChartStore.getState();
+          const newState = DatasetService.addDataset({ ...dataset, chartConfig: updatedConfig, mode: 'single' }, currentState as any);
+          useChartStore.setState(newState);
+        });
+      }
+      useChartStore.getState().updateChartConfig(updatedConfig);
+      toast.success(`Single chart created successfully.`);
+    }
+
+    if (useTemplateStore.getState().editorMode === 'template') {
+      useTemplateStore.getState().setEditorMode('chart');
+    }
+    setActiveTab('datasets_slices');
+  };
 
 
 
@@ -909,6 +1008,10 @@ function EditorPageContent() {
     </div>
   );
 
+  if (!hasMounted) {
+    return renderCenterAreaLoader();
+  }
+
   // Mobile layout for <=576px
   if (isMobile) {
     return (
@@ -923,14 +1026,50 @@ function EditorPageContent() {
             >
               <Menu className="w-5.5 h-5.5 text-slate-700" />
             </button>
-            <Link href="/landing" className="flex items-center gap-2 px-1 text-slate-700 min-w-0">
-              <img src="/logo.png" alt="Logo" className="h-6 w-6 object-contain flex-shrink-0" />
-              <span className="hidden phab:inline text-slate-800 dark:text-slate-100 font-bold text-base tracking-tight select-none truncate">
-                Chartography<span className="text-indigo-600 dark:text-indigo-400">.in</span>
-              </span>
-            </Link>
           </div>
           <div className="flex items-center gap-2">
+            {/* Mobile Plus (+) Button */}
+            {hasJSON && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 w-8 p-0 border-blue-200 text-blue-600 bg-blue-50 hover:bg-blue-100 hover:border-blue-300"
+                    title="Add Single or Grouped Chart"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44 z-[100] bg-white border border-slate-200 shadow-md rounded-md p-1">
+                  <DropdownMenuItem
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('openAddDatasetModal'));
+                    }}
+                    className="flex items-center gap-2 px-2.5 py-2 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md text-slate-700"
+                  >
+                    <BarChart2 className="h-4 w-4 text-blue-600" />
+                    <div className="flex flex-col">
+                      <span className="font-semibold">Single Chart</span>
+                      <span className="text-[10px] text-slate-400">Add dataset to chart</span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('openNewGroupModal'));
+                    }}
+                    className="flex items-center gap-2 px-2.5 py-2 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md text-slate-700"
+                  >
+                    <Layers className="h-4 w-4 text-purple-600" />
+                    <div className="flex flex-col">
+                      <span className="font-semibold">Grouped Chart</span>
+                      <span className="text-[10px] text-slate-400">Create a new group</span>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
             {hasJSON && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -938,10 +1077,10 @@ function EditorPageContent() {
                     className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all active:scale-90"
                     title="More Options"
                   >
-                    <Ellipsis className="w-5.5 h-5.5 text-slate-700 dark:text-slate-300" />
+                    <Grip className="w-5.5 h-5.5 text-slate-700 dark:text-slate-300" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-[270px] p-1.5 z-[100] bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-xl space-y-1">
+                <DropdownMenuContent align="end" className="w-[270px] max-h-[calc(100dvh-70px)] overflow-y-auto overscroll-contain p-1.5 z-[100] bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-xl space-y-1">
                 {/* File Name & Metadata Section */}
                 <div className="px-2.5 py-2 border-b border-slate-100 dark:border-slate-800/60 mb-1 space-y-0.5 animate-none" onClick={(e) => e.stopPropagation()}>
                   {rename.isRenaming && rename.canEditTitle ? (
@@ -1095,8 +1234,8 @@ function EditorPageContent() {
                   </Select>
                 </div>
 
-                {/* 3. Dynamic Chart Gallery or Show Guides Trigger */}
-                {editorMode !== 'template' ? (
+                {/* 3. Dynamic Chart Gallery Trigger (in Chart mode) */}
+                {editorMode !== 'template' && (
                   <DropdownMenuItem 
                     disabled={!hasData}
                     onClick={() => {
@@ -1107,30 +1246,7 @@ function EditorPageContent() {
                     <Palette className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                     <span>Chart Gallery</span>
                   </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem 
-                    disabled={!hasData}
-                    onClick={() => {
-                      window.dispatchEvent(new CustomEvent('triggerToggleGuides'));
-                    }}
-                    className="flex items-center gap-2 px-2.5 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-305"
-                  >
-                    <Eye className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                    <span>Show Guides</span>
-                  </DropdownMenuItem>
                 )}
-
-                {/* 3.5 Fullscreen Trigger */}
-                <DropdownMenuItem 
-                  disabled={!hasData}
-                  onClick={() => {
-                    window.dispatchEvent(new CustomEvent('triggerFullscreen'));
-                  }}
-                  className="flex items-center gap-2 px-2.5 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-300"
-                >
-                  <Maximize2 className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                  <span>Fullscreen</span>
-                </DropdownMenuItem>
 
                 {/* 4. Save Chart/Template to Cloud */}
                 <DropdownMenuItem 
@@ -1200,115 +1316,109 @@ function EditorPageContent() {
                 </DropdownMenuItem>
 
                 {exportExpanded && (
-                  <div className="pl-4 pr-1 py-1 space-y-0.5 bg-slate-50 dark:bg-slate-900/50 rounded-lg animate-in fade-in slide-in-from-top-1 duration-200">
-                    {editorMode === 'template' ? (
-                      <>
-                        <DropdownMenuItem 
-                          disabled={!hasData}
-                          onClick={() => window.dispatchEvent(new CustomEvent('triggerTemplateExport', { detail: { format: 'png' } }))}
-                          className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-750 dark:text-slate-355"
-                        >
-                          <FileImage className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-                          <span>PNG Image</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          disabled={!hasData}
-                          onClick={() => window.dispatchEvent(new CustomEvent('triggerTemplateExportNew', { detail: { format: 'png' } }))}
-                          className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-750 dark:text-slate-355"
-                        >
-                          <FileImage className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
-                          <span>Image (New)</span>
-                          <span className="ml-auto text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full font-semibold">NEW</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          disabled={!hasData}
-                          onClick={() => window.dispatchEvent(new CustomEvent('triggerTemplateExport', { detail: { format: 'html' } }))}
-                          className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-750 dark:text-slate-355"
-                        >
-                          <FileCode className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-                          <span>Interactive HTML</span>
-                        </DropdownMenuItem>
-                      </>
-                    ) : (
-                      <>
-                        {/* PNG Quality Options */}
-                        <div className="px-2 py-1 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">PNG Image</div>
-                        <DropdownMenuItem 
-                          disabled={!hasData}
-                          onClick={() => exports.handleExport(4)} 
-                          className="flex items-center justify-between px-2 py-1.5 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-md text-xs font-medium cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                            <span className="text-slate-800 dark:text-slate-200">Crystal Clear (4x)</span>
-                          </div>
-                          <span className="text-[8px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 px-1.5 py-0.5 rounded">UHD</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          disabled={!hasData}
-                          onClick={() => exports.handleExport(3)} 
-                          className="flex items-center justify-between px-2 py-1.5 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-md text-xs font-medium cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2">
-                            <FileImage className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                            <span className="text-slate-800 dark:text-slate-200">High Quality (3x)</span>
-                          </div>
-                          <span className="text-[8px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 px-1.5 py-0.5 rounded">3K</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          disabled={!hasData}
-                          onClick={() => exports.handleExport(2)} 
-                          className="flex items-center justify-between px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2">
-                            <FileImage className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-                            <span className="text-slate-800 dark:text-slate-200">Standard (2x)</span>
-                          </div>
-                          <span className="text-[8px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 px-1.5 py-0.5 rounded">2K</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          disabled={!hasData}
-                          onClick={() => exports.handleExport(1)} 
-                          className="flex items-center justify-between px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2">
-                            <FileImage className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-                            <span className="text-slate-800 dark:text-slate-200">Normal (1x)</span>
-                          </div>
-                          <span className="text-[8px] font-bold bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 px-1.5 py-0.5 rounded">1x</span>
-                        </DropdownMenuItem>
+                  <div className="pl-3 pr-1 py-1.5 space-y-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg animate-in fade-in slide-in-from-top-1 duration-200">
+                    {/* 1. Image Section */}
+                    <div>
+                      <div className="px-1 pb-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                        Image
+                      </div>
+                      <div className="p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200/80 dark:border-slate-800 space-y-2 select-none" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-medium text-slate-600 dark:text-slate-300 shrink-0">Quality:</span>
+                          <select
+                            value={headerExportQuality}
+                            onChange={(e) => setHeaderExportQuality(Number(e.target.value))}
+                            className="flex-1 min-w-0 max-w-[155px] text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer shadow-sm truncate"
+                          >
+                            <option value={4}>4x (UHD 4K)</option>
+                            <option value={3}>3x (3K HD)</option>
+                            <option value={2}>2x (2K QHD)</option>
+                            <option value={1}>1x (Standard)</option>
+                          </select>
+                        </div>
 
-                        {/* JPEG */}
-                        <div className="px-2 pt-1.5 pb-0.5 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">JPEG Image</div>
-                        <DropdownMenuItem 
-                          disabled={!hasData}
-                          onClick={() => exports.handleExportJPEG(4)} 
-                          className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-750 dark:text-slate-355"
-                        >
-                          <ImageIcon className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-                          <span>JPEG (Crystal Clear 4x)</span>
-                        </DropdownMenuItem>
+                        <div className="flex items-center gap-2 pt-0.5">
+                          <button
+                            type="button"
+                            disabled={!hasData}
+                            onClick={() => {
+                              if (editorMode === 'template') {
+                                window.dispatchEvent(new CustomEvent('triggerTemplateExport', { detail: { format: 'png', scale: headerExportQuality } }))
+                              } else {
+                                exports.handleExport(headerExportQuality)
+                              }
+                            }}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 bg-slate-50 dark:bg-slate-900 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-semibold text-xs rounded-lg border border-indigo-200 dark:border-indigo-800 shadow-sm transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            <FileImage className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                            <span>PNG ({headerExportQuality}x)</span>
+                          </button>
+                          <button
+                            type="button"
+                            disabled={!hasData}
+                            onClick={() => {
+                              if (editorMode === 'template') {
+                                window.dispatchEvent(new CustomEvent('triggerTemplateExport', { detail: { format: 'jpeg', scale: headerExportQuality } }))
+                              } else {
+                                exports.handleExportJPEG(headerExportQuality)
+                              }
+                            }}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 bg-slate-50 dark:bg-slate-900 hover:bg-amber-50 dark:hover:bg-amber-950/40 text-amber-700 dark:text-amber-300 font-semibold text-xs rounded-lg border border-amber-200 dark:border-amber-800 shadow-sm transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            <ImageIcon className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                            <span>JPEG ({headerExportQuality}x)</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
 
-                        {/* Other export options */}
-                        <div className="px-2 pt-1.5 pb-0.5 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Other</div>
-                        <DropdownMenuItem 
-                          disabled={!hasData}
-                          onClick={exports.handleExportHTML} 
-                          className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-750 dark:text-slate-355"
-                        >
-                          <FileCode className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                    {/* 2. HTML Section */}
+                    <div>
+                      <div className="px-1 pb-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                        HTML
+                      </div>
+                      <DropdownMenuItem 
+                        disabled={!hasData}
+                        onClick={() => {
+                          if (editorMode === 'template') {
+                            window.dispatchEvent(new CustomEvent('triggerTemplateExport', { detail: { format: 'html' } }))
+                          } else {
+                            exports.handleExportHTML()
+                          }
+                        }}
+                        className="flex items-center justify-between px-2.5 py-2 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-200"
+                      >
+                        <div className="flex items-center gap-2">
+                          <FileCode className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                           <span>Interactive HTML</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          disabled={!hasData}
-                          onClick={exports.handleExportCSV} 
-                          className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md text-xs font-medium cursor-pointer text-slate-750 dark:text-slate-355"
-                        >
-                          <FileText className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-normal">Standalone</span>
+                      </DropdownMenuItem>
+                    </div>
+
+                    {/* 3. File Section */}
+                    <div>
+                      <div className="px-1 pb-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                        File
+                      </div>
+                      <DropdownMenuItem 
+                        disabled={!hasData}
+                        onClick={() => {
+                          if (editorMode === 'template') {
+                            window.dispatchEvent(new CustomEvent('triggerTemplateExportCSV'))
+                          } else {
+                            exports.handleExportCSV()
+                          }
+                        }}
+                        className="flex items-center justify-between px-2.5 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-200"
+                      >
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                           <span>CSV Data</span>
-                        </DropdownMenuItem>
-                      </>
-                    )}
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-normal">Spreadsheet</span>
+                      </DropdownMenuItem>
+                    </div>
                   </div>
                 )}
 
@@ -1489,6 +1599,33 @@ function EditorPageContent() {
           onConfirm={confirmModeChange}
           onCancel={cancelModeChange}
         />
+
+        {/* Plus Button Dialog for Single/Grouped Charts */}
+        <ChartSetupDialog
+          open={plusModalType !== null}
+          onClose={() => setPlusModalType(null)}
+          title={plusModalType === 'grouped' ? "Create New Group" : "Set Dimensions & Add Data"}
+          datasetType={plusModalType === 'grouped' ? 'grouped' : 'single'}
+          isCustom={true}
+          startAtStep={1}
+          step2Title={plusModalType === 'grouped' ? "Add Data" : "Add Data"}
+          confirmButtonText={plusModalType === 'grouped' ? "Create Group" : undefined}
+          onConfirm={handlePlusModalConfirm}
+        />
+
+        {/* Update Preset Dialog */}
+        {editPresetId && (
+          <UpdatePresetDialog
+            open={showUpdatePresetDialog}
+            onOpenChange={setShowUpdatePresetDialog}
+            presetId={editPresetId}
+            initialData={presetMetadata}
+            isBuiltIn={isBuiltInPreset}
+            onSuccess={() => {
+              setShowUpdatePresetDialog(false);
+            }}
+          />
+        )}
         {/* Sandwich Backdrop overlay */}
         {sandwichOpen && (
           <div 
@@ -1688,8 +1825,49 @@ function EditorPageContent() {
             </Button>
           </div>
 
-          {/* Action Buttons: Share, Save, Cancel, History - Below collapse button */}
+          {/* Action Buttons: +, Share, Save, Cancel, History - Below collapse button */}
           <div className="flex flex-col items-center gap-2 px-1">
+            {/* 1. Plus (+) Button */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!hasJSON}
+                  className="h-8 w-8 p-0 border-blue-200 text-blue-600 bg-blue-50 hover:bg-blue-100 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={!hasJSON ? "Create a chart first to add datasets/groups" : "Add Single or Grouped Chart"}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" side="right" className="w-44 z-50 bg-white border border-slate-200 shadow-md rounded-md p-1">
+                <DropdownMenuItem
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('openAddDatasetModal'));
+                  }}
+                  className="flex items-center gap-2 px-2.5 py-2 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md text-slate-700"
+                >
+                  <BarChart2 className="h-4 w-4 text-blue-600" />
+                  <div className="flex flex-col">
+                    <span className="font-semibold">Single Chart</span>
+                    <span className="text-[10px] text-slate-400">Add dataset to chart</span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('openNewGroupModal'));
+                  }}
+                  className="flex items-center gap-2 px-2.5 py-2 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md text-slate-700"
+                >
+                  <Layers className="h-4 w-4 text-purple-600" />
+                  <div className="flex flex-col">
+                    <span className="font-semibold">Grouped Chart</span>
+                    <span className="text-[10px] text-slate-400">Create a new group</span>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -1879,6 +2057,33 @@ function EditorPageContent() {
           onConfirm={confirmModeChange}
           onCancel={cancelModeChange}
         />
+
+        {/* Plus Button Dialog for Single/Grouped Charts */}
+        <ChartSetupDialog
+          open={plusModalType !== null}
+          onClose={() => setPlusModalType(null)}
+          title={plusModalType === 'grouped' ? "Create New Group" : "Set Dimensions & Add Data"}
+          datasetType={plusModalType === 'grouped' ? 'grouped' : 'single'}
+          isCustom={true}
+          startAtStep={1}
+          step2Title={plusModalType === 'grouped' ? "Add Data" : "Add Data"}
+          confirmButtonText={plusModalType === 'grouped' ? "Create Group" : undefined}
+          onConfirm={handlePlusModalConfirm}
+        />
+
+        {/* Update Preset Dialog */}
+        {editPresetId && (
+          <UpdatePresetDialog
+            open={showUpdatePresetDialog}
+            onOpenChange={setShowUpdatePresetDialog}
+            presetId={editPresetId}
+            initialData={presetMetadata}
+            isBuiltIn={isBuiltInPreset}
+            onSuccess={() => {
+              setShowUpdatePresetDialog(false);
+            }}
+          />
+        )}
       </div>
     );
   }
@@ -2123,89 +2328,7 @@ function EditorPageContent() {
         startAtStep={1}
         step2Title={plusModalType === 'grouped' ? "Add Data" : "Add Data"}
         confirmButtonText={plusModalType === 'grouped' ? "Create Group" : undefined}
-        onConfirm={(dims, datasets, newChartType, newUniformityMode, groupName) => {
-          const isGrouped = plusModalType === 'grouped';
-          setPlusModalType(null);
-
-          const updatedConfig = chartConfig ? JSON.parse(JSON.stringify(chartConfig)) : {};
-          if (dims.isResponsive) {
-            updatedConfig.responsive = true;
-            updatedConfig.manualDimensions = false;
-            updatedConfig.dynamicDimension = false;
-          } else {
-            updatedConfig.responsive = false;
-            updatedConfig.manualDimensions = true;
-            updatedConfig.dynamicDimension = false;
-            updatedConfig.width = `${dims.width}px`;
-            updatedConfig.height = `${dims.height}px`;
-          }
-
-          if (newUniformityMode) {
-            updatedConfig.visualSettings = {
-              ...updatedConfig.visualSettings,
-              uniformityMode: newUniformityMode
-            };
-          }
-
-          if (isGrouped) {
-            const { id: newGroupId, newState: groupState } = GroupService.addGroup({
-              name: groupName || `Group ${(useChartStore.getState().groups || []).length + 1}`,
-              category: null,
-              uniformityMode: newUniformityMode || 'uniform',
-              baseChartType: newChartType as any,
-              chartConfig: updatedConfig
-            }, { groups: useChartStore.getState().groups || [] });
-            useChartStore.setState(groupState);
-
-            if (datasets && datasets.length > 0) {
-              const store = useChartStore.getState();
-              const currentData = store.chartData;
-              const newGroupDatasets = datasets.map(dataset => ({
-                ...dataset,
-                groupId: newGroupId,
-                mode: 'grouped',
-                chartConfig: updatedConfig
-              }));
-              const newChartData = {
-                ...currentData,
-                datasets: [...currentData.datasets, ...newGroupDatasets]
-              };
-              useChartStore.setState({
-                chartData: newChartData,
-                groupedModeData: newChartData,
-                chartType: newChartType as any
-              });
-            }
-
-            useChartStore.getState().updateChartConfig(updatedConfig);
-            if (useChartStore.getState().chartMode !== 'grouped') {
-              useChartStore.getState().setChartMode('grouped');
-            }
-            useChartStore.getState().setActiveGroupId(newGroupId);
-            toast.success(`Created group "${groupName || `Group ${(useChartStore.getState().groups || []).length + 1}`}"`);
-          } else {
-            // Ensure mode is updated to 'single' if user was in 'grouped' mode
-            const chartStore = useChartStore.getState();
-            if (chartStore.chartMode !== 'single') {
-              chartStore.setChartMode('single');
-            }
-
-            if (datasets && datasets.length > 0) {
-              datasets.forEach(dataset => {
-                const currentState = useChartStore.getState();
-                const newState = DatasetService.addDataset({ ...dataset, chartConfig: updatedConfig, mode: 'single' }, currentState as any);
-                useChartStore.setState(newState);
-              });
-            }
-            useChartStore.getState().updateChartConfig(updatedConfig);
-            toast.success(`Single chart created successfully.`);
-          }
-
-          if (useTemplateStore.getState().editorMode === 'template') {
-            useTemplateStore.getState().setEditorMode('chart');
-          }
-          setActiveTab('datasets_slices');
-        }}
+        onConfirm={handlePlusModalConfirm}
       />
 
       {/* Mode Change Confirmation Dialog */}
@@ -2215,6 +2338,20 @@ function EditorPageContent() {
         onConfirm={confirmModeChange}
         onCancel={cancelModeChange}
       />
+
+      {/* Update Preset Dialog */}
+      {editPresetId && (
+        <UpdatePresetDialog
+          open={showUpdatePresetDialog}
+          onOpenChange={setShowUpdatePresetDialog}
+          presetId={editPresetId}
+          initialData={presetMetadata}
+          isBuiltIn={isBuiltInPreset}
+          onSuccess={() => {
+            setShowUpdatePresetDialog(false);
+          }}
+        />
+      )}
 
     </>
   )

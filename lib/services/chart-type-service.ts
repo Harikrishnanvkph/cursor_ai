@@ -220,6 +220,14 @@ export const ChartTypeService = {
                     }
                     return point;
                 });
+            } else {
+                // Revert objects to numbers for categorical charts
+                newDataset.data = dataset.data.map((point) => {
+                    if (typeof point === 'object' && point !== null && 'y' in point) {
+                        return point.y;
+                    }
+                    return point;
+                });
             }
 
             // Reset image callout positions when chart type changes

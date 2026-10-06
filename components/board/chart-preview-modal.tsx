@@ -291,7 +291,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
 
       // 3. Use the exact editor chartInstance.exportToImage (with background, canvas, and decoration SVG)
       if (chartInstance?.exportToImage) {
-        const cfg = liveConversation.snapshot?.chartConfig
+        const cfg = (liveConversation.snapshot?.chartConfig || {}) as any
         let exportWidth: number | undefined
         let exportHeight: number | undefined
         if (cfg?.width) {
@@ -303,6 +303,7 @@ export function ChartPreviewModal({ conversation, onClose, onEdit, onEditInAdvan
           if (!isNaN(h) && h > 0) exportHeight = h
         }
 
+        const bgConfig = cfg?.plugins?.exportPlugin?.background || { type: 'color', color: '#ffffff' }
         chartInstance.exportToImage({
           background: bgConfig,
           fileName: `${cleanTitle}.png`,

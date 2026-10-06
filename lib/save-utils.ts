@@ -356,8 +356,8 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
                     note: 'Dummy structure to trigger backend is_template_mode flag for formats'
                 };
             }
-        } else if (editorMode === 'template') {
-            // Saving as a standard template — make sure to strip any leftover formatData
+        } else {
+            // Saving as a standard template or chart — make sure to strip any leftover formatData
             // from a previous format session so the load logic doesn't misidentify it as a format.
             delete normalizedConfig.formatData;
         }
@@ -513,7 +513,7 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
             if (currentState.chartData.datasets[activeDatasetIndex]) {
                 // Manually replicate updateDataset action logic using Service + setState
                 const updates = {
-                    sourceId: isUpdate ? currentState.chartData.datasets[activeDatasetIndex].sourceId : conversationId,
+                    sourceId: currentState.chartData.datasets[activeDatasetIndex]?.sourceId || conversationId,
                     sourceTitle: savedTitle
                 };
 
@@ -538,7 +538,7 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
                 const currentState = useChartStore.getState();
                 const updates = {
                     name: savedTitle,
-                    sourceId: isUpdate ? activeGroup.sourceId : conversationId,
+                    sourceId: activeGroup.sourceId || conversationId,
                     sourceTitle: savedTitle
                 };
 
@@ -549,6 +549,25 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
 
         // Keep chartTitle in sync in the store
         useChartStore.getState().setChartTitle(savedTitle);
+
+        // Update history store conversation snapshot so subsequent pulls don't load stale data
+        const historyStore = useHistoryStore.getState();
+        const existingConv = historyStore.conversations.find(c => c.id === conversationId);
+        if (existingConv) {
+            historyStore.updateConversation(conversationId, {
+                title: savedTitle,
+                snapshot: {
+                    id: snapshotId,
+                    conversationId,
+                    chartType,
+                    chartData: JSON.parse(JSON.stringify(chartDataToSave)),
+                    chartConfig: JSON.parse(JSON.stringify(normalizedConfig)),
+                    template_structure: templateStructure,
+                    template_content: templateContent,
+                    is_template_mode: editorMode === 'template'
+                } as any
+            });
+        }
 
         // CRITICAL: Always sync chatStore.currentChartState with the live chart store
         // This ensures both stores stay in sync, preventing stale state overwrite on save/navigation

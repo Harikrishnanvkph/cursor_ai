@@ -9,16 +9,42 @@ import { UNIFIED_FONT_FAMILIES, FONT_WEIGHT_OPTIONS, ensureGoogleFontLoaded } fr
 interface GeneralTabProps {
     axis: 'x' | 'y'
     config: any
+    chartType?: string
     updateConfig: (path: string, value: any) => void
     updateNestedConfig: (basePath: string, path: string, value: any) => void
 }
 
-const axisTypeOptions: { value: ScaleType; label: string }[] = [
-    { value: 'category', label: 'Category' },
-    { value: 'linear', label: 'Linear' },
-    { value: 'logarithmic', label: 'Logarithmic' },
-    { value: 'time', label: 'Time' }
-]
+const getAxisTypeOptions = (axis: 'x' | 'y', chartType?: string) => {
+    // Coordinate charts (scatter, bubble) generally use numerical/log scales for both axes
+    if (chartType === 'scatter' || chartType === 'bubble') {
+        return [
+            { value: 'linear', label: 'Linear' },
+            { value: 'logarithmic', label: 'Logarithmic' }
+        ];
+    }
+    
+    // Horizontal Bar charts invert the standard axes
+    if (chartType === 'horizontalBar') {
+        if (axis === 'y') {
+            return [{ value: 'category', label: 'Category' }, { value: 'time', label: 'Time' }];
+        } else {
+            return [
+                { value: 'linear', label: 'Linear' },
+                { value: 'logarithmic', label: 'Logarithmic' }
+            ];
+        }
+    }
+    
+    // Standard categorical charts (bar, line, etc.)
+    if (axis === 'x') {
+        return [{ value: 'category', label: 'Category' }, { value: 'time', label: 'Time' }];
+    } else {
+        return [
+            { value: 'linear', label: 'Linear' },
+            { value: 'logarithmic', label: 'Logarithmic' }
+        ];
+    }
+}
 
 const positionOptions = (axis: 'x' | 'y') => [
     { value: axis === 'x' ? 'bottom' : 'left', label: axis === 'x' ? 'Bottom' : 'Left' },
@@ -26,7 +52,7 @@ const positionOptions = (axis: 'x' | 'y') => [
     { value: 'center', label: 'Center' },
 ]
 
-export function GeneralTab({ axis, config, updateConfig, updateNestedConfig }: GeneralTabProps) {
+export function GeneralTab({ axis, config, chartType, updateConfig, updateNestedConfig }: GeneralTabProps) {
     const [titleDropdownOpen, setTitleDropdownOpen] = useState(false)
     const [labelAppearanceDropdownOpen, setLabelAppearanceDropdownOpen] = useState(false)
     const [gridAppearanceDropdownOpen, setGridAppearanceDropdownOpen] = useState(false)
@@ -69,7 +95,7 @@ export function GeneralTab({ axis, config, updateConfig, updateNestedConfig }: G
                                     <SelectValue placeholder="Select type" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {axisTypeOptions.map((option) => (
+                                    {getAxisTypeOptions(axis, chartType).map((option) => (
                                         <SelectItem key={option.value} value={option.value}>
                                             {option.label}
                                         </SelectItem>

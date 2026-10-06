@@ -107,7 +107,7 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
   };
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth <= 768);
+    const checkMobile = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth < 768);
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);

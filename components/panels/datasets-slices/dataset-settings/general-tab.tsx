@@ -63,7 +63,7 @@ interface GeneralTabProps {
     handleOpenAddDatasetModal: () => void
     handleDatasetTileClick: (index: number) => void
     handleDeleteClick: (index: number) => void
-    addGroup: (opts: any) => void
+    addGroup: (opts: any) => string
     updateGroup: (id: string, updates: any) => void
     setGroupToDelete: (id: string | null) => void
     setShowGroupDeleteDialog: (show: boolean) => void

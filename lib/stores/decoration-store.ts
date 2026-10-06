@@ -45,7 +45,7 @@ export type DecorationShapeType =
   | `emoji-${string}`
   | `num-${number}`
 
-export type DrawingMode = DecorationShapeType | null
+export type DrawingMode = DecorationShapeType | 'marquee-select' | null
 
 export interface Point {
   x: number
@@ -96,14 +96,18 @@ export interface DecorationShape {
   borderRadius?: number
 
   svgContent?: string
+  autoSize?: boolean
 }
 
-export type DrawingState =
-  | 'idle'
-  | 'drawing-path'      // Multi-point freehand
-  | 'drawing-shape'     // Dragging bound box (rect, circle)
-  | 'drawing-polyline'  // Click by click path
-  | 'drawing-bspline'   // Click by click bspline
+export interface DrawingState {
+  mode: DecorationShapeType
+  startX: number
+  startY: number
+  currentX: number
+  currentY: number
+  points: Point[]
+  shiftKey?: boolean
+}
 
 // ═══════════════════════════════════════════════════════
 // Store

@@ -657,6 +657,14 @@ export const useChatStore = create<ChatStore>()(
             chartStore.setFullChart({ ...assistantMsg.chartSnapshot, replaceMode: true });
             chartStore.setHasJSON(true);
 
+            // Snap State: Capture initial state of newly created chart
+            try {
+              const { useSnapStateStore } = require('@/lib/stores/snap-state-store');
+              useSnapStateStore.getState().captureFromSnapshot(assistantMsg.chartSnapshot, 'new', assistantMsg.chartSnapshot?.id, {
+                title: (assistantMsg.chartSnapshot as any)?.chartTitle || 'Generated Chart',
+              });
+            } catch (e) {}
+
             // Populate template text areas if template structure was provided and response includes template content
             const templateStore = useTemplateStore.getState();
             if (result.templateContent && templateStore.currentTemplate) {
