@@ -7,7 +7,7 @@ import { TicksTab } from "./ticks-tab"
 import { MoreTab } from "./more-tab"
 
 interface AxisSettingsProps {
-    axis: 'x' | 'y'
+    axis: 'x' | 'y' | 'y1'
     config: any
     onUpdate: (path: string, value: any) => void
     className?: string

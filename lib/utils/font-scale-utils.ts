@@ -187,6 +187,10 @@ export function applyFontScaling(
     scaleAt(['scales', 'x', 'title', 'font', 'size'],  BASELINE.axisLabelX, full,       CLAMP.axisLabelX)
     scaleAt(['scales', 'y', 'ticks', 'font', 'size'],  BASELINE.tickY,      tickFactor, CLAMP.tickY)
     scaleAt(['scales', 'y', 'title', 'font', 'size'],  BASELINE.axisLabelY, full,       CLAMP.axisLabelY)
+    if (cfg?.scales?.y1) {
+      scaleAt(['scales', 'y1', 'ticks', 'font', 'size'],  BASELINE.tickY,      tickFactor, CLAMP.tickY)
+      scaleAt(['scales', 'y1', 'title', 'font', 'size'],  BASELINE.axisLabelY, full,       CLAMP.axisLabelY)
+    }
   }
 
   // ── Radial scale (radar / polarArea) ──

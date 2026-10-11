@@ -132,7 +132,7 @@ export function Sidebar({ activeTab, onTabChange, onToggleLeftSidebar, isLeftSid
     <div className="h-full bg-white border-r border-gray-200 p-3 flex flex-col overflow-hidden">
       <div className={cn(
         "flex items-center flex-shrink-0 gap-2 mb-4",
-        !onToggleLeftSidebar && "mb-2"
+        !onToggleLeftSidebar && "pt-2 mb-3"
       )}>
         <div className="flex-1 min-w-0">
           {isTemplateMode ? (
@@ -146,7 +146,7 @@ export function Sidebar({ activeTab, onTabChange, onToggleLeftSidebar, isLeftSid
             // Chart mode header (original)
             <>
               {((chartMode === 'single' && datasets.length === 0) || (chartMode === 'grouped' && groups.length === 0)) ? (
-                <div className="h-9 flex items-center px-3 bg-gray-50 border border-gray-100 rounded-lg shadow-sm">
+                <div className="h-9 flex items-center px-3 bg-white border border-gray-200 rounded-lg shadow-sm">
                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Chart Editor</span>
                 </div>
               ) : chartMode === 'single' ? (

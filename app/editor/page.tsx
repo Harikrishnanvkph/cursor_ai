@@ -1777,7 +1777,7 @@ function EditorPageContent() {
   // Tablet overlay sidebar logic
   if (isTablet) {
     return (
-      <div className="flex h-full w-full bg-gray-50 overflow-hidden relative">
+      <div className="flex h-full w-full bg-white overflow-hidden relative">
         {/* Left Sidebar - Collapsed by default, shows only icons */}
         <div className="w-16 flex-shrink-0 flex flex-col h-full items-center py-3 bg-white border-r border-gray-200 overflow-hidden group">
           <div className="flex flex-col items-center space-y-3 w-full">
@@ -2228,7 +2228,7 @@ function EditorPageContent() {
       {rightSidebarCollapsed ? (
         <div className="w-12 flex-shrink-0 flex flex-col h-full bg-white border-l border-gray-200 shadow-sm">
           {/* Profile Button - Top */}
-          <div className="p-2 border-b border-gray-200 flex justify-center">
+          <div className="p-2 border-b border-gray-200 flex justify-center bg-white">
             <SimpleProfileDropdown size="sm" />
           </div>
 
@@ -2349,7 +2349,7 @@ function EditorPageContent() {
           <div className="flex-1 cursor-pointer" onClick={() => setRightSidebarCollapsed(false)} title="Expand Sidebar" />
         </div>
       ) : (
-        <div className="w-80 flex-shrink-0 border-l bg-white overflow-hidden h-full flex flex-col min-h-0">
+        <div className="w-80 flex-shrink-0 border-l border-gray-200 bg-white overflow-hidden h-full flex flex-col min-h-0">
           <ConfigPanel
             activeTab={activeTab}
             onToggleSidebar={() => setRightSidebarCollapsed((v) => !v)}

@@ -150,6 +150,13 @@ interface CustomDatasetProperties {
     categoryPercentage?: number
     barPercentage?: number
     lastDatasetColor?: string
+    yAxisID?: string
+    gradientFill?: boolean
+    gradientPreset?: 'subtle' | 'vibrant' | 'soft' | 'custom'
+    gradientPeakOpacity?: number
+    gradientBaseOpacity?: number
+    gradientTopOpacity?: number
+    gradientBottomOpacity?: number
 }
 
 // Create a type that combines ChartDataset with our custom properties

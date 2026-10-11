@@ -196,30 +196,49 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
                   <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-52 p-1.5 rounded-xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800 shadow-xl z-50">
+              <DropdownMenuContent align="start" className="w-64 p-1.5 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800 shadow-xl z-50">
                 <DropdownMenuItem
-                  className="flex items-center justify-between px-2.5 py-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50/60 dark:bg-indigo-950/40 rounded-lg cursor-default"
+                  className="flex items-start justify-between px-3 py-2.5 rounded-xl cursor-default bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <BarChart2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                    <span>AI Chart</span>
+                  <div className="flex flex-col gap-0.5 min-w-0 pr-2">
+                    <span className="text-sm font-semibold leading-tight">
+                      AI Chart
+                    </span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-normal leading-normal">
+                      Create charts with AI prompts
+                    </span>
                   </div>
-                  <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                  <Check className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
                 </DropdownMenuItem>
+
                 <DropdownMenuSeparator className="my-1 bg-slate-200/70 dark:bg-slate-800" />
+
                 <DropdownMenuItem
                   onClick={() => router.push('/board')}
-                  className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/80 rounded-lg cursor-pointer transition-colors"
+                  className="flex items-start justify-between px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors"
                 >
-                  <LayoutDashboard className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                  <span>Dashboard</span>
+                  <div className="flex flex-col gap-0.5 min-w-0">
+                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 leading-tight">
+                      Dashboard
+                    </span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-normal leading-normal">
+                      Manage saved charts & templates
+                    </span>
+                  </div>
                 </DropdownMenuItem>
+
                 <DropdownMenuItem
                   onClick={() => router.push('/editor')}
-                  className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/80 rounded-lg cursor-pointer transition-colors"
+                  className="flex items-start justify-between px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors"
                 >
-                  <Edit3 className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                  <span>Advanced Editor</span>
+                  <div className="flex flex-col gap-0.5 min-w-0">
+                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 leading-tight">
+                      Advanced Editor
+                    </span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-normal leading-normal">
+                      Full canvas & infographic design
+                    </span>
+                  </div>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -228,14 +247,14 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
             <div className="flex items-center gap-1">
               <button
                 onClick={handleNewConversation}
-                className="p-1.5 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60 rounded-lg transition-colors cursor-pointer"
+                className="p-1.5 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60 rounded-lg transition-colors cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
                 title="New Chat"
               >
                 <SquarePen className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setLeftSidebarOpen(false)}
-                className="p-1.5 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60 rounded-lg transition-colors cursor-pointer"
+                className="p-1.5 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60 rounded-lg transition-colors cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
                 title="Close Sidebar"
               >
                 <PanelLeft className="w-4 h-4" />
@@ -386,20 +405,20 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
                   <ExternalLink className="w-4 h-4" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" side="right" className="w-44 z-50 bg-white/95 backdrop-blur-xl border border-slate-200/80 shadow-lg rounded-xl p-1.5">
+              <DropdownMenuContent align="start" side="right" className="w-56 z-50 bg-white/95 backdrop-blur-xl border border-slate-200/80 shadow-lg rounded-2xl p-1.5">
                 <DropdownMenuItem
                   onClick={() => router.push('/board')}
-                  className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
+                  className="flex flex-col items-start px-3 py-2 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                 >
-                  <LayoutDashboard className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Dashboard</span>
+                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-tight">Dashboard</span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 font-normal mt-0.5">Manage saved charts & templates</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => router.push('/editor')}
-                  className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
+                  className="flex flex-col items-start px-3 py-2 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                 >
-                  <Edit3 className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Advanced Editor</span>
+                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-tight">Advanced Editor</span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 font-normal mt-0.5">Full canvas & infographic design</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

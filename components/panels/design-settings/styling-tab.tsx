@@ -498,109 +498,259 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                         </div>
                     </div>
 
-                    {/* Area Fill Settings - Only for area charts */}
-                    {effectiveChartType === 'area' as any && (
+                    {/* Area Fill Settings - For area charts and line charts */}
+                    {(effectiveChartType === 'area' as any || effectiveChartType === 'line' as any) && (
                         <div className="pt-2 border-t border-blue-100 space-y-3">
                             <div className="flex items-center justify-between">
-                                <div className="text-xs font-medium text-blue-900">Area Fill Settings</div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                    <Label className="text-xs font-medium">Fill Target</Label>
-                                    <Select
-                                        value={
-                                            primaryDataset.fill === '-1' ? 'stack' :
-                                                primaryDataset.fill === 'end' ? 'end' : 'origin'
-                                        }
-                                        onValueChange={(value) => {
-                                            const fillValue = value === 'stack' ? '-1' : value
-                                            getTargetDatasetIndices().forEach(index => {
-                                                handleUpdateDataset(index, 'fill', fillValue)
-                                            })
-                                        }}
-                                    >
-                                        <SelectTrigger className="h-8 text-xs">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="origin">Origin (Baseline)</SelectItem>
-                                            <SelectItem value="stack">Stacked (Previous Dataset)</SelectItem>
-                                            <SelectItem value="end">End (Top)</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="space-y-1">
-                                    <Label className="text-xs font-medium">Fill Opacity</Label>
-                                    <div className="flex items-center gap-2">
-                                        <Slider
-                                            value={[(() => {
-                                                const bgColor = primaryDataset.backgroundColor
-                                                const firstColor = Array.isArray(bgColor) ? bgColor[0] : bgColor
-                                                if (typeof firstColor === 'string') {
-                                                    if (firstColor.startsWith('rgba')) {
-                                                        const match = firstColor.match(/rgba?\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)/)
-                                                        return match ? Math.round(parseFloat(match[1]) * 100) : 60
-                                                    }
-                                                    if (firstColor.startsWith('#')) return 100
-                                                }
-                                                return 60
-                                            })()]}
-                                            onValueChange={([value]) => {
-                                                const opacity = value / 100
-                                                const convertColorToRgba = (color: string): string => {
-                                                    if (!color) return `rgba(59, 130, 246, ${opacity})`
-                                                    let r = 59, g = 130, b = 246
-                                                    if (color.startsWith('#')) {
-                                                        const hex = color.replace('#', '')
-                                                        r = parseInt(hex.substring(0, 2), 16)
-                                                        g = parseInt(hex.substring(2, 4), 16)
-                                                        b = parseInt(hex.substring(4, 6), 16)
-                                                    } else if (color.startsWith('rgba') || color.startsWith('rgb')) {
-                                                        const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
-                                                        if (match) {
-                                                            r = parseInt(match[1])
-                                                            g = parseInt(match[2])
-                                                            b = parseInt(match[3])
-                                                        }
-                                                    }
-                                                    return `rgba(${r}, ${g}, ${b}, ${opacity})`
-                                                }
+                                <div className="text-xs font-semibold text-blue-900">Area Fill Settings</div>
+                                <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-md border border-gray-200">
+                                    {effectiveChartType === 'line' && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
                                                 getTargetDatasetIndices().forEach(index => {
-                                                    const dataset = chartData.datasets[index];
-                                                    if (!dataset) return;
-                                                    const bgColors = dataset.backgroundColor
-                                                    if (Array.isArray(bgColors)) {
-                                                        const newColors = bgColors.map((c: string) => convertColorToRgba(c))
-                                                        handleUpdateDataset(index, 'backgroundColor', newColors)
-                                                    } else {
-                                                        handleUpdateDataset(index, 'backgroundColor', convertColorToRgba(bgColors))
-                                                    }
+                                                    handleUpdateDataset(index, 'fill', false)
+                                                    handleUpdateDataset(index, 'gradientFill', false)
                                                 })
                                             }}
-                                            min={0}
-                                            max={100}
-                                            step={5}
-                                            className="mt-2 flex-1"
-                                        />
-                                        <div className="text-xs text-gray-500 mt-2 w-8 text-right">
-                                            {(() => {
-                                                const bgColor = primaryDataset.backgroundColor
-                                                const firstColor = Array.isArray(bgColor) ? bgColor[0] : bgColor
-                                                if (typeof firstColor === 'string') {
-                                                    if (firstColor.startsWith('rgba')) {
-                                                        const match = firstColor.match(/rgba?\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)/)
-                                                        return match ? Math.round(parseFloat(match[1]) * 100) : 60
+                                            className={`px-2 py-0.5 text-[10px] font-medium rounded transition-all ${
+                                                !primaryDataset.fill ? 'bg-white text-blue-600 shadow-xs' : 'text-gray-500 hover:text-gray-800'
+                                            }`}
+                                        >
+                                            None
+                                        </button>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            getTargetDatasetIndices().forEach(index => {
+                                                handleUpdateDataset(index, 'fill', 'origin')
+                                                handleUpdateDataset(index, 'gradientFill', false)
+                                            })
+                                        }}
+                                        className={`px-2 py-0.5 text-[10px] font-medium rounded transition-all ${
+                                            (effectiveChartType === 'area' ? !primaryDataset.gradientFill : (primaryDataset.fill && !primaryDataset.gradientFill))
+                                                ? 'bg-white text-blue-600 shadow-xs' 
+                                                : 'text-gray-500 hover:text-gray-800'
+                                        }`}
+                                    >
+                                        Solid
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            getTargetDatasetIndices().forEach(index => {
+                                                handleUpdateDataset(index, 'fill', 'origin')
+                                                handleUpdateDataset(index, 'gradientFill', true)
+                                            })
+                                        }}
+                                        className={`px-2 py-0.5 text-[10px] font-medium rounded transition-all ${
+                                            primaryDataset.gradientFill ? 'bg-white text-blue-600 shadow-xs' : 'text-gray-500 hover:text-gray-800'
+                                        }`}
+                                    >
+                                        Gradient
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* When Gradient Fill is Active */}
+                            {primaryDataset.gradientFill ? (
+                                <div className="space-y-3 p-2.5 bg-blue-50/60 rounded-lg border border-blue-100">
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-medium text-blue-900">Gradient Preset</Label>
+                                        <Select
+                                            value={primaryDataset.gradientPreset || 'subtle'}
+                                            onValueChange={(val) => {
+                                                let top = 0.45;
+                                                let bottom = 0.0;
+                                                if (val === 'vibrant') { top = 0.75; bottom = 0.05; }
+                                                else if (val === 'soft') { top = 0.25; bottom = 0.0; }
+                                                getTargetDatasetIndices().forEach(index => {
+                                                    handleUpdateDataset(index, 'gradientPreset', val);
+                                                    if (val !== 'custom') {
+                                                        handleUpdateDataset(index, 'gradientTopOpacity', top);
+                                                        handleUpdateDataset(index, 'gradientBottomOpacity', bottom);
                                                     }
-                                                    if (firstColor.startsWith('#')) return 100
-                                                }
-                                                return 60
-                                            })()}%
+                                                });
+                                            }}
+                                        >
+                                            <SelectTrigger className="h-8 text-xs bg-white">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="subtle">Subtle Glow (Top 45% → Base 0%)</SelectItem>
+                                                <SelectItem value="vibrant">Vibrant Glow (Top 75% → Base 5%)</SelectItem>
+                                                <SelectItem value="soft">Soft Tint (Top 25% → Base 0%)</SelectItem>
+                                                <SelectItem value="custom">Custom Opacity...</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3 pt-1">
+                                        <div className="space-y-1">
+                                            <div className="flex justify-between text-[11px] font-medium text-gray-700">
+                                                <span>Peak (Top)</span>
+                                                <span>{Math.round((primaryDataset.gradientTopOpacity ?? 0.45) * 100)}%</span>
+                                            </div>
+                                            <Slider
+                                                value={[Math.round((primaryDataset.gradientTopOpacity ?? 0.45) * 100)]}
+                                                onValueChange={([val]) => {
+                                                    getTargetDatasetIndices().forEach(index => {
+                                                        handleUpdateDataset(index, 'gradientPreset', 'custom');
+                                                        handleUpdateDataset(index, 'gradientTopOpacity', val / 100);
+                                                    });
+                                                }}
+                                                min={10}
+                                                max={100}
+                                                step={5}
+                                                className="mt-1"
+                                            />
+                                        </div>
+
+                                        <div className="space-y-1">
+                                            <div className="flex justify-between text-[11px] font-medium text-gray-700">
+                                                <span>Base (Bottom)</span>
+                                                <span>{Math.round((primaryDataset.gradientBottomOpacity ?? 0.0) * 100)}%</span>
+                                            </div>
+                                            <Slider
+                                                value={[Math.round((primaryDataset.gradientBottomOpacity ?? 0.0) * 100)]}
+                                                onValueChange={([val]) => {
+                                                    getTargetDatasetIndices().forEach(index => {
+                                                        handleUpdateDataset(index, 'gradientPreset', 'custom');
+                                                        handleUpdateDataset(index, 'gradientBottomOpacity', val / 100);
+                                                    });
+                                                }}
+                                                min={0}
+                                                max={50}
+                                                step={5}
+                                                className="mt-1"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-1 pt-1">
+                                        <Label className="text-xs font-medium">Fill Target</Label>
+                                        <Select
+                                            value={primaryDataset.fill === '-1' ? 'stack' : primaryDataset.fill === 'end' ? 'end' : 'origin'}
+                                            onValueChange={(value) => {
+                                                const fillValue = value === 'stack' ? '-1' : value;
+                                                getTargetDatasetIndices().forEach(index => {
+                                                    handleUpdateDataset(index, 'fill', fillValue);
+                                                });
+                                            }}
+                                        >
+                                            <SelectTrigger className="h-8 text-xs bg-white">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="origin">Origin (Baseline)</SelectItem>
+                                                <SelectItem value="stack">Stacked (Previous Dataset)</SelectItem>
+                                                <SelectItem value="end">End (Top)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                            ) : (!primaryDataset.fill && effectiveChartType === 'line') ? (
+                                <p className="text-xs text-gray-500 italic py-1">No fill under line. Click <strong>Solid</strong> or <strong>Gradient</strong> above to add an area fill.</p>
+                            ) : (
+                                /* When Solid Fill is Active */
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-medium">Fill Target</Label>
+                                        <Select
+                                            value={
+                                                primaryDataset.fill === '-1' ? 'stack' :
+                                                    primaryDataset.fill === 'end' ? 'end' : 'origin'
+                                            }
+                                            onValueChange={(value) => {
+                                                const fillValue = value === 'stack' ? '-1' : value
+                                                getTargetDatasetIndices().forEach(index => {
+                                                    handleUpdateDataset(index, 'fill', fillValue)
+                                                })
+                                            }}
+                                        >
+                                            <SelectTrigger className="h-8 text-xs">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="origin">Origin (Baseline)</SelectItem>
+                                                <SelectItem value="stack">Stacked (Previous Dataset)</SelectItem>
+                                                <SelectItem value="end">End (Top)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-medium">Fill Opacity</Label>
+                                        <div className="flex items-center gap-2">
+                                            <Slider
+                                                value={[(() => {
+                                                    const bgColor = primaryDataset.backgroundColor
+                                                    const firstColor = Array.isArray(bgColor) ? bgColor[0] : bgColor
+                                                    if (typeof firstColor === 'string') {
+                                                        if (firstColor.startsWith('rgba')) {
+                                                            const match = firstColor.match(/rgba?\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)/)
+                                                            return match ? Math.round(parseFloat(match[1]) * 100) : 60
+                                                        }
+                                                        if (firstColor.startsWith('#')) return 100
+                                                    }
+                                                    return 60
+                                                })()]}
+                                                onValueChange={([value]) => {
+                                                    const opacity = value / 100
+                                                    const convertColorToRgba = (color: string): string => {
+                                                        if (!color) return `rgba(59, 130, 246, ${opacity})`
+                                                        let r = 59, g = 130, b = 246
+                                                        if (color.startsWith('#')) {
+                                                            const hex = color.replace('#', '')
+                                                            r = parseInt(hex.substring(0, 2), 16)
+                                                            g = parseInt(hex.substring(2, 4), 16)
+                                                            b = parseInt(hex.substring(4, 6), 16)
+                                                        } else if (color.startsWith('rgba') || color.startsWith('rgb')) {
+                                                            const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
+                                                            if (match) {
+                                                                r = parseInt(match[1])
+                                                                g = parseInt(match[2])
+                                                                b = parseInt(match[3])
+                                                            }
+                                                        }
+                                                        return `rgba(${r}, ${g}, ${b}, ${opacity})`
+                                                    }
+                                                    getTargetDatasetIndices().forEach(index => {
+                                                        const dataset = chartData.datasets[index];
+                                                        if (!dataset) return;
+                                                        const bgColors = dataset.backgroundColor
+                                                        if (Array.isArray(bgColors)) {
+                                                            const newColors = bgColors.map((c: string) => convertColorToRgba(c))
+                                                            handleUpdateDataset(index, 'backgroundColor', newColors)
+                                                        } else {
+                                                            handleUpdateDataset(index, 'backgroundColor', convertColorToRgba(bgColors))
+                                                        }
+                                                    })
+                                                }}
+                                                min={0}
+                                                max={100}
+                                                step={5}
+                                                className="mt-2 flex-1"
+                                            />
+                                            <div className="text-xs text-gray-500 mt-2 w-8 text-right">
+                                                {(() => {
+                                                    const bgColor = primaryDataset.backgroundColor
+                                                    const firstColor = Array.isArray(bgColor) ? bgColor[0] : bgColor
+                                                    if (typeof firstColor === 'string') {
+                                                        if (firstColor.startsWith('rgba')) {
+                                                            const match = firstColor.match(/rgba?\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)/)
+                                                            return match ? Math.round(parseFloat(match[1]) * 100) : 60
+                                                        }
+                                                        if (firstColor.startsWith('#')) return 100
+                                                    }
+                                                    return 60
+                                                })()}%
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     )}
                 </div>

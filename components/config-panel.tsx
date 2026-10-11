@@ -171,10 +171,10 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-background border-l border-border shadow-sm">
+    <div className="h-full flex flex-col overflow-hidden bg-white border-l border-gray-200 shadow-sm">
       {/* Header - Hidden on mobile */}
       {!isMobile && (
-        <div className="flex items-center py-1.5 px-3 border-b bg-muted/50 gap-2">
+        <div className="flex items-center py-1.5 px-3 border-b border-gray-200 bg-white gap-2">
           {/* Expand/Collapse Button */}
           {onToggleSidebar && (
             <Button
@@ -299,7 +299,7 @@ export function ConfigPanel({ activeTab, onToggleSidebar, isSidebarCollapsed, on
       )}
 
       {/* Panel Content */}
-      <div className="flex-1 overflow-y-auto pt-2.5 px-4 pb-4 bg-background">
+      <div className="flex-1 overflow-y-auto pt-2.5 px-4 pb-4 bg-white">
         <div className="animate-in fade-in duration-200">
           {renderPanel()}
         </div>

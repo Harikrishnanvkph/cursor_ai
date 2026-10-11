@@ -32,7 +32,7 @@ export default function EditorLayout({ children }: { children: React.ReactNode }
   return (
     <ProtectedRoute>
       <EditorSidebarProvider>
-        <div className="fixed inset-0 flex bg-gray-50 overflow-hidden">
+        <div className="fixed inset-0 flex bg-white overflow-hidden">
           {/* Persistent Interactive Left Sidebar - Hidden on mobile/tablet (<1024px) */}
           <div className="hidden lg:flex flex-shrink-0 z-50 h-full w-16 xl:w-auto">
             <EditorLeftSidebar />

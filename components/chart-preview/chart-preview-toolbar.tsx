@@ -2,14 +2,16 @@
 import { useSearchParams } from "next/navigation";
 
 import React, { memo, useState } from "react"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { STANDARD_CHART_TYPES, THREE_D_CHART_TYPES } from "@/lib/chart-types"
+import { CATEGORIZED_CHART_TYPES, getChartLabel, STANDARD_CHART_TYPES, THREE_D_CHART_TYPES } from "@/lib/chart-types"
+import { ChartTypeSelector } from "./chart-type-selector"
 import {
     Download, Maximize2,
     ZoomIn, ZoomOut, Hand, Pencil, Check, Loader2,
     ChartColumn, RulerDimensionLine, Ban, Search, Palette, Upload, Sparkles, ScanSearch, Ellipsis,
-    Camera, RotateCcw, Info
+    Camera, RotateCcw, Info, ChevronDown
 } from "lucide-react"
 import { useLoupeStore } from "@/lib/stores/loupe-store"
 import { 
@@ -93,21 +95,13 @@ const ModeAndTypeSection = memo(({
                 >Template</button>
             </div>
 
-            <Select value={chartType} onValueChange={onChartTypeChange}>
-                <SelectTrigger className={triggerClassName}>
-                    <ChartColumn className="h-3.5 w-3.5 lg:hidden text-slate-600 shrink-0 stroke-[2.5]" />
-                    <div className="hidden lg:block truncate"><SelectValue placeholder="Type" /></div>
-                </SelectTrigger>
-                <SelectContent>
-                    {STANDARD_CHART_TYPES.map((type) => (
-                        <SelectItem key={type.value} value={type.value} className="text-xs py-1.5">{type.label}</SelectItem>
-                    ))}
-                    <SelectSeparator />
-                    {THREE_D_CHART_TYPES.map((type) => (
-                        <SelectItem key={type.value} value={type.value} className="text-xs py-1.5 font-medium text-blue-600">{type.label}</SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
+            <ChartTypeSelector
+                value={chartType}
+                onChange={onChartTypeChange}
+                variant="toolbar"
+                isMobile={isMobile}
+                disabled={disabled}
+            />
 
             {/* Divider */}
             <div className="w-px h-4 bg-gray-200 mx-1" />

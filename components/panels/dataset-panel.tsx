@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { STANDARD_CHART_TYPES, THREE_D_CHART_TYPES } from "@/lib/chart-types"
+import { ChartTypeSelector } from "@/components/chart-preview/chart-type-selector"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
@@ -162,25 +162,12 @@ export function DatasetPanel() {
       <Card>
         <CardContent className="space-y-4">
           <div>
-            <Label>Chart Type</Label>
-            <Select value={chartType} onValueChange={handleChartTypeChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select chart type" />
-              </SelectTrigger>
-              <SelectContent>
-                {/* Standard Charts */}
-                {STANDARD_CHART_TYPES.map((type) => (
-                  <SelectItem key={type.value} value={type.value} className="text-sm py-2">{type.label}</SelectItem>
-                ))}
-
-                <SelectSeparator />
-
-                {/* 3D Charts */}
-                {THREE_D_CHART_TYPES.map((type) => (
-                  <SelectItem key={type.value} value={type.value} className="text-sm py-2 font-medium text-blue-600">{type.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label className="mb-2 block">Chart Type</Label>
+            <ChartTypeSelector
+              value={chartType}
+              onChange={handleChartTypeChange}
+              variant="sidebar"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">

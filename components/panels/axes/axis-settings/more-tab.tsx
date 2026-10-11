@@ -6,7 +6,7 @@ import { useState, useEffect } from "react"
 import { useChartStore } from "@/lib/chart-store"
 
 interface MoreTabProps {
-    axis: 'x' | 'y'
+    axis: 'x' | 'y' | 'y1'
     config: any
     onUpdate: (path: string, value: any) => void
     updateConfig: (path: string, value: any) => void
@@ -63,13 +63,13 @@ export function MoreTab({ axis, config, onUpdate, updateConfig, chartType }: Mor
         return 5;
     })();
 
-    const isValueAxis = (axis === 'y' && !['horizontalBar', 'horizontalBar3d', 'funnel'].includes(chartType || '')) ||
+    const isValueAxis = (['y', 'y1'].includes(axis) && !['horizontalBar', 'horizontalBar3d', 'funnel'].includes(chartType || '')) ||
                         (axis === 'x' && ['horizontalBar', 'horizontalBar3d', 'funnel'].includes(chartType || ''));
 
     return (
         <div className="space-y-2 overflow-y-auto overflow-x-hidden h-full">
-            {/* Begin at Zero (Y-axis only) */}
-            {axis === 'y' && (
+            {/* Begin at Zero (Y and Y1 axis) */}
+            {['y', 'y1'].includes(axis) && (
                 <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
                     <Label className="text-sm font-medium text-blue-900">Begin at Zero</Label>
                     <Switch

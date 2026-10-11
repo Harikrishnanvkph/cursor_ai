@@ -2,61 +2,55 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useState, useRef } from "react"
-import { ScaleType } from "chart.js"
+import { useState, useRef, useEffect } from "react"
 import { UNIFIED_FONT_FAMILIES, FONT_WEIGHT_OPTIONS, ensureGoogleFontLoaded } from "@/lib/typography-registry"
+import { useChartData } from "@/lib/hooks/use-chart-state"
+import { useChartActions } from "@/lib/hooks/use-chart-actions"
+import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 
 interface GeneralTabProps {
-    axis: 'x' | 'y'
+    axis: 'x' | 'y' | 'y1'
     config: any
     chartType?: string
     updateConfig: (path: string, value: any) => void
     updateNestedConfig: (basePath: string, path: string, value: any) => void
 }
 
-const getAxisTypeOptions = (axis: 'x' | 'y', chartType?: string) => {
-    // Coordinate charts (scatter, bubble) generally use numerical/log scales for both axes
-    if (chartType === 'scatter' || chartType === 'bubble') {
-        return [
-            { value: 'linear', label: 'Linear' },
-            { value: 'logarithmic', label: 'Logarithmic' }
-        ];
-    }
-    
-    // Horizontal Bar charts invert the standard axes
-    if (chartType === 'horizontalBar') {
-        if (axis === 'y') {
-            return [{ value: 'category', label: 'Category' }, { value: 'time', label: 'Time' }];
-        } else {
-            return [
-                { value: 'linear', label: 'Linear' },
-                { value: 'logarithmic', label: 'Logarithmic' }
-            ];
-        }
-    }
-    
-    // Standard categorical charts (bar, line, etc.)
-    if (axis === 'x') {
-        return [{ value: 'category', label: 'Category' }, { value: 'time', label: 'Time' }];
-    } else {
-        return [
-            { value: 'linear', label: 'Linear' },
-            { value: 'logarithmic', label: 'Logarithmic' }
-        ];
-    }
-}
-
-const positionOptions = (axis: 'x' | 'y') => [
-    { value: axis === 'x' ? 'bottom' : 'left', label: axis === 'x' ? 'Bottom' : 'Left' },
-    { value: axis === 'x' ? 'top' : 'right', label: axis === 'x' ? 'Top' : 'Right' },
-    { value: 'center', label: 'Center' },
-]
-
 export function GeneralTab({ axis, config, chartType, updateConfig, updateNestedConfig }: GeneralTabProps) {
     const [titleDropdownOpen, setTitleDropdownOpen] = useState(false)
     const [labelAppearanceDropdownOpen, setLabelAppearanceDropdownOpen] = useState(false)
     const [gridAppearanceDropdownOpen, setGridAppearanceDropdownOpen] = useState(false)
     const titleInputRef = useRef<HTMLInputElement>(null)
+    const hasHealedY1PosRef = useRef(false)
+
+    // Ensure Right Y-Axis (Y2) defaults to 'right' position
+    useEffect(() => {
+        if (!hasHealedY1PosRef.current && axis === 'y1') {
+            if (!config?.position || config?.position === 'left') {
+                updateConfig('position', 'right');
+            }
+            hasHealedY1PosRef.current = true;
+        }
+    }, [axis, config?.position, updateConfig]);
+
+    const chartData = useChartData()
+    const { updateDataset } = useChartActions()
+    const datasets = chartData?.datasets || []
+    const y1Datasets = datasets.filter((ds: any) => ds?.yAxisID === 'y1' && !ds.hidden)
+    const canEnableY1 = datasets.length >= 2
+    const isY1AxisActive = canEnableY1 && y1Datasets.length > 0 && config?.display !== false
+
+    // Auto-heal single-dataset charts: A single dataset must always plot on the primary Left Y-Axis
+    useEffect(() => {
+        if (datasets.length < 2) {
+            datasets.forEach((ds: any, idx: number) => {
+                if (ds?.yAxisID === 'y1') {
+                    updateDataset(idx, { yAxisID: 'y' });
+                }
+            });
+        }
+    }, [datasets.length]);
 
     const lineDashOptions = [
         { label: 'Solid', value: '[]' },
@@ -73,57 +67,162 @@ export function GeneralTab({ axis, config, chartType, updateConfig, updateNested
         <div className="space-y-2">
             {/* Main Toggle */}
             <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-blue-100/50 rounded-lg border border-blue-100">
-                <Label className="text-sm font-medium text-blue-900">Show {axis.toUpperCase()}-Axis</Label>
+                <div className="flex flex-col">
+                    <Label className="text-sm font-medium text-blue-900">
+                        Show {axis === 'y1' ? 'Right Y-Axis (Y2)' : `${axis.toUpperCase()}-Axis`}
+                    </Label>
+                    {axis === 'y1' && (
+                        <span className="text-[11px] text-blue-600/80">
+                            {datasets.length < 2
+                                ? 'Requires at least 2 datasets'
+                                : y1Datasets.length > 0
+                                ? `${y1Datasets.length} dataset${y1Datasets.length > 1 ? 's' : ''} mapped`
+                                : 'Requires at least 1 dataset assigned below'}
+                        </span>
+                    )}
+                </div>
                 <Switch
-                    checked={config?.display !== false}
-                    onCheckedChange={(checked) => updateConfig('display', checked)}
+                    disabled={axis === 'y1' && datasets.length < 2}
+                    checked={axis === 'y1' ? isY1AxisActive : config?.display !== false}
+                    onCheckedChange={(checked) => {
+                        if (axis === 'y1') {
+                            if (checked) {
+                                if (datasets.length < 2) {
+                                    toast.error('Right Y-Axis requires at least 2 datasets');
+                                    return;
+                                }
+                                updateConfig('display', true);
+                                updateConfig('position', 'right');
+                                if (y1Datasets.length === 0 && datasets.length > 1) {
+                                    const targetIdx = 1;
+                                    updateDataset(targetIdx, { yAxisID: 'y1' });
+                                    toast.success(`Assigned "${datasets[targetIdx].label || `Dataset ${targetIdx + 1}`}" to Right Y-Axis (Y2)`);
+                                } else {
+                                    toast.success('Right Y-Axis (Y2) enabled');
+                                }
+                            } else {
+                                updateConfig('display', false);
+                                // Cleanly unmap all datasets from y1 back to y when disabling Right Y
+                                datasets.forEach((ds: any, idx: number) => {
+                                    if (ds?.yAxisID === 'y1') {
+                                        updateDataset(idx, { yAxisID: 'y' });
+                                    }
+                                });
+                                toast.info('Right Y-Axis (Y2) hidden');
+                            }
+                        } else {
+                            updateConfig('display', checked);
+                        }
+                    }}
                     className="data-[state=checked]:bg-blue-600"
                 />
             </div>
 
-            {config?.display !== false && (
-                <div className="space-y-2">
-                    {/* Type and Position */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-2">
-                            <Label className="text-sm font-medium">Type</Label>
-                            <Select
-                                value={config?.type || 'category'}
-                                onValueChange={(value) => updateConfig('type', value)}
-                            >
-                                <SelectTrigger className="h-9">
-                                    <SelectValue placeholder="Select type" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {getAxisTypeOptions(axis, chartType).map((option) => (
-                                        <SelectItem key={option.value} value={option.value}>
-                                            {option.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+            {/* Secondary Axis Datasets Assignment Card (when axis is y1) */}
+            {axis === 'y1' && (
+                <div className="p-3 bg-white rounded-lg border border-purple-200/80 shadow-xs space-y-2.5">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-purple-600"></span>
+                            <span className="text-xs font-semibold text-gray-800">Secondary Axis Datasets</span>
                         </div>
-
-                        <div className="space-y-2">
-                            <Label className="text-sm font-medium">Position</Label>
-                            <Select
-                                value={config?.position || (axis === 'x' ? 'bottom' : 'left')}
-                                onValueChange={(value) => updateConfig('position', value)}
-                            >
-                                <SelectTrigger className="h-9">
-                                    <SelectValue placeholder="Select position" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {positionOptions(axis).map((option) => (
-                                        <SelectItem key={option.value} value={option.value}>
-                                            {option.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-purple-50 text-purple-700 border border-purple-200">
+                            {y1Datasets.length} / {datasets.length} mapped to Y2
+                        </span>
                     </div>
 
+                    {datasets.length < 2 ? (
+                        <div className="p-2.5 rounded-md bg-amber-50/90 border border-amber-200/80 text-amber-900 text-[11px] leading-relaxed space-y-1">
+                            <span className="font-semibold block text-amber-800">Requires at least 2 datasets</span>
+                            <span>A secondary Y-axis compares two different metrics. Add a 2nd dataset in the Datasets panel to assign it to the Right Y-Axis.</span>
+                        </div>
+                    ) : y1Datasets.length === 0 ? (
+                        <div className="p-2.5 rounded-md bg-amber-50/80 border border-amber-200/70 text-amber-800 text-[11px] leading-relaxed">
+                            No datasets are currently mapped to the Right Y2 axis. Select which dataset(s) below should plot against the right axis.
+                        </div>
+                    ) : null}
+
+                    <div className="space-y-1.5 pt-1">
+                        {datasets.map((ds: any, idx: number) => {
+                            const isRight = ds?.yAxisID === 'y1';
+                            const dsColor = Array.isArray(ds.borderColor)
+                                ? ds.borderColor[0]
+                                : (ds.borderColor || (Array.isArray(ds.backgroundColor) ? ds.backgroundColor[0] : ds.backgroundColor) || '#3b82f6');
+
+                            return (
+                                <div
+                                    key={ds.id || idx}
+                                    className="flex items-center justify-between p-2 rounded-md bg-gray-50/70 border border-gray-100 hover:bg-gray-50 transition-colors"
+                                >
+                                    <div className="flex items-center gap-2 min-w-0 pr-2">
+                                        <span
+                                            className="w-2.5 h-2.5 rounded-full flex-shrink-0 shadow-xs"
+                                            style={{ backgroundColor: typeof dsColor === 'string' ? dsColor : '#3b82f6' }}
+                                        />
+                                        <span className="text-xs font-medium text-gray-700 truncate">
+                                            {ds.label || `Dataset ${idx + 1}`}
+                                        </span>
+                                        {ds.hidden && (
+                                            <span className="text-[9px] text-gray-400 italic">(hidden)</span>
+                                        )}
+                                    </div>
+
+                                    <div className="flex items-center rounded-md border border-gray-200 p-0.5 bg-white text-[10px] font-medium flex-shrink-0">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (isRight) {
+                                                    updateDataset(idx, { yAxisID: 'y' });
+                                                    toast.info(`Moved "${ds.label || `Dataset ${idx + 1}`}" to Left Y-Axis`);
+                                                }
+                                            }}
+                                            className={cn(
+                                                "px-2 py-0.5 rounded transition-colors cursor-pointer",
+                                                !isRight
+                                                    ? "bg-slate-200 text-slate-800 font-semibold shadow-xs"
+                                                    : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+                                            )}
+                                        >
+                                            Left (Y)
+                                        </button>
+                                        <button
+                                            type="button"
+                                            disabled={datasets.length < 2}
+                                            onClick={() => {
+                                                if (datasets.length < 2) {
+                                                    toast.error('Add a 2nd dataset to use the Right Y-Axis');
+                                                    return;
+                                                }
+                                                if (!isRight) {
+                                                    updateDataset(idx, { yAxisID: 'y1' });
+                                                    if (config?.display === false) {
+                                                        updateConfig('display', true);
+                                                    }
+                                                    toast.success(`Moved "${ds.label || `Dataset ${idx + 1}`}" to Right Y2`);
+                                                }
+                                            }}
+                                            className={cn(
+                                                "px-2 py-0.5 rounded transition-colors",
+                                                datasets.length < 2
+                                                    ? "opacity-40 cursor-not-allowed text-gray-400"
+                                                    : "cursor-pointer",
+                                                isRight
+                                                    ? "bg-purple-600 text-white font-semibold shadow-xs"
+                                                    : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+                                            )}
+                                        >
+                                            Right (Y2)
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
+            {config?.display !== false && (
+                <div className="space-y-2">
                     {/* Title Section */}
                     <div className="space-y-0">
                         <div

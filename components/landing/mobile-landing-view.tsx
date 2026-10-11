@@ -13,8 +13,8 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu"
-import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { STANDARD_CHART_TYPES, THREE_D_CHART_TYPES } from "@/lib/chart-types"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { CATEGORIZED_CHART_TYPES, STANDARD_CHART_TYPES, THREE_D_CHART_TYPES } from "@/lib/chart-types"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
@@ -448,13 +448,21 @@ export function MobileLandingView({
                       <SelectValue placeholder="Select Chart Type" />
                     </div>
                   </SelectTrigger>
-                  <SelectContent className="z-[110]">
-                    {STANDARD_CHART_TYPES.map((type) => (
-                      <SelectItem key={type.value} value={type.value} className="text-xs py-1.5">{type.label}</SelectItem>
-                    ))}
-                    <SelectSeparator />
-                    {THREE_D_CHART_TYPES.map((type) => (
-                      <SelectItem key={type.value} value={type.value} className="text-xs py-1.5 font-medium text-blue-600 dark:text-blue-400">{type.label}</SelectItem>
+                  <SelectContent className="z-[110] max-h-[320px]">
+                    {CATEGORIZED_CHART_TYPES.map((category, idx) => (
+                      <div key={category.id}>
+                        {idx > 0 && <SelectSeparator />}
+                        <SelectGroup>
+                          <SelectLabel className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-2 py-1">
+                            {category.label}
+                          </SelectLabel>
+                          {category.charts.map((type) => (
+                            <SelectItem key={type.value} value={type.value} className="text-xs py-1.5">
+                              {type.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </div>
                     ))}
                   </SelectContent>
                 </Select>

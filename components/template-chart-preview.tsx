@@ -48,6 +48,7 @@ import {
   useChartGroups
 } from "@/lib/hooks/use-chart-state"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
+import { ChartTypeSelector } from "@/components/chart-preview/chart-type-selector"
 import { getPatternCSS } from "@/lib/utils"
 import { renderFormat, extractContentFromChartData } from "@/lib/variant-engine"
 import { FormatRenderer } from "@/components/gallery/FormatRenderer"
@@ -1718,31 +1719,11 @@ export function TemplateChartPreview({
               </button>
             </div>
             {/* Compact Chart Type Selector */}
-            <Select value={chartType} onValueChange={handleChartTypeChange}>
-              <SelectTrigger className="h-6 w-9 lg:w-[90px] text-[10px] px-1 lg:px-2 py-0 border-gray-200 bg-white shadow-none">
-                <ChartColumn className="h-3.5 w-3.5 lg:hidden text-slate-600 shrink-0 stroke-[2.5]" />
-                <div className="hidden lg:block truncate"><SelectValue placeholder="Type" /></div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="bar" className="text-xs">Bar</SelectItem>
-                <SelectItem value="horizontalBar" className="text-xs">H. Bar</SelectItem>
-                <SelectItem value="stackedBar" className="text-xs">Stacked</SelectItem>
-                <SelectItem value="line" className="text-xs">Line</SelectItem>
-                <SelectItem value="area" className="text-xs">Area</SelectItem>
-                <SelectItem value="pie" className="text-xs">Pie</SelectItem>
-                <SelectItem value="pie3d" className="text-xs">3D Pie</SelectItem>
-                <SelectItem value="doughnut3d" className="text-xs">3D Doughnut</SelectItem>
-                <SelectItem value="bar3d" className="text-xs">3D Bar</SelectItem>
-                <SelectItem value="horizontalBar3d" className="text-xs">3D Horizontal Bar</SelectItem>
-                <SelectItem value="doughnut3d" className="text-xs">3D Doughnut</SelectItem>
-                <SelectItem value="radar" className="text-xs">Radar</SelectItem>
-                <SelectItem value="polarArea" className="text-xs">Polar</SelectItem>
-                <SelectItem value="scatter" className="text-xs">Scatter</SelectItem>
-                <SelectItem value="bubble" className="text-xs">Bubble</SelectItem>
-                <SelectItem value="funnel" className="text-xs">Funnel</SelectItem>
-                <SelectItem value="gauge" className="text-xs">Gauge</SelectItem>
-              </SelectContent>
-            </Select>
+            <ChartTypeSelector
+              value={chartType}
+              onChange={handleChartTypeChange}
+              variant="toolbar"
+            />
             {renderedFormat ? (
               <>
                 <TooltipProvider delayDuration={0}>

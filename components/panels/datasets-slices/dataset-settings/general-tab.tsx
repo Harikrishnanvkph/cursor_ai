@@ -28,6 +28,7 @@ import {
 import { ChartSetupDialog, type ChartDimensions } from "@/components/dialogs/chart-setup-dialog"
 import { useChatStore } from "@/lib/chat-store"
 import { useTemplateStore } from "@/lib/template-store"
+import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { getEffectiveChartTitle, saveChartTitle } from "@/lib/hooks/use-chart-rename"
 import { toast } from "sonner"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -101,6 +102,7 @@ export function GeneralTab({
     addDataset,
     updateChartConfig,
 }: GeneralTabProps) {
+    const { updateDataset } = useChartActions();
     const [isCreatingNewGroup, setIsCreatingNewGroup] = useState(false);
     const datasetsContainerRef = useRef<HTMLDivElement>(null);
 

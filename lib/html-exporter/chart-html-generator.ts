@@ -290,6 +290,41 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
             delete processedChartConfig.scales.y;
         }
     }
+
+    // Secondary Y2 axis safety: requires at least 2 visible datasets and at least one mapped to y1
+    const totalVisibleDatasets = processedChartData.datasets.filter((ds: any) => !ds.hidden);
+    const canHaveRightAxis = totalVisibleDatasets.length >= 2;
+    const hasY1Dataset = canHaveRightAxis && totalVisibleDatasets.some((ds: any) => ds?.yAxisID === 'y1');
+    const showRightAxis = hasY1Dataset && processedChartConfig.scales?.y1?.display !== false;
+
+    if (!showRightAxis) {
+        if (processedChartConfig.scales?.y1) {
+            delete processedChartConfig.scales.y1;
+        }
+        processedChartData.datasets = processedChartData.datasets.map((ds: any) => {
+            if (ds?.yAxisID === 'y1') {
+                const clean = { ...ds };
+                delete clean.yAxisID;
+                return clean;
+            }
+            return ds;
+        });
+    } else {
+        const rawY1 = processedChartConfig.scales?.y1 || {};
+        const y1Pos = (rawY1.position && rawY1.position !== 'left') ? rawY1.position : 'right';
+        if (!processedChartConfig.scales) {
+            processedChartConfig.scales = {};
+        }
+        processedChartConfig.scales.y1 = {
+            beginAtZero: rawY1.beginAtZero !== undefined ? rawY1.beginAtZero : (processedChartConfig.scales?.y?.beginAtZero ?? true),
+            ...rawY1,
+            position: y1Pos,
+            grid: {
+                drawOnChartArea: rawY1.grid?.drawOnChartArea ?? false,
+                ...(rawY1.grid || {}),
+            },
+        };
+    }
     
     // Add stacked scales for stackedBar chart type
     if (chartType === 'stackedBar') {
@@ -313,28 +348,57 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
 
     // ── Custom Grace → suggestedMax (mirror of chart_generator.tsx logic) ──
     // Chart.js native grace % is unreliable, so we compute suggestedMax ourselves.
-    if (processedChartConfig.scales?.y) {
-        const graceRaw = processedChartConfig.scales.y.grace;
+    // CRITICAL: Must be axis-aware so Left Y (y) and Right Y (y1) scales compute
+    // suggestedMax independently based ONLY on their own assigned datasets.
+    const computeGraceForScale = (scaleObj: any, scaleKey: 'y' | 'y1', fallbackGrace?: any) => {
+        if (!scaleObj) return;
+        if (scaleObj.max !== undefined && scaleObj.max !== null && scaleObj.max !== '') {
+            delete scaleObj.grace;
+            return;
+        }
+        const graceRaw = scaleObj.grace !== undefined ? scaleObj.grace : fallbackGrace;
         if (graceRaw !== undefined && graceRaw !== null && graceRaw !== 0 && graceRaw !== '0%') {
             let dataMax = -Infinity;
             for (const ds of processedChartData.datasets) {
-                if (!ds.data) continue;
+                if (!ds.data || ds.hidden) continue;
+                const dsAxis = ds.yAxisID === 'y1' ? 'y1' : 'y';
+                if (showRightAxis && dsAxis !== scaleKey) continue;
                 for (const v of ds.data) {
-                    const num = typeof v === 'number' ? v : (v as any)?.y;
-                    if (typeof num === 'number' && isFinite(num) && num > dataMax) dataMax = num;
+                    let num: number | undefined = undefined;
+                    if (typeof v === 'number') {
+                        num = v;
+                    } else if (Array.isArray(v)) {
+                        num = typeof v[1] === 'number' ? v[1] : (typeof v[0] === 'number' ? v[0] : undefined);
+                    } else if (v && typeof v === 'object') {
+                        num = typeof v.y === 'number' ? v.y : undefined;
+                    }
+                    if (typeof num === 'number' && isFinite(num) && num > dataMax) {
+                        dataMax = num;
+                    }
                 }
             }
             if (isFinite(dataMax)) {
                 const isPercent = typeof graceRaw === 'string' && graceRaw.endsWith('%');
                 if (isPercent) {
                     const pct = parseFloat(graceRaw) || 0;
-                    processedChartConfig.scales.y.suggestedMax = dataMax + (dataMax * pct / 100);
+                    scaleObj.suggestedMax = dataMax + (dataMax * pct / 100);
                 } else if (typeof graceRaw === 'number') {
-                    processedChartConfig.scales.y.suggestedMax = dataMax + graceRaw;
+                    scaleObj.suggestedMax = dataMax + graceRaw;
                 }
             }
-            delete processedChartConfig.scales.y.grace;
         }
+        delete scaleObj.grace;
+    };
+
+    if (processedChartConfig.scales?.y) {
+        computeGraceForScale(processedChartConfig.scales.y, 'y');
+    }
+    if (showRightAxis && processedChartConfig.scales?.y1) {
+        computeGraceForScale(
+            processedChartConfig.scales.y1,
+            'y1',
+            processedChartConfig.scales?.y?.grace
+        );
     }
 
     if (processedChartConfig.background?.type === 'image' && processedChartConfig.background?.imageUrl) {
@@ -452,6 +516,7 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
     
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@${chartJsVersion}/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
     
     <!-- Custom Plugins -->
     <script>
@@ -791,6 +856,54 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
 
                     valueAxis.grid.drawOnChartArea = true; // statically enable drawOnChartArea to allow tick evaluation
                 }
+            }
+        }
+
+        // Dynamic Goal / Benchmark Threshold Line post-processing
+        if (enhancedConfig.scales) {
+            const annotations = {};
+            let hasAnnotations = false;
+            ['x', 'y', 'y1'].forEach(function(scaleKey) {
+                const scaleObj = enhancedConfig.scales[scaleKey];
+                const th = scaleObj && scaleObj.threshold;
+                if (th && th.enabled && th.value !== undefined && th.value !== null && th.value !== '') {
+                    const numVal = Number(th.value);
+                    if (!isNaN(numVal)) {
+                        hasAnnotations = true;
+                        const dash = th.style === 'solid' ? [] : th.style === 'dotted' ? [2, 4] : [6, 6];
+                        const isYScale = scaleKey.indexOf('y') === 0;
+                        if (scaleObj) {
+                            if (scaleObj.suggestedMax === undefined || scaleObj.suggestedMax < numVal) {
+                                scaleObj.suggestedMax = Math.ceil(numVal * 1.05);
+                            }
+                        }
+                        annotations['threshold_' + scaleKey] = {
+                            type: 'line',
+                            scaleID: scaleKey,
+                            value: numVal,
+                            ...(isYScale ? { yMin: numVal, yMax: numVal } : { xMin: numVal, xMax: numVal }),
+                            borderColor: th.color || '#ef4444',
+                            borderWidth: typeof th.width === 'number' ? th.width : 2,
+                            borderDash: dash,
+                            label: {
+                                display: Boolean(th.label),
+                                content: th.label || '',
+                                position: th.position || 'end',
+                                backgroundColor: th.color || '#ef4444',
+                                color: '#ffffff',
+                                font: { size: 10, weight: 'bold' },
+                                padding: { top: 3, bottom: 3, left: 6, right: 6 },
+                                borderRadius: 4
+                            }
+                        };
+                    }
+                }
+            });
+            if (hasAnnotations) {
+                enhancedConfig.plugins = enhancedConfig.plugins || {};
+                enhancedConfig.plugins.annotation = {
+                    annotations: annotations
+                };
             }
         }
         

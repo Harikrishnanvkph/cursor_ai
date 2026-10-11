@@ -133,7 +133,10 @@ interface DatasetConfig {
   type: SupportedChartType
   dataPoints: DataPoint[]
   originalStyle?: any
+  yAxisID?: 'y' | 'y1'
 }
+
+export const Y_AXIS_ELIGIBLE_CHART_TYPES = ['bar', 'line', 'area', 'scatter', 'bubble', 'bar3d'] as const;
 
 const categoricalChartTypes: { value: SupportedChartType; label: string }[] = [
   { value: 'bar', label: 'Bar' },
@@ -200,18 +203,29 @@ function parseExistingDatasets(
   datasetType: 'single' | 'grouped'
 ): DatasetConfig[] {
   if (existingDatasets && existingDatasets.length > 0) {
+    const firstType = existingDatasets[0]?.chartType || 'bar'
+    const firstIsCoord = firstType === 'scatter' || firstType === 'bubble'
+    const primaryCategory: ChartCategory = firstIsCoord ? 'coordinate' : 'categorical'
+
     return existingDatasets.map((ds: any, index: number) => {
-      const type = ds.chartType || 'bar'
+      let type = ds.chartType || (primaryCategory === 'coordinate' ? 'scatter' : 'bar')
+      if (datasetType === 'grouped') {
+        if (primaryCategory === 'coordinate' && type !== 'scatter' && type !== 'bubble') {
+          type = 'scatter'
+        } else if (primaryCategory === 'categorical' && (type === 'scatter' || type === 'bubble')) {
+          type = 'bar'
+        }
+      }
       const isCoord = type === 'scatter' || type === 'bubble'
       const category: ChartCategory = isCoord ? 'coordinate' : 'categorical'
 
       const points = (ds.data || []).map((val: any, i: number) => ({
         id: `pt-${index}-${i}-${Math.random().toString(36).slice(2, 7)}`,
         name: ds.sliceLabels?.[i] || `${isCoord ? 'Point' : 'Slice'} ${i + 1}`,
-        value: isCoord ? 0 : (typeof val === 'number' ? val : (Array.isArray(val) ? val[1] - val[0] : val.y || 0)),
-        x: isCoord ? (val.x || 0) : 0,
-        y: isCoord ? (val.y || 0) : 0,
-        r: type === 'bubble' ? (val.r || 10) : 10,
+        value: isCoord ? 0 : (typeof val === 'number' ? val : (Array.isArray(val) ? val[1] - val[0] : val?.y || 0)),
+        x: isCoord ? (typeof val === 'object' && val !== null ? (val.x ?? i * 10) : i * 10) : 0,
+        y: isCoord ? (typeof val === 'object' && val !== null ? (val.y ?? (i + 1) * 10) : (typeof val === 'number' ? val : (i + 1) * 10)) : 0,
+        r: type === 'bubble' ? (typeof val === 'object' && val !== null ? (val.r ?? 10) : 10) : 10,
         color: Array.isArray(ds.backgroundColor) ? (ds.backgroundColor[i] || '#1E90FF') : (ds.backgroundColor || '#1E90FF'),
       }))
 
@@ -221,7 +235,8 @@ function parseExistingDatasets(
         category,
         type,
         dataPoints: points.length > 0 ? points : getDefaultPoints(category, 4, datasetType === 'grouped' ? '#1E90FF' : undefined),
-        originalStyle: ds
+        originalStyle: ds,
+        yAxisID: (ds.yAxisID === 'y1' ? 'y1' : 'y') as 'y' | 'y1',
       }
     })
   }
@@ -329,6 +344,7 @@ export function ChartSetupDialog({
   const isSingle = !datasetType || datasetType === 'single'
   const canEditSlices = isSingle || isFirstDatasetActive
   const canEditLabels = isSingle || isFirstDatasetActive
+  const isYAxisEligible = Y_AXIS_ELIGIBLE_CHART_TYPES.includes(chartType as any)
 
   const updateActiveDataset = (updates: Partial<DatasetConfig>) => {
     setDatasets(prev => prev.map(d => d.id === activeDatasetId ? { ...d, ...updates } : d))
@@ -448,9 +464,6 @@ export function ChartSetupDialog({
     setSelectedPreset(null)
   }
 
-  // ── Prompt State for Dataset 1 Changes ──
-  const [showInconsistencyPrompt, setShowInconsistencyPrompt] = useState(false);
-  const [pendingDatasetChange, setPendingDatasetChange] = useState<{ type: 'category', value: ChartCategory } | { type: 'chartType', value: SupportedChartType } | { type: 'mode', value: 'uniform' | 'mixed' } | null>(null);
 
   // ── Randomizer State ──
   const [isAutoRandom, setIsAutoRandom] = useState(true);
@@ -635,128 +648,93 @@ export function ChartSetupDialog({
 
   // ── Handlers (Step 2) ──
   const triggerCategoryChange = (category: ChartCategory) => {
-    if (datasets.length > 1 && activeDatasetId === datasets[0].id && uniformityMode === 'mixed') {
-      setPendingDatasetChange({ type: 'category', value: category });
-      setShowInconsistencyPrompt(true);
-    } else {
-      applyCategoryChange(category);
-    }
+    applyCategoryChange(category);
   }
 
   const triggerTypeChange = (v: string) => {
-    const type = v as SupportedChartType;
-    if (datasets.length > 1 && activeDatasetId === datasets[0].id && uniformityMode === 'mixed') {
-      setPendingDatasetChange({ type: 'chartType', value: type });
-      setShowInconsistencyPrompt(true);
-    } else {
-      applyTypeChange(type);
-    }
+    applyTypeChange(v as SupportedChartType);
   }
 
-  // Chart types that fundamentally cannot participate in mixed mode because they use
-  // a different coordinate system or are inherently single-series.
+  // Chart types that fundamentally cannot participate in mixed mode:
+  // - coordinate charts (scatter, bubble): must remain uniform
+  // - non-cartesian / radial / polar charts: pie, doughnut, radar, polarArea
   const MIXED_INCOMPATIBLE_TYPES = [
-    'scatter', 'bubble',                         // coordinate-based — no shared categorical axis
+    'scatter', 'bubble',                         // coordinate charts - must remain uniform
     'pie', 'doughnut', 'pie3d', 'doughnut3d',    // radial / polar — no cartesian axis
     'radar', 'polarArea',                        // polar coordinate system
   ] as const;
 
   const isMixedModeDisabled = (
     datasetType === 'grouped' &&
-    MIXED_INCOMPATIBLE_TYPES.includes(datasets[0]?.type as any)
+    (MIXED_INCOMPATIBLE_TYPES.includes(datasets[0]?.type as any) || chartCategory === 'coordinate')
   );
 
   const triggerModeChange = (mode: 'uniform' | 'mixed') => {
     if (uniformityMode === mode) return;
-    // Block switching to mixed when the base chart type is incompatible.
+    // Block switching to mixed when the base chart type is incompatible or coordinate.
     if (mode === 'mixed' && isMixedModeDisabled) return;
-    // Uniform → Mixed: each dataset keeps its own type, nothing to clean up — apply directly.
-    // Mixed → Uniform: applyModeChange already normalises all datasets to the first dataset's
-    //   type/category without removing any of them, so no destructive popup is needed either.
     applyModeChange(mode);
-  }
-
-  const handleInconsistencyUpdate = () => {
-    if (!pendingDatasetChange) return;
-
-    // Remove all datasets except the first one
-    const firstDataset = datasets[0];
-
-    if (pendingDatasetChange.type === 'category') {
-      const category = pendingDatasetChange.value;
-      const newFirstDataset = {
-        ...firstDataset,
-        category,
-        type: category === 'coordinate' ? 'scatter' : ('bar' as SupportedChartType),
-        dataPoints: firstDataset.category === category ? firstDataset.dataPoints : getDefaultPoints(category, firstDataset.dataPoints.length)
-      };
-      setDatasets([newFirstDataset]);
-      setActiveDatasetId(newFirstDataset.id);
-    } else if (pendingDatasetChange.type === 'chartType') {
-      const type = pendingDatasetChange.value;
-      const newFirstDataset = {
-        ...firstDataset,
-        type
-      };
-      setDatasets([newFirstDataset]);
-      setActiveDatasetId(newFirstDataset.id);
-    } else if (pendingDatasetChange.type === 'mode') {
-      // Use applyModeChange so datasets are normalised but NOT stripped down.
-      applyModeChange(pendingDatasetChange.value);
-    }
-
-    setShowInconsistencyPrompt(false);
-    setPendingDatasetChange(null);
-  }
-
-  const handleInconsistencyCancel = () => {
-    setShowInconsistencyPrompt(false);
-    setPendingDatasetChange(null);
   }
 
   const applyModeChange = (mode: 'uniform' | 'mixed') => {
     setUniformityMode(mode);
-    if (mode === 'uniform') {
-      setDatasets(prev => {
-        const first = prev[0];
-        return prev.map((d, i) => {
-          if (i === 0) return d;
-          if (d.category !== first.category) {
-            return {
-              ...d,
-              category: first.category,
-              type: first.type,
-              dataPoints: getDefaultPoints(first.category, d.dataPoints.length)
-            };
-          }
-          return {
-            ...d,
-            type: first.type
-          };
-        });
+    setDatasets(prev => {
+      const first = prev[0];
+      if (!first) return prev;
+      return prev.map((d, i) => {
+        if (i === 0) return d;
+        // In grouped mode, all datasets MUST match the first dataset's category
+        const matchCategory = first.category;
+        const targetType = mode === 'uniform' ? first.type : (d.category === matchCategory ? d.type : first.type);
+        return {
+          ...d,
+          category: matchCategory,
+          type: targetType,
+          dataPoints: d.category === matchCategory ? d.dataPoints : getDefaultPoints(matchCategory, d.dataPoints.length || 4)
+        };
       });
-    }
+    });
   }
 
   const applyCategoryChange = (category: ChartCategory) => {
-    if (uniformityMode === 'uniform' && datasetType === 'grouped') {
-      setDatasets(prev => prev.map(d => ({
-        ...d,
-        category,
-        type: category === 'coordinate' ? 'scatter' : 'bar',
-        dataPoints: d.category === category ? d.dataPoints : getDefaultPoints(category, d.dataPoints.length)
-      })))
+    const defaultType: SupportedChartType = category === 'coordinate' ? 'scatter' : 'bar';
+    // Coordinate charts do not support mixed mode; force uniformity to uniform
+    if (category === 'coordinate') {
+      setUniformityMode('uniform');
+    }
+    if (datasetType === 'grouped') {
+      // In grouped mode, every dataset in the chart MUST share the same category
+      setDatasets(prev => prev.map(d => {
+        const isCurrentCoord = d.category === 'coordinate';
+        const isNextCoord = category === 'coordinate';
+        const nextType = (isCurrentCoord === isNextCoord)
+          ? (category === 'coordinate' ? (prev[0]?.type === 'bubble' ? 'bubble' : 'scatter') : d.type)
+          : defaultType;
+
+        return {
+          ...d,
+          category,
+          type: nextType,
+          dataPoints: (isCurrentCoord === isNextCoord)
+            ? d.dataPoints
+            : getDefaultPoints(category, d.dataPoints.length || 4)
+        };
+      }));
     } else {
       updateActiveDataset({
         category,
         type: category === 'coordinate' ? 'scatter' : 'bar',
-        dataPoints: getDefaultPoints(category, dataPoints.length)
-      })
+        dataPoints: getDefaultPoints(category, dataPoints.length || 4)
+      });
     }
   }
 
   const applyTypeChange = (type: SupportedChartType) => {
-    if (uniformityMode === 'uniform' && datasetType === 'grouped') {
+    const isCoordType = type === 'scatter' || type === 'bubble';
+    if (isCoordType && uniformityMode === 'mixed') {
+      setUniformityMode('uniform');
+    }
+    if ((uniformityMode === 'uniform' || isCoordType) && datasetType === 'grouped') {
       setDatasets(prev => prev.map(d => ({ ...d, type })))
     } else {
       updateActiveDataset({ type })
@@ -1016,6 +994,11 @@ export function ChartSetupDialog({
 
     if (uniformityMode === 'mixed' && datasets.length > 0) {
       const firstType = datasets[0].type;
+      const firstCategory = datasets[0].category;
+
+      if (firstCategory === 'coordinate') {
+        return coordinateChartTypes;
+      }
 
       if (['bar', 'line', 'area'].includes(firstType)) {
         return baseTypes.filter(type => ['bar', 'line', 'area'].includes(type.value as string));
@@ -1039,7 +1022,7 @@ export function ChartSetupDialog({
     }
 
     return baseTypes;
-  }, [chartCategory, datasetType, uniformityMode, datasets[0]?.type, datasets.length > 0]);
+  }, [chartCategory, datasetType, uniformityMode, datasets[0]?.type, datasets[0]?.category, datasets.length > 0]);
 
   const handleConfirm = () => {
     const dims = { width: widthPx, height: heightPx, isResponsive }
@@ -1089,6 +1072,8 @@ export function ChartSetupDialog({
             originalPointConfig[i] || getDefaultImageConfig(actualType)
           );
 
+          const isEligible = Y_AXIS_ELIGIBLE_CHART_TYPES.includes(actualType as any);
+
           return {
             ...ds.originalStyle,
             label: ds.name,
@@ -1100,9 +1085,11 @@ export function ChartSetupDialog({
             mode: datasetType,
             pointImages: resizedPointImages,
             pointImageConfig: resizedPointConfig,
+            ...(isEligible && ds.yAxisID === 'y1' ? { yAxisID: 'y1' } : { yAxisID: undefined }),
           };
         }
 
+        const isEligible = Y_AXIS_ELIGIBLE_CHART_TYPES.includes(actualType as any);
         const defaultPointConfig = ds.dataPoints.map(() => getDefaultImageConfig(actualType));
         return {
           label: ds.name,
@@ -1118,6 +1105,7 @@ export function ChartSetupDialog({
           mode: datasetType,
           sliceLabels: ds.dataPoints.map(p => p.name),
           chartType: actualType,
+          ...(isEligible && ds.yAxisID === 'y1' ? { yAxisID: 'y1' } : {}),
         };
       })
 
@@ -1139,7 +1127,7 @@ export function ChartSetupDialog({
       <DialogContent
         disableAnimation={true}
         onOpenAutoFocus={(e) => e.preventDefault()}
-        className={`w-[96vw] sm:w-full max-h-[94vh] h-[min(720px,92vh)] flex flex-col overflow-hidden p-0 gap-0 ${step === 2 ? 'max-w-[850px]' : 'max-w-[720px]'}`}
+        className={`w-[96vw] sm:w-full max-h-[94vh] h-[min(720px,92vh)] flex flex-col overflow-hidden p-0 gap-0 ${step === 2 ? 'max-w-[920px]' : 'max-w-[720px]'}`}
       >
 
         {/* ── Header ── */}
@@ -1369,9 +1357,13 @@ export function ChartSetupDialog({
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
             {/* Header Configuration */}
             <div className="px-4 py-2.5 bg-white border-b border-gray-100 flex-shrink-0">
-              <div className={cn("grid gap-2.5 items-start", datasetType === 'grouped' ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-4" : "grid-cols-1 sm:grid-cols-3")}>
+              <div className={cn("grid gap-2.5 items-start", datasetType === 'grouped'
+                ? (isYAxisEligible
+                  ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-5"
+                  : "grid-cols-1 sm:grid-cols-2 md:grid-cols-4")
+                : "grid-cols-1 sm:grid-cols-3")}>
                 <div className="w-full">
-                  <Label className="text-xs font-medium text-gray-600 mb-1.5 block">Dataset Name</Label>
+                  <Label className="text-xs font-medium text-gray-600 h-4 flex items-center mb-1.5 leading-none">Dataset Name</Label>
                   <Input
                     value={datasetName}
                     onChange={e => updateActiveDataset({ name: e.target.value })}
@@ -1380,7 +1372,7 @@ export function ChartSetupDialog({
                   />
                 </div>
                 <div className="w-full">
-                  <Label className="text-xs font-medium text-gray-600 mb-1.5 block">Category</Label>
+                  <Label className="text-xs font-medium text-gray-600 h-4 flex items-center mb-1.5 leading-none">Category</Label>
                   {(() => {
                     const isCategoryDisabled = datasetType === 'grouped' && datasets.length > 0 && activeDatasetId !== datasets[0].id;
                     const selectEl = (
@@ -1420,7 +1412,7 @@ export function ChartSetupDialog({
                   })()}
                 </div>
                 <div className="w-full">
-                  <Label className="text-xs font-medium text-gray-600 mb-1.5 block">Chart Type</Label>
+                  <Label className="text-xs font-medium text-gray-600 h-4 flex items-center mb-1.5 leading-none">Chart Type</Label>
                   {(() => {
                     const isTypeDisabled = uniformityMode === 'uniform' && datasetType === 'grouped' && datasets.length > 0 && activeDatasetId !== datasets[0].id;
                     const selectEl = (
@@ -1461,15 +1453,100 @@ export function ChartSetupDialog({
                   })()}
                 </div>
 
+                {/* Axis Assignment: Left Y / Right Y (Grouped mode + vertical bar, line, area, scatter, bubble, 3d bar only) */}
+                {datasetType === 'grouped' && isYAxisEligible && (
+                  <div className="w-full">
+                    <div className="h-4 flex items-center gap-1 mb-1.5">
+                      <Label className="text-xs font-medium text-gray-600 leading-none">Y Axis</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            className="inline-flex items-center justify-center p-0.5 text-blue-500 hover:text-blue-600 rounded transition-colors focus:outline-none"
+                            title="Y-Axis Information"
+                          >
+                            <Info className="h-3.5 w-3.5 cursor-pointer" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          side="top"
+                          sideOffset={10}
+                          className="bg-slate-800 text-white border-slate-700 shadow-2xl p-3 rounded-lg z-[200] w-[280px]"
+                        >
+                          <div className="space-y-2.5 text-xs">
+                            <div className="font-semibold text-white border-b border-white/10 pb-1.5 flex items-center gap-1.5">
+                              <span>Y-Axis Scale Assignment</span>
+                            </div>
+                            <div className="space-y-2 leading-relaxed">
+                              <div className="bg-slate-700/60 p-2 rounded border border-white/5">
+                                <span className="font-bold text-blue-400 block mb-0.5">Left Y (Primary / Normal)</span>
+                                <span className="text-gray-300 text-[11px] block">
+                                  Standard vertical axis on the left. Use for normal charts where all datasets share the same scale or unit (e.g. all in dollars $).
+                                </span>
+                              </div>
+                              <div className="bg-slate-700/60 p-2 rounded border border-white/5">
+                                <span className="font-bold text-purple-400 block mb-0.5">Right Y (Secondary / Dual-Axis)</span>
+                                <span className="text-gray-300 text-[11px] block">
+                                  Secondary axis on the right for two-axis charts. Use when comparing datasets with different units or scales (e.g. Sales in $ on the left vs. Margin or Growth in % on the right).
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    {(() => {
+                      const isFirstDataset = datasets.length > 0 && activeDatasetId === datasets[0].id;
+                      const selectEl = (
+                        <Select
+                          value={activeDataset?.yAxisID || 'y'}
+                          onValueChange={(v) => updateActiveDataset({ yAxisID: v as 'y' | 'y1' })}
+                          disabled={isFirstDataset}
+                        >
+                          <SelectTrigger className={cn(
+                            "h-8 text-sm border-gray-200 bg-white shadow-sm hover:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed",
+                            activeDataset?.yAxisID === 'y1' ? "text-purple-700 border-purple-200" : "text-gray-700"
+                          )}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="y">Left Y (Primary)</SelectItem>
+                            <SelectItem value="y1">Right Y (Secondary)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      );
+
+                      if (!isFirstDataset) return selectEl;
+
+                      return (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="cursor-not-allowed">
+                                <div className="pointer-events-none">
+                                  {selectEl}
+                                </div>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" sideOffset={5} className="bg-slate-800 text-white border-slate-700 shadow-xl px-3 py-2 z-[150] max-w-[200px]">
+                              <p className="text-xs font-medium text-center">The first dataset anchors the primary Left Y-Axis and cannot be reassigned.</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      );
+                    })()}
+                  </div>
+                )}
+
                 {/* Group Mode (if applicable) seamlessly fits into the same row */}
                 {datasetType === 'grouped' && (
                   <div className="w-full">
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <Label className="text-xs font-medium text-gray-600 block">Group Mode</Label>
+                    <div className="h-4 flex items-center gap-1 mb-1.5">
+                      <Label className="text-xs font-medium text-gray-600 leading-none">Group Mode</Label>
                       <Popover>
                         <PopoverTrigger asChild>
-                          <button type="button" className="inline-flex items-center justify-center p-1 hover:bg-gray-100 rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-100">
-                            <Info className="h-4 w-4 text-blue-500 hover:text-blue-600 cursor-pointer" />
+                          <button type="button" className="inline-flex items-center justify-center p-0.5 text-blue-500 hover:text-blue-600 rounded transition-colors focus:outline-none">
+                            <Info className="h-3.5 w-3.5 cursor-pointer" />
                           </button>
                         </PopoverTrigger>
                         <PopoverContent side="top" sideOffset={10} className="bg-slate-800 text-white border-slate-700 shadow-2xl p-0 overflow-hidden z-[200] w-[300px]">
@@ -1518,11 +1595,13 @@ export function ChartSetupDialog({
                         </PopoverContent>
                       </Popover>
                     </div>
-                    <div className="flex bg-gray-100 p-0.5 rounded-md h-8">
+                    <div className="flex bg-gray-100/90 border border-gray-200/80 p-0.5 rounded-lg h-8 shadow-xs">
                       <button
                         onClick={() => triggerModeChange('uniform')}
-                        className={`flex-1 flex items-center justify-center gap-1.5 rounded-sm text-xs font-medium transition-all ${uniformityMode === 'uniform' ? 'bg-white shadow-sm text-blue-700' : 'text-gray-500 hover:text-gray-700'
-                          }`}
+                        className={cn(
+                          "flex-1 flex items-center justify-center gap-1 sm:gap-1.5 rounded-md text-[11px] sm:text-xs font-semibold transition-all px-1.5",
+                          uniformityMode === 'uniform' ? "bg-white shadow-xs text-blue-700" : "text-gray-500 hover:text-gray-700"
+                        )}
                       >
                         <Settings2 className="h-3.5 w-3.5" /> Uniform
                       </button>
@@ -1533,22 +1612,28 @@ export function ChartSetupDialog({
                               <span className="flex-1 cursor-not-allowed">
                                 <button
                                   disabled
-                                  className="w-full h-full flex items-center justify-center gap-1.5 rounded-sm text-xs font-medium text-gray-300 cursor-not-allowed opacity-50"
+                                  className="w-full h-full flex items-center justify-center gap-1 sm:gap-1.5 rounded-md text-[11px] sm:text-xs font-medium text-gray-300 cursor-not-allowed opacity-50 px-1.5"
                                 >
                                   <TableProperties className="h-3.5 w-3.5" /> Mixed
                                 </button>
                               </span>
                             </TooltipTrigger>
                             <TooltipContent side="top" sideOffset={6} className="bg-slate-800 text-white border-slate-700 shadow-xl px-3 py-2 z-[200] max-w-[200px]">
-                              <p className="text-xs font-medium text-center">Mixed mode is not available for this chart type. Switch to a cartesian type (e.g. Bar, Line) first.</p>
+                              <p className="text-xs font-medium text-center">
+                                {chartCategory === 'coordinate'
+                                  ? "Mixed mode is not available for coordinate charts. Scatter and Bubble datasets must remain uniform."
+                                  : "Mixed mode is not available for this chart type. Switch to a cartesian type (e.g. Bar, Line) first."}
+                              </p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                       ) : (
                         <button
                           onClick={() => triggerModeChange('mixed')}
-                          className={`flex-1 flex items-center justify-center gap-1.5 rounded-sm text-xs font-medium transition-all ${uniformityMode === 'mixed' ? 'bg-white shadow-sm text-purple-700' : 'text-gray-500 hover:text-gray-700'
-                            }`}
+                          className={cn(
+                            "flex-1 flex items-center justify-center gap-1 sm:gap-1.5 rounded-md text-[11px] sm:text-xs font-semibold transition-all px-1.5",
+                            uniformityMode === 'mixed' ? "bg-white shadow-xs text-purple-700" : "text-gray-500 hover:text-gray-700"
+                          )}
                         >
                           <TableProperties className="h-3.5 w-3.5" /> Mixed
                         </button>
@@ -1559,27 +1644,6 @@ export function ChartSetupDialog({
               </div>
             </div>
 
-            {/* Inconsistency Prompt */}
-            <Dialog open={showInconsistencyPrompt} onOpenChange={(open) => { if (!open) handleInconsistencyCancel() }}>
-              <DialogContent className="max-w-md p-6">
-                <DialogHeader className="mb-2">
-                  <DialogTitle className="text-lg font-semibold text-gray-900">
-                    {pendingDatasetChange?.type === 'mode' ? 'Group Mode Alert' : 'Mixed Mode Alert'}
-                  </DialogTitle>
-                  <DialogDescription className="text-sm text-amber-900 mt-2 bg-amber-50 p-3 rounded-md border border-amber-200">
-                    {pendingDatasetChange?.type === 'mode' ? 'Changing the group mode' : 'Changing the base chart type'} after adding additional datasets <span className="font-bold">will remove all datasets except the first one</span> to avoid chart inconsistency. Do you want to proceed?
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="flex justify-end gap-3 mt-4">
-                  <Button variant="outline" onClick={handleInconsistencyCancel}>
-                    Cancel
-                  </Button>
-                  <Button variant="default" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleInconsistencyUpdate}>
-                    Update
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
 
             {/* Dataset Tabs (for Grouped Mode) */}
             {datasetType === 'grouped' && (
@@ -1597,6 +1661,9 @@ export function ChartSetupDialog({
                           }`}
                       >
                         {ds.name}
+                        {isYAxisEligible && ds.yAxisID === 'y1' && (
+                          <span className="ml-1.5 text-[9px] px-1 py-0.5 rounded bg-purple-100 text-purple-700 font-bold leading-none">R</span>
+                        )}
                       </button>
                       {isDeletable && (
                         <button
@@ -1617,28 +1684,31 @@ export function ChartSetupDialog({
                   onClick={() => {
                     const newId = crypto.randomUUID()
                     const first = datasets[0]
-                    const category = uniformityMode === 'uniform' ? first.category : 'categorical'
-                    const type = uniformityMode === 'uniform' ? first.type : 'bar'
+                    const category = first?.category || 'categorical'
+                    const type = uniformityMode === 'uniform' ? first.type : first.type
                     
                     setDatasets(prev => {
                       const baseColor = ['#1E90FF', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4'][prev.length % 5] || '#1E90FF';
-                      const synchronizedPoints = first.dataPoints.map((point, index) => ({
-                        name: point.name, // Inherit same labels for consistency
-                        value: [10, 20, 15, 25, 30][index % 5] || 10,
-                        x: index * 10,
-                        y: (index + 1) * 10,
-                        r: 10,
-                        color: isColorLinked 
-                           ? baseColor 
-                           : ['#1E90FF', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4'][index % 5] || '#1E90FF',
-                      }));
+                      const synchronizedPoints = category === 'coordinate'
+                        ? getDefaultPoints('coordinate', first.dataPoints.length || 4, isColorLinked ? baseColor : undefined)
+                        : first.dataPoints.map((point, index) => ({
+                            name: point.name, // Inherit same labels for consistency
+                            value: [10, 20, 15, 25, 30][index % 5] || 10,
+                            x: index * 10,
+                            y: (index + 1) * 10,
+                            r: 10,
+                            color: isColorLinked 
+                               ? baseColor 
+                               : ['#1E90FF', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4'][index % 5] || '#1E90FF',
+                          }));
                       
                       return [...prev, {
                         id: newId,
                         name: `Dataset ${prev.length + 1}`,
                         category,
                         type,
-                        dataPoints: synchronizedPoints
+                        dataPoints: synchronizedPoints,
+                        yAxisID: 'y' as const,
                       }];
                     });
                     setActiveDatasetId(newId)

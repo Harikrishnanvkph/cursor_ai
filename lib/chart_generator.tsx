@@ -48,12 +48,18 @@ import { slicePatternPlugin } from "@/lib/plugins/slice-pattern-plugin"
 import { gaugePlugin } from "@/lib/plugins/gauge-plugin"
 import { funnelPlugin } from "@/lib/plugins/funnel-plugin"
 import { waterfallPlugin } from "@/lib/plugins/waterfall-plugin"
+import annotationPlugin from 'chartjs-plugin-annotation'
 import { ResizableChartArea } from "@/components/resizable-chart-area"
 
 import { parseDimension } from "@/lib/utils/dimension-utils"
 import { darkenColor, getHexFromColor } from "@/lib/utils/color-utils"
 // Date adapter for time scales - auto-registers with Chart.js
 import 'chartjs-adapter-date-fns'
+
+// Safely resolve annotation plugin across both CJS and ESM module formats
+const actualAnnotationPlugin = (annotationPlugin as any)?.id
+  ? annotationPlugin
+  : ((annotationPlugin as any)?.default || annotationPlugin);
 
 // Register all Chart.js components and plugins
 ChartJS.register(
@@ -88,7 +94,8 @@ ChartJS.register(
   slicePatternPlugin,
   gaugePlugin,
   funnelPlugin,
-  waterfallPlugin
+  waterfallPlugin,
+  actualAnnotationPlugin
 );
 
 // Plugin registration verified
@@ -296,6 +303,51 @@ function fadeColor(color: any, alpha = 0.15) {
     return `rgba(${r},${g},${b},${alpha})`;
   }
   return color;
+}
+
+// Utility to format numbers based on scale ticks.numberFormat configuration
+function formatNumberWithConfig(val: number, formatConfig: any): string {
+  if (!formatConfig || typeof formatConfig !== 'object') return val.toString();
+  const preset = formatConfig.preset || 'none';
+  const currencySymbol = formatConfig.currencySymbol || '$';
+  const currencyPosition = formatConfig.currencyPosition || 'prefix';
+  const decimals = formatConfig.decimals;
+  const compact = Boolean(formatConfig.compact) || preset === 'compact';
+  const useGrouping = formatConfig.useGrouping !== false;
+
+  if (preset === 'none' && !compact && (decimals === undefined || decimals === 'auto')) {
+    return val.toString();
+  }
+
+  let formatted = '';
+  const fracDigits = (decimals !== undefined && decimals !== 'auto') ? Number(decimals) : (val % 1 === 0 ? 0 : 2);
+
+  try {
+    const opts: Intl.NumberFormatOptions = {
+      useGrouping,
+      maximumFractionDigits: fracDigits,
+      minimumFractionDigits: (decimals !== undefined && decimals !== 'auto') ? fracDigits : 0,
+    };
+    if (compact) {
+      opts.notation = 'compact';
+      opts.compactDisplay = 'short';
+    }
+    formatted = new Intl.NumberFormat('en-US', opts).format(val);
+  } catch {
+    formatted = val.toString();
+  }
+
+  if (preset === 'currency') {
+    if (currencyPosition === 'prefix') {
+      formatted = `${currencySymbol}${formatted}`;
+    } else {
+      formatted = `${formatted} ${currencySymbol}`;
+    }
+  } else if (preset === 'percent') {
+    formatted = `${formatted}%`;
+  }
+
+  return formatted;
 }
 
 import {
@@ -811,6 +863,31 @@ export const ChartGenerator = memo(function ChartGenerator({
       // Only default to 'origin' if fill is not already set to a valid value
       if (effectiveDatasetType === 'area' && (processedDs.fill === undefined || processedDs.fill === false)) {
         processedDs.fill = 'origin';
+      }
+
+      // Handle Gradient Fill for Area and Line charts
+      const isAreaOrLine = effectiveDatasetType === 'area' || effectiveDatasetType === 'line' || chartType === 'area' || chartType === 'line';
+      if (isAreaOrLine && processedDs.gradientFill) {
+        if (!processedDs.fill || processedDs.fill === false) {
+          processedDs.fill = 'origin';
+        }
+        const rawBorderColor = Array.isArray(processedDs.borderColor) ? processedDs.borderColor[0] : processedDs.borderColor;
+        const rawBgColor = Array.isArray(processedDs.backgroundColor) ? processedDs.backgroundColor[0] : processedDs.backgroundColor;
+        const baseColor = (typeof rawBorderColor === 'string' && rawBorderColor !== 'transparent')
+          ? rawBorderColor
+          : (typeof rawBgColor === 'string' && rawBgColor !== 'transparent' ? rawBgColor : '#3b82f6');
+        const topAlpha = typeof processedDs.gradientTopOpacity === 'number' ? processedDs.gradientTopOpacity : 0.45;
+        const bottomAlpha = typeof processedDs.gradientBottomOpacity === 'number' ? processedDs.gradientBottomOpacity : 0.0;
+
+        processedDs.backgroundColor = function(context: any) {
+          const chart = context.chart;
+          const { ctx, chartArea } = chart;
+          if (!chartArea) return null;
+          const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+          gradient.addColorStop(0, fadeColor(baseColor, topAlpha));
+          gradient.addColorStop(1, fadeColor(baseColor, bottomAlpha));
+          return gradient;
+        };
       }
     }
 
@@ -1338,11 +1415,38 @@ export const ChartGenerator = memo(function ChartGenerator({
     }
   }
 
+  // Ensure safe scales and determine if secondary Y-axis (y1) is genuinely active
+  const isPlainObject = (v: any) => v && typeof v === 'object' && !Array.isArray(v);
+  const safeScalesSrc = (chartConfig as any)?.scales;
+  const safeScales = isPlainObject(safeScalesSrc) ? safeScalesSrc : {};
+
+  // Secondary Y-axis requires:
+  // 1. At least 2 visible datasets (single-dataset charts cannot have a secondary axis)
+  // 2. At least one dataset explicitly assigned to y1
+  // 3. scales.y1.display is not false
+  const visibleDatasets = filteredDatasetsPatched.filter((ds: any) => !ds.hidden);
+  const canHaveRightAxis = visibleDatasets.length >= 2;
+  const hasRightAxisDataset = canHaveRightAxis && visibleDatasets.some((ds: any) => ds?.yAxisID === 'y1');
+  const showRightAxis = hasRightAxisDataset && safeScales?.y1?.display !== false;
+
+  // Sanitize datasets: If secondary Right Y-axis is NOT active, ensure NO dataset passes yAxisID: 'y1' to Chart.js.
+  // Otherwise, Chart.js will auto-generate an unwanted second Y scale on the left edge!
+  const sanitizedDatasetsForChart = showRightAxis
+    ? filteredDatasetsPatched
+    : filteredDatasetsPatched.map((ds: any) => {
+        if (ds?.yAxisID === 'y1') {
+          const clean = { ...ds };
+          delete clean.yAxisID;
+          return clean;
+        }
+        return ds;
+      });
+
   // Build the chart data for Chart.js
   const chartDataForChart = {
     ...chartData,
     labels: filteredLabels,
-    datasets: filteredDatasetsPatched,
+    datasets: sanitizedDatasetsForChart,
   };
 
   // Final safety check to ensure chartTypeForChart is valid after all overrides
@@ -1462,10 +1566,6 @@ export const ChartGenerator = memo(function ChartGenerator({
     },
   } : chartConfig;
 
-  // Ensure safe scales and correct indexAxis resolution
-  const isPlainObject = (v: any) => v && typeof v === 'object' && !Array.isArray(v);
-  const safeScalesSrc = (chartConfig as any)?.scales;
-  const safeScales = isPlainObject(safeScalesSrc) ? safeScalesSrc : {};
   // Do NOT attach Cartesian scales for circular charts like pie/doughnut
   // But radar and polarArea DO need radial scales (r scale)
   const isCircularType = (chartTypeForChart === 'pie' || chartTypeForChart === 'doughnut' || chartTypeForChart === 'radar' || chartTypeForChart === 'polarArea') || chartType === 'gauge';
@@ -1473,6 +1573,17 @@ export const ChartGenerator = memo(function ChartGenerator({
   const optionsScales = isCircularType ? undefined : ({
     x: { ...(safeScales?.x || {}) },
     y: chartType === 'funnel' ? { ...(safeScales?.y || {}), type: 'category' } : { ...(safeScales?.y || {}) },
+    ...(showRightAxis ? {
+      y1: {
+        beginAtZero: safeScales?.y1?.beginAtZero !== undefined ? safeScales.y1.beginAtZero : (safeScales?.y?.beginAtZero ?? true),
+        grid: {
+          drawOnChartArea: false,
+          ...(safeScales?.y1?.grid || {}),
+        },
+        ...(safeScales?.y1 || {}),
+        position: (safeScales?.y1?.position && safeScales?.y1?.position !== 'left') ? safeScales?.y1?.position : 'right',
+      }
+    } : {})
   } as any);
   // For radial chart types (radar, polarArea), extract ONLY the 'r' scale
   // This prevents leftover x/y scales from Cartesian charts from appearing
@@ -1527,17 +1638,32 @@ export const ChartGenerator = memo(function ChartGenerator({
   // Chart.js's native `grace` percentage behaves inconsistently (its range computation
   // doesn't always match user expectations). We replace it with a manual `suggestedMax`
   // calculation so that e.g. grace=100% on max=20 reliably produces axis max=40.
-  const computeGraceSuggestedMax = (yConfig: any): number | undefined => {
-    const graceRaw = yConfig?.grace;
+  const computeGraceSuggestedMax = (scaleConfig: any, scaleKey: 'y' | 'y1' = 'y'): number | undefined => {
+    // If the axis has an explicit max set by the user, honor that instead of suggestedMax
+    if (scaleConfig?.max !== undefined && scaleConfig?.max !== null && scaleConfig?.max !== '') {
+      return undefined;
+    }
+
+    const graceRaw = scaleConfig?.grace;
     if (graceRaw === undefined || graceRaw === null || graceRaw === 0 || graceRaw === '0%') return undefined;
 
-    // Compute actual data max from all visible datasets
+    // Compute actual data max from visible datasets belonging specifically to this scaleKey
     let dataMax = -Infinity;
     let dataMin = Infinity;
-    for (const ds of filteredDatasetsPatched) {
-      if (!ds.data) continue;
+    for (const ds of sanitizedDatasetsForChart) {
+      if (!ds.data || ds.hidden) continue;
+      const dsAxis = ds.yAxisID === 'y1' ? 'y1' : 'y';
+      // In dual-axis mode, only inspect datasets assigned to this axis
+      if (showRightAxis && dsAxis !== scaleKey) continue;
       for (const v of ds.data) {
-        const num = typeof v === 'number' ? v : (v as any)?.y;
+        let num: number | undefined = undefined;
+        if (typeof v === 'number') {
+          num = v;
+        } else if (Array.isArray(v)) {
+          num = typeof v[1] === 'number' ? v[1] : (typeof v[0] === 'number' ? v[0] : undefined);
+        } else if (v && typeof v === 'object') {
+          num = typeof v.y === 'number' ? v.y : undefined;
+        }
         if (typeof num === 'number' && isFinite(num)) {
           if (num > dataMax) dataMax = num;
           if (num < dataMin) dataMin = num;
@@ -1588,9 +1714,17 @@ export const ChartGenerator = memo(function ChartGenerator({
   if (chartType === 'stackedBar') {
     const xBase = { ...(optionsScales?.x || {}) };
     const yBase = { ...(optionsScales?.y || {}) };
-    const sugMax = computeGraceSuggestedMax(yBase);
+    const y1Base = optionsScales?.y1 ? { ...(optionsScales.y1) } : undefined;
+    const sugMax = computeGraceSuggestedMax(yBase, 'y');
+    const sugMaxY1 = y1Base
+      ? computeGraceSuggestedMax(
+          { ...y1Base, grace: y1Base.grace !== undefined ? y1Base.grace : yBase.grace },
+          'y1'
+        )
+      : undefined;
     // Strip native grace to prevent double-application
     delete yBase.grace;
+    if (y1Base) delete y1Base.grace;
 
     appliedOptions = {
       ...baseOptions,
@@ -1616,14 +1750,38 @@ export const ChartGenerator = memo(function ChartGenerator({
             drawOnChartArea: yBase.grid?.drawOnChartArea !== false,
           },
         },
+        ...(y1Base ? {
+          y1: {
+            ...y1Base,
+            position: (y1Base.position && y1Base.position !== 'left') ? y1Base.position : 'right',
+            ...(sugMaxY1 !== undefined ? { suggestedMax: sugMaxY1 } : {}),
+            grid: {
+              ...(y1Base.grid || {}),
+              borderDash: y1Base.grid?.borderDash || y1Base.border?.dash || [],
+              borderDashOffset: y1Base.grid?.borderDashOffset ?? y1Base.border?.dashOffset ?? 0,
+              drawOnChartArea: y1Base.grid?.drawOnChartArea ?? false,
+            },
+            ticks: {
+              ...(y1Base.ticks || {}),
+            }
+          }
+        } : {})
       },
     };
   } else if (!isCircularType && !isRadialType) {
     const xBase = { ...(optionsScales?.x || {}) };
     const yBase = { ...(optionsScales?.y || {}) };
-    const sugMax = computeGraceSuggestedMax(yBase);
+    const y1Base = optionsScales?.y1 ? { ...(optionsScales.y1) } : undefined;
+    const sugMax = computeGraceSuggestedMax(yBase, 'y');
+    const sugMaxY1 = y1Base
+      ? computeGraceSuggestedMax(
+          { ...y1Base, grace: y1Base.grace !== undefined ? y1Base.grace : yBase.grace },
+          'y1'
+        )
+      : undefined;
     // Strip native grace to prevent double-application
     delete yBase.grace;
+    if (y1Base) delete y1Base.grace;
 
     // For other Cartesian charts, explicit stacked: false
     appliedOptions = {
@@ -1653,6 +1811,22 @@ export const ChartGenerator = memo(function ChartGenerator({
             ...(yBase.ticks || {}),
           }
         },
+        ...(y1Base ? {
+          y1: {
+            ...y1Base,
+            position: (y1Base.position && y1Base.position !== 'left') ? y1Base.position : 'right',
+            ...(sugMaxY1 !== undefined ? { suggestedMax: sugMaxY1 } : {}),
+            grid: {
+              ...(y1Base.grid || {}),
+              borderDash: y1Base.grid?.borderDash || y1Base.border?.dash || [],
+              borderDashOffset: y1Base.grid?.borderDashOffset ?? y1Base.border?.dashOffset ?? 0,
+              drawOnChartArea: y1Base.grid?.drawOnChartArea ?? false,
+            },
+            ticks: {
+              ...(y1Base.ticks || {}),
+            }
+          }
+        } : {})
       },
     };
   }
@@ -1729,7 +1903,7 @@ export const ChartGenerator = memo(function ChartGenerator({
       const suffix = typeof scale.ticks?.suffix === 'string' ? scale.ticks.suffix : '';
       const hasPrefixOrSuffix = Boolean(prefix || suffix);
       const originalCallback = scale.ticks?.callback;
-      const isValueAxis = (needsHorizontal ? axisKey === 'x' : axisKey === 'y') || scale.type === 'linear' || scale.type === 'logarithmic';
+      const isValueAxis = (needsHorizontal ? axisKey === 'x' : (axisKey === 'y' || axisKey === 'y1')) || scale.type === 'linear' || scale.type === 'logarithmic';
 
       if (hasPrefixOrSuffix || isValueAxis) {
         scale.ticks = {
@@ -1742,8 +1916,13 @@ export const ChartGenerator = memo(function ChartGenerator({
             } else if (this && this.type === 'category') {
               label = this.getLabelForValue ? this.getLabelForValue(value) : value;
             } else if (typeof value === 'number') {
-              const decimals = getSmartDecimals(value);
-              label = value.toFixed(decimals);
+              const numFormat = scale.ticks?.numberFormat;
+              if (numFormat && (numFormat.preset && numFormat.preset !== 'none' || numFormat.compact)) {
+                label = formatNumberWithConfig(value, numFormat);
+              } else {
+                const decimals = getSmartDecimals(value);
+                label = value.toFixed(decimals);
+              }
             } else if (this && typeof this.getLabelForValue === 'function') {
               label = this.getLabelForValue(value);
             } else {
@@ -1766,6 +1945,71 @@ export const ChartGenerator = memo(function ChartGenerator({
         };
       }
     });
+  }
+
+  // ── Scale Threshold / Goal Lines Mapping ─────────────────────────────────────
+  if (appliedOptions.scales && typeof appliedOptions.scales === 'object') {
+    const existingAnnotations = { ...((appliedOptions.plugins as any)?.annotation?.annotations || {}) };
+    let hasAnnotations = Object.keys(existingAnnotations).length > 0;
+
+    ['x', 'y', 'y1'].forEach((scaleKey) => {
+      const scaleObj = (appliedOptions.scales as any)?.[scaleKey];
+      const th = scaleObj?.threshold;
+      if (th && th.enabled && th.value !== undefined && th.value !== null && th.value !== '') {
+        const numVal = Number(th.value);
+        if (!isNaN(numVal)) {
+          hasAnnotations = true;
+          const dash = th.style === 'solid' ? [] : th.style === 'dotted' ? [2, 4] : [6, 6];
+          const isYScale = scaleKey.startsWith('y');
+
+          // Ensure scale limits expand to include the threshold line so it is always fully visible
+          if (scaleObj) {
+            if (scaleObj.suggestedMax === undefined || scaleObj.suggestedMax < numVal) {
+              scaleObj.suggestedMax = Math.ceil(numVal * 1.05);
+            }
+            if (numVal < 0 && (scaleObj.suggestedMin === undefined || scaleObj.suggestedMin > numVal)) {
+              scaleObj.suggestedMin = Math.floor(numVal * 1.05);
+            }
+          }
+
+          existingAnnotations[`threshold_${scaleKey}`] = {
+            type: 'line',
+            scaleID: scaleKey,
+            value: numVal,
+            ...(isYScale ? { yMin: numVal, yMax: numVal } : { xMin: numVal, xMax: numVal }),
+            borderColor: th.color || '#ef4444',
+            borderWidth: typeof th.width === 'number' ? th.width : 2,
+            borderDash: dash,
+            label: {
+              display: Boolean(th.label),
+              content: th.label || '',
+              position: th.position || 'end',
+              backgroundColor: th.color || '#ef4444',
+              color: '#ffffff',
+              font: {
+                size: 10,
+                weight: 'bold',
+              },
+              padding: { top: 3, bottom: 3, left: 6, right: 6 },
+              borderRadius: 4,
+            },
+          };
+        }
+      }
+    });
+
+    if (hasAnnotations) {
+      appliedOptions = {
+        ...appliedOptions,
+        plugins: {
+          ...appliedOptions.plugins,
+          annotation: {
+            ...((appliedOptions.plugins as any)?.annotation || {}),
+            annotations: existingAnnotations,
+          },
+        },
+      };
+    }
   }
 
   // In readOnly mode (tile preview), force-disable tooltips, animations, and responsive
@@ -2285,16 +2529,25 @@ export const ChartGenerator = memo(function ChartGenerator({
                             const label = data.labels?.[dataIndex];
                             const value = dataset.data[dataIndex];
                             const datasetLabel = dataset.label || `Dataset ${datasetIndex + 1}`;
-                            const datasetColor = Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor[dataIndex] : dataset.backgroundColor;
+
+                            const formatValueWithSync = (val: any, dsObj?: any) => {
+                              if (typeof val !== 'number') return val;
+                              const targetDs = dsObj || dataset;
+                              const axisKey = needsHorizontal ? 'x' : (targetDs?.yAxisID || 'y');
+                              const scaleFormat = (appliedOptions?.scales as any)?.[axisKey]?.ticks?.numberFormat;
+                              if (scaleFormat && scaleFormat.syncTooltip !== false && ((scaleFormat.preset && scaleFormat.preset !== 'none') || scaleFormat.compact)) {
+                                return formatNumberWithConfig(val, scaleFormat);
+                              }
+                              return val;
+                            };
 
                             if (mode === 'slice') {
-                              return `${label}: ${value}`;
+                              return `${label}: ${formatValueWithSync(value)}`;
                             }
                             if (mode === 'dataset') {
                               let lines = [`${datasetLabel}`, ...dataset.data.map((v: any, i: number) => {
                                 const sliceLabel = data.labels?.[i] || `Slice ${i + 1}`;
-                                const sliceColor = Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor[i] : dataset.backgroundColor;
-                                return `${sliceLabel}: ${v}`;
+                                return `${sliceLabel}: ${formatValueWithSync(v)}`;
                               })];
                               return lines;
                             }
@@ -2302,8 +2555,7 @@ export const ChartGenerator = memo(function ChartGenerator({
                               let lines = [`${label}`];
                               data.datasets.forEach((ds: any, i: number) => {
                                 const dsLabel = ds.label || `Dataset ${i + 1}`;
-                                const dsColor = Array.isArray(ds.backgroundColor) ? ds.backgroundColor[dataIndex] : ds.backgroundColor;
-                                lines.push(`${dsLabel}: ${ds.data[dataIndex]}`);
+                                lines.push(`${dsLabel}: ${formatValueWithSync(ds.data[dataIndex], ds)}`);
                               });
                               return lines;
                             }
@@ -2314,19 +2566,19 @@ export const ChartGenerator = memo(function ChartGenerator({
                                   if (v === value) {
                                     const dsLabel = ds.label || `Dataset ${i + 1}`;
                                     const sliceLabel = data.labels?.[j] || `Slice ${j + 1}`;
-                                    lines.push(`${dsLabel} - ${sliceLabel}: ${v}`);
+                                    lines.push(`${dsLabel} - ${sliceLabel}: ${formatValueWithSync(v, ds)}`);
                                   }
                                 });
                               });
-                              return lines.length ? lines : [`${label}: ${value}`];
+                              return lines.length ? lines : [`${label}: ${formatValueWithSync(value)}`];
                             }
-                            return `${label}: ${value}`;
+                            return `${label}: ${formatValueWithSync(value)}`;
                           }
                         }
                       },
                     } as any),
                   }}
-                  plugins={[watermarkPlugin, zeroLineHighlightPlugin]}
+                  plugins={[watermarkPlugin, zeroLineHighlightPlugin, actualAnnotationPlugin]}
                 />
                 </ChartErrorBoundary>
               </ResizableChartArea>
@@ -2563,25 +2815,33 @@ export const ChartGenerator = memo(function ChartGenerator({
                             const label = data.labels?.[dataIndex];
                             const value = dataset.data[dataIndex];
                             const datasetLabel = dataset.label || `Dataset ${datasetIndex + 1}`;
-                            const datasetColor = Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor[dataIndex] : dataset.backgroundColor;
+
+                            const formatValueWithSync = (val: any, dsObj?: any) => {
+                              if (typeof val !== 'number') return val;
+                              const targetDs = dsObj || dataset;
+                              const axisKey = needsHorizontal ? 'x' : (targetDs?.yAxisID || 'y');
+                              const scaleFormat = (appliedOptions?.scales as any)?.[axisKey]?.ticks?.numberFormat;
+                              if (scaleFormat && scaleFormat.syncTooltip !== false && ((scaleFormat.preset && scaleFormat.preset !== 'none') || scaleFormat.compact)) {
+                                return formatNumberWithConfig(val, scaleFormat);
+                              }
+                              return val;
+                            };
 
                             if (mode === 'slice') {
-                              return `${label}: ${value}`;
+                              return `${label}: ${formatValueWithSync(value)}`;
                             }
                             if (mode === 'dataset') {
                               let lines = [`${datasetLabel}`, ...dataset.data.map((v: any, i: number) => {
                                 const sliceLabel = data.labels?.[i] || `Slice ${i + 1}`;
-                                const sliceColor = Array.isArray(dataset.backgroundColor) ? dataset.backgroundColor[i] : dataset.backgroundColor;
-                                return `${sliceLabel}: ${v}`;
+                                return `${sliceLabel}: ${formatValueWithSync(v)}`;
                               })];
                               return lines;
                             }
                             if (mode === 'xaxis') {
                               let lines = [`${label}`];
-                              data.datasets.forEach((ds: any, i: number) => {
-                                const dsLabel = ds.label || `Dataset ${i + 1}`;
-                                const dsColor = Array.isArray(ds.backgroundColor) ? ds.backgroundColor[dataIndex] : ds.backgroundColor;
-                                lines.push(`${dsLabel}: ${ds.data[dataIndex]}`);
+                              data.datasets.forEach((ds: any) => {
+                                const dsLabel = ds.label || `Dataset`;
+                                lines.push(`${dsLabel}: ${formatValueWithSync(ds.data[dataIndex], ds)}`);
                               });
                               return lines;
                             }
@@ -2592,19 +2852,19 @@ export const ChartGenerator = memo(function ChartGenerator({
                                   if (v === value) {
                                     const dsLabel = ds.label || `Dataset ${i + 1}`;
                                     const sliceLabel = data.labels?.[j] || `Slice ${j + 1}`;
-                                    lines.push(`${dsLabel} - ${sliceLabel}: ${v}`);
+                                    lines.push(`${dsLabel} - ${sliceLabel}: ${formatValueWithSync(v, ds)}`);
                                   }
                                 });
                               });
-                              return lines.length ? lines : [`${label}: ${value}`];
+                              return lines.length ? lines : [`${label}: ${formatValueWithSync(value)}`];
                             }
-                            return `${label}: ${value}`;
+                            return `${label}: ${formatValueWithSync(value)}`;
                           }
                         }
                       },
                     } as any),
                   }}
-                  plugins={[watermarkPlugin, zeroLineHighlightPlugin]}
+                  plugins={[watermarkPlugin, zeroLineHighlightPlugin, actualAnnotationPlugin]}
                 />
                 </ChartErrorBoundary>
               </div>
