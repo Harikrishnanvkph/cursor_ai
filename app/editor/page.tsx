@@ -12,7 +12,7 @@ import { useAuth } from "@/components/auth/AuthProvider"
 import { dataService } from "@/lib/data-service"
 import { Button } from "@/components/ui/button"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
-import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Layers, Settings, Menu, Download, ChevronLeft, ChevronRight, FileText, Save, X, Loader2, Plus, Info, LayoutDashboard, MessageSquare, Edit3, BarChart2, SlidersHorizontal, PanelLeft, ExternalLink, Share2, Copy, MoreVertical, Pencil, Check, Cloud, Trash2, ChevronDown, Maximize2, Eye, FileImage, ImageIcon, FileCode, Ellipsis, Camera, RotateCcw, ScanSearch, Grip } from "lucide-react"
+import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Layers, Settings, Menu, Download, ChevronLeft, ChevronRight, FileText, Save, X, Loader2, Plus, Info, LayoutDashboard, MessageSquare, Edit3, BarChart2, SlidersHorizontal, PanelLeft, ExternalLink, Share2, Copy, MoreVertical, Pencil, Check, Cloud, Trash2, ChevronDown, Maximize2, Eye, FileImage, ImageIcon, FileCode, Ellipsis, Camera, RotateCcw, ScanSearch, Grip, Upload } from "lucide-react"
 import { useLoupeStore } from "@/lib/stores/loupe-store"
 import React from "react"
 import Link from "next/link"
@@ -89,6 +89,43 @@ function EditorPageContent() {
       };
     }
 
+    if (type === 'scatter') {
+      return {
+        labels: ["P1", "P2", "P3", "P4", "P5", "P6", "P7"],
+        datasets: [{
+          label: "Scatter Sample",
+          data: [
+            { x: 10, y: 20 },
+            { x: 15, y: 35 },
+            { x: 22, y: 15 },
+            { x: 28, y: 45 },
+            { x: 35, y: 30 },
+            { x: 42, y: 55 },
+            { x: 50, y: 40 },
+          ],
+          chartType: 'scatter',
+        }]
+      };
+    }
+
+    if (type === 'bubble') {
+      return {
+        labels: ["P1", "P2", "P3", "P4", "P5", "P6"],
+        datasets: [{
+          label: "Bubble Sample",
+          data: [
+            { x: 10, y: 20, r: 8 },
+            { x: 18, y: 32, r: 14 },
+            { x: 25, y: 15, r: 10 },
+            { x: 32, y: 42, r: 16 },
+            { x: 40, y: 28, r: 12 },
+            { x: 48, y: 50, r: 9 },
+          ],
+          chartType: 'bubble',
+        }]
+      };
+    }
+
     if (type === 'waterfall') {
       return {
         labels: ["Start", "Q1 Sales", "Refunds", "Q2 Sales", "Tax", "Net"],
@@ -141,25 +178,51 @@ function EditorPageContent() {
     };
   };
 
+  const exitPresetEditMode = () => {
+    setEditPresetId(null)
+    setPresetMetadata(null)
+    setIsBuiltInPreset(false)
+    router.replace("/editor")
+    toast.info("Exited preset editing mode")
+  }
+
+  const handlePresetUpdateSuccess = (newDbId?: string) => {
+    setShowUpdatePresetDialog(false)
+    if (newDbId && isBuiltInPreset) {
+      setEditPresetId(newDbId)
+      setIsBuiltInPreset(false)
+      router.replace(`/editor?editPresetId=${newDbId}`)
+    }
+    const idToFetch = newDbId || editPresetId
+    if (idToFetch) {
+      dataService.getChartStylePreset(idToFetch).then((res) => {
+        if (res.data) {
+          setPresetMetadata({
+            name: res.data.name,
+            description: res.data.description || '',
+            category: res.data.category || 'minimal',
+            tags: res.data.tags || [],
+            isOfficial: res.data.is_official || false,
+          })
+        }
+      }).catch(console.error)
+    }
+  }
+
   const loadPresetForEditing = async (id: string) => {
     try {
       let parsedPreset: any = null
       let presetName = ''
       let isBuiltIn = false
 
-      // Check if it is a built-in preset first to avoid redundant API errors for official presets
+      // Try database first so DB customizations take priority over hardcoded defaults
+      let res: any = null
       const builtInPreset = getPresetById(id)
 
-      let res: any = null
-      if (builtInPreset) {
-        isBuiltIn = true
-      } else {
-        try {
-          res = await dataService.getChartStylePreset(id)
-        } catch (err) {
-          // If the DB query fails or throws (e.g. 404), treat it as not found in DB so we can fallback
-          res = { error: err }
-        }
+      try {
+        res = await dataService.getChartStylePreset(id)
+      } catch (err) {
+        res = { error: err }
       }
 
       if (res && !res.error && res.data) {
@@ -226,7 +289,10 @@ function EditorPageContent() {
         ? generateDummyGroupedData(parsedPreset.chartType)
         : generateDummyDataForType(parsedPreset.chartType)
 
-      const result = applyPresetToChart(parsedPreset, dummy, parsedPreset.configSnapshot)
+      // Apply preset styles and ensure preset dimensions are respected
+      const result = applyPresetToChart(parsedPreset, dummy, parsedPreset.configSnapshot, {
+        applyDimensions: !!parsedPreset.dimensions,
+      })
 
       clearCurrentChart()
       clearMessages()
@@ -240,9 +306,18 @@ function EditorPageContent() {
         chartMode: parsedPreset.colorStrategy.mode === 'grouped' ? 'grouped' : 'single',
       })
       setHasJSON(true)
+
+      // Initialize canvas dimensions if defined on preset
+      if (parsedPreset.dimensions?.width && parsedPreset.dimensions?.height) {
+        useChartStore.getState().initializeChartDimensions(
+          parsedPreset.dimensions.width,
+          parsedPreset.dimensions.height,
+          false
+        )
+      }
       
       setActiveTab('styling')
-      toast.success(`Preset "${presetName}" loaded for editing with dummy data!${isBuiltIn ? ' (Built-in preset)' : ''}`)
+      toast.success(`Preset "${presetName}" loaded for editing with dummy data!${isBuiltIn ? ' (Built-in template)' : ''}`)
     } catch (err: any) {
       console.error("Failed to load preset for editing:", err)
       toast.error(err.message || "Failed to load preset")
@@ -611,19 +686,21 @@ function EditorPageContent() {
   // Respect ?tab= query parameter (e.g., /editor?tab=templates)
   useEffect(() => {
     const tabParam = searchParams.get('tab')
+    const presetIdParam = searchParams.get('editPresetId')
+
     if (tabParam) {
       setActiveTab(tabParam)
-      // Clean the URL so it goes back to /editor without query params
-      router.replace("/editor")
+      if (!presetIdParam) {
+        // Clean tab query param if not in preset edit mode
+        router.replace("/editor")
+      }
     }
 
-    const presetIdParam = searchParams.get('editPresetId')
-    if (presetIdParam) {
+    if (presetIdParam && presetIdParam !== editPresetId) {
       setEditPresetId(presetIdParam)
-      router.replace("/editor")
       loadPresetForEditing(presetIdParam)
     }
-  }, [searchParams, router])
+  }, [searchParams, router, editPresetId])
 
   // Auto-sync templates and load conversations from cloud when user logs in
   const { loadConversationsFromBackend } = useHistoryStore()
@@ -1621,9 +1698,7 @@ function EditorPageContent() {
             presetId={editPresetId}
             initialData={presetMetadata}
             isBuiltIn={isBuiltInPreset}
-            onSuccess={() => {
-              setShowUpdatePresetDialog(false);
-            }}
+            onSuccess={handlePresetUpdateSuccess}
           />
         )}
         {/* Sandwich Backdrop overlay */}
@@ -2079,9 +2154,7 @@ function EditorPageContent() {
             presetId={editPresetId}
             initialData={presetMetadata}
             isBuiltIn={isBuiltInPreset}
-            onSuccess={() => {
-              setShowUpdatePresetDialog(false);
-            }}
+            onSuccess={handlePresetUpdateSuccess}
           />
         )}
       </div>
@@ -2094,6 +2167,45 @@ function EditorPageContent() {
     <>
       {/* Center Area - Chart Preview */}
       <div className={`flex-1 min-w-0 h-full flex flex-col ${hasJSON ? 'pr-4 pl-1 pt-2 pb-4 overflow-hidden' : 'p-4 overflow-y-auto justify-center items-center'}`}>
+        {editPresetId && (
+          <div className="mb-2 bg-gradient-to-r from-violet-950 via-purple-950 to-indigo-950 border border-violet-700/50 rounded-xl px-3 py-2 flex items-center justify-between text-white shadow-md shrink-0">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-6 h-6 rounded-md bg-violet-600/40 border border-violet-400/30 flex items-center justify-center shrink-0">
+                <Palette className="w-3.5 h-3.5 text-violet-300" />
+              </div>
+              <div className="flex items-center gap-2 min-w-0 truncate">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-violet-300 shrink-0">Preset Editing Mode</span>
+                {isBuiltInPreset && (
+                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-semibold shrink-0">Built-in Clone</span>
+                )}
+                <span className="text-xs text-gray-200 truncate">
+                  &mdash; Editing <strong className="text-white font-semibold">{presetMetadata?.name || editPresetId}</strong>
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowUpdatePresetDialog(true)}
+                className="h-7 text-xs bg-violet-600 hover:bg-violet-500 text-white border-violet-400/50 shadow-sm"
+              >
+                <Upload className="w-3.5 h-3.5 mr-1" />
+                {isBuiltInPreset ? 'Save to Database' : 'Update Preset'}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={exitPresetEditMode}
+                className="h-7 text-xs text-violet-200 hover:text-white hover:bg-violet-800/40"
+                title="Exit preset editing mode and return to standard chart editing"
+              >
+                <X className="w-3.5 h-3.5 mr-1" />
+                Exit Preset Mode
+              </Button>
+            </div>
+          </div>
+        )}
         {!storeHydrated ? (
           renderCenterAreaLoader()
         ) : hasJSON ? (
@@ -2347,9 +2459,7 @@ function EditorPageContent() {
           presetId={editPresetId}
           initialData={presetMetadata}
           isBuiltIn={isBuiltInPreset}
-          onSuccess={() => {
-            setShowUpdatePresetDialog(false);
-          }}
+          onSuccess={handlePresetUpdateSuccess}
         />
       )}
 

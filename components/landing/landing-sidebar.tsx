@@ -6,7 +6,7 @@ import {
   ArrowUp, BarChart2, SquarePen, Edit3,
   MessageSquare, Sparkles, ChevronLeft, ChevronRight, ChevronDown,
   Info, LayoutDashboard, Bot, Brain, ExternalLink, ImageIcon, Zap, Globe,
-  LineChart, PieChart, ArrowRight, Settings, Check, Square
+  LineChart, PieChart, ArrowRight, Settings, Check, Square, PanelLeft
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -180,50 +180,66 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
     <aside className={`z-10 flex flex-col border-r border-slate-200/80 shadow-md bg-white/40 backdrop-blur-xl ${leftSidebarOpen ? 'w-[320px]' : 'w-14'} overflow-hidden flex-shrink-0`}>
       {leftSidebarOpen ? (
         <>
-          {/* Unified Header with Title */}
-          <div className="flex flex-col border-b border-slate-200/80 bg-transparent shadow-xs">
-            <div className="flex items-center justify-center gap-2 pt-4 pb-2.5 text-center w-full">
-              <img src="/logo.png" alt="Logo" className="w-5 h-5 object-contain" />
-              <span className="text-xs font-black tracking-wider uppercase bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent drop-shadow-sm">
-                AI Chart Generator
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between px-3 pb-3">
-              <div className="flex items-center gap-1.5">
+          {/* ChatGPT-style Header with Dropdown & Action Buttons */}
+          <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-slate-200/80 bg-transparent min-h-[52px]">
+            {/* Left: (Logo + AI Chart) Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <button
+                  className="flex items-center gap-2 px-2 py-1.5 -ml-1 rounded-xl hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors text-slate-800 dark:text-slate-100 cursor-pointer focus:outline-none select-none group"
+                  title="Switch View"
+                >
+                  <img src="/logo.png" alt="Logo" className="w-5 h-5 object-contain" />
+                  <span className="text-sm font-semibold tracking-tight text-slate-800 dark:text-slate-100">
+                    AI Chart
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-52 p-1.5 rounded-xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800 shadow-xl z-50">
+                <DropdownMenuItem
+                  className="flex items-center justify-between px-2.5 py-2 text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50/60 dark:bg-indigo-950/40 rounded-lg cursor-default"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <BarChart2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                    <span>AI Chart</span>
+                  </div>
+                  <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="my-1 bg-slate-200/70 dark:bg-slate-800" />
+                <DropdownMenuItem
                   onClick={() => router.push('/board')}
-                  className="bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200/80 rounded-xl px-2.5 py-1.5 transition-all text-xs font-semibold flex items-center gap-1.5 shadow-sm"
-                  title="Go to Dashboard"
+                  className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/80 rounded-lg cursor-pointer transition-colors"
                 >
-                  <LayoutDashboard className="w-3.5 h-3.5" />
-                  <span>Board</span>
-                </button>
-                <button
+                  <LayoutDashboard className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                  <span>Dashboard</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
                   onClick={() => router.push('/editor')}
-                  className="bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200/80 rounded-xl px-2.5 py-1.5 transition-all text-xs font-semibold flex items-center gap-1.5 shadow-sm"
-                  title="Go to Infographic Editor"
+                  className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/80 rounded-lg cursor-pointer transition-colors"
                 >
-                  <Edit3 className="w-3.5 h-3.5" />
-                  <span>Editor</span>
-                </button>
-              </div>
-              <div className="flex gap-1.5">
-                <button
-                  className="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-100 hover:border-indigo-200 rounded-xl px-2.5 py-1.5 font-semibold transition-all text-xs flex items-center gap-1 shadow-sm"
-                  onClick={handleNewConversation}
-                  title="New Conversation"
-                >
-                  <SquarePen className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  className="bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 border border-slate-200/60 rounded-xl px-2.5 py-1.5 transition-all text-xs shadow-sm"
-                  onClick={() => setLeftSidebarOpen(false)}
-                  title="Collapse Sidebar"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                </button>
-              </div>
+                  <Edit3 className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                  <span>Advanced Editor</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Right: New Create Button + Toggle Sidebar */}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={handleNewConversation}
+                className="p-1.5 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60 rounded-lg transition-colors cursor-pointer"
+                title="New Chat"
+              >
+                <SquarePen className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setLeftSidebarOpen(false)}
+                className="p-1.5 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800/60 rounded-lg transition-colors cursor-pointer"
+                title="Close Sidebar"
+              >
+                <PanelLeft className="w-4 h-4" />
+              </button>
             </div>
           </div>
 
@@ -322,13 +338,13 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
               <BarChart2 className="w-4 h-4" />
             </button>
 
-            {/* Expand Sidebar Icon - Separate ChevronRight icon */}
+            {/* Expand Sidebar Icon - PanelLeft */}
             <button
               onClick={() => setLeftSidebarOpen(true)}
               className="p-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200/60 shadow-xs transition-all hover:shadow-sm"
               title="Expand Sidebar"
             >
-              <ChevronRight className="w-4 h-4" />
+              <PanelLeft className="w-4 h-4" />
             </button>
 
             {/* New Chat Icon */}
@@ -370,20 +386,20 @@ export function LandingSidebar({ leftSidebarOpen, setLeftSidebarOpen }: LandingS
                   <ExternalLink className="w-4 h-4" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" side="right" className="w-40 z-50 bg-white/95 backdrop-blur-xl border border-slate-200/80 shadow-lg rounded-xl p-1.5">
+              <DropdownMenuContent align="start" side="right" className="w-44 z-50 bg-white/95 backdrop-blur-xl border border-slate-200/80 shadow-lg rounded-xl p-1.5">
                 <DropdownMenuItem
                   onClick={() => router.push('/board')}
                   className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
                 >
                   <LayoutDashboard className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Board Page</span>
+                  <span>Dashboard</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => router.push('/editor')}
                   className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors"
                 >
                   <Edit3 className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Editor Page</span>
+                  <span>Advanced Editor</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from "react"
 import { useChartStore } from "@/lib/chart-store"
+import { useChartStyleStore } from "@/lib/stores/chart-style-store"
 import { extractPresetFromCurrentChart } from "@/lib/chart-style-engine"
 import { dataService } from "@/lib/data-service"
-import type { PresetCategory, PresetPublishData } from "@/lib/chart-style-types"
+import type { PresetCategory, PresetPublishData, ColorMode } from "@/lib/chart-style-types"
 import type { SupportedChartType } from "@/lib/chart-defaults"
 import {
   Dialog,
@@ -82,12 +83,15 @@ export function UpdatePresetDialog({ open, onOpenChange, presetId, initialData, 
         .map(t => t.trim().toLowerCase())
         .filter(Boolean)
 
+      const firstDs = chartData.datasets?.[0] as any
+      const detectedColorMode: ColorMode = firstDs?.datasetColorMode === 'single' ? 'single' : 'slice'
+
       const publishData: PresetPublishData = {
         name: name.trim(),
         description: description.trim() || '',
         category,
         tags: tagList,
-        colorMode: (chartData.datasets[0] as any)?.datasetColorMode === 'single' ? 'single' : 'slice',
+        colorMode: detectedColorMode,
         isOfficial: isOfficial,
         applyDimensions: true,
       }
@@ -121,6 +125,8 @@ export function UpdatePresetDialog({ open, onOpenChange, presetId, initialData, 
         }
 
         const newId = response.data?.id || response.data?.[0]?.id
+        // Invalidate preset cache immediately so gallery and lists reflect changes
+        useChartStyleStore.getState().invalidateCache().catch(console.error)
         toast.success(`Built-in preset "${name}" saved to database!`)
         onOpenChange(false)
         onSuccess?.(newId)
@@ -144,6 +150,8 @@ export function UpdatePresetDialog({ open, onOpenChange, presetId, initialData, 
           throw new Error(response.error)
         }
 
+        // Invalidate preset cache immediately so gallery and lists reflect changes
+        useChartStyleStore.getState().invalidateCache().catch(console.error)
         toast.success(`Preset "${name}" updated successfully!`)
         onOpenChange(false)
         onSuccess?.()
@@ -269,7 +277,7 @@ export function UpdatePresetDialog({ open, onOpenChange, presetId, initialData, 
           <Button
             onClick={handleUpdate}
             disabled={!name.trim() || isUpdating}
-            className="h-9 text-xs bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-750 hover:to-indigo-750 text-white shadow-md"
+            className="h-9 text-xs bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-md"
           >
              {isUpdating ? (
               <>

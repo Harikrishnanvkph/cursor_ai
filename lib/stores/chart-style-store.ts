@@ -33,7 +33,7 @@ interface ChartStyleFilters {
 interface ChartStyleStore {
   // ── Gallery State ─────────────────────
   isGalleryOpen: boolean
-  openGallery: (chartType?: string) => void
+  openGallery: (chartType?: string, aspectRatio?: string) => void
   closeGallery: () => void
   toggleGallery: () => void
 
@@ -62,6 +62,9 @@ interface ChartStyleStore {
   // ── Actions ───────────────────────────
   /** Load presets (Phase 1: hardcoded, Phase 2: from API) */
   loadPresets: (force?: boolean) => Promise<void>
+
+  /** Invalidate cache and reload presets */
+  invalidateCache: () => Promise<void>
 
   /**
    * Apply a preset to the current chart.
@@ -157,59 +160,20 @@ export const useChartStyleStore = create<ChartStyleStore>()(
     (set, get) => ({
   // ── Gallery State ─────────────────────
   isGalleryOpen: false,
-  openGallery: (chartType?: string) => {
+  openGallery: (chartType?: string, aspectRatio?: string) => {
     // Ensure presets are loaded when gallery opens
     const state = get()
     if (state.officialPresets.length === 0) {
       state.loadPresets()
-    }
-    
-    // Auto-detect aspect ratio from the active chart in useChartStore
-    let detectedAspectRatio: string | 'all' = 'all'
-    try {
-      const chartState = useChartStore.getState()
-      const chartConfig = chartState.chartConfig
-      
-      if (chartConfig && !chartConfig.responsive && chartConfig.width && chartConfig.height) {
-        const w = parseDimensionValue(chartConfig.width as string)
-        const h = parseDimensionValue(chartConfig.height as string)
-        if (w > 0 && h > 0) {
-          const ratio = w / h
-          const candidates = [
-            { value: '16:9', ratio: 16 / 9 },
-            { value: '9:16', ratio: 9 / 16 },
-            { value: '1:1', ratio: 1 },
-            { value: '4:5', ratio: 4 / 5 },
-            { value: '4:3', ratio: 4 / 3 },
-            { value: '3:2', ratio: 3 / 2 }
-          ]
-
-          let closestValue = candidates[0].value
-          let minDiff = Math.abs(ratio - candidates[0].ratio)
-          for (let i = 1; i < candidates.length; i++) {
-            const diff = Math.abs(ratio - candidates[i].ratio)
-            if (diff < minDiff) {
-              minDiff = diff
-              closestValue = candidates[i].value
-            }
-          }
-
-          if (minDiff < 0.25) {
-            detectedAspectRatio = closestValue
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('[ChartStyleStore] Failed to detect active chart aspect ratio:', e)
     }
 
     const newFilters = { ...state.filters }
     if (chartType) {
       newFilters.chartType = chartType as any
     }
-    if (detectedAspectRatio !== 'all') {
-      newFilters.aspectRatio = detectedAspectRatio
-    }
+    // Always default to 'all' so users can see all presets across all aspect ratios,
+    // unless an aspect ratio is explicitly specified.
+    newFilters.aspectRatio = aspectRatio || 'all'
 
     set({
       isGalleryOpen: true,
@@ -338,10 +302,10 @@ export const useChartStyleStore = create<ChartStyleStore>()(
           updatedAt: row.updated_at,
         }))
 
-        // Merge: DB presets override hardcoded ones with the same ID, then append new ones
-        const hardcodedIds = new Set(hardcodedPresets.map(p => p.id))
-        const newFromDB = dbPresets.filter(p => !hardcodedIds.has(p.id))
-        set({ officialPresets: [...hardcodedPresets, ...newFromDB] })
+        // Merge: DB presets override hardcoded ones with the same ID, then append remaining hardcoded ones
+        const dbIds = new Set(dbPresets.map(p => p.id))
+        const remainingHardcoded = hardcodedPresets.filter(p => !dbIds.has(p.id))
+        set({ officialPresets: [...dbPresets, ...remainingHardcoded] })
       }
     } catch (error) {
       // API unavailable — hardcoded defaults are already loaded, so this is fine
@@ -349,6 +313,11 @@ export const useChartStyleStore = create<ChartStyleStore>()(
     }
 
     set({ isLoading: false, lastLoadedAt: new Date().toISOString() })
+  },
+
+  invalidateCache: async () => {
+    set({ lastLoadedAt: null })
+    await get().loadPresets(true)
   },
 
   applyPreset: (presetId: string, applyDimensions = false) => {

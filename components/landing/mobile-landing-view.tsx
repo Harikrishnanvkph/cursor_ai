@@ -242,8 +242,8 @@ export function MobileLandingView({
     <div className="fixed inset-0 w-full h-full bg-white dark:bg-slate-950 flex flex-col overflow-hidden font-sans">
       {/* Top Header (In-flow flex item - never covers content) */}
       <header className="w-full h-14 flex-shrink-0 z-40 bg-white dark:bg-slate-950 flex items-center justify-between px-3 xs:px-4 phab:px-5 relative border-b border-slate-100 dark:border-slate-800/80">
-        {/* Left: Sandwich Menu Icon & Logo */}
-        <div className="flex items-center gap-1 xs:gap-1.5 min-w-0">
+        {/* Left: Sandwich Menu Icon */}
+        <div className="flex items-center min-w-0">
           <button
             onClick={() => setSandwichOpen(true)}
             className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors flex-shrink-0 text-slate-700 dark:text-slate-300 cursor-pointer"
@@ -251,43 +251,37 @@ export function MobileLandingView({
           >
             <Menu className="w-5 h-5" />
           </button>
-          <button
-            onClick={() => router.push('/')}
-            className="p-1 hover:opacity-85 transition-opacity flex-shrink-0 cursor-pointer flex items-center"
-            title="Go to Home"
-          >
-            <img src="/logo.png" alt="Logo" className="h-5 w-5 object-contain" />
-          </button>
         </div>
 
-        {/* Center: Chart / Chat Segmented Pill Switcher (Persistent & Accessible) */}
-        <div className="absolute left-1/2 -translate-x-1/2 flex items-center p-1 bg-slate-100 dark:bg-slate-800/90 rounded-full border border-slate-200/80 dark:border-slate-700/80 shadow-xs z-10">
+        {/* Center: Chart / Chat Segmented Pill Switcher (Constant Width, Instant Switch) */}
+        <div className="absolute left-1/2 -translate-x-1/2 w-[116px] min-w-[116px] max-w-[116px] h-9 p-1 bg-slate-100 dark:bg-slate-800/90 rounded-full border border-slate-200/80 dark:border-slate-700/80 shadow-xs flex items-center justify-between z-10 select-none">
           <button
             onClick={() => setMobileActiveTab('chart')}
-            className={`px-3 phab:px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer relative ${
+            className={`h-7 rounded-full text-xs font-semibold flex items-center justify-center cursor-pointer whitespace-nowrap ${
               mobileActiveTab === 'chart'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                ? 'w-[72px] bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                : 'w-[36px] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
             title="Chart Preview"
           >
-            <ChartColumnBig className="w-4 h-4" />
-            <span>Chart</span>
-            {hasVisualContent && mobileActiveTab !== 'chart' && (
-              <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 dark:bg-indigo-400 animate-pulse" />
+            <ChartColumnBig className="w-4 h-4 flex-shrink-0" />
+            {mobileActiveTab === 'chart' && (
+              <span className="text-xs font-semibold ml-1.5">Chart</span>
             )}
           </button>
           <button
             onClick={() => setMobileActiveTab('chat')}
-            className={`px-3 phab:px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`h-7 rounded-full text-xs font-semibold flex items-center justify-center cursor-pointer whitespace-nowrap ${
               mobileActiveTab === 'chat'
-                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                ? 'w-[72px] bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
+                : 'w-[36px] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
             title="AI Chat"
           >
-            <MessageCircleDashed className="w-4 h-4" />
-            <span>Chat</span>
+            <MessageCircleDashed className="w-4 h-4 flex-shrink-0" />
+            {mobileActiveTab === 'chat' && (
+              <span className="text-xs font-semibold ml-1.5">Chat</span>
+            )}
           </button>
         </div>
 

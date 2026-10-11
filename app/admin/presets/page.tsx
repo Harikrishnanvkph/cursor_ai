@@ -19,11 +19,6 @@ interface MergedPreset extends ChartStylePreset {
   source: PresetSource
 }
 
-const CHART_TYPE_FILTERS = [
-  'all', 'bar', 'line', 'pie', 'doughnut', 'radar', 'polarArea',
-  'horizontalBar', 'stackedBar', 'bar3d', 'pie3d', 'doughnut3d', 'scatter', 'bubble',
-] as const
-
 const CATEGORY_FILTERS: { label: string; value: string }[] = [
   { label: 'All', value: 'all' },
   { label: 'Minimal', value: 'minimal' },
@@ -126,7 +121,7 @@ export default function AdminPresetsPage() {
           preset.name.toLowerCase().includes(q) ||
           preset.description.toLowerCase().includes(q) ||
           preset.chartType.toLowerCase().includes(q) ||
-          preset.tags.some(t => t.toLowerCase().includes(q)) ||
+          preset.tags.some(t => typeof t === 'string' && t.toLowerCase().includes(q)) ||
           preset.category.toLowerCase().includes(q)
         if (!matchesSearch) return false
       }
@@ -387,7 +382,7 @@ export default function AdminPresetsPage() {
                   </div>
 
                   {/* Preset Dummy Data Preview */}
-                  <div className="relative w-full h-44 mb-4 bg-gray-950 rounded-lg border border-gray-850 overflow-hidden shrink-0 flex items-center justify-center p-3 select-none">
+                  <div className="relative w-full h-44 mb-4 bg-gray-950 rounded-lg border border-gray-800 overflow-hidden shrink-0 flex items-center justify-center p-3 select-none">
                     <PresetPreviewChart preset={preset} />
                   </div>
 
@@ -401,7 +396,7 @@ export default function AdminPresetsPage() {
                     <div className="flex items-center gap-1.5 flex-wrap mb-4">
                       <Tag className="w-3.5 h-3.5 text-gray-500 shrink-0" />
                       {preset.tags.map(tag => (
-                        <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-gray-850 text-gray-400 rounded">
+                        <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-gray-800 text-gray-400 rounded">
                           {tag}
                         </span>
                       ))}
@@ -413,7 +408,7 @@ export default function AdminPresetsPage() {
                     {preset.source === 'built-in' && (
                       <div className="text-[11px] text-amber-500/85 bg-amber-950/20 border border-amber-900/30 rounded px-2.5 py-1.5 mb-1.5 font-medium flex items-center gap-2">
                         <Package className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                        <span>Built-in offline presets are read-only and cannot be modified.</span>
+                        <span>Built-in template. Customizing will create a manageable database preset.</span>
                       </div>
                     )}
                     <div className="flex flex-wrap gap-2">
@@ -421,12 +416,12 @@ export default function AdminPresetsPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="flex-1 bg-gray-900/60 border-gray-850 text-gray-500 font-medium cursor-not-allowed hover:bg-gray-900/60 hover:text-gray-500"
-                          disabled
-                          title="Offline built-in presets cannot be edited directly."
+                          className="flex-1 bg-violet-950/30 hover:bg-violet-900/50 border-violet-800/40 text-violet-300 font-medium transition-colors"
+                          onClick={() => handleEdit(preset)}
+                          title="Customize this built-in preset in the editor and save it as a database preset"
                         >
-                          <Edit className="w-4 h-4 mr-2 text-gray-600" />
-                          Edit Disabled (Offline)
+                          <Edit className="w-4 h-4 mr-2 text-violet-400" />
+                          Clone & Customize
                         </Button>
                       ) : (
                         <Button

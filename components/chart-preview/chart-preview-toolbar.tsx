@@ -195,7 +195,10 @@ const PublishStyleButton = memo(() => {
                         if (newDbId && isBuiltInPreset) {
                             store.setEditPresetId(newDbId);
                             store.setIsBuiltInPreset(false);
+                            window.history.replaceState(null, '', `/editor?editPresetId=${newDbId}`);
                         }
+                        // Invalidate cache to reflect changes immediately
+                        store.invalidateCache().catch(console.error);
                         // Optionally fetch updated metadata to update store
                         const idToFetch = newDbId || editPresetId;
                         dataService.getChartStylePreset(idToFetch).then((res) => {
@@ -208,7 +211,7 @@ const PublishStyleButton = memo(() => {
                                     isOfficial: res.data.is_official || false,
                                 });
                             }
-                        });
+                        }).catch(console.error);
                     }}
                 />
             </>

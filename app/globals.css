@@ -51,6 +51,10 @@ body {
     0% { transform: translate(-50%, -10px) scale(0.98); opacity: 0; }
     100% { transform: translate(-50%, 0) scale(1); opacity: 1; }
   }
+  @keyframes progress-shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(250%); }
+  }
   .animate-float-slow { animation: float-slow 8s ease-in-out infinite; }
   .animate-float-medium { animation: float-medium 6s ease-in-out infinite; }
   .animate-float-fast { animation: float-fast 4s ease-in-out infinite; }
@@ -61,6 +65,7 @@ body {
   .animate-pulse-border { animation: pulse-border 3s ease-in-out infinite; }
   .animate-dash-flow { animation: dash-flow 1s linear infinite; }
   .animate-pop-in { animation: pop-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  .animate-progress-shimmer { animation: progress-shimmer 1.8s ease-in-out infinite; }
 
   /* Hide scrollbar across all browsers */
   .no-scrollbar::-webkit-scrollbar {

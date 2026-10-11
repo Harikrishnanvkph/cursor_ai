@@ -79,7 +79,8 @@ export function ChartAreaSkeleton() {
 
 /** Rich generation progress visual on main canvas during AI generation */
 export function GenerationProgressView() {
-  const [stepIndex, setStepIndex] = useState(0)
+  const [progress, setProgress] = useState(12)
+
   const steps = [
     "Analyzing your prompt and requirements...",
     "Extracting categories, series, and values...",
@@ -87,12 +88,27 @@ export function GenerationProgressView() {
     "Formatting styles, legends, and color palettes...",
   ]
 
+  // Dynamic realistic progression timer
   useEffect(() => {
     const timer = setInterval(() => {
-      setStepIndex((prev) => (prev + 1) % steps.length)
-    }, 2600)
+      setProgress((prev) => {
+        if (prev < 32) {
+          return prev + 1.6
+        } else if (prev < 64) {
+          return prev + 1.1
+        } else if (prev < 84) {
+          return prev + 0.6
+        } else if (prev < 96) {
+          return prev + 0.15
+        }
+        return prev
+      })
+    }, 140)
+
     return () => clearInterval(timer)
-  }, [steps.length])
+  }, [])
+
+  const stepIndex = progress < 30 ? 0 : progress < 60 ? 1 : progress < 85 ? 2 : 3
 
   return (
     <div className="flex flex-1 items-center justify-center h-full relative z-10 bg-transparent px-4">
@@ -109,12 +125,30 @@ export function GenerationProgressView() {
         <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-1">
           Generating Your Chart
         </h3>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mb-5 min-h-[32px] flex items-center justify-center transition-all">
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 min-h-[32px] flex items-center justify-center transition-all px-2">
           {steps[stepIndex]}
         </p>
 
-        <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden mb-6">
-          <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 h-full rounded-full w-3/4 animate-pulse" />
+        {/* Dynamic progressing bar with percentage & animated light beam */}
+        <div className="w-full mb-6">
+          <div className="flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500 font-medium mb-1.5 px-0.5">
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+              <span>Step {stepIndex + 1} of {steps.length}</span>
+            </span>
+            <span className="font-semibold text-slate-700 dark:text-slate-300 tabular-nums">
+              {Math.min(99, Math.round(progress))}%
+            </span>
+          </div>
+          <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden relative shadow-inner p-[1px]">
+            <div
+              className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 h-full rounded-full transition-all duration-300 ease-out relative overflow-hidden shadow-xs"
+              style={{ width: `${Math.min(99, progress)}%` }}
+            >
+              {/* Animated shimmer beam running across the bar */}
+              <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full animate-progress-shimmer" />
+            </div>
+          </div>
         </div>
 
         <Button

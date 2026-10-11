@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useRef, useCallback, useEffect } from "react"
-import { Send, MessageSquare, Edit3, Sparkles, X, Brain, BarChart2, LineChart, PieChart, ArrowRight, Square } from "lucide-react"
+import { Send, MessageSquare, Edit3, Sparkles, X, Brain, BarChart2, LineChart, PieChart, ArrowRight } from "lucide-react"
 import { useAuth } from "@/components/auth/AuthProvider"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useChatStore } from "@/lib/chat-store"
@@ -246,31 +246,18 @@ export function ChatWindow({
               ))}
             {isProcessing && (
               <div className="bg-slate-100/90 dark:bg-slate-900 text-slate-800 dark:text-slate-100 self-start mr-auto border border-slate-200/70 dark:border-slate-800 rounded-2xl px-4 py-3 w-[95%] shadow-xs">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow-2xs border border-slate-200/50 dark:border-slate-700/50 flex-shrink-0">
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-indigo-600 border-t-transparent"></div>
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 transition-all duration-300">
-                        {processingPhases[processingPhase]}
-                      </span>
-                      <span className="text-[11px] text-slate-400 font-normal">
-                        Step {processingPhase + 1} of {processingPhases.length}
-                      </span>
-                    </div>
+                <div className="flex items-center gap-3">
+                  <div className="p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow-2xs border border-slate-200/50 dark:border-slate-700/50 flex-shrink-0">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-indigo-600 border-t-transparent"></div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      useChatStore.getState().stopGeneration()
-                      toast.info("Generation cancelled")
-                    }}
-                    className="text-xs px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-colors font-medium flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Square className="w-3 h-3 fill-current text-red-500" />
-                    <span>Cancel</span>
-                  </button>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 transition-all duration-300">
+                      {processingPhases[processingPhase]}
+                    </span>
+                    <span className="text-[11px] text-slate-400 font-normal">
+                      Step {processingPhase + 1} of {processingPhases.length}
+                    </span>
+                  </div>
                 </div>
               </div>
             )}
