@@ -77,29 +77,63 @@ export const DatasetService = {
             }
         }
 
+        // Single Mode Logic: Set new dataset as active and update chart type & chart config
+        let newActiveDatasetIndex = currentState.activeDatasetIndex;
+        let finalChartConfig: any;
+        let incomingLabels: string[] | undefined;
+        
+        if (currentState.chartMode === 'single') {
+            const incomingChartType = (finalDataset.chartType || (finalDataset.type as SupportedChartType) || currentState.chartType || 'bar') as SupportedChartType;
+            finalDataset.chartType = incomingChartType;
+            newChartType = incomingChartType;
+
+            // Resolve isolated chartConfig for the new single dataset
+            if (finalDataset.chartConfig) {
+                finalChartConfig = JSON.parse(JSON.stringify(finalDataset.chartConfig));
+            } else {
+                const freshConfig = JSON.parse(JSON.stringify(getDefaultConfigForType(incomingChartType)));
+                const keysToPreserve = ['manualDimensions', 'dynamicDimension', 'responsive', 'width', 'height'];
+                keysToPreserve.forEach(key => {
+                    if (currentState.chartConfig && key in currentState.chartConfig) {
+                        freshConfig[key] = (currentState.chartConfig as any)[key];
+                    }
+                });
+                freshConfig.decorationShapes = [];
+                finalChartConfig = freshConfig;
+            }
+            finalDataset.chartConfig = finalChartConfig;
+
+            // Resolve isolated sliceLabels for the new single dataset
+            if (finalDataset.sliceLabels && finalDataset.sliceLabels.length > 0) {
+                incomingLabels = [...finalDataset.sliceLabels].map(String);
+            } else if (finalDataset.data && Array.isArray(finalDataset.data) && finalDataset.data.length > 0) {
+                incomingLabels = finalDataset.data.map((_: any, i: number) => `Label ${i + 1}`);
+            } else {
+                incomingLabels = ['Slice 1', 'Slice 2', 'Slice 3', 'Slice 4', 'Slice 5'];
+            }
+            finalDataset.sliceLabels = incomingLabels;
+
+            if (typeof window !== 'undefined') {
+                import('../chat-store').then(({ useChatStore }) => {
+                    useChatStore.getState().setBackendConversationId(finalDataset.sourceId || null);
+                }).catch(() => {});
+            }
+        }
+
         const newChartData = {
             ...currentState.chartData,
+            ...(incomingLabels ? { labels: incomingLabels } : {}),
             datasets: [...existingDatasets, finalDataset],
         };
+
+        if (currentState.chartMode === 'single') {
+            newActiveDatasetIndex = newChartData.datasets.length - 1;
+        }
 
         // Update the appropriate mode-specific storage
         const modeDataUpdate = currentState.chartMode === 'single'
             ? { singleModeData: newChartData }
             : { groupedModeData: newChartData };
-
-        // Single Mode Logic: Set new dataset as active and update chart type
-        let newActiveDatasetIndex = currentState.activeDatasetIndex;
-        let finalChartConfig;
-        
-        if (currentState.chartMode === 'single') {
-            newActiveDatasetIndex = newChartData.datasets.length - 1;
-            if (finalDataset.chartType) {
-                newChartType = finalDataset.chartType;
-            }
-            if (finalDataset.chartConfig) {
-                finalChartConfig = finalDataset.chartConfig;
-            }
-        }
 
         const stateUpdate: any = {
             chartType: newChartType,
@@ -166,12 +200,29 @@ export const DatasetService = {
             newActiveDatasetIndex = currentState.activeDatasetIndex - 1;
         }
 
-        return {
+        const stateUpdate: any = {
             chartData: newChartData,
             groups: updatedGroups,
             activeDatasetIndex: newActiveDatasetIndex,
             ...modeDataUpdate,
         };
+
+        if (currentState.chartMode === 'single' && newDatasets.length > 0) {
+            const nextActiveDs = newDatasets[newActiveDatasetIndex];
+            if (nextActiveDs) {
+                if (nextActiveDs.chartType) {
+                    stateUpdate.chartType = nextActiveDs.chartType;
+                }
+                if (nextActiveDs.chartConfig) {
+                    stateUpdate.chartConfig = JSON.parse(JSON.stringify(nextActiveDs.chartConfig));
+                }
+                if (nextActiveDs.sliceLabels && nextActiveDs.sliceLabels.length > 0) {
+                    newChartData.labels = [...nextActiveDs.sliceLabels];
+                }
+            }
+        }
+
+        return stateUpdate;
     },
 
     updateDataset: (

@@ -8,6 +8,7 @@ import {
     ChartMode
 } from '../chart-defaults';
 import { applyOpacityToColor } from '../utils/color-utils';
+import { isChartTypeCompatible } from '../chart-types';
 
 // Helper types for the service
 interface ChartTypeTransitionState {
@@ -108,6 +109,12 @@ export const ChartTypeService = {
         // Store the previous state for undo comparison (caller fits this into undo logic)
         // Only proceed if there's an actual change
         if (currentType === targetType) return null;
+
+        // Categorical charts and coordinate charts cannot be interchanged
+        if (!isChartTypeCompatible(targetType, currentType)) {
+            console.warn(`ChartTypeService: Cannot transition incompatible chart types ${currentType} -> ${targetType}`);
+            return null;
+        }
 
         const chartJsType = targetType === ('area' as CustomChartType) ? 'line' as const
             : targetType === ('pie3d' as CustomChartType) ? 'pie' as const
@@ -328,10 +335,17 @@ export const ChartTypeService = {
             }
         }
 
-        // Ensure correct scales
+        // Ensure correct scales and preserve user scale configuration
         const axisTypes = ['bar', 'line', 'scatter', 'bubble', 'horizontalBar'];
         const noScalesTypes = ['pie', 'doughnut'];
         const radialScaleTypes = ['radar', 'polarArea'];
+
+        const isHorizontalType = (t: string) =>
+            t === 'horizontalBar' || t === 'horizontalBar3d' || t === 'funnel';
+        const isOldHorizontal = isHorizontalType(currentType) || (currentState.chartConfig as any)?.indexAxis === 'y';
+        const isNewHorizontal = isHorizontalType(targetType) || (newConfig as any)?.indexAxis === 'y';
+
+        const oldScales = currentState.chartConfig?.scales;
 
         if (axisTypes.includes(chartJsType)) {
             if (!newConfig.scales || !newConfig.scales.x || !newConfig.scales.y) {
@@ -339,6 +353,63 @@ export const ChartTypeService = {
                     x: { display: true, ...((newConfig.scales && newConfig.scales.x) || {}) },
                     y: { display: true, ...((newConfig.scales && newConfig.scales.y) || {}) }
                 };
+            }
+
+            // Transfer and semantically reorient Cartesian scales from previous chart
+            if (oldScales && (oldScales.x || oldScales.y)) {
+                const oldCategoryAxis = isOldHorizontal ? oldScales.y : oldScales.x;
+                const oldValueAxis = isOldHorizontal ? oldScales.x : oldScales.y;
+                const targetCategoryKey = isNewHorizontal ? 'y' : 'x';
+                const targetValueKey = isNewHorizontal ? 'x' : 'y';
+
+                // Transfer Category Axis Title and display
+                if (oldCategoryAxis && newConfig.scales[targetCategoryKey]) {
+                    if (oldCategoryAxis.title) {
+                        newConfig.scales[targetCategoryKey].title = {
+                            ...(newConfig.scales[targetCategoryKey].title || {}),
+                            ...oldCategoryAxis.title,
+                        };
+                    }
+                    if (oldCategoryAxis.display !== undefined) {
+                        newConfig.scales[targetCategoryKey].display = oldCategoryAxis.display;
+                    }
+                }
+
+                // Transfer Value Axis Title, display, ticks numberFormat, threshold, zero lines
+                if (oldValueAxis && newConfig.scales[targetValueKey]) {
+                    if (oldValueAxis.title) {
+                        newConfig.scales[targetValueKey].title = {
+                            ...(newConfig.scales[targetValueKey].title || {}),
+                            ...oldValueAxis.title,
+                        };
+                    }
+                    if (oldValueAxis.display !== undefined) {
+                        newConfig.scales[targetValueKey].display = oldValueAxis.display;
+                    }
+                    if (oldValueAxis.ticks?.numberFormat) {
+                        newConfig.scales[targetValueKey].ticks = {
+                            ...(newConfig.scales[targetValueKey].ticks || {}),
+                            numberFormat: oldValueAxis.ticks.numberFormat,
+                        };
+                    }
+                    if (oldValueAxis.threshold !== undefined) {
+                        newConfig.scales[targetValueKey].threshold = oldValueAxis.threshold;
+                    }
+                    if (oldValueAxis.highlightZeroLine !== undefined) {
+                        newConfig.scales[targetValueKey].highlightZeroLine = oldValueAxis.highlightZeroLine;
+                    }
+                    if (oldValueAxis.zeroLineColor) {
+                        newConfig.scales[targetValueKey].zeroLineColor = oldValueAxis.zeroLineColor;
+                    }
+                }
+
+                // Transfer Secondary Axis y1 if present
+                if (oldScales.y1) {
+                    newConfig.scales.y1 = {
+                        ...(newConfig.scales.y1 || {}),
+                        ...oldScales.y1,
+                    };
+                }
             }
         } else if (noScalesTypes.includes(chartJsType)) {
             if (newConfig.scales) delete newConfig.scales;
@@ -349,6 +420,30 @@ export const ChartTypeService = {
                 if (newConfig.scales.y) delete newConfig.scales.y;
                 if (rScale) newConfig.scales = { r: rScale };
             }
+        }
+
+        // Radial <-> Cartesian transfer for numberFormat
+        if ((targetType === 'radar' || targetType === 'polarArea') && newConfig.scales?.r) {
+            const oldValueAxis = isOldHorizontal ? oldScales?.x : oldScales?.y;
+            if (oldValueAxis?.ticks?.numberFormat) {
+                newConfig.scales.r.ticks = {
+                    ...(newConfig.scales.r.ticks || {}),
+                    numberFormat: oldValueAxis.ticks.numberFormat,
+                };
+            }
+        } else if ((currentType === 'radar' || currentType === 'polarArea') && oldScales?.r?.ticks?.numberFormat) {
+            const targetValueKey = isNewHorizontal ? 'x' : 'y';
+            if (newConfig.scales?.[targetValueKey]) {
+                newConfig.scales[targetValueKey].ticks = {
+                    ...(newConfig.scales[targetValueKey].ticks || {}),
+                    numberFormat: oldScales.r.ticks.numberFormat,
+                };
+            }
+        }
+
+        // Root numberFormat
+        if (currentState.chartConfig?.numberFormat) {
+            newConfig.numberFormat = currentState.chartConfig.numberFormat;
         }
 
         if (shouldSwitchToUniform) {

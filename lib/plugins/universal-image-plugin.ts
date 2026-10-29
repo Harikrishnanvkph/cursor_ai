@@ -100,16 +100,155 @@ function calculateCalloutPosition(chart: any, datasetIndex: number, pointIndex: 
     return { calloutX, calloutY };
 }
 
+// Global image cache and active chart registry
+interface ImageCacheEntry {
+    img: HTMLImageElement;
+    status: 'loading' | 'loaded' | 'error';
+    retriedWithoutCors: boolean;
+    retriedRaw: boolean;
+}
+
+const globalImageCache = new Map<string, ImageCacheEntry>();
+const activeCharts = new Set<any>();
+let redrawScheduled = false;
+
+// Helper to safely trigger chart updates across all active charts
+function scheduleGlobalRedraw() {
+    if (redrawScheduled) return;
+    redrawScheduled = true;
+
+    const runRedraw = () => {
+        redrawScheduled = false;
+        activeCharts.forEach((chart) => {
+            if (!chart || chart.isDestroyed || !chart.ctx || !chart.canvas) {
+                activeCharts.delete(chart);
+                return;
+            }
+            safeChartUpdate(chart, 'none');
+        });
+    };
+
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(runRedraw);
+    } else {
+        setTimeout(runRedraw, 16);
+    }
+}
+
+// Retrieve or initiate loading for an image URL with synchronous resolution for cached images
+function getOrLoadImage(imageUrl: string): HTMLImageElement | null {
+    if (!imageUrl || typeof imageUrl !== 'string') return null;
+
+    let entry = globalImageCache.get(imageUrl);
+
+    if (entry) {
+        if (entry.status === 'loaded') {
+            return entry.img;
+        }
+
+        if (entry.status === 'loading') {
+            // Check if finished loading synchronously (e.g. browser cached)
+            if (entry.img.complete && entry.img.naturalWidth > 0) {
+                entry.status = 'loaded';
+                return entry.img;
+            }
+            return null;
+        }
+
+        // status === 'error'
+        return null;
+    }
+
+    const proxiedUrl = getProxiedImageUrl(imageUrl);
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+
+    const newEntry: ImageCacheEntry = {
+        img,
+        status: 'loading',
+        retriedWithoutCors: false,
+        retriedRaw: false,
+    };
+    globalImageCache.set(imageUrl, newEntry);
+
+    const onImageLoaded = () => {
+        newEntry.status = 'loaded';
+        scheduleGlobalRedraw();
+    };
+
+    const onImageError = () => {
+        // Step 1: Retry without crossOrigin (in case external host / proxy lacks CORS headers)
+        if (!newEntry.retriedWithoutCors) {
+            newEntry.retriedWithoutCors = true;
+            const noCorsImg = new Image();
+            newEntry.img = noCorsImg;
+
+            noCorsImg.onload = () => {
+                newEntry.status = 'loaded';
+                scheduleGlobalRedraw();
+            };
+
+            noCorsImg.onerror = () => {
+                // Step 2: Retry with raw original URL if proxiedUrl was different
+                if (!newEntry.retriedRaw && proxiedUrl !== imageUrl) {
+                    newEntry.retriedRaw = true;
+                    const rawImg = new Image();
+                    newEntry.img = rawImg;
+
+                    rawImg.onload = () => {
+                        newEntry.status = 'loaded';
+                        scheduleGlobalRedraw();
+                    };
+
+                    rawImg.onerror = () => {
+                        console.warn(`[UniversalImagePlugin] All attempts failed to load image at URL: ${imageUrl}`);
+                        newEntry.status = 'error';
+                        scheduleGlobalRedraw();
+                    };
+
+                    rawImg.src = imageUrl;
+
+                    if (rawImg.complete && rawImg.naturalWidth > 0) {
+                        newEntry.status = 'loaded';
+                        scheduleGlobalRedraw();
+                    }
+                } else {
+                    console.warn(`[UniversalImagePlugin] Failed to load image at URL: ${imageUrl}`);
+                    newEntry.status = 'error';
+                    scheduleGlobalRedraw();
+                }
+            };
+
+            noCorsImg.src = proxiedUrl;
+
+            if (noCorsImg.complete && noCorsImg.naturalWidth > 0) {
+                newEntry.status = 'loaded';
+                scheduleGlobalRedraw();
+            }
+        } else {
+            newEntry.status = 'error';
+            scheduleGlobalRedraw();
+        }
+    };
+
+    img.onload = onImageLoaded;
+    img.onerror = onImageError;
+    img.src = proxiedUrl;
+
+    // Synchronous completion check (browser cache already has this image!)
+    if (img.complete && img.naturalWidth > 0) {
+        newEntry.status = 'loaded';
+        return img;
+    }
+
+    return null;
+}
+
 export const universalImagePlugin = {
     id: "universalImages",
-    afterDraw: (chart: any) => {
+    afterDatasetsDraw: (chart: any) => {
+        activeCharts.add(chart);
         const ctx = chart.ctx
-        const chartArea = chart.chartArea
-
-        // Initialize cache map on chart instance if not present
-        if (!chart._imageMap) {
-            chart._imageMap = new Map();
-        }
 
         chart.data.datasets.forEach((dataset: any, datasetIndex: number) => {
             // Respect default Chart.js legend visibility for datasets
@@ -131,45 +270,9 @@ export const universalImagePlugin = {
 
                 if (imageUrl && element) {
                     const label = chart.data.labels?.[pointIndex] || "?";
-                    
-                    // Look up image in the local chart cache
-                    let cacheEntry = chart._imageMap.get(imageUrl);
+                    const imageSource = getOrLoadImage(imageUrl);
 
-                    if (!cacheEntry) {
-                        const img = new Image();
-                        img.crossOrigin = "anonymous";
-                        
-                        cacheEntry = { img, status: 'loading' };
-                        chart._imageMap.set(imageUrl, cacheEntry);
-
-                        img.onload = () => {
-                            cacheEntry.status = 'loaded';
-                            // Debounce chart updates to execute safely on the next frame (16ms) after the current draw cycle completes
-                            if (!chart._updateScheduled) {
-                                chart._updateScheduled = true;
-                                setTimeout(() => {
-                                    chart._updateScheduled = false;
-                                    safeChartUpdate(chart, 'none');
-                                }, 16);
-                            }
-                        };
-
-                        img.onerror = () => {
-                            console.warn(`[UniversalImagePlugin] Failed to load image at URL: ${imageUrl}. Rendering placeholder instead.`);
-                            cacheEntry.status = 'error';
-                            if (!chart._updateScheduled) {
-                                chart._updateScheduled = true;
-                                setTimeout(() => {
-                                    chart._updateScheduled = false;
-                                    safeChartUpdate(chart, 'none');
-                                }, 16);
-                            }
-                        };
-
-                        img.src = getProxiedImageUrl(imageUrl);
-                    }
-
-                    const renderWithImage = (imageSource: HTMLImageElement | null) => {
+                    const renderWithImage = (imgSrc: HTMLImageElement | null) => {
                         ctx.save()
                         const chartType = chart.config.type
                         const x = element.x
@@ -185,7 +288,7 @@ export const universalImagePlugin = {
                         if (chartType === "pie" || chartType === "doughnut" || chartType === "polarArea" || chartType === "pie3d" || chartType === "doughnut3d") {
                             if (isFillEnabled) {
                                 // Fill slice mode - ignore position setting
-                                renderSliceImage(ctx, element, imageSource, imageConfig, label)
+                                renderSliceImage(ctx, element, imgSrc, imageConfig, label)
                                 ctx.restore()
                                 return
                             }
@@ -193,9 +296,9 @@ export const universalImagePlugin = {
                             if (isFillEnabled) {
                                 // Fill bar mode - ignore position setting
                                 if (chart.config.options?.indexAxis === "y" || chartType === "horizontalBar" || chartType === "horizontalBar3d") {
-                                    renderBarImageHorizontal(ctx, element, imageSource, imageConfig, label)
+                                    renderBarImageHorizontal(ctx, element, imgSrc, imageConfig, label)
                                 } else {
-                                    renderBarImageVertical(ctx, element, imageSource, imageConfig, label)
+                                    renderBarImageVertical(ctx, element, imgSrc, imageConfig, label)
                                 }
                                 ctx.restore()
                                 return
@@ -204,18 +307,18 @@ export const universalImagePlugin = {
 
                         // Handle callout position for all chart types (only if fillSlice/fillBar is not enabled)
                         if (imageConfig.position === "callout") {
-                            renderCalloutImage(ctx, x, y, imageSource, imageConfig, datasetIndex, pointIndex, chart, label)
+                            renderCalloutImage(ctx, x, y, imgSrc, imageConfig, datasetIndex, pointIndex, chart, label)
                             ctx.restore()
                             return
                         }
 
                         if (chartType === "pie" || chartType === "doughnut" || chartType === "polarArea") {
-                            renderSliceImage(ctx, element, imageSource, imageConfig, label)
+                            renderSliceImage(ctx, element, imgSrc, imageConfig, label)
                         } else if (chartType === "bar" || chartType === "waterfall") {
                             if (chart.config.options?.indexAxis === "y") {
-                                renderBarImageHorizontal(ctx, element, imageSource, imageConfig, label)
+                                renderBarImageHorizontal(ctx, element, imgSrc, imageConfig, label)
                             } else {
-                                renderBarImageVertical(ctx, element, imageSource, imageConfig, label)
+                                renderBarImageVertical(ctx, element, imgSrc, imageConfig, label)
                             }
                         } else if (
                             chartType === "line" ||
@@ -223,26 +326,19 @@ export const universalImagePlugin = {
                             chartType === "bubble" ||
                             chartType === "radar"
                         ) {
-                            renderPointImage(ctx, element, imageSource, imageConfig, label)
+                            renderPointImage(ctx, element, imgSrc, imageConfig, label)
                         }
 
                         ctx.restore()
                     }
 
-                    // Render immediately based on cache status
-                    if (cacheEntry.status === 'loaded') {
-                        renderWithImage(cacheEntry.img);
-                    } else if (cacheEntry.status === 'error') {
-                        renderWithImage(null);
-                    } else {
-                        // Render initials placeholder while loading
-                        renderWithImage(null);
-                    }
+                    renderWithImage(imageSource);
                 }
             })
         })
     },
     afterInit: (chart: any) => {
+        activeCharts.add(chart);
         // Set up event listeners for dragging
         const canvas = chart.canvas
 
@@ -469,6 +565,7 @@ export const universalImagePlugin = {
         }
     },
     beforeDestroy: (chart: any) => {
+        activeCharts.delete(chart);
         // Clean up event listeners
         if (chart._imagePluginListeners) {
             const canvas = chart.canvas
@@ -477,6 +574,9 @@ export const universalImagePlugin = {
             })
             delete chart._imagePluginListeners
         }
+    },
+    afterDestroy: (chart: any) => {
+        activeCharts.delete(chart);
     },
 }
 

@@ -368,20 +368,21 @@ function ColorPickerButton({ currentColor, onColorChange }: { currentColor: stri
 }
 
 function FontPickerButton({ currentFont, onFontChange }: { currentFont: string; onFontChange: (f: string) => void }) {
-  const currentCleanFont = currentFont.split(',')[0].replace(/['"]/g, '').trim()
+  const matched = findFontByInput(currentFont)
+  const currentCleanFont = matched?.label || currentFont.split(',')[0].replace(/['"]/g, '').trim()
 
   return (
     <Popover>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="sm" className="h-8 px-2 rounded-lg text-slate-700 hover:bg-slate-100 text-xs font-medium max-w-[96px] truncate shrink-0" title="Font family">
           <Type className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
-          <span className="truncate">{currentCleanFont || 'Font'}</span>
+          <span className="truncate" style={{ fontFamily: matched?.value }}>{currentCleanFont || 'Font'}</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-48 p-1.5 shadow-xl rounded-xl" side="bottom" align="start">
+      <PopoverContent className="w-48 p-1.5 shadow-xl rounded-xl z-[150]" side="bottom" align="start">
         <div className="max-h-52 overflow-y-auto">
           {FONT_OPTIONS.map(f => {
-            const isSelected = currentFont === f.value || currentCleanFont.toLowerCase() === f.label.toLowerCase()
+            const isSelected = matched?.id === f.id || currentFont === f.value
             return (
               <button
                 key={f.id}

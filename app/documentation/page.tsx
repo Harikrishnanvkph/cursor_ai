@@ -1447,8 +1447,7 @@ const guideData = [
           <ul className="list-disc pl-6 space-y-2 mt-3 text-slate-700">
             <li><strong>Responsive Fit:</strong> Auto-scales the SVG coordinate grid to the parent HTML element boundary, perfect for dashboard placements.</li>
             <li><strong>Fixed Dimensions:</strong> Lock exact height and width variables. Supports multiple unit presets: **Pixels (px)**, **Millimeters (mm)**, or **Centimeters (cm)** for high-fidelity print exports.</li>
-            <li><strong>Interactive Resizing:</strong> Enable drag-to-resize handles on the chart canvas staging area for responsive dragging tests.</li>
-            <li><strong>Padding Margins:</strong> Adjust sliders for Top, Bottom, Left, and Right padding grids to prevent ticks or axes labels from clipping.</li>
+            <li><strong>Padding Units & Margins:</strong> Configure Top, Right, Bottom, and Left padding in px, mm, or cm to control chart margins and prevent label clipping.</li>
           </ul>
         </section>
       </div>

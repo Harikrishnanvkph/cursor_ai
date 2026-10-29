@@ -258,6 +258,7 @@ export const exportTemplateAsHTML = async (
     <title>${template.name}</title>
     ${googleFontLinks}
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
     
     <!-- Custom Plugins -->
     <script>

@@ -7,9 +7,15 @@ import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { BarChart3, Link2, Link2Off } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { BarChart3, BarChart2, Link2, Link2Off, ArrowRight, SlidersHorizontal, Sparkles } from "lucide-react"
+import { toast } from "sonner"
 
-export function TemplateChartZonePanel() {
+interface TemplateChartZonePanelProps {
+  onTabChange?: (tab: string) => void
+}
+
+export function TemplateChartZonePanel({ onTabChange }: TemplateChartZonePanelProps = {}) {
   const { currentTemplate } = useTemplateStore()
   const { selectedFormatId, formats, selectedFormatSnapshot } = useFormatGalleryStore()
   const chartStore = useChartStore()
@@ -107,6 +113,19 @@ export function TemplateChartZonePanel() {
 
   const hasPadding = paddingTop > 0 || paddingRight > 0 || paddingBottom > 0 || paddingLeft > 0
 
+  const handleGoToChartEditor = (targetTab: string = 'types_toggles') => {
+    const templateStore = useTemplateStore.getState()
+    templateStore.setEditorMode('chart')
+    templateStore.setGenerateMode('chart')
+
+    if (onTabChange) {
+      onTabChange(targetTab)
+    }
+
+    window.dispatchEvent(new CustomEvent('changeActiveTab', { detail: { tab: targetTab } }))
+    toast.success("Switched to Chart Editor")
+  }
+
   return (
     <div className="space-y-5">
       <div>
@@ -160,6 +179,73 @@ export function TemplateChartZonePanel() {
           <p className="text-center text-[10px] text-gray-400 mt-2">
             {canvasWidth} × {canvasHeight}px canvas · Chart zone {pctW}% × {pctH}%
           </p>
+        </div>
+
+        {/* ── Switch to Chart Editor Callout Card ── */}
+        <div className="mb-4 rounded-xl border border-indigo-150/90 bg-gradient-to-br from-indigo-50/70 via-blue-50/40 to-slate-50 p-3 shadow-2xs">
+          <div className="flex items-start gap-2.5">
+            <div className="p-2 rounded-lg bg-indigo-100/70 text-indigo-700 shrink-0 mt-0.5">
+              <BarChart2 className="h-4 w-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-1 mb-1">
+                <h4 className="text-xs font-semibold text-slate-900">
+                  Edit Chart in Detail
+                </h4>
+                <span className="text-[10px] font-medium text-indigo-700 bg-indigo-100/60 px-1.5 py-0.5 rounded-full shrink-0">
+                  Chart Mode
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-600 leading-relaxed mb-3">
+                Switch to Chart Editor to change chart types, configure data series, colors, scales, labels, and customize styling.
+              </p>
+              
+              <Button
+                type="button"
+                onClick={() => handleGoToChartEditor('types_toggles')}
+                className="w-full h-8 px-3 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs rounded-lg flex items-center justify-between transition-all cursor-pointer active:scale-[0.99]"
+              >
+                <span className="flex items-center gap-1.5">
+                  <SlidersHorizontal className="h-3.5 w-3.5" />
+                  <span>Go to Chart Editor</span>
+                </span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+
+              {/* Quick jump shortcuts */}
+              <div className="mt-2.5 pt-2 border-t border-indigo-100/60 flex items-center justify-between gap-1">
+                <span className="text-[10px] text-slate-500 font-medium">Quick jump:</span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleGoToChartEditor('styling')}
+                    className="text-[10px] font-medium text-indigo-700 hover:text-indigo-900 hover:bg-indigo-100/60 px-1.5 py-0.5 rounded transition-colors cursor-pointer"
+                    title="Jump to Appearance & Colors"
+                  >
+                    Appearance
+                  </button>
+                  <span className="text-slate-300 text-[10px]">·</span>
+                  <button
+                    type="button"
+                    onClick={() => handleGoToChartEditor('datasets_slices')}
+                    className="text-[10px] font-medium text-indigo-700 hover:text-indigo-900 hover:bg-indigo-100/60 px-1.5 py-0.5 rounded transition-colors cursor-pointer"
+                    title="Jump to Datasets & Slices"
+                  >
+                    Datasets
+                  </button>
+                  <span className="text-slate-300 text-[10px]">·</span>
+                  <button
+                    type="button"
+                    onClick={() => handleGoToChartEditor('axes')}
+                    className="text-[10px] font-medium text-indigo-700 hover:text-indigo-900 hover:bg-indigo-100/60 px-1.5 py-0.5 rounded transition-colors cursor-pointer"
+                    title="Jump to Scales & Axes"
+                  >
+                    Scales
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
 

@@ -31,18 +31,18 @@ import {
 type DataPoint = number | { x: number; y: number } | null
 
 export function DatasetPanel() {
-  const { chartData, chartType } = useChartStore()
+  const { chartData, chartType, chartMode } = useChartStore()
   const { addDataset, removeDataset, updateDataset, updateDataPoint, updatePointImage, setChartType } = useChartActions()
   const [newDatasetName, setNewDatasetName] = useState("")
 
   const handleAddDataset = () => {
     if (newDatasetName.trim()) {
       const colors = generateColorPalette(5)
-      // Use existing chart labels if available, otherwise use default labels
+      // Use default labels for new single dataset, or shared chart labels in grouped mode
       const defaultLabels = ['Label 1', 'Label 2', 'Label 3', 'Label 4', 'Label 5']
-      const sliceLabels = chartData.labels && chartData.labels.length > 0
-        ? chartData.labels
-        : defaultLabels
+      const sliceLabels = chartMode === 'single'
+        ? defaultLabels
+        : (chartData.labels && chartData.labels.length > 0 ? chartData.labels : defaultLabels)
 
       const newDataset: ExtendedChartDataset = {
         label: newDatasetName,

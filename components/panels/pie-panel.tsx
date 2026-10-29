@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FontWeightSelect } from "@/components/ui/font-family-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Added import for Tabs components
 import { PieChartIcon } from "lucide-react";
 
@@ -122,22 +123,13 @@ export function PiePanel({ className }: PiePanelProps) {
                         onChange={(e) => handleFontUpdate("size", parseInt(e.target.value, 10))}
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="labelFontWeight">Font Weight</Label>
-                      <Select
+                    <div className="space-y-1">
+                      <Label htmlFor="labelFontWeight" className="text-xs font-medium">Font Weight</Label>
+                      <FontWeightSelect
+                        id="labelFontWeight"
                         value={(dataLabelsConfig?.font as any)?.weight || "bold"}
                         onValueChange={(value) => handleFontUpdate("weight", value)}
-                      >
-                        <SelectTrigger id="labelFontWeight">
-                          <SelectValue placeholder="Select weight" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="normal">Normal</SelectItem>
-                          <SelectItem value="bold">Bold</SelectItem>
-                          <SelectItem value="lighter">Lighter</SelectItem>
-                          <SelectItem value="bolder">Bolder</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      />
                     </div>
                     <div className="flex items-center space-x-2">
                       <Switch

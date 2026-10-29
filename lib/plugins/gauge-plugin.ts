@@ -37,6 +37,51 @@ export interface GaugePluginOptions {
   sliceLabelColor: string
   sliceLabelFontSize: number
   sliceLabelContent: 'value' | 'label' | 'percentage' | 'label+value'
+  numberFormat?: any
+}
+
+function formatGaugeNumber(val: number, formatConfig: any): string {
+  if (!formatConfig || typeof formatConfig !== 'object') return val.toString();
+  const preset = formatConfig.preset || 'none';
+  const currencySymbol = formatConfig.currencySymbol || '$';
+  const currencyPosition = formatConfig.currencyPosition || 'prefix';
+  const decimals = formatConfig.decimals;
+  const compact = Boolean(formatConfig.compact) || preset === 'compact';
+  const useGrouping = formatConfig.useGrouping !== false;
+
+  if (preset === 'none' && !compact && (decimals === undefined || decimals === 'auto')) {
+    return val.toString();
+  }
+
+  let formatted = '';
+  const fracDigits = (decimals !== undefined && decimals !== 'auto') ? Number(decimals) : (val % 1 === 0 ? 0 : 2);
+
+  try {
+    const opts: Intl.NumberFormatOptions = {
+      useGrouping,
+      maximumFractionDigits: fracDigits,
+      minimumFractionDigits: (decimals !== undefined && decimals !== 'auto') ? fracDigits : 0,
+    };
+    if (compact) {
+      opts.notation = 'compact';
+      opts.compactDisplay = 'short';
+    }
+    formatted = new Intl.NumberFormat('en-US', opts).format(val);
+  } catch {
+    formatted = val.toString();
+  }
+
+  if (preset === 'currency') {
+    if (currencyPosition === 'prefix') {
+      formatted = `${currencySymbol}${formatted}`;
+    } else {
+      formatted = `${formatted} ${currencySymbol}`;
+    }
+  } else if (preset === 'percent') {
+    formatted = `${formatted}%`;
+  }
+
+  return formatted;
 }
 
 export const gaugePlugin: Plugin = {
@@ -196,19 +241,24 @@ export const gaugePlugin: Plugin = {
 
         let labelText = '';
         const chartLabel = chart.data.labels?.[i];
+        const gaugeNumFormat = pluginOptions.numberFormat || (chart.options as any)?.numberFormat;
+        const formatSliceVal = (val: any) => {
+          const num = Number(val);
+          return (gaugeNumFormat && !isNaN(num)) ? formatGaugeNumber(num, gaugeNumFormat) : String(val);
+        };
         switch (sliceLabelContent) {
           case 'label':
-            labelText = chartLabel ? String(chartLabel) : String(rawSliceValue);
+            labelText = chartLabel ? String(chartLabel) : formatSliceVal(rawSliceValue);
             break;
           case 'percentage':
             labelText = `${Math.round(sliceRatio * 100)}%`;
             break;
           case 'label+value':
-            labelText = chartLabel ? `${chartLabel}: ${rawSliceValue}` : String(rawSliceValue);
+            labelText = chartLabel ? `${chartLabel}: ${formatSliceVal(rawSliceValue)}` : formatSliceVal(rawSliceValue);
             break;
           case 'value':
           default:
-            labelText = String(rawSliceValue);
+            labelText = formatSliceVal(rawSliceValue);
             break;
         }
 
@@ -319,6 +369,7 @@ export const gaugePlugin: Plugin = {
     // ── 3. Draw value text ─────────────────────────────────
     if (showValue) {
       const valuePosition = pluginOptions.valuePosition || 'bottom';
+      const gaugeNumFormat = pluginOptions.numberFormat || (chart.options as any)?.numberFormat;
 
       // Determine what to display
       let gaugeValueText: string;
@@ -342,7 +393,11 @@ export const gaugePlugin: Plugin = {
         const displayNum = (manualNeedleValue !== undefined && manualNeedleValue !== null && manualNeedleValue !== '')
           ? needleDisplayValue
           : rawCurrentValue;
-        gaugeValueText = `${valuePrefix}${displayNum}${valueSuffix}`;
+        const numToFormat = Number(displayNum);
+        const formattedDisplay = (gaugeNumFormat && !isNaN(numToFormat))
+          ? formatGaugeNumber(numToFormat, gaugeNumFormat)
+          : String(displayNum);
+        gaugeValueText = `${valuePrefix}${formattedDisplay}${valueSuffix}`;
       }
 
       ctx.font = `${valueFontWeight} ${valueFontSize}px ${valueFontFamily}`;

@@ -771,14 +771,13 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
     const getCurrentFontFamily = useCallback(() => {
         if (!editor) return ''
         const attrs = editor.getAttributes('textStyle')
-        if (attrs.fontFamily) return attrs.fontFamily
+        if (attrs.fontFamily) {
+            const match = findFontByInput(attrs.fontFamily)
+            return match ? match.value : attrs.fontFamily
+        }
         // Fallback to contentStyle font family if no inline mark
         if (contentStyle?.fontFamily) {
-            // Try to match the contentStyle fontFamily to one of our EDITOR_FONT_FAMILIES values
-            const match = EDITOR_FONT_FAMILIES.find(f => 
-                f.value === contentStyle.fontFamily || 
-                contentStyle.fontFamily?.startsWith(f.label)
-            )
+            const match = findFontByInput(contentStyle.fontFamily)
             if (match) return match.value
             return contentStyle.fontFamily
         }
@@ -944,7 +943,7 @@ export function TiptapEditor({ initialHtml, onChange, className = '', contentSty
                         }
                     }}
                 >
-                    <SelectTrigger className="h-8 w-32 text-xs">
+                    <SelectTrigger className="h-8 w-32 text-xs" style={{ fontFamily: getCurrentFontFamily() && getCurrentFontFamily() !== 'default' ? getCurrentFontFamily() : undefined }}>
                         <SelectValue placeholder="Font" />
                     </SelectTrigger>
                     <SelectContent className="max-h-64">

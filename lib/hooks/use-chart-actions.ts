@@ -6,6 +6,8 @@ import { ChartTransformService } from '../services/chart-transform-service'
 import { GroupService } from '../services/group-service'
 import { ChartStateService } from "@/lib/services/chart-state-service"
 import type { ExtendedChartDataset, SupportedChartType } from "@/lib/chart-defaults"
+import { toast } from "sonner"
+import { isChartTypeCompatible, getChartIncompatibilityReason } from "@/lib/chart-types"
 
 export const useChartActions = () => {
     // Get setters from the store
@@ -119,6 +121,11 @@ export const useChartActions = () => {
     const setChartType = (type: SupportedChartType) => {
         const currentState = useChartStore.getState()
         if (currentState.chartType === type) return
+
+        if (!isChartTypeCompatible(type, currentState.chartType)) {
+            toast.error(getChartIncompatibilityReason(type, currentState.chartType))
+            return
+        }
 
         // Use service to calculate new state
         const newState = ChartTypeService.applyChartTypeChange(

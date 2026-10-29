@@ -303,15 +303,50 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
         chartType
     );
 
-    const csvContent = [
-      ["Label", ...exportData.datasets.map((d: any) => d.label)],
-      ...(exportData.labels?.map((label: string, index: number) => [label, ...exportData.datasets.map((d: any) => d.data[index] || "")]) ||
-        []),
-    ]
-      .map((row) => row.join(","))
-      .join("\n")
+    const formatCsvCell = (val: any): string => {
+        if (val === undefined || val === null) return "";
+        if (typeof val === "object") {
+            if ("x" in val && "y" in val) {
+                const str = "r" in val ? `x: ${val.x}, y: ${val.y}, r: ${val.r}` : `x: ${val.x}, y: ${val.y}`;
+                return `"${str.replace(/"/g, '""')}"`;
+            }
+            return `"${JSON.stringify(val).replace(/"/g, '""')}"`;
+        }
+        const str = String(val);
+        if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+            return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+    };
 
-    const blob = new Blob([csvContent], { type: "text/csv" })
+    const datasets = exportData.datasets || [];
+    const rowCount = Math.max(
+        exportData.labels?.length || 0,
+        ...datasets.map((d: any) => (Array.isArray(d.data) ? d.data.length : 0))
+    );
+
+    const headers = [
+        "Label",
+        ...datasets.map((d: any) => {
+            const yAxisSuffix = d.yAxisID === "y1" ? " (Right Y)" : "";
+            const name = `${d.label || "Dataset"}${yAxisSuffix}`;
+            return formatCsvCell(name);
+        }),
+    ];
+
+    const rows: string[] = [];
+    for (let i = 0; i < rowCount; i++) {
+        const rowLabel = exportData.labels?.[i] || datasets[0]?.sliceLabels?.[i] || `Point ${i + 1}`;
+        const row = [
+            formatCsvCell(rowLabel),
+            ...datasets.map((d: any) => formatCsvCell(d.data?.[i])),
+        ];
+        rows.push(row.join(","));
+    }
+
+    const csvContent = [headers.join(","), ...rows].join("\n");
+
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.href = url

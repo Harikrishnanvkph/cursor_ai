@@ -261,6 +261,7 @@ export function ImagesTab({
                                 <img
                                     src={getProxiedImageUrl(hasImage)}
                                     alt="Preview"
+                                    crossOrigin="anonymous"
                                     className="w-full h-full object-cover z-10 relative"
                                 />
                                 <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-0" style={{ display: 'none' }}>
@@ -604,6 +605,7 @@ export function ImagesTab({
                                                 <img
                                                     src={getProxiedImageUrl(hasImage)}
                                                     alt={`Preview ${pointIndex + 1}`}
+                                                    crossOrigin="anonymous"
                                                     className="w-full h-full object-cover z-10 relative"
                                                 />
                                                 <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-0" style={{ display: 'none' }}>

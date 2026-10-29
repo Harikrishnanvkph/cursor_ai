@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
+import { FontFamilySelect } from "@/components/ui/font-family-select"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -289,16 +290,12 @@ function ShapeListItem({ shape, isSelected, onSelect, onUpdate, onRemove, onDupl
                   </Button>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
+                  <div className="space-y-1">
                     <Label className="text-[10px] text-slate-500">Font Family</Label>
-                    <Select value={shape.fontFamily || 'Arial'} onValueChange={v => onUpdate({ fontFamily: v })}>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {['Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Courier New', 'Inter', 'Roboto', 'Verdana'].map(f =>
-                          <SelectItem key={f} value={f} className="text-xs">{f}</SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
+                    <FontFamilySelect
+                      value={shape.fontFamily || 'Arial'}
+                      onValueChange={v => onUpdate({ fontFamily: v })}
+                    />
                   </div>
                   {shape.type === 'textbox' && (
                     <div>

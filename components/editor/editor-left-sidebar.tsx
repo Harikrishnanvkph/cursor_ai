@@ -7,6 +7,7 @@ import { useEditorSidebarContext } from "./editor-sidebar-context"
 import { Sidebar, CHART_TABS, TEMPLATE_TABS, getVisibleTemplateTabs } from "@/components/sidebar"
 import { useTemplateStore } from "@/lib/template-store"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
+import { cn } from "@/lib/utils"
 import {
   ChevronRight,
   ChevronLeft,
@@ -19,7 +20,8 @@ import {
   BarChart2,
   PanelLeft,
   ExternalLink,
-  Edit3
+  Edit3,
+  History
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -31,7 +33,14 @@ import {
 
 export function EditorLeftSidebar() {
   const router = useRouter()
-  const { activeTab, setActiveTab, leftSidebarCollapsed, setLeftSidebarCollapsed } = useEditorSidebarContext()
+  const {
+    activeTab,
+    setActiveTab,
+    leftSidebarCollapsed,
+    setLeftSidebarCollapsed,
+    sidebarView,
+    setSidebarView
+  } = useEditorSidebarContext()
 
   const { editorMode } = useTemplateStore()
   const { selectedFormatId } = useFormatGalleryStore()
@@ -152,12 +161,33 @@ export function EditorLeftSidebar() {
 
           {/* Config Tabs Icons — natural height, scrollable only if screen is very short */}
           <div className="flex flex-col items-center space-y-1 w-full overflow-y-auto overflow-x-hidden no-scrollbar">
+            {/* Recents / History Icon */}
+            <button
+              onClick={() => {
+                setSidebarView('recents')
+                setLeftSidebarCollapsed(false)
+              }}
+              className={cn(
+                "p-2 rounded-lg flex items-center justify-center w-10 h-10 transition-all duration-200",
+                sidebarView === 'recents'
+                  ? "bg-slate-100 text-slate-800 shadow-sm border border-slate-200"
+                  : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+              )}
+              title="Recents"
+            >
+              <History className="w-4 h-4" />
+            </button>
+
+            <div className="w-6 h-px bg-gray-200 my-1" />
+
             {TABS.map((tab) => {
               const Icon = tab.icon
+              const isTabActive = sidebarView === 'tools' && activeTab === tab.id
               return (
                 <button
                   key={tab.id}
                   onClick={() => {
+                    setSidebarView('tools')
                     if (tab.id === 'templates') {
                       const templateStore = useTemplateStore.getState()
                       if (!templateStore.currentTemplate) {
@@ -171,7 +201,7 @@ export function EditorLeftSidebar() {
                     // Do NOT expand the sidebar here — expanding should only happen
                     // via the logo/expand button or clicking the empty sidebar area.
                   }}
-                  className={`p-2 rounded-lg flex items-center justify-center w-10 h-10 transition-all duration-200 ${activeTab === tab.id
+                  className={`p-2 rounded-lg flex items-center justify-center w-10 h-10 transition-all duration-200 ${isTabActive
                     ? "bg-blue-50 text-blue-700 shadow-sm border border-blue-100"
                     : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
                     }`}

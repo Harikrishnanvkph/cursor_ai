@@ -1,4 +1,5 @@
 import { getProxiedImageUrl, requiresProxy } from "./image-proxy-utils";
+import { findFontByInput } from "@/lib/typography-registry";
 
 /**
  * Fetches an image URL and converts it to a Base64 Data URI.
@@ -150,21 +151,33 @@ export function extractFontFamiliesFromHtml(html: string): string[] {
  * Generates Google Fonts stylesheet links for any custom fonts used in templates or text areas.
  */
 export function generateGoogleFontLinks(fontFamilies: (string | undefined)[]): string {
-    const customFonts = new Set<string>();
+    const fontsToLoad = new Map<string, number[]>();
 
     for (const family of fontFamilies) {
         if (!family) continue;
-        // Clean font name (remove quotes and fallbacks like 'Inter', sans-serif)
-        const primaryFont = family.split(',')[0].replace(/['"]/g, '').trim();
-        if (primaryFont && !SYSTEM_FONTS.has(primaryFont.toLowerCase())) {
-            customFonts.add(primaryFont);
+        const registryFont = findFontByInput(family);
+        if (registryFont) {
+            if (registryFont.isGoogleFont && registryFont.googleFontName) {
+                const weights = registryFont.weights || [400, 500, 600, 700];
+                fontsToLoad.set(registryFont.googleFontName, weights);
+            }
+        } else {
+            // Fallback for custom or unlisted font
+            const primaryFont = family.split(',')[0].replace(/['"]/g, '').trim();
+            if (primaryFont && !SYSTEM_FONTS.has(primaryFont.toLowerCase())) {
+                fontsToLoad.set(primaryFont, [400, 700]);
+            }
         }
     }
 
-    if (customFonts.size === 0) return '';
+    if (fontsToLoad.size === 0) return '';
 
-    const fontQuery = Array.from(customFonts)
-        .map(font => `family=${encodeURIComponent(font)}:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,700`)
+    const fontQuery = Array.from(fontsToLoad.entries())
+        .map(([fontName, weights]) => {
+            const encoded = encodeURIComponent(fontName).replace(/%20/g, '+');
+            const weightsStr = weights.join(';');
+            return `family=${encoded}:wght@${weightsStr}`;
+        })
         .join('&');
 
     return `<link rel="preconnect" href="https://fonts.googleapis.com">

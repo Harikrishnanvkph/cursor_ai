@@ -60,7 +60,6 @@ ChartJS.register(
   RadarController,
   Title,
   SubTitle,
-  Tooltip,
   Legend,
   RadialLinearScale,
   Filler,
@@ -77,7 +76,8 @@ ChartJS.register(
   watermarkPlugin,
   gaugePlugin,
   funnelPlugin,
-  waterfallPlugin
+  waterfallPlugin,
+  Tooltip
 )
 
 // Chart.js registration completed

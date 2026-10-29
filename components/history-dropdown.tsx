@@ -7,7 +7,21 @@ import { useChatStore } from "@/lib/chat-store"
 import { useChartStore } from "@/lib/chart-store"
 import { useChartStyleStore } from "@/lib/stores/chart-style-store"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
-import { History, ChevronDown, ChevronUp, Trash2, X } from "lucide-react"
+import {
+  History,
+  ChevronDown,
+  ChevronUp,
+  Trash2,
+  X,
+  BarChart2,
+  Layers,
+  LayoutTemplate,
+  Maximize2,
+  Calendar,
+  CheckCircle2,
+  Folder
+} from "lucide-react"
+import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
@@ -25,6 +39,19 @@ const formatDimensions = (width?: string, height?: string) => {
     return "Responsive";
   }
   return `${cleanW} × ${cleanH} px`;
+};
+
+// Helper to format full date and time for hover cards
+const formatFullDateTime = (timestamp?: number) => {
+  if (!timestamp) return 'Unknown';
+  const date = new Date(timestamp);
+  return date.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 };
 
 interface HistoryDropdownProps {
@@ -166,10 +193,10 @@ export function HistoryDropdown({ variant = 'full', className, onConversationRes
               <Button
                 data-history-dropdown
                 aria-label="Open history"
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 className={cn(
-                  "p-0 border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800",
+                  "p-0 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border-0 shadow-none rounded-lg",
                   variant === 'compact' ? "h-8 w-8" : "",
                   className
                 )}
@@ -303,14 +330,14 @@ export function HistoryDropdown({ variant = 'full', className, onConversationRes
             <Button
               data-history-dropdown
               aria-label="Open history"
-              variant="outline"
+              variant="ghost"
               size="sm"
               className={cn(
-                "h-8 w-8 p-0 border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100",
+                "h-8 w-8 p-0 border-0 bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900 shadow-none rounded-lg",
                 className
               )}
             >
-              <History className="w-3 h-3" />
+              <History className="w-4 h-4" />
             </Button>
           </DropdownMenuTrigger>
 
@@ -428,103 +455,228 @@ export function HistoryDropdown({ variant = 'full', className, onConversationRes
     // Sidebar mode: inline rendering for mobile/tablet sidebars without a wrapping popover
     return (
       <div className="w-full h-full flex flex-col overflow-hidden">
-        <div className="pl-[18px] pr-3 py-2 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-2 text-slate-700">
-            <History className="w-4 h-4 text-slate-500" />
-            <span className="font-semibold text-sm">History</span>
-          </div>
-          <select
-            value={filterType}
-            onChange={(e: any) => setFilterType(e.target.value)}
-            className="text-xs border border-slate-200 rounded-md px-1.5 py-0.5 text-slate-600 bg-white hover:bg-slate-50 hover:border-slate-300 focus:outline-none transition-colors cursor-pointer"
-          >
-            <option value="All">All</option>
-            <option value="Single Chart">Single Chart</option>
-            <option value="Group Chart">Group Chart</option>
-            <option value="Template Chart">Template Chart</option>
-          </select>
+        <div className="px-3 py-2 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
+          <span className="text-xs font-semibold text-slate-600">Saved Charts</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-1.5 text-[11px] font-medium border border-slate-200/80 rounded-md px-2 py-1 text-slate-600 bg-white hover:bg-slate-50 hover:border-slate-300 focus:outline-none transition-colors cursor-pointer shadow-2xs"
+              >
+                {filterType === 'Single Chart' ? (
+                  <>
+                    <BarChart2 className="w-3 h-3 text-indigo-500 shrink-0" />
+                    <span>Single</span>
+                  </>
+                ) : filterType === 'Group Chart' ? (
+                  <>
+                    <Layers className="w-3 h-3 text-purple-500 shrink-0" />
+                    <span>Group</span>
+                  </>
+                ) : filterType === 'Template Chart' ? (
+                  <>
+                    <LayoutTemplate className="w-3 h-3 text-amber-500 shrink-0" />
+                    <span>Template</span>
+                  </>
+                ) : (
+                  <span>All types</span>
+                )}
+                <ChevronDown className="w-3 h-3 text-slate-400 shrink-0 ml-0.5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-36 p-1 bg-white border border-slate-200 shadow-lg rounded-xl z-[100]">
+              <DropdownMenuItem
+                onClick={() => setFilterType('All')}
+                className={cn(
+                  "flex items-center gap-2 px-2 py-1.5 text-xs rounded-lg cursor-pointer",
+                  filterType === 'All' ? "bg-slate-100 font-semibold text-slate-900" : "text-slate-700 hover:bg-slate-50"
+                )}
+              >
+                <span>All types</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setFilterType('Single Chart')}
+                className={cn(
+                  "flex items-center gap-2 px-2 py-1.5 text-xs rounded-lg cursor-pointer",
+                  filterType === 'Single Chart' ? "bg-indigo-50 font-semibold text-indigo-900" : "text-slate-700 hover:bg-slate-50"
+                )}
+              >
+                <BarChart2 className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                <span>Single</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setFilterType('Group Chart')}
+                className={cn(
+                  "flex items-center gap-2 px-2 py-1.5 text-xs rounded-lg cursor-pointer",
+                  filterType === 'Group Chart' ? "bg-purple-50 font-semibold text-purple-900" : "text-slate-700 hover:bg-slate-50"
+                )}
+              >
+                <Layers className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                <span>Group</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setFilterType('Template Chart')}
+                className={cn(
+                  "flex items-center gap-2 px-2 py-1.5 text-xs rounded-lg cursor-pointer",
+                  filterType === 'Template Chart' ? "bg-amber-50 font-semibold text-amber-900" : "text-slate-700 hover:bg-slate-50"
+                )}
+              >
+                <LayoutTemplate className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <span>Template</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {loading ? (
-          <div className="p-8 text-center text-gray-400">Loading history...</div>
+          <div className="p-8 text-center text-xs text-gray-400">Loading history...</div>
         ) : filteredConversations.length === 0 ? (
           <div className="p-8 text-center">
-            <div className="mx-auto w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center mb-3">
-              <History className="w-6 h-6 text-gray-400" />
+            <div className="mx-auto w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center mb-2">
+              <History className="w-5 h-5 text-gray-400" />
             </div>
-            <p className="text-sm font-medium text-gray-900 mb-1">No history yet</p>
-            <p className="text-xs text-gray-500">Your conversations will appear here.</p>
+            <p className="text-xs font-medium text-gray-900 mb-0.5">No charts yet</p>
+            <p className="text-[11px] text-gray-500">Saved charts will appear here.</p>
           </div>
         ) : (
           <div className="flex flex-col flex-1 min-h-0 bg-transparent">
-            <div className="flex-1 overflow-y-auto overflow-x-hidden py-1.5 space-y-1.5">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden py-1.5 space-y-0.5">
               {filteredConversations.map((conversation: Conversation) => {
                 const dimStr = formatDimensions(conversation.width, conversation.height);
                 const isActive = historyConversationId === conversation.id;
                 return (
-                  <div
-                    key={conversation.id}
-                    onClick={() => handleConversationClick(conversation.id)}
-                    className={cn(
-                      "flex items-center justify-between p-1.5 px-2.5 cursor-pointer rounded-lg border transition-all duration-200 group text-left mx-2 w-[calc(100%-16px)]",
-                      isActive
-                        ? "bg-blue-50/70 border-blue-200 shadow-xs"
-                        : "bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50/50 hover:shadow-xs"
-                    )}
-                  >
-                    <div className="flex-1 min-w-0 pr-2">
-                      <div className={cn(
-                        "font-semibold text-sm truncate mb-0.5",
-                        isActive ? "text-blue-900" : "text-slate-800"
-                      )}>
-                        {conversation.title}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-400">
-                        {conversation.is_template_mode ? (
-                          <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200/30 shrink-0">
-                            Template
-                          </span>
-                        ) : (
-                          <span className={cn(
-                            "px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border shrink-0",
-                            conversation.chart_mode === 'grouped'
-                              ? "bg-purple-50 text-purple-700 border-purple-200/30"
-                              : "bg-indigo-50 text-indigo-700 border-indigo-200/30"
-                          )}>
-                            {conversation.chart_mode === 'grouped' ? 'Grouped' : 'Single'}
-                          </span>
+                  <HoverCard key={conversation.id} openDelay={200} closeDelay={100}>
+                    <HoverCardTrigger asChild>
+                      <div
+                        onClick={() => handleConversationClick(conversation.id)}
+                        className={cn(
+                          "flex items-center justify-between px-2.5 py-2 cursor-pointer rounded-lg transition-all duration-150 group text-left mx-1.5 w-[calc(100%-12px)] relative select-none",
+                          isActive
+                            ? "bg-blue-50/90 text-blue-900 border border-blue-200/60 shadow-2xs"
+                            : "hover:bg-slate-100/80 text-slate-700 border border-transparent"
                         )}
-                        {dimStr && (
-                          <>
-                            <span className="w-1 h-1 rounded-full bg-slate-200"></span>
-                            <span className="font-medium text-slate-500">{dimStr}</span>
-                          </>
-                        )}
+                      >
+                        {/* Title on left */}
+                        <span
+                          className={cn(
+                            "text-xs truncate leading-normal flex-1 min-w-0 pr-1.5",
+                            isActive ? "text-blue-900 font-bold" : "text-slate-800 group-hover:text-slate-900 font-medium"
+                          )}
+                          title={conversation.title}
+                        >
+                          {conversation.title || "Untitled Chart"}
+                        </span>
+
+                        {/* Right end: Type tag + Delete Button */}
+                        <div className="flex items-center gap-1 shrink-0 ml-1">
+                          <span
+                            className={cn(
+                              "text-[10px] font-medium px-1.5 py-0.5 rounded border select-none transition-colors",
+                              conversation.is_template_mode
+                                ? "bg-amber-50 text-amber-700 border-amber-200/50"
+                                : conversation.chart_mode === 'grouped'
+                                ? "bg-purple-50 text-purple-700 border-purple-200/50"
+                                : "bg-indigo-50 text-indigo-700 border-indigo-200/50"
+                            )}
+                          >
+                            {conversation.is_template_mode
+                              ? 'Template'
+                              : conversation.chart_mode === 'grouped'
+                              ? 'Group'
+                              : 'Single'}
+                          </span>
+
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteClick(e, conversation.id);
+                            }}
+                            className="h-5 w-5 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 shrink-0 hidden group-hover:flex items-center justify-center rounded"
+                            title="Delete chart"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => handleDeleteClick(e, conversation.id)}
-                      className="h-6 w-6 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 shrink-0 opacity-100 transition-all rounded-md"
-                      title="Delete conversation"
+                    </HoverCardTrigger>
+
+                    <HoverCardContent
+                      side="right"
+                      align="start"
+                      sideOffset={8}
+                      className="w-64 p-3 bg-white/95 backdrop-blur-md shadow-xl border border-slate-200/90 rounded-xl z-[100]"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
+                      <div className="font-semibold text-xs text-slate-900 leading-snug break-words mb-2">
+                        {conversation.title || "Untitled Chart"}
+                      </div>
+
+                      <div className="space-y-1.5 pt-1.5 border-t border-slate-100 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-400 flex items-center gap-1.5 text-[11px]">
+                            <Folder className="w-3 h-3 text-slate-400" /> Type
+                          </span>
+                          <span className="font-medium text-[11px] text-slate-700">
+                            {conversation.is_template_mode
+                              ? "Template"
+                              : conversation.chart_mode === "grouped"
+                              ? "Grouped Chart"
+                              : "Single Chart"}
+                          </span>
+                        </div>
+
+                        {dimStr && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-400 flex items-center gap-1.5 text-[11px]">
+                              <Maximize2 className="w-3 h-3 text-slate-400" /> Dimensions
+                            </span>
+                            <span className="font-medium text-[11px] text-slate-700 font-mono">
+                              {dimStr}
+                            </span>
+                          </div>
+                        )}
+
+                        {conversation.timestamp && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-400 flex items-center gap-1.5 text-[11px]">
+                              <Calendar className="w-3 h-3 text-slate-400" /> Created
+                            </span>
+                            <span className="font-medium text-[11px] text-slate-700">
+                              {formatFullDateTime(conversation.timestamp)}
+                            </span>
+                          </div>
+                        )}
+
+                        {isActive && (
+                          <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+                            <span className="text-slate-400 flex items-center gap-1.5 text-[11px]">
+                              <CheckCircle2 className="w-3 h-3 text-blue-500" /> Status
+                            </span>
+                            <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+                              Currently Active
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </HoverCardContent>
+                  </HoverCard>
                 );
               })}
             </div>
 
-            <div className="p-2 border-t border-slate-100 bg-slate-50/30 flex-shrink-0">
-              <Button
-                variant="outline"
+            <div className="p-2 border-t border-slate-100 flex-shrink-0 flex items-center justify-between px-3">
+              <span className="text-[11px] text-slate-400 font-medium">
+                {filteredConversations.length} {filteredConversations.length === 1 ? 'chart' : 'charts'}
+              </span>
+              <button
+                type="button"
                 onClick={handleClearClick}
-                className="mx-2 w-[calc(100%-16px)] flex items-center justify-center gap-1.5 text-red-600 hover:bg-red-50 border-slate-200 hover:text-red-700 hover:border-red-200 h-8 rounded-lg transition-colors text-xs font-semibold"
+                className="text-[11px] font-medium text-slate-400 hover:text-red-600 transition-colors flex items-center gap-1 cursor-pointer py-1 px-1.5 rounded hover:bg-red-50"
               >
-                <Trash2 className="h-3.5 w-3.5" />
-                <span>Clear All History</span>
-              </Button>
+                <Trash2 className="w-3 h-3" />
+                <span>Clear all</span>
+              </button>
             </div>
           </div>
         )}

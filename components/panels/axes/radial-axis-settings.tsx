@@ -4,8 +4,10 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { FontFamilySelect, FontWeightSelect } from "@/components/ui/font-family-select"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
+import { NumberFormattingSection } from "./number-formatting-section"
 
 interface RadialAxisSettingsProps {
   config: any
@@ -250,6 +252,13 @@ export function RadialAxisSettings({ config, onUpdate, chartType, className }: R
         </div>
       </div>
 
+      {/* Number & Value Formatting Section */}
+      <NumberFormattingSection
+        value={config?.ticks?.numberFormat}
+        onChange={(newFmt) => updateConfig('ticks.numberFormat', newFmt)}
+        defaultOpen={false}
+      />
+
       {/* Scale Labels Section */}
       <div className="space-y-0">
         <div
@@ -356,22 +365,10 @@ export function RadialAxisSettings({ config, onUpdate, chartType, className }: R
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs font-medium">Font Family</Label>
-                  <Select
+                  <FontFamilySelect
                     value={config?.ticks?.font?.family || 'Arial'}
                     onValueChange={(value) => updateConfig('ticks.font.family', value)}
-                  >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Arial">Arial</SelectItem>
-                      <SelectItem value="Helvetica">Helvetica</SelectItem>
-                      <SelectItem value="Verdana">Verdana</SelectItem>
-                      <SelectItem value="Georgia">Georgia</SelectItem>
-                      <SelectItem value="Times New Roman">Times New Roman</SelectItem>
-                      <SelectItem value="Courier New">Courier New</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  />
                 </div>
               </div>
 
@@ -379,20 +376,10 @@ export function RadialAxisSettings({ config, onUpdate, chartType, className }: R
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs font-medium">Font Weight</Label>
-                  <Select
-                    value={config?.ticks?.font?.weight?.toString() || 'normal'}
+                  <FontWeightSelect
+                    value={config?.ticks?.font?.weight?.toString() || '400'}
                     onValueChange={(value) => updateConfig('ticks.font.weight', value)}
-                  >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="300">Light</SelectItem>
-                      <SelectItem value="normal">Normal</SelectItem>
-                      <SelectItem value="bold">Bold</SelectItem>
-                      <SelectItem value="800">Extra Bold</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs font-medium">Font Style</Label>

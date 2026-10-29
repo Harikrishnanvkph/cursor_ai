@@ -49,7 +49,6 @@ import { gaugePlugin } from "@/lib/plugins/gauge-plugin"
 import { funnelPlugin } from "@/lib/plugins/funnel-plugin"
 import { waterfallPlugin } from "@/lib/plugins/waterfall-plugin"
 import annotationPlugin from 'chartjs-plugin-annotation'
-import { ResizableChartArea } from "@/components/resizable-chart-area"
 
 import { parseDimension } from "@/lib/utils/dimension-utils"
 import { darkenColor, getHexFromColor } from "@/lib/utils/color-utils"
@@ -72,7 +71,6 @@ ChartJS.register(
   ArcElement,
   Title,
   SubTitle,
-  Tooltip,
   Legend,
   RadialLinearScale,
   BarController,
@@ -95,13 +93,14 @@ ChartJS.register(
   gaugePlugin,
   funnelPlugin,
   waterfallPlugin,
-  actualAnnotationPlugin
+  actualAnnotationPlugin,
+  Tooltip
 );
 
 // Plugin registration verified
 
 class ChartErrorBoundary extends React.Component<
-  { children: React.ReactNode; fallback?: React.ReactNode },
+  { children: React.ReactNode; fallback?: React.ReactNode; resetKey?: any },
   { hasError: boolean; error: Error | null }
 > {
   constructor(props: any) {
@@ -117,15 +116,32 @@ class ChartErrorBoundary extends React.Component<
     console.error("Chart Render Crash caught by ChartErrorBoundary:", error, errorInfo);
   }
 
+  componentDidUpdate(prevProps: any) {
+    if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
+      this.setState({ hasError: false, error: null });
+    }
+  }
+
+  handleRetry = () => {
+    this.setState({ hasError: false, error: null });
+  };
+
   render() {
     if (this.state.hasError) {
       return this.props.fallback || (
-        <div className="flex flex-col items-center justify-center h-full w-full p-4 text-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg">
+        <div className="flex flex-col items-center justify-center h-full w-full p-4 text-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg gap-2">
           <span className="text-xl mb-1">⚠️</span>
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Preview Error</span>
-          <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 max-w-[200px] truncate block" title={this.state.error?.message}>
+          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Preview Error</span>
+          <span className="text-[11px] text-slate-400 dark:text-slate-500 max-w-[260px] truncate block" title={this.state.error?.message}>
             {this.state.error?.message || "Unknown error"}
           </span>
+          <button
+            type="button"
+            onClick={this.handleRetry}
+            className="mt-2 px-3 py-1 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white rounded shadow-sm transition-colors cursor-pointer"
+          >
+            Retry Render
+          </button>
         </div>
       );
     }
@@ -472,7 +488,7 @@ export const ChartGenerator = memo(function ChartGenerator({
   const useFixedDimensions = !!(
     (responsiveWidth && responsiveHeight) || 
     (!isResponsive && !isInsideTemplateOrFormat) || 
-    ((chartConfig.manualDimensions || chartConfig.dynamicDimension) && !isInsideTemplateOrFormat)
+    (chartConfig.manualDimensions && !isInsideTemplateOrFormat)
   );
 
   const finalWidth = (responsiveWidth && responsiveHeight)
@@ -1903,7 +1919,7 @@ export const ChartGenerator = memo(function ChartGenerator({
       const suffix = typeof scale.ticks?.suffix === 'string' ? scale.ticks.suffix : '';
       const hasPrefixOrSuffix = Boolean(prefix || suffix);
       const originalCallback = scale.ticks?.callback;
-      const isValueAxis = (needsHorizontal ? axisKey === 'x' : (axisKey === 'y' || axisKey === 'y1')) || scale.type === 'linear' || scale.type === 'logarithmic';
+      const isValueAxis = (needsHorizontal ? axisKey === 'x' : (axisKey === 'y' || axisKey === 'y1' || axisKey === 'r')) || scale.type === 'linear' || scale.type === 'logarithmic' || scale.type === 'radialLinear';
 
       if (hasPrefixOrSuffix || isValueAxis) {
         scale.ticks = {
@@ -2305,284 +2321,7 @@ export const ChartGenerator = memo(function ChartGenerator({
             onMouseLeave={() => !readOnly && setHoveredDatasetIndex(null)}
             onContextMenu={(e) => !readOnly && handleNativeContextMenu(e.nativeEvent as MouseEvent)}
           >
-            {chartConfig.dynamicDimension ? (
-              <ResizableChartArea>
-                <ChartErrorBoundary>
-                  <Chart
-                  key={`${chartTypeForChart}-${useFixedDimensions ? 'fixed-zoom' : 'dynamic'}-${useFixedDimensions ? `${finalWidth}-${finalHeight}` : 'auto'}`}
-                  ref={chartRef}
-                  type={chartTypeForChart as any}
-                  data={chartDataForChart}
-                  {...chartPropsForZoom}
-                  {...((chartConfig.manualDimensions || chartConfig.dynamicDimension) && {
-                    'data-debug-width': chartConfig.width,
-                    'data-debug-height': chartConfig.height
-                  })}
-                  style={{
-                    maxWidth: '100%',
-                    maxHeight: '100%',
-                    display: 'block',
-                  }}
-                  options={{
-                    ...appliedOptions,
-                    devicePixelRatio: Math.max(1, Math.ceil(browserDpr * devicePixelRatioMultiplier)),
-                    circumference: chartType === 'gauge' ? (appliedOptions.circumference ?? 180) : appliedOptions.circumference,
-                    rotation: chartType === 'gauge' ? (appliedOptions.rotation ?? 270) : appliedOptions.rotation,
-                    responsive: responsiveOptionForZoom,
-                    maintainAspectRatio: false,
-                    ...(readOnly ? { resizeDelay: 0 } : {}),
-                    layout: {
-                      padding: (globalCustomLabelsConfig.anchor === 'callout') ? 60 : (appliedOptions.layout?.padding || 0)
-                    },
-                    hover: {
-                      intersect: appliedOptions.hover?.intersect ?? false,
-                      animationDuration: appliedOptions.hover?.animationDuration ?? 400,
-                    },
-                    interaction: {
-                      intersect: appliedOptions.interaction?.intersect ?? true,
-                      mode: appliedOptions.interaction?.mode ?? 'point',
-                    },
-                    onHover: (event: any, elements: any[]) => {
-                      // Guard: Chart.js can call onHover during init/re-renders.
-                      // Only update React state when the hovered dataset index actually changes.
-                      if (!appliedOptions.interaction?.mode) {
-                        setHoveredDatasetIndex((prev) => (prev === null ? prev : null));
-                        return
-                      }
-
-                      const next =
-                        chartMode === 'grouped' && elements && elements.length > 0
-                          ? elements[0].datasetIndex
-                          : null
-
-                      setHoveredDatasetIndex((prev) => (prev === next ? prev : next))
-                    },
-                    plugins: ({
-                      ...appliedOptions.plugins,
-                      zeroLineHighlight: zeroLineHighlightConfig,
-                      pie3d: (chartType === 'pie3d' || chartType === 'doughnut3d')
-                        ? { ...((appliedOptions.plugins as any)?.pie3d || {}), enabled: true }
-                        : (appliedOptions.plugins as any)?.pie3d,
-                      bar3d: (chartType === 'bar3d' || chartType === 'horizontalBar3d')
-                        ? { ...((appliedOptions.plugins as any)?.bar3d || {}), enabled: true }
-                        : (appliedOptions.plugins as any)?.bar3d,
-                      gauge: chartType === 'gauge'
-                        ? { ...((appliedOptions.plugins as any)?.gauge || {}), enabled: true, customLabelsConfig: globalCustomLabelsConfig }
-                        : { enabled: false },
-                      funnel: chartType === 'funnel'
-                        ? { ...((appliedOptions.plugins as any)?.funnel || {}), enabled: true }
-                        : { enabled: false },
-                      legendType: ((appliedOptions.plugins as any)?.legendType) || 'dataset',
-                      watermark: (appliedOptions as any)?.watermark,
-                      customLabels: { shapeSize: 32, labels: customLabels, display: globalCustomLabelsConfig.display === true },
-                      legend: {
-                        ...((appliedOptions.plugins as any)?.legend),
-                        display: ((appliedOptions.plugins as any)?.legend?.display !== false),
-                        onClick: (e: any, legendItem: any, legend: any) => {
-                          const currentLegendType = legend.options?.plugins?.legendType || (appliedOptions.plugins as any)?.legendType;
-                          if (currentLegendType === 'waterfall') {
-                            return; // Do nothing for waterfall legend items
-                          }
-                          const defaultClick = (ChartJS.defaults.plugins.legend as any)?.onClick;
-                          if (defaultClick) {
-                            defaultClick.call(legend, e, legendItem, legend);
-                          }
-                        },
-                        labels: {
-                          ...(((appliedOptions.plugins as any)?.legend)?.labels || {}),
-                          generateLabels: (chart: any) => {
-                            const legendType = (chart.config?.options?.plugins?.legendType) ||
-                              ((appliedOptions.plugins as any)?.legendType) ||
-                              (['pie', 'doughnut', 'polarArea', 'gauge', 'funnel', 'pie3d', 'doughnut3d'].includes(chartType) ? 'slice' : 'dataset');
-                            const usePointStyle = (appliedOptions.plugins?.legend as any)?.labels?.usePointStyle || false;
-                            const pointStyle = (appliedOptions.plugins?.legend as any)?.labels?.pointStyle || 'rect';
-                            const fontColor = (appliedOptions.plugins?.legend?.labels as any)?.color || '#000000';
-
-                            const createItem = (props: any, isHidden: boolean) => {
-                              // For a cleaner visual, we avoid heavy Unicode strikethrough
-                              // and instead gray out the label and prefix with a subtle "×"
-                              // when hidden. This renders much more cleanly on canvas.
-                              const text = props.text as string | undefined;
-                              const decoratedText =
-                                isHidden && text ? `${text}` : text;
-
-                              return {
-                                ...props,
-                                text: decoratedText,
-                                pointStyle: usePointStyle ? pointStyle : undefined,
-                                fontColor: isHidden ? '#999999' : fontColor,
-                                hidden: isHidden,
-                              };
-                            };
-
-                            const items = [] as any[];
-                            if (legendType === 'slice' || legendType === 'both') {
-                              for (let i = 0; i < filteredLabels.length; ++i) {
-                                // Check if this slice is hidden
-                                const isHidden = typeof chart.getDataVisibility === 'function'
-                                  ? !chart.getDataVisibility(i)
-                                  : false;
-
-                                // For slice legends, find the best color from the first dataset
-                                // Handle both array colors (per-slice) and single string colors
-                                const ds0 = filteredDatasets[0];
-                                let sliceFill = '#ccc';
-                                let sliceStroke = '#333';
-                                if (ds0) {
-                                  const bg = ds0.backgroundColor;
-                                  if (Array.isArray(bg) && bg[i]) {
-                                    sliceFill = bg[i] as string;
-                                  } else if (typeof bg === 'string' && bg) {
-                                    sliceFill = bg;
-                                  }
-                                  const bc = ds0.borderColor;
-                                  if (Array.isArray(bc) && bc[i]) {
-                                    sliceStroke = bc[i] as string;
-                                  } else if (typeof bc === 'string' && bc) {
-                                    sliceStroke = bc;
-                                  }
-                                }
-
-                                items.push(createItem({
-                                  text: String(filteredLabels[i]),
-                                  fillStyle: sliceFill,
-                                  strokeStyle: sliceStroke,
-                                  index: i,
-                                  datasetIndex: 0,
-                                  type: 'slice',
-                                }, isHidden));
-                              }
-                            }
-                            if (legendType === 'dataset' || legendType === 'both') {
-                              for (let i = 0; i < filteredDatasets.length; ++i) {
-                                // Check if this dataset is hidden
-                                const isHidden = typeof chart.isDatasetVisible === 'function'
-                                  ? !chart.isDatasetVisible(i)
-                                  : false;
-
-                                items.push(createItem({
-                                  text: filteredDatasets[i].label || `Dataset ${i + 1}`,
-                                  fillStyle: Array.isArray(filteredDatasets[i].backgroundColor) ? (filteredDatasets[i].backgroundColor as string[])[0] : (filteredDatasets[i].backgroundColor as string) || '#ccc',
-                                  strokeStyle: Array.isArray(filteredDatasets[i].borderColor) ? (filteredDatasets[i].borderColor as string[])[0] : (filteredDatasets[i].borderColor as string) || '#333',
-                                  datasetIndex: i,
-                                  index: i,
-                                  type: 'dataset',
-                                }, isHidden));
-                              }
-                            }
-                            if (legendType === 'waterfall' && chartType === 'waterfall') {
-                              const wfConfig = chart.config?.options?.plugins?.waterfall || (appliedOptions.plugins as any)?.waterfall || {};
-                              const positiveColor = wfConfig.positiveColor || '#10b981';
-                              const negativeColor = wfConfig.negativeColor || '#ef4444';
-                              const totalColor = wfConfig.totalColor || '#3b82f6';
-                              const legendLabels = wfConfig.legendLabels || {};
-                              const increaseLabel = legendLabels.increase || 'Increase';
-                              const decreaseLabel = legendLabels.decrease || 'Decrease';
-                              const totalLabelVal = legendLabels.total || 'Total';
-                              const hasTotal = wfConfig.showTotal !== false || wfConfig.treatLastAsTotal === true || (wfConfig.totalIndices && wfConfig.totalIndices.trim() !== '');
-
-                              items.push(createItem({
-                                text: increaseLabel,
-                                fillStyle: positiveColor,
-                                strokeStyle: positiveColor,
-                                datasetIndex: 0,
-                                index: 0,
-                                type: 'waterfall_increase'
-                              }, false));
-
-                              items.push(createItem({
-                                text: decreaseLabel,
-                                fillStyle: negativeColor,
-                                strokeStyle: negativeColor,
-                                datasetIndex: 0,
-                                index: 1,
-                                type: 'waterfall_decrease'
-                              }, false));
-
-                              if (hasTotal) {
-                                items.push(createItem({
-                                  text: totalLabelVal,
-                                  fillStyle: totalColor,
-                                  strokeStyle: totalColor,
-                                  datasetIndex: 0,
-                                  index: 2,
-                                  type: 'waterfall_total'
-                                }, false));
-                              }
-                            }
-                            return items;
-                          },
-                        },
-                      },
-                      tooltip: {
-                        ...((appliedOptions.plugins as any)?.tooltip),
-                        backgroundColor: tooltipBackgroundWithOpacity,
-                        callbacks: {
-                          ...((appliedOptions.plugins as any)?.tooltip?.callbacks),
-                          label: function (context: any) {
-                            const mode = (appliedOptions.plugins as any)?.tooltip?.customDisplayMode || 'slice';
-                            const chart = context.chart;
-                            const data = chart.data;
-                            const datasetIndex = context.datasetIndex;
-                            const dataIndex = context.dataIndex;
-                            const dataset = data.datasets[datasetIndex];
-                            const label = data.labels?.[dataIndex];
-                            const value = dataset.data[dataIndex];
-                            const datasetLabel = dataset.label || `Dataset ${datasetIndex + 1}`;
-
-                            const formatValueWithSync = (val: any, dsObj?: any) => {
-                              if (typeof val !== 'number') return val;
-                              const targetDs = dsObj || dataset;
-                              const axisKey = needsHorizontal ? 'x' : (targetDs?.yAxisID || 'y');
-                              const scaleFormat = (appliedOptions?.scales as any)?.[axisKey]?.ticks?.numberFormat;
-                              if (scaleFormat && scaleFormat.syncTooltip !== false && ((scaleFormat.preset && scaleFormat.preset !== 'none') || scaleFormat.compact)) {
-                                return formatNumberWithConfig(val, scaleFormat);
-                              }
-                              return val;
-                            };
-
-                            if (mode === 'slice') {
-                              return `${label}: ${formatValueWithSync(value)}`;
-                            }
-                            if (mode === 'dataset') {
-                              let lines = [`${datasetLabel}`, ...dataset.data.map((v: any, i: number) => {
-                                const sliceLabel = data.labels?.[i] || `Slice ${i + 1}`;
-                                return `${sliceLabel}: ${formatValueWithSync(v)}`;
-                              })];
-                              return lines;
-                            }
-                            if (mode === 'xaxis') {
-                              let lines = [`${label}`];
-                              data.datasets.forEach((ds: any, i: number) => {
-                                const dsLabel = ds.label || `Dataset ${i + 1}`;
-                                lines.push(`${dsLabel}: ${formatValueWithSync(ds.data[dataIndex], ds)}`);
-                              });
-                              return lines;
-                            }
-                            if (mode === 'yaxis') {
-                              let lines: string[] = [];
-                              data.datasets.forEach((ds: any, i: number) => {
-                                ds.data.forEach((v: any, j: number) => {
-                                  if (v === value) {
-                                    const dsLabel = ds.label || `Dataset ${i + 1}`;
-                                    const sliceLabel = data.labels?.[j] || `Slice ${j + 1}`;
-                                    lines.push(`${dsLabel} - ${sliceLabel}: ${formatValueWithSync(v, ds)}`);
-                                  }
-                                });
-                              });
-                              return lines.length ? lines : [`${label}: ${formatValueWithSync(value)}`];
-                            }
-                            return `${label}: ${formatValueWithSync(value)}`;
-                          }
-                        }
-                      },
-                    } as any),
-                  }}
-                  plugins={[watermarkPlugin, zeroLineHighlightPlugin, actualAnnotationPlugin]}
-                />
-                </ChartErrorBoundary>
-              </ResizableChartArea>
-            ) : (
+            
               <div
                 style={{
                   width: (chartConfig.manualDimensions && !isInsideTemplateOrFormat) 
@@ -2596,13 +2335,13 @@ export const ChartGenerator = memo(function ChartGenerator({
                   minWidth: isResponsive ? '100%' : 'auto'
                 }}
               >
-                <ChartErrorBoundary>
+                <ChartErrorBoundary resetKey={`${chartTypeForChart}-${sanitizedDatasetsForChart?.length}-${chartDataForChart?.labels?.length}`}>
                   <Chart
                   key={`${chartTypeForChart}-${useFixedDimensions ? 'fixed-zoom' : (isResponsive ? 'responsive' : 'fixed')}-${useFixedDimensions ? `${finalWidth}-${finalHeight}` : 'auto'}`}
                   ref={chartRef}
                   type={chartTypeForChart as any}
                   data={chartDataForChart}
-                  {...((chartConfig.manualDimensions || chartConfig.dynamicDimension) && {
+                  {...((chartConfig.manualDimensions) && {
                     'data-debug-width': chartConfig.width,
                     'data-debug-height': chartConfig.height
                   })}
@@ -2819,8 +2558,17 @@ export const ChartGenerator = memo(function ChartGenerator({
                             const formatValueWithSync = (val: any, dsObj?: any) => {
                               if (typeof val !== 'number') return val;
                               const targetDs = dsObj || dataset;
-                              const axisKey = needsHorizontal ? 'x' : (targetDs?.yAxisID || 'y');
-                              const scaleFormat = (appliedOptions?.scales as any)?.[axisKey]?.ticks?.numberFormat;
+                              let scaleFormat: any;
+                              if (chartType === 'radar' || chartType === 'polarArea') {
+                                scaleFormat = (appliedOptions?.scales as any)?.r?.ticks?.numberFormat;
+                              } else if (['pie', 'doughnut', 'pie3d', 'doughnut3d'].includes(chartType)) {
+                                scaleFormat = (appliedOptions as any)?.numberFormat || (appliedOptions?.scales as any)?.r?.ticks?.numberFormat;
+                              } else if (chartType === 'gauge') {
+                                scaleFormat = (appliedOptions as any)?.numberFormat || (appliedOptions?.plugins as any)?.gauge?.numberFormat;
+                              } else {
+                                const axisKey = needsHorizontal ? 'x' : (targetDs?.yAxisID || 'y');
+                                scaleFormat = (appliedOptions?.scales as any)?.[axisKey]?.ticks?.numberFormat;
+                              }
                               if (scaleFormat && scaleFormat.syncTooltip !== false && ((scaleFormat.preset && scaleFormat.preset !== 'none') || scaleFormat.compact)) {
                                 return formatNumberWithConfig(val, scaleFormat);
                               }
@@ -2868,12 +2616,11 @@ export const ChartGenerator = memo(function ChartGenerator({
                 />
                 </ChartErrorBoundary>
               </div>
-            )}
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center h-full w-full text-slate-400 gap-4 p-8 bg-slate-50/20">
-          <div className="text-center max-w-sm p-6 bg-white rounded-2xl border border-slate-100 shadow-sm animate-in fade-in duration-300">
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full w-full text-slate-400 gap-4 p-8 bg-slate-50/20">
+            <div className="text-center max-w-sm p-6 bg-white rounded-2xl border border-slate-100 shadow-sm animate-in fade-in duration-300">
             <div className="mb-4">
               <svg className="w-12 h-12 mx-auto text-slate-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />

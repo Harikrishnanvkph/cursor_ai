@@ -23,6 +23,7 @@ import { ConfigSidebar } from "@/components/config-sidebar"
 import { ChartPreview } from "@/components/chart-preview"
 import { PromptTemplate, ChatWindow } from "@/components/landing"
 import { SaveChartDialog } from "@/components/ui/save-chart-dialog"
+import { ChartTypeSelector } from "@/components/chart-preview/chart-type-selector"
 import { UpgradeProDialog } from "@/components/dialogs/upgrade-pro-dialog"
 import { useChartStore } from "@/lib/chart-store"
 import { useChatStore } from "@/lib/chat-store"
@@ -435,37 +436,16 @@ export function MobileLandingView({
 
               <DropdownMenuSeparator className="bg-slate-100 dark:bg-slate-800/80" />
 
-              {/* 2. Real Select Dropdown for Chart Types */}
+              {/* 2. Chart Type Selector */}
               <div className="px-2.5 py-1">
-                <Select
+                <ChartTypeSelector
                   value={chartType}
-                  onValueChange={(val) => {
+                  onChange={(val) => {
                     setChartType(val as any)
                   }}
-                >
-                  <SelectTrigger className="h-9 w-full text-xs font-semibold border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-lg flex items-center justify-between px-3 shadow-xs transition-all active:scale-95 antialiased">
-                    <div className="truncate text-slate-700 dark:text-slate-300">
-                      <SelectValue placeholder="Select Chart Type" />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent className="z-[110] max-h-[320px]">
-                    {CATEGORIZED_CHART_TYPES.map((category, idx) => (
-                      <div key={category.id}>
-                        {idx > 0 && <SelectSeparator />}
-                        <SelectGroup>
-                          <SelectLabel className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-2 py-1">
-                            {category.label}
-                          </SelectLabel>
-                          {category.charts.map((type) => (
-                            <SelectItem key={type.value} value={type.value} className="text-xs py-1.5">
-                              {type.label}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </div>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  variant="sidebar"
+                  className="h-9 w-full rounded-lg"
+                />
               </div>
 
               {/* 3. Dynamic Chart Gallery or Show Guides Trigger */}

@@ -300,8 +300,12 @@ export class ChartStateService {
             
             if (replaceMode) {
                 if (state.chartMode === 'single' && state.activeDatasetIndex >= 0 && state.activeDatasetIndex < existingDatasets.length) {
-                    existingDatasets[state.activeDatasetIndex] = processedDatasets[0];
-                    processedDatasets = existingDatasets;
+                    if (processedDatasets.length === 1 && existingDatasets.length > 1) {
+                        existingDatasets[state.activeDatasetIndex] = processedDatasets[0];
+                        processedDatasets = existingDatasets;
+                    }
+                    // When processedDatasets contains multiple datasets (e.g. from preset application across all datasets),
+                    // preserve all processedDatasets instead of truncating down to processedDatasets[0]
                 }
             } else {
                 // CRITICAL FIX: Before appending, save the CURRENT active config AND shared labels

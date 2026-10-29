@@ -1,8 +1,8 @@
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useChartStore } from "@/lib/chart-store";
 import { useChartActions } from "@/lib/hooks/use-chart-actions";
 import { useTemplateStore } from "@/lib/template-store";
@@ -79,6 +79,16 @@ export function ResponsiveAnimationsPanel() {
   const [padRightInput, setPadRightInput] = useState(() => convertFromPixels(padRightValue, unit).toString());
   const [padBottomInput, setPadBottomInput] = useState(() => convertFromPixels(padBottomValue, unit).toString());
   const [padLeftInput, setPadLeftInput] = useState(() => convertFromPixels(padLeftValue, unit).toString());
+
+  const handleUnitChange = (newUnit: DimensionUnit) => {
+    setUnit(newUnit);
+    setWidthInput(convertFromPixels(widthValue, newUnit).toString());
+    setHeightInput(convertFromPixels(heightValue, newUnit).toString());
+    setPadTopInput(convertFromPixels(padTopValue, newUnit).toString());
+    setPadRightInput(convertFromPixels(padRightValue, newUnit).toString());
+    setPadBottomInput(convertFromPixels(padBottomValue, newUnit).toString());
+    setPadLeftInput(convertFromPixels(padLeftValue, newUnit).toString());
+  };
 
   // Sync inputs with external chartConfig changes (e.g. Reset, load new chart)
   useEffect(() => {
@@ -542,138 +552,149 @@ export function ResponsiveAnimationsPanel() {
           </div>
         </div>
         {responsiveDropdownOpen && (
-          <div className="bg-blue-50 rounded-b-lg p-2 space-y-2 border-x border-b border-blue-100 overflow-hidden min-w-0">
+          <div className="bg-slate-50/70 rounded-b-lg p-2.5 space-y-2.5 border-x border-b border-slate-200/80 overflow-hidden min-w-0">
             {/* Template Mode Notice */}
             {isTemplateMode && (
-              <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200 mb-2">
+              <div className="text-[11px] text-amber-700 bg-amber-50/90 p-2 rounded-md border border-amber-200">
                 ⚠️ Layout settings are locked in Template mode. Responsive mode is active.
               </div>
             )}
-            {/* Radio Buttons for Chart Mode */}
-            <div className={`space-y-3 ${isTemplateMode ? 'opacity-50 pointer-events-none' : ''}`}>
+            {/* Common Unit Selector */}
+            <div className={`flex items-center justify-between px-1 py-0.5 ${isTemplateMode ? 'opacity-50 pointer-events-none' : ''}`}>
+              <span className="text-xs font-semibold text-slate-700">Unit</span>
+              <Select
+                value={unit}
+                onValueChange={(val) => handleUnitChange(val as DimensionUnit)}
+              >
+                <SelectTrigger className="h-7 w-20 text-xs bg-white border-slate-200">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="px" className="text-xs">px</SelectItem>
+                  <SelectItem value="mm" className="text-xs">mm</SelectItem>
+                  <SelectItem value="cm" className="text-xs">cm</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Dimension Mode Cards */}
+            <div className={`space-y-1.5 ${isTemplateMode ? 'opacity-50 pointer-events-none' : ''}`}>
               {/* Fixed Dimensions Option */}
-              <div className="flex items-start space-x-3 p-2 rounded-md hover:bg-blue-100/50 transition-colors">
-                <input
-                  type="radio"
-                  id="manual-mode-anim"
-                  name="chart-mode-anim"
-                  checked={(chartConfig.manualDimensions === true || chartConfig.dynamicDimension === true) && !(chartConfig as any).templateDimensions && !(chartConfig as any).originalDimensions}
-                  onChange={() => {
-                    const currentWidth = (chartConfig as any)?.width;
-                    const currentHeight = (chartConfig as any)?.height;
-                    const width = (!currentWidth || currentWidth.toString().includes('%')) ? '800px' : currentWidth;
-                    const height = (!currentHeight || currentHeight.toString().includes('%')) ? '600px' : currentHeight;
+              {(() => {
+                const isFixedActive = chartConfig.manualDimensions === true && !(chartConfig as any).templateDimensions && !(chartConfig as any).originalDimensions;
 
-                    updateChartConfig({
-                      ...chartConfig,
-                      manualDimensions: true,
-                      responsive: false,
-                      dynamicDimension: false, // Default off when switching
-                      templateDimensions: false,
-                      originalDimensions: false,
-                      width: width,
-                      height: height
-                    });
-                  }}
-                  className="mt-1 text-blue-600 focus:ring-blue-500"
-                />
-                <div className="flex flex-col flex-1 min-w-0">
-                  <Label htmlFor="manual-mode-anim" className="text-sm font-medium cursor-pointer mb-1">
-                    Fixed Dimensions {(chartConfig.manualDimensions === true || chartConfig.dynamicDimension === true) && !(chartConfig as any).templateDimensions && !(chartConfig as any).originalDimensions ? '(Active)' : ''}
-                  </Label>
-                  
-                  {/* Inputs shown only when Fixed Dimensions is active */}
-                  {(chartConfig.manualDimensions === true || chartConfig.dynamicDimension === true) && !(chartConfig as any).templateDimensions && !(chartConfig as any).originalDimensions && (
-                    <div className="mt-2 space-y-2 bg-white p-2 rounded-md border border-blue-200">
-                      <div className="flex items-center gap-2">
-                        <Label className="text-xs font-medium w-12">Unit</Label>
-                        <select
-                          value={unit}
-                          onChange={(e) => {
-                            const newUnit = e.target.value as DimensionUnit;
-                            setUnit(newUnit);
-                            setWidthInput(convertFromPixels(widthValue, newUnit).toString());
-                            setHeightInput(convertFromPixels(heightValue, newUnit).toString());
-                            setPadTopInput(convertFromPixels(padTopValue, newUnit).toString());
-                            setPadRightInput(convertFromPixels(padRightValue, newUnit).toString());
-                            setPadBottomInput(convertFromPixels(padBottomValue, newUnit).toString());
-                            setPadLeftInput(convertFromPixels(padLeftValue, newUnit).toString());
-                          }}
-                          className="h-8 text-xs border border-gray-300 rounded-md px-2 flex-1"
-                        >
-                          <option value="px">Pixels (px)</option>
-                          <option value="mm">Millimeters (mm)</option>
-                          <option value="cm">Centimeters (cm)</option>
-                        </select>
-                      </div>
+                const handleSelectFixed = () => {
+                  const currentWidth = (chartConfig as any)?.width;
+                  const currentHeight = (chartConfig as any)?.height;
+                  const width = (!currentWidth || currentWidth.toString().includes('%')) ? '800px' : currentWidth;
+                  const height = (!currentHeight || currentHeight.toString().includes('%')) ? '600px' : currentHeight;
 
-                      {/* Width & Height inputs are managed via local state in the component */}
-                      <div className="flex items-center gap-2">
-                        <Label className="text-xs font-medium w-12">Width</Label>
-                        <Input
-                          type="number"
-                          min={1}
-                          value={widthInput}
-                          onChange={e => setWidthInput(e.target.value)}
-                          onBlur={() => {
-                            const num = parseFloat(widthInput);
-                            if (isNaN(num) || num <= 0) {
-                              setWidthInput(convertFromPixels(widthValue, unit).toString());
-                            } else {
-                              setWidthInput(num.toString());
-                            }
-                          }}
-                          className="h-8 text-xs flex-1"
-                        />
-                      </div>
+                  updateChartConfig({
+                    ...chartConfig,
+                    manualDimensions: true,
+                    responsive: false,
+                    templateDimensions: false,
+                    originalDimensions: false,
+                    width: width,
+                    height: height
+                  });
+                };
 
-                      <div className="flex items-center gap-2">
-                        <Label className="text-xs font-medium w-12">Height</Label>
-                        <Input
-                          type="number"
-                          min={1}
-                          value={heightInput}
-                          onChange={e => setHeightInput(e.target.value)}
-                          onBlur={() => {
-                            const num = parseFloat(heightInput);
-                            if (isNaN(num) || num <= 0) {
-                              setHeightInput(convertFromPixels(heightValue, unit).toString());
-                            } else {
-                              setHeightInput(num.toString());
-                            }
-                          }}
-                          className="h-8 text-xs flex-1"
-                        />
-                      </div>
-
-                      {unit !== 'px' && (
-                        <div className="text-[10px] text-gray-500 text-right">
-                          ≈ {widthValue} × {heightValue} px
+                return (
+                  <div
+                    onClick={handleSelectFixed}
+                    className={`rounded-lg border transition-all cursor-pointer p-2.5 ${
+                      isFixedActive
+                        ? 'bg-white border-blue-400 shadow-2xs'
+                        : 'bg-white/60 border-slate-200/80 hover:bg-white hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <input
+                        type="radio"
+                        id="manual-mode-anim"
+                        name="chart-mode-anim"
+                        checked={isFixedActive}
+                        onChange={handleSelectFixed}
+                        className="h-3.5 w-3.5 text-blue-600 focus:ring-blue-500 border-slate-300 mt-0.5 cursor-pointer shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-1">
+                          <label htmlFor="manual-mode-anim" className="text-xs font-semibold text-slate-800 cursor-pointer">
+                            Fixed Dimensions
+                          </label>
+                          {isFixedActive && (
+                            <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 border border-blue-200/70 px-1.5 py-0.2 rounded-full">
+                              Active
+                            </span>
+                          )}
                         </div>
-                      )}
 
-                      {/* Drag to resize option as a sub-setting */}
-                      <div className="flex items-start space-x-2 pt-2 border-t mt-2">
-                        <input
-                          type="checkbox"
-                          id="enable-drag-resize"
-                          checked={chartConfig.dynamicDimension === true}
-                          onChange={(e) => {
-                            updateChartConfig({
-                              ...chartConfig,
-                              dynamicDimension: e.target.checked
-                            });
-                          }}
-                          className="rounded text-blue-600 focus:ring-blue-500 border-gray-300 mt-0.5"
-                        />
-                        <Label htmlFor="enable-drag-resize" className="text-xs text-gray-600 cursor-pointer whitespace-normal leading-tight break-words pr-1">
-                          Enable drag-to-resize handles on chart
-                        </Label>
+                        {/* Inputs shown only when Fixed Dimensions is active */}
+                        {isFixedActive && (
+                          <div
+                            className="mt-2.5 pt-2.5 border-t border-slate-100 space-y-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {/* Width & Height inputs side-by-side in a 2-column grid */}
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <span className="text-[10px] font-medium text-slate-500 block mb-0.5">Width</span>
+                                <div className="relative flex items-center">
+                                  <Input
+                                    type="number"
+                                    min={1}
+                                    value={widthInput}
+                                    onChange={e => setWidthInput(e.target.value)}
+                                    onBlur={() => {
+                                      const num = parseFloat(widthInput);
+                                      if (isNaN(num) || num <= 0) {
+                                        setWidthInput(convertFromPixels(widthValue, unit).toString());
+                                      } else {
+                                        setWidthInput(num.toString());
+                                      }
+                                    }}
+                                    className="h-7 text-xs bg-white pr-7 border-slate-200"
+                                  />
+                                  <span className="absolute right-2 text-[10px] text-slate-400 pointer-events-none">{unit}</span>
+                                </div>
+                              </div>
+
+                              <div>
+                                <span className="text-[10px] font-medium text-slate-500 block mb-0.5">Height</span>
+                                <div className="relative flex items-center">
+                                  <Input
+                                    type="number"
+                                    min={1}
+                                    value={heightInput}
+                                    onChange={e => setHeightInput(e.target.value)}
+                                    onBlur={() => {
+                                      const num = parseFloat(heightInput);
+                                      if (isNaN(num) || num <= 0) {
+                                        setHeightInput(convertFromPixels(heightValue, unit).toString());
+                                      } else {
+                                        setHeightInput(num.toString());
+                                      }
+                                    }}
+                                    className="h-7 text-xs bg-white pr-7 border-slate-200"
+                                  />
+                                  <span className="absolute right-2 text-[10px] text-slate-400 pointer-events-none">{unit}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {unit !== 'px' && (
+                              <div className="text-[10px] text-slate-400 text-right">
+                                ≈ {widthValue} × {heightValue} px
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
-                  )}
-                </div>
-              </div>
+                  </div>
+                );
+              })()}
 
               {/* Template Dimensions & Original Chart Dimensions */}
               {(() => {
@@ -717,71 +738,126 @@ export function ResponsiveAnimationsPanel() {
                 const origWNum = parseInt(origWidth, 10) || 800;
                 const origHNum = parseInt(origHeight, 10) || 600;
 
+                const isTemplateActive = (chartConfig as any).templateDimensions === true;
+                const isOriginalActive = (chartConfig as any).originalDimensions === true;
+
                 return (
                   <>
                     {/* 1. Template Dimensions */}
                     {hasTemplateDimensions && (
-                      <div className="flex items-start space-x-3 p-2 rounded-md hover:bg-blue-50 transition-colors">
-                        <input
-                          type="radio"
-                          id="template-dimension-mode-anim"
-                          name="chart-mode-anim"
-                          checked={(chartConfig as any).templateDimensions === true}
-                          onChange={() => {
-                            if (templateWidth && templateHeight) {
-                              updateChartConfig({
-                                ...chartConfig,
-                                templateDimensions: true,
-                                originalDimensions: false,
-                                manualDimensions: true,
-                                responsive: false,
-                                dynamicDimension: false,
-                                width: `${templateWidth}px`,
-                                height: `${templateHeight}px`
-                              });
-                            }
-                          }}
-                          className="mt-1 text-blue-600 focus:ring-blue-500"
-                        />
-                        <div className="flex flex-col">
-                          <Label htmlFor="template-dimension-mode-anim" className="text-sm font-medium cursor-pointer text-blue-700">
-                            Template Dimensions {(chartConfig as any).templateDimensions === true ? '(Active)' : ''}
-                          </Label>
-                          <span className="text-xs text-gray-500">
-                            {templateWidth} × {templateHeight} px
-                          </span>
+                      <div
+                        onClick={() => {
+                          if (templateWidth && templateHeight) {
+                            updateChartConfig({
+                              ...chartConfig,
+                              templateDimensions: true,
+                              originalDimensions: false,
+                              manualDimensions: true,
+                              responsive: false,
+                              width: `${templateWidth}px`,
+                              height: `${templateHeight}px`
+                            });
+                          }
+                        }}
+                        className={`rounded-lg border transition-all cursor-pointer p-2.5 ${
+                          isTemplateActive
+                            ? 'bg-white border-blue-400 shadow-2xs'
+                            : 'bg-white/60 border-slate-200/80 hover:bg-white hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <input
+                            type="radio"
+                            id="template-dimension-mode-anim"
+                            name="chart-mode-anim"
+                            checked={isTemplateActive}
+                            onChange={() => {
+                              if (templateWidth && templateHeight) {
+                                updateChartConfig({
+                                  ...chartConfig,
+                                  templateDimensions: true,
+                                  originalDimensions: false,
+                                  manualDimensions: true,
+                                  responsive: false,
+                                  width: `${templateWidth}px`,
+                                  height: `${templateHeight}px`
+                                });
+                              }
+                            }}
+                            className="h-3.5 w-3.5 text-blue-600 focus:ring-blue-500 border-slate-300 mt-0.5 cursor-pointer shrink-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-1">
+                              <label htmlFor="template-dimension-mode-anim" className="text-xs font-semibold text-slate-800 cursor-pointer">
+                                Template Dimensions
+                              </label>
+                              {isTemplateActive && (
+                                <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 border border-blue-200/70 px-1.5 py-0.2 rounded-full">
+                                  Active
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[11px] text-slate-500 block mt-0.5">
+                              {templateWidth} × {templateHeight} px
+                            </span>
+                          </div>
                         </div>
                       </div>
                     )}
 
                     {/* 2. Original Chart Dimensions (neglecting template dimensions) */}
-                    <div className="flex items-start space-x-3 p-2 rounded-md hover:bg-blue-50 transition-colors">
-                      <input
-                        type="radio"
-                        id="original-dimension-mode-anim"
-                        name="chart-mode-anim"
-                        checked={(chartConfig as any).originalDimensions === true}
-                        onChange={() => {
-                          updateChartConfig({
-                            ...chartConfig,
-                            originalDimensions: true,
-                            templateDimensions: false,
-                            manualDimensions: true,
-                            responsive: false,
-                            dynamicDimension: false,
-                            width: `${origWNum}px`,
-                            height: `${origHNum}px`
-                          });
-                        }}
-                        className="mt-1 text-blue-600 focus:ring-blue-500"
-                      />
-                      <div className="flex flex-col">
-                        <Label htmlFor="original-dimension-mode-anim" className="text-sm font-medium cursor-pointer text-blue-700">
-                          Original Chart Dimensions {(chartConfig as any).originalDimensions === true ? '(Active)' : ''}
-                        </Label>
-                        <span className="text-xs text-gray-500">
-                          {origWNum} × {origHNum} px
-                        </span>
+                    <div
+                      onClick={() => {
+                        updateChartConfig({
+                          ...chartConfig,
+                          originalDimensions: true,
+                          templateDimensions: false,
+                          manualDimensions: true,
+                          responsive: false,
+                          width: `${origWNum}px`,
+                          height: `${origHNum}px`
+                        });
+                      }}
+                      className={`rounded-lg border transition-all cursor-pointer p-2.5 ${
+                        isOriginalActive
+                          ? 'bg-white border-blue-400 shadow-2xs'
+                          : 'bg-white/60 border-slate-200/80 hover:bg-white hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <input
+                          type="radio"
+                          id="original-dimension-mode-anim"
+                          name="chart-mode-anim"
+                          checked={isOriginalActive}
+                          onChange={() => {
+                            updateChartConfig({
+                              ...chartConfig,
+                              originalDimensions: true,
+                              templateDimensions: false,
+                              manualDimensions: true,
+                              responsive: false,
+                              width: `${origWNum}px`,
+                              height: `${origHNum}px`
+                            });
+                          }}
+                          className="h-3.5 w-3.5 text-blue-600 focus:ring-blue-500 border-slate-300 mt-0.5 cursor-pointer shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1">
+                            <label htmlFor="original-dimension-mode-anim" className="text-xs font-semibold text-slate-800 cursor-pointer">
+                              Original Chart Dimensions
+                            </label>
+                            {isOriginalActive && (
+                              <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 border border-blue-200/70 px-1.5 py-0.2 rounded-full">
+                                Active
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[11px] text-slate-500 block mt-0.5">
+                            {origWNum} × {origHNum} px
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </>
@@ -789,83 +865,94 @@ export function ResponsiveAnimationsPanel() {
               })()}
             </div>
             {/* Padding Controls */}
-            <div className={`grid grid-cols-2 gap-2 mt-2 ${isTemplateMode ? 'opacity-50 pointer-events-none' : ''}`}>
-              <div>
-                <Label className="text-xs font-medium">Padding Top ({unit})</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={padTopInput}
-                  onChange={(e) => setPadTopInput(e.target.value)}
-                  onBlur={() => {
-                    const num = parseFloat(padTopInput);
-                    if (isNaN(num) || num < 0) {
-                      setPadTopInput(convertFromPixels(padTopValue, unit).toString());
-                    } else {
-                      setPadTopInput(num.toString());
-                    }
-                  }}
-                  placeholder="0"
-                  className="h-8 text-xs"
-                />
+            <div className={`p-2.5 rounded-lg bg-white/70 border border-slate-200/80 space-y-2 ${isTemplateMode ? 'opacity-50 pointer-events-none' : ''}`}>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-800">Chart Padding</span>
+                <span className="text-[10px] text-slate-400 font-medium">({unit})</span>
               </div>
-              <div>
-                <Label className="text-xs font-medium">Padding Right ({unit})</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={padRightInput}
-                  onChange={(e) => setPadRightInput(e.target.value)}
-                  onBlur={() => {
-                    const num = parseFloat(padRightInput);
-                    if (isNaN(num) || num < 0) {
-                      setPadRightInput(convertFromPixels(padRightValue, unit).toString());
-                    } else {
-                      setPadRightInput(num.toString());
-                    }
-                  }}
-                  placeholder="0"
-                  className="h-8 text-xs"
-                />
+              <div className="grid grid-cols-4 gap-1.5">
+                <div>
+                  <span className="text-[10px] text-slate-500 block text-center mb-0.5 font-medium">Top</span>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={padTopInput}
+                    onChange={(e) => setPadTopInput(e.target.value)}
+                    onBlur={() => {
+                      const num = parseFloat(padTopInput);
+                      if (isNaN(num) || num < 0) {
+                        setPadTopInput(convertFromPixels(padTopValue, unit).toString());
+                      } else {
+                        setPadTopInput(num.toString());
+                      }
+                    }}
+                    placeholder="0"
+                    className="h-7 text-xs text-center px-1 bg-white border-slate-200"
+                  />
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-500 block text-center mb-0.5 font-medium">Right</span>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={padRightInput}
+                    onChange={(e) => setPadRightInput(e.target.value)}
+                    onBlur={() => {
+                      const num = parseFloat(padRightInput);
+                      if (isNaN(num) || num < 0) {
+                        setPadRightInput(convertFromPixels(padRightValue, unit).toString());
+                      } else {
+                        setPadRightInput(num.toString());
+                      }
+                    }}
+                    placeholder="0"
+                    className="h-7 text-xs text-center px-1 bg-white border-slate-200"
+                  />
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-500 block text-center mb-0.5 font-medium">Bottom</span>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={padBottomInput}
+                    onChange={(e) => setPadBottomInput(e.target.value)}
+                    onBlur={() => {
+                      const num = parseFloat(padBottomInput);
+                      if (isNaN(num) || num < 0) {
+                        setPadBottomInput(convertFromPixels(padBottomValue, unit).toString());
+                      } else {
+                        setPadBottomInput(num.toString());
+                      }
+                    }}
+                    placeholder="0"
+                    className="h-7 text-xs text-center px-1 bg-white border-slate-200"
+                  />
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-500 block text-center mb-0.5 font-medium">Left</span>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={padLeftInput}
+                    onChange={(e) => setPadLeftInput(e.target.value)}
+                    onBlur={() => {
+                      const num = parseFloat(padLeftInput);
+                      if (isNaN(num) || num < 0) {
+                        setPadLeftInput(convertFromPixels(padLeftValue, unit).toString());
+                      } else {
+                        setPadLeftInput(num.toString());
+                      }
+                    }}
+                    placeholder="0"
+                    className="h-7 text-xs text-center px-1 bg-white border-slate-200"
+                  />
+                </div>
               </div>
-              <div>
-                <Label className="text-xs font-medium">Padding Bottom ({unit})</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={padBottomInput}
-                  onChange={(e) => setPadBottomInput(e.target.value)}
-                  onBlur={() => {
-                    const num = parseFloat(padBottomInput);
-                    if (isNaN(num) || num < 0) {
-                      setPadBottomInput(convertFromPixels(padBottomValue, unit).toString());
-                    } else {
-                      setPadBottomInput(num.toString());
-                    }
-                  }}
-                  placeholder="0"
-                  className="h-8 text-xs"
-                />
-              </div>
-              <div>
-                <Label className="text-xs font-medium">Padding Left ({unit})</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={padLeftInput}
-                  onChange={(e) => setPadLeftInput(e.target.value)}
-                  onBlur={() => {
-                    const num = parseFloat(padLeftInput);
-                    if (isNaN(num) || num < 0) {
-                      setPadLeftInput(convertFromPixels(padLeftValue, unit).toString());
-                    } else {
-                      setPadLeftInput(num.toString());
-                    }
-                  }}
-                  placeholder="0"
-                  className="h-8 text-xs"
-                />
-              </div>
+              {unit !== 'px' && (
+                <div className="text-[10px] text-slate-400 text-right">
+                  ≈ {padTopValue}, {padRightValue}, {padBottomValue}, {padLeftValue} px
+                </div>
+              )}
             </div>
           </div>
         )}

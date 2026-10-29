@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils"
 import { useChartStore } from "@/lib/chart-store"
 import { useTemplateStore } from "@/lib/template-store"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
+import { useEditorSidebarContext } from "@/components/editor/editor-sidebar-context"
+import { HistoryDropdown } from "@/components/history-dropdown"
 import {
   AlignEndHorizontal,
   Database,
@@ -21,6 +23,7 @@ import {
   Palette,
   LayoutTemplate,
   Component,
+  History,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -102,6 +105,7 @@ export function getVisibleTemplateTabs(selectedFormatId: string | null) {
 }
 
 export function Sidebar({ activeTab, onTabChange, onToggleLeftSidebar, isLeftSidebarCollapsed }: SidebarProps) {
+  const { sidebarView, setSidebarView } = useEditorSidebarContext()
   const {
     chartMode,
     chartData,
@@ -130,129 +134,166 @@ export function Sidebar({ activeTab, onTabChange, onToggleLeftSidebar, isLeftSid
 
   return (
     <div className="h-full bg-white border-r border-gray-200 p-3 flex flex-col overflow-hidden">
-      <div className={cn(
-        "flex items-center flex-shrink-0 gap-2 mb-4",
-        !onToggleLeftSidebar && "pt-2 mb-3"
-      )}>
-        <div className="flex-1 min-w-0">
-          {isTemplateMode ? (
-            // Template mode header
-            <div className="h-8 flex items-center px-3 bg-amber-50 border border-amber-200 rounded-lg shadow-sm">
-              <span className="text-[10px] font-black text-amber-600 uppercase tracking-widest truncate">
-                {selectedFormatId ? '🎨 Format Editor' : '📄 Template Editor'}
-              </span>
-            </div>
-          ) : (
-            // Chart mode header (original)
-            <>
-              {((chartMode === 'single' && datasets.length === 0) || (chartMode === 'grouped' && groups.length === 0)) ? (
-                <div className="h-9 flex items-center px-3 bg-white border border-gray-200 rounded-lg shadow-sm">
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Chart Editor</span>
-                </div>
-              ) : chartMode === 'single' ? (
-                <div className="relative">
-                  <label className="absolute -top-2 left-2.5 px-1 text-[10px] font-medium bg-white text-gray-500 z-10 leading-none select-none pointer-events-none">
-                    Datasets
-                  </label>
-                  <Select
-                    value={activeDatasetIndex.toString()}
-                    onValueChange={(val) => setActiveDatasetIndex(parseInt(val))}
-                  >
-                    <SelectTrigger className="h-9 text-xs bg-white border-gray-200 hover:bg-gray-50/60 transition-colors shadow-none rounded-md">
-                      <SelectValue placeholder="Select dataset" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {datasets.map((ds: any, i) => (
-                        <SelectItem key={i} value={i.toString()}>
-                          {ds.sourceTitle || ds.label || `Dataset ${i + 1}`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : (
-                <div className="relative">
-                  <label className="absolute -top-2 left-2.5 px-1 text-[10px] font-medium bg-white text-gray-500 z-10 leading-none select-none pointer-events-none">
-                    Groups
-                  </label>
-                  <Select
-                    value={activeGroupId}
-                    onValueChange={setActiveGroupId}
-                  >
-                    <SelectTrigger className="h-9 text-xs bg-white border-gray-200 hover:bg-gray-50/60 transition-colors shadow-none rounded-md">
-                      <SelectValue placeholder="Select group" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {groups.map((group) => (
-                        <SelectItem key={group.id} value={group.id}>
-                          {group.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </>
+      {/* ── View Toggle: Tools vs Recents ── */}
+      <div className="grid grid-cols-2 p-1 bg-slate-100/90 rounded-lg mb-3 flex-shrink-0 border border-slate-200/60">
+        <button
+          type="button"
+          onClick={() => setSidebarView('tools')}
+          className={cn(
+            "flex items-center justify-center py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer",
+            sidebarView === 'tools'
+              ? "bg-white text-slate-800 shadow-2xs font-semibold"
+              : "text-slate-500 hover:text-slate-700"
           )}
-        </div>
-
-        {onToggleLeftSidebar && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onToggleLeftSidebar}
-            className="h-9 w-9 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg flex-shrink-0"
-            title={isLeftSidebarCollapsed ? "Expand Left Sidebar" : "Collapse Left Sidebar"}
-          >
-            <PanelLeft className="h-4 w-4 text-slate-500 hover:text-slate-700 transition-colors" />
-          </Button>
-        )}
+        >
+          Tools
+        </button>
+        <button
+          type="button"
+          onClick={() => setSidebarView('recents')}
+          className={cn(
+            "flex items-center justify-center py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer",
+            sidebarView === 'recents'
+              ? "bg-white text-slate-800 shadow-2xs font-semibold"
+              : "text-slate-500 hover:text-slate-700"
+          )}
+        >
+          Recents
+        </button>
       </div>
 
-      <nav className="space-y-1 flex-1 overflow-y-auto">
-        {visibleTabs.map((tab) => {
-          const Icon = tab.icon
-          return (
-            <button
-              key={tab.id}
-              onClick={() => {
-                if (tab.id === 'templates') {
-                  const templateStore = useTemplateStore.getState()
-                  if (!templateStore.currentTemplate) {
-                    templateStore.applyTemplate('template-1')
-                  }
-                  templateStore.setEditorMode('template')
-                  onTabChange('tpl_templates')
-                } else {
-                  onTabChange(tab.id)
-                }
-              }}
-              className={cn(
-                "w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-left transition-all duration-200 text-sm border",
-                activeTab === tab.id
-                  ? isTemplateMode
-                    ? "bg-amber-50 text-amber-700 border-amber-200 shadow-sm"
-                    : "bg-blue-50 text-blue-700 border-blue-200 shadow-sm"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 border-transparent",
+      {sidebarView === 'tools' ? (
+        <>
+          <div className={cn(
+            "flex items-center flex-shrink-0 gap-2 mb-4",
+            !onToggleLeftSidebar && "pt-1 mb-3"
+          )}>
+            <div className="flex-1 min-w-0">
+              {isTemplateMode ? (
+                // Template mode header
+                <div className="h-8 flex items-center px-3 bg-amber-50 border border-amber-200 rounded-lg shadow-sm">
+                  <span className="text-[10px] font-black text-amber-600 uppercase tracking-widest truncate">
+                    {selectedFormatId ? '🎨 Format Editor' : '📄 Template Editor'}
+                  </span>
+                </div>
+              ) : (
+                // Chart mode header (original)
+                <>
+                  {((chartMode === 'single' && datasets.length === 0) || (chartMode === 'grouped' && groups.length === 0)) ? (
+                    <div className="h-9 flex items-center px-3 bg-white border border-gray-200 rounded-lg shadow-sm">
+                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Chart Editor</span>
+                    </div>
+                  ) : chartMode === 'single' ? (
+                    <div className="relative">
+                      <label className="absolute -top-2 left-2.5 px-1 text-[10px] font-medium bg-white text-gray-500 z-10 leading-none select-none pointer-events-none">
+                        Datasets
+                      </label>
+                      <Select
+                        value={activeDatasetIndex.toString()}
+                        onValueChange={(val) => setActiveDatasetIndex(parseInt(val))}
+                      >
+                        <SelectTrigger className="h-9 text-xs bg-white border-gray-200 hover:bg-gray-50/60 transition-colors shadow-none rounded-md">
+                          <SelectValue placeholder="Select dataset" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {datasets.map((ds: any, i) => (
+                            <SelectItem key={i} value={i.toString()}>
+                              {ds.sourceTitle || ds.label || `Dataset ${i + 1}`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <label className="absolute -top-2 left-2.5 px-1 text-[10px] font-medium bg-white text-gray-500 z-10 leading-none select-none pointer-events-none">
+                        Groups
+                      </label>
+                      <Select
+                        value={activeGroupId}
+                        onValueChange={setActiveGroupId}
+                      >
+                        <SelectTrigger className="h-9 text-xs bg-white border-gray-200 hover:bg-gray-50/60 transition-colors shadow-none rounded-md">
+                          <SelectValue placeholder="Select group" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {groups.map((group) => (
+                            <SelectItem key={group.id} value={group.id}>
+                              {group.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </>
               )}
-            >
-              <Icon className="h-4 w-4 flex-shrink-0" />
-              <span className="font-medium truncate">{tab.label}</span>
-            </button>
-          )
-        })}
-      </nav>
+            </div>
 
-      {/* Back to Chart button (only in template mode) */}
-      {isTemplateMode && (
-        <div className="pt-2 border-t border-gray-100 mt-2 flex-shrink-0">
-          <button
-            onClick={handleBackToChart}
-            className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-200 transition-all duration-200"
-          >
-            <ArrowLeftRight className="h-4 w-4" />
-            <span>Back to Chart Editor</span>
-          </button>
+            {onToggleLeftSidebar && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onToggleLeftSidebar}
+                className="h-9 w-9 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg flex-shrink-0"
+                title={isLeftSidebarCollapsed ? "Expand Left Sidebar" : "Collapse Left Sidebar"}
+              >
+                <PanelLeft className="h-4 w-4 text-slate-500 hover:text-slate-700 transition-colors" />
+              </Button>
+            )}
+          </div>
+
+          <nav className="space-y-1 flex-1 overflow-y-auto">
+            {visibleTabs.map((tab) => {
+              const Icon = tab.icon
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    if (tab.id === 'templates') {
+                      const templateStore = useTemplateStore.getState()
+                      if (!templateStore.currentTemplate) {
+                        templateStore.applyTemplate('template-1')
+                      }
+                      templateStore.setEditorMode('template')
+                      onTabChange('tpl_templates')
+                    } else {
+                      onTabChange(tab.id)
+                    }
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-left transition-all duration-200 text-sm border",
+                    activeTab === tab.id
+                      ? isTemplateMode
+                        ? "bg-amber-50 text-amber-700 border-amber-200 shadow-sm"
+                        : "bg-blue-50 text-blue-700 border-blue-200 shadow-sm"
+                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 border-transparent",
+                  )}
+                >
+                  <Icon className="h-4 w-4 flex-shrink-0" />
+                  <span className="font-medium truncate">{tab.label}</span>
+                </button>
+              )
+            })}
+          </nav>
+
+          {/* Back to Chart button (only in template mode) */}
+          {isTemplateMode && (
+            <div className="pt-2 border-t border-gray-100 mt-2 flex-shrink-0">
+              <button
+                onClick={handleBackToChart}
+                className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-200 transition-all duration-200"
+              >
+                <ArrowLeftRight className="h-4 w-4" />
+                <span>Back to Chart Editor</span>
+              </button>
+            </div>
+          )}
+        </>
+      ) : (
+        /* ── Recents / History Inlined View ── */
+        <div className="flex-1 -mx-3 -mb-3 overflow-hidden flex flex-col min-h-0">
+          <HistoryDropdown variant="sidebar" />
         </div>
       )}
     </div>

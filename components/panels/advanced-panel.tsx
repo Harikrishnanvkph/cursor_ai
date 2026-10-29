@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
+import { FontFamilySelect } from "@/components/ui/font-family-select"
 import { useChartStore } from "@/lib/chart-store"
 import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { Copy, Download } from "lucide-react"
@@ -148,24 +149,12 @@ export function AdvancedPanel() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
+                <div className="space-y-1">
                   <Label className="text-xs font-medium">Font Family</Label>
-                  <Select
+                  <FontFamilySelect
                     value={(chartConfig as any).plugins?.tooltip?.bodyFont?.family || "Arial"}
                     onValueChange={value => handleConfigUpdate("plugins.tooltip.bodyFont.family", value)}
-                  >
-                    <SelectTrigger className="h-8 text-xs mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Arial">Arial</SelectItem>
-                      <SelectItem value="Helvetica">Helvetica</SelectItem>
-                      <SelectItem value="Times New Roman">Times New Roman</SelectItem>
-                      <SelectItem value="Georgia">Georgia</SelectItem>
-                      <SelectItem value="Verdana">Verdana</SelectItem>
-                      <SelectItem value="Courier New">Courier New</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2">

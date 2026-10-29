@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
-import { UNIFIED_FONT_FAMILIES, FONT_WEIGHT_OPTIONS, ensureGoogleFontLoaded } from "@/lib/typography-registry"
+import { FontFamilySelect, FontWeightSelect } from "@/components/ui/font-family-select"
 
 interface TitleTabProps {
     chartConfig: any
@@ -49,43 +49,18 @@ export function TitleTab({ chartConfig, handleConfigUpdate }: TitleTabProps) {
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1">
                                 <Label className="text-xs font-medium">Font Family</Label>
-                                <Select
+                                <FontFamilySelect
                                     value={(chartConfig.plugins?.title?.font as any)?.family || "Arial"}
-                                    onValueChange={(value) => {
-                                        ensureGoogleFontLoaded(value)
-                                        handleConfigUpdate("plugins.title.font.family", value)
-                                    }}
-                                >
-                                    <SelectTrigger className="h-8 text-xs">
-                                        <SelectValue placeholder="Default" />
-                                    </SelectTrigger>
-                                    <SelectContent className="max-h-56">
-                                        {UNIFIED_FONT_FAMILIES.filter(f => f.value !== 'default').map(f => (
-                                            <SelectItem key={f.id} value={f.value} style={{ fontFamily: f.value }}>
-                                                {f.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                    onValueChange={(value) => handleConfigUpdate("plugins.title.font.family", value)}
+                                />
                             </div>
 
                             <div className="space-y-1">
                                 <Label className="text-xs font-medium">Font Weight</Label>
-                                <Select
+                                <FontWeightSelect
                                     value={String((chartConfig.plugins?.title?.font as any)?.weight || "700")}
                                     onValueChange={(value) => handleConfigUpdate("plugins.title.font.weight", value)}
-                                >
-                                    <SelectTrigger className="h-8 text-xs">
-                                        <SelectValue placeholder="Bold" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {FONT_WEIGHT_OPTIONS.map(w => (
-                                            <SelectItem key={w.value} value={w.value}>
-                                                {w.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                />
                             </div>
                         </div>
 
@@ -218,43 +193,18 @@ export function TitleTab({ chartConfig, handleConfigUpdate }: TitleTabProps) {
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1">
                                 <Label className="text-xs font-medium">Font Family</Label>
-                                <Select
+                                <FontFamilySelect
                                     value={(chartConfig.plugins?.subtitle?.font as any)?.family || "Arial"}
-                                    onValueChange={(value) => {
-                                        ensureGoogleFontLoaded(value)
-                                        handleConfigUpdate("plugins.subtitle.font.family", value)
-                                    }}
-                                >
-                                    <SelectTrigger className="h-8 text-xs">
-                                        <SelectValue placeholder="Default" />
-                                    </SelectTrigger>
-                                    <SelectContent className="max-h-56">
-                                        {UNIFIED_FONT_FAMILIES.filter(f => f.value !== 'default').map(f => (
-                                            <SelectItem key={f.id} value={f.value} style={{ fontFamily: f.value }}>
-                                                {f.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                    onValueChange={(value) => handleConfigUpdate("plugins.subtitle.font.family", value)}
+                                />
                             </div>
 
                             <div className="space-y-1">
                                 <Label className="text-xs font-medium">Font Weight</Label>
-                                <Select
+                                <FontWeightSelect
                                     value={String((chartConfig.plugins?.subtitle?.font as any)?.weight || "400")}
                                     onValueChange={(value) => handleConfigUpdate("plugins.subtitle.font.weight", value)}
-                                >
-                                    <SelectTrigger className="h-8 text-xs">
-                                        <SelectValue placeholder="Regular" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {FONT_WEIGHT_OPTIONS.map(w => (
-                                            <SelectItem key={w.value} value={w.value}>
-                                                {w.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                />
                             </div>
                         </div>
 

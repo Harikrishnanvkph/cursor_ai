@@ -3,12 +3,11 @@
 import { useChartStore, type SupportedChartType } from "@/lib/chart-store"
 import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { useTemplateStore } from "@/lib/template-store"
-import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { ChartTypeSelector } from "@/components/chart-preview/chart-type-selector"
 import { Switch } from "@/components/ui/switch"
 import { ResponsiveAnimationsPanel } from "@/components/panels/responsive-animations-panel"
-import { Target, Sparkles, ChevronRight } from "lucide-react"
+import { Sparkles } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export function TypesTogglesPanel() {
@@ -81,32 +80,6 @@ export function TypesTogglesPanel() {
     })
   }
 
-  const yThreshold = (activeConfig.scales as any)?.y?.threshold || {}
-  const isThresholdActive = yThreshold.enabled === true
-
-  const handleThresholdToggle = (enabled: boolean) => {
-    const current = (activeConfig.scales as any)?.y?.threshold || {}
-    const newConfig = {
-      ...activeConfig,
-      scales: {
-        ...activeConfig.scales,
-        y: {
-          ...(activeConfig.scales as any)?.y,
-          threshold: {
-            ...current,
-            enabled,
-            value: typeof current.value === 'number' && !isNaN(current.value) ? current.value : 100,
-            label: current.label !== undefined ? current.label : 'Target',
-            color: current.color || '#ef4444',
-            style: current.style || 'dashed',
-            width: typeof current.width === 'number' ? current.width : 2,
-            position: current.position || 'end',
-          }
-        }
-      }
-    }
-    updateChartConfig(newConfig)
-  }
 
   return (
     <div className="space-y-3">
@@ -221,27 +194,6 @@ export function TypesTogglesPanel() {
           )}
         </div>
       )}
-
-      {/* Goal & Benchmark Line Quick Toggle */}
-      <div className="p-2.5 bg-white rounded-xl border border-gray-200/80 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full transition-colors ${isThresholdActive ? 'bg-emerald-500 ring-2 ring-emerald-200' : 'bg-gray-300'}`} />
-          <div>
-            <div className="text-xs font-semibold text-gray-800 flex items-center gap-1.5">
-              <Target className="w-3.5 h-3.5 text-gray-600" />
-              <span>Goal / Target Line</span>
-            </div>
-            <div className="text-[10px] text-gray-500">
-              {isThresholdActive ? `Active at ${yThreshold.value ?? 100} (${yThreshold.label || 'Target'})` : 'Scale-locked benchmark line'}
-            </div>
-          </div>
-        </div>
-        <Switch
-          checked={isThresholdActive}
-          onCheckedChange={handleThresholdToggle}
-          className="data-[state=checked]:bg-blue-600 scale-75"
-        />
-      </div>
 
       {/* Responsive Animations */}
       <ResponsiveAnimationsPanel />

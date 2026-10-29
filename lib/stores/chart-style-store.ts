@@ -340,8 +340,8 @@ export const useChartStyleStore = create<ChartStyleStore>()(
         console.info(`[ChartStyleStore] Compatibility warnings for "${preset.name}":`, warnings)
       }
 
-      // Get the active config
-      const activeConfig = chartState.chartConfig
+      // Get the active config (resolves per-dataset or per-group overrides)
+      const activeConfig = chartState.getActiveChartConfig ? chartState.getActiveChartConfig() : chartState.chartConfig
 
       // Apply the preset
       const result = applyPresetToChart(preset, chartState.chartData, activeConfig, {

@@ -42,7 +42,7 @@ function drawElementImage(ctx, element, img, imageConfig, chart, datasetIndex, p
 
 const universalImagePlugin = {
   id: "universalImages",
-  afterDraw: (chart) => {
+  afterDatasetsDraw: (chart) => {
     const ctx = chart.ctx;
     const chartArea = chart.chartArea;
 

@@ -19,7 +19,7 @@ import type {
   SupportedChartType,
 } from './chart-defaults'
 import { getDefaultConfigForType } from './chart-defaults'
-import { darkenColor, generateColorPalette } from './utils/color-utils'
+import { darkenColor, generateColorPalette, applyOpacityToColor } from './utils/color-utils'
 import type {
   ChartStylePreset,
   ColorStrategy,
@@ -171,11 +171,26 @@ export function applyPresetToChart(
   // Determine if this is an arc chart type (pie/doughnut/polar — per-slice coloring)
   const ARC_TYPES = ['pie', 'doughnut', 'polarArea', 'pie3d', 'doughnut3d']
 
+  // If applying a gauge preset with single value, adjust labels to 2 slices
+  let adjustedLabels = currentData.labels ? [...currentData.labels] : []
+  if (newChartType === 'gauge' && (!adjustedLabels || adjustedLabels.length <= 1)) {
+    adjustedLabels = ['Value', 'Remaining']
+  }
+
   // ── 1. Style each dataset's colors ──────────────────────
   const styledDatasets = currentData.datasets.map((ds, dsIndex) => {
     // PRESERVE per-dataset chartType in mixed mode; apply preset type in uniform/single mode
     const dsChartType = isMixedMode ? (ds.chartType || newChartType) : newChartType
-    const styled = { ...ds, chartType: dsChartType } as ExtendedChartDataset
+
+    // For gauge chart: if data has <= 1 point, expand to [val, 100 - val] so doughnut renders properly
+    let styledData = ds.data
+    if (newChartType === 'gauge' && Array.isArray(styledData) && styledData.length <= 1) {
+      const numericVal = typeof styledData[0] === 'number' ? Math.abs(styledData[0]) : 70
+      const remaining = Math.max(0, 100 - numericVal)
+      styledData = [numericVal, remaining]
+    }
+
+    const styled = { ...ds, chartType: dsChartType, data: styledData } as ExtendedChartDataset
 
     // If not mixed mode, delete dataset.type so Chart.js uses the main chart type from the preset.
     // If mixed mode, set dataset.type so Chart.js renders the specific type.
@@ -194,13 +209,8 @@ export function applyPresetToChart(
     styled.sliceLabels = ds.sliceLabels
 
     // ── Color strategy for grouped mode ──
-    // In grouped mode with multiple datasets:
-    //   - Uniform mode: Each dataset gets a DIFFERENT base color from the palette
-    //     (dataset 0 = baseColors[0], dataset 1 = baseColors[1], etc.)
-    //   - Mixed mode: Same logic — each dataset gets its own color
-    // In single mode or arc charts: full palette applied per-slice as before
-
-    const needsPerSliceArray = ARC_TYPES.includes(dsChartType as string)
+    const effectiveLength = styled.data?.length || dataLength
+    const needsPerSliceArray = ARC_TYPES.includes(dsChartType as string) || dsChartType === 'gauge'
 
     if (preset.colorStrategy.mode === 'single') {
       const singleColor = preset.colorStrategy.singleColor || '#3b82f6'
@@ -208,7 +218,7 @@ export function applyPresetToChart(
       styled.color = singleColor
 
       if (needsPerSliceArray) {
-        styled.backgroundColor = Array(dataLength).fill(singleColor) as any
+        styled.backgroundColor = Array(effectiveLength).fill(singleColor) as any
       } else {
         styled.backgroundColor = singleColor as any
       }
@@ -216,7 +226,7 @@ export function applyPresetToChart(
       const borderColor = preset.colorStrategy.baseBorderColors?.[0]
         || darkenColor(singleColor, 15)
       if (needsPerSliceArray) {
-        styled.borderColor = Array(dataLength).fill(borderColor) as any
+        styled.borderColor = Array(effectiveLength).fill(borderColor) as any
       } else {
         styled.borderColor = borderColor as any
       }
@@ -228,7 +238,6 @@ export function applyPresetToChart(
       if (isGrouped && !needsPerSliceArray) {
         // ── GROUPED MODE (bar, line, radar, etc.) ──
         // Each dataset gets ONE distinct color from the palette.
-        // This way, Dataset 0 = color[0], Dataset 1 = color[1], etc.
         const dsColor = preset.colorStrategy.baseColors[
           dsIndex % preset.colorStrategy.baseColors.length
         ] || '#3b82f6'
@@ -244,13 +253,13 @@ export function applyPresetToChart(
       } else {
         // ── SINGLE MODE or ARC CHARTS ──
         // Full palette spread across all slices/data points
-        const bgColors = scaleColors(preset.colorStrategy.baseColors, dataLength)
+        const bgColors = scaleColors(preset.colorStrategy.baseColors, effectiveLength)
         styled.backgroundColor = bgColors as any
 
         const borderSeed = preset.colorStrategy.baseBorderColors.length > 0
           ? preset.colorStrategy.baseBorderColors
           : preset.colorStrategy.baseColors.map(c => darkenColor(c, 15))
-        styled.borderColor = scaleColors(borderSeed, dataLength) as any
+        styled.borderColor = scaleColors(borderSeed, effectiveLength) as any
       }
     }
 
@@ -281,6 +290,17 @@ export function applyPresetToChart(
       styled.datasetPattern = preset.datasetStyle.datasetPattern
     }
 
+    // Area chart in grouped mode: apply 50% opacity to prevent opaque background blocking datasets
+    if ((dsChartType === 'area' || styled.fill) && isGrouped) {
+      if (Array.isArray(styled.backgroundColor)) {
+        styled.backgroundColor = styled.backgroundColor.map(c =>
+          typeof c === 'string' ? applyOpacityToColor(c, 50) : c
+        ) as any
+      } else if (typeof styled.backgroundColor === 'string') {
+        styled.backgroundColor = applyOpacityToColor(styled.backgroundColor, 50) as any
+      }
+    }
+
     return styled
   })
 
@@ -306,6 +326,113 @@ export function applyPresetToChart(
         text: currentPlugins.subtitle.text,
       }
     }
+  }
+
+  // Preserve and semantically transfer Cartesian scales (axis titles, number formats, thresholds, zero lines)
+  const isHorizontalChartType = (type: string) =>
+    type === 'horizontalBar' || type === 'horizontalBar3d' || type === 'funnel'
+
+  const currentCfg = currentConfig as any
+  const mergedCfg = mergedConfig as any
+  const oldChartType = currentCfg.type || (currentData.datasets[0] as any)?.chartType || (currentData.datasets[0] as any)?.type || 'bar'
+  const isOldHorizontal = isHorizontalChartType(oldChartType) || currentCfg.indexAxis === 'y'
+  const isNewHorizontal = isHorizontalChartType(newChartType) || mergedCfg.indexAxis === 'y'
+
+  const oldScales = currentCfg.scales
+  if (mergedCfg.scales && (mergedCfg.scales.x || mergedCfg.scales.y)) {
+    const oldCategoryAxis = isOldHorizontal ? oldScales?.y : oldScales?.x
+    const oldValueAxis = isOldHorizontal ? oldScales?.x : oldScales?.y
+    const targetCategoryKey = isNewHorizontal ? 'y' : 'x'
+    const targetValueKey = isNewHorizontal ? 'x' : 'y'
+
+    // Transfer / Sanitize Category Axis
+    const targetCatAxis = mergedCfg.scales[targetCategoryKey]
+    if (targetCatAxis) {
+      const userCatTitleText = oldCategoryAxis?.title?.text
+      const hasUserCatTitle = typeof userCatTitleText === 'string' && userCatTitleText.trim().length > 0
+      if (hasUserCatTitle) {
+        if (!targetCatAxis.title) targetCatAxis.title = {}
+        targetCatAxis.title.text = userCatTitleText
+        targetCatAxis.title.display = oldCategoryAxis?.title?.display ?? true
+      } else {
+        // Strip dummy preset titles if user did not specify a category title
+        if (targetCatAxis.title) {
+          delete targetCatAxis.title.text
+          targetCatAxis.title.display = false
+        }
+      }
+    }
+
+    // Transfer / Sanitize Value Axis
+    const targetValAxis = mergedCfg.scales[targetValueKey]
+    if (targetValAxis) {
+      const userValTitleText = oldValueAxis?.title?.text
+      const hasUserValTitle = typeof userValTitleText === 'string' && userValTitleText.trim().length > 0
+      if (hasUserValTitle) {
+        if (!targetValAxis.title) targetValAxis.title = {}
+        targetValAxis.title.text = userValTitleText
+        targetValAxis.title.display = oldValueAxis?.title?.display ?? true
+      } else {
+        // Strip dummy preset titles if user did not specify a value title
+        if (targetValAxis.title) {
+          delete targetValAxis.title.text
+          targetValAxis.title.display = false
+        }
+      }
+
+      // Preserve tick numberFormat on value axis
+      if (oldValueAxis?.ticks?.numberFormat) {
+        targetValAxis.ticks = {
+          ...(targetValAxis.ticks || {}),
+          numberFormat: oldValueAxis.ticks.numberFormat,
+        }
+      }
+
+      // Preserve threshold (goal line / benchmark)
+      if (oldValueAxis?.threshold !== undefined) {
+        targetValAxis.threshold = oldValueAxis.threshold
+      }
+
+      // Preserve zero line settings
+      if (oldValueAxis?.highlightZeroLine !== undefined) {
+        targetValAxis.highlightZeroLine = oldValueAxis.highlightZeroLine
+      }
+      if (oldValueAxis?.zeroLineColor) {
+        targetValAxis.zeroLineColor = oldValueAxis.zeroLineColor
+      }
+    }
+
+    // Preserve secondary axis y1 if present
+    if (oldScales?.y1) {
+      mergedCfg.scales.y1 = {
+        ...(mergedCfg.scales.y1 || {}),
+        ...oldScales.y1,
+      }
+    }
+  }
+
+  // Radial scale transfer
+  if ((newChartType === 'radar' || newChartType === 'polarArea') && mergedCfg.scales?.r) {
+    const oldValueAxis = isOldHorizontal ? oldScales?.x : oldScales?.y
+    if (oldValueAxis?.ticks?.numberFormat) {
+      mergedCfg.scales.r.ticks = {
+        ...(mergedCfg.scales.r.ticks || {}),
+        numberFormat: oldValueAxis.ticks.numberFormat,
+      }
+    }
+  } else if ((oldChartType === 'radar' || oldChartType === 'polarArea') && oldScales?.r?.ticks?.numberFormat) {
+    const targetValueKey = isNewHorizontal ? 'x' : 'y'
+    if (mergedCfg.scales?.[targetValueKey]) {
+      mergedCfg.scales[targetValueKey].ticks = {
+        ...(mergedCfg.scales[targetValueKey].ticks || {}),
+        numberFormat: oldScales.r.ticks.numberFormat,
+      }
+    }
+  }
+
+  // Preserve root-level number format
+  if (currentCfg.numberFormat) {
+    mergedCfg.numberFormat = currentCfg.numberFormat
   }
 
   // ── 4. Handle dimensions ────────────────────────────────
@@ -337,6 +464,7 @@ export function applyPresetToChart(
     chartType: newChartType,
     chartData: {
       ...currentData,
+      labels: adjustedLabels,
       datasets: finalDatasets,
     },
     chartConfig: mergedConfig,
@@ -353,6 +481,9 @@ export function applyPresetToChart(
  *
  * STRIPS:
  *   - scales.*.min / max / suggestedMin / suggestedMax
+ *   - scales.*.threshold (goal lines/benchmarks)
+ *   - scales.*.title.text (user-specific axis titles)
+ *   - scales.*.ticks.numberFormat / root numberFormat
  *   - scales.*.ticks.stepSize / callback
  *   - plugins.title.text / plugins.subtitle.text
  *   - plugins.datalabels.formatter (function — can't serialize)
@@ -367,7 +498,7 @@ export function sanitizeConfig(config: ExtendedChartOptions): Record<string, any
   // Deep clone to prevent mutating the source
   const clean: any = JSON.parse(JSON.stringify(config))
 
-  // ── Strip scale values ──────────────────────────────────
+  // ── Strip scale values and user-specific scale metadata ──────────────────────────
   if (clean.scales) {
     for (const axisKey of Object.keys(clean.scales)) {
       const axis = clean.scales[axisKey]
@@ -377,13 +508,21 @@ export function sanitizeConfig(config: ExtendedChartOptions): Record<string, any
       delete axis.max
       delete axis.suggestedMin
       delete axis.suggestedMax
+      delete axis.threshold // User goal line / benchmark
+
+      if (axis.title) {
+        delete axis.title.text // Never leak active user axis title text into published preset
+      }
 
       if (axis.ticks) {
         delete axis.ticks.stepSize
         delete axis.ticks.callback
+        delete axis.ticks.numberFormat // Strip data-specific number formatting
       }
     }
   }
+
+  delete clean.numberFormat // Root numberFormat if present
 
   // ── Strip content text ──────────────────────────────────
   if (clean.plugins?.title) {

@@ -202,6 +202,7 @@ function generateChartScript(chartData: any, chartConfig: any, chartType: string
             const valueAxisKey = needsHorizontal ? 'x' : 'y';
             const valueAxis = enhancedConfig.scales[valueAxisKey];
             if (valueAxis) {
+                valueAxis.grid = valueAxis.grid || {};
                 const baseColor = valueAxis.grid.color || 'rgba(0, 0, 0, 0.06)';
                 const baseWidth = valueAxis.grid.lineWidth !== undefined ? valueAxis.grid.lineWidth : 1;
                 const baseDraw = valueAxis.grid.drawOnChartArea !== false;
@@ -240,6 +241,58 @@ function generateChartScript(chartData: any, chartConfig: any, chartType: string
                 }
             }
         }
+
+        // Dynamic Goal / Benchmark Threshold Line post-processing
+        if (enhancedConfig.scales) {
+            const annotations = { ...((enhancedConfig.plugins && enhancedConfig.plugins.annotation && enhancedConfig.plugins.annotation.annotations) || {}) };
+            let hasAnnotations = Object.keys(annotations).length > 0;
+            ['x', 'y', 'y1'].forEach(function(scaleKey) {
+                const scaleObj = enhancedConfig.scales[scaleKey];
+                const th = scaleObj && scaleObj.threshold;
+                if (th && th.enabled && th.value !== undefined && th.value !== null && th.value !== '') {
+                    const numVal = Number(th.value);
+                    if (!isNaN(numVal)) {
+                        hasAnnotations = true;
+                        const dash = th.style === 'solid' ? [] : th.style === 'dotted' ? [2, 4] : [6, 6];
+                        const isYScale = scaleKey.indexOf('y') === 0;
+                        if (scaleObj) {
+                            if (scaleObj.suggestedMax === undefined || scaleObj.suggestedMax < numVal) {
+                                scaleObj.suggestedMax = Math.ceil(numVal * 1.05);
+                            }
+                            if (numVal < 0 && (scaleObj.suggestedMin === undefined || scaleObj.suggestedMin > numVal)) {
+                                scaleObj.suggestedMin = Math.floor(numVal * 1.05);
+                            }
+                        }
+                        annotations['threshold_' + scaleKey] = {
+                            type: 'line',
+                            scaleID: scaleKey,
+                            value: numVal,
+                            ...(isYScale ? { yMin: numVal, yMax: numVal } : { xMin: numVal, xMax: numVal }),
+                            borderColor: th.color || '#ef4444',
+                            borderWidth: typeof th.width === 'number' ? th.width : 2,
+                            borderDash: dash,
+                            label: {
+                                display: Boolean(th.label),
+                                content: th.label || '',
+                                position: th.position || 'end',
+                                backgroundColor: th.color || '#ef4444',
+                                color: '#ffffff',
+                                font: { size: 10, weight: 'bold' },
+                                padding: { top: 3, bottom: 3, left: 6, right: 6 },
+                                borderRadius: 4
+                            }
+                        };
+                    }
+                }
+            });
+            if (hasAnnotations) {
+                enhancedConfig.plugins = enhancedConfig.plugins || {};
+                enhancedConfig.plugins.annotation = {
+                    ...((enhancedConfig.plugins && enhancedConfig.plugins.annotation) || {}),
+                    annotations: annotations
+                };
+            }
+        }
         
         // Dynamic Axis Tick Prefix & Suffix
         if (enhancedConfig.scales) {
@@ -274,15 +327,29 @@ function generateChartScript(chartData: any, chartConfig: any, chartType: string
             });
         }
         
-        document.addEventListener('DOMContentLoaded', function() {
-            const ctx = document.getElementById('chartCanvas').getContext('2d');
+        function initChart() {
+            if (window['chartjs-plugin-annotation'] && typeof Chart !== 'undefined' && Chart.register) {
+                try {
+                    Chart.register(window['chartjs-plugin-annotation']);
+                } catch(e) {}
+            }
+            const canvas = document.getElementById('chartCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
             const chart = new Chart(ctx, {
                 type: chartType,
                 data: chartData,
-                options: enhancedConfig
+                options: enhancedConfig,
+                plugins: (window['chartjs-plugin-annotation'] ? [window['chartjs-plugin-annotation']] : [])
             });
             window.chart = chart;
-        });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initChart);
+        } else {
+            initChart();
+        }
         
         window.addEventListener('error', function(event) {
             console.error('Chart error:', event.error);
@@ -362,6 +429,7 @@ export const plainTemplate: HTMLTemplate = {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${title}</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
     <script>
         ${generateCompletePluginSystem(chartConfig)}
     </script>

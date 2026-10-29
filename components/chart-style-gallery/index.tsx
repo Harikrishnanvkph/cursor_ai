@@ -233,7 +233,7 @@ export function ChartStyleGallery() {
     }
 
     const { warnings } = checkPresetCompatibility(preset, chartData)
-    const success = applyPreset(preset.id, !!preset.dimensions) // Apply dimensions if preset has them
+    const success = applyPreset(preset.id, false) // Preserve user dimensions & responsiveness when exploring gallery styles
 
     if (success) {
       closeGallery()

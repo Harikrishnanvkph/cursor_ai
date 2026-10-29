@@ -82,3 +82,50 @@ export function getChartLabel(value: string): string {
   const found = ALL_CHART_TYPES.find(c => c.value === value)
   return found ? found.label : value
 }
+
+/** List of coordinate chart types that require (X, Y) pair data */
+export const COORDINATE_CHART_TYPES = ['scatter', 'bubble'] as const
+
+/** Checks if a chart type is a coordinate chart (Scatter or Bubble) */
+export function isCoordinateChart(type: string): boolean {
+  return (COORDINATE_CHART_TYPES as readonly string[]).includes(type)
+}
+
+/** Checks if a chart type is a categorical chart (requires labels and 1D data) */
+export function isCategoricalChart(type: string): boolean {
+  return !isCoordinateChart(type)
+}
+
+/**
+ * Checks whether a chart category is compatible with the currently active chart type.
+ * Categorical charts cannot transition to Coordinate charts and vice versa.
+ */
+export function isCategoryCompatible(categoryId: string, currentChartType: string): boolean {
+  const currentIsCoord = isCoordinateChart(currentChartType)
+  if (currentIsCoord) {
+    return categoryId === 'coordination'
+  } else {
+    return categoryId !== 'coordination'
+  }
+}
+
+/**
+ * Checks whether a target chart type is compatible with the currently active chart type.
+ */
+export function isChartTypeCompatible(targetType: string, currentChartType: string): boolean {
+  const currentIsCoord = isCoordinateChart(currentChartType)
+  const targetIsCoord = isCoordinateChart(targetType)
+  return currentIsCoord === targetIsCoord
+}
+
+/**
+ * Explanatory message when a chart type or category is disabled due to schema incompatibility.
+ */
+export function getChartIncompatibilityReason(targetTypeOrCategory: string, currentChartType: string): string {
+  const currentIsCoord = isCoordinateChart(currentChartType)
+  if (currentIsCoord) {
+    return 'Categorical charts require category labels and 1D data values. To use categorical charts, create a new chart or add a Categorical dataset.'
+  } else {
+    return 'Coordinate charts (Scatter & Bubble) require numeric (X, Y) coordinates instead of category labels. To use Scatter or Bubble, create a new chart or add a Coordinate dataset.'
+  }
+}

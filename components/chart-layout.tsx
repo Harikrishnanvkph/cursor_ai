@@ -9,7 +9,7 @@ import { useTemplateStore } from "@/lib/template-store"
 import { cn } from "@/lib/utils"
 import { useState, useEffect, useRef } from "react"
 import { useUIStore } from "@/lib/stores/ui-store"
-import { ChevronLeft, ChevronRight, Settings, Save, X, Loader2 } from "lucide-react"
+import { ChevronLeft, ChevronRight, Settings, Save, Trash2, X, Loader2, PanelRight } from "lucide-react"
 import { HistoryDropdown } from "@/components/history-dropdown"
 import { useAuth } from "@/components/auth/AuthProvider"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
@@ -340,32 +340,32 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
               {/* Expand Button - Below Profile */}
               <button
                 onClick={toggleSidebar}
-                className="p-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200/60 shadow-xs transition-all duration-200 hover:shadow-sm"
+                className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
                 title="Expand Settings"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <PanelRight className="w-4 h-4" />
               </button>
 
               {/* Action Buttons: Save, Cancel, History */}
               <button
                 onClick={handleSaveClick}
                 disabled={!hasJSON || isSaving}
-                className="p-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-100/50 hover:border-indigo-200 text-indigo-600 transition-all duration-200 shadow-xs disabled:opacity-30 flex items-center justify-center"
+                className="h-8 w-8 flex items-center justify-center rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
                 title="Save chart to online database"
               >
-                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin text-emerald-600" /> : <Save className="w-4 h-4 text-emerald-600 dark:text-emerald-500" />}
               </button>
 
               <button
                 onClick={handleCancel}
                 disabled={!hasJSON}
-                className="p-1.5 rounded-xl bg-red-50 hover:bg-red-100 border border-red-100/50 hover:border-red-200 text-red-600 transition-all duration-200 shadow-xs disabled:opacity-30 flex items-center justify-center"
+                className="h-8 w-8 flex items-center justify-center rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
                 title="Clear chart and start new"
               >
-                <X className="w-4 h-4" />
+                <Trash2 className="w-4 h-4 text-red-500 dark:text-red-400" />
               </button>
 
-              <HistoryDropdown variant="compact" className="rounded-xl h-8 w-8" />
+              <HistoryDropdown variant="compact" className="h-8 w-8 border-0 bg-transparent shadow-none hover:bg-slate-100" />
             </div>
 
             {/* Spacer — clicking the empty area below buttons expands the sidebar */}
@@ -374,39 +374,34 @@ export function ChartLayout({ leftSidebarOpen, setLeftSidebarOpen }: { leftSideb
         ) : (
           // Expanded state: show ConfigSidebar with top bar (expand, history, profile)
           <>
-            <div className="flex items-center p-2.5 border-b border-slate-200/80 bg-white/40 gap-2">
+            <div className="flex items-center justify-between p-2.5 border-b border-slate-200/80 bg-white/40">
               {/* Expand/Collapse Button */}
               <button
                 onClick={toggleSidebar}
-                className="h-8 w-8 p-0 flex items-center justify-center rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200/60 shadow-xs transition-all duration-200 flex-shrink-0"
+                className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors flex-shrink-0"
                 title="Collapse Settings"
               >
-                <ChevronRight className="w-4 h-4" />
+                <PanelRight className="w-4 h-4" />
               </button>
 
               {/* Action Buttons: Save, Cancel, History */}
-              <div className="flex gap-1.5 flex-shrink-0 items-center">
-                <button
-                  onClick={handleSaveClick}
-                  disabled={!hasJSON || isSaving}
-                  className="h-8 w-8 p-0 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-100/50 hover:border-indigo-200 text-indigo-600 transition-all duration-200 shadow-xs disabled:opacity-30 flex items-center justify-center"
-                  title="Save chart to online database"
-                >
-                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                </button>
-                <button
-                  onClick={handleCancel}
-                  disabled={!hasJSON}
-                  className="h-8 w-8 p-0 rounded-xl bg-red-50 hover:bg-red-100 border border-red-100/50 hover:border-red-200 text-red-600 transition-all duration-200 shadow-xs disabled:opacity-30 flex items-center justify-center"
-                  title="Clear chart and start new"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-                <HistoryDropdown variant="inline" className="rounded-xl h-8 w-8 p-0" />
-              </div>
-
-              {/* Spacer to push profile to the right */}
-              <div className="flex-1"></div>
+              <button
+                onClick={handleSaveClick}
+                disabled={!hasJSON || isSaving}
+                className="h-8 w-8 flex items-center justify-center rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors disabled:opacity-30 disabled:hover:bg-transparent flex-shrink-0"
+                title="Save chart to online database"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin text-emerald-600" /> : <Save className="w-4 h-4 text-emerald-600 dark:text-emerald-500" />}
+              </button>
+              <button
+                onClick={handleCancel}
+                disabled={!hasJSON}
+                className="h-8 w-8 flex items-center justify-center rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-30 disabled:hover:bg-transparent flex-shrink-0"
+                title="Clear chart and start new"
+              >
+                <Trash2 className="w-4 h-4 text-red-500 dark:text-red-400" />
+              </button>
+              <HistoryDropdown variant="inline" className="h-8 w-8 p-0 border-0 bg-transparent shadow-none hover:bg-slate-100 flex-shrink-0" />
 
               {/* Profile Icon - Dropdown Menu - Always visible */}
               <div className="flex-shrink-0">

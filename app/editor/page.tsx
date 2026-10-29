@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo, useRef } from "react"
 import { Sidebar, CHART_TABS, TEMPLATE_TABS, getVisibleTemplateTabs } from "@/components/sidebar"
 import { ChartPreview } from "@/components/chart-preview"
 import { ConfigPanel } from "@/components/config-panel"
-import { useChartStore } from "@/lib/chart-store"
+import { useChartStore, getDefaultConfigForType } from "@/lib/chart-store"
+import type { SupportedChartType } from "@/lib/chart-defaults"
 import { saveChartToCloud } from "@/lib/save-utils"
 import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { useTemplateStore } from "@/lib/template-store"
@@ -12,7 +13,7 @@ import { useAuth } from "@/components/auth/AuthProvider"
 import { dataService } from "@/lib/data-service"
 import { Button } from "@/components/ui/button"
 import { SimpleProfileDropdown } from "@/components/ui/simple-profile-dropdown"
-import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Layers, Settings, Menu, Download, ChevronLeft, ChevronRight, FileText, Save, X, Loader2, Plus, Info, LayoutDashboard, MessageSquare, Edit3, BarChart2, SlidersHorizontal, PanelLeft, ExternalLink, Share2, Copy, MoreVertical, Pencil, Check, Cloud, Trash2, ChevronDown, Maximize2, Eye, FileImage, ImageIcon, FileCode, Ellipsis, Camera, RotateCcw, ScanSearch, Grip, Upload } from "lucide-react"
+import { ArrowLeft, Sparkles, AlignEndHorizontal, Database, Palette, Grid, Tag, Layers, Settings, Menu, Download, ChevronLeft, ChevronRight, FileText, Save, X, Loader2, Plus, Info, LayoutDashboard, MessageSquare, Edit3, BarChart2, SlidersHorizontal, PanelLeft, PanelRight, SquarePen, ExternalLink, Share2, Copy, MoreVertical, Pencil, Check, Cloud, Trash2, ChevronDown, Maximize2, Eye, FileImage, ImageIcon, FileCode, Ellipsis, Camera, RotateCcw, ScanSearch, Grip, Upload } from "lucide-react"
 import { useLoupeStore } from "@/lib/stores/loupe-store"
 import React from "react"
 import Link from "next/link"
@@ -592,33 +593,43 @@ function EditorPageContent() {
     const isGrouped = plusModalType === 'grouped';
     setPlusModalType(null);
 
-    const updatedConfig = chartConfig ? JSON.parse(JSON.stringify(chartConfig)) : {};
-    if (dims.isResponsive) {
-      updatedConfig.responsive = true;
-      updatedConfig.manualDimensions = false;
-      updatedConfig.dynamicDimension = false;
-    } else {
-      updatedConfig.responsive = false;
-      updatedConfig.manualDimensions = true;
-      updatedConfig.dynamicDimension = false;
-      updatedConfig.width = `${dims.width}px`;
-      updatedConfig.height = `${dims.height}px`;
-    }
-
-    if (newUniformityMode) {
-      updatedConfig.visualSettings = {
-        ...updatedConfig.visualSettings,
-        uniformityMode: newUniformityMode
-      };
-    }
+    const targetType = (newChartType || 'bar') as SupportedChartType;
 
     if (isGrouped) {
+      const freshGroupConfig = JSON.parse(JSON.stringify(getDefaultConfigForType(targetType)));
+      if (dims.isResponsive) {
+        freshGroupConfig.responsive = true;
+        freshGroupConfig.manualDimensions = false;
+        freshGroupConfig.dynamicDimension = false;
+      } else {
+        freshGroupConfig.responsive = false;
+        freshGroupConfig.manualDimensions = true;
+        freshGroupConfig.dynamicDimension = false;
+        freshGroupConfig.width = `${dims.width}px`;
+        freshGroupConfig.height = `${dims.height}px`;
+      }
+      if (newUniformityMode) {
+        freshGroupConfig.visualSettings = {
+          ...freshGroupConfig.visualSettings,
+          uniformityMode: newUniformityMode
+        };
+      }
+      if (groupName && groupName.trim()) {
+        freshGroupConfig.plugins = freshGroupConfig.plugins || {};
+        freshGroupConfig.plugins.title = {
+          ...freshGroupConfig.plugins.title,
+          display: true,
+          text: groupName.trim()
+        };
+      }
+      freshGroupConfig.decorationShapes = [];
+
       const { id: newGroupId, newState: groupState } = GroupService.addGroup({
         name: groupName || `Group ${(useChartStore.getState().groups || []).length + 1}`,
         category: null,
         uniformityMode: newUniformityMode || 'uniform',
-        baseChartType: newChartType as any,
-        chartConfig: updatedConfig
+        baseChartType: targetType,
+        chartConfig: freshGroupConfig
       }, { groups: useChartStore.getState().groups || [] });
       useChartStore.setState(groupState);
 
@@ -629,7 +640,7 @@ function EditorPageContent() {
           ...dataset,
           groupId: newGroupId,
           mode: 'grouped',
-          chartConfig: updatedConfig
+          chartConfig: freshGroupConfig
         }));
         const newChartData = {
           ...currentData,
@@ -638,11 +649,11 @@ function EditorPageContent() {
         useChartStore.setState({
           chartData: newChartData,
           groupedModeData: newChartData,
-          chartType: newChartType as any
+          chartType: targetType
         });
       }
 
-      useChartStore.getState().updateChartConfig(updatedConfig);
+      useChartStore.getState().updateChartConfig(freshGroupConfig);
       if (useChartStore.getState().chartMode !== 'grouped') {
         useChartStore.getState().setChartMode('grouped');
       }
@@ -655,14 +666,41 @@ function EditorPageContent() {
         chartStore.setChartMode('single');
       }
 
+      const freshSingleConfig = JSON.parse(JSON.stringify(getDefaultConfigForType(targetType)));
+      if (dims.isResponsive) {
+        freshSingleConfig.responsive = true;
+        freshSingleConfig.manualDimensions = false;
+        freshSingleConfig.dynamicDimension = false;
+      } else {
+        freshSingleConfig.responsive = false;
+        freshSingleConfig.manualDimensions = true;
+        freshSingleConfig.dynamicDimension = false;
+        freshSingleConfig.width = `${dims.width}px`;
+        freshSingleConfig.height = `${dims.height}px`;
+      }
+      if (groupName && groupName.trim()) {
+        freshSingleConfig.plugins = freshSingleConfig.plugins || {};
+        freshSingleConfig.plugins.title = {
+          ...freshSingleConfig.plugins.title,
+          display: true,
+          text: groupName.trim()
+        };
+      }
+      freshSingleConfig.decorationShapes = [];
+
       if (datasets && datasets.length > 0) {
         datasets.forEach(dataset => {
           const currentState = useChartStore.getState();
-          const newState = DatasetService.addDataset({ ...dataset, chartConfig: updatedConfig, mode: 'single' }, currentState as any);
+          const newState = DatasetService.addDataset({
+            ...dataset,
+            chartType: targetType,
+            chartConfig: freshSingleConfig,
+            mode: 'single'
+          }, currentState as any);
           useChartStore.setState(newState);
         });
       }
-      useChartStore.getState().updateChartConfig(updatedConfig);
+      useChartStore.getState().updateChartConfig(freshSingleConfig);
       toast.success(`Single chart created successfully.`);
     }
 
@@ -1105,18 +1143,17 @@ function EditorPageContent() {
             </button>
           </div>
           <div className="flex items-center gap-2">
-            {/* Mobile Plus (+) Button */}
+            {/* Mobile New / Add Dropdown */}
             {hasJSON && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 w-8 p-0 border-blue-200 text-blue-600 bg-blue-50 hover:bg-blue-100 hover:border-blue-300"
+                  <button
+                    type="button"
+                    className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-500 dark:hover:text-blue-400 dark:hover:bg-blue-950/40 transition-colors cursor-pointer outline-none"
                     title="Add Single or Grouped Chart"
                   >
-                    <Plus className="h-4 w-4" />
-                  </Button>
+                    <SquarePen className="w-4 h-4 text-blue-600 dark:text-blue-500" />
+                  </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-44 z-[100] bg-white border border-slate-200 shadow-md rounded-md p-1">
                   <DropdownMenuItem
@@ -1887,33 +1924,29 @@ function EditorPageContent() {
             <SimpleProfileDropdown size="sm" />
           </div>
 
-          {/* Expand Button */}
-          <div className="p-2 flex justify-center">
-            <Button
-              variant="ghost"
-              size="sm"
+          {/* Action Buttons: Toggle, SquarePen, Save, Trash, Share, History */}
+          <div className="flex flex-col items-center gap-2 py-2 px-1">
+            {/* Expand Button */}
+            <button
+              type="button"
               onClick={() => setRightSidebarCollapsed(false)}
-              className="h-8 w-8 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg mx-auto"
+              className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
               title="Expand Sidebar"
             >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-          </div>
+              <PanelRight className="w-4 h-4" />
+            </button>
 
-          {/* Action Buttons: +, Share, Save, Cancel, History - Below collapse button */}
-          <div className="flex flex-col items-center gap-2 px-1">
-            {/* 1. Plus (+) Button */}
+            {/* 1. SquarePen (Add) Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
-                  size="sm"
-                  variant="outline"
+                <button
+                  type="button"
                   disabled={!hasJSON}
-                  className="h-8 w-8 p-0 border-blue-200 text-blue-600 bg-blue-50 hover:bg-blue-100 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-500 dark:hover:text-blue-400 dark:hover:bg-blue-950/40 transition-colors disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent cursor-pointer outline-none"
                   title={!hasJSON ? "Create a chart first to add datasets/groups" : "Add Single or Grouped Chart"}
                 >
-                  <Plus className="h-4 w-4" />
-                </Button>
+                  <SquarePen className="w-4 h-4 text-blue-600 dark:text-blue-500" />
+                </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" side="right" className="w-44 z-50 bg-white border border-slate-200 shadow-md rounded-md p-1">
                 <DropdownMenuItem
@@ -1943,21 +1976,43 @@ function EditorPageContent() {
               </DropdownMenuContent>
             </DropdownMenu>
 
+            {/* 2. Save Button */}
+            <button
+              type="button"
+              onClick={handleSaveClick}
+              disabled={!hasJSON || isSaving}
+              className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-500 dark:hover:text-emerald-400 dark:hover:bg-emerald-950/40 transition-colors disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent cursor-pointer outline-none"
+              title="Save chart to online database"
+            >
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin text-emerald-600" /> : <Save className="w-4 h-4 text-emerald-600 dark:text-emerald-500" />}
+            </button>
+
+            {/* 3. Delete / Clear Button */}
+            <button
+              type="button"
+              onClick={handleCancel}
+              disabled={!hasJSON}
+              className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950/40 transition-colors disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent cursor-pointer outline-none"
+              title="Clear chart and start new"
+            >
+              <Trash2 className="w-4 h-4 text-red-500 dark:text-red-400" />
+            </button>
+
+            {/* 4. Share Button */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
-                  size="sm"
-                  variant="outline"
+                <button
+                  type="button"
                   disabled={isSharingLink || !currentSnapshotId}
-                  className="h-8 w-8 p-0 border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-slate-600 hover:text-blue-600 hover:bg-blue-50 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-blue-950/40 transition-colors disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-slate-600 cursor-pointer outline-none"
                   title={!currentSnapshotId ? "Save to share" : "Share options"}
                 >
                   {isSharingLink ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
                   ) : (
-                    <Share2 className="h-3.5 w-3.5" />
+                    <Share2 className="w-4 h-4" />
                   )}
-                </Button>
+                </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" side="right" className="w-40 z-50 bg-white border border-slate-200 shadow-md rounded-md p-1">
                 <DropdownMenuItem onClick={handleCopyShareLink} className="flex items-center gap-2 px-2.5 py-1.5 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md">
@@ -1970,27 +2025,12 @@ function EditorPageContent() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button
-              size="sm"
-              variant="default"
-              onClick={handleSaveClick}
-              disabled={!hasJSON || isSaving}
-              className="h-8 w-8 p-0 bg-green-600 hover:bg-green-700 text-white"
-              title="Save chart to online database"
-            >
-              {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleCancel}
-              disabled={!hasJSON}
-              className="h-8 w-8 p-0 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
-              title="Clear chart and start new"
-            >
-              <X className="h-3.5 w-3.5" />
-            </Button>
-            <HistoryDropdown variant="compact" className="h-8 w-8 p-0" />
+
+            {/* 5. History Dropdown */}
+            <HistoryDropdown
+              variant="inline"
+              className="border-0 bg-transparent shadow-none hover:bg-slate-100 hover:text-slate-900 text-slate-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 flex-shrink-0"
+            />
           </div>
 
           {/* Spacer — clicking the empty area below buttons expands the sidebar */}
@@ -2232,33 +2272,29 @@ function EditorPageContent() {
             <SimpleProfileDropdown size="sm" />
           </div>
 
-          {/* Collapse/Expand Button - Below Profile */}
-          <div className="p-2 flex justify-center">
-            <Button
-              variant="ghost"
-              size="sm"
+          {/* Action Buttons: Toggle, SquarePen, Save, Trash, Share, History */}
+          <div className="flex flex-col items-center gap-2 py-2 px-1">
+            {/* Collapse/Expand Button */}
+            <button
+              type="button"
               onClick={() => setRightSidebarCollapsed((v) => !v)}
-              className="h-8 w-8 p-0 hover:bg-gray-200 hover:shadow-sm transition-all duration-200 rounded-lg mx-auto"
+              className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
               title={rightSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
             >
-              <ChevronLeft className={`h-4 w-4 ${rightSidebarCollapsed ? '' : 'rotate-180'}`} />
-            </Button>
-          </div>
+              <PanelRight className="w-4 h-4" />
+            </button>
 
-          {/* Action Buttons: +, Save, Cancel, Share, History - Below collapse button */}
-          <div className="flex flex-col items-center gap-2 px-1">
-            {/* 1. Plus (+) Button */}
+            {/* 1. SquarePen (Add) Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
-                  size="sm"
-                  variant="outline"
+                <button
+                  type="button"
                   disabled={!hasJSON}
-                  className="h-8 w-8 p-0 border-blue-200 text-blue-600 bg-blue-50 hover:bg-blue-100 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-500 dark:hover:text-blue-400 dark:hover:bg-blue-950/40 transition-colors disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent cursor-pointer outline-none"
                   title={!hasJSON ? "Create a chart first to add datasets/groups" : "Add Single or Grouped Chart"}
                 >
-                  <Plus className="h-4 w-4" />
-                </Button>
+                  <SquarePen className="w-4 h-4 text-blue-600 dark:text-blue-500" />
+                </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" side="right" className="w-44 z-50 bg-white border border-slate-200 shadow-md rounded-md p-1">
                 <DropdownMenuItem
@@ -2289,45 +2325,42 @@ function EditorPageContent() {
             </DropdownMenu>
 
             {/* 2. Save Button */}
-            <Button
-              size="sm"
-              variant="default"
+            <button
+              type="button"
               onClick={handleSaveClick}
               disabled={!hasJSON || isSaving}
-              className="h-8 w-8 p-0 bg-green-600 hover:bg-green-700 text-white"
+              className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-500 dark:hover:text-emerald-400 dark:hover:bg-emerald-950/40 transition-colors disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent cursor-pointer outline-none"
               title="Save chart to online database"
             >
-              {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-            </Button>
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin text-emerald-600" /> : <Save className="w-4 h-4 text-emerald-600 dark:text-emerald-500" />}
+            </button>
 
-            {/* 3. Cancel Button */}
-            <Button
-              size="sm"
-              variant="outline"
+            {/* 3. Delete / Clear Button */}
+            <button
+              type="button"
               onClick={handleCancel}
               disabled={!hasJSON}
-              className="h-8 w-8 p-0 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+              className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950/40 transition-colors disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent cursor-pointer outline-none"
               title="Clear chart and start new"
             >
-              <X className="h-3.5 w-3.5" />
-            </Button>
+              <Trash2 className="w-4 h-4 text-red-500 dark:text-red-400" />
+            </button>
 
             {/* 4. Share Button */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
-                  size="sm"
-                  variant="outline"
+                <button
+                  type="button"
                   disabled={isSharingLink || !currentSnapshotId}
-                  className="h-8 w-8 p-0 border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-1.5 h-8 w-8 flex-shrink-0 flex items-center justify-center rounded-lg text-slate-600 hover:text-blue-600 hover:bg-blue-50 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-blue-950/40 transition-colors disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-slate-600 cursor-pointer outline-none"
                   title={!currentSnapshotId ? "Save to share" : "Share options"}
                 >
                   {isSharingLink ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
                   ) : (
-                    <Share2 className="h-3.5 w-3.5" />
+                    <Share2 className="w-4 h-4" />
                   )}
-                </Button>
+                </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" side="right" className="w-40 z-50 bg-white border border-slate-200 shadow-md rounded-md p-1">
                 <DropdownMenuItem onClick={handleCopyShareLink} className="flex items-center gap-2 px-2.5 py-1.5 text-xs cursor-pointer font-medium hover:bg-slate-100 rounded-md">
@@ -2342,7 +2375,10 @@ function EditorPageContent() {
             </DropdownMenu>
 
             {/* 5. History Dropdown */}
-            <HistoryDropdown variant="compact" className="h-8 w-8 p-0" />
+            <HistoryDropdown
+              variant="inline"
+              className="border-0 bg-transparent shadow-none hover:bg-slate-100 hover:text-slate-900 text-slate-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 flex-shrink-0"
+            />
           </div>
 
           {/* Spacer — clicking the empty area below buttons expands the sidebar */}

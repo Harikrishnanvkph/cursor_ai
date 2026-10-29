@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button"
 import { type ExtendedChartDataset } from "@/lib/chart-store"
 import { getDefaultImageType, getDefaultImageSize, getImageOptionsForChartType, getDefaultImageConfig as getDefaultImageConfigFromStore } from "@/lib/plugins/universal-image-plugin"
+import { getProxiedImageUrl } from "@/lib/utils/image-proxy-utils"
 import { toast } from "sonner"
 import {
     ImageIcon,
@@ -251,8 +252,9 @@ export function ImagesTab({
                             <Label className="text-xs font-medium text-blue-700 mb-1.5 block">Preview</Label>
                             <div className="relative aspect-square w-full max-w-[120px] mx-auto rounded-lg overflow-hidden border-2 border-blue-300 bg-gray-50">
                                 <img
-                                    src={previewImageUrl}
+                                    src={getProxiedImageUrl(previewImageUrl)}
                                     alt="Preview"
+                                    crossOrigin="anonymous"
                                     className="w-full h-full object-cover z-10 relative"
                                     onError={(e) => {
                                         const img = e.target as HTMLImageElement;

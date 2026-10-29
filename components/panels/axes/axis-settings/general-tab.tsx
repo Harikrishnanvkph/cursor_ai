@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useState, useRef, useEffect } from "react"
-import { UNIFIED_FONT_FAMILIES, FONT_WEIGHT_OPTIONS, ensureGoogleFontLoaded } from "@/lib/typography-registry"
+import { FontFamilySelect, FontWeightSelect } from "@/components/ui/font-family-select"
 import { useChartData } from "@/lib/hooks/use-chart-state"
 import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { cn } from "@/lib/utils"
@@ -312,43 +312,18 @@ export function GeneralTab({ axis, config, chartType, updateConfig, updateNested
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-1">
                                         <Label className="text-xs font-medium text-gray-700">Font Family</Label>
-                                        <Select
+                                        <FontFamilySelect
                                             value={config?.title?.font?.family || 'Arial'}
-                                            onValueChange={(value) => {
-                                                ensureGoogleFontLoaded(value)
-                                                updateConfig('title.font.family', value)
-                                            }}
-                                        >
-                                            <SelectTrigger className="h-8 text-xs bg-white">
-                                                <SelectValue placeholder="Font Family" />
-                                            </SelectTrigger>
-                                            <SelectContent className="max-h-56">
-                                                {UNIFIED_FONT_FAMILIES.filter(f => f.value !== 'default').map(f => (
-                                                    <SelectItem key={f.id} value={f.value} style={{ fontFamily: f.value }}>
-                                                        {f.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                            onValueChange={(value) => updateConfig('title.font.family', value)}
+                                        />
                                     </div>
 
                                     <div className="space-y-1">
                                         <Label className="text-xs font-medium text-gray-700">Font Weight</Label>
-                                        <Select
+                                        <FontWeightSelect
                                             value={String(config?.title?.font?.weight || 'normal')}
                                             onValueChange={(value) => updateConfig('title.font.weight', value)}
-                                        >
-                                            <SelectTrigger className="h-8 text-xs bg-white">
-                                                <SelectValue placeholder="Select weight" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {FONT_WEIGHT_OPTIONS.map(w => (
-                                                    <SelectItem key={w.value} value={w.value}>
-                                                        {w.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                        />
                                     </div>
 
                                     <div className="space-y-1">
@@ -450,43 +425,18 @@ export function GeneralTab({ axis, config, chartType, updateConfig, updateNested
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="space-y-1">
                                         <Label className="text-xs font-medium text-gray-700">Font Family</Label>
-                                        <Select
+                                        <FontFamilySelect
                                             value={config?.ticks?.font?.family || 'Arial'}
-                                            onValueChange={(value) => {
-                                                ensureGoogleFontLoaded(value)
-                                                updateConfig('ticks.font.family', value)
-                                            }}
-                                        >
-                                            <SelectTrigger className="h-8 text-xs bg-white">
-                                                <SelectValue placeholder="Font Family" />
-                                            </SelectTrigger>
-                                            <SelectContent className="max-h-56">
-                                                {UNIFIED_FONT_FAMILIES.filter(f => f.value !== 'default').map(f => (
-                                                    <SelectItem key={f.id} value={f.value} style={{ fontFamily: f.value }}>
-                                                        {f.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                            onValueChange={(value) => updateConfig('ticks.font.family', value)}
+                                        />
                                     </div>
 
                                     <div className="space-y-1">
                                         <Label className="text-xs font-medium text-gray-700">Font Weight</Label>
-                                        <Select
+                                        <FontWeightSelect
                                             value={String(config?.ticks?.font?.weight || 'normal')}
                                             onValueChange={(value) => updateConfig('ticks.font.weight', value)}
-                                        >
-                                            <SelectTrigger className="h-8 text-xs bg-white">
-                                                <SelectValue placeholder="Select weight" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {FONT_WEIGHT_OPTIONS.map(w => (
-                                                    <SelectItem key={w.value} value={w.value}>
-                                                        {w.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                        />
                                     </div>
                                 </div>
 
@@ -505,30 +455,6 @@ export function GeneralTab({ axis, config, chartType, updateConfig, updateNested
                                             className="h-8 text-xs bg-white"
                                             min={-90}
                                             max={90}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-medium text-gray-700">Prefix</Label>
-                                        <Input
-                                            type="text"
-                                            value={config?.ticks?.prefix ?? ''}
-                                            onChange={(e) => updateConfig('ticks.prefix', e.target.value)}
-                                            placeholder="e.g. $, #"
-                                            className="h-8 text-xs bg-white"
-                                        />
-                                    </div>
-
-                                    <div className="space-y-1">
-                                        <Label className="text-xs font-medium text-gray-700">Suffix</Label>
-                                        <Input
-                                            type="text"
-                                            value={config?.ticks?.suffix ?? ''}
-                                            onChange={(e) => updateConfig('ticks.suffix', e.target.value)}
-                                            placeholder="e.g. %, USD, k"
-                                            className="h-8 text-xs bg-white"
                                         />
                                     </div>
                                 </div>

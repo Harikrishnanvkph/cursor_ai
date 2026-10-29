@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch"
 import { Slider } from "@/components/ui/slider"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useState } from "react"
+import { NumberFormattingSection } from "./number-formatting-section"
 
 interface ArcSettingsProps {
     chartType: string
@@ -127,6 +128,17 @@ export function ArcSettings({ chartType, options, onUpdate }: ArcSettingsProps) 
                     </div>
                 )}
             </div>
+
+            {/* Number & Value Formatting Section */}
+            <NumberFormattingSection
+                value={options?.numberFormat || options?.scales?.r?.ticks?.numberFormat}
+                onChange={(newFmt) => {
+                    onUpdate('numberFormat', newFmt)
+                    onUpdate('scales.r.ticks.numberFormat', newFmt)
+                }}
+                defaultOpen={false}
+                tooltipDescription="Format numbers shown in tooltips for each slice"
+            />
 
             {/* Border Settings */}
             <div className="space-y-0">

@@ -40,7 +40,7 @@ window.labelDragState = ${JSON.stringify(customLabelsConfig.labels?.map((dataset
 // Custom Label Plugin for HTML Export
 const customLabelPlugin = {
   id: 'customLabels',
-  afterDraw(chart) {
+  afterDatasetsDraw(chart) {
     const opts = ${JSON.stringify(customLabelsConfig)};
     if (!opts || !opts.labels) return;
     

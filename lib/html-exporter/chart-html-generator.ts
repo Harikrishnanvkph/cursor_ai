@@ -316,12 +316,12 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
             processedChartConfig.scales = {};
         }
         processedChartConfig.scales.y1 = {
-            beginAtZero: rawY1.beginAtZero !== undefined ? rawY1.beginAtZero : (processedChartConfig.scales?.y?.beginAtZero ?? true),
             ...rawY1,
+            beginAtZero: rawY1.beginAtZero !== undefined ? rawY1.beginAtZero : (processedChartConfig.scales?.y?.beginAtZero ?? true),
             position: y1Pos,
             grid: {
-                drawOnChartArea: rawY1.grid?.drawOnChartArea ?? false,
                 ...(rawY1.grid || {}),
+                drawOnChartArea: rawY1.grid?.drawOnChartArea ?? false,
             },
         };
     }
@@ -388,21 +388,97 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
             }
         }
         delete scaleObj.grace;
+
+        // Ensure scale limits expand to include threshold / goal benchmark lines
+        const th = scaleObj.threshold;
+        if (th?.enabled && th.value !== undefined && th.value !== null && th.value !== '') {
+            const numVal = Number(th.value);
+            if (!isNaN(numVal)) {
+                if (scaleObj.suggestedMax === undefined || scaleObj.suggestedMax < numVal) {
+                    scaleObj.suggestedMax = Math.ceil(numVal * 1.05);
+                }
+                if (numVal < 0 && (scaleObj.suggestedMin === undefined || scaleObj.suggestedMin > numVal)) {
+                    scaleObj.suggestedMin = Math.floor(numVal * 1.05);
+                }
+            }
+        }
     };
 
+    const yGraceFallback = processedChartConfig.scales?.y?.grace ?? '5%';
     if (processedChartConfig.scales?.y) {
-        computeGraceForScale(processedChartConfig.scales.y, 'y');
+        computeGraceForScale(processedChartConfig.scales.y, 'y', yGraceFallback);
     }
     if (showRightAxis && processedChartConfig.scales?.y1) {
         computeGraceForScale(
             processedChartConfig.scales.y1,
             'y1',
-            processedChartConfig.scales?.y?.grace
+            yGraceFallback
         );
     }
 
     if (processedChartConfig.background?.type === 'image' && processedChartConfig.background?.imageUrl) {
         processedChartConfig.background.imageUrl = await convertImageToBase64(processedChartConfig.background.imageUrl);
+    }
+
+    // ── Scale Threshold / Goal Lines Mapping in TypeScript ────────────────────
+    if (processedChartConfig.scales && typeof processedChartConfig.scales === 'object') {
+        const existingAnnotations = { ...((processedChartConfig.plugins as any)?.annotation?.annotations || {}) };
+        let hasAnnotations = Object.keys(existingAnnotations).length > 0;
+
+        ['x', 'y', 'y1'].forEach((scaleKey) => {
+            const scaleObj = (processedChartConfig.scales as any)?.[scaleKey];
+            const th = scaleObj?.threshold;
+            if (th && th.enabled && th.value !== undefined && th.value !== null && th.value !== '') {
+                const numVal = Number(th.value);
+                if (!isNaN(numVal)) {
+                    hasAnnotations = true;
+                    const dash = th.style === 'solid' ? [] : th.style === 'dotted' ? [2, 4] : [6, 6];
+                    const isYScale = scaleKey.startsWith('y');
+
+                    if (scaleObj) {
+                        if (scaleObj.suggestedMax === undefined || scaleObj.suggestedMax < numVal) {
+                            scaleObj.suggestedMax = Math.ceil(numVal * 1.05);
+                        }
+                        if (numVal < 0 && (scaleObj.suggestedMin === undefined || scaleObj.suggestedMin > numVal)) {
+                            scaleObj.suggestedMin = Math.floor(numVal * 1.05);
+                        }
+                    }
+
+                    existingAnnotations[`threshold_${scaleKey}`] = {
+                        type: 'line',
+                        scaleID: scaleKey,
+                        value: numVal,
+                        ...(isYScale ? { yMin: numVal, yMax: numVal } : { xMin: numVal, xMax: numVal }),
+                        borderColor: th.color || '#ef4444',
+                        borderWidth: typeof th.width === 'number' ? th.width : 2,
+                        borderDash: dash,
+                        label: {
+                            display: Boolean(th.label),
+                            content: th.label || '',
+                            position: th.position || 'end',
+                            backgroundColor: th.color || '#ef4444',
+                            color: '#ffffff',
+                            font: {
+                                size: 10,
+                                weight: 'bold',
+                            },
+                            padding: { top: 3, bottom: 3, left: 6, right: 6 },
+                            borderRadius: 4,
+                        },
+                    };
+                }
+            }
+        });
+
+        if (hasAnnotations) {
+            processedChartConfig.plugins = {
+                ...processedChartConfig.plugins,
+                annotation: {
+                    ...((processedChartConfig.plugins as any)?.annotation || {}),
+                    annotations: existingAnnotations,
+                },
+            };
+        }
     }
 
     // ── Intelligent Font Scaling ───────────────────────────────────────────────
@@ -861,8 +937,8 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
 
         // Dynamic Goal / Benchmark Threshold Line post-processing
         if (enhancedConfig.scales) {
-            const annotations = {};
-            let hasAnnotations = false;
+            const annotations = { ...((enhancedConfig.plugins && enhancedConfig.plugins.annotation && enhancedConfig.plugins.annotation.annotations) || {}) };
+            let hasAnnotations = Object.keys(annotations).length > 0;
             ['x', 'y', 'y1'].forEach(function(scaleKey) {
                 const scaleObj = enhancedConfig.scales[scaleKey];
                 const th = scaleObj && scaleObj.threshold;
@@ -875,6 +951,9 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
                         if (scaleObj) {
                             if (scaleObj.suggestedMax === undefined || scaleObj.suggestedMax < numVal) {
                                 scaleObj.suggestedMax = Math.ceil(numVal * 1.05);
+                            }
+                            if (numVal < 0 && (scaleObj.suggestedMin === undefined || scaleObj.suggestedMin > numVal)) {
+                                scaleObj.suggestedMin = Math.floor(numVal * 1.05);
                             }
                         }
                         annotations['threshold_' + scaleKey] = {
@@ -902,19 +981,67 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
             if (hasAnnotations) {
                 enhancedConfig.plugins = enhancedConfig.plugins || {};
                 enhancedConfig.plugins.annotation = {
+                    ...((enhancedConfig.plugins && enhancedConfig.plugins.annotation) || {}),
                     annotations: annotations
                 };
             }
         }
         
-        // Dynamic Axis Tick Prefix & Suffix
+        // Utility to format numbers based on numberFormat configuration
+        function formatNumberWithConfig(val, formatConfig) {
+            if (!formatConfig || typeof formatConfig !== 'object') return String(val);
+            const preset = formatConfig.preset || 'none';
+            const currencySymbol = formatConfig.currencySymbol || '$';
+            const currencyPosition = formatConfig.currencyPosition || 'prefix';
+            const decimals = formatConfig.decimals;
+            const compact = Boolean(formatConfig.compact) || preset === 'compact';
+            const useGrouping = formatConfig.useGrouping !== false;
+
+            if (preset === 'none' && !compact && (decimals === undefined || decimals === 'auto')) {
+                return String(val);
+            }
+
+            let formatted = '';
+            const fracDigits = (decimals !== undefined && decimals !== 'auto') ? Number(decimals) : (val % 1 === 0 ? 0 : 2);
+
+            try {
+                const opts = {
+                    useGrouping: useGrouping,
+                    maximumFractionDigits: fracDigits,
+                    minimumFractionDigits: (decimals !== undefined && decimals !== 'auto') ? fracDigits : 0,
+                };
+                if (compact) {
+                    opts.notation = 'compact';
+                    opts.compactDisplay = 'short';
+                }
+                formatted = new Intl.NumberFormat('en-US', opts).format(val);
+            } catch(e) {
+                formatted = String(val);
+            }
+
+            if (preset === 'currency') {
+                if (currencyPosition === 'prefix') {
+                    formatted = currencySymbol + formatted;
+                } else {
+                    formatted = formatted + ' ' + currencySymbol;
+                }
+            } else if (preset === 'percent') {
+                formatted = formatted + '%';
+            }
+
+            return formatted;
+        }
+
+        // Dynamic Axis Tick Prefix & Suffix & Number Formatting
         if (enhancedConfig.scales) {
             Object.keys(enhancedConfig.scales).forEach(function(axisKey) {
                 const scale = enhancedConfig.scales[axisKey];
                 if (scale && scale.ticks) {
                     const prefix = typeof scale.ticks.prefix === 'string' ? scale.ticks.prefix : '';
                     const suffix = typeof scale.ticks.suffix === 'string' ? scale.ticks.suffix : '';
-                    if (prefix || suffix) {
+                    const numFormat = scale.ticks.numberFormat;
+                    const hasNumFormat = numFormat && ((numFormat.preset && numFormat.preset !== 'none') || numFormat.compact);
+                    if (prefix || suffix || hasNumFormat) {
                         const origCallback = scale.ticks.callback;
                         scale.ticks.callback = function(value, index, ticks) {
                             let label;
@@ -922,6 +1049,8 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
                                 label = origCallback.call(this, value, index, ticks);
                             } else if (this && typeof this.getLabelForValue === 'function') {
                                 label = this.getLabelForValue(value);
+                            } else if (typeof value === 'number' && hasNumFormat) {
+                                label = formatNumberWithConfig(value, numFormat);
                             } else {
                                 label = value;
                             }
@@ -937,15 +1066,52 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
             });
         }
 
-        // Initialize chart when DOM is loaded
-        document.addEventListener('DOMContentLoaded', function() {
-            const ctx = document.getElementById('chartCanvas').getContext('2d');
+        // Dynamic Tooltip Number Formatting
+        if (enhancedConfig.plugins && enhancedConfig.plugins.tooltip && enhancedConfig.plugins.tooltip.enabled !== false) {
+            const origTooltipLabel = enhancedConfig.plugins.tooltip.callbacks && enhancedConfig.plugins.tooltip.callbacks.label;
+            enhancedConfig.plugins.tooltip.callbacks = enhancedConfig.plugins.tooltip.callbacks || {};
+            enhancedConfig.plugins.tooltip.callbacks.label = function(context) {
+                if (typeof origTooltipLabel === 'function') {
+                    return origTooltipLabel.call(this, context);
+                }
+                const dataset = context.dataset || {};
+                const label = context.label || '';
+                const val = context.raw !== undefined ? context.raw : (context.parsed && context.parsed.y !== undefined ? context.parsed.y : context.parsed);
+                let scaleFormat = null;
+                if (chartType === 'radar' || chartType === 'polarArea') {
+                    scaleFormat = enhancedConfig.scales && enhancedConfig.scales.r && enhancedConfig.scales.r.ticks && enhancedConfig.scales.r.ticks.numberFormat;
+                } else if (['pie', 'doughnut', 'pie3d', 'doughnut3d', 'gauge'].indexOf(chartType) >= 0) {
+                    scaleFormat = enhancedConfig.numberFormat || (enhancedConfig.scales && enhancedConfig.scales.r && enhancedConfig.scales.r.ticks && enhancedConfig.scales.r.ticks.numberFormat);
+                } else if (enhancedConfig.scales) {
+                    const axisKey = enhancedConfig.indexAxis === 'y' ? 'x' : (dataset.yAxisID || 'y');
+                    scaleFormat = enhancedConfig.scales[axisKey] && enhancedConfig.scales[axisKey].ticks && enhancedConfig.scales[axisKey].ticks.numberFormat;
+                }
+                let formattedVal = val;
+                if (typeof val === 'number' && scaleFormat && scaleFormat.syncTooltip !== false && ((scaleFormat.preset && scaleFormat.preset !== 'none') || scaleFormat.compact)) {
+                    formattedVal = formatNumberWithConfig(val, scaleFormat);
+                }
+                const dsLabel = dataset.label ? dataset.label + ': ' : (label ? label + ': ' : '');
+                return dsLabel + formattedVal;
+            };
+        }
+
+        // Initialize chart safely
+        function initChart() {
+            if (window['chartjs-plugin-annotation'] && typeof Chart !== 'undefined' && Chart.register) {
+                try {
+                    Chart.register(window['chartjs-plugin-annotation']);
+                } catch(e) {}
+            }
+            const canvas = document.getElementById('chartCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
             
             // Create the chart
             const chart = new Chart(ctx, {
                 type: chartType,
                 data: chartData,
-                options: enhancedConfig
+                options: enhancedConfig,
+                plugins: (window['chartjs-plugin-annotation'] ? [window['chartjs-plugin-annotation']] : [])
             });
             
             // Add custom JavaScript if provided
@@ -983,7 +1149,13 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
             console.log('Chart type:', chartType);
             console.log('Data points:', chartData.labels?.length || 0);
             console.log('Datasets:', chartData.datasets.length);
-        });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initChart);
+        } else {
+            initChart();
+        }
         
         // Error handling
         window.addEventListener('error', function(event) {

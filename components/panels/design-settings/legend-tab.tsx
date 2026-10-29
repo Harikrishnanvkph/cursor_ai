@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
+import { FontFamilySelect, FontWeightSelect } from "@/components/ui/font-family-select"
 import { PiePanel } from "../pie-panel"
 
 type ConfigPathUpdate = {
@@ -240,40 +241,20 @@ export function LegendTab({
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
-                        <div>
+                        <div className="space-y-1">
                             <Label className="text-xs font-medium">Font Family</Label>
-                            <Select
+                            <FontFamilySelect
                                 value={((chartConfig.plugins?.legend?.labels as any)?.font?.family as string) || "Arial"}
                                 onValueChange={(value: string) => handleConfigUpdate("plugins.legend.labels.font.family", value)}
-                            >
-                                <SelectTrigger className="h-8 text-xs">
-                                    <SelectValue placeholder="Default" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Arial">Arial</SelectItem>
-                                    <SelectItem value="Lucida Console">Lucida Console</SelectItem>
-                                    <SelectItem value="Times New Roman">Times New Roman</SelectItem>
-                                    <SelectItem value="Open Sans">Open Sans</SelectItem>
-                                    <SelectItem value="Courier">Courier New</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            />
                         </div>
 
-                        <div>
+                        <div className="space-y-1">
                             <Label className="text-xs font-medium">Font Weight</Label>
-                            <Select
+                            <FontWeightSelect
                                 value={((chartConfig.plugins?.legend?.labels as any)?.font?.weight as string) || "400"}
                                 onValueChange={(value: string) => handleConfigUpdate("plugins.legend.labels.font.weight", value)}
-                            >
-                                <SelectTrigger className="h-8 text-xs">
-                                    <SelectValue placeholder="Normal" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="400">Normal</SelectItem>
-                                    <SelectItem value="700">Bold</SelectItem>
-                                    <SelectItem value="800">Extra Bold</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            />
                         </div>
                     </div>
 
