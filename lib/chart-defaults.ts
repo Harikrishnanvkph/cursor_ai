@@ -93,7 +93,7 @@ declare module 'chart.js' {
 }
 
 // Define our custom chart types that extend Chart.js types
-export type CustomChartType = 'stackedBar' | 'area' | 'pie3d' | 'doughnut3d' | 'bar3d' | 'horizontalBar3d' | 'gauge' | 'funnel' | 'waterfall';
+export type CustomChartType = 'stackedBar' | 'area' | 'pie3d' | 'doughnut3d' | 'bar3d' | 'horizontalBar3d' | 'gauge' | 'funnel' | 'waterfall' | 'timeline';
 
 // Define supported chart types as a union of Chart.js types and our custom types
 type SupportedChartTypeLocal =
@@ -237,7 +237,8 @@ export const chartTypeMapping: Record<SupportedChartType, keyof ChartTypeRegistr
     horizontalBar3d: 'bar',
     gauge: 'doughnut',
     funnel: 'bar',
-    waterfall: 'bar'
+    waterfall: 'bar',
+    timeline: 'line'
 };
 
 // Create a utility function to check if a chart should be displayed as an area chart
@@ -361,7 +362,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
 
     // For area chart, use line chart config
     let processedType: keyof ChartTypeRegistry;
-    if (type === ('area' as CustomChartType)) {
+    if (type === ('area' as CustomChartType) || type === ('timeline' as CustomChartType)) {
         processedType = 'line';
     } else if (is3DPie || isGauge) {
         processedType = isGauge ? 'doughnut' : (type === 'pie3d' ? 'pie' : 'doughnut');
@@ -377,7 +378,7 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
         width: '800px',
         height: '600px',
         visualSettings: {
-            fillArea: (type !== 'line'), // Line charts should default to no fill
+            fillArea: (type !== 'line' && type !== 'timeline'), // Line and timeline charts should default to no fill
             fillPoints: true,
             showBorder: true,
             showImages: true,
@@ -1002,6 +1003,100 @@ export const getDefaultConfigForType = (type: SupportedChartType): ExtendedChart
                 },
             },
         }
+    }
+
+    // Special configuration for Timeline Series (Financial / Stock style)
+    if (type === ('timeline' as CustomChartType)) {
+        return {
+            ...baseConfig,
+            visualSettings: {
+                ...baseConfig.visualSettings,
+                showImages: false,
+                showLabels: false,
+            },
+            hover: {
+                intersect: false,
+                animationDuration: 0,
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index' as const,
+                axis: 'x' as const,
+            },
+            plugins: {
+                ...baseConfig.plugins,
+                decimation: {
+                    enabled: true,
+                    algorithm: 'lttb',
+                    samples: 500,
+                },
+                timelineCrosshair: {
+                    enabled: true,
+                    color: '#64748b',
+                    dash: [3, 3],
+                    showPulsePoint: true,
+                    currency: 'USD',
+                },
+                timelineRangeSelector: {
+                    enabled: true,
+                    selectedRange: 'Max',
+                },
+                legend: {
+                    display: false,
+                },
+                tooltip: {
+                    enabled: true,
+                    backgroundColor: "rgba(15, 23, 42, 0.9)",
+                    titleColor: "#94a3b8",
+                    bodyColor: "#ffffff",
+                    borderColor: "rgba(148, 163, 184, 0.2)",
+                    borderWidth: 1,
+                    padding: 8,
+                    displayColors: false,
+                }
+            },
+            scales: {
+                x: {
+                    display: true,
+                    type: 'time',
+                    grid: {
+                        display: false,
+                    },
+                    ticks: {
+                        display: true,
+                        font: { size: 12 },
+                        color: "#94a3b8",
+                        maxRotation: 0,
+                        autoSkip: true,
+                    },
+                    border: {
+                        display: true,
+                        color: "#334155",
+                        width: 1,
+                    },
+                },
+                y: {
+                    display: true,
+                    position: 'left',
+                    beginAtZero: false,
+                    grace: '5%',
+                    grid: {
+                        display: true,
+                        color: "rgba(148, 163, 184, 0.12)",
+                        lineWidth: 1,
+                    },
+                    ticks: {
+                        display: true,
+                        font: { size: 12 },
+                        color: "#94a3b8",
+                        padding: 8,
+                    },
+                    border: {
+                        display: false,
+                    },
+                },
+            },
+        } as ExtendedChartOptions;
     }
 
     return {

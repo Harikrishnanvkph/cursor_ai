@@ -454,7 +454,7 @@ export const ChartTypeService = {
         }
 
         // Sync fillArea setting with the target chart type
-        if (targetType === 'line') {
+        if (targetType === 'line' || targetType === 'timeline') {
             newConfig.visualSettings = {
                 ...(newConfig.visualSettings || {}),
                 fillArea: false

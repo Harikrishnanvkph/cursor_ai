@@ -48,6 +48,7 @@ import {
 } from "@/lib/utils/dimension-utils"
 import { applyOpacityToColor } from "@/lib/utils/color-utils"
 import { getDefaultImageConfig } from "@/lib/plugins/universal-image-plugin"
+import { CATEGORIZED_CHART_TYPES } from "@/lib/chart-types"
 import { cn } from "@/lib/utils"
 import {
   BarChart3,
@@ -114,7 +115,7 @@ interface ChartSetupDialogProps {
   confirmButtonText?: string
 }
 
-type ChartCategory = 'categorical' | 'coordinate'
+type ChartCategory = 'categorical' | 'coordinate' | '3d' | 'more'
 
 interface DataPoint {
   id?: string
@@ -155,6 +156,7 @@ const categoricalChartTypes: { value: SupportedChartType; label: string }[] = [
   { value: 'funnel' as any, label: 'Funnel' },
   { value: 'gauge' as any, label: 'Gauge' },
   { value: 'waterfall' as any, label: 'Waterfall' },
+  { value: 'timeline' as any, label: 'Timeline Series' },
 ]
 
 const coordinateChartTypes: { value: SupportedChartType; label: string }[] = [
@@ -217,17 +219,40 @@ function parseExistingDatasets(
         }
       }
       const isCoord = type === 'scatter' || type === 'bubble'
-      const category: ChartCategory = isCoord ? 'coordinate' : 'categorical'
+      let category: ChartCategory = 'categorical'
+      if (isCoord) {
+        category = 'coordinate'
+      } else if (datasetType === 'single') {
+        if (['bar3d', 'horizontalBar3d', 'pie3d', 'doughnut3d'].includes(type)) {
+          category = '3d'
+        } else if (['gauge', 'funnel', 'waterfall', 'timeline'].includes(type)) {
+          category = 'more'
+        } else {
+          category = 'categorical'
+        }
+      } else {
+        category = 'categorical'
+      }
 
-      const points = (ds.data || []).map((val: any, i: number) => ({
-        id: `pt-${index}-${i}-${Math.random().toString(36).slice(2, 7)}`,
-        name: ds.sliceLabels?.[i] || `${isCoord ? 'Point' : 'Slice'} ${i + 1}`,
-        value: isCoord ? 0 : (typeof val === 'number' ? val : (Array.isArray(val) ? val[1] - val[0] : val?.y || 0)),
-        x: isCoord ? (typeof val === 'object' && val !== null ? (val.x ?? i * 10) : i * 10) : 0,
-        y: isCoord ? (typeof val === 'object' && val !== null ? (val.y ?? (i + 1) * 10) : (typeof val === 'number' ? val : (i + 1) * 10)) : 0,
-        r: type === 'bubble' ? (typeof val === 'object' && val !== null ? (val.r ?? 10) : 10) : 10,
-        color: Array.isArray(ds.backgroundColor) ? (ds.backgroundColor[i] || '#1E90FF') : (ds.backgroundColor || '#1E90FF'),
-      }))
+      const sampleTimelineDates = ['2024-01-01', '2024-01-02', '2024-01-03', '2024-01-04', '2024-01-05', '2024-01-06', '2024-01-07', '2024-01-08'];
+      const points = (ds.data || []).map((val: any, i: number) => {
+        let ptName = ds.sliceLabels?.[i] || `${isCoord ? 'Point' : 'Slice'} ${i + 1}`;
+        if (type === 'timeline') {
+          const isDate = typeof ptName === 'string' && !isNaN(Date.parse(ptName)) && Date.parse(ptName) > 0;
+          if (!isDate) {
+            ptName = sampleTimelineDates[i] || `2024-01-0${i + 1}`;
+          }
+        }
+        return {
+          id: `pt-${index}-${i}-${Math.random().toString(36).slice(2, 7)}`,
+          name: ptName,
+          value: isCoord ? 0 : (typeof val === 'number' ? val : (Array.isArray(val) ? val[1] - val[0] : val?.y || 0)),
+          x: isCoord ? (typeof val === 'object' && val !== null ? (val.x ?? i * 10) : i * 10) : 0,
+          y: isCoord ? (typeof val === 'object' && val !== null ? (val.y ?? (i + 1) * 10) : (typeof val === 'number' ? val : (i + 1) * 10)) : 0,
+          r: type === 'bubble' ? (typeof val === 'object' && val !== null ? (val.r ?? 10) : 10) : 10,
+          color: Array.isArray(ds.backgroundColor) ? (ds.backgroundColor[i] || '#1E90FF') : (ds.backgroundColor || '#1E90FF'),
+        };
+      });
 
       return {
         id: `ds-${index}-${ds.label || 'ds'}`,
@@ -476,6 +501,15 @@ export function ChartSetupDialog({
   const [initialPasteGrid, setInitialPasteGrid] = useState<string[][] | undefined>(undefined);
   const [pasteModalMode, setPasteModalMode] = useState<'paste' | 'edit'>('paste');
 
+  // Reset paste modal state when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setIsPasteOpen(false);
+      setInitialPasteText("");
+      setInitialPasteGrid(undefined);
+    }
+  }, [open]);
+
   // Global paste handler when in Step 2: detects spreadsheet clipboard data (TSV or multi-line)
   useEffect(() => {
     if (!open || step !== 2) return;
@@ -697,7 +731,17 @@ export function ChartSetupDialog({
   }
 
   const applyCategoryChange = (category: ChartCategory) => {
-    const defaultType: SupportedChartType = category === 'coordinate' ? 'scatter' : 'bar';
+    let defaultType: SupportedChartType;
+    if (category === 'coordinate') {
+      defaultType = 'scatter';
+    } else if (category === '3d') {
+      defaultType = 'bar3d';
+    } else if (category === 'more') {
+      defaultType = 'gauge';
+    } else {
+      defaultType = 'bar';
+    }
+
     // Coordinate charts do not support mixed mode; force uniformity to uniform
     if (category === 'coordinate') {
       setUniformityMode('uniform');
@@ -721,10 +765,16 @@ export function ChartSetupDialog({
         };
       }));
     } else {
+      const isCurrentCoord = chartCategory === 'coordinate';
+      const isNextCoord = category === 'coordinate';
+      const newPoints = (isCurrentCoord === isNextCoord)
+        ? dataPoints
+        : getDefaultPoints(category, dataPoints.length || 4);
+
       updateActiveDataset({
         category,
-        type: category === 'coordinate' ? 'scatter' : 'bar',
-        dataPoints: getDefaultPoints(category, dataPoints.length || 4)
+        type: defaultType,
+        dataPoints: newPoints
       });
     }
   }
@@ -734,6 +784,26 @@ export function ChartSetupDialog({
     if (isCoordType && uniformityMode === 'mixed') {
       setUniformityMode('uniform');
     }
+
+    if (type === 'timeline') {
+      const sampleDates = ['2024-01-01', '2024-01-02', '2024-01-03', '2024-01-04', '2024-01-05', '2024-01-06', '2024-01-07', '2024-01-08'];
+      const patchTimelinePoints = (pts: DataPoint[]) => pts.map((p, idx) => {
+        const isExistingDate = typeof p.name === 'string' && !isNaN(Date.parse(p.name)) && Date.parse(p.name) > 0;
+        return {
+          ...p,
+          name: isExistingDate ? p.name : (sampleDates[idx] || `2024-01-0${idx + 1}`),
+          value: typeof p.value === 'number' && p.value > 0 ? p.value : [150, 155, 152, 160, 158][idx % 5],
+        };
+      });
+
+      if ((uniformityMode === 'uniform' || isCoordType) && datasetType === 'grouped') {
+        setDatasets(prev => prev.map(d => ({ ...d, type, dataPoints: patchTimelinePoints(d.dataPoints) })));
+      } else {
+        updateActiveDataset({ type, dataPoints: patchTimelinePoints(dataPoints) });
+      }
+      return;
+    }
+
     if ((uniformityMode === 'uniform' || isCoordType) && datasetType === 'grouped') {
       setDatasets(prev => prev.map(d => ({ ...d, type })))
     } else {
@@ -989,6 +1059,19 @@ export function ChartSetupDialog({
   }
 
   const availableChartTypes = useMemo(() => {
+    if (datasetType === 'single') {
+      if (chartCategory === 'coordinate') {
+        return coordinateChartTypes;
+      }
+      if (chartCategory === '3d') {
+        return (CATEGORIZED_CHART_TYPES.find(c => c.id === '3d')?.charts || []) as { value: SupportedChartType; label: string }[];
+      }
+      if (chartCategory === 'more') {
+        return (CATEGORIZED_CHART_TYPES.find(c => c.id === 'more')?.charts || []) as { value: SupportedChartType; label: string }[];
+      }
+      return (CATEGORIZED_CHART_TYPES.find(c => c.id === 'categorical')?.charts || []) as { value: SupportedChartType; label: string }[];
+    }
+
     const baseTypes = chartCategory === 'coordinate' ? coordinateChartTypes : categoricalChartTypes;
     if (datasetType !== 'grouped') return baseTypes;
 
@@ -1045,20 +1128,25 @@ export function ChartSetupDialog({
           data = ds.dataPoints.map(p => p.value)
         }
 
-        const finalColors = (datasetType === 'grouped' && actualType === 'area')
-          ? colors.map(c => typeof c === 'string' ? applyOpacityToColor(c, 50) : c)
-          : colors
+        const timelineBaseColor = typeof colors[0] === 'string' ? colors[0] : '#2563eb';
+        const finalColors = actualType === 'timeline'
+          ? timelineBaseColor
+          : (datasetType === 'grouped' && actualType === 'area')
+            ? colors.map(c => typeof c === 'string' ? applyOpacityToColor(c, 50) : c)
+            : colors
 
         const originalColors = ds.originalStyle?.backgroundColor;
         const colorsChanged = Array.isArray(originalColors)
           ? (originalColors.length !== colors.length || originalColors.some((c: any, idx: number) => c !== colors[idx]))
           : originalColors !== colors[0];
 
-        const borderColors = (!colorsChanged && ds.originalStyle?.borderColor && Array.isArray(ds.originalStyle.borderColor) && ds.originalStyle.borderColor.length === colors.length)
-          ? ds.originalStyle.borderColor
-          : (!colorsChanged && typeof ds.originalStyle?.borderColor === 'string')
+        const borderColors = actualType === 'timeline'
+          ? timelineBaseColor
+          : (!colorsChanged && ds.originalStyle?.borderColor && Array.isArray(ds.originalStyle.borderColor) && ds.originalStyle.borderColor.length === colors.length)
             ? ds.originalStyle.borderColor
-            : colors.map(c => darkenColor(c, 20));
+            : (!colorsChanged && typeof ds.originalStyle?.borderColor === 'string')
+              ? ds.originalStyle.borderColor
+              : colors.map(c => darkenColor(c, 20));
 
         if (ds.originalStyle) {
           const originalPointImages = Array.isArray(ds.originalStyle.pointImages) ? ds.originalStyle.pointImages : [];
@@ -1080,6 +1168,7 @@ export function ChartSetupDialog({
             data,
             backgroundColor: finalColors,
             borderColor: borderColors,
+            fill: actualType === 'timeline' ? false : (actualType === 'area' ? true : ds.originalStyle.fill),
             sliceLabels: ds.dataPoints.map(p => p.name),
             chartType: actualType,
             mode: datasetType,
@@ -1097,9 +1186,9 @@ export function ChartSetupDialog({
           backgroundColor: finalColors,
           borderColor: borderColors,
           borderWidth: 2,
-          pointRadius: 5,
-          tension: 0,
-          fill: false,
+          pointRadius: actualType === 'timeline' ? 0 : 5,
+          tension: actualType === 'timeline' ? 0.15 : 0,
+          fill: actualType === 'area',
           pointImages: Array(ds.dataPoints.length).fill(null),
           pointImageConfig: defaultPointConfig,
           mode: datasetType,
@@ -1123,12 +1212,14 @@ export function ChartSetupDialog({
   const previewH = aspect >= 1 ? Math.round(maxPreviewSize / aspect) : maxPreviewSize
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose() }}>
-      <DialogContent
-        disableAnimation={true}
-        onOpenAutoFocus={(e) => e.preventDefault()}
-        className={`w-[96vw] sm:w-full max-h-[94vh] h-[min(720px,92vh)] flex flex-col overflow-hidden p-0 gap-0 ${step === 2 ? 'max-w-[920px]' : 'max-w-[720px]'}`}
-      >
+    <>
+      <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose() }}>
+        <DialogContent
+          disableAnimation={true}
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          overlayClassName={isPasteOpen ? "!hidden opacity-0 pointer-events-none" : undefined}
+          className={`w-[96vw] sm:w-full max-h-[94vh] h-[min(720px,92vh)] flex flex-col overflow-hidden p-0 gap-0 ${step === 2 ? 'max-w-[920px]' : 'max-w-[720px]'} ${isPasteOpen ? '!hidden invisible opacity-0 pointer-events-none' : ''}`}
+        >
 
         {/* ── Header ── */}
         <DialogHeader className={`px-4 sm:px-6 pt-3.5 sm:pt-5 pb-3 sm:pb-4 flex-shrink-0 ${step === 2 ? 'border-b border-gray-100 bg-white' : ''}`}>
@@ -1385,8 +1476,19 @@ export function ChartSetupDialog({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="categorical">Categorical Chart</SelectItem>
-                          <SelectItem value="coordinate">Coordinate Chart</SelectItem>
+                          {datasetType === 'single' ? (
+                            <>
+                              <SelectItem value="categorical">Categorical Chart</SelectItem>
+                              <SelectItem value="coordinate">Coordinate Chart</SelectItem>
+                              <SelectItem value="3d">3D Chart</SelectItem>
+                              <SelectItem value="more">More</SelectItem>
+                            </>
+                          ) : (
+                            <>
+                              <SelectItem value="categorical">Categorical Chart</SelectItem>
+                              <SelectItem value="coordinate">Coordinate Chart</SelectItem>
+                            </>
+                          )}
                         </SelectContent>
                       </Select>
                     );
@@ -1783,6 +1885,12 @@ export function ChartSetupDialog({
                         <div className="col-span-3">Value</div>
                         <div className="col-span-1"></div>
                       </>
+                    ) : chartType === 'timeline' ? (
+                      <>
+                        <div className="col-span-6">Date / Timestamp</div>
+                        <div className="col-span-5">Value</div>
+                        <div className="col-span-1"></div>
+                      </>
                     ) : (
                       <>
                         <div className="col-span-5">Label</div>
@@ -2133,6 +2241,91 @@ export function ChartSetupDialog({
                                 )}
                               </div>
                             </>
+                          ) : chartType === 'timeline' ? (
+                            <>
+                              <div className="col-span-6">
+                                {canEditLabels ? (
+                                  <Input
+                                    draggable={false}
+                                    onDragStart={(e) => e.stopPropagation()}
+                                    value={point.name}
+                                    placeholder="YYYY-MM-DD"
+                                    onChange={e => handleUpdatePoint(index, 'name', e.target.value)}
+                                    className="h-8 text-xs border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700 font-mono"
+                                  />
+                                ) : (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="block">
+                                          <Input value={point.name} disabled className="h-8 text-xs border-gray-200 bg-gray-50 shadow-sm transition-all font-medium text-gray-400 cursor-not-allowed font-mono" />
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top" sideOffset={5} className="bg-slate-800 text-white border-slate-700 shadow-xl px-3 py-2 z-[150]">
+                                        <p className="text-xs font-medium">To edit dates, please use the first dataset tab.</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                              </div>
+                              <div className="col-span-5">
+                                <Input
+                                  draggable={false}
+                                  onDragStart={(e) => e.stopPropagation()}
+                                  type="number"
+                                  value={point.value}
+                                  onChange={e => handleUpdatePoint(index, 'value', Number(e.target.value))}
+                                  className="h-8 text-xs border-gray-200 bg-white shadow-sm hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-100 transition-all font-medium text-gray-700"
+                                />
+                              </div>
+                              <div className="col-span-1 flex items-center justify-end gap-0.5">
+                                {canEditSlices ? (
+                                  <>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => handleAddPoint(index + 1)}
+                                            className="h-6 w-6 text-gray-300 opacity-0 group-hover:opacity-100 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                                          >
+                                            <Plus className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" sideOffset={5} className="text-xs">
+                                          Insert row below
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleRemovePoint(index)}
+                                      disabled={dataPoints.length <= 1}
+                                      className="h-6 w-6 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-opacity"
+                                    >
+                                      <X className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="cursor-not-allowed">
+                                          <Button variant="ghost" size="icon" disabled className="h-6 w-6 text-gray-300 transition-opacity">
+                                            <X className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top" sideOffset={5} className="bg-slate-800 text-white border-slate-700 shadow-xl px-3 py-2 z-[150]">
+                                        <p className="text-xs font-medium">To remove points, please use the first dataset tab.</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                              </div>
+                            </>
                           ) : (
                             <>
                               <div className="col-span-5">
@@ -2370,22 +2563,24 @@ export function ChartSetupDialog({
           </div>
         )}
 
-        <PasteDataDialog
-          open={isPasteOpen}
-          onClose={() => {
-            setIsPasteOpen(false);
-            setInitialPasteText("");
-            setInitialPasteGrid(undefined);
-          }}
-          onApply={handleApplySpreadsheetData}
-          isCoordinate={chartCategory === 'coordinate'}
-          datasetType={datasetType}
-          initialText={initialPasteText}
-          initialGrid={initialPasteGrid}
-          mode={pasteModalMode}
-        />
-
       </DialogContent>
     </Dialog>
+
+    <PasteDataDialog
+      open={isPasteOpen}
+      onClose={() => {
+        setIsPasteOpen(false);
+        setInitialPasteText("");
+        setInitialPasteGrid(undefined);
+      }}
+      onApply={handleApplySpreadsheetData}
+      isCoordinate={chartCategory === 'coordinate'}
+      datasetType={datasetType}
+      chartType={chartType}
+      initialText={initialPasteText}
+      initialGrid={initialPasteGrid}
+      mode={pasteModalMode}
+    />
+  </>
   )
 }

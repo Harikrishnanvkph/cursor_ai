@@ -106,8 +106,8 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
   }
 
   // ── Apply dimensions to chart config ──
-  const buildConfigWithDimensions = (dims: ChartDimensions) => {
-    const baseConfig = getDefaultConfigForType('bar')
+  const buildConfigWithDimensions = (dims: ChartDimensions, targetType: string = 'bar') => {
+    const baseConfig = getDefaultConfigForType(targetType as any)
     if (dims.isResponsive) {
       return {
         ...baseConfig,
@@ -202,7 +202,7 @@ export function EditorWelcomeScreen({ onDatasetClick, size = "default", classNam
     setBackendConversationId(null)
     setEditorMode('chart')
 
-    const config = buildConfigWithDimensions(dims)
+    const config = buildConfigWithDimensions(dims, chartType || 'bar')
 
     if (pendingAction === 'sample') {
       const sampleData = buildSampleData()

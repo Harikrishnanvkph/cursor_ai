@@ -9,6 +9,7 @@ import { generateWatermarkPluginCode } from "./watermark-plugin-code";
 import { generateFunnelPluginCode } from "./funnel-plugin-code";
 import { generateGaugePluginCode } from "./gauge-plugin-code";
 import { generateWaterfallPluginCode } from "./waterfall-plugin-code";
+import { generateTimelineCrosshairPluginCode } from "./timeline-crosshair-plugin-code";
 
 // Re-export individual generators for direct use
 export {
@@ -22,6 +23,7 @@ export {
     generateFunnelPluginCode,
     generateGaugePluginCode,
     generateWaterfallPluginCode,
+    generateTimelineCrosshairPluginCode,
 };
 
 /**
@@ -42,6 +44,8 @@ export function generateCompletePluginSystem(chartConfig: any): string {
     const hasWatermark = !!(chartConfig.plugins as any)?.watermark || !!(chartConfig as any)?.watermark;
     const hasGauge = (chartConfig.plugins as any)?.gauge?.enabled;
     const hasWaterfall = (chartConfig.plugins as any)?.waterfall?.enabled;
+    const hasTimelineCrosshair = (chartConfig.plugins as any)?.timelineCrosshair?.enabled !== false &&
+        (chartConfig.chartType === 'timeline' || (chartConfig.plugins as any)?.timelineCrosshair !== undefined);
 
     let pluginCode = '';
 
@@ -80,6 +84,11 @@ export function generateCompletePluginSystem(chartConfig: any): string {
     // Add Waterfall plugin if needed
     if (hasWaterfall) {
         pluginCode += generateWaterfallPluginCode();
+    }
+
+    // Add Timeline Crosshair plugin if needed
+    if (hasTimelineCrosshair) {
+        pluginCode += generateTimelineCrosshairPluginCode();
     }
 
     // Add Slice Pattern plugin if any dataset has patterns

@@ -485,3 +485,169 @@ export function syncImagePositionsToConfig(chartData: any, dragState: any) {
         });
     });
 }
+
+/**
+ * Robust timestamp parser for Timeline Series chart export
+ */
+export function parseTimelineTimestamps(labels: any[], count: number): number[] {
+    const now = Date.now();
+    const dayMs = 86400000;
+
+    return Array.from({ length: count }, (_, idx) => {
+        const rawLabel = labels?.[idx];
+
+        // 1. If rawLabel is a numeric timestamp
+        if (typeof rawLabel === 'number' && !isNaN(rawLabel)) {
+            if (rawLabel > 100000000 && rawLabel < 10000000000) return rawLabel * 1000;
+            if (rawLabel >= 10000000000) return rawLabel;
+        }
+
+        if (typeof rawLabel === 'string' && rawLabel.trim().length > 0) {
+            const trimmed = rawLabel.trim();
+
+            // 2. Try ISO or native Date.parse
+            const native = Date.parse(trimmed);
+            if (!isNaN(native) && native > 0) return native;
+
+            // 3. Try DD/MM/YYYY or DD-MM-YYYY or MM/DD/YYYY
+            const dmy = trimmed.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/);
+            if (dmy) {
+                const p1 = parseInt(dmy[1], 10);
+                const p2 = parseInt(dmy[2], 10);
+                const yr = parseInt(dmy[3], 10);
+                if (p1 > 12) {
+                    const d = new Date(yr, p2 - 1, p1).getTime();
+                    if (!isNaN(d)) return d;
+                } else {
+                    const d = new Date(yr, p1 - 1, p2).getTime();
+                    if (!isNaN(d)) return d;
+                }
+            }
+
+            // 4. Try Month Names (e.g. "January", "Feb 2024", "Jan")
+            const monthMatch = trimmed.match(/^(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s+(\d{4}))?$/i);
+            if (monthMatch) {
+                const yr = monthMatch[2] ? parseInt(monthMatch[2], 10) : new Date().getFullYear();
+                const parsedM = Date.parse(`${monthMatch[1]} 1, ${yr}`);
+                if (!isNaN(parsedM)) return parsedM;
+            }
+        }
+
+        // 5. Fallback for non-date labels ("Slice 1", "Point 1", etc.): sequential daily points ending today
+        return now - (Math.max(1, count) - 1 - idx) * dayMs;
+    });
+}
+
+/**
+ * Calculates min and max timestamp boundaries for a given timeline range selector
+ */
+export function calculateTimelineBounds(timestamps: number[], range?: string): { min: number; max: number } | null {
+    if (!range || range === 'Max' || !Array.isArray(timestamps) || timestamps.length === 0) return null;
+    const valid = timestamps.filter(t => typeof t === 'number' && !isNaN(t) && t > 0);
+    if (valid.length === 0) return null;
+
+    const maxTs = Math.max(...valid);
+    const maxDateObj = new Date(maxTs);
+    const dayMs = 86400000;
+    let minTs: number;
+
+    switch (range) {
+        case '1D':
+            minTs = maxTs - 1 * dayMs;
+            break;
+        case '5D':
+            minTs = maxTs - 5 * dayMs;
+            break;
+        case '1M':
+            minTs = maxTs - 30 * dayMs;
+            break;
+        case '6M':
+            minTs = maxTs - 182 * dayMs;
+            break;
+        case 'YTD':
+            minTs = new Date(maxDateObj.getFullYear(), 0, 1).getTime();
+            break;
+        case '1Y':
+            minTs = maxTs - 365 * dayMs;
+            break;
+        case '5Y':
+            minTs = maxTs - 5 * 365 * dayMs;
+            break;
+        default:
+            return null;
+    }
+
+    return { min: minTs, max: maxTs };
+}
+
+/**
+ * Normalizes dataset points and labels for Timeline Series charts in HTML export,
+ * filtering data points to the selected time range (e.g. 1D, 1M, 6M, 1Y) when specified.
+ */
+export function processTimelineDataForExport(chartData: any, selectedRange?: string): any {
+    if (!chartData || !Array.isArray(chartData.datasets)) return chartData;
+
+    const count = (chartData.labels && chartData.labels.length) || (chartData.datasets[0]?.data && chartData.datasets[0].data.length) || 0;
+    let timestamps = parseTimelineTimestamps(chartData.labels || [], count);
+
+    let tunedDatasets = chartData.datasets.map((ds: any) => {
+        const points = (ds.data || []).map((pt: any, idx: number) => {
+            let yVal: number;
+            if (typeof pt === 'number') {
+                yVal = isNaN(pt) ? 0 : pt;
+            } else if (typeof pt === 'object' && pt !== null && pt.y !== undefined) {
+                yVal = Number(pt.y) || 0;
+            } else {
+                yVal = Number(pt) || 0;
+            }
+
+            let xTs: number;
+            if (typeof pt === 'object' && pt !== null && pt.x !== undefined) {
+                const parsedX = typeof pt.x === 'number' ? pt.x : Date.parse(pt.x);
+                xTs = !isNaN(parsedX) && parsedX > 0 ? parsedX : (timestamps[idx] ?? Date.now());
+            } else {
+                xTs = timestamps[idx] ?? Date.now();
+            }
+
+            return { x: xTs, y: yVal };
+        });
+
+        return {
+            ...ds,
+            data: points,
+            pointRadius: ds.pointRadius !== undefined ? ds.pointRadius : 0,
+            pointHoverRadius: ds.pointHoverRadius !== undefined ? ds.pointHoverRadius : 5,
+            pointHitRadius: ds.pointHitRadius !== undefined ? ds.pointHitRadius : 8,
+            tension: ds.tension !== undefined ? ds.tension : 0.15,
+            borderWidth: ds.borderWidth !== undefined ? ds.borderWidth : 2,
+        };
+    });
+
+    // If a range is selected (e.g. '6M', '1M', '1Y'), filter data points and labels
+    const bounds = calculateTimelineBounds(timestamps, selectedRange);
+    if (bounds) {
+        const validIndices: number[] = [];
+        for (let i = 0; i < count; i++) {
+            const t = timestamps[i];
+            if (t >= bounds.min && t <= bounds.max) {
+                validIndices.push(i);
+            }
+        }
+
+        if (validIndices.length > 0) {
+            timestamps = validIndices.map(i => timestamps[i]);
+            tunedDatasets = tunedDatasets.map((ds: any) => ({
+                ...ds,
+                data: validIndices.map(i => ds.data[i]),
+                pointImages: Array.isArray(ds.pointImages) ? validIndices.map(i => ds.pointImages[i]) : ds.pointImages,
+                sliceLabels: Array.isArray(ds.sliceLabels) ? validIndices.map(i => ds.sliceLabels[i]) : ds.sliceLabels,
+            }));
+        }
+    }
+
+    return {
+        ...chartData,
+        labels: timestamps.map(t => new Date(t).toISOString()),
+        datasets: tunedDatasets,
+    };
+}

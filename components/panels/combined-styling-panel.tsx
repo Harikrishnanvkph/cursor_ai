@@ -27,6 +27,13 @@ export function CombinedStylingPanel({ initialTab }: CombinedStylingPanelProps) 
         }
     }, [initialTab])
 
+    // Ensure labels tab is reset when switching to timeline series
+    useEffect(() => {
+        if (chartType === 'timeline' && activeTab === 'labels') {
+            setActiveTab('styling')
+        }
+    }, [chartType, activeTab])
+
     const applyConfigUpdates = (updates: { path: string; value: any }[]) => {
         let newConfig = { ...chartConfig }
         updates.forEach(({ path, value }) => {
@@ -45,7 +52,7 @@ export function CombinedStylingPanel({ initialTab }: CombinedStylingPanelProps) 
         { id: "legend", label: "Legend", icon: Activity },
         { id: "styling", label: "Styling", icon: Palette },
         { id: "labels", label: "Labels", icon: Tag },
-    ]
+    ].filter(tab => chartType !== 'timeline' || tab.id !== 'labels')
 
     return (
         <div className="space-y-4">

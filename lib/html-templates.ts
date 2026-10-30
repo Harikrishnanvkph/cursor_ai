@@ -181,7 +181,7 @@ function generateChartScript(chartData: any, chartConfig: any, chartType: string
         
         const enhancedConfig = {
             ...chartConfig,
-            responsive: false,
+            responsive: ${options.includeResponsive !== false},
             maintainAspectRatio: false,
             animation: ${includeAnimations} ? {
                 duration: 800,
@@ -294,6 +294,51 @@ function generateChartScript(chartData: any, chartConfig: any, chartType: string
             }
         }
         
+        // Utility to format numbers based on numberFormat configuration
+        function formatNumberWithConfig(val, formatConfig) {
+            if (!formatConfig || typeof formatConfig !== 'object') return String(val);
+            const preset = formatConfig.preset || 'none';
+            const currencySymbol = formatConfig.currencySymbol || '$';
+            const currencyPosition = formatConfig.currencyPosition || 'prefix';
+            const decimals = formatConfig.decimals;
+            const compact = Boolean(formatConfig.compact) || preset === 'compact';
+            const useGrouping = formatConfig.useGrouping !== false;
+
+            if (preset === 'none' && !compact && (decimals === undefined || decimals === 'auto')) {
+                return String(val);
+            }
+
+            let formatted = '';
+            const fracDigits = (decimals !== undefined && decimals !== 'auto') ? Number(decimals) : (val % 1 === 0 ? 0 : 2);
+
+            try {
+                const opts = {
+                    useGrouping: useGrouping,
+                    maximumFractionDigits: fracDigits,
+                    minimumFractionDigits: (decimals !== undefined && decimals !== 'auto') ? fracDigits : 0,
+                };
+                if (compact) {
+                    opts.notation = 'compact';
+                    opts.compactDisplay = 'short';
+                }
+                formatted = new Intl.NumberFormat('en-US', opts).format(val);
+            } catch(e) {
+                formatted = String(val);
+            }
+
+            if (preset === 'currency') {
+                if (currencyPosition === 'prefix') {
+                    formatted = currencySymbol + formatted;
+                } else {
+                    formatted = formatted + ' ' + currencySymbol;
+                }
+            } else if (preset === 'percent') {
+                formatted = formatted + '%';
+            }
+
+            return formatted;
+        }
+
         // Dynamic Axis Tick Prefix & Suffix
         if (enhancedConfig.scales) {
             Object.keys(enhancedConfig.scales).forEach(function(axisKey) {
@@ -327,6 +372,36 @@ function generateChartScript(chartData: any, chartConfig: any, chartType: string
             });
         }
         
+        // Dynamic Tooltip Number & Timeline Value Formatting
+        if (enhancedConfig.plugins && enhancedConfig.plugins.tooltip && enhancedConfig.plugins.tooltip.enabled !== false) {
+            const origTooltipLabel = enhancedConfig.plugins.tooltip.callbacks && enhancedConfig.plugins.tooltip.callbacks.label;
+            enhancedConfig.plugins.tooltip.callbacks = enhancedConfig.plugins.tooltip.callbacks || {};
+            enhancedConfig.plugins.tooltip.callbacks.label = function(context) {
+                if (typeof origTooltipLabel === 'function') {
+                    return origTooltipLabel.call(this, context);
+                }
+                const dataset = context.dataset || {};
+                const label = context.label || '';
+                let rawVal = context.raw !== undefined ? context.raw : (context.parsed && context.parsed.y !== undefined ? context.parsed.y : context.parsed);
+                let numVal = typeof rawVal === 'number' ? rawVal : (typeof rawVal === 'object' && rawVal !== null && rawVal.y !== undefined ? Number(rawVal.y) : (context.parsed && context.parsed.y !== undefined ? Number(context.parsed.y) : Number(rawVal)));
+                let formattedVal = isNaN(numVal) ? String(rawVal ?? '') : numVal;
+                if (typeof numVal === 'number' && !isNaN(numVal)) {
+                    if (chartType === 'timeline' || "${options.originalChartType || ''}" === 'timeline') {
+                        const yTick = enhancedConfig.scales && enhancedConfig.scales.y && enhancedConfig.scales.y.ticks;
+                        const prefix = typeof yTick?.prefix === 'string' ? yTick.prefix : '';
+                        const suffix = typeof yTick?.suffix === 'string' ? yTick.suffix : '';
+                        const formatted = numVal.toLocaleString(undefined, {
+                            minimumFractionDigits: numVal % 1 === 0 ? 0 : 2,
+                            maximumFractionDigits: 2
+                        });
+                        formattedVal = prefix + formatted + suffix;
+                    }
+                }
+                const dsLabel = dataset.label ? dataset.label + ': ' : ((chartType === 'timeline' || "${options.originalChartType || ''}" === 'timeline') ? '' : (label ? label + ': ' : ''));
+                return dsLabel + formattedVal;
+            };
+        }
+
         function initChart() {
             if (window['chartjs-plugin-annotation'] && typeof Chart !== 'undefined' && Chart.register) {
                 try {
@@ -364,7 +439,10 @@ export const plainTemplate: HTMLTemplate = {
   name: "Plain",
   description: "Bare HTML page with only the chart and no extra layout or styling",
   generate: (chartData, chartConfig, chartType, options) => {
-    const { title, width, height, backgroundColor, includeAnimations, includeTooltips, includeLegend } = options;
+    const width = (options.width && options.width > 0) ? options.width : 800;
+    const height = (options.height && options.height > 0) ? options.height : 600;
+    const title = options.title || "Chart Export";
+    const { backgroundColor, includeAnimations, includeTooltips, includeLegend } = options;
     const legendConfig = resolveLegendConfig(options, () => ({
       display: true,
       position: 'top',
@@ -429,6 +507,7 @@ export const plainTemplate: HTMLTemplate = {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${title}</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
     <script>
         ${generateCompletePluginSystem(chartConfig)}

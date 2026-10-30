@@ -9,6 +9,7 @@ import { AxisSettings } from "./axis-settings"
 import { RadialAxisSettings } from "./radial-axis-settings"
 import { ArcSettings } from "./arc-settings"
 import { GaugeScaleSettings } from "./gauge-scale-settings"
+import { TimelineAxisSettings } from "./timeline-axis-settings"
 import { GoalLinesTab } from "./goal-lines-tab"
 import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { cn, setNestedProperty } from "@/lib/utils"
@@ -69,7 +70,7 @@ export function AxesPanel() {
   // Handle Cartesian charts (X-Axis, Y-Axis, and Goal Lines)
   return (
     <Tabs defaultValue="x" className="w-full">
-      <TabsList className="grid w-full grid-cols-3 gap-1 h-auto p-1 bg-gray-100 rounded-lg">
+      <TabsList className={cn("grid w-full gap-1 h-auto p-1 bg-gray-100 rounded-lg", chartType === 'timeline' ? "grid-cols-4" : "grid-cols-3")}>
         <TabsTrigger
           value="x"
           className="text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700"
@@ -85,6 +86,15 @@ export function AxesPanel() {
             <span className="w-1.5 h-1.5 rounded-full bg-purple-600 inline-block" title="Secondary Y2 axis active" />
           )}
         </TabsTrigger>
+        {chartType === 'timeline' && (
+          <TabsTrigger
+            value="timeline"
+            className="text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700 flex items-center justify-center gap-1 font-medium"
+          >
+            <span>Timeline</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-600 inline-block" />
+          </TabsTrigger>
+        )}
         <TabsTrigger
           value="goals"
           className="text-xs py-2 rounded-md transition-all data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 hover:text-gray-700 flex items-center justify-center gap-1"
@@ -174,6 +184,15 @@ export function AxesPanel() {
           />
         )}
       </TabsContent>
+
+      {chartType === 'timeline' && (
+        <TabsContent value="timeline" className="mt-4">
+          <TimelineAxisSettings
+            options={chartConfig}
+            onUpdate={handleConfigUpdate}
+          />
+        </TabsContent>
+      )}
 
       <TabsContent value="goals" className="mt-4">
         <GoalLinesTab

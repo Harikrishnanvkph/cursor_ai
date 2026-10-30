@@ -5,7 +5,7 @@
 
 import React from "react"
 import { createPortal } from "react-dom"
-import { useRef, useEffect, useState, memo } from "react"
+import { useRef, useEffect, useState, useMemo, memo } from "react"
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -29,7 +29,8 @@ import {
   PieController,
   DoughnutController,
   PolarAreaController,
-  RadarController
+  RadarController,
+  Decimation
 } from "chart.js"
 import { Chart } from "react-chartjs-2"
 import { useChartStore } from "@/lib/chart-store"
@@ -42,6 +43,7 @@ import { customLabelPlugin } from "@/lib/custom-label-plugin"
 import { enhancedTitlePlugin } from "@/lib/enhanced-title-plugin"
 import { watermarkPlugin } from "@/lib/plugins/watermark-plugin"
 import { zeroLineHighlightPlugin } from "@/lib/plugins/zero-line-plugin"
+import { timelineCrosshairPlugin } from "@/lib/plugins/timeline-crosshair-plugin"
 import { pie3dPlugin } from "@/lib/plugins/3d-pie-plugin"
 import { bar3dPlugin } from "@/lib/plugins/3d-bar-plugin"
 import { slicePatternPlugin } from "@/lib/plugins/slice-pattern-plugin"
@@ -93,7 +95,9 @@ ChartJS.register(
   gaugePlugin,
   funnelPlugin,
   waterfallPlugin,
+  timelineCrosshairPlugin,
   actualAnnotationPlugin,
+  Decimation,
   Tooltip
 );
 
@@ -530,6 +534,13 @@ export const ChartGenerator = memo(function ChartGenerator({
   const chartRef = useRef<ChartJS>(null);
   const [hoveredDatasetIndex, setHoveredDatasetIndex] = useState<number | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [timelineRange, setTimelineRange] = useState<string>(() => chartConfig?.plugins?.timelineRangeSelector?.selectedRange || 'Max');
+
+  useEffect(() => {
+    if (chartConfig?.plugins?.timelineRangeSelector?.selectedRange) {
+      setTimelineRange(chartConfig.plugins.timelineRangeSelector.selectedRange);
+    }
+  }, [chartConfig?.plugins?.timelineRangeSelector?.selectedRange]);
 
   // Track browser-level DPR changes (caused by browser zoom in/out).
   // When the user zooms the page via browser (Ctrl+/- or browser menu),
@@ -852,7 +863,7 @@ export const ChartGenerator = memo(function ChartGenerator({
     };
 
     // Handle Points Fill
-    if (effectiveDatasetType === 'line' || effectiveDatasetType === 'area' || effectiveDatasetType === 'radar') {
+    if (effectiveDatasetType === 'line' || effectiveDatasetType === 'area' || effectiveDatasetType === 'timeline' || effectiveDatasetType === 'radar') {
       if (!fillPoints) {
         processedDs.pointBackgroundColor = 'transparent';
       } else if (!processedDs.pointBackgroundColor) {
@@ -867,7 +878,7 @@ export const ChartGenerator = memo(function ChartGenerator({
       } else {
         processedDs.backgroundColor = 'transparent';
       }
-      if (effectiveDatasetType === 'line' || effectiveDatasetType === 'area' || effectiveDatasetType === 'radar') {
+      if (effectiveDatasetType === 'line' || effectiveDatasetType === 'area' || effectiveDatasetType === 'timeline' || effectiveDatasetType === 'radar') {
         processedDs.fill = false;
       }
       // 3D pie/doughnut types still behave like pie/doughnut for fill
@@ -882,7 +893,7 @@ export const ChartGenerator = memo(function ChartGenerator({
       }
 
       // Handle Gradient Fill for Area and Line charts
-      const isAreaOrLine = effectiveDatasetType === 'area' || effectiveDatasetType === 'line' || chartType === 'area' || chartType === 'line';
+      const isAreaOrLine = effectiveDatasetType === 'area' || effectiveDatasetType === 'line' || effectiveDatasetType === 'timeline' || chartType === 'area' || chartType === 'line' || chartType === 'timeline';
       if (isAreaOrLine && processedDs.gradientFill) {
         if (!processedDs.fill || processedDs.fill === false) {
           processedDs.fill = 'origin';
@@ -928,7 +939,7 @@ export const ChartGenerator = memo(function ChartGenerator({
       ? chartType
       : (ds.chartType || chartType || 'bar');
     const validType = datasetType === 'stackedBar' || datasetType === 'horizontalBar' || datasetType === 'horizontalBar3d' ? 'bar' :
-      (datasetType === 'area' ? 'line' :
+      (datasetType === 'area' || datasetType === 'timeline' ? 'line' :
         (datasetType === 'pie3d' ? 'pie' :
           (datasetType === 'doughnut3d' ? 'doughnut' :
             (datasetType === 'bar3d' ? 'bar' :
@@ -939,7 +950,7 @@ export const ChartGenerator = memo(function ChartGenerator({
     // In Chart.js, datasets with a LOWER `order` value are rendered last (appearing on top).
     // To ensure line-like/point-like datasets draw on top of bar-like datasets,
     // we add a base offset to the bar-like datasets so they have a higher order (appearing behind).
-    const isLineOrPoint = ['line', 'area', 'radar', 'scatter', 'bubble'].includes(datasetType as string);
+    const isLineOrPoint = ['line', 'area', 'timeline', 'radar', 'scatter', 'bubble'].includes(datasetType as string);
     const orderOffset = isLineOrPoint ? 0 : 100;
     const defaultOrder = i + orderOffset;
 
@@ -1258,7 +1269,11 @@ export const ChartGenerator = memo(function ChartGenerator({
     return { text };
   };
 
-  const customLabels = filteredDatasetsPatched.map((ds, datasetIdx) => {
+  const customLabels = useMemo(() => {
+    // For timeline series, custom data labels are disabled to preserve performance and legibility
+    if (chartType === 'timeline') return [];
+
+    return filteredDatasetsPatched.map((ds, datasetIdx) => {
     let baseConfig = { ...globalCustomLabelsConfig, ...(ds.customLabelsConfig || {}) };
     return ds.data.map((value: any, filteredPointIdx: number) => {
       const wfConfig = (chartConfig.plugins as any)?.waterfall || {};
@@ -1393,9 +1408,19 @@ export const ChartGenerator = memo(function ChartGenerator({
       };
     })
   });
+  }, [
+    chartType,
+    filteredDatasetsPatched,
+    globalCustomLabelsConfig,
+    chartConfig,
+    enabledSliceIndices,
+    isSliceVisible,
+    modeFilteredDatasets,
+    activeDatasetIndex
+  ]);
 
   // Determine chart type for Chart.js
-  let chartTypeForChart: string = chartType === 'area' ? 'line' :
+  let chartTypeForChart: string = (chartType === 'area' || chartType === 'timeline') ? 'line' :
     (chartType === 'stackedBar' ? 'bar' :
       (chartType === 'horizontalBar' ? 'bar' :
         (chartType === 'pie3d' ? 'pie' :
@@ -1415,7 +1440,7 @@ export const ChartGenerator = memo(function ChartGenerator({
   } else {
     // Grouped mode
     if (uniformityMode === 'uniform') {
-      chartTypeForChart = chartType === 'area' ? 'line' :
+      chartTypeForChart = (chartType === 'area' || chartType === 'timeline') ? 'line' :
         (chartType === 'stackedBar' ? 'bar' :
           (chartType === 'horizontalBar' ? 'bar' :
             (chartType === 'pie3d' ? 'pie' :
@@ -1458,17 +1483,197 @@ export const ChartGenerator = memo(function ChartGenerator({
         return ds;
       });
 
+  // Robust timestamp parser for Timeline Series chart
+  const timelineTimestamps = useMemo(() => {
+    if (chartType !== 'timeline') return [];
+    const count = filteredLabels.length || sanitizedDatasetsForChart[0]?.data?.length || 0;
+    const now = Date.now();
+    const dayMs = 86400000;
+
+    return Array.from({ length: count }, (_, idx) => {
+      const rawLabel = filteredLabels[idx];
+
+      // 1. If rawLabel is a numeric timestamp
+      if (typeof rawLabel === 'number' && !isNaN(rawLabel)) {
+        if (rawLabel > 100000000 && rawLabel < 10000000000) return rawLabel * 1000;
+        if (rawLabel >= 10000000000) return rawLabel;
+      }
+
+      if (typeof rawLabel === 'string' && rawLabel.trim().length > 0) {
+        const trimmed = rawLabel.trim();
+
+        // 2. Try ISO or native Date.parse
+        const native = Date.parse(trimmed);
+        if (!isNaN(native) && native > 0) return native;
+
+        // 3. Try DD/MM/YYYY or DD-MM-YYYY or MM/DD/YYYY
+        const dmy = trimmed.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/);
+        if (dmy) {
+          const p1 = parseInt(dmy[1], 10);
+          const p2 = parseInt(dmy[2], 10);
+          const yr = parseInt(dmy[3], 10);
+          if (p1 > 12) {
+            const d = new Date(yr, p2 - 1, p1).getTime();
+            if (!isNaN(d)) return d;
+          } else {
+            const d = new Date(yr, p1 - 1, p2).getTime();
+            if (!isNaN(d)) return d;
+          }
+        }
+
+        // 4. Try Month Names (e.g. "January", "Feb 2024", "Jan")
+        const monthMatch = trimmed.match(/^(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s+(\d{4}))?$/i);
+        if (monthMatch) {
+          const yr = monthMatch[2] ? parseInt(monthMatch[2], 10) : new Date().getFullYear();
+          const parsedM = Date.parse(`${monthMatch[1]} 1, ${yr}`);
+          if (!isNaN(parsedM)) return parsedM;
+        }
+      }
+
+      // 5. Fallback for non-date labels ("Slice 1", "Point 1", etc.): sequential daily points ending today
+      return now - (Math.max(1, count) - 1 - idx) * dayMs;
+    });
+  }, [chartType, filteredLabels, sanitizedDatasetsForChart]);
+
+  // Fine-tune dataset point display for dense Timeline Series charts
+  const timelineTunedDatasets = chartType === 'timeline'
+    ? sanitizedDatasetsForChart.map((ds: any) => {
+        const points = (ds.data || []).map((pt: any, idx: number) => {
+          let yVal: number;
+          if (typeof pt === 'number') {
+            yVal = isNaN(pt) ? 0 : pt;
+          } else if (typeof pt === 'object' && pt !== null && pt.y !== undefined) {
+            yVal = Number(pt.y) || 0;
+          } else {
+            yVal = Number(pt) || 0;
+          }
+
+          let xTs: number;
+          if (typeof pt === 'object' && pt !== null && pt.x !== undefined) {
+            const parsedX = typeof pt.x === 'number' ? pt.x : Date.parse(pt.x);
+            xTs = !isNaN(parsedX) && parsedX > 0 ? parsedX : (timelineTimestamps[idx] ?? Date.now());
+          } else {
+            xTs = timelineTimestamps[idx] ?? Date.now();
+          }
+
+          return { x: xTs, y: yVal };
+        });
+
+        return {
+          ...ds,
+          data: points,
+          pointRadius: ds.pointRadius !== undefined ? ds.pointRadius : 0,
+          pointHoverRadius: ds.pointHoverRadius !== undefined ? ds.pointHoverRadius : 5,
+          pointHitRadius: ds.pointHitRadius !== undefined ? ds.pointHitRadius : 8,
+          tension: ds.tension !== undefined ? ds.tension : 0.15,
+          borderWidth: ds.borderWidth !== undefined ? ds.borderWidth : 2,
+        };
+      })
+    : sanitizedDatasetsForChart;
+
   // Build the chart data for Chart.js
   const chartDataForChart = {
     ...chartData,
-    labels: filteredLabels,
-    datasets: sanitizedDatasetsForChart,
+    labels: chartType === 'timeline' && timelineTimestamps.length > 0
+      ? timelineTimestamps.map(t => new Date(t).toISOString())
+      : filteredLabels,
+    datasets: timelineTunedDatasets,
   };
+
+  // Compute time bounds for Timeline Series range filtering (1D, 5D, 1M, 6M, YTD, 1Y, 5Y, Max)
+  const timelineBounds = useMemo(() => {
+    if (chartType !== 'timeline' || timelineRange === 'Max') return null;
+    const timestamps = timelineTimestamps.filter((t: number) => !isNaN(t) && t > 0);
+    if (timestamps.length === 0) return null;
+
+    const maxTs = Math.max(...timestamps);
+    const maxDateObj = new Date(maxTs);
+    let minTs: number;
+
+    switch (timelineRange) {
+      case '1D':
+        minTs = maxTs - 1 * 24 * 60 * 60 * 1000;
+        break;
+      case '5D':
+        minTs = maxTs - 5 * 24 * 60 * 60 * 1000;
+        break;
+      case '1M':
+        minTs = maxTs - 30 * 24 * 60 * 60 * 1000;
+        break;
+      case '6M':
+        minTs = maxTs - 182 * 24 * 60 * 60 * 1000;
+        break;
+      case 'YTD':
+        minTs = new Date(maxDateObj.getFullYear(), 0, 1).getTime();
+        break;
+      case '1Y':
+        minTs = maxTs - 365 * 24 * 60 * 60 * 1000;
+        break;
+      case '5Y':
+        minTs = maxTs - 5 * 365 * 24 * 60 * 60 * 1000;
+        break;
+      default:
+        return null;
+    }
+
+    return {
+      min: minTs,
+      max: maxTs
+    };
+  }, [chartType, timelineRange, timelineTimestamps]);
+
+  // Compute financial ticker metrics for the active timeframe
+  const timelineStats = useMemo(() => {
+    if (chartType !== 'timeline') return null;
+    const rawData = timelineTunedDatasets?.[0]?.data;
+    if (!rawData || rawData.length === 0) return null;
+
+    let startVal: number | null = null;
+    let endVal: number | null = null;
+
+    if (!timelineBounds) {
+      for (let i = 0; i < rawData.length; i++) {
+        const pt = rawData[i];
+        const val = typeof pt === 'number' ? pt : (typeof pt === 'object' && pt?.y !== undefined ? Number(pt.y) : NaN);
+        if (!isNaN(val)) {
+          if (startVal === null) startVal = val;
+          endVal = val;
+        }
+      }
+    } else {
+      for (let i = 0; i < rawData.length; i++) {
+        const pt = rawData[i];
+        const ts = typeof pt === 'object' && pt?.x !== undefined ? Number(pt.x) : (timelineTimestamps[i] ?? 0);
+        const val = typeof pt === 'number' ? pt : (typeof pt === 'object' && pt?.y !== undefined ? Number(pt.y) : NaN);
+        if (!isNaN(val) && !isNaN(ts) && ts > 0) {
+          if (ts >= timelineBounds.min && ts <= timelineBounds.max) {
+            if (startVal === null) startVal = val;
+            endVal = val;
+          }
+        }
+      }
+    }
+
+    if (startVal === null || endVal === null) return null;
+
+    const diff = endVal - startVal;
+    const pct = startVal !== 0 ? (diff / startVal) * 100 : 0;
+    const isPositive = diff >= 0;
+
+    return {
+      startVal,
+      endVal,
+      diff,
+      pct,
+      isPositive,
+      prefix: chartConfig?.scales?.y?.ticks?.prefix ?? '$',
+    };
+  }, [chartType, timelineBounds, timelineTunedDatasets, timelineTimestamps, chartConfig?.scales?.y?.ticks?.prefix]);
 
   // Final safety check to ensure chartTypeForChart is valid after all overrides
   if (chartTypeForChart === 'stackedBar' || chartTypeForChart === 'horizontalBar') {
     chartTypeForChart = 'bar';
-  } else if (chartTypeForChart === 'area') {
+  } else if (chartTypeForChart === 'area' || chartTypeForChart === 'timeline') {
     chartTypeForChart = 'line';
   } else if (chartTypeForChart === 'pie3d') {
     chartTypeForChart = 'pie';
@@ -2335,6 +2540,57 @@ export const ChartGenerator = memo(function ChartGenerator({
                   minWidth: isResponsive ? '100%' : 'auto'
                 }}
               >
+                {/* Timeline Series Financial Header & Range Selector Bar */}
+                {chartType === 'timeline' && (
+                  <div className="absolute top-2 left-3 right-3 z-20 flex items-center justify-between pointer-events-none gap-2 flex-wrap">
+                    {/* Live Financial Metric Ticker */}
+                    {chartConfig?.plugins?.timelineRangeSelector?.showStats !== false && timelineStats && (
+                      <div className="flex items-baseline gap-2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xs px-2.5 py-1 rounded-lg border border-slate-200/80 dark:border-slate-800 shadow-2xs pointer-events-auto">
+                        <span className="text-sm md:text-base font-bold text-slate-900 dark:text-white font-mono tracking-tight">
+                          {timelineStats.prefix}{timelineStats.endVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                        <span className={`text-[11px] md:text-xs font-semibold font-mono flex items-center ${timelineStats.isPositive ? 'text-emerald-600' : 'text-red-500'}`}>
+                          {timelineStats.isPositive ? '▲ +' : '▼ '}
+                          {timelineStats.prefix}{Math.abs(timelineStats.diff).toFixed(2)} ({timelineStats.pct >= 0 ? '+' : ''}{timelineStats.pct.toFixed(2)}%)
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Range Selector Bar */}
+                    {chartConfig?.plugins?.timelineRangeSelector?.enabled !== false && (
+                      <div className="ml-auto flex items-center gap-0.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xs p-1 rounded-lg border border-slate-200/80 dark:border-slate-800 shadow-2xs pointer-events-auto">
+                        {(['1D', '5D', '1M', '6M', 'YTD', '1Y', '5Y', 'Max'] as const).map((range) => (
+                          <button
+                            key={range}
+                            type="button"
+                            onClick={() => {
+                              setTimelineRange(range);
+                              const currentConfig = useChartStore.getState().chartConfig;
+                              useChartStore.getState().updateChartConfig({
+                                ...currentConfig,
+                                plugins: {
+                                  ...currentConfig.plugins,
+                                  timelineRangeSelector: {
+                                    ...(currentConfig.plugins as any)?.timelineRangeSelector,
+                                    selectedRange: range,
+                                  }
+                                }
+                              });
+                            }}
+                            className={`px-2 py-0.5 text-[11px] font-semibold rounded transition-all cursor-pointer ${
+                              timelineRange === range
+                                ? 'bg-blue-600 text-white shadow-xs'
+                                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+                            }`}
+                          >
+                            {range}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <ChartErrorBoundary resetKey={`${chartTypeForChart}-${sanitizedDatasetsForChart?.length}-${chartDataForChart?.labels?.length}`}>
                   <Chart
                   key={`${chartTypeForChart}-${useFixedDimensions ? 'fixed-zoom' : (isResponsive ? 'responsive' : 'fixed')}-${useFixedDimensions ? `${finalWidth}-${finalHeight}` : 'auto'}`}
@@ -2359,15 +2615,42 @@ export const ChartGenerator = memo(function ChartGenerator({
                     responsive: responsiveOptionForZoom,
                     maintainAspectRatio: false,
                     layout: {
-                      padding: (globalCustomLabelsConfig.anchor === 'callout') ? 60 : (appliedOptions.layout?.padding || 0)
+                      padding: (globalCustomLabelsConfig.anchor === 'callout')
+                        ? 60
+                        : (chartType === 'timeline' ? { top: 40, left: 10, right: 10, bottom: 4 } : (appliedOptions.layout?.padding || 0))
+                    },
+                    scales: {
+                      ...appliedOptions.scales,
+                      ...(chartType === 'timeline' ? {
+                        x: {
+                          ...appliedOptions.scales?.x,
+                          type: 'time',
+                          ...(timelineBounds ? { min: timelineBounds.min, max: timelineBounds.max } : {}),
+                          time: {
+                            tooltipFormat: 'PP',
+                            displayFormats: {
+                              millisecond: 'HH:mm:ss.SSS',
+                              second: 'HH:mm:ss',
+                              minute: 'HH:mm',
+                              hour: 'HH:mm',
+                              day: 'MMM d',
+                              week: 'MMM d',
+                              month: 'MMM yyyy',
+                              quarter: 'qqq yyyy',
+                              year: 'yyyy',
+                            }
+                          }
+                        }
+                      } : {})
                     },
                     hover: {
-                      intersect: appliedOptions.hover?.intersect ?? false,
-                      animationDuration: appliedOptions.hover?.animationDuration ?? 400,
+                      intersect: chartType === 'timeline' ? false : (appliedOptions.hover?.intersect ?? false),
+                      animationDuration: chartType === 'timeline' ? 0 : (appliedOptions.hover?.animationDuration ?? 400),
                     },
                     interaction: {
-                      intersect: appliedOptions.interaction?.intersect ?? true,
-                      mode: appliedOptions.interaction?.mode ?? 'point',
+                      intersect: chartType === 'timeline' ? false : (appliedOptions.interaction?.intersect ?? true),
+                      mode: chartType === 'timeline' ? 'index' : (appliedOptions.interaction?.mode ?? 'point'),
+                      axis: chartType === 'timeline' ? 'x' : undefined,
                     },
                     onHover: (event: any, elements: any[]) => {
                       // Guard: Chart.js can call onHover during init/re-renders.
@@ -2387,6 +2670,17 @@ export const ChartGenerator = memo(function ChartGenerator({
                     plugins: ({
                       ...appliedOptions.plugins,
                       zeroLineHighlight: zeroLineHighlightConfig,
+                      timelineCrosshair: (chartType === 'timeline' || (appliedOptions.plugins as any)?.timelineCrosshair?.enabled)
+                        ? {
+                            enabled: (appliedOptions.plugins as any)?.timelineCrosshair?.enabled !== false,
+                            lineColor: (appliedOptions.plugins as any)?.timelineCrosshair?.lineColor || (appliedOptions.plugins as any)?.timelineCrosshair?.color || '#94a3b8',
+                            lineWidth: (appliedOptions.plugins as any)?.timelineCrosshair?.lineWidth || 1.5,
+                            lineDash: (appliedOptions.plugins as any)?.timelineCrosshair?.lineDash || (appliedOptions.plugins as any)?.timelineCrosshair?.dash || [4, 4],
+                            showIntersectionPoint: (appliedOptions.plugins as any)?.timelineCrosshair?.showIntersectionPoint !== false,
+                            pointColor: '#2563eb',
+                            ...((appliedOptions.plugins as any)?.timelineCrosshair || {})
+                          }
+                        : { enabled: false },
                       pie3d: (chartType === 'pie3d' || chartType === 'doughnut3d')
                         ? { ...((appliedOptions.plugins as any)?.pie3d || {}), enabled: true }
                         : (appliedOptions.plugins as any)?.pie3d,
@@ -2556,7 +2850,19 @@ export const ChartGenerator = memo(function ChartGenerator({
                             const datasetLabel = dataset.label || `Dataset ${datasetIndex + 1}`;
 
                             const formatValueWithSync = (val: any, dsObj?: any) => {
-                              if (typeof val !== 'number') return val;
+                              let numVal: number;
+                              if (typeof val === 'number') {
+                                numVal = val;
+                              } else if (typeof val === 'object' && val !== null && val.y !== undefined) {
+                                numVal = Number(val.y);
+                              } else if (context.parsed && context.parsed.y !== undefined) {
+                                numVal = Number(context.parsed.y);
+                              } else {
+                                numVal = Number(val);
+                              }
+
+                              if (isNaN(numVal)) return String(val ?? '');
+
                               const targetDs = dsObj || dataset;
                               let scaleFormat: any;
                               if (chartType === 'radar' || chartType === 'polarArea') {
@@ -2570,10 +2876,26 @@ export const ChartGenerator = memo(function ChartGenerator({
                                 scaleFormat = (appliedOptions?.scales as any)?.[axisKey]?.ticks?.numberFormat;
                               }
                               if (scaleFormat && scaleFormat.syncTooltip !== false && ((scaleFormat.preset && scaleFormat.preset !== 'none') || scaleFormat.compact)) {
-                                return formatNumberWithConfig(val, scaleFormat);
+                                return formatNumberWithConfig(numVal, scaleFormat);
                               }
-                              return val;
+
+                              if (chartType === 'timeline') {
+                                const yTick = (appliedOptions?.scales as any)?.y?.ticks;
+                                const prefix = typeof yTick?.prefix === 'string' ? yTick.prefix : '';
+                                const suffix = typeof yTick?.suffix === 'string' ? yTick.suffix : '';
+                                const formatted = numVal.toLocaleString(undefined, {
+                                  minimumFractionDigits: numVal % 1 === 0 ? 0 : 2,
+                                  maximumFractionDigits: 2
+                                });
+                                return `${prefix}${formatted}${suffix}`;
+                              }
+
+                              return numVal;
                             };
+
+                            if (chartType === 'timeline') {
+                              return `${datasetLabel}: ${formatValueWithSync(value)}`;
+                            }
 
                             if (mode === 'slice') {
                               return `${label}: ${formatValueWithSync(value)}`;

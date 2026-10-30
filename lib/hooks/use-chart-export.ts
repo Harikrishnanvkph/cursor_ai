@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react"
 import { useChartStore } from "@/lib/chart-store"
 import { useTemplateStore } from "@/lib/template-store"
 import { useDecorationStore } from "@/lib/stores/decoration-store"
-import { downloadChartAsHTML, filterChartDataForExport } from "@/lib/html-exporter"
+import { downloadChartAsHTML, filterChartDataForExport, processTimelineDataForExport } from "@/lib/html-exporter"
 import {
     useChartConfig,
     useChartType,
@@ -183,7 +183,7 @@ export function useChartExport(options?: {
     }, [chartConfig]);
 
     const handleExportCSV = useCallback(() => {
-        const { chartData, chartMode, activeDatasetIndex, legendFilter, activeGroupId, chartType } = useChartStore.getState();
+        const { chartData, chartMode, activeDatasetIndex, legendFilter, activeGroupId, chartType, chartConfig } = useChartStore.getState();
         const exportData = filterChartDataForExport(
             JSON.parse(JSON.stringify(chartData)),
             chartMode,
@@ -193,10 +193,20 @@ export function useChartExport(options?: {
             chartType
         );
 
+        const isTimeline = chartType === 'timeline';
+        let processedExportData = exportData;
+        if (isTimeline) {
+            const selectedRange = (chartConfig?.plugins as any)?.timelineRangeSelector?.selectedRange || 'Max';
+            processedExportData = processTimelineDataForExport(exportData, selectedRange);
+        }
+
         const formatCsvCell = (val: any): string => {
             if (val === undefined || val === null) return "";
             if (typeof val === "object") {
                 if ("x" in val && "y" in val) {
+                    if (isTimeline) {
+                        return String(val.y);
+                    }
                     const str = "r" in val ? `x: ${val.x}, y: ${val.y}, r: ${val.r}` : `x: ${val.x}, y: ${val.y}`;
                     return `"${str.replace(/"/g, '""')}"`;
                 }
@@ -209,14 +219,14 @@ export function useChartExport(options?: {
             return str;
         };
 
-        const datasets = exportData.datasets || [];
+        const datasets = processedExportData.datasets || [];
         const rowCount = Math.max(
-            exportData.labels?.length || 0,
+            processedExportData.labels?.length || 0,
             ...datasets.map((d: any) => (Array.isArray(d.data) ? d.data.length : 0))
         );
 
         const headers = [
-            "Label",
+            isTimeline ? "Date" : "Label",
             ...datasets.map((d: any) => {
                 const yAxisSuffix = d.yAxisID === "y1" ? " (Right Y)" : "";
                 const name = `${d.label || "Dataset"}${yAxisSuffix}`;
@@ -226,7 +236,10 @@ export function useChartExport(options?: {
 
         const rows: string[] = [];
         for (let i = 0; i < rowCount; i++) {
-            const rowLabel = exportData.labels?.[i] || datasets[0]?.sliceLabels?.[i] || `Point ${i + 1}`;
+            let rowLabel = processedExportData.labels?.[i] || datasets[0]?.sliceLabels?.[i] || `Point ${i + 1}`;
+            if (isTimeline && typeof rowLabel === 'string' && rowLabel.includes('T')) {
+                rowLabel = rowLabel.split('T')[0];
+            }
             const row = [
                 formatCsvCell(rowLabel),
                 ...datasets.map((d: any) => formatCsvCell(d.data?.[i])),

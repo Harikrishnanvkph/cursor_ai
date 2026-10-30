@@ -247,6 +247,11 @@ function getOrLoadImage(imageUrl: string): HTMLImageElement | null {
 export const universalImagePlugin = {
     id: "universalImages",
     afterDatasetsDraw: (chart: any) => {
+        // Fast-path guard: if no dataset contains valid image URLs, or if images are disabled/timeline, exit immediately
+        if (chart.config?.options?.visualSettings?.showImages === false) return;
+        const hasImages = chart.data?.datasets?.some((ds: any) => ds.pointImages && ds.pointImages.some((img: any) => !!img));
+        if (!hasImages) return;
+
         activeCharts.add(chart);
         const ctx = chart.ctx
 
@@ -407,6 +412,13 @@ export const universalImagePlugin = {
                 }
                 event.preventDefault()
             } else {
+                // Fast-path guard: if images are disabled or no callout images exist, skip distance calculations entirely
+                if (chart.config?.options?.visualSettings?.showImages === false) return;
+                const hasCallouts = chart.data?.datasets?.some((ds: any) =>
+                    ds.pointImages && ds.pointImageConfig && ds.pointImages.some((img: any, i: number) => !!img && ds.pointImageConfig[i]?.position === "callout")
+                );
+                if (!hasCallouts) return;
+
                 // Check if hovering over a callout
                 let isOverCallout = false
 

@@ -182,7 +182,7 @@ function getCalloutDefaultPos(
         y: barTop - offset < topLimit ? barTop + offset : barTop - offset
       };
     }
-  } else if (chartType === 'line' || chartType === 'area' || chartType === 'scatter' || chartType === 'bubble' || chartType === 'radar') {
+  } else if (chartType === 'line' || chartType === 'area' || chartType === 'timeline' || chartType === 'scatter' || chartType === 'bubble' || chartType === 'radar') {
     const elemY = element.y ?? 0;
     const elemX = element.x ?? 0;
     const radius = getElementRadius(element);
@@ -382,7 +382,7 @@ export const customLabelPlugin: Plugin = {
                   label.textBaseline = 'bottom';
                 }
               }
-            } else if (chartType === 'line' || chartType === 'area' || chartType === 'scatter' || chartType === 'bubble' || chartType === 'radar') {
+            } else if (chartType === 'line' || chartType === 'area' || chartType === 'timeline' || chartType === 'scatter' || chartType === 'bubble' || chartType === 'radar') {
               // Line, area, scatter, bubble, radar
               x = element.x ?? 0;
               const radius = getElementRadius(element);

@@ -11,7 +11,9 @@ import {
     buildLegendConfigForExport,
     generateCustomLabelsFromConfig,
     syncImagePositionsToConfig,
-    filterChartDataForExport
+    filterChartDataForExport,
+    processTimelineDataForExport,
+    calculateTimelineBounds
 } from "./export-utils";
 import { useDecorationStore } from "../stores/decoration-store";
 import { generateDecorationsSVG, generateDecorationsCSS } from "../template-export/decoration-html-export";
@@ -87,7 +89,13 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
     syncImagePositionsToConfig(chartDataCopy, currentDragState);
 
     // Process chart data to convert images to base64
-    const processedChartData = await processChartDataForExport(chartDataCopy);
+    let processedChartData = await processChartDataForExport(chartDataCopy);
+
+    // Apply timeline data transformation if chartType === 'timeline'
+    if (chartType === 'timeline') {
+        const selectedRange = (chartConfig?.plugins as any)?.timelineRangeSelector?.selectedRange || 'Max';
+        processedChartData = processTimelineDataForExport(processedChartData, selectedRange);
+    }
 
     // If Image toggle is off, strip dataset/slice images so export shows none
     if (options.showImages === false && Array.isArray(processedChartData.datasets)) {
@@ -110,7 +118,7 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
                 if (Array.isArray(out.backgroundColor)) out.backgroundColor = out.backgroundColor.map(() => 'transparent');
                 else out.backgroundColor = 'transparent';
                 
-                const isLineLike = (datasetType === 'line' || datasetType === 'area' || datasetType === 'radar');
+                const isLineLike = (datasetType === 'line' || datasetType === 'area' || datasetType === 'timeline' || datasetType === 'radar');
                 if (isLineLike) {
                     out.fill = false;
                 }
@@ -123,8 +131,8 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
                 // we should respect the chart's nature.
                 if (datasetType === 'area' || datasetType === 'radar') {
                     out.fill = (ds.fill !== undefined) ? ds.fill : true;
-                } else if (datasetType === 'line') {
-                    // Strictly respect the dataset's fill property for line charts
+                } else if (datasetType === 'line' || datasetType === 'timeline') {
+                    // Strictly respect the dataset's fill property for line and timeline charts
                     out.fill = (ds.fill !== undefined) ? ds.fill : false;
                 }
             }
@@ -346,6 +354,45 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
         processedChartConfig.rotation = processedChartConfig.rotation ?? 270;
     }
 
+    // Configure scales and interaction for timeline chart type
+    if (chartType === 'timeline') {
+        const selectedRange = (chartConfig?.plugins as any)?.timelineRangeSelector?.selectedRange || 'Max';
+        const timestamps = (processedChartData.datasets?.[0]?.data || []).map((pt: any) => typeof pt === 'object' ? pt.x : 0).filter((t: number) => t > 0);
+        const bounds = calculateTimelineBounds(timestamps, selectedRange);
+
+        processedChartConfig.scales = processedChartConfig.scales || {};
+        processedChartConfig.scales.x = {
+            ...(processedChartConfig.scales.x || {}),
+            type: 'time',
+            ...(bounds ? { min: bounds.min, max: bounds.max } : {}),
+            time: {
+                tooltipFormat: 'PP',
+                displayFormats: {
+                    millisecond: 'HH:mm:ss.SSS',
+                    second: 'HH:mm:ss',
+                    minute: 'HH:mm',
+                    hour: 'HH:mm',
+                    day: 'MMM d',
+                    week: 'MMM d',
+                    month: 'MMM yyyy',
+                    quarter: 'qqq yyyy',
+                    year: 'yyyy',
+                }
+            }
+        };
+        processedChartConfig.interaction = {
+            intersect: false,
+            mode: 'index',
+            axis: 'x',
+            ...(processedChartConfig.interaction || {})
+        };
+        processedChartConfig.hover = {
+            intersect: false,
+            animationDuration: 0,
+            ...(processedChartConfig.hover || {})
+        };
+    }
+
     // ── Custom Grace → suggestedMax (mirror of chart_generator.tsx logic) ──
     // Chart.js native grace % is unreliable, so we compute suggestedMax ourselves.
     // CRITICAL: Must be axis-aware so Left Y (y) and Right Y (y1) scales compute
@@ -533,8 +580,13 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
                 ...(processedChartConfig.plugins?.waterfall || {}),
                 enabled: chartType === 'waterfall'
             },
+            timelineCrosshair: {
+                ...(processedChartConfig.plugins?.timelineCrosshair || {}),
+                enabled: chartType === 'timeline' && (processedChartConfig.plugins?.timelineCrosshair?.enabled !== false)
+            },
             watermark: (processedChartConfig as any)?.watermark
-        }
+        },
+        chartType
     };
 
     const {
@@ -559,6 +611,14 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
 
     const optionsWithLegend = {
         ...options,
+        title,
+        width,
+        height,
+        backgroundColor,
+        includeAnimations,
+        includeResponsive,
+        includeTooltips,
+        includeLegend,
         legendConfigOverride: legendForExport,
         originalChartType: chartType
     };
@@ -592,6 +652,7 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
     
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@${chartJsVersion}/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
     
     <!-- Custom Plugins -->
@@ -1076,21 +1137,24 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
                 }
                 const dataset = context.dataset || {};
                 const label = context.label || '';
-                const val = context.raw !== undefined ? context.raw : (context.parsed && context.parsed.y !== undefined ? context.parsed.y : context.parsed);
-                let scaleFormat = null;
-                if (chartType === 'radar' || chartType === 'polarArea') {
-                    scaleFormat = enhancedConfig.scales && enhancedConfig.scales.r && enhancedConfig.scales.r.ticks && enhancedConfig.scales.r.ticks.numberFormat;
-                } else if (['pie', 'doughnut', 'pie3d', 'doughnut3d', 'gauge'].indexOf(chartType) >= 0) {
-                    scaleFormat = enhancedConfig.numberFormat || (enhancedConfig.scales && enhancedConfig.scales.r && enhancedConfig.scales.r.ticks && enhancedConfig.scales.r.ticks.numberFormat);
-                } else if (enhancedConfig.scales) {
-                    const axisKey = enhancedConfig.indexAxis === 'y' ? 'x' : (dataset.yAxisID || 'y');
-                    scaleFormat = enhancedConfig.scales[axisKey] && enhancedConfig.scales[axisKey].ticks && enhancedConfig.scales[axisKey].ticks.numberFormat;
+                let rawVal = context.raw !== undefined ? context.raw : (context.parsed && context.parsed.y !== undefined ? context.parsed.y : context.parsed);
+                let numVal = typeof rawVal === 'number' ? rawVal : (typeof rawVal === 'object' && rawVal !== null && rawVal.y !== undefined ? Number(rawVal.y) : (context.parsed && context.parsed.y !== undefined ? Number(context.parsed.y) : Number(rawVal)));
+                let formattedVal = isNaN(numVal) ? String(rawVal ?? '') : numVal;
+                if (typeof numVal === 'number' && !isNaN(numVal)) {
+                    if (chartType === 'timeline') {
+                        const yTick = enhancedConfig.scales && enhancedConfig.scales.y && enhancedConfig.scales.y.ticks;
+                        const prefix = typeof yTick?.prefix === 'string' ? yTick.prefix : '';
+                        const suffix = typeof yTick?.suffix === 'string' ? yTick.suffix : '';
+                        const formatted = numVal.toLocaleString(undefined, {
+                            minimumFractionDigits: numVal % 1 === 0 ? 0 : 2,
+                            maximumFractionDigits: 2
+                        });
+                        formattedVal = prefix + formatted + suffix;
+                    } else if (scaleFormat && scaleFormat.syncTooltip !== false && ((scaleFormat.preset && scaleFormat.preset !== 'none') || scaleFormat.compact)) {
+                        formattedVal = formatNumberWithConfig(numVal, scaleFormat);
+                    }
                 }
-                let formattedVal = val;
-                if (typeof val === 'number' && scaleFormat && scaleFormat.syncTooltip !== false && ((scaleFormat.preset && scaleFormat.preset !== 'none') || scaleFormat.compact)) {
-                    formattedVal = formatNumberWithConfig(val, scaleFormat);
-                }
-                const dsLabel = dataset.label ? dataset.label + ': ' : (label ? label + ': ' : '');
+                const dsLabel = dataset.label ? dataset.label + ': ' : (chartType === 'timeline' ? '' : (label ? label + ': ' : ''));
                 return dsLabel + formattedVal;
             };
         }

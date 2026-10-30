@@ -27,8 +27,10 @@ import {
     ChevronRight,
     Check,
     X,
+    Upload,
 } from "lucide-react"
 import { ChartSetupDialog, type ChartDimensions } from "@/components/dialogs/chart-setup-dialog"
+import { DataImportModal } from "@/components/dialogs/data-import-modal"
 import { useChatStore } from "@/lib/chat-store"
 import { useTemplateStore } from "@/lib/template-store"
 import { useChartActions } from "@/lib/hooks/use-chart-actions"
@@ -107,6 +109,7 @@ export function GeneralTab({
 }: GeneralTabProps) {
     const { updateDataset } = useChartActions();
     const [isCreatingNewGroup, setIsCreatingNewGroup] = useState(false);
+    const [showImportModal, setShowImportModal] = useState(false);
     const [groupedTab, setGroupedTab] = useState<'groups' | 'datasets'>('groups');
     const [isEditingGroupName, setIsEditingGroupName] = useState(false);
     const [editingGroupNameValue, setEditingGroupNameValue] = useState('');
@@ -199,6 +202,15 @@ export function GeneralTab({
                     </span>
                 </div>
                 <div className="flex items-center gap-1.5">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowImportModal(true)}
+                        className="h-7 text-xs border-blue-200 text-blue-600 hover:bg-blue-100/50 bg-white font-medium shadow-2xs transition-all active:scale-95"
+                    >
+                        <Upload className="h-3.5 w-3.5 mr-1 text-blue-600" />
+                        Import
+                    </Button>
                     <Button
                         variant="outline"
                         size="sm"
@@ -894,6 +906,13 @@ export function GeneralTab({
                 initialGroupName={isCreatingNewGroup ? `Group ${groups.length + 1}` : (chartMode === 'grouped' ? groups.find(g => g.id === activeGroupId)?.name : (getEffectiveChartTitle() || chartConfig?.plugins?.title?.text || `Chart 1`))}
                 initialUniformityMode={!isCreatingNewGroup && chartMode === 'grouped' ? (chartConfig?.visualSettings?.uniformityMode || 'uniform') : undefined}
                 confirmButtonText={isEditModeModal ? "Update Chart" : (isCreatingNewGroup ? "Create Group" : (chartMode === 'grouped' ? "Update Chart" : undefined))}
+            />
+
+            {/* Data Import Modal */}
+            <DataImportModal
+                open={showImportModal}
+                onOpenChange={setShowImportModal}
+                defaultChartType={chartType === 'timeline' ? 'timeline' : 'line'}
             />
         </div>
     )

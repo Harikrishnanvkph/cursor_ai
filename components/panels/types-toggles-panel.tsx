@@ -134,12 +134,24 @@ export function TypesTogglesPanel() {
           <Label htmlFor="border-toggle" className="text-xs text-gray-600">Border</Label>
         </div>
         <div className="flex flex-col items-center gap-1">
-          <Switch id="show-images-toggle" checked={showImages} onCheckedChange={toggleShowImages} className="scale-75 data-[state=unchecked]:bg-input/50" />
-          <Label htmlFor="show-images-toggle" className="text-xs text-gray-600">Image</Label>
+          <Switch 
+            id="show-images-toggle" 
+            checked={chartType === 'timeline' ? false : showImages} 
+            onCheckedChange={toggleShowImages} 
+            disabled={chartType === 'timeline'}
+            className="scale-75 data-[state=unchecked]:bg-input/50 disabled:opacity-50" 
+          />
+          <Label htmlFor="show-images-toggle" className={`text-xs ${chartType === 'timeline' ? 'text-gray-400' : 'text-gray-600'}`}>Image</Label>
         </div>
         <div className="flex flex-col items-center gap-1">
-          <Switch id="show-labels-toggle" checked={labelChecked} onCheckedChange={toggleShowLabels} className="scale-75 data-[state=unchecked]:bg-input/50" />
-          <Label htmlFor="show-labels-toggle" className="text-xs text-gray-600">Label</Label>
+          <Switch 
+            id="show-labels-toggle" 
+            checked={chartType === 'timeline' ? false : labelChecked} 
+            onCheckedChange={toggleShowLabels} 
+            disabled={chartType === 'timeline'}
+            className="scale-75 data-[state=unchecked]:bg-input/50 disabled:opacity-50" 
+          />
+          <Label htmlFor="show-labels-toggle" className={`text-xs ${chartType === 'timeline' ? 'text-gray-400' : 'text-gray-600'}`}>Label</Label>
         </div>
         <div className="flex flex-col items-center gap-1">
           <Switch id="show-legend-toggle" checked={legendChecked} onCheckedChange={toggleShowLegend} className="scale-75 data-[state=unchecked]:bg-input/50" />

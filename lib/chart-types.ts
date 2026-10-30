@@ -56,6 +56,7 @@ export const CATEGORIZED_CHART_TYPES: ChartCategory[] = [
       { value: 'gauge', label: 'Gauge' },
       { value: 'funnel', label: 'Funnel' },
       { value: 'waterfall', label: 'Waterfall' },
+      { value: 'timeline', label: 'Timeline Series' },
     ],
   },
 ]

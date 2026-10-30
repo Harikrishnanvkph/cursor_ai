@@ -25,6 +25,7 @@ export function SliceSettingsFilter() {
   const {
     chartMode,
     chartData,
+    chartType,
     activeDatasetIndex,
   } = useChartStore()
 
@@ -46,8 +47,8 @@ export function SliceSettingsFilter() {
     setSettingsSliceIndex(null)
   }, [activeDatasetIndex, setSettingsSliceIndex])
 
-  // Only render in single mode
-  if (chartMode !== 'single') return null
+  // Only render in single mode and not for continuous timeline charts
+  if (chartMode !== 'single' || chartType === 'timeline') return null
 
   // Don't render if no slices
   if (sliceCount === 0) return null

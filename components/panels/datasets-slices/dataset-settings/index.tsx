@@ -413,6 +413,13 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeDatasetIndex, chartMode, chartData]);
 
+    // Ensure activeTab resets if images tab is selected when switching to timeline series
+    useEffect(() => {
+        if (chartType === 'timeline' && activeTab === 'images') {
+            setActiveTab('general')
+        }
+    }, [chartType, activeTab]);
+
     // ─── Render ───
 
     return (
@@ -423,7 +430,7 @@ export function DatasetSettings({ className }: DatasetSettingsProps) {
                     { id: 'general' as const, label: 'General' },
                     { id: 'colors' as const, label: 'Colors' },
                     { id: 'images' as const, label: 'Images' },
-                ].map((tab) => (
+                ].filter(tab => chartType !== 'timeline' || tab.id !== 'images').map((tab) => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}

@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch"
 import { useChartStore } from "@/lib/chart-store"
 import { useChartActions } from "@/lib/hooks/use-chart-actions"
 import { useTemplateStore } from "@/lib/template-store"
-import { downloadChartAsHTML, type HTMLExportOptions, filterChartDataForExport } from "@/lib/html-exporter"
+import { downloadChartAsHTML, type HTMLExportOptions, filterChartDataForExport, processTimelineDataForExport } from "@/lib/html-exporter"
 import { downloadTemplateExport, type TemplateExportOptions } from "@/lib/template-export"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { useDecorationStore } from "@/lib/stores/decoration-store"
@@ -303,10 +303,20 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
         chartType
     );
 
+    const isTimeline = chartType === 'timeline';
+    let processedExportData = exportData;
+    if (isTimeline) {
+        const selectedRange = (chartConfig?.plugins as any)?.timelineRangeSelector?.selectedRange || 'Max';
+        processedExportData = processTimelineDataForExport(exportData, selectedRange);
+    }
+
     const formatCsvCell = (val: any): string => {
         if (val === undefined || val === null) return "";
         if (typeof val === "object") {
             if ("x" in val && "y" in val) {
+                if (isTimeline) {
+                    return String(val.y);
+                }
                 const str = "r" in val ? `x: ${val.x}, y: ${val.y}, r: ${val.r}` : `x: ${val.x}, y: ${val.y}`;
                 return `"${str.replace(/"/g, '""')}"`;
             }
@@ -319,14 +329,14 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
         return str;
     };
 
-    const datasets = exportData.datasets || [];
+    const datasets = processedExportData.datasets || [];
     const rowCount = Math.max(
-        exportData.labels?.length || 0,
+        processedExportData.labels?.length || 0,
         ...datasets.map((d: any) => (Array.isArray(d.data) ? d.data.length : 0))
     );
 
     const headers = [
-        "Label",
+        isTimeline ? "Date" : "Label",
         ...datasets.map((d: any) => {
             const yAxisSuffix = d.yAxisID === "y1" ? " (Right Y)" : "";
             const name = `${d.label || "Dataset"}${yAxisSuffix}`;
@@ -336,7 +346,10 @@ export function ExportPanel({ onTabChange }: ExportPanelProps) {
 
     const rows: string[] = [];
     for (let i = 0; i < rowCount; i++) {
-        const rowLabel = exportData.labels?.[i] || datasets[0]?.sliceLabels?.[i] || `Point ${i + 1}`;
+        let rowLabel = processedExportData.labels?.[i] || datasets[0]?.sliceLabels?.[i] || `Point ${i + 1}`;
+        if (isTimeline && typeof rowLabel === 'string' && rowLabel.includes('T')) {
+            rowLabel = rowLabel.split('T')[0];
+        }
         const row = [
             formatCsvCell(rowLabel),
             ...datasets.map((d: any) => formatCsvCell(d.data?.[i])),

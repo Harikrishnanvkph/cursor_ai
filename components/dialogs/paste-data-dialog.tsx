@@ -28,6 +28,7 @@ import {
   EyeOff,
   Table,
   Plus,
+  Upload,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -62,6 +63,7 @@ interface PasteDataDialogProps {
   }) => void
   isCoordinate?: boolean
   datasetType?: 'single' | 'grouped'
+  chartType?: string
   initialText?: string
   initialGrid?: string[][]
   mode?: 'paste' | 'edit'
@@ -73,6 +75,7 @@ export function PasteDataDialog({
   onApply,
   isCoordinate = false,
   datasetType = 'grouped',
+  chartType,
   initialText = "",
   initialGrid,
   mode = 'paste',
@@ -86,6 +89,38 @@ export function PasteDataDialog({
   const [isTransposed, setIsTransposed] = useState<boolean>(false)
   const [infoOpen, setInfoOpen] = useState<boolean>(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const text = event.target?.result as string
+      if (text) {
+        processText(text)
+      }
+    }
+    reader.readAsText(file)
+    e.target.value = ""
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const file = e.dataTransfer.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const text = event.target?.result as string
+        if (text) {
+          processText(text)
+        }
+      }
+      reader.readAsText(file)
+    }
+  }
 
   // Handle incoming initial text or initial grid or dialog opening
   useEffect(() => {
@@ -217,6 +252,11 @@ export function PasteDataDialog({
   }
 
   const handleLoadSample = () => {
+    if (chartType === 'timeline') {
+      const timelineSample = `| Date | Stock Price ($) | Volume (M) |\n|---|---:|---:|\n| 2024-01-02 | $185.64 | 82.5 |\n| 2024-01-03 | $184.25 | 58.4 |\n| 2024-01-04 | $181.91 | 71.9 |\n| 2024-01-05 | $181.18 | 62.3 |\n| 2024-01-08 | $185.56 | 59.1 |\n| 2024-01-09 | $185.14 | 42.8 |\n| 2024-01-10 | $186.19 | 46.7 |\n| 2024-01-11 | $185.59 | 49.1 |\n| 2024-01-12 | $185.92 | 40.4 |`
+      processText(timelineSample)
+      return
+    }
     const sample = `| Rank | Billionaire | Net Worth | Main source of wealth |\n|---|---|---:|---|\n| 1 | Elon Musk | **$929.0B** | Tesla, SpaceX |\n| 2 | Jeff Bezos | **$369.6B** | Amazon |\n| 3 | Larry Page | **$282.3B** | Google |\n| 4 | Michael Dell | **$273.7B** | Dell Technologies |\n| 5 | Sergey Brin | **$259.8B** | Google |\n| 6 | Mark Zuckerberg | **$257.6B** | Meta/Facebook |`
     processText(sample)
   }
@@ -296,7 +336,6 @@ export function PasteDataDialog({
       <DialogContent
         disableAnimation={true}
         hideCloseButton={true}
-        overlayClassName="bg-transparent"
         onOpenAutoFocus={(e) => e.preventDefault()}
         className="w-[96vw] sm:w-full max-w-[850px] max-h-[92vh] h-[min(720px,90vh)] flex flex-col overflow-hidden p-0 gap-0 border border-gray-200 shadow-2xl sm:rounded-lg bg-white"
       >
@@ -345,6 +384,23 @@ export function PasteDataDialog({
 
             {/* Top-Right Action Buttons: Sample Data + Custom Close */}
             <div className="flex items-center gap-2">
+              {grid.length > 0 && (
+                <label
+                  className="h-8 px-3 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 transition-all gap-1.5 rounded-lg shadow-2xs cursor-pointer inline-flex items-center justify-center select-none"
+                  title="Upload CSV or TSV file directly from your computer"
+                >
+                  <Upload className="w-3.5 h-3.5 text-slate-500" />
+                  Upload CSV
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv,.tsv,.txt"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                  />
+                </label>
+              )}
+
               <Button
                 variant="outline"
                 size="sm"
@@ -375,6 +431,11 @@ export function PasteDataDialog({
               /* Empty State: Full-Fill Box with Authentic Excel Spreadsheet Grid */
               <div
                 onClick={() => textareaRef.current?.focus()}
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                }}
+                onDrop={handleDrop}
                 className="relative flex-1 w-full h-full border-2 border-dashed border-gray-300 hover:border-emerald-500 rounded-xl overflow-hidden flex flex-col cursor-pointer transition-all duration-200 group bg-slate-50/30 shadow-inner"
               >
                 {/* ── Authentic Excel Cells Grid Background ── */}
@@ -430,34 +491,56 @@ export function PasteDataDialog({
                   onChange={(e) => processText(e.target.value)}
                   onPaste={handlePasteEvent}
                   placeholder="Click here and press Ctrl+V to paste spreadsheet cells..."
-                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-20"
+                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
                 />
 
                 {/* ── Centered Floating Prompt Card ── */}
-                <div className="relative z-10 m-auto flex items-center justify-center p-4 pointer-events-none">
-                  <div className="bg-white/95 backdrop-blur-md px-8 py-6 rounded-2xl shadow-xl border border-gray-200/90 flex flex-col items-center text-center max-w-md group-hover:border-emerald-300 group-hover:shadow-2xl group-hover:scale-[1.01] transition-all duration-200">
+                <div className="relative z-30 m-auto flex items-center justify-center p-4 pointer-events-none">
+                  <div className="bg-white/95 backdrop-blur-md px-8 py-7 rounded-2xl shadow-xl border border-gray-200/90 flex flex-col items-center text-center max-w-md group-hover:border-emerald-300 group-hover:shadow-2xl transition-all duration-200 pointer-events-auto">
                     <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200/80 text-emerald-600 flex items-center justify-center shadow-xs mb-3 group-hover:scale-105 transition-transform">
                       <ClipboardPaste className="w-6 h-6" />
                     </div>
+
                     <h3 className="text-base font-bold text-gray-900 tracking-tight">
-                      Click here and press <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 font-mono">Ctrl + V</span> to paste
+                      Click here and press <kbd className="px-1.5 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded font-mono text-xs font-semibold whitespace-nowrap">Ctrl + V</kbd> to paste
                     </h3>
                     <p className="text-xs text-gray-500 mt-1.5 max-w-xs leading-relaxed">
                       Works seamlessly with Excel, Google Sheets, CSV, web tables, or AI Markdown tables.
                     </p>
 
-                    <div className="mt-4 flex flex-wrap justify-center items-center gap-2">
-                      <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-gray-600 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-200 shadow-2xs">
+                    {/* Single Clean Upload CSV Action Button (No duplicates) */}
+                    <div className="mt-4 flex flex-col items-center gap-1.5">
+                      <label
+                        onClick={(e) => e.stopPropagation()}
+                        className="h-9 px-4.5 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 active:bg-slate-100 border border-slate-200 hover:border-slate-300 transition-all gap-2 rounded-lg shadow-2xs hover:shadow-xs cursor-pointer inline-flex items-center justify-center select-none"
+                      >
+                        <Upload className="w-3.5 h-3.5 text-emerald-600" />
+                        Upload CSV File
+                        <input
+                          type="file"
+                          accept=".csv,.tsv,.txt"
+                          className="hidden"
+                          onChange={handleFileUpload}
+                        />
+                      </label>
+                      <span className="text-[11px] text-gray-400">
+                        or drag & drop your file anywhere onto this grid
+                      </span>
+                    </div>
+
+                    {/* Feature Capability Badges */}
+                    <div className="mt-4 pt-3.5 border-t border-gray-100 flex flex-wrap justify-center items-center gap-2 w-full">
+                      <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-gray-600 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-200/80 shadow-2xs">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                         Markdown & Web Tables
                       </span>
-                      <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-gray-600 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-200 shadow-2xs">
+                      <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-gray-600 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-200/80 shadow-2xs">
                         <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                        Auto-Detect Labels & Values
+                        Auto-Detect Headers
                       </span>
-                      <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-gray-600 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-200 shadow-2xs">
+                      <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-gray-600 bg-gray-50 px-2.5 py-1 rounded-md border border-gray-200/80 shadow-2xs">
                         <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
-                        Auto-Clean Numbers ($ & B/M/K)
+                        Auto-Clean Values
                       </span>
                     </div>
                   </div>
