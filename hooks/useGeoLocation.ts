@@ -26,76 +26,38 @@ export function useGeoLocation(): GeoLocationState {
   const [loading, setLoading] = useState<boolean>(true)
 
   useEffect(() => {
-    let isMounted = true
-
-    async function detectLocation() {
-      // 1. Detect browser timezone and offset (works accurately on localhost and production)
-      let isIndiaBrowser = false
-      try {
-        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ""
-        const offset = new Date().getTimezoneOffset()
-        isIndiaBrowser = tz.includes("Kolkata") || tz.includes("Calcutta") || offset === -330
-      } catch {
-        // ignore
-      }
-
-      // 2. Check if user already has an explicit manual selection in localStorage
-      try {
-        const savedRegion = localStorage.getItem(STORAGE_KEY) as PaymentRegion | null
-        if (savedRegion === "IN" || savedRegion === "GLOBAL") {
-          if (isMounted) {
-            setRegionState(savedRegion)
-            setIsManualOverride(true)
-          }
-        }
-      } catch {
-        // Ignore localStorage access issues
-      }
-
-      // 3. Fetch server detection with client hint
-      try {
-        const clientCountryHint = isIndiaBrowser ? "IN" : "GLOBAL"
-        const res = await fetch("/api/payments/config", {
-          credentials: "include",
-          headers: {
-            "x-client-country": clientCountryHint,
-          },
-        })
-        if (res.ok) {
-          const data = await res.json()
-          const detected = data.detectedCountry || (isIndiaBrowser ? "IN" : "GLOBAL")
-          const isIndiaDetected = data.isIndia || detected === "IN" || isIndiaBrowser
-
-          if (isMounted) {
-            setDetectedRegion(detected)
-            const savedRegion = localStorage.getItem(STORAGE_KEY)
-            if (!savedRegion) {
-              setRegionState(isIndiaDetected ? "IN" : "GLOBAL")
-            }
-          }
-          return
-        }
-      } catch (err) {
-        console.warn("Could not fetch payment config, using client fallback:", err)
-      }
-
-      // 4. Client Timezone fallback if API is unreachable
-      if (isMounted) {
-        const savedRegion = localStorage.getItem(STORAGE_KEY)
-        if (!savedRegion) {
-          setRegionState(isIndiaBrowser ? "IN" : "GLOBAL")
-          setDetectedRegion(isIndiaBrowser ? "IN" : "GLOBAL")
-        }
-      }
+    // 1. Detect browser timezone, offset, and locale (instant, 0 network requests)
+    let isIndiaBrowser = false
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ""
+      const offset = new Date().getTimezoneOffset()
+      const lang = (navigator.language || "").toUpperCase()
+      isIndiaBrowser =
+        tz.includes("Kolkata") ||
+        tz.includes("Calcutta") ||
+        offset === -330 ||
+        lang.includes("-IN")
+    } catch {
+      // ignore
     }
 
-    detectLocation().finally(() => {
-      if (isMounted) setLoading(false)
-    })
+    const detected: PaymentRegion = isIndiaBrowser ? "IN" : "GLOBAL"
+    setDetectedRegion(detected)
 
-    return () => {
-      isMounted = false
+    // 2. Respect explicit manual selection in localStorage if present
+    try {
+      const savedRegion = localStorage.getItem(STORAGE_KEY) as PaymentRegion | null
+      if (savedRegion === "IN" || savedRegion === "GLOBAL") {
+        setRegionState(savedRegion)
+        setIsManualOverride(true)
+      } else {
+        setRegionState(detected)
+      }
+    } catch {
+      setRegionState(detected)
     }
+
+    setLoading(false)
   }, [])
 
   const setRegion = useCallback((newRegion: PaymentRegion) => {

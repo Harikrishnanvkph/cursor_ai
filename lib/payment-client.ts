@@ -22,6 +22,10 @@ export interface CheckoutParams {
   onError?: (error: Error) => void
 }
 
+const getBaseUrl = (): string => {
+  return process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:5000'
+}
+
 /**
  * Dynamically load Razorpay standard checkout script
  */
@@ -60,7 +64,7 @@ export async function initiateCheckout({
     }
 
     // 1. Create checkout session from server
-    const res = await fetch("/api/payments/create-checkout", {
+    const res = await fetch(`${getBaseUrl()}/api/payments/create-checkout`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -83,7 +87,7 @@ export async function initiateCheckout({
       // Simulation mode (when API keys are not provided in dev/test)
       if (data.isSimulation) {
         console.log("Processing Razorpay checkout in Sandbox Simulation Mode...")
-        const confirmRes = await fetch("/api/payments/confirm-simulation", {
+        const confirmRes = await fetch(`${getBaseUrl()}/api/payments/confirm-simulation`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -137,7 +141,7 @@ export async function initiateCheckout({
         }) => {
           try {
             // Verify payment signature on backend
-            const verifyRes = await fetch("/api/payments/razorpay/verify", {
+            const verifyRes = await fetch(`${getBaseUrl()}/api/payments/razorpay/verify`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               credentials: "include",
@@ -178,7 +182,7 @@ export async function initiateCheckout({
     if (data.gateway === "dodo") {
       if (data.isSimulation) {
         // In simulation mode, confirm upgrade and route to success
-        const confirmRes = await fetch("/api/payments/confirm-simulation", {
+        const confirmRes = await fetch(`${getBaseUrl()}/api/payments/confirm-simulation`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
