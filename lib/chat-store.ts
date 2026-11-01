@@ -3,7 +3,6 @@ import { persist } from 'zustand/middleware';
 import { useChartStore, type SupportedChartType, type ExtendedChartData } from './chart-store';
 import { getDefaultConfigForType, type ExtendedChartOptions } from './chart-defaults';
 import { useTemplateStore } from './template-store';
-import { extractTemplateStructure, type TemplateStructureMetadata } from './template-utils';
 import { createExpiringStorage } from './storage-utils';
 import { useFormatGalleryStore } from './stores/format-gallery-store';
 import { extractFormatStructure, formatStructureForPrompt } from './format-utils';
@@ -434,18 +433,6 @@ export const useChatStore = create<ChatStore>()(
           requestBody.formatStructure = formatStructureData;
         }
 
-        // Include template structure if a template is selected
-        if (templateStore.currentTemplate) {
-          // Pass content type preferences and section notes to extractTemplateStructure
-          requestBody.templateStructure = extractTemplateStructure(
-            templateStore.currentTemplate,
-            {
-              contentTypes: templateStore.contentTypePreferences,
-              notes: templateStore.sectionNotes
-            }
-          );
-        }
-
         try {
           const response = await fetch(globalServerAPILink, {
             method: "POST",
@@ -664,34 +651,6 @@ export const useChatStore = create<ChatStore>()(
                 title: (assistantMsg.chartSnapshot as any)?.chartTitle || 'Generated Chart',
               });
             } catch (e) {}
-
-            // Populate template text areas if template structure was provided and response includes template content
-            const templateStore = useTemplateStore.getState();
-            if (result.templateContent && templateStore.currentTemplate) {
-              const template = templateStore.currentTemplate;
-              const contentTypePrefs = templateStore.contentTypePreferences;
-
-              // Update each text area with AI-generated content AND apply contentType from preferences
-              template.textAreas.forEach((textArea) => {
-                const content = result.templateContent[textArea.type];
-                if (content) {
-                  // Get the contentType preference for this text area (default to 'text')
-                  const contentType = contentTypePrefs[textArea.id] || 'text';
-                  // Update both content and contentType to ensure HTML is rendered properly
-                  templateStore.updateTextArea(textArea.id, {
-                    content,
-                    contentType
-                  });
-                }
-              });
-
-              // FIX: Store the AI-generated template as the source of truth for content transfer
-              // This ensures content is preserved when switching to a different template
-              const updatedTemplate = useTemplateStore.getState().currentTemplate;
-              if (updatedTemplate) {
-                templateStore.setOriginalCloudTemplateContent(updatedTemplate);
-              }
-            }
 
             // Clear backendConversationId when AI creates a NEW chart
             if (result.action === 'create') {

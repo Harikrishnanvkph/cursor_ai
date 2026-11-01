@@ -23,6 +23,7 @@ export function GroupedSettingsFilter() {
   const {
     chartMode,
     chartData,
+    chartType,
     activeDatasetIndex,
     activeGroupId,
   } = useChartStore()
@@ -33,6 +34,10 @@ export function GroupedSettingsFilter() {
     settingsSliceIndex,
     setSettingsSliceIndex,
   } = useUIStore()
+
+  // Slices only apply to categorical/slice-based chart types (pie, doughnut, bar, polarArea, etc.)
+  // Continuous series like timeline, line, scatter, bubble do NOT have slices.
+  const isSliceSupported = !['timeline', 'line', 'scatter', 'bubble'].includes(chartType as string)
 
   // Get available datasets
   const availableDatasets = chartMode === 'grouped' && activeGroupId
@@ -53,13 +58,23 @@ export function GroupedSettingsFilter() {
     chartData.labels?.map(String) ||
     []
   const sliceCount = targetDataset?.data?.length || sliceLabels.length || 0
+  const displaySliceCount = Math.min(sliceCount, 100)
 
-  // Reset slice selection when dataset or group changes
+  // Reset slice selection when dataset, group changes, or if slices not supported
   useEffect(() => {
     setSettingsSliceIndex(null)
   }, [activeDatasetIndex, activeGroupId, setSettingsSliceIndex])
 
+  useEffect(() => {
+    if (!isSliceSupported && settingsSliceIndex !== null) {
+      setSettingsSliceIndex(null)
+    }
+  }, [isSliceSupported, settingsSliceIndex, setSettingsSliceIndex])
+
   if (!chartData?.datasets || chartData.datasets.length === 0) return null
+
+  // If there's only one dataset and slices are not supported, there is nothing to filter
+  if (availableDatasets.length <= 1 && !isSliceSupported) return null
 
   const handleDatasetChange = (value: string) => {
     setSettingsDatasetId(value === 'all' ? null : value)
@@ -98,31 +113,33 @@ export function GroupedSettingsFilter() {
         </Select>
       </div>
 
-      {/* Slice Dropdown */}
-      <div className="flex-1 min-w-0">
-        <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1 block">
-          Slice
-        </label>
-        <Select
-          value={settingsSliceIndex !== null ? String(settingsSliceIndex) : 'all'}
-          onValueChange={handleSliceChange}
-        >
-          <SelectTrigger className="h-8 text-xs bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-            <SelectValue placeholder="All Slices" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all" className="text-xs font-medium text-blue-600">
-              All Slices
-            </SelectItem>
-            {sliceCount > 0 && <SelectSeparator />}
-            {Array.from({ length: sliceCount }, (_, idx) => (
-              <SelectItem key={idx} value={String(idx)} className="text-xs">
-                {String(sliceLabels[idx] || chartData.labels?.[idx] || `Slice ${idx + 1}`)}
+      {/* Slice Dropdown - only for slice-based charts */}
+      {isSliceSupported && (
+        <div className="flex-1 min-w-0">
+          <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1 block">
+            Slice
+          </label>
+          <Select
+            value={settingsSliceIndex !== null ? String(settingsSliceIndex) : 'all'}
+            onValueChange={handleSliceChange}
+          >
+            <SelectTrigger className="h-8 text-xs bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+              <SelectValue placeholder="All Slices" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs font-medium text-blue-600">
+                All Slices
               </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+              {sliceCount > 0 && <SelectSeparator />}
+              {Array.from({ length: displaySliceCount }, (_, idx) => (
+                <SelectItem key={idx} value={String(idx)} className="text-xs">
+                  {String(sliceLabels[idx] || chartData.labels?.[idx] || `Slice ${idx + 1}`)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
     </div>
   )
 }

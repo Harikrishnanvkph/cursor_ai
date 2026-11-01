@@ -46,26 +46,6 @@ export function EditorLeftSidebar() {
   const { selectedFormatId } = useFormatGalleryStore()
   const sidebarRef = React.useRef<HTMLDivElement>(null)
 
-  React.useEffect(() => {
-    function handleClickOutside(event: MouseEvent | TouchEvent) {
-      if (
-        !leftSidebarCollapsed && 
-        window.innerWidth < 1280 && 
-        sidebarRef.current && 
-        !sidebarRef.current.contains(event.target as Node)
-      ) {
-        setLeftSidebarCollapsed(true)
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside)
-    document.addEventListener("touchstart", handleClickOutside)
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside)
-      document.removeEventListener("touchstart", handleClickOutside)
-    }
-  }, [leftSidebarCollapsed, setLeftSidebarCollapsed])
-
   const TABS = React.useMemo(() => {
     if (editorMode === 'template') {
       return getVisibleTemplateTabs(selectedFormatId)
@@ -76,10 +56,10 @@ export function EditorLeftSidebar() {
   return (
     <div
       ref={sidebarRef}
-      className={`h-full bg-white border-r border-gray-200 flex flex-col ${
+      className={`h-full bg-white border-r border-gray-200 flex flex-col relative z-10 ${
         leftSidebarCollapsed 
-          ? "w-16 items-center shadow-sm lg:relative lg:top-auto lg:left-auto lg:z-10 lg:shadow-none" 
-          : "w-56 fixed top-0 left-0 z-50 shadow-2xl xl:relative xl:top-auto xl:left-auto xl:z-10 xl:shadow-none"
+          ? "w-16 items-center" 
+          : "w-56"
       }`}
     >
       {leftSidebarCollapsed ? (

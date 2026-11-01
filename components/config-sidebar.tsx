@@ -239,7 +239,7 @@ export function ConfigSidebar() {
 
 
           <div className={`mt-3 ${activeSidebarTab === 'templates' ? 'block' : 'hidden'}`}>
-            <TemplateListTab currentCloudTemplate={currentCloudTemplate as any} mode="landing" />
+            <TemplateListTab mode="landing" />
           </div>
         </div>
       </div>

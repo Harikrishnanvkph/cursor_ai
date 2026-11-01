@@ -59,49 +59,17 @@ const CHART_TABS = [
 // ═══════════════════════════════════════════
 const TEMPLATE_TABS = [
   { id: "tpl_templates", label: "Templates", icon: FileText },
-  { id: "tpl_content", label: "Content", icon: Type },
+  { id: "tpl_format_zones", label: "Selected Template", icon: LayoutGrid },
   { id: "tpl_chart_zone", label: "Chart Zone", icon: BarChart3 },
   { id: "tpl_decorations", label: "Decorations", icon: Component },
   { id: "tpl_background", label: "Background", icon: Palette },
-  { id: "tpl_format_zones", label: "Selected Template", icon: LayoutGrid },
 ]
 
 // Export for use in editor/page.tsx
 export { CHART_TABS, TEMPLATE_TABS }
 
 export function getVisibleTemplateTabs(selectedFormatId: string | null) {
-  return TEMPLATE_TABS.filter(tab => {
-    if (selectedFormatId) {
-      if (tab.id === 'tpl_content') return false
-      return true
-    } else {
-      if (tab.id === 'tpl_format_zones') return false
-      return true
-    }
-  }).sort((a, b) => {
-    const getOrder = (id: string) => {
-      if (selectedFormatId) {
-        switch (id) {
-          case 'tpl_templates': return 0
-          case 'tpl_format_zones': return 1
-          case 'tpl_chart_zone': return 2
-          case 'tpl_decorations': return 3
-          case 'tpl_background': return 4
-          default: return 99
-        }
-      } else {
-        switch (id) {
-          case 'tpl_templates': return 0
-          case 'tpl_content': return 1
-          case 'tpl_chart_zone': return 2
-          case 'tpl_decorations': return 3
-          case 'tpl_background': return 4
-          default: return 99
-        }
-      }
-    }
-    return getOrder(a.id) - getOrder(b.id)
-  })
+  return TEMPLATE_TABS
 }
 
 export function Sidebar({ activeTab, onTabChange, onToggleLeftSidebar, isLeftSidebarCollapsed }: SidebarProps) {

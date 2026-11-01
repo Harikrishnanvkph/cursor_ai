@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
 import {
-  Menu, SquarePen, MoreVertical, Pencil, Check, Loader2, Palette, Eye, Maximize2,
+  Menu, SquarePen, MoreVertical, Pencil, Check, Loader2, Palette, Maximize2,
   Cloud, Share2, ChevronDown, Copy, ExternalLink, Download, FileImage, FileCode,
   FileText, Trash2, ChartColumnBig, MessageCircleDashed, LineChart, PieChart,
   BarChart2, ArrowRight, Sparkles, Settings, Plus, Square, ArrowUp, Zap, Bot,
@@ -448,8 +448,8 @@ export function MobileLandingView({
                 />
               </div>
 
-              {/* 3. Dynamic Chart Gallery or Show Guides Trigger */}
-              {editorMode !== 'template' ? (
+              {/* 3. Dynamic Chart Gallery Trigger */}
+              {editorMode !== 'template' && (
                 <DropdownMenuItem
                   onClick={() => {
                     setMobileActiveTab('design')
@@ -458,16 +458,6 @@ export function MobileLandingView({
                 >
                   <Palette className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                   <span>Chart Gallery</span>
-                </DropdownMenuItem>
-              ) : (
-                <DropdownMenuItem
-                  onClick={() => {
-                    window.dispatchEvent(new CustomEvent('triggerToggleGuides'))
-                  }}
-                  className="flex items-center gap-2 px-2.5 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg text-xs font-medium cursor-pointer text-slate-700 dark:text-slate-300"
-                >
-                  <Eye className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                  <span>Show Guides</span>
                 </DropdownMenuItem>
               )}
 

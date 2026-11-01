@@ -31,6 +31,8 @@ import {
   SelectValue
 } from "@/components/ui/select"
 import { ChartColumn, ChevronDown, Check, Info } from "lucide-react"
+import { useIsCompactDesktop } from "@/lib/hooks/use-screen-dimensions"
+import { useEditorSidebarContext } from "@/components/editor/editor-sidebar-context"
 
 export interface ChartTypeSelectorProps {
   value: string
@@ -39,6 +41,7 @@ export interface ChartTypeSelectorProps {
   className?: string
   isMobile?: boolean
   disabled?: boolean
+  isLeftSidebarCollapsed?: boolean
 }
 
 export const ChartTypeSelector = memo(function ChartTypeSelector({
@@ -47,7 +50,8 @@ export const ChartTypeSelector = memo(function ChartTypeSelector({
   variant = "toolbar",
   className,
   isMobile = false,
-  disabled = false
+  disabled = false,
+  isLeftSidebarCollapsed
 }: ChartTypeSelectorProps) {
   if (variant === "sidebar") {
     return (
@@ -113,10 +117,21 @@ export const ChartTypeSelector = memo(function ChartTypeSelector({
     )
   }
 
+  const isCompactDesktop = useIsCompactDesktop();
+  const sidebarContext = useEditorSidebarContext();
+  const effectiveLeftSidebarCollapsed = isLeftSidebarCollapsed !== undefined 
+    ? isLeftSidebarCollapsed 
+    : sidebarContext.leftSidebarCollapsed;
+
+  // Between 1024px and 1151px, when left sidebar is expanded: show only bar chart icon + dropdown
+  const isCompactExpanded = isCompactDesktop && !effectiveLeftSidebarCollapsed;
+
   // Default: "toolbar" variant
   const triggerClassName = isMobile
     ? "h-7 w-12 text-[10px] px-1.5 py-0 border-gray-200 bg-white rounded-lg flex-shrink-0"
-    : "h-6 w-9 lg:w-[90px] text-[10px] px-1 lg:px-2 py-0 border-gray-200 bg-white"
+    : isCompactExpanded
+      ? "h-6 w-9 text-[10px] px-1 py-0 border-gray-200 bg-white flex-shrink-0"
+      : "h-6 w-9 lg:w-[90px] text-[10px] px-1 lg:px-2 py-0 border-gray-200 bg-white"
 
   return (
     <DropdownMenu>
@@ -129,12 +144,18 @@ export const ChartTypeSelector = memo(function ChartTypeSelector({
             triggerClassName,
             className
           )}
-          title="Select Chart Type"
+          title={`Chart Type: ${getChartLabel(value)}`}
         >
-          <ChartColumn className="h-3.5 w-3.5 lg:hidden text-slate-600 dark:text-slate-300 shrink-0 stroke-[2.5]" />
-          <span className="hidden lg:block truncate text-slate-700 dark:text-slate-200 text-left text-[11px] leading-tight">
-            {getChartLabel(value)}
-          </span>
+          {isCompactExpanded ? (
+            <ChartColumn className="h-3.5 w-3.5 text-slate-600 dark:text-slate-300 shrink-0 stroke-[2.5]" />
+          ) : (
+            <>
+              <ChartColumn className="h-3.5 w-3.5 lg:hidden text-slate-600 dark:text-slate-300 shrink-0 stroke-[2.5]" />
+              <span className="hidden lg:block truncate text-slate-700 dark:text-slate-200 text-left text-[11px] leading-tight">
+                {getChartLabel(value)}
+              </span>
+            </>
+          )}
           <ChevronDown className="h-3 w-3 text-slate-400 shrink-0 ml-0.5 opacity-60" />
         </button>
       </DropdownMenuTrigger>

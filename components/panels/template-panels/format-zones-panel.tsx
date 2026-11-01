@@ -68,8 +68,8 @@ export function FormatZonesPanel() {
   if (!selectedFormatId) {
     return (
       <div className="p-4 text-center text-gray-500 text-sm">
-        <p>No format selected.</p>
-        <p className="text-xs mt-1 text-gray-400">Select a format from the Templates tab.</p>
+        <p>No template selected.</p>
+        <p className="text-xs mt-1 text-gray-400">Select a template from the Templates tab.</p>
       </div>
     )
   }

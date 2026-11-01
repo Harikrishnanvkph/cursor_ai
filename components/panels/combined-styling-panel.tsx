@@ -22,10 +22,10 @@ export function CombinedStylingPanel({ initialTab }: CombinedStylingPanelProps) 
     const [activeTab, setActiveTab] = useState(initialTab || "bg")
 
     useEffect(() => {
-        if (initialTab) {
+        if (initialTab && initialTab !== activeTab) {
             setActiveTab(initialTab)
         }
-    }, [initialTab])
+    }, [initialTab, activeTab])
 
     // Ensure labels tab is reset when switching to timeline series
     useEffect(() => {

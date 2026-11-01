@@ -17,11 +17,11 @@ export interface GeoLocationState {
   setRegion: (region: PaymentRegion) => void
 }
 
-const STORAGE_KEY = "aichartor_payment_region"
+const STORAGE_KEY = "aichartor_payment_region_v3"
 
 export function useGeoLocation(): GeoLocationState {
-  const [region, setRegionState] = useState<PaymentRegion>("GLOBAL")
-  const [detectedRegion, setDetectedRegion] = useState<string>("GLOBAL")
+  const [region, setRegionState] = useState<PaymentRegion>("IN")
+  const [detectedRegion, setDetectedRegion] = useState<string>("IN")
   const [isManualOverride, setIsManualOverride] = useState<boolean>(false)
   const [loading, setLoading] = useState<boolean>(true)
 
@@ -29,7 +29,17 @@ export function useGeoLocation(): GeoLocationState {
     let isMounted = true
 
     async function detectLocation() {
-      // 1. Check if user already has an explicit manual selection
+      // 1. Detect browser timezone and offset (works accurately on localhost and production)
+      let isIndiaBrowser = false
+      try {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ""
+        const offset = new Date().getTimezoneOffset()
+        isIndiaBrowser = tz.includes("Kolkata") || tz.includes("Calcutta") || offset === -330
+      } catch {
+        // ignore
+      }
+
+      // 2. Check if user already has an explicit manual selection in localStorage
       try {
         const savedRegion = localStorage.getItem(STORAGE_KEY) as PaymentRegion | null
         if (savedRegion === "IN" || savedRegion === "GLOBAL") {
@@ -42,17 +52,22 @@ export function useGeoLocation(): GeoLocationState {
         // Ignore localStorage access issues
       }
 
-      // 2. Fetch server detection from headers/IP
+      // 3. Fetch server detection with client hint
       try {
-        const res = await fetch("/api/payments/config", { credentials: "include" })
+        const clientCountryHint = isIndiaBrowser ? "IN" : "GLOBAL"
+        const res = await fetch("/api/payments/config", {
+          credentials: "include",
+          headers: {
+            "x-client-country": clientCountryHint,
+          },
+        })
         if (res.ok) {
           const data = await res.json()
-          const detected = data.detectedCountry || "GLOBAL"
-          const isIndiaDetected = data.isIndia || detected === "IN"
+          const detected = data.detectedCountry || (isIndiaBrowser ? "IN" : "GLOBAL")
+          const isIndiaDetected = data.isIndia || detected === "IN" || isIndiaBrowser
 
           if (isMounted) {
             setDetectedRegion(detected)
-            // If user hasn't manually overridden yet, use server detection
             const savedRegion = localStorage.getItem(STORAGE_KEY)
             if (!savedRegion) {
               setRegionState(isIndiaDetected ? "IN" : "GLOBAL")
@@ -64,21 +79,13 @@ export function useGeoLocation(): GeoLocationState {
         console.warn("Could not fetch payment config, using client fallback:", err)
       }
 
-      // 3. Client Timezone fallback if API is unreachable
-      try {
-        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ""
-        const isIndiaTz = tz.includes("Kolkata") || tz.includes("Calcutta")
-        if (isMounted) {
-          const savedRegion = localStorage.getItem(STORAGE_KEY)
-          if (!savedRegion) {
-            setRegionState(isIndiaTz ? "IN" : "GLOBAL")
-            setDetectedRegion(isIndiaTz ? "IN" : "GLOBAL")
-          }
+      // 4. Client Timezone fallback if API is unreachable
+      if (isMounted) {
+        const savedRegion = localStorage.getItem(STORAGE_KEY)
+        if (!savedRegion) {
+          setRegionState(isIndiaBrowser ? "IN" : "GLOBAL")
+          setDetectedRegion(isIndiaBrowser ? "IN" : "GLOBAL")
         }
-      } catch {
-        // Fallback to GLOBAL
-      } finally {
-        if (isMounted) setLoading(false)
       }
     }
 

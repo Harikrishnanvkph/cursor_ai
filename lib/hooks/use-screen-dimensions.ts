@@ -78,3 +78,24 @@ export function useIsTablet() {
     
     return isTablet;
 }
+
+// Custom hook to detect 1024px - 1151px (Compact Desktop Range, below Tailwind 'xl')
+export function useIsCompactDesktop() {
+    const [isCompact, setIsCompact] = useState(() => {
+        if (typeof window !== "undefined") {
+            return window.matchMedia("(min-width: 1024px) and (max-width: 1151px)").matches;
+        }
+        return false;
+    });
+    
+    useEffect(() => {
+        const mediaQuery = window.matchMedia("(min-width: 1024px) and (max-width: 1151px)");
+        const handleChange = (e: MediaQueryListEvent) => setIsCompact(e.matches);
+        
+        setIsCompact(mediaQuery.matches);
+        mediaQuery.addEventListener("change", handleChange);
+        return () => mediaQuery.removeEventListener("change", handleChange);
+    }, []);
+    
+    return isCompact;
+}

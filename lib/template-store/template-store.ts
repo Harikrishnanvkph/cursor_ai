@@ -228,7 +228,6 @@ export const useTemplateStore = create<TemplateStore>()(
         const remaining = state.templates.filter(t => t.id !== id)
         const deletedWasCurrent = state.currentTemplate?.id === id
         const deletedWasBackground = state.templateInBackground?.id === id
-        const fallback = defaultTemplates[0]
 
         const next: any = { templates: remaining }
 

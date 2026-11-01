@@ -306,7 +306,7 @@ function BoardPageContent() {
       <header className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-[1600px] mx-auto px-2 xs:px-2.5 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14">
-            {/* Logo and Title */}
+            {/* Logo and Title Dropdown */}
             <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
               {/* Mobile Menu Icon (< 450px) */}
               <button
@@ -318,10 +318,65 @@ function BoardPageContent() {
                 <Menu className="h-5 w-5" />
               </button>
 
-              <Image src="/logo.png" alt="Logo" width={26} height={26} className="rounded-lg shrink-0" />
-              <h1 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 tracking-tight hidden phab:block">
-                Dashboard
-              </h1>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="flex items-center gap-2 px-2 py-1.5 -ml-1 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group cursor-pointer outline-none focus:outline-none focus-visible:outline-none select-none"
+                    title="Switch View"
+                  >
+                    <Image src="/logo.png" alt="Logo" width={26} height={26} className="rounded-lg shrink-0" />
+                    <span className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 tracking-tight hidden phab:block">
+                      Dashboard
+                    </span>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors hidden phab:block" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-64 p-1.5 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800 shadow-xl z-50">
+                  <DropdownMenuItem
+                    className="flex items-start justify-between px-3 py-2.5 rounded-xl cursor-default bg-indigo-50/60 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400"
+                  >
+                    <div className="flex flex-col gap-0.5 min-w-0 pr-2">
+                      <span className="text-sm font-semibold leading-tight">
+                        Dashboard
+                      </span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 font-normal leading-normal">
+                        Manage saved charts & templates
+                      </span>
+                    </div>
+                    <Check className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
+                  </DropdownMenuItem>
+
+                  <DropdownMenuSeparator className="my-1 bg-slate-200/70 dark:bg-slate-800" />
+
+                  <DropdownMenuItem
+                    onClick={() => router.push('/editor')}
+                    className="flex items-start justify-between px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 leading-tight">
+                        Advanced Editor
+                      </span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 font-normal leading-normal">
+                        Full canvas & infographic design
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem
+                    onClick={() => router.push('/landing')}
+                    className="flex items-start justify-between px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 leading-tight">
+                        AI Chart
+                      </span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 font-normal leading-normal">
+                        Create charts with AI prompts
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             {/* Actions */}
@@ -376,72 +431,6 @@ function BoardPageContent() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              </div>
-
-              {/* Mobile (451px to 639px): Unified Create Dropdown (hidden below 450px, available in mobile sidebar) */}
-              <div className="hidden phab:flex sm:hidden">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button 
-                      size="sm"
-                      className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-semibold text-xs h-8 px-2.5 rounded-lg gap-1.5 flex items-center justify-center shadow-sm shadow-violet-500/20 transition-all active:scale-95 shrink-0"
-                    >
-                      <Sparkles className="h-3.5 w-3.5 shrink-0" />
-                      <span>Create</span>
-                      <ChevronDown className="h-3 w-3 opacity-75 shrink-0" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-52 p-1.5 z-50">
-                    <DropdownMenuItem asChild>
-                      <Link href="/landing" className="flex items-center gap-2.5 p-2 rounded-lg cursor-pointer">
-                        <div className="w-7 h-7 rounded-md bg-violet-100 dark:bg-violet-950/60 flex items-center justify-center text-violet-600 dark:text-violet-400 shrink-0">
-                          <Sparkles className="h-3.5 w-3.5" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-xs text-slate-900 dark:text-slate-100">Create with AI</p>
-                          <p className="text-[10px] text-slate-500 dark:text-slate-400">Generate from natural language</p>
-                        </div>
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator className="my-1" />
-                    <DropdownMenuItem asChild>
-                      <Link href="/editor" className="flex items-center gap-2.5 p-2 rounded-lg cursor-pointer">
-                        <div className="w-7 h-7 rounded-md bg-indigo-100 dark:bg-indigo-950/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
-                          <Edit3 className="h-3.5 w-3.5" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-xs text-slate-900 dark:text-slate-100">
-                            <span className="hidden md:inline">Advanced Editor</span>
-                            <span className="md:hidden">Editor</span>
-                          </p>
-                          <p className="text-[10px] text-slate-500 dark:text-slate-400">Canvas & layout designer</p>
-                        </div>
-                      </Link>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-
-              {/* Desktop (>=640px): Dedicated Buttons */}
-              <div className="hidden sm:flex items-center gap-2">
-                <Link href="/landing">
-                  <Button 
-                    className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-semibold text-xs h-8 px-3 rounded-lg gap-1.5 flex items-center justify-center shadow-sm shadow-violet-500/20 transition-all hover:shadow-md hover:shadow-violet-500/30 hover:-translate-y-px"
-                  >
-                    <Sparkles className="h-3.5 w-3.5" />
-                    <span>Create with AI</span>
-                  </Button>
-                </Link>
-                <Link href="/editor">
-                  <Button 
-                    variant="outline" 
-                    className="border border-slate-200 dark:border-slate-700 bg-white dark:bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 text-slate-700 dark:text-slate-300 font-semibold text-xs h-8 px-3 rounded-lg gap-1.5 flex items-center justify-center shadow-none transition-all"
-                  >
-                    <Edit3 className="h-3.5 w-3.5" />
-                    <span className="hidden md:inline">Advanced Editor</span>
-                    <span className="md:hidden">Editor</span>
-                  </Button>
-                </Link>
               </div>
 
               <div className="w-[1px] h-4 sm:h-5 bg-slate-200 dark:bg-slate-700 mx-0.5 sm:mx-1 shrink-0 hidden phab:block"></div>

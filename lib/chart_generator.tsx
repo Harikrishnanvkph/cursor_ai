@@ -2574,7 +2574,7 @@ export const ChartGenerator = memo(function ChartGenerator({
                                     ...(currentConfig.plugins as any)?.timelineRangeSelector,
                                     selectedRange: range,
                                   }
-                                }
+                                } as any
                               });
                             }}
                             className={`px-2 py-0.5 text-[11px] font-semibold rounded transition-all cursor-pointer ${

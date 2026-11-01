@@ -14,6 +14,7 @@ const config: Config = {
 			'xs': '360px',
 			'phab': '450px',
 			'lap1025': '1025px',
+			'xl': '1152px',
 		},
   		colors: {
   			background: 'hsl(var(--background))',

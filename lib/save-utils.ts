@@ -68,51 +68,6 @@ function normalizeChartConfig(chartConfig: any): any {
     return config;
 }
 
-/**
- * Extracts template data for saving (if template exists AND we're in template mode).
- * Only saves template when the editor is actively in template mode.
- */
-function extractTemplateData(): {
-    templateStructure: any | null;
-    templateContent: Record<string, any> | null;
-} {
-    const { currentTemplate, templateInBackground, editorMode } = useTemplateStore.getState();
-
-    // Only save template data when in template mode
-    if (editorMode !== 'template') {
-        return { templateStructure: null, templateContent: null };
-    }
-
-    // Get template from either currentTemplate or templateInBackground
-    const templateToSave = currentTemplate || templateInBackground;
-
-    // Save template if it exists AND has content (text areas)
-    if (templateToSave && templateToSave.textAreas && templateToSave.textAreas.length > 0) {
-        const templateContent: Record<string, any> = {};
-
-        templateToSave.textAreas.forEach((area: any) => {
-            if (templateContent[area.type]) {
-                // Handle multiple areas of same type
-                if (Array.isArray(templateContent[area.type])) {
-                    templateContent[area.type].push(area.content);
-                } else {
-                    templateContent[area.type] = [templateContent[area.type], area.content];
-                }
-            } else {
-                templateContent[area.type] = area.content;
-            }
-        });
-
-        console.log('📄 Template data will be saved');
-        return {
-            templateStructure: templateToSave,
-            templateContent
-        };
-    }
-
-    return { templateStructure: null, templateContent: null };
-}
-
 function fileToBase64(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -317,24 +272,17 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
             }
         }
 
-        // Extract template data
-        let { templateStructure, templateContent } = extractTemplateData();
-        
-        // If we are in template mode, also inject decorations directly into template structure
-        if (templateStructure && updatedShapes && updatedShapes.length > 0) {
-            templateStructure.decorations = updatedShapes;
-        }
+        // Template / Blueprint layout persistence
+        let templateStructure: any = null;
+        let templateContent: any = null;
 
-        // Inject format data into config so it's persisted in the snapshot
-        const { editorMode, generateMode } = useTemplateStore.getState();
-        const { selectedFormatId, contentPackage, contextualImageUrl, selectedFormatSnapshot } = useFormatGalleryStore.getState();
+        const { editorMode } = useTemplateStore.getState();
+        const { selectedFormatId, contentPackage, contextualImageUrl } = useFormatGalleryStore.getState();
         
-        // Only inject format data when BOTH in template mode AND actively using format generate mode.
-        // Previously this only checked selectedFormatId, which could be stale if the user
-        // switched from format to template mode without the format store being cleared.
-        const isActiveFormatMode = editorMode === 'template' && generateMode === 'format' && selectedFormatId;
+        // When in template mode with an active blueprint layout selected
+        const isActiveTemplateMode = editorMode === 'template' && !!selectedFormatId;
         
-        if (isActiveFormatMode) {
+        if (isActiveTemplateMode) {
             const formatStore = useFormatGalleryStore.getState();
             const snapshotToSave = formatStore.selectedFormatSnapshot || [...formatStore.formats, ...formatStore.userFormats].find(f => f.id === selectedFormatId) || null;
 
@@ -345,20 +293,22 @@ export async function saveChartToCloud(options: SaveChartOptions): Promise<SaveC
                 formatSnapshot: snapshotToSave
             };
             
-            // Note: The Supabase RPC function 'save_chart_snapshot' sets `is_template_mode = true` 
-            // ONLY if templateStructure or templateContent is NOT NULL.
-            // Since formats store their data in chartConfig instead of templateStructure,
-            // we must pass a dummy structure to force the database template flag to true!
-            if (!templateStructure) {
-                templateStructure = {
-                    isFormatReference: true,
-                    formatId: selectedFormatId,
-                    note: 'Dummy structure to trigger backend is_template_mode flag for formats'
-                };
+            // Pass blueprint layout to templateStructure so database `is_template_mode = true`
+            templateStructure = snapshotToSave?.skeleton ? {
+                ...snapshotToSave.skeleton,
+                formatId: selectedFormatId,
+                isFormatReference: true
+            } : {
+                isFormatReference: true,
+                formatId: selectedFormatId
+            };
+
+            // If decorations exist, also inject directly into templateStructure
+            if (updatedShapes && updatedShapes.length > 0) {
+                templateStructure.decorations = updatedShapes;
             }
         } else {
-            // Saving as a standard template or chart — make sure to strip any leftover formatData
-            // from a previous format session so the load logic doesn't misidentify it as a format.
+            // Chart-only mode — strip any leftover formatData
             delete normalizedConfig.formatData;
         }
 

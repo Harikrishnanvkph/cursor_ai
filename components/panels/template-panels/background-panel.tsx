@@ -1,9 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
-import { useTemplateStore } from "@/lib/template-store"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
-import { BackgroundSection } from "../template-settings/content-tab/background-section"
 import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -57,49 +55,28 @@ type BackgroundMode = 'document' | 'section'
  * Templates and Formats with "Whole Document" / "Selected Section" toggle.
  */
 export function BackgroundPanel() {
-  const { currentTemplate, selectedTextAreaId, updateTextArea } = useTemplateStore()
-  const { selectedFormatId, selectedZoneId, formats, selectedFormatSnapshot, updateZoneStyle: storeUpdateZoneStyle } = useFormatGalleryStore()
+  const { selectedFormatId, selectedZoneId, formats, selectedFormatSnapshot } = useFormatGalleryStore()
 
   const [bgMode, setBgMode] = useState<BackgroundMode>('document')
 
-  // Find the selected format — prefer the persisted snapshot (contains user modifications)
+  // Find the selected layout — prefer the persisted snapshot (contains user modifications)
   const selectedFormat = selectedFormatId
     ? (selectedFormatSnapshot || formats.find((f) => f.id === selectedFormatId))
     : null
 
-  // Find the selected text area in templates
-  const selectedTextArea = currentTemplate?.textAreas.find(ta => ta.id === selectedTextAreaId) || null
-
-  // Find the selected zone in formats
+  // Find the selected zone in layout
   const selectedZone = selectedFormat
     ? ((selectedFormat.skeleton as any)?.zones || []).find((z: any) => z.id === selectedZoneId)
     : null
 
-  // Determine if we have a selectable section
-  const hasSectionSelection = currentTemplate
-    ? !!selectedTextArea
-    : selectedFormat
-      ? !!selectedZone && selectedZone.type !== 'background'
-      : false
-
-  // Auto-switch to document mode if section becomes deselected
-  React.useEffect(() => {
-    if (bgMode === 'section' && !hasSectionSelection) {
-      // Don't auto-switch, keep showing the "select a section" message
-    }
-  }, [bgMode, hasSectionSelection])
-
-  // ─────────────────────────────────────────────
-  // NO TEMPLATE / FORMAT SELECTED
-  // ─────────────────────────────────────────────
-  if (!currentTemplate && !selectedFormat) {
+  if (!selectedFormat) {
     return (
       <Card>
         <CardContent className="pt-6">
           <div className="text-center p-4 bg-gray-50 rounded-lg">
             <Palette className="h-8 w-8 text-gray-400 mx-auto mb-2" />
             <p className="text-sm text-gray-600">
-              Select a template or format to edit its background.
+              Select a template to edit its background.
             </p>
           </div>
         </CardContent>
@@ -107,9 +84,6 @@ export function BackgroundPanel() {
     )
   }
 
-  // ─────────────────────────────────────────────
-  // MODE TOGGLE (shared by Templates & Formats)
-  // ─────────────────────────────────────────────
   const renderModeToggle = () => (
     <div className="mb-4">
       <div className="flex bg-gray-100 rounded-lg p-0.5">
@@ -139,279 +113,33 @@ export function BackgroundPanel() {
     </div>
   )
 
-  // ─────────────────────────────────────────────
-  // TEMPLATE MODE
-  // ─────────────────────────────────────────────
-  if (currentTemplate) {
-    return (
-      <div className="space-y-4">
-        {renderModeToggle()}
-        
-        {bgMode === 'document' ? (
-          <BackgroundSection currentTemplate={currentTemplate} />
-        ) : (
-          selectedTextArea ? (
-            <SectionBackgroundEditor
-              background={selectedTextArea.background as any}
-              sectionLabel={selectedTextArea.type.charAt(0).toUpperCase() + selectedTextArea.type.slice(1)}
-              sectionDimensions={{
-                width: selectedTextArea.position.width,
-                height: selectedTextArea.position.height,
-              }}
-              onUpdate={(bg) => updateTextArea(selectedTextArea.id, { background: bg })}
-            />
-          ) : (
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center p-4 bg-amber-50 rounded-lg border border-amber-200">
-                  <MousePointerClick className="h-8 w-8 text-amber-400 mx-auto mb-2" />
-                  <p className="text-sm font-medium text-amber-800">No section selected</p>
-                  <p className="text-xs text-amber-600 mt-1">
-                    Click on a text area in the preview to edit its background.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )
-        )}
-      </div>
-    )
-  }
-
-  // ─────────────────────────────────────────────
-  // FORMAT MODE
-  // ─────────────────────────────────────────────
-  if (selectedFormat) {
-    return (
-      <div className="space-y-4">
-        {renderModeToggle()}
-        
-        {bgMode === 'document' ? (
-          <FormatBackgroundEditor format={selectedFormat} />
-        ) : (
-          selectedZone && selectedZone.type !== 'background' ? (
-            <FormatZoneBackgroundEditor
-              format={selectedFormat}
-              zone={selectedZone}
-            />
-          ) : (
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center p-4 bg-amber-50 rounded-lg border border-amber-200">
-                  <MousePointerClick className="h-8 w-8 text-amber-400 mx-auto mb-2" />
-                  <p className="text-sm font-medium text-amber-800">No section selected</p>
-                  <p className="text-xs text-amber-600 mt-1">
-                    Click on a zone (text, stat, or decoration) in the preview to edit its background.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )
-        )}
-      </div>
-    )
-  }
-
-  return null
-}
-
-// ────────────────────────────────────────────────
-// Section Background Editor (for Template TextAreas)
-// ────────────────────────────────────────────────
-
-interface SectionBackgroundEditorProps {
-  background?: {
-    type?: 'color' | 'gradient' | 'image' | 'transparent'
-    color?: string
-    gradientType?: 'linear' | 'radial'
-    gradientDirection?: string
-    gradientColor1?: string
-    gradientColor2?: string
-    imageUrl?: string
-    imageFit?: 'fill' | 'contain' | 'cover'
-    opacity?: number
-  }
-  sectionLabel: string
-  sectionDimensions: { width: number; height: number }
-  onUpdate: (bg: any) => void
-}
-
-function SectionBackgroundEditor({ background, sectionLabel, sectionDimensions, onUpdate }: SectionBackgroundEditorProps) {
-  const bg = background || {}
-  const currentType = bg.type || 'transparent'
-
-  const handleUpdate = (updates: Record<string, any>) => {
-    onUpdate({ ...bg, ...updates })
-  }
-
   return (
-    <Card>
-      <div className="flex items-center gap-2 px-4 pt-4 pb-2">
-        <Palette className="h-4 w-4 text-blue-600" />
-        <h3 className="text-sm font-semibold text-slate-800">{sectionLabel} Background</h3>
-      </div>
-      <CardContent className="space-y-3">
-        {/* Section info */}
-        <div className="flex items-center gap-2 px-2 py-1.5 bg-blue-50 rounded-md border border-blue-100">
-          <FileText className="h-3.5 w-3.5 text-blue-500" />
-          <span className="text-xs text-blue-700">
-            {sectionLabel} area — {sectionDimensions.width} × {sectionDimensions.height}px
-          </span>
-        </div>
-
-        {/* Background Type */}
-        <div>
-          <Label className="text-xs font-medium">Background Type</Label>
-          <Select
-            value={currentType}
-            onValueChange={(value) => handleUpdate({ type: value })}
-          >
-            <SelectTrigger className="h-7 text-xs mt-1"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="transparent">Transparent</SelectItem>
-              <SelectItem value="color">Color</SelectItem>
-              <SelectItem value="gradient">Gradient</SelectItem>
-              <SelectItem value="image">Image</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Color */}
-        {currentType === 'color' && (
-          <div>
-            <Label className="text-xs">Background Color</Label>
-            <div className="flex gap-2 mt-1">
-              <Input
-                type="color"
-                value={bg.color || '#ffffff'}
-                onChange={(e) => handleUpdate({ color: e.target.value })}
-                className="w-10 h-7 p-1"
-              />
-              <Input
-                type="text"
-                value={bg.color || '#ffffff'}
-                onChange={(e) => handleUpdate({ color: e.target.value })}
-                className="flex-1 h-7 text-xs"
-                placeholder="#ffffff"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Gradient */}
-        {currentType === 'gradient' && (
-          <>
-            <div>
-              <Label className="text-xs">Gradient Type</Label>
-              <Select
-                value={bg.gradientType || 'linear'}
-                onValueChange={(value) => handleUpdate({ gradientType: value })}
-              >
-                <SelectTrigger className="h-7 text-xs mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="linear">Linear</SelectItem>
-                  <SelectItem value="radial">Radial</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-xs">Direction</Label>
-              <Select
-                value={bg.gradientDirection || 'to right'}
-                onValueChange={(value) => handleUpdate({ gradientDirection: value })}
-                disabled={bg.gradientType === 'radial'}
-              >
-                <SelectTrigger className="h-7 text-xs mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="to right">Left → Right</SelectItem>
-                  <SelectItem value="to left">Right → Left</SelectItem>
-                  <SelectItem value="to bottom">Top → Bottom</SelectItem>
-                  <SelectItem value="to top">Bottom → Top</SelectItem>
-                  <SelectItem value="135deg">Diagonal (135°)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-xs">Gradient Colors</Label>
-              <div className="flex gap-2 mt-1">
-                <Input type="color" value={bg.gradientColor1 || '#ffffff'} onChange={(e) => handleUpdate({ gradientColor1: e.target.value })} className="w-10 h-7 p-1" />
-                <Input type="color" value={bg.gradientColor2 || '#000000'} onChange={(e) => handleUpdate({ gradientColor2: e.target.value })} className="w-10 h-7 p-1" />
+    <div className="space-y-4">
+      {renderModeToggle()}
+      
+      {bgMode === 'document' ? (
+        <FormatBackgroundEditor format={selectedFormat} />
+      ) : (
+        selectedZone && selectedZone.type !== 'background' ? (
+          <FormatZoneBackgroundEditor
+            format={selectedFormat}
+            zone={selectedZone}
+          />
+        ) : (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center p-4 bg-amber-50 rounded-lg border border-amber-200">
+                <MousePointerClick className="h-8 w-8 text-amber-400 mx-auto mb-2" />
+                <p className="text-sm font-medium text-amber-800">No section selected</p>
+                <p className="text-xs text-amber-600 mt-1">
+                  Click on a zone (text, stat, or decoration) in the preview to edit its background.
+                </p>
               </div>
-            </div>
-          </>
-        )}
-
-        {/* Image */}
-        {currentType === 'image' && (
-          <>
-            <div>
-              <Label className="text-xs">Image URL</Label>
-              <Input
-                type="text"
-                value={bg.imageUrl || ''}
-                onChange={(e) => handleUpdate({ imageUrl: e.target.value })}
-                placeholder="https://example.com/image.jpg"
-                className="h-7 text-xs mt-1"
-              />
-            </div>
-            <div>
-              <Label className="text-xs">Upload Image</Label>
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0]
-                  if (file) {
-                    try {
-                      toast.info('Compressing image...', { duration: 1000 })
-                      const compressed = await compressImage(file, 800, 0.85)
-                      handleUpdate({ imageUrl: compressed })
-                      toast.success('Image uploaded!')
-                    } catch (err: any) {
-                      toast.error(err.message || 'Failed to process image')
-                      e.target.value = ''
-                    }
-                  }
-                }}
-                className="h-7 text-xs mt-1"
-              />
-            </div>
-            <div>
-              <Label className="text-xs">Image Fit</Label>
-              <Select
-                value={bg.imageFit || 'cover'}
-                onValueChange={(value) => handleUpdate({ imageFit: value })}
-              >
-                <SelectTrigger className="h-7 text-xs mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="fill">Fill</SelectItem>
-                  <SelectItem value="contain">Contain</SelectItem>
-                  <SelectItem value="cover">Cover</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </>
-        )}
-
-        {/* Opacity */}
-        {currentType !== 'transparent' && currentType !== undefined && (
-          <div>
-            <Label className="text-xs">Opacity</Label>
-            <div className="flex items-center gap-2 mt-1">
-              <Input
-                type="range"
-                min="0"
-                max="100"
-                value={bg.opacity || 100}
-                onChange={(e) => handleUpdate({ opacity: parseInt(e.target.value) })}
-                className="flex-1"
-              />
-              <span className="text-xs w-12 text-right">{bg.opacity || 100}%</span>
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+            </CardContent>
+          </Card>
+        )
+      )}
+    </div>
   )
 }
 

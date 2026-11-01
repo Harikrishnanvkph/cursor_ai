@@ -1,7 +1,8 @@
 "use client"
 import { useSearchParams } from "next/navigation";
 
-import React, { memo, useState } from "react"
+import React, { memo, useState, useEffect } from "react"
+import { useStore } from "zustand"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -11,9 +12,10 @@ import {
     Download, Maximize2,
     ZoomIn, ZoomOut, Hand, Pencil, Check, Loader2,
     ChartColumn, RulerDimensionLine, Ban, Search, Palette, Upload, Sparkles, ScanSearch, Ellipsis,
-    Camera, RotateCcw, Info, ChevronDown
+    Camera, RotateCcw, Info, ChevronDown, Undo, Redo
 } from "lucide-react"
 import { useLoupeStore } from "@/lib/stores/loupe-store"
+import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
 import { 
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
     DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent
@@ -22,7 +24,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Slider } from "@/components/ui/slider"
 import { FileCode, FileImage, FileText, ImageIcon, Settings } from "lucide-react"
-import { UndoRedoButtons } from "@/components/ui/undo-redo-buttons"
 import { useTemplateStore } from "@/lib/template-store"
 import { useFormatGalleryStore } from "@/lib/stores/format-gallery-store"
 import { useUIStore } from "@/lib/stores/ui-store"
@@ -35,18 +36,9 @@ import { useAuth } from "@/components/auth/AuthProvider"
 import { PublishStyleDialog } from "@/components/chart-style-gallery/publish-dialog"
 import { UpdatePresetDialog } from "@/components/chart-style-gallery/update-preset-dialog"
 import { dataService } from "@/lib/data-service"
-
-const ZOOM_VALUES: number[] = (() => {
-    let values: number[] = [];
-    for (let i = 10; i <= 50; i += 1) values.push(i);
-    for (let i = 52; i <= 100; i += 2) values.push(i);
-    for (let i = 103; i <= 160; i += 3) values.push(i);
-    for (let i = 165; i <= 210; i += 5) values.push(i);
-    for (let i = 216; i <= 300; i += 6) values.push(i);
-    for (let i = 310; i <= 380; i += 10) values.push(i);
-    for (let i = 392; i <= 500; i += 12) values.push(i);
-    return values;
-})();
+import { useEditorSidebarContext } from "@/components/editor/editor-sidebar-context"
+import { useIsCompactDesktop } from "@/lib/hooks/use-screen-dimensions"
+import { ZoomMenuContent, ZOOM_VALUES, getClosestZoomIndex } from "./zoom-menu-content"
 
 // --- 1. Mode & Type Section (Independent) ---
 
@@ -56,7 +48,8 @@ const ModeAndTypeSection = memo(({
     isResponsive, chartContainerRef,
     chartWidth, chartHeight,
     isMobile,
-    disabled
+    disabled,
+    isLeftSidebarCollapsed,
 }: {
     editorMode: string;
     setEditorMode: (mode: string) => void;
@@ -68,11 +61,9 @@ const ModeAndTypeSection = memo(({
     chartHeight?: number;
     isMobile: boolean;
     disabled?: boolean;
+    isLeftSidebarCollapsed?: boolean;
 }) => {
     const btnClassName = isMobile ? "px-2 py-0.5 text-[11px] min-w-[50px]" : "px-2 py-0.5 text-[10px] min-w-[50px]";
-    const triggerClassName = isMobile
-        ? "h-7 w-12 text-[10px] px-1.5 py-0 border-gray-200 bg-white rounded-lg flex-shrink-0"
-        : "h-6 w-9 lg:w-[90px] text-[10px] px-1 lg:px-2 py-0 border-gray-200 bg-white";
 
     return (
         <div className={`flex items-center gap-1 flex-shrink-0 ${disabled ? 'opacity-40 pointer-events-none select-none' : ''}`}>
@@ -101,140 +92,12 @@ const ModeAndTypeSection = memo(({
                 variant="toolbar"
                 isMobile={isMobile}
                 disabled={disabled}
+                isLeftSidebarCollapsed={isLeftSidebarCollapsed}
             />
-
-            {/* Divider */}
-            <div className="w-px h-4 bg-gray-200 mx-1" />
-
-            {/* Styles Button */}
-            <StylesButton />
-
-            {/* Publish as Style Button (Admin only) */}
-            <PublishStyleButton />
         </div>
     );
 });
 ModeAndTypeSection.displayName = "ModeAndTypeSection";
-
-// --- Styles Button (toggles Chart Style Gallery) ---
-const StylesButton = memo(() => {
-    const { isGalleryOpen, toggleGallery } = useChartStyleStore();
-    const hasJSON = useChartStore(s => s.hasJSON);
-
-    return (
-        <TooltipProvider delayDuration={0}>
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <button
-                        onClick={toggleGallery}
-                        data-styles-toggle
-                        className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold transition-all border ${isGalleryOpen
-                                ? 'bg-violet-100 text-violet-700 border-violet-300 shadow-sm'
-                                : 'bg-white text-gray-500 border-gray-200 hover:border-violet-300 hover:text-violet-600 hover:bg-violet-50'
-                            }`}
-                    >
-                        <Palette className="w-3.5 h-3.5" />
-                        <span className="hidden lg:inline">Styles</span>
-                    </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" sideOffset={5} className="z-[100] text-xs">
-                    {isGalleryOpen ? 'Close Style Gallery' : 'Browse Chart Styles'}
-                </TooltipContent>
-            </Tooltip>
-        </TooltipProvider>
-    );
-});
-StylesButton.displayName = "StylesButton";
-
-// --- Publish Style Button (admin-only) ---
-const PublishStyleButton = memo(() => {
-    const { user } = useAuth();
-    const hasJSON = useChartStore(s => s.hasJSON);
-    const [dialogOpen, setDialogOpen] = useState(false);
-    
-    // Read from useChartStyleStore instead of searchParams!
-    const { editPresetId, isBuiltInPreset, presetMetadata } = useChartStyleStore();
-
-    // Only render for admins who have a chart loaded
-    if (!user?.is_admin || !hasJSON) return null;
-
-    if (editPresetId) {
-        return (
-            <>
-                <TooltipProvider delayDuration={0}>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <button
-                                onClick={() => setDialogOpen(true)}
-                                className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold transition-all border bg-white text-emerald-600 border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50"
-                            >
-                                <Upload className="w-3.5 h-3.5" />
-                                <span className="hidden xl:inline">Update</span>
-                            </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom" sideOffset={5} className="z-[100] text-xs">
-                            Update this preset with current settings
-                        </TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
-                <UpdatePresetDialog
-                    open={dialogOpen}
-                    onOpenChange={setDialogOpen}
-                    presetId={editPresetId}
-                    initialData={presetMetadata}
-                    isBuiltIn={isBuiltInPreset}
-                    onSuccess={(newDbId) => {
-                        // Update global store values if they change
-                        const store = useChartStyleStore.getState();
-                        if (newDbId && isBuiltInPreset) {
-                            store.setEditPresetId(newDbId);
-                            store.setIsBuiltInPreset(false);
-                            window.history.replaceState(null, '', `/editor?editPresetId=${newDbId}`);
-                        }
-                        // Invalidate cache to reflect changes immediately
-                        store.invalidateCache().catch(console.error);
-                        // Optionally fetch updated metadata to update store
-                        const idToFetch = newDbId || editPresetId;
-                        dataService.getChartStylePreset(idToFetch).then((res) => {
-                            if (res.data) {
-                                store.setPresetMetadata({
-                                    name: res.data.name,
-                                    description: res.data.description || '',
-                                    category: res.data.category || 'minimal',
-                                    tags: res.data.tags || [],
-                                    isOfficial: res.data.is_official || false,
-                                });
-                            }
-                        }).catch(console.error);
-                    }}
-                />
-            </>
-        );
-    }
-
-    return (
-        <>
-            <TooltipProvider delayDuration={0}>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <button
-                            onClick={() => setDialogOpen(true)}
-                            className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold transition-all border bg-white text-emerald-600 border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50"
-                        >
-                            <Upload className="w-3.5 h-3.5" />
-                            <span className="hidden xl:inline">Publish</span>
-                        </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" sideOffset={5} className="z-[100] text-xs">
-                        Publish current chart as a reusable style preset
-                    </TooltipContent>
-                </Tooltip>
-            </TooltipProvider>
-            <PublishStyleDialog open={dialogOpen} onOpenChange={setDialogOpen} />
-        </>
-    );
-});
-PublishStyleButton.displayName = "PublishStyleButton";
 
 // --- 2. Title Section (Independent) ---
 
@@ -256,7 +119,7 @@ const TitleSection = memo(({ rename }: {
     if (!rename.chartTitle) return null;
 
     return (
-        <div className="flex items-center gap-1.5 mb-0 min-w-0">
+        <div className="flex items-center gap-1.5 mb-0 min-w-0 w-full">
             {rename.canEditTitle && (
                 <button onClick={rename.handleStartRename} className="p-0.5 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0" title="Rename">
                     <Pencil className="h-3 w-3" />
@@ -286,7 +149,7 @@ const TitleSection = memo(({ rename }: {
                         </button>
                     </>
                 ) : (
-                    <h4 className="font-semibold text-gray-900 text-sm truncate border-b-2 border-transparent" title={rename.chartTitle}>{rename.chartTitle}</h4>
+                    <h4 className="font-semibold text-gray-900 text-sm truncate border-b-2 border-transparent max-w-full" title={rename.chartTitle}>{rename.chartTitle}</h4>
                 )}
             </div>
         </div>
@@ -296,7 +159,7 @@ TitleSection.displayName = "TitleSection";
 
 // --- 3. Controls & Actions Section (Independent) ---
 
-const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, isMobile, chartContainerRef, chartWidth, chartHeight, disabled }: {
+const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, isMobile, chartContainerRef, chartWidth, chartHeight, disabled, isLeftSidebarCollapsed }: {
     zoomPan: {
         zoom: number;
         panMode: boolean;
@@ -321,23 +184,57 @@ const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, isMobile, ch
     chartWidth?: number;
     chartHeight?: number;
     disabled?: boolean;
+    isLeftSidebarCollapsed?: boolean;
 }) => {
+    const sidebarContext = useEditorSidebarContext();
+    const effectiveLeftSidebarCollapsed = isLeftSidebarCollapsed !== undefined 
+        ? isLeftSidebarCollapsed 
+        : sidebarContext.leftSidebarCollapsed;
+
+    const isCompactDesktop = useIsCompactDesktop();
+    // Between 1024px and 1151px:
+    // If left sidebar is expanded (!effectiveLeftSidebarCollapsed): hide zoom & pan outside, show inside ellipsis dropdown.
+    // If left sidebar is collapsed (effectiveLeftSidebarCollapsed): show zoom & pan outside as icon buttons.
+    // For >= 1152px (and < 1024px): show zoom & pan outside.
+    const showZoomPanOutside = !isCompactDesktop || effectiveLeftSidebarCollapsed;
+
     const { isLoupeActive, toggleLoupe } = useLoupeStore();
+    const { isGalleryOpen, toggleGallery, editPresetId, isBuiltInPreset, presetMetadata } = useChartStyleStore();
+    const { undo: temporalUndo, redo: temporalRedo, pastStates, futureStates } = useStore(useChartStore.temporal);
+    const canUndo = pastStates.length > 0;
+    const canRedo = futureStates.length > 0;
+
+    const { user } = useAuth();
+    const hasJSON = useChartStore(s => s.hasJSON);
+    const [publishDialogOpen, setPublishDialogOpen] = useState(false);
+
     const canvasBgType = useUIStore(s => s.canvasBgType);
     const canvasBgColor = useUIStore(s => s.canvasBgColor);
     const setCanvasBg = useUIStore(s => s.setCanvasBg);
     const dimensionText = chartWidth && chartHeight ? `${chartWidth} × ${chartHeight}` : "Responsive";
     const currentZoomPct = Math.round(zoomPan.zoom * 100);
+    const closestIndex = getClosestZoomIndex(currentZoomPct);
 
-    let closestIndex = 0;
-    let minDiff = Infinity;
-    for (let i = 0; i < ZOOM_VALUES.length; i++) {
-        const diff = Math.abs(ZOOM_VALUES[i] - currentZoomPct);
-        if (diff < minDiff) {
-            minDiff = diff;
-            closestIndex = i;
+    const handleResetZoom = () => {
+        zoomPan.setZoom(1);
+        zoomPan.setPanOffset({ x: 0, y: 0 });
+    };
+
+    const applyFullDimension = () => {
+        let baseScale = 1.0;
+        if (chartContainerRef?.current && chartWidth && chartHeight) {
+            const cWidth = chartContainerRef.current.clientWidth || 800;
+            const cHeight = chartContainerRef.current.clientHeight || 600;
+            const padding = 40;
+            const availableWidth = Math.max(10, cWidth - padding);
+            const availableHeight = Math.max(10, cHeight - padding);
+            const scaleX = availableWidth / chartWidth;
+            const scaleY = availableHeight / chartHeight;
+            baseScale = Math.min(scaleX, scaleY, 1.0);
         }
-    }
+        zoomPan.setZoom(1.0 / baseScale);
+        zoomPan.setPanOffset({ x: 0, y: 0 });
+    };
 
     const snapState = useSnapStateStore(s => s.snapState);
     const captureCurrentState = useSnapStateStore(s => s.captureCurrentState);
@@ -367,108 +264,77 @@ const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, isMobile, ch
         zoomPan.setZoom(newZoomPct / 100);
     };
 
+    // Keyboard shortcuts for Undo (Ctrl+Z) and Redo (Ctrl+Y / Ctrl+Shift+Z)
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const target = e.target as HTMLElement;
+            if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+                return;
+            }
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === 'z') {
+                    e.preventDefault();
+                    if (e.shiftKey) {
+                        temporalRedo();
+                    } else {
+                        temporalUndo();
+                    }
+                } else if (e.key === 'y') {
+                    e.preventDefault();
+                    temporalRedo();
+                }
+            }
+        };
 
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [temporalUndo, temporalRedo]);
 
     return (
-        <div className={`flex items-center gap-0.5 ${disabled ? 'opacity-40 pointer-events-none select-none' : ''}`}>
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600" title={`Zoom (${currentZoomPct}%)`}>
-                        <Search className="h-4 w-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-52 p-2">
-                        <DropdownMenuItem onClick={() => { zoomPan.setZoom(1); zoomPan.setPanOffset({ x: 0, y: 0 }); }} className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100">
-                            <span className="flex-1">100% (Fit to View)</span>
-                        </DropdownMenuItem>
-
-                        {chartWidth && chartHeight && (
-                            <DropdownMenuItem onClick={() => {
-                                const applyFullDimension = () => {
-                                    let baseScale = 1.0;
-                                    if (chartContainerRef?.current) {
-                                        const cWidth = chartContainerRef.current.clientWidth || 800;
-                                        const cHeight = chartContainerRef.current.clientHeight || 600;
-                                        const padding = 40;
-                                        const availableWidth = Math.max(10, cWidth - padding);
-                                        const availableHeight = Math.max(10, cHeight - padding);
-                                        const scaleX = availableWidth / chartWidth;
-                                        const scaleY = availableHeight / chartHeight;
-                                        baseScale = Math.min(scaleX, scaleY, 1.0);
-                                    }
-                                    zoomPan.setZoom(1.0 / baseScale);
-                                    zoomPan.setPanOffset({ x: 0, y: 0 });
-                                };
-                                
-                                applyFullDimension();
-                                // Recalculate after the browser adds scrollbars to get the exact 1:1 scale
-                                setTimeout(applyFullDimension, 50);
-                            }} className="text-xs py-1.5 cursor-pointer font-medium text-slate-700 focus:bg-slate-100">
-                                <span className="flex-1">Full Dimension</span>
-                            </DropdownMenuItem>
-                        )}
-
-                        <DropdownMenuSeparator className="my-1" />
-
-                        <div className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
-                            <Slider
-                                min={0}
-                                max={ZOOM_VALUES.length - 1}
-                                step={1}
-                                value={[closestIndex]}
-                                onValueChange={handleSliderChange}
-                                className="cursor-pointer"
+        <div className={`flex items-center gap-1 ${disabled ? 'opacity-40 pointer-events-none select-none' : ''}`}>
+            {/* Zoom Menu and Pan Button (Rendered outside when wide or left sidebar collapsed) */}
+            {showZoomPanOutside && (
+                <>
+                    {/* Zoom Menu (Icon only) */}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600 rounded-md" title={`Zoom (${currentZoomPct}%)`}>
+                                <Search className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56 p-2 z-[110]" onClick={(e) => e.stopPropagation()}>
+                            <ZoomMenuContent
+                                currentZoomPct={currentZoomPct}
+                                closestIndex={closestIndex}
+                                onSliderChange={handleSliderChange}
+                                onResetZoom={handleResetZoom}
+                                onFullDimension={applyFullDimension}
+                                hasFullDimension={!!(chartWidth && chartHeight)}
+                                onZoomIn={zoomPan.handleZoomIn}
+                                onZoomOut={zoomPan.handleZoomOut}
                             />
-                        </div>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
 
-                        <DropdownMenuSeparator className="my-1" />
-                        <div className="flex items-center justify-between gap-1 px-1 py-0.5">
-                            <DropdownMenuItem
-                                onSelect={(e) => { e.preventDefault(); zoomPan.handleZoomOut(); }}
-                                className="h-8 w-8 flex items-center justify-center rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
-                                title="Zoom Out"
-                            >
-                                <ZoomOut className="h-4 w-4" />
-                            </DropdownMenuItem>
+                    {/* Pan Mode Button */}
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => zoomPan.setPanMode(!zoomPan.panMode)}
+                        className={cn(
+                            "h-7 w-7 p-0 transition-colors rounded-md",
+                            zoomPan.panMode
+                                ? "bg-slate-200 text-slate-900 shadow-inner"
+                                : "hover:bg-slate-100 text-slate-600"
+                        )}
+                        title={zoomPan.panMode ? "Disable Pan Mode" : "Enable Pan Mode"}
+                    >
+                        <Hand className={cn("h-4 w-4", zoomPan.panMode ? "text-slate-900" : "text-slate-600")} />
+                    </Button>
+                </>
+            )}
 
-                            <span className="text-xs font-semibold tabular-nums text-slate-700 dark:text-slate-200 select-none px-2">
-                                {currentZoomPct}%
-                            </span>
-
-                            <DropdownMenuItem
-                                onSelect={(e) => { e.preventDefault(); zoomPan.handleZoomIn(); }}
-                                className="h-8 w-8 flex items-center justify-center rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
-                                title="Zoom In"
-                            >
-                                <ZoomIn className="h-4 w-4" />
-                            </DropdownMenuItem>
-                        </div>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-
-                {/* Amazon Loupe Magnifier Button */}
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={toggleLoupe}
-                    className={`h-7 w-7 p-0 transition-all ${
-                        isLoupeActive
-                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 ring-1 ring-blue-400 shadow-inner'
-                            : 'hover:bg-slate-100 text-slate-600'
-                    }`}
-                    title={isLoupeActive ? "Disable Loupe View (Esc)" : "Amazon Loupe View (Inspect Details)"}
-                >
-                    <ScanSearch className="h-4 w-4" />
-                </Button>
-
-                <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
-
-            <Button variant="ghost" size="sm" onClick={() => zoomPan.setPanMode(!zoomPan.panMode)} className={`h-7 w-7 p-0 text-slate-600 transition-colors ${zoomPan.panMode ? 'bg-slate-200 shadow-inner' : 'hover:bg-slate-100'}`} title={zoomPan.panMode ? "Disable Pan Mode" : "Enable Pan Mode"}>
-                <Hand className="h-4 w-4" />
-            </Button>
-
-            <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
-
+            {/* Export / Download Menu */}
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600" title="Export Image / Data"><Download className="h-4 w-4" /></Button>
@@ -627,24 +493,147 @@ const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, isMobile, ch
                 </DropdownMenuContent>
             </DropdownMenu>
 
-            <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
+            <div className="w-[1px] h-4 bg-slate-200 mx-0.5" />
 
             {/* More Options (Ellipsis Dropdown) */}
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600" title="More Options">
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600 rounded-md" title="More Options">
                         <Ellipsis className="h-4 w-4" />
                     </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 p-1.5 z-[100]">
-                    {/* Fullscreen */}
-                    <DropdownMenuItem
-                        onClick={handleFullscreen}
-                        className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100"
-                    >
-                        <Maximize2 className="h-4 w-4 text-slate-500" />
-                        <span>Fullscreen</span>
-                    </DropdownMenuItem>
+                <DropdownMenuContent align="end" className="w-64 p-1.5 z-[100]">
+                    {/* 1. First: Redo and Undo */}
+                    <div className="flex items-center px-1 py-0.5">
+                        <button
+                            type="button"
+                            disabled={!canUndo}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                temporalUndo();
+                            }}
+                            className={cn(
+                                "flex-1 flex items-center justify-center gap-2 py-1.5 px-2 rounded-md hover:bg-slate-100 transition-colors text-xs font-medium text-slate-700",
+                                !canUndo && "opacity-40 cursor-not-allowed hover:bg-transparent text-slate-400"
+                            )}
+                            title="Undo (Ctrl+Z)"
+                        >
+                            <Undo className="h-4 w-4 shrink-0" />
+                            <span>Undo</span>
+                        </button>
+
+                        <div className="w-[1px] h-4 bg-slate-200 shrink-0 mx-1" />
+
+                        <button
+                            type="button"
+                            disabled={!canRedo}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                temporalRedo();
+                            }}
+                            className={cn(
+                                "flex-1 flex items-center justify-center gap-2 py-1.5 px-2 rounded-md hover:bg-slate-100 transition-colors text-xs font-medium text-slate-700",
+                                !canRedo && "opacity-40 cursor-not-allowed hover:bg-transparent text-slate-400"
+                            )}
+                            title="Redo (Ctrl+Y)"
+                        >
+                            <Redo className="h-4 w-4 shrink-0" />
+                            <span>Redo</span>
+                        </button>
+                    </div>
+
+                    <DropdownMenuSeparator className="my-1" />
+
+                    {/* 2. Full Screen and Loupe on same line */}
+                    <div className="flex items-center px-1 py-0.5">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                handleFullscreen();
+                            }}
+                            className="flex-1 flex items-center justify-center gap-2 py-1.5 px-2 rounded-md hover:bg-slate-100 transition-colors text-xs font-medium text-slate-700 cursor-pointer"
+                            title="Fullscreen"
+                        >
+                            <Maximize2 className="h-4 w-4 text-slate-500 shrink-0" />
+                            <span>Full Screen</span>
+                        </button>
+
+                        <div className="w-[1px] h-4 bg-slate-200 shrink-0 mx-1" />
+
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                toggleLoupe();
+                            }}
+                            className={cn(
+                                "flex-1 flex items-center justify-center gap-2 py-1.5 px-2 rounded-md transition-colors text-xs font-medium cursor-pointer",
+                                isLoupeActive
+                                    ? "bg-blue-100 text-blue-700 font-semibold"
+                                    : "text-slate-700 hover:bg-slate-100"
+                            )}
+                            title={isLoupeActive ? "Disable Loupe View (Esc)" : "Amazon Loupe View (Inspect Details)"}
+                        >
+                            <ScanSearch className={cn("h-4 w-4 shrink-0", isLoupeActive ? "text-blue-700" : "text-slate-500")} />
+                            <span>Loupe</span>
+                        </button>
+                    </div>
+
+                    {/* 3. Zoom & Pan inside dropdown when between 1024px and 1151px and sidebar is expanded */}
+                    {!showZoomPanOutside && (
+                        <>
+                            <DropdownMenuSeparator className="my-1" />
+
+                            {/* Zoom Submenu */}
+                            <DropdownMenuSub>
+                                <DropdownMenuSubTrigger className="flex items-center justify-between px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-slate-100">
+                                    <div className="flex items-center gap-2.5">
+                                        <Search className="h-4 w-4 text-slate-500" />
+                                        <span>Zoom</span>
+                                    </div>
+                                    <span className="text-[11px] font-semibold text-slate-400 font-mono">
+                                        {currentZoomPct}%
+                                    </span>
+                                </DropdownMenuSubTrigger>
+                                <DropdownMenuSubContent className="w-56 p-2 z-[110]" onClick={(e) => e.stopPropagation()}>
+                                    <ZoomMenuContent
+                                        currentZoomPct={currentZoomPct}
+                                        closestIndex={closestIndex}
+                                        onSliderChange={handleSliderChange}
+                                        onResetZoom={handleResetZoom}
+                                        onFullDimension={applyFullDimension}
+                                        hasFullDimension={!!(chartWidth && chartHeight)}
+                                        onZoomIn={zoomPan.handleZoomIn}
+                                        onZoomOut={zoomPan.handleZoomOut}
+                                    />
+                                </DropdownMenuSubContent>
+                            </DropdownMenuSub>
+
+                            {/* Pan Mode */}
+                            <DropdownMenuItem
+                                onClick={() => zoomPan.setPanMode(!zoomPan.panMode)}
+                                className={cn(
+                                    "flex items-center justify-between px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md transition-colors",
+                                    zoomPan.panMode
+                                        ? "bg-slate-100 text-slate-900 font-semibold"
+                                        : "hover:bg-slate-100 text-slate-700"
+                                )}
+                            >
+                                <div className="flex items-center gap-2.5">
+                                    <Hand className={cn("h-4 w-4", zoomPan.panMode ? "text-slate-900" : "text-slate-500")} />
+                                    <span>Pan Mode</span>
+                                </div>
+                                <span className={cn(
+                                    "text-[10px] font-medium px-1.5 py-0.5 rounded",
+                                    zoomPan.panMode ? "bg-slate-200 text-slate-800 font-semibold" : "text-slate-400"
+                                )}>
+                                    {zoomPan.panMode ? "Active" : "Off"}
+                                </span>
+                            </DropdownMenuItem>
+                        </>
+                    )}
+
+                    <DropdownMenuSeparator className="my-1.5" />
 
                     {/* Dimensions */}
                     <DropdownMenuItem
@@ -779,12 +768,82 @@ const ControlsSection = memo(({ zoomPan, exports, handleFullscreen, isMobile, ch
                             </Tooltip>
                         </TooltipProvider>
                     </DropdownMenuItem>
+
+                    <DropdownMenuSeparator className="my-1.5" />
+
+                    {/* 4. Last: show Chart styles */}
+                    <DropdownMenuItem
+                        onClick={() => {
+                            toggleGallery();
+                        }}
+                        data-styles-toggle
+                        className={cn(
+                            "flex items-center justify-between px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md transition-colors",
+                            isGalleryOpen
+                                ? "bg-violet-50 text-violet-700 focus:bg-violet-100"
+                                : "hover:bg-violet-50 text-slate-700 hover:text-violet-700 focus:bg-violet-50 focus:text-violet-700"
+                        )}
+                    >
+                        <div className="flex items-center gap-2.5">
+                            <Palette className={cn("h-4 w-4", isGalleryOpen ? "text-violet-600" : "text-violet-500")} />
+                            <span className="font-medium">Chart Styles</span>
+                        </div>
+                        <span className={cn(
+                            "text-[10px] font-medium px-1.5 py-0.5 rounded",
+                            isGalleryOpen ? "bg-violet-100 text-violet-700 font-semibold" : "text-slate-400"
+                        )}>
+                            {isGalleryOpen ? 'Open' : 'Gallery'}
+                        </span>
+                    </DropdownMenuItem>
+
+                    {/* Publish/Update Style Preset (Admin only) */}
+                    {user?.is_admin && hasJSON && (
+                        <DropdownMenuItem
+                            onClick={() => setPublishDialogOpen(true)}
+                            className="flex items-center gap-2.5 px-2.5 py-2 text-xs font-medium cursor-pointer rounded-md hover:bg-emerald-50 text-emerald-700 focus:bg-emerald-50 focus:text-emerald-700"
+                        >
+                            <Upload className="h-4 w-4 text-emerald-600" />
+                            <span>{editPresetId ? "Update Style Preset" : "Publish Style Preset"}</span>
+                        </DropdownMenuItem>
+                    )}
                 </DropdownMenuContent>
             </DropdownMenu>
 
-            <div className="w-[1px] h-4 bg-slate-200 mx-0.5 lg:mx-1" />
-
-            <UndoRedoButtons variant="ghost" size="sm" showLabels={false} className="gap-0.5" buttonClassName="h-7 w-7 p-0 hover:bg-slate-100 text-slate-600 hover:scale-100" />
+            {/* Admin dialogs for styles preset */}
+            {user?.is_admin && hasJSON && (
+                editPresetId ? (
+                    <UpdatePresetDialog
+                        open={publishDialogOpen}
+                        onOpenChange={setPublishDialogOpen}
+                        presetId={editPresetId}
+                        initialData={presetMetadata}
+                        isBuiltIn={isBuiltInPreset}
+                        onSuccess={(newDbId) => {
+                            const store = useChartStyleStore.getState();
+                            if (newDbId && isBuiltInPreset) {
+                                store.setEditPresetId(newDbId);
+                                store.setIsBuiltInPreset(false);
+                                window.history.replaceState(null, '', `/editor?editPresetId=${newDbId}`);
+                            }
+                            store.invalidateCache().catch(console.error);
+                            const idToFetch = newDbId || editPresetId;
+                            dataService.getChartStylePreset(idToFetch).then((res) => {
+                                if (res.data) {
+                                    store.setPresetMetadata({
+                                        name: res.data.name,
+                                        description: res.data.description || '',
+                                        category: res.data.category || 'minimal',
+                                        tags: res.data.tags || [],
+                                        isOfficial: res.data.is_official || false,
+                                    });
+                                }
+                            }).catch(console.error);
+                        }}
+                    />
+                ) : (
+                    <PublishStyleDialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen} />
+                )
+            )}
         </div>
     );
 });
@@ -806,7 +865,7 @@ interface ChartPreviewToolbarProps {
     zoomPan: any;
     exports: any;
     handleFullscreen: () => void;
-
+    isLeftSidebarCollapsed?: boolean;
 }
 
 export const ChartPreviewToolbar = memo(({
@@ -823,19 +882,19 @@ export const ChartPreviewToolbar = memo(({
     zoomPan,
     exports,
     handleFullscreen,
-
+    isLeftSidebarCollapsed,
 }: ChartPreviewToolbarProps) => {
     const hasData = useChartStore(s => s.chartData.datasets.length > 0);
     const disabled = !hasData;
 
     return (
-        <div className={`${isMobile ? '' : 'mb-1.5'} flex-shrink-0 px-1`}>
+        <div className={`${isMobile ? 'py-0.5 px-1' : 'px-2 py-1 mb-1'} flex items-center justify-between gap-2.5 flex-shrink-0 w-full min-w-0`}>
             {rename?.chartTitle && (
-                <div className="mb-1 min-w-0">
+                <div className="flex-1 min-w-0 pr-1">
                     <TitleSection rename={rename} />
                 </div>
             )}
-            <div className="flex items-center gap-1 flex-wrap min-w-0">
+            <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
                 <ModeAndTypeSection
                     editorMode={editorMode} setEditorMode={setEditorMode}
                     chartType={chartType} onChartTypeChange={onChartTypeChange}
@@ -843,6 +902,7 @@ export const ChartPreviewToolbar = memo(({
                     chartWidth={chartWidth} chartHeight={chartHeight}
                     isMobile={false}
                     disabled={disabled}
+                    isLeftSidebarCollapsed={isLeftSidebarCollapsed}
                 />
                 <div className="w-[1px] h-3.5 bg-gray-200 mx-0.5" />
                 <ControlsSection
@@ -853,6 +913,7 @@ export const ChartPreviewToolbar = memo(({
                     chartWidth={chartWidth}
                     chartHeight={chartHeight}
                     disabled={disabled}
+                    isLeftSidebarCollapsed={isLeftSidebarCollapsed}
                 />
             </div>
         </div>

@@ -630,7 +630,7 @@ export async function generateChartHTML(options: HTMLExportOptions = {}) {
     // Use template if specified
     if (template && htmlTemplates[template as keyof typeof htmlTemplates]) {
         const selectedTemplate = htmlTemplates[template as keyof typeof htmlTemplates];
-        const htmlContent = selectedTemplate.generate(processedChartData, enhancedChartConfig, mappedChartType, optionsWithLegend);
+        const htmlContent = selectedTemplate.generate(processedChartData, enhancedChartConfig, mappedChartType, optionsWithLegend as any);
         return {
             content: htmlContent,
             fileName,

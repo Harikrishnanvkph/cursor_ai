@@ -715,6 +715,7 @@ export function ChartPreview({ onToggleSidebar, isSidebarCollapsed, onToggleLeft
           zoomPan={zoomPan}
           exports={exports}
           handleFullscreen={fullscreen.handleFullscreen}
+          isLeftSidebarCollapsed={isLeftSidebarCollapsed}
         />
       )}
 

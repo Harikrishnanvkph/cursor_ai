@@ -127,6 +127,7 @@ export async function initiateCheckout({
         modal: {
           ondismiss: () => {
             console.log("Razorpay checkout modal closed by user")
+            if (onError) onError(new Error("Payment cancelled by user"))
           },
         },
         handler: async (response: {

@@ -65,14 +65,6 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
     // Safely get a reference to the primary dataset we are editing to read its current values
     const primaryDataset = chartData.datasets[primaryIndex] || chartData.datasets[0] || {};
     const effectiveChartType = primaryDataset.chartType || primaryDataset.type || chartType;
-    console.log("DEBUG STYLING TAB:", {
-        primaryIndex,
-        primaryDatasetLabel: primaryDataset.label,
-        primaryDatasetType: primaryDataset.type,
-        primaryDatasetChartType: primaryDataset.chartType,
-        globalChartType: chartType,
-        effectiveChartType
-    });
 
     /**
      * Helper: update a dataset property with per-slice awareness.
@@ -424,8 +416,8 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                 </div>
             )}
 
-            {/* Line Properties - Only for line, area, radar charts */}
-            {(effectiveChartType === 'line' || effectiveChartType === 'area' as any || effectiveChartType === 'radar') && (
+            {/* Line Properties - Only for line, area, radar, and timeline charts */}
+            {(effectiveChartType === 'line' || effectiveChartType === 'area' as any || effectiveChartType === 'radar' || (effectiveChartType as any) === 'timeline') && (
                 <div className="space-y-3">
                     <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
                         <Activity className="h-4 w-4 text-blue-900" />
@@ -498,13 +490,13 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                         </div>
                     </div>
 
-                    {/* Area Fill Settings - For area charts and line charts */}
-                    {(effectiveChartType === 'area' as any || effectiveChartType === 'line' as any) && (
+                    {/* Area Fill Settings - For area, line, and timeline charts */}
+                    {(effectiveChartType === 'area' as any || effectiveChartType === 'line' as any || (effectiveChartType as any) === 'timeline') && (
                         <div className="pt-2 border-t border-blue-100 space-y-3">
                             <div className="flex items-center justify-between">
                                 <div className="text-xs font-semibold text-blue-900">Area Fill Settings</div>
                                 <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-md border border-gray-200">
-                                    {effectiveChartType === 'line' && (
+                                    {(effectiveChartType === 'line' || (effectiveChartType as any) === 'timeline') && (
                                         <button
                                             type="button"
                                             onClick={() => {
@@ -650,7 +642,7 @@ export function StylingTab({ chartData, chartConfig, chartType, handleUpdateData
                                         </Select>
                                     </div>
                                 </div>
-                            ) : (!primaryDataset.fill && effectiveChartType === 'line') ? (
+                            ) : (!primaryDataset.fill && (effectiveChartType === 'line' || (effectiveChartType as any) === 'timeline')) ? (
                                 <p className="text-xs text-gray-500 italic py-1">No fill under line. Click <strong>Solid</strong> or <strong>Gradient</strong> above to add an area fill.</p>
                             ) : (
                                 /* When Solid Fill is Active */
@@ -1999,7 +1991,7 @@ const DEFAULT_PATTERN: PatternConfig = {
 };
 
 // Chart types that should NOT show this section
-const EXCLUDED_CHART_TYPES = ['line', 'scatter', 'bubble'];
+const EXCLUDED_CHART_TYPES = ['line', 'scatter', 'bubble', 'timeline'];
 // Chart types that use dataset-area mode instead of per-slice
 const AREA_MODE_TYPES = ['area', 'radar'];
 
@@ -2157,7 +2149,7 @@ function DrawDesignsSection({ chartData, chartType, handleUpdateDataset }: DrawD
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Slices</SelectItem>
-                                    {sliceLabels.map((label: string, idx: number) => (
+                                    {sliceLabels.slice(0, 100).map((label: string, idx: number) => (
                                         <SelectItem key={idx} value={String(idx)}>{label || `Slice ${idx + 1}`}</SelectItem>
                                     ))}
                                 </SelectContent>
