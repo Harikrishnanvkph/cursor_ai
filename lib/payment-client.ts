@@ -20,6 +20,8 @@ export interface CheckoutParams {
   } | null
   onSuccess?: () => void
   onError?: (error: Error) => void
+  /** Called right before the Razorpay modal opens (e.g. to close a host dialog that would trap focus) */
+  onBeforeOpen?: () => void
 }
 
 const getBaseUrl = (): string => {
@@ -56,6 +58,7 @@ export async function initiateCheckout({
   user,
   onSuccess,
   onError,
+  onBeforeOpen,
 }: CheckoutParams): Promise<void> {
   try {
     if (!user) {
@@ -174,6 +177,7 @@ export async function initiateCheckout({
         console.error("Payment failed:", failedRes.error)
         window.location.href = `/payment/cancel?reason=${encodeURIComponent(failedRes.error?.description || "Payment failed")}`
       })
+      if (onBeforeOpen) onBeforeOpen()
       rzp.open()
       return
     }

@@ -46,6 +46,12 @@ export function UpgradeProDialog({
         billingCycle: 'monthly',
         regionOverride: region,
         user,
+        // Close this Radix dialog before Razorpay opens, otherwise its focus trap,
+        // overlay, and body pointer-events lock block clicks inside the Razorpay iframe
+        onBeforeOpen: () => {
+          setIsUpgrading(false)
+          onOpenChange(false)
+        },
         onSuccess: () => {
           onOpenChange(false)
         },
